@@ -48,6 +48,7 @@ import { getConsentForms, getConsentResponses, upsertConsentResponse } from '../
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getStoredGradeAlerts } from '../lib/gradeNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
+import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 
 interface ParentPortalViewProps {
   schoolId?: string;
@@ -62,6 +63,7 @@ interface ParentPortalViewProps {
   homeworkSubmissions?: HomeworkSubmission[];
   infirmaryVisits?: InfirmaryVisit[];
   lang: AppLanguage;
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
   onPayInvoice: (invoiceId: string, method: TuitionInvoice['paymentMethod']) => void;
   onSubmitInvoiceSlip?: (invoiceId: string, slipDataUrl: string, note: string) => void;
   onOpenReportCard: (student: Student) => void;
@@ -81,11 +83,14 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   homeworkSubmissions = [],
   infirmaryVisits = [],
   lang,
+  schoolPermissions,
   onPayInvoice: _onPayInvoice,
   onSubmitInvoiceSlip,
   onOpenReportCard,
   onAddLeaveRequest
 }) => {
+  const canSeeRealtimeAttendance = isSchoolPolicyEnabled(schoolPermissions, 'parent_realtime_attendance');
+  const canPayTuition = isSchoolPolicyEnabled(schoolPermissions, 'parent_promptpay_tuition');
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [activePortalTab, setActivePortalTab] = useState<'overview' | 'selfie_album' | 'leave_submission' | 'consent_slips'>('overview');
   const [showPayModal, setShowPayModal] = useState(false);
@@ -231,8 +236,30 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
     setTimeout(() => setLeaveSuccessNotice(null), 5000);
   };
 
+  if (students.length === 0 || !student) {
+    return (
+      <div className={`${getModuleTone('students')} max-w-2xl mx-auto w-full py-10`}>
+        <div className="app-page-header p-6 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl tone-chip mx-auto flex items-center justify-center">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-[var(--color-text-title)]">
+            {lang === 'th'
+              ? 'ยังไม่มีข้อมูลนักเรียนที่ผูกกับบัญชีผู้ปกครองนี้'
+              : 'No student record is linked to this parent account yet'}
+          </h2>
+          <p className="text-xs text-[var(--color-text-muted)] leading-relaxed max-w-md mx-auto">
+            {lang === 'th'
+              ? 'เพื่อความเป็นส่วนตัวของข้อมูลนักเรียน ระบบจะแสดงผลเฉพาะบุตรหลานที่ผูกอีเมลผู้ปกครองไว้ในทะเบียนนักเรียนเท่านั้น กรุณาติดต่อฝ่ายทะเบียนโรงเรียนเพื่อเชื่อมโยงข้อมูล'
+              : 'For student privacy, only students linked to your guardian email are displayed. Please contact the school registrar.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 max-w-5xl mx-auto w-full`}>
+    <div className={`${getModuleTone('students')} space-y-3 max-w-5xl mx-auto w-full`}>
       {/* Student Switcher & Guardian Profile Card */}
       <div className="app-page-header shrink-0 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5 min-w-0">
@@ -292,15 +319,17 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           <span>ภาพรวม &amp; บัตรนักเรียน</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActivePortalTab('selfie_album')}
-          data-active={activePortalTab === 'selfie_album'}
-          className="seg-tab-btn px-3.5 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
-        >
-          <Camera className="w-3.5 h-3.5 shrink-0" />
-          <span>อัลบั้มภาพถ่ายเข้า-ออก ({studentAttendance.filter(a => !!a.photoUrl).length})</span>
-        </button>
+        {canSeeRealtimeAttendance && (
+          <button
+            type="button"
+            onClick={() => setActivePortalTab('selfie_album')}
+            data-active={activePortalTab === 'selfie_album'}
+            className="seg-tab-btn px-3.5 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <Camera className="w-3.5 h-3.5 shrink-0" />
+            <span>อัลบั้มภาพถ่ายเข้า-ออก ({studentAttendance.filter(a => !!a.photoUrl).length})</span>
+          </button>
+        )}
 
         <button
           type="button"
@@ -324,7 +353,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       </div>
 
       {/* Scrollable Tab Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+      <div className="space-y-3">
       {/* ========================================================================= */}
       {/* TAB 1: OVERVIEW & TODAY'S GATE STATUS */}
       {/* ========================================================================= */}
@@ -346,7 +375,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-200 mt-0.5">
-                  {todayRecord ? (
+                  {!canSeeRealtimeAttendance ? (
+                    'โรงเรียนปิดการแจ้งเตือนเวลาเข้า-ออกประตูแบบเรียลไทม์ชั่วคราว'
+                  ) : todayRecord ? (
                     <>
                       เข้าประตูเวลา <strong className="text-white font-mono">{todayRecord.time} น.</strong> • สถานะ:{' '}
                       <span className="text-emerald-300 font-semibold uppercase">{todayRecord.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}</span>
@@ -446,14 +477,20 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                         ฿{pendingInvoice.totalAmount.toLocaleString()}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPayModal(true)}
-                      className="btn-action-primary w-full py-2 text-xs flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
-                    >
-                      <QrCode className="w-3.5 h-3.5" />
-                      <span>ชำระผ่าน PromptPay QR Code</span>
-                    </button>
+                    {canPayTuition ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowPayModal(true)}
+                        className="btn-action-primary w-full py-2 text-xs flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>ชำระผ่าน PromptPay QR Code</span>
+                      </button>
+                    ) : (
+                      <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                        การชำระเงินออนไลน์ถูกปิดชั่วคราวโดยผู้ดูแลโรงเรียน
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <p className="text-xs text-[var(--color-text-body)]">

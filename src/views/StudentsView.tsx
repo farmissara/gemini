@@ -43,7 +43,6 @@ import {
   StudentAccountLink,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
-import { useQuickActionListener } from '../lib/quickActionEvents';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
@@ -60,52 +59,7 @@ import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { calculateStudentAcademicSummary, getRawScoreFeedback, isPrimaryGradeLevel } from '../lib/moeGrading';
 import { downloadBatchStudentQrCodesPdf } from '../lib/moeReportPdf';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
-
-const PaginatedTableRows = <T,>({
-  items,
-  colSpan,
-  renderRow,
-  pageSize = 15
-}: {
-  items: readonly T[];
-  colSpan: number;
-  renderRow: (item: T) => React.ReactNode;
-  pageSize?: number;
-}) => {
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  return (
-    <>
-      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
-      {pageCount > 1 && (
-        <tr>
-          <td colSpan={colSpan} className="p-2">
-            <div className="flex items-center justify-between">
-              <button 
-                type="button" 
-                disabled={currentPage === 0} 
-                onClick={() => setPage(currentPage - 1)} 
-                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer"
-              >
-                ก่อนหน้า
-              </button>
-              <span className="text-[11px] text-[var(--color-text-muted)]">{currentPage + 1} / {pageCount}</span>
-              <button 
-                type="button" 
-                disabled={currentPage === pageCount - 1} 
-                onClick={() => setPage(currentPage + 1)} 
-                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer"
-              >
-                ถัดไป
-              </button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-};
+import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 
 interface StudentsViewProps {
   students: Student[];
@@ -125,6 +79,7 @@ interface StudentsViewProps {
   onOpenImportExport?: () => void;
   onBatchUpdateStudents?: (updatedStudents: Student[]) => void;
   onUpdateRoomOptions?: (roomOptions: string[]) => Promise<void>;
+  onOpenStudentAccountsSettings?: () => void;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
@@ -145,6 +100,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onOpenImportExport,
   onBatchUpdateStudents,
   onUpdateRoomOptions,
+  onOpenStudentAccountsSettings,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
@@ -682,19 +638,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     setShowAddModal(true);
   };
 
-  useQuickActionListener('students', (action) => {
-    if (action === 'open_add_student') {
-      handleOpenAdd();
-    } else if (action === 'open_bulk_add') {
-      setBulkAddError(null);
-      setShowBulkAddModal(true);
-    } else if (action === 'open_batch_qr') {
-      setShowBatchQrModal(true);
-    } else if (action === 'open_approvals' && canManageApprovals) {
-      setActiveTab('approvals');
-    }
-  });
-
   const handleOpenEdit = (student: Student) => {
     setStudentFormStep(1);
     setEditingStudent(student);
@@ -812,12 +755,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         gpa: Number(formData.gpa),
         avatarUrl: formData.avatarUrl || editingStudent.avatarUrl,
       };
+      const applyEdit = () => {
+        onUpdateStudent?.(updated);
+        setEditingStudent(null);
+        setShowAddModal(false);
+      };
       const duplicateReasons = getStudentDuplicateReasons([updated], students, [editingStudent.id]);
-      if (duplicateReasons.length > 0 &&
-        !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
-      onUpdateStudent?.(updated);
-      setEditingStudent(null);
-      setShowAddModal(false);
+      if (duplicateReasons.length > 0) {
+        setPendingConfirm({
+          title: 'พบข้อมูลนักเรียนซ้ำในทะเบียน',
+          description: `${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`,
+          confirmLabel: 'ยืนยันบันทึกต่อ',
+          action: applyEdit,
+        });
+        return;
+      }
+      applyEdit();
       return;
     }
 
@@ -848,11 +801,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       enrolledDate: new Date().toISOString().split('T')[0],
     };
 
+    const applyAdd = () => {
+      onAddStudent(newStudent);
+      setShowAddModal(false);
+    };
     const duplicateReasons = getStudentDuplicateReasons([newStudent], students);
-    if (duplicateReasons.length > 0 &&
-      !confirm(`${duplicateReasons.join(' และ ')} ต้องการเพิ่มนักเรียนต่อหรือไม่?`)) return;
-    onAddStudent(newStudent);
-    setShowAddModal(false);
+    if (duplicateReasons.length > 0) {
+      setPendingConfirm({
+        title: 'พบข้อมูลนักเรียนซ้ำในทะเบียน',
+        description: `${duplicateReasons.join(' และ ')} ต้องการเพิ่มนักเรียนต่อหรือไม่?`,
+        confirmLabel: 'ยืนยันเพิ่มนักเรียน',
+        action: applyAdd,
+      });
+      return;
+    }
+    applyAdd();
   };
 
   const buildDefaultBulkRows = (count = 5) => {
@@ -967,20 +930,27 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       batchNameSet.add(nameKey);
     });
 
+    const applyBulkAdd = () => {
+      if (onAddStudents) onAddStudents(newStudents);
+      else newStudents.forEach(onAddStudent);
+      setBulkStudentRows('');
+      setBulkAddError(null);
+      setShowBulkAddModal(false);
+    };
     const duplicateReasons = getStudentDuplicateReasons(newStudents, students);
     if (hasIntraDuplicate) {
       duplicateReasons.unshift('พบข้อมูลนักเรียนซ้ำกันเองภายในรายชื่อชุดนี้');
     }
-    if (duplicateReasons.length > 0 &&
-      !confirm(`${duplicateReasons.join(' และ ')} ต้องการเพิ่มนักเรียนชุดนี้ต่อหรือไม่?`)) {
+    if (duplicateReasons.length > 0) {
+      setPendingConfirm({
+        title: 'พบรายชื่อซ้ำในการเพิ่มแบบกลุ่ม',
+        description: `${duplicateReasons.join(' และ ')} ต้องการเพิ่มนักเรียนชุดนี้ต่อหรือไม่?`,
+        confirmLabel: 'ยืนยันเพิ่มชุดนี้',
+        action: applyBulkAdd,
+      });
       return;
     }
-
-    if (onAddStudents) onAddStudents(newStudents);
-    else newStudents.forEach(onAddStudent);
-    setBulkStudentRows('');
-    setBulkAddError(null);
-    setShowBulkAddModal(false);
+    applyBulkAdd();
   };
 
   const handlePromoteBatch = (updatedStudents: Student[]) => {
@@ -1695,15 +1665,26 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   นักเรียนที่สมัครสมาชิกด้วยตนเองจากหน้าลงทะเบียนจะมีสถานะ <strong className="text-[var(--color-text-title)]">รออนุมัติ (pending)</strong> ผู้ดูแลโรงเรียนสามารถกดอนุมัติเปิดใช้งานและจับคู่กับระเบียนนักเรียนได้ทันที (เข้าถึงได้ทั้งจากหน้านี้และเมนู ตั้งค่าระบบ → อนุมัติ &amp; ผูกบัญชีนักเรียน)
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => void refreshAccountLinks()}
-                disabled={accountsLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-bold text-[var(--color-text-title)] cursor-pointer shrink-0 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${accountsLoading ? 'animate-spin' : ''}`} />
-                <span>รีเฟรชรายการ</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                {onOpenStudentAccountsSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenStudentAccountsSettings}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-primary-light)] hover:opacity-90 text-xs font-bold text-[var(--color-primary-text)] cursor-pointer shrink-0"
+                  >
+                    <span>จัดการในศูนย์ตั้งค่า →</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void refreshAccountLinks()}
+                  disabled={accountsLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-bold text-[var(--color-text-title)] cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${accountsLoading ? 'animate-spin' : ''}`} />
+                  <span>รีเฟรชรายการ</span>
+                </button>
+              </div>
             </div>
 
             {accountsError && (
@@ -2200,18 +2181,26 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               return;
                             }
                             const assignedStudents = students.filter((student) => student.room === room);
-                            if (
-                              assignedStudents.length > 0 &&
-                              !confirm(`เปลี่ยนชื่อห้องและแก้ข้อมูลนักเรียน ${assignedStudents.length} คนจาก "${room}" เป็น "${nextName}" หรือไม่?`)
-                            ) return;
-                            void saveRoomOptions(roomOptions.map((item) => item === room ? nextName : item)).then((saved) => {
-                              if (!saved) return;
-                              if (assignedStudents.length > 0) {
-                                onBatchUpdateStudents?.(assignedStudents.map((student) => ({ ...student, room: nextName })));
-                              }
-                              setEditingRoomOption(null);
-                              setRoomOptionDraft('');
-                            });
+                            const applyRenameRoom = () => {
+                              void saveRoomOptions(roomOptions.map((item) => item === room ? nextName : item)).then((saved) => {
+                                if (!saved) return;
+                                if (assignedStudents.length > 0) {
+                                  onBatchUpdateStudents?.(assignedStudents.map((student) => ({ ...student, room: nextName })));
+                                }
+                                setEditingRoomOption(null);
+                                setRoomOptionDraft('');
+                              });
+                            };
+                            if (assignedStudents.length > 0) {
+                              setPendingConfirm({
+                                title: 'ยืนยันเปลี่ยนชื่อห้องเรียน',
+                                description: `เปลี่ยนชื่อห้องและแก้ข้อมูลนักเรียน ${assignedStudents.length} คนจาก "${room}" เป็น "${nextName}" หรือไม่?`,
+                                confirmLabel: 'ยืนยันเปลี่ยนชื่อห้อง',
+                                action: applyRenameRoom,
+                              });
+                              return;
+                            }
+                            applyRenameRoom();
                           }}
                           className="text-emerald-700 font-bold cursor-pointer disabled:opacity-50"
                         >
@@ -2249,8 +2238,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               const note = assigned > 0
                                 ? ` มีนักเรียน ${assigned} คนที่ยังใช้ชื่อนี้ในทะเบียน (จะไม่ลบข้อมูลนักเรียน)`
                                 : '';
-                              if (!confirm(`ลบ "${room}" ออกจากรายการห้องที่เลือกได้หรือไม่?${note}`)) return;
-                              void saveRoomOptions(roomOptions.filter((item) => item !== room));
+                              setPendingConfirm({
+                                title: 'ยืนยันลบห้องเรียนจากตัวเลือก',
+                                description: `ลบ "${room}" ออกจากรายการห้องที่เลือกได้หรือไม่?${note}`,
+                                confirmLabel: 'ยืนยันลบห้อง',
+                                action: async () => {
+                                  await saveRoomOptions(roomOptions.filter((item) => item !== room));
+                                },
+                              });
                             }}
                             className="text-rose-600 font-bold cursor-pointer disabled:opacity-50"
                             aria-label={`ลบห้อง ${room}`}

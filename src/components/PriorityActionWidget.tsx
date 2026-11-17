@@ -22,7 +22,6 @@ import {
 } from '../types';
 import { NavTab } from './layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
-import { emitMascotDashboardEvent } from './guide/InteractiveMascotGuide';
 
 interface PriorityActionWidgetProps {
   students: Student[];
@@ -130,7 +129,6 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
   }, [storageKey]);
 
   const toggleFollowUp = (studentId: string) => {
-    const willMarkFollowed = !followedUpIds[studentId];
     setFollowedUpIds((prev) => {
       const next = { ...prev };
       if (next[studentId]) {
@@ -150,26 +148,6 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
       }
       return next;
     });
-
-    if (willMarkFollowed) {
-      const targetStudent = students.find((s) => s.id === studentId);
-      const studentName = targetStudent
-        ? lang === 'th'
-          ? `${targetStudent.firstNameTh} ${targetStudent.lastNameTh}`
-          : `${targetStudent.firstNameEn} ${targetStudent.lastNameEn}`
-        : '';
-      emitMascotDashboardEvent({
-        type: 'success',
-        titleTh: 'บันทึกการติดตามแล้ว',
-        titleEn: 'Follow-Up Recorded',
-        messageTh: studentName
-          ? `บันทึกการติดตาม ${studentName} เรียบร้อยแล้ว`
-          : 'บันทึกสถานะการติดต่อติดตามนักเรียนเรียบร้อยแล้ว',
-        messageEn: studentName
-          ? `Recorded follow-up status for ${studentName}.`
-          : 'Student follow-up status saved.',
-      });
-    }
   };
 
   const priorityItems = useMemo<PriorityStudentItem[]>(() => {
@@ -402,18 +380,7 @@ export const PriorityActionWidget: React.FC<PriorityActionWidgetProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              if (counts.all > 0) {
-                emitMascotDashboardEvent({
-                  type: 'warning',
-                  titleTh: 'มีรายการเร่งด่วนรอตรวจสอบ',
-                  titleEn: 'Urgent Items Need Attention',
-                  messageTh: `พบนักเรียนเร่งด่วน ${counts.all} รายการ กำลังพาไปยังหน้าเตือนภัย`,
-                  messageEn: `${counts.all} priority student alerts require attention.`,
-                });
-              }
-              onNavigate('executive_warning');
-            }}
+            onClick={() => onNavigate('executive_warning')}
             className="no-print type-meta font-semibold text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap shrink-0"
             title={lang === 'th' ? 'เปิดระบบเตือนภัยและวิเคราะห์ความเสี่ยงผู้เรียน' : 'Open Early Warning & Risk Alerts'}
           >

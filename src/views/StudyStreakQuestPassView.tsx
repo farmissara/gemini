@@ -66,6 +66,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
   // Perk redeem feedback modal
   const [redeemedPerkToast, setRedeemedPerkToast] = useState<string | null>(null);
+  const [redeemErrorToast, setRedeemErrorToast] = useState<string | null>(null);
 
   // Teacher custom perk modal
   const [showAddPerkModal, setShowAddPerkModal] = useState<boolean>(false);
@@ -110,12 +111,17 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
   // Redeem Perk
   const handleRedeemPerk = (perk: ClassroomPerk) => {
+    setRedeemErrorToast(null);
     if (tokens < perk.costTokens) {
-      alert(lang === 'th' ? 'เหรียญความรู้ไม่เพียงพอ ทำภารกิจรายวันเพื่อสะสมเหรียญเพิ่ม!' : 'Not enough Knowledge Tokens!');
+      setRedeemErrorToast(
+        lang === 'th' ? 'เหรียญความรู้ไม่เพียงพอ ทำภารกิจรายวันเพื่อสะสมเหรียญเพิ่ม!' : 'Not enough Knowledge Tokens!'
+      );
+      setTimeout(() => setRedeemErrorToast(null), 4000);
       return;
     }
     if (perk.stock <= 0) {
-      alert(lang === 'th' ? 'สิทธิ์นี้หมดชั่วคราว' : 'Out of stock!');
+      setRedeemErrorToast(lang === 'th' ? 'สิทธิ์นี้หมดชั่วคราว' : 'Out of stock!');
+      setTimeout(() => setRedeemErrorToast(null), 4000);
       return;
     }
 
@@ -268,7 +274,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
           <button type="button" onClick={() => setQuestPassStep('quest')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${questPassStep === 'quest' ? 'bg-orange-700 border-orange-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
             {lang === 'th' ? 'ภารกิจรายวัน' : 'Daily Quest'}
           </button>
-          <button type="button" onClick={() => setQuestPassStep('pass')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${questPassStep === 'pass' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
+          <button type="button" onClick={() => setQuestPassStep('pass')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${questPassStep === 'pass' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
             {lang === 'th' ? 'ซีซันพาส' : 'Season Pass'}
           </button>
         </div>
@@ -431,7 +437,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                         <button
                           type="button"
                           onClick={() => handleClaimTier(tier.level)}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs shadow-xs transition cursor-pointer"
                         >
                           {lang === 'th' ? 'กดรับรางวัล' : 'Claim'}
                         </button>
@@ -458,6 +464,14 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       {/* Classroom Perks Store Section */}
       {activeTab === 'perks_store' && (
       <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs space-y-4">
+        {redeemErrorToast && (
+          <div role="alert" className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-bold flex items-center justify-between gap-2">
+            <span>{redeemErrorToast}</span>
+            <button type="button" onClick={() => setRedeemErrorToast(null)} className="text-[11px] underline cursor-pointer">
+              {lang === 'th' ? 'ปิด' : 'Close'}
+            </button>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
           <div>
             <h2 className="text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">

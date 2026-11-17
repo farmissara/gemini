@@ -19,7 +19,6 @@ import {
 } from '../types';
 import { calculateGrade, formatSemesterLabel, getGradingScaleLegend } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
-import { useQuickActionListener } from '../lib/quickActionEvents';
 import {
   Award,
   FileText,
@@ -47,7 +46,6 @@ import {
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import {
   ChartViewMode,
@@ -98,6 +96,7 @@ interface GradebookViewProps {
   assignments?: Assignment[];
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
   onOpenImportExport?: () => void;
+  canEditGrades?: boolean;
   lang?: AppLanguage;
 }
 
@@ -122,8 +121,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   assignments = [],
   onPracticeInAi,
   onOpenImportExport,
+  canEditGrades,
   lang = 'th',
 }) => {
+  const effectiveCanEditGrades =
+    typeof canEditGrades === 'boolean'
+      ? canEditGrades
+      : ['super_admin', 'admin', 'teacher'].includes(currentRole);
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
@@ -146,19 +150,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [autoNotifyEnabled, setAutoNotifyEnabled] = useState(true);
   const [gradeAlertBanner, setGradeAlertBanner] = useState<{ message: string; detail?: string } | null>(null);
   const [showAddGradeForm, setShowAddGradeForm] = useState(false);
-
-  useQuickActionListener('gradebook', (action) => {
-    if (action === 'toggle_add_grade') {
-      setActiveTab('gradebook');
-      setShowAddGradeForm((prev) => !prev);
-    } else if (action === 'tab_gradebook') {
-      setActiveTab('gradebook');
-    } else if (action === 'tab_pp5') {
-      setActiveTab('pp5');
-    } else if (action === 'tab_pp6') {
-      setActiveTab('pp6');
-    }
-  });
   const [showBatchPastePanel, setShowBatchPastePanel] = useState(false);
   const [batchPasteField, setBatchPasteField] = useState<'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore'>('midtermScore');
   const [batchPasteText, setBatchPasteText] = useState('');
@@ -530,6 +521,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     field: 'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore',
     rawVal: number
   ) => {
+    if (!effectiveCanEditGrades) return;
     const maxMap = {
       midtermScore: 30,
       finalScore: 40,
@@ -645,13 +637,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       `ซิงค์คะแนนการบ้านเข้าวิชา ${selectedCourse.code} สำเร็จ ${homeworkSyncCandidates.length} คน`,
       'คำนวณจากชิ้นงานที่ตรวจแล้วปรับสัดส่วนเป็นเต็ม 20 คะแนน'
     );
-    emitMascotDashboardEvent({
-      type: 'success',
-      titleTh: `ซิงค์คะแนนการบ้าน ${homeworkSyncCandidates.length} คนสำเร็จ`,
-      titleEn: `Synced ${homeworkSyncCandidates.length} homework scores`,
-      messageTh: `นำคะแนนการบ้านที่ตรวจแล้วเข้าระบบปพ.5 วิชา ${selectedCourse.code} เรียบร้อย`,
-      messageEn: `Imported graded homework scores into ${selectedCourse.code}.`,
-    });
   };
 
   const batchMaxMap: Record<'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore', number> = {
@@ -720,13 +705,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       `วางคะแนนช่อง "${fieldLabels[batchPasteField]}" สำเร็จ ${parsedBatchUpdates.length} คน`,
       selectedCourse ? `${selectedCourse.code} • คำนวณเกรดรวมให้อัตโนมัติแล้ว` : undefined
     );
-    emitMascotDashboardEvent({
-      type: 'success',
-      titleTh: `วางคะแนนจาก Excel สำเร็จ ${parsedBatchUpdates.length} คน`,
-      titleEn: `Batch updated ${parsedBatchUpdates.length} scores`,
-      messageTh: `อัปเดตคะแนน${fieldLabels[batchPasteField]}และคำนวณเกรดให้อัตโนมัติทันที`,
-      messageEn: `Applied batch ${fieldLabels[batchPasteField]} scores.`,
-    });
     setBatchPasteText('');
     setShowBatchPastePanel(false);
   };
@@ -762,7 +740,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   const handleCreateGradeRecord = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selectedCourse || !newGradeStudentId || !onAddGrade) return;
+    if (!effectiveCanEditGrades || !selectedCourse || !newGradeStudentId || !onAddGrade) return;
     const midterm = clampScore(newMidtermScore, 30);
     const final = clampScore(newFinalScore, 40);
     const assignment = clampScore(newAssignmentScore, 20);
@@ -1257,7 +1235,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
           </details>
 
-          {activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
+          {effectiveCanEditGrades && activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
             <button
               type="button"
               onClick={() => {
@@ -1652,6 +1630,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   </span>
                 </button>
               )}
+              {effectiveCanEditGrades && (
               <button
                 type="button"
                 onClick={() => setShowBatchPastePanel((prev) => !prev)}
@@ -1664,6 +1643,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 <FileSpreadsheet className="w-3 h-3" />
                 <span>วางคะแนนจาก Excel</span>
               </button>
+              )}
               <span className="text-[11px] text-[var(--color-text-muted)] hidden xl:inline ml-1">
                 {isPrimaryCourse
                   ? '80–100 ดีเยี่ยม · 70–79 ดีมาก · 60–69 ดี · 50–59 ผ่าน'
@@ -1960,12 +1940,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             type="number"
                             min="0"
                             max="30"
+                            disabled={!effectiveCanEditGrades}
                             value={grade.midtermScore}
                             onChange={(e) =>
                               handleScoreChange(grade, 'midtermScore', Number(e.target.value))
                             }
                             onBlur={() => flushPendingGradeAlert(grade.id)}
-                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold disabled:opacity-60 focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
@@ -1974,12 +1955,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             type="number"
                             min="0"
                             max="40"
+                            disabled={!effectiveCanEditGrades}
                             value={grade.finalScore}
                             onChange={(e) =>
                               handleScoreChange(grade, 'finalScore', Number(e.target.value))
                             }
                             onBlur={() => flushPendingGradeAlert(grade.id)}
-                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold disabled:opacity-60 focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
@@ -1988,12 +1970,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             type="number"
                             min="0"
                             max="20"
+                            disabled={!effectiveCanEditGrades}
                             value={grade.assignmentScore}
                             onChange={(e) =>
                               handleScoreChange(grade, 'assignmentScore', Number(e.target.value))
                             }
                             onBlur={() => flushPendingGradeAlert(grade.id)}
-                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold disabled:opacity-60 focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
@@ -2002,12 +1985,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                             type="number"
                             min="0"
                             max="10"
+                            disabled={!effectiveCanEditGrades}
                             value={grade.quizScore}
                             onChange={(e) =>
                               handleScoreChange(grade, 'quizScore', Number(e.target.value))
                             }
                             onBlur={() => flushPendingGradeAlert(grade.id)}
-                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold focus:outline-none focus:border-[var(--color-primary)]"
+                            className="w-14 px-1.5 py-1 text-center rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono font-semibold disabled:opacity-60 focus:outline-none focus:border-[var(--color-primary)]"
                           />
                         </td>
 
@@ -2239,10 +2223,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           type="number"
                           min="0"
                           max="30"
+                          disabled={!effectiveCanEditGrades}
                           value={grade.midtermScore}
                           onChange={(e) => handleScoreChange(grade, 'midtermScore', Number(e.target.value))}
                           onBlur={() => flushPendingGradeAlert(grade.id)}
-                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent disabled:opacity-60 focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 30)</span>
                       </div>
@@ -2253,10 +2238,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           type="number"
                           min="0"
                           max="40"
+                          disabled={!effectiveCanEditGrades}
                           value={grade.finalScore}
                           onChange={(e) => handleScoreChange(grade, 'finalScore', Number(e.target.value))}
                           onBlur={() => flushPendingGradeAlert(grade.id)}
-                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent disabled:opacity-60 focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 40)</span>
                       </div>
@@ -2267,10 +2253,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           type="number"
                           min="0"
                           max="20"
+                          disabled={!effectiveCanEditGrades}
                           value={grade.assignmentScore}
                           onChange={(e) => handleScoreChange(grade, 'assignmentScore', Number(e.target.value))}
                           onBlur={() => flushPendingGradeAlert(grade.id)}
-                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent disabled:opacity-60 focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 20)</span>
                       </div>
@@ -2281,10 +2268,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           type="number"
                           min="0"
                           max="10"
+                          disabled={!effectiveCanEditGrades}
                           value={grade.quizScore}
                           onChange={(e) => handleScoreChange(grade, 'quizScore', Number(e.target.value))}
                           onBlur={() => flushPendingGradeAlert(grade.id)}
-                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
+                          className="w-full text-center text-xs font-mono font-bold text-[var(--color-text-title)] bg-transparent disabled:opacity-60 focus:outline-none focus:text-[var(--color-primary-text)] mt-0.5"
                         />
                         <span className="block text-[8px] text-[var(--color-text-muted)] font-mono">(เต็ม 10)</span>
                       </div>

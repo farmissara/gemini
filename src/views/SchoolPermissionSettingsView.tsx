@@ -13,22 +13,18 @@ import {
   Sparkles, 
   Info 
 } from 'lucide-react';
-import { School, UserRole, AppLanguage } from '../types';
+import { School, AppLanguage } from '../types';
 import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
+import {
+  getSchoolRolePolicies,
+  saveSchoolRolePolicies,
+  type SchoolRolePolicy,
+} from '../lib/schoolPermissions';
 
 interface SchoolPermissionSettingsViewProps {
   activeSchool: School;
   lang: AppLanguage;
-}
-
-interface SchoolRolePolicy {
-  id: string;
-  role: 'teacher' | 'student' | 'parent';
-  titleTh: string;
-  descTh: string;
-  category: 'academic' | 'student_care' | 'communication';
-  enabled: boolean;
 }
 
 export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsViewProps> = ({
@@ -37,145 +33,27 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
 }) => {
   const [selectedRole, setSelectedRole] = useState<'teacher' | 'student' | 'parent'>('teacher');
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+  const [policies, setPolicies] = useState<SchoolRolePolicy[]>(() =>
+    getSchoolRolePolicies(activeSchool.id)
+  );
 
-  // Storage key specific to this school
-  const storageKey = `eduverse_school_perms_${activeSchool.id}`;
-
-  const defaultPolicies: SchoolRolePolicy[] = [
-    // Teacher Policies
-    {
-      id: 'teacher_grade_entry',
-      role: 'teacher',
-      titleTh: 'อนุญาตให้ครูบันทึกและแก้ไขคะแนนสอบ ปพ.1',
-      descTh: 'ครูประจำวิชาสามารถกรอกคะแนนเก็บ กลางภาค และปลายภาคได้โดยตรง',
-      category: 'academic',
-      enabled: true,
-    },
-    {
-      id: 'teacher_attendance',
-      role: 'teacher',
-      titleTh: 'อนุญาตให้ครูเช็คชื่อเข้าแถวและเช็คชื่อรายคาบ',
-      descTh: 'ครูสามารถบันทึกเวลาเรียนและสแกน QR Code ประจำคาบเรียนได้',
-      category: 'academic',
-      enabled: true,
-    },
-    {
-      id: 'teacher_homework',
-      role: 'teacher',
-      titleTh: 'อนุญาตให้ครูสั่งการบ้านและตรวจงานออนไลน์ (LMS)',
-      descTh: 'สร้างงาน มอบหมายแบบฝึกหัด และให้คะแนนพร้อมข้อเสนอแนะแก่นักเรียน',
-      category: 'academic',
-      enabled: true,
-    },
-    {
-      id: 'teacher_line_broadcast',
-      role: 'teacher',
-      titleTh: 'อนุญาตให้ครูส่งข้อความแจ้งเตือนผ่าน LINE Official Account',
-      descTh: 'ส่งข่าวสารหรือแจ้งเตือนการบ้านถึงผู้ปกครองผ่านระบบ LINE อัตโนมัติ',
-      category: 'communication',
-      enabled: true,
-    },
-    {
-      id: 'teacher_sdq_screening',
-      role: 'teacher',
-      titleTh: 'อนุญาตให้ครูประเมินพฤติกรรม & คัดกรอง SDQ สพฐ.',
-      descTh: 'บันทึกแบบประเมินจุดเด่นจุดพัฒนา และส่งต่อข้อมูลการดูแลช่วยเหลือนักเรียน',
-      category: 'student_care',
-      enabled: true,
-    },
-    {
-      id: 'teacher_infirmary_access',
-      role: 'teacher',
-      titleTh: 'อนุญาตให้ครูดูประวัติสุขภาพและการรักษาห้องพยาบาล',
-      descTh: 'ตรวจสอบข้อมูลการแพ้ยา ประวัติการเจ็บป่วย และการส่งตัวไปห้องพยาบาล',
-      category: 'student_care',
-      enabled: true,
-    },
-
-    // Student Policies
-    {
-      id: 'student_view_grades',
-      role: 'student',
-      titleTh: 'อนุญาตให้นักเรียนดูผลการเรียนและพิมพ์ใบรายงานผล',
-      descTh: 'นักเรียนสามารถดูเกรดเฉลี่ย GPA และดาวน์โหลดเอกสาร ปพ. ได้ด้วยตนเอง',
-      category: 'academic',
-      enabled: true,
-    },
-    {
-      id: 'student_submit_homework',
-      role: 'student',
-      titleTh: 'อนุญาตให้นักเรียนส่งการบ้านและไฟล์งานผ่านระบบ',
-      descTh: 'อัปโหลดการบ้าน ตรวจสอบสถานะการส่ง และดูคะแนนที่ครูตรวจแล้ว',
-      category: 'academic',
-      enabled: true,
-    },
-    {
-      id: 'student_treasure_game',
-      role: 'student',
-      titleTh: 'อนุญาตให้นักเรียนเข้าเล่น "เกมล่าสมบัติ 3D"',
-      descTh: 'เข้าสู่สนามประลองความรู้ 3D เพื่อทำข้อสอบและสะสมเหรียญรางวัล',
-      category: 'academic',
-      enabled: true,
-    },
-    {
-      id: 'student_upload_portfolio',
-      role: 'student',
-      titleTh: 'อนุญาตให้นักเรียนสร้างและอัปโหลดแฟ้มผลงาน Portfolio (TCAS)',
-      descTh: 'บันทึกเกียรติบัตร กิจกรรม และผลงานเพื่อยื่นประกอบการศึกษาต่อ',
-      category: 'student_care',
-      enabled: true,
-    },
-
-    // Parent Policies
-    {
-      id: 'parent_realtime_attendance',
-      role: 'parent',
-      titleTh: 'อนุญาตให้ผู้ปกครองดูเวลาผ่านประตูโรงเรียนแบบ Real-time',
-      descTh: 'ตรวจสอบเวลาที่บุตรหลานสแกนบัตรผ่านประตูอัตโนมัติของโรงเรียน',
-      category: 'student_care',
-      enabled: true,
-    },
-    {
-      id: 'parent_promptpay_tuition',
-      role: 'parent',
-      titleTh: 'อนุญาตให้ผู้ปกครองชำระค่าเล่าเรียนด้วย PromptPay QR',
-      descTh: 'ดูใบแจ้งหนี้ สแกนจ่ายเงินผ่านแอปธนาคาร และรับใบเสร็จรับเงินดิจิทัล',
-      category: 'academic',
-      enabled: true,
-    },
-    {
-      id: 'parent_line_alerts',
-      role: 'parent',
-      titleTh: 'ส่งการแจ้งเตือนเข้าเรียนและการบ้านผ่าน LINE OA ของผู้ปกครอง',
-      descTh: 'แจ้งเตือนเมื่อนักเรียนเข้าโรงเรียน หรือมีการบ้านใหม่ที่ต้องส่ง',
-      category: 'communication',
-      enabled: true,
-    },
-  ];
-
-  const [policies, setPolicies] = useState<SchoolRolePolicy[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return defaultPolicies;
-  });
+  React.useEffect(() => {
+    setPolicies(getSchoolRolePolicies(activeSchool.id));
+  }, [activeSchool.id]);
 
   const togglePolicy = (policyId: string) => {
-    setPolicies(prev =>
-      prev.map(p => p.id === policyId ? { ...p, enabled: !p.enabled } : p)
+    setPolicies((prev) =>
+      prev.map((p) => (p.id === policyId ? { ...p, enabled: !p.enabled } : p))
     );
   };
 
   const savePolicies = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(storageKey, JSON.stringify(policies));
-    }
-    setFeedbackToast(`บันทึกการกำหนดสิทธิ์ของ ${activeSchool.nameTh} เรียบร้อยแล้ว`);
+    saveSchoolRolePolicies(activeSchool.id, policies);
+    setFeedbackToast(
+      lang === 'th'
+        ? `บันทึกการกำหนดสิทธิ์ของ ${activeSchool.nameTh} และบังคับใช้ทันทีแล้ว`
+        : `Saved and applied permissions for ${activeSchool.nameEn}`
+    );
     setTimeout(() => setFeedbackToast(null), 3000);
   };
 

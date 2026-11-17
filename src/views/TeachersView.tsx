@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Teacher, AppLanguage, UserRole, TeacherPortfolioWork } from '../types';
-import { useQuickActionListener } from '../lib/quickActionEvents';
 import { 
   GraduationCap, 
   Search, 
@@ -37,6 +36,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { PagedList } from '../components/PagedList';
 import { StaffPositionConfigPanel } from '../components/StaffPositionConfigPanel';
 import { StaffOrganizationView } from './StaffOrganizationView';
@@ -50,38 +50,7 @@ import {
   type StaffParentAccountLink,
 } from '../lib/authDb';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
-
-const PaginatedTableRows = <T,>({
-  items,
-  colSpan,
-  renderRow,
-  pageSize = 8
-}: {
-  items: readonly T[];
-  colSpan: number;
-  renderRow: (item: T) => React.ReactNode;
-  pageSize?: number;
-}) => {
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  return (
-    <>
-      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
-      {pageCount > 1 && (
-        <tr>
-          <td colSpan={colSpan} className="p-2">
-            <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-              <span className="text-[11px] text-[var(--color-text-muted)]">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-};
+import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 
 interface TeachersViewProps {
   teachers: Teacher[];
@@ -204,6 +173,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [gradeInput, setGradeInput] = useState('');
   const [certificationInput, setCertificationInput] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    tone?: 'danger' | 'primary';
+    action: () => void;
+  } | null>(null);
 
   const departments = presets.departments;
   const academicStandings = presets.academicStandings;
@@ -297,17 +273,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     setShowAddModal(true);
   };
 
-  useQuickActionListener('teachers', (action) => {
-    if (action === 'open_add_teacher') {
-      handleOpenAdd();
-    } else if (action === 'toggle_view_mode') {
-      setStaffPage('directory');
-      setViewMode((prev) => (prev === 'cards' ? 'table' : 'cards'));
-    } else if (action === 'open_org_chart') {
-      setStaffPage('organization');
-    }
-  });
-
   const handleOpenEdit = (teacher: Teacher) => {
     setTeacherFormStep(1);
     setFormError(null);
@@ -378,16 +343,31 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         teacherLicenseNo: formData.teacherLicenseNo?.trim() || '',
         teachingExperienceYears: experience,
       };
+      const applyUpdate = () => {
+        onUpdateTeacher(updated);
+        if (selectedTeacherForDetail && selectedTeacherForDetail.id === updated.id) {
+          setSelectedTeacherForDetail(updated);
+        }
+        setShowAddModal(false);
+        setEditingTeacher(null);
+      };
       const duplicateReasons = getTeacherDuplicateReasons(
         [updated],
         teachers,
         [editingTeacher.id]
       );
-      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
-      onUpdateTeacher(updated);
-      if (selectedTeacherForDetail && selectedTeacherForDetail.id === updated.id) {
-        setSelectedTeacherForDetail(updated);
+      if (duplicateReasons.length > 0) {
+        setPendingConfirm({
+          title: 'พบข้อมูลบุคลากรซ้ำ',
+          description: `${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`,
+          confirmLabel: 'ยืนยันบันทึกต่อ',
+          tone: 'primary',
+          action: applyUpdate,
+        });
+        return;
       }
+      applyUpdate();
+      return;
     } else {
       const newTeacher: Teacher = {
         id: `tch-${Date.now()}`,
@@ -418,13 +398,25 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         selfDevelopmentPlan: formData.selfDevelopmentPlan?.trim() || undefined,
         paPortfolio: formData.paPortfolio || [],
       };
+      const applyAdd = () => {
+        onAddTeacher(newTeacher);
+        setShowAddModal(false);
+        setEditingTeacher(null);
+      };
       const duplicateReasons = getTeacherDuplicateReasons([newTeacher], teachers);
-      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
-      onAddTeacher(newTeacher);
+      if (duplicateReasons.length > 0) {
+        setPendingConfirm({
+          title: 'พบข้อมูลบุคลากรซ้ำ',
+          description: `${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`,
+          confirmLabel: 'ยืนยันเพิ่มข้อมูล',
+          tone: 'primary',
+          action: applyAdd,
+        });
+        return;
+      }
+      applyAdd();
+      return;
     }
-
-    setShowAddModal(false);
-    setEditingTeacher(null);
   };
 
   // Handle Photo selection from camera or upload
@@ -997,9 +989,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                           variant: 'danger',
                           dividerBefore: true,
                           onClick: () => {
-                            if (confirm(`คุณต้องการลบข้อมูลอาจารย์ "${teacher.fullNameTh}" หรือไม่?`)) {
-                              onDeleteTeacher(teacher.id);
-                            }
+                            setPendingConfirm({
+                              title: 'ยืนยันลบข้อมูลครู/บุคลากร',
+                              description: `คุณต้องการลบข้อมูลอาจารย์ "${teacher.fullNameTh}" ออกจากระบบหรือไม่?`,
+                              confirmLabel: 'ยืนยันลบข้อมูล',
+                              tone: 'danger',
+                              action: () => onDeleteTeacher(teacher.id),
+                            });
                           },
                         },
                       ]}
@@ -1159,9 +1155,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                                   variant: 'danger' as const,
                                   dividerBefore: true,
                                   onClick: () => {
-                                    if (confirm(`คุณต้องการลบข้อมูล "${teacher.fullNameTh}" หรือไม่?`)) {
-                                      onDeleteTeacher(teacher.id);
-                                    }
+                                    setPendingConfirm({
+                                      title: 'ยืนยันลบข้อมูลครู/บุคลากร',
+                                      description: `คุณต้องการลบข้อมูล "${teacher.fullNameTh}" ออกจากระบบหรือไม่?`,
+                                      confirmLabel: 'ยืนยันลบข้อมูล',
+                                      tone: 'danger',
+                                      action: () => onDeleteTeacher(teacher.id),
+                                    });
                                   },
                                 },
                               ]
@@ -2596,6 +2596,19 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       )}
       </>
       )}
+
+      <ConfirmActionModal
+        isOpen={Boolean(pendingConfirm)}
+        title={pendingConfirm?.title || ''}
+        description={pendingConfirm?.description || ''}
+        confirmLabel={pendingConfirm?.confirmLabel || 'ยืนยัน'}
+        tone={pendingConfirm?.tone || 'danger'}
+        onCancel={() => setPendingConfirm(null)}
+        onConfirm={() => {
+          pendingConfirm?.action();
+          setPendingConfirm(null);
+        }}
+      />
     </div>
   );
 };

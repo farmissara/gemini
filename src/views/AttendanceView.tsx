@@ -37,8 +37,6 @@ import {
   Upload
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
-import { useQuickActionListener } from '../lib/quickActionEvents';
-import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { getModuleTone } from '../lib/moduleTheme';
 import {
   filterAttendanceForUser,
@@ -59,38 +57,7 @@ import { PeriodQrGeneratorPanel } from '../components/PeriodQrGeneratorPanel';
 import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
-
-const PaginatedTableRows = <T,>({
-  items,
-  colSpan,
-  renderRow,
-  pageSize = 15
-}: {
-  items: readonly T[];
-  colSpan: number;
-  renderRow: (item: T) => React.ReactNode;
-  pageSize?: number;
-}) => {
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  return (
-    <>
-      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
-      {pageCount > 1 && (
-        <tr>
-          <td colSpan={colSpan} className="p-2">
-            <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-              <span className="text-[11px] text-[var(--color-text-muted)]">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-};
+import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -118,6 +85,7 @@ interface AttendanceViewProps {
   schoolPeriods?: SchoolPeriodTime[];
   timetableSlots?: TimetableSlot[];
   periodAttendance?: PeriodAttendanceRecord[];
+  onOpenGpsSettings?: () => void;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -140,6 +108,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   schoolPeriods = [],
   timetableSlots = [],
   periodAttendance = [],
+  onOpenGpsSettings,
 }) => {
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
   const isAdminUser = currentRole === 'admin' || currentRole === 'super_admin';
@@ -160,19 +129,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [importSuccessNotice, setImportSuccessNotice] = useState<string | null>(null);
-
-  useQuickActionListener('attendance', (action) => {
-    if (action === 'open_rapid_scanner') {
-      setActiveTab('gate_scanner');
-      setShowRapidScannerModal(true);
-    } else if (action === 'tab_leave_approval') {
-      setActiveTab('leave_approval');
-    } else if (action === 'tab_period_qr') {
-      setActiveTab('period_qr');
-    } else if (action === 'tab_export_reports') {
-      setActiveTab('export_reports');
-    }
-  });
 
   // Scanner state (Staff must enter Student ID before check-in; Students only see themselves)
   const [scannerStudentIdInput, setScannerStudentIdInput] = useState<string>('');
@@ -294,15 +250,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     handleConfirmAttendanceImport(records);
     setRollCallOverrides({});
     setIsSavingRollCall(false);
-    const presentCount = records.filter((r) => r.status === 'present').length;
-    const exceptionCount = records.length - presentCount;
-    emitMascotDashboardEvent({
-      type: 'success',
-      titleTh: `บันทึกเช็คชื่อห้อง ${effectiveRollCallRoom} สำเร็จ`,
-      titleEn: `Saved roll call (${records.length})`,
-      messageTh: `บันทึกครบ ${records.length} คน (มาเรียน ${presentCount} คน · สาย/ลา/ขาด ${exceptionCount} คน) ในคลิกเดียว`,
-      messageEn: `Recorded ${records.length} students (${presentCount} present, ${exceptionCount} exceptions).`,
-    });
+    setImportSuccessNotice(
+      lang === 'th'
+        ? `บันทึกเช็คชื่อห้อง ${effectiveRollCallRoom} ครบ ${records.length} คนเรียบร้อยแล้ว`
+        : `Saved roll call for ${records.length} students.`
+    );
+    setTimeout(() => setImportSuccessNotice(null), 5000);
   };
 
   const selectedCourseObj = useMemo(
@@ -1610,13 +1563,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       pending.forEach((req) => {
                         onUpdateLeaveStatus(req.id, 'approved', approvalNote[req.id] || 'อนุมัติแบบรวมรายการโดยครู/ผู้ดูแล');
                       });
-                      emitMascotDashboardEvent({
-                        type: 'success',
-                        titleTh: `อนุมัติใบลาทั้งหมด ${pending.length} รายการ`,
-                        titleEn: `Approved ${pending.length} leave requests`,
-                        messageTh: 'อัปเดตสถานะในระบบเช็คชื่อประจำวันให้อัตโนมัติเรียบร้อยแล้ว',
-                        messageEn: 'Daily attendance leave statuses updated automatically.',
-                      });
+                      setImportSuccessNotice(
+                        lang === 'th'
+                          ? `อนุมัติใบลาทั้งหมด ${pending.length} รายการ และอัปเดตสถานะเช็คชื่อเรียบร้อยแล้ว`
+                          : `Approved ${pending.length} leave requests.`
+                      );
+                      setTimeout(() => setImportSuccessNotice(null), 5000);
                     }}
                     className="btn-action-success px-3 py-1.5"
                     title="อนุมัติคำขอลาที่รอดำเนินการทั้งหมดพร้อมกัน"
@@ -1874,38 +1826,81 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 5: SCHOOL GPS & GEOFENCE SETTINGS */}
+      {/* TAB 5: SCHOOL GPS & GEOFENCE SUMMARY + HUB LINK */}
       {/* ========================================================================= */}
       {activeTab === 'school_gps' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
-          <SchoolGpsSettingsCard
-            activeSchool={activeSchool || {
-              id: 'sch-1',
-              code: 'SCH-BKK01',
-              nameTh: 'โรงเรียนเตรียมอุดมศึกษานวัตกรรม',
-              nameEn: 'Triam Udom Suksa Innovation Academy',
-              slug: 'triam-udom-innovation',
-              type: 'public',
-              province: 'กรุงเทพมหานคร',
-              address: 'ถนนพญาไท เขตปทุมวัน กรุงเทพฯ 10330',
-              phone: '02-218-1234',
-              email: 'info@triamudom.ac.th',
-              primaryColor: '#1e40af',
-              studentsCount: 2450,
-              teachersCount: 142,
-              academicYear: '2569',
-              currentSemester: '1',
-              lineOaId: '@triamudom_sis',
-              createdAt: '2025-01-01',
-              status: 'active'
-            }}
-            campusGates={campusGates}
-            currentRole={currentRole}
-            lang={lang}
-            onUpdateCampusGates={onUpdateCampusGates || (() => {})}
-            onSaveCampusGates={onSaveCampusGates}
-            onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
-          />
+        <div className="space-y-3">
+          {onOpenGpsSettings ? (
+            <div className="saas-card p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <span>จุดเช็คชื่อพิกัด GPS ประจำโรงเรียน ({campusGates.length} จุด)</span>
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    การตั้งค่าพิกัดและรัศมี Geofence ถูกรวมไว้ที่ศูนย์ตั้งค่าระบบ (System Settings) เพื่อป้องกันข้อมูลซ้ำซ้อน
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenGpsSettings}
+                  className="btn-action-primary px-4 py-2 text-xs cursor-pointer"
+                >
+                  ตั้งค่าพิกัด GPS ในศูนย์ตั้งค่า →
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+                {campusGates.map((gate) => (
+                  <div
+                    key={gate.id}
+                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-1"
+                  >
+                    <div className="font-bold text-[var(--color-text-title)] flex items-center justify-between gap-2">
+                      <span className="truncate">{gate.nameTh}</span>
+                      {gate.isPrimary && (
+                        <span className="px-1.5 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px]">
+                          หลัก
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {gate.lat.toFixed(5)}, {gate.lng.toFixed(5)} · รัศมี {gate.radiusMeters} ม.
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <SchoolGpsSettingsCard
+              activeSchool={activeSchool || {
+                id: 'sch-1',
+                code: 'SCH-BKK01',
+                nameTh: 'โรงเรียนเตรียมอุดมศึกษานวัตกรรม',
+                nameEn: 'Triam Udom Suksa Innovation Academy',
+                slug: 'triam-udom-innovation',
+                type: 'public',
+                province: 'กรุงเทพมหานคร',
+                address: 'ถนนพญาไท เขตปทุมวัน กรุงเทพฯ 10330',
+                phone: '02-218-1234',
+                email: 'info@triamudom.ac.th',
+                primaryColor: '#1e40af',
+                studentsCount: 2450,
+                teachersCount: 142,
+                academicYear: '2569',
+                currentSemester: '1',
+                lineOaId: '@triamudom_sis',
+                createdAt: '2025-01-01',
+                status: 'active'
+              }}
+              campusGates={campusGates}
+              currentRole={currentRole}
+              lang={lang}
+              onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+              onSaveCampusGates={onSaveCampusGates}
+              onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
+            />
+          )}
         </div>
       )}
 

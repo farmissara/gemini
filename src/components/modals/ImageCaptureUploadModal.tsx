@@ -34,6 +34,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
   // Camera state
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
@@ -105,6 +106,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
       setPresetPage(0);
       setCapturedPhotoUrl(null);
       setCameraError(null);
+      setUploadError(null);
     } else {
       stopCamera();
     }
@@ -207,10 +209,11 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WebP)');
+      setUploadError('กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WebP)');
       return;
     }
 
+    setUploadError(null);
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
@@ -233,14 +236,14 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between">
+        <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-900/70 text-indigo-200 border border-indigo-400/50">
+            <div className="p-2 rounded-xl bg-white/15 text-white border border-white/25">
               <Camera className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-extrabold text-base tracking-tight">{title}</h3>
-              <p className="text-xs text-indigo-100">ถ่ายรูปสด อัปโหลดจากเครื่อง หรือเลือก Avatar</p>
+              <p className="text-xs text-white/85">ถ่ายรูปสด อัปโหลดจากเครื่อง หรือเลือก Avatar</p>
             </div>
           </div>
           <button
@@ -323,14 +326,19 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
 
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-indigo-400 dark:border-indigo-600 hover:border-indigo-600 dark:hover:border-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition group"
+                className="border-2 border-dashed border-[var(--color-primary)]/50 hover:border-[var(--color-primary)] bg-[var(--color-primary-light)]/50 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition group"
               >
-                <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-900 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800 text-indigo-800 dark:text-indigo-200 flex items-center justify-center mb-3 transition">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center mb-3 transition">
                   <Upload className="w-7 h-7" />
                 </div>
                 <p className="font-bold text-sm text-[var(--color-text-title)]">แตะเพื่อเลือกรูปภาพจากเครื่อง</p>
                 <p className="text-xs text-[var(--color-text-body)] mt-1">รองรับ JPG, PNG, WEBP (เลือกจากอัลบั้มหรือกล้องมือถือ)</p>
               </div>
+              {uploadError && (
+                <p role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 rounded-xl px-3 py-2">
+                  {uploadError}
+                </p>
+              )}
 
               {previewUrl && (
                 <div className="flex flex-col items-center pt-2">
@@ -384,7 +392,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
               ) : (
                 /* Live Camera Feed */
                 <div className="flex flex-col items-center space-y-3 w-full">
-                  <div className="relative w-64 h-64 bg-slate-950 rounded-3xl overflow-hidden border-2 border-indigo-500 shadow-xl flex items-center justify-center">
+                  <div className="relative w-64 h-64 bg-slate-950 rounded-3xl overflow-hidden border-2 border-[var(--color-primary)] shadow-xl flex items-center justify-center">
                     <video
                       ref={videoRef}
                       autoPlay
@@ -413,7 +421,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                     <button
                       type="button"
                       onClick={takeSnapshot}
-                      className="px-6 py-3 rounded-2xl bg-indigo-700 hover:bg-indigo-800 text-white font-extrabold text-sm shadow-lg flex items-center gap-2 active:scale-95 transition cursor-pointer"
+                      className="px-6 py-3 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-extrabold text-sm shadow-lg flex items-center gap-2 active:scale-95 transition cursor-pointer"
                     >
                       <Camera className="w-5 h-5" />
                       <span>กดถ่ายภาพ</span>
@@ -482,6 +490,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                     onChange={(e) => {
                       setUrlInput(e.target.value);
                       setPreviewUrl(e.target.value);
+                      setUploadError(null);
                     }}
                     placeholder="https://example.com/photo.jpg"
                     className="flex-1 px-3 py-2 text-xs bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-none font-mono placeholder:text-[var(--color-text-muted)]"
@@ -489,13 +498,19 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                 </div>
               </div>
 
+              {uploadError && (
+                <p role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 rounded-xl px-3 py-2">
+                  {uploadError}
+                </p>
+              )}
+
               {previewUrl && (
                 <div className="flex flex-col items-center pt-2">
                   <span className="text-xs font-semibold text-[var(--color-text-muted)] mb-2">ตัวอย่างรูปภาพ:</span>
                   <img
                     src={previewUrl}
                     alt="Preview"
-                    onError={() => alert('ไม่สามารถโหลดภาพจากลิงก์นี้ได้ กรุณาตรวจสอบ URL')}
+                    onError={() => setUploadError('ไม่สามารถโหลดภาพจากลิงก์นี้ได้ กรุณาตรวจสอบ URL')}
                     className="w-24 h-24 rounded-2xl object-cover border-2 border-[var(--color-primary)] shadow-lg"
                   />
                 </div>
@@ -533,7 +548,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
               onClick={handleConfirm}
               className={`px-5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md transition ${
                 previewUrl
-                  ? 'bg-indigo-700 hover:bg-indigo-800 text-white active:scale-95 cursor-pointer'
+                  ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white active:scale-95 cursor-pointer'
                   : 'bg-[var(--color-card)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-60 cursor-not-allowed'
               }`}
             >

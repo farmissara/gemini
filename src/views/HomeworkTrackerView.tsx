@@ -35,39 +35,7 @@ import { getHomeworkDuplicateReasons } from '../lib/duplicateRecords';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
-import { useQuickActionListener } from '../lib/quickActionEvents';
-
-const PaginatedTableRows = <T,>({
-  items,
-  colSpan,
-  renderRow,
-  pageSize = 8
-}: {
-  items: readonly T[];
-  colSpan: number;
-  renderRow: (item: T) => React.ReactNode;
-  pageSize?: number;
-}) => {
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  return (
-    <>
-      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
-      {pageCount > 1 && (
-        <tr>
-          <td colSpan={colSpan} className="p-2">
-            <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-              <span className="text-[11px] text-[var(--color-text-muted)]">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-};
+import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -106,16 +74,6 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
   const [selectedSubForGrading, setSelectedSubForGrading] = useState<HomeworkSubmission | null>(null);
-
-  useQuickActionListener('homework', (action) => {
-    if (action === 'tab_pending') {
-      setHwTab('pending');
-    } else if (action === 'open_submit_modal') {
-      setShowSubmitModal(true);
-    } else if (action === 'open_calendar') {
-      setShowGoogleCalendarModal(true);
-    }
-  });
   const calendarWeekStart = getCalendarWeekStart(getBangkokDateInputValue());
 
   // Submit modal form

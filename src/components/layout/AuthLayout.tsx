@@ -46,7 +46,6 @@ import {
 } from '../../lib/webAuthn';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
-import { BaanPakKruPlayyard } from '../guide/BaanPakKruPlayyard';
 import heroImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
 interface AuthLayoutProps {
@@ -102,6 +101,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [copiedMasterEmail, setCopiedMasterEmail] = useState(false);
 
   // WebAuthn / FaceID / TouchID Quick Auth state
   const [primaryPasskey, setPrimaryPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
@@ -457,50 +457,41 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   />
                 </div>
 
-                <BaanPakKruPlayyard variant="welcome" lang={lang} />
-
                 <div className="border-t border-[var(--color-border)] pt-3">
                   <div className="flex items-center justify-between gap-2">
                     <h2 className="text-xs font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'สถานศึกษาที่เปิดใช้งาน' : 'Active schools'}
+                      {portalSchool
+                        ? lang === 'th'
+                          ? 'พอร์ทัลสถานศึกษาเฉพาะกิจ'
+                          : 'Dedicated school portal'
+                        : lang === 'th'
+                          ? 'การเข้าสู่ระบบสถานศึกษา (PDPA)'
+                          : 'Privacy-first school access'}
                     </h2>
                     <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
-                      {schools.length} {lang === 'th' ? 'แห่ง' : 'schools'}
+                      {isLoadingSchools
+                        ? lang === 'th' ? 'กำลังตรวจสอบ...' : 'Checking...'
+                        : schools.length > 0
+                          ? `${schools.length} ${lang === 'th' ? 'โรงเรียนในเครือข่าย' : 'schools active'}`
+                          : ''}
                     </span>
                   </div>
-                  {schools.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {schools.map((s) => (
-                        <span
-                          key={s.id}
-                          className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)] font-medium"
-                        >
-                          {lang === 'th' ? s.nameTh : s.nameEn}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p
-                      role={schoolLoadError ? 'alert' : undefined}
-                      className="text-xs text-[var(--color-text-muted)]"
-                    >
-                      {schoolLoadError
-                        ? /supabase is not configured/i.test(schoolLoadError)
-                          ? lang === 'th'
-                            ? 'ยังไม่ได้ตั้งค่าการเชื่อมต่อฐานข้อมูลโรงเรียน'
-                            : 'School database connection is not configured yet.'
-                          : lang === 'th'
-                            ? 'ไม่สามารถโหลดรายชื่อโรงเรียนได้ในขณะนี้'
-                            : 'Could not load schools right now.'
-                        : isLoadingSchools
-                          ? lang === 'th'
-                            ? 'กำลังโหลดรายชื่อสถานศึกษา...'
-                            : 'Loading active schools...'
-                          : lang === 'th'
-                            ? 'ยังไม่มีสถานศึกษาที่เปิดใช้งาน'
-                            : 'No active schools yet.'}
-                    </p>
-                  )}
+                  <p
+                    role={schoolLoadError ? 'alert' : undefined}
+                    className="mt-1.5 text-xs text-[var(--color-text-muted)] leading-relaxed"
+                  >
+                    {portalSchool
+                      ? lang === 'th'
+                        ? `กำลังเข้าใช้งานพอร์ทัลของ ${portalSchool.nameTh}`
+                        : `Connected to ${portalSchool.nameEn}`
+                      : schoolLoadError
+                        ? lang === 'th'
+                          ? 'ไม่สามารถตรวจสอบสถานะเครือข่ายโรงเรียนได้ในขณะนี้'
+                          : 'Could not verify school network right now.'
+                        : lang === 'th'
+                          ? 'ซ่อนรายชื่อสถานศึกษาเพื่อคุ้มครองข้อมูลส่วนบุคคล กรุณาเข้าสู่ระบบด้วยอีเมลหรือลิงก์เฉพาะของโรงเรียน'
+                          : 'Public school directory is hidden for privacy. Sign in with your school email or dedicated portal link.'}
+                  </p>
                 </div>
 
               </div>
@@ -1084,15 +1075,27 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
             </form>
 
-            <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
-              <span>{lang === 'th' ? 'ต้องการความช่วยเหลือด่วน?' : 'Need immediate help?'}</span>
-              <a
-                href={`mailto:${MASTER_SYSTEM_EMAIL}?subject=${encodeURIComponent('ขอเปลี่ยนรหัสผ่าน BaanPakKru (บ้านพักครู) / Password Reset Request')}&body=${encodeURIComponent(`เรียน Master Administrator (${MASTER_SYSTEM_EMAIL}),\n\nต้องการขอรีเซ็ตรหัสผ่านสำหรับอีเมล: ${resetEmail || ''}\nโรงเรียน / หน่วยงาน:\nหมายเหตุ:\n`)}`}
-                className="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)]">
+              <span>
+                {lang === 'th' ? 'ติดต่อผู้ดูแลระบบ:' : 'Admin contact:'}{' '}
+                <strong className="font-mono text-[var(--color-text-title)]">{MASTER_SYSTEM_EMAIL}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(MASTER_SYSTEM_EMAIL);
+                  setCopiedMasterEmail(true);
+                  setTimeout(() => setCopiedMasterEmail(false), 2500);
+                }}
+                className="font-bold text-[var(--color-primary-text)] hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ส่งอีเมลตรงหา Master' : 'Email Master Directly'}</span>
-              </a>
+                <span>
+                  {copiedMasterEmail
+                    ? lang === 'th' ? 'คัดลอกอีเมลแล้ว' : 'Email copied'
+                    : lang === 'th' ? 'คัดลอกอีเมล Master' : 'Copy Master Email'}
+                </span>
+              </button>
             </div>
           </div>
         </div>

@@ -88,7 +88,7 @@ export function resolveCurrentUserAttendanceProfile(
   if (!currentUser) {
     const fallbackStudent = students[0];
     return {
-      targetId: fallbackStudent?.id || 'stu-1',
+      targetId: fallbackStudent?.id || '',
       userName: fallbackStudent ? `${fallbackStudent.firstNameTh} ${fallbackStudent.lastNameTh}` : 'ผู้ใช้งานทั่วไป',
       userRoleLabel: fallbackStudent ? `นักเรียน (${fallbackStudent.gradeLevel} ห้อง ${fallbackStudent.room})` : 'นักเรียน',
       departmentOrRoom: fallbackStudent?.room || '401',
@@ -202,6 +202,65 @@ export function isRestrictedAttendanceViewer(currentUser: AuthUser | null | unde
   return currentUser?.role === 'student' || currentUser?.role === 'parent';
 }
 
+export function resolveLinkedStudentsForUser(
+  currentUser: AuthUser | null | undefined,
+  students: Student[]
+): Student[] {
+  if (!currentUser) return [];
+  if (currentUser.role !== 'student' && currentUser.role !== 'parent') {
+    return students;
+  }
+
+  if (currentUser.role === 'student') {
+    const own = resolveOwnStudent(currentUser, students);
+    return own ? [own] : [];
+  }
+
+  // Parent strict scoping: match by explicit childrenStudentIds, studentRecordId, or verified guardianEmail
+  const linkedMap = new Map<string, Student>();
+  if (currentUser.childrenStudentIds?.length) {
+    const idSet = new Set(currentUser.childrenStudentIds);
+    students.forEach((s) => {
+      if (idSet.has(s.id)) linkedMap.set(s.id, s);
+    });
+  }
+  if (currentUser.studentRecordId) {
+    const matched = students.find((s) => s.id === currentUser.studentRecordId);
+    if (matched) linkedMap.set(matched.id, matched);
+  }
+  const userEmail = (currentUser.email || '').trim().toLowerCase();
+  if (userEmail) {
+    students.forEach((s) => {
+      const primaryGuardianEmail = (s.guardianEmail || '').trim().toLowerCase();
+      const extraGuardianMatch = s.guardians?.some(
+        (g) => (g.email || '').trim().toLowerCase() === userEmail
+      );
+      if ((primaryGuardianEmail && primaryGuardianEmail === userEmail) || extraGuardianMatch) {
+        linkedMap.set(s.id, s);
+      }
+    });
+  }
+  return Array.from(linkedMap.values());
+}
+
+export function isAllowedProgramModeForRole(
+  role: AuthUser['role'] | undefined,
+  mode: 'school_erp' | 'lms_classroom' | 'parent_portal'
+): boolean {
+  if (!role || role === 'super_admin' || role === 'admin' || role === 'teacher') {
+    return true;
+  }
+  if (role === 'student') {
+    // Students can only stay in their student dashboard/tabs or virtual LMS (never parent_portal)
+    return mode === 'school_erp' || mode === 'lms_classroom';
+  }
+  if (role === 'parent') {
+    // Parents are strictly locked to Parent Portal
+    return mode === 'parent_portal';
+  }
+  return true;
+}
+
 export function getAllowedStudentScope(
   currentUser: AuthUser | null | undefined,
   students: Student[]
@@ -216,15 +275,17 @@ export function getAllowedStudentScope(
   }
 
   if (currentUser.role === 'parent') {
-    const children = currentUser.childrenStudentIds?.length
-      ? students.filter((s) => currentUser.childrenStudentIds?.includes(s.id))
-      : [];
-    const fallback = children.length > 0 ? children : students.slice(0, 1);
+    const children = resolveLinkedStudentsForUser(currentUser, students);
+    const allowedIds = new Set<string>();
+    children.forEach((child) => {
+      allowedIds.add(child.id);
+      if (child.studentIdNumber) allowedIds.add(child.studentIdNumber);
+    });
     return {
       restricted: true,
-      allowedStudents: fallback,
-      allowedIds: new Set([currentUser.id, ...fallback.map((s) => s.id)]),
-      ownStudent: fallback[0],
+      allowedStudents: children,
+      allowedIds,
+      ownStudent: children[0],
     };
   }
 
@@ -282,9 +343,13 @@ export function filterLeaveRequestsForUser(
     const reqName = (req.userName || '').trim().toLowerCase();
     return scope.allowedStudents.some((s) => {
       const fullTh = `${s.firstNameTh} ${s.lastNameTh}`.trim().toLowerCase();
-      return reqName && fullTh && reqName.includes(fullTh);
+      return reqName && fullTh && recNameMatch(reqName, fullTh);
     });
   });
+}
+
+function recNameMatch(a: string, b: string): boolean {
+  return Boolean(a && b && a.includes(b));
 }
 
 export function filterPeriodAttendanceForUser(

@@ -29,6 +29,7 @@ import {
 } from '../lib/centralExamBank';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
 import { getModuleTone } from '../lib/moduleTheme';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 
 interface CentralExamPaymentSettingsViewProps {
   adminEmail?: string;
@@ -41,6 +42,8 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
 }) => {
   const [settings, setSettings] = useState<CentralExamPaymentSettings>(() => fetchCentralExamPaymentSettings());
   const [savedToast, setSavedToast] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [testAmount, setTestAmount] = useState<number>(390);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,14 +63,15 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('กรุณาเลือกไฟล์รูปภาพ (PNG, JPG, SVG, WebP)');
+      setUploadError('กรุณาเลือกไฟล์รูปภาพ (PNG, JPG, SVG, WebP)');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('ขนาดไฟล์รูปภาพไม่ควรเกิน 5 MB');
+      setUploadError('ขนาดไฟล์รูปภาพไม่ควรเกิน 5 MB');
       return;
     }
+    setUploadError(null);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -102,15 +106,18 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
   };
 
   const handleReset = () => {
-    if (confirm('คุณต้องการคืนค่าการตั้งค่าเริ่มต้นใช่หรือไม่?')) {
-      const reset = saveCentralExamPaymentSettings({
-        ...DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS,
-        updatedBy: adminEmail,
-      });
-      setSettings(reset);
-      setSavedToast('คืนค่าเริ่มต้นเรียบร้อยแล้ว');
-      setTimeout(() => setSavedToast(null), 3000);
-    }
+    setShowResetConfirm(true);
+  };
+
+  const handleConfirmReset = () => {
+    const reset = saveCentralExamPaymentSettings({
+      ...DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS,
+      updatedBy: adminEmail,
+    });
+    setSettings(reset);
+    setShowResetConfirm(false);
+    setSavedToast('คืนค่าเริ่มต้นเรียบร้อยแล้ว');
+    setTimeout(() => setSavedToast(null), 3000);
   };
 
   // Preview generated payload
@@ -155,6 +162,17 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
         <div className="p-3.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 shadow-sm animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{savedToast}</span>
+        </div>
+      )}
+      {uploadError && (
+        <div role="alert" className="p-3.5 rounded-xl bg-rose-100 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-bold flex items-center justify-between gap-2 shadow-sm">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            <span>{uploadError}</span>
+          </span>
+          <button type="button" onClick={() => setUploadError(null)} className="text-[11px] underline cursor-pointer">
+            ปิด
+          </button>
         </div>
       )}
 
@@ -557,6 +575,15 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
           </div>
         </div>
       </div>
+
+      <ConfirmActionModal
+        isOpen={showResetConfirm}
+        title="คืนค่าการตั้งค่าเริ่มต้น"
+        description="คุณต้องการคืนค่าข้อมูลพร้อมเพย์และภาพ QR Code รับเงินคลังข้อสอบกลางเป็นค่าเริ่มต้นหรือไม่?"
+        confirmLabel="ยืนยันคืนค่าเริ่มต้น"
+        onCancel={() => setShowResetConfirm(false)}
+        onConfirm={handleConfirmReset}
+      />
     </div>
   );
 };

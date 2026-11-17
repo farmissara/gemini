@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Users, 
   CheckCircle2, 
@@ -39,11 +39,10 @@ import {
   TrendingUp,
   Activity,
   LayoutGrid,
-  MoreHorizontal
+  MoreHorizontal,
+  AlertTriangle
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
-import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
-import { BaanPakKruPlayyard } from '../components/guide/BaanPakKruPlayyard';
 import { 
   Student, 
   Teacher,
@@ -62,12 +61,15 @@ import {
   SchoolPeriodTime,
   TimetableSlot,
   Assignment,
-  PeriodAttendanceRecord
+  PeriodAttendanceRecord,
+  BehaviorRecord,
+  SdqAssessment,
+  InfirmaryVisit
 } from '../types';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
-import { filterAttendanceForUser } from '../lib/attendanceScope';
+import { filterAttendanceForUser, resolveLinkedStudentsForUser } from '../lib/attendanceScope';
 import { PagedList } from '../components/PagedList';
 import { MilestoneAchievementsPanel } from '../components/MilestoneAchievementsPanel';
 import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
@@ -75,6 +77,18 @@ import { GradeLevelAnalyticsChart } from '../components/GradeLevelAnalyticsChart
 import { D3DailyAttendanceLineChart } from '../components/D3DailyAttendanceLineChart';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
+import { SchoolPolicyId } from '../lib/schoolPermissions';
+import { ExecutiveMonitorView } from './ExecutiveMonitorView';
+import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
+
+export type DashboardSubTab =
+  | 'overview'
+  | 'insights'
+  | 'live_attendance'
+  | 'executive_monitor'
+  | 'early_warning'
+  | 'innovative_hub'
+  | 'announcements';
 
 interface DashboardViewProps {
   students: Student[];
@@ -104,6 +118,11 @@ interface DashboardViewProps {
   assignments?: Assignment[];
   periodAttendance?: PeriodAttendanceRecord[];
   schoolPeriods?: SchoolPeriodTime[];
+  behaviorRecords?: BehaviorRecord[];
+  sdqAssessments?: SdqAssessment[];
+  infirmaryVisits?: InfirmaryVisit[];
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
+  initialSubTab?: DashboardSubTab;
   onSelectStudent?: (student: Student) => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
@@ -132,6 +151,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   assignments = [],
   periodAttendance = [],
   schoolPeriods = [],
+  behaviorRecords = [],
+  sdqAssessments = [],
+  infirmaryVisits = [],
+  schoolPermissions,
+  initialSubTab,
   onSelectStudent,
   focusMode: controlledFocusMode,
   onToggleFocusMode,
@@ -149,29 +173,100 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
   const twoDaysAgoStr = getLocalDateString(new Date(Date.now() - 2 * 86400000));
 
+  const currentRole = currentUser?.role || 'admin';
+  const canViewExecutiveMonitor = ['super_admin', 'admin', 'teacher'].includes(currentRole);
+  const canViewEarlyWarning = ['super_admin', 'admin'].includes(currentRole);
+  const canViewFinancials =
+    currentRole === 'super_admin' ||
+    currentRole === 'admin' ||
+    currentRole === 'parent' ||
+    (currentRole === 'teacher' && (schoolPermissions?.teacher_view_financials ?? true));
+
+  const resolveAllowedSubTab = (candidate?: DashboardSubTab): DashboardSubTab => {
+    if (!candidate) return 'overview';
+    if (candidate === 'executive_monitor' && !canViewExecutiveMonitor) return 'overview';
+    if (candidate === 'early_warning' && !canViewEarlyWarning) return 'overview';
+    return candidate;
+  };
+
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | 'student' | 'teacher'>('all');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'check_in' | 'check_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [dashboardTab, setDashboardTab] = useState<'overview' | 'insights' | 'live_attendance' | 'innovative_hub' | 'announcements'>('overview');
+  const [dashboardTab, setDashboardTab] = useState<DashboardSubTab>(() => resolveAllowedSubTab(initialSubTab));
   const [innovationPage, setInnovationPage] = useState(0);
   const [attendanceStep, setAttendanceStep] = useState<'summary' | 'analytics' | 'records' | 'live_feed'>('summary');
   const [drawerMode, setDrawerMode] = useState<null | 'onboarding' | 'guardian_line'>(null);
+  const [exportFeedback, setExportFeedback] = useState<{ type: 'success' | 'warning'; message: string } | null>(null);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`) === '1';
   });
-  const [playyardCollapsed, setPlayyardCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    return window.localStorage.getItem('baanpakkru_playyard_collapsed') !== '0';
-  });
-  
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setDashboardTab(resolveAllowedSubTab(initialSubTab));
+    }
+  }, [initialSubTab, canViewExecutiveMonitor, canViewEarlyWarning]);
+
+  useEffect(() => {
+    if (!isMoreMenuOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMoreMenuOpen]);
+
   // Slide-over Drawer for viewing captured selfie photo & GPS metadata
   const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<AttendanceRecord | null>(null);
 
   const openPhotoRecord = (record: AttendanceRecord) => {
     setSelectedPhotoRecord(record);
   };
+
+  // Enforce strict Student / Parent ownership scoping
+  const isRestrictedPersonalRole = currentRole === 'student' || currentRole === 'parent';
+  const scopedStudents = useMemo(
+    () => (isRestrictedPersonalRole ? resolveLinkedStudentsForUser(currentUser, students) : students),
+    [currentUser, isRestrictedPersonalRole, students]
+  );
+  const scopedStudentIdSet = useMemo(() => new Set(scopedStudents.map((s) => s.id)), [scopedStudents]);
+  const scopedGrades = useMemo(
+    () => (isRestrictedPersonalRole ? grades.filter((g) => scopedStudentIdSet.has(g.studentId)) : grades),
+    [grades, isRestrictedPersonalRole, scopedStudentIdSet]
+  );
+  const scopedInvoices = useMemo(
+    () => (isRestrictedPersonalRole ? invoices.filter((inv) => scopedStudentIdSet.has(inv.studentId)) : invoices),
+    [invoices, isRestrictedPersonalRole, scopedStudentIdSet]
+  );
+  const scopedLeaves = useMemo(
+    () =>
+      isRestrictedPersonalRole
+        ? leaveRequests.filter((l) => scopedStudentIdSet.has(l.userId) || (Boolean(currentUser?.id) && l.userId === currentUser?.id))
+        : leaveRequests,
+    [currentUser?.id, isRestrictedPersonalRole, leaveRequests, scopedStudentIdSet]
+  );
+  const scopedHomework = useMemo(
+    () =>
+      isRestrictedPersonalRole
+        ? homeworkSubmissions.filter((h) => scopedStudentIdSet.has(h.studentId))
+        : homeworkSubmissions,
+    [homeworkSubmissions, isRestrictedPersonalRole, scopedStudentIdSet]
+  );
 
   // Teacher / Admin Today's Desk computations
   const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
@@ -184,8 +279,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
     return daySlots.slice().sort((a, b) => a.periodNumber - b.periodNumber);
   }, [timetableSlots, todayDayKey, currentUser]);
-  const pendingLeaveCount = leaveRequests.filter((l) => l.status === 'pending').length;
-  const ungradedHomeworkCount = homeworkSubmissions.filter((h) => h.status === 'submitted' || h.status === 'late').length;
+  const pendingLeaveCount = scopedLeaves.filter((l) => l.status === 'pending').length;
+  const ungradedHomeworkCount = scopedHomework.filter((h) => h.status === 'submitted' || h.status === 'late').length;
   const isStaffUser = !currentUser?.role || currentUser.role === 'teacher' || currentUser.role === 'admin' || currentUser.role === 'super_admin';
   const checkedInStudentIdsToday = useMemo(() => {
     const ids = new Set<string>();
@@ -196,7 +291,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
     return ids;
   }, [attendance, todayStr]);
-  const uncheckedTodayCount = Math.max(0, students.filter((s) => s.status === 'active').length - checkedInStudentIdsToday.size);
+  const uncheckedTodayCount = Math.max(0, scopedStudents.filter((s) => s.status === 'active').length - checkedInStudentIdsToday.size);
   const teacherLeavesTodayCount = useMemo(
     () =>
       leaveRequests.filter(
@@ -216,10 +311,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const completedOnboardingCount = [step1Done, step2Done, step3Done].filter(Boolean).length;
   const showOnboardingCard = !onboardingDismissed && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && completedOnboardingCount < 3;
 
-  // Compute key overall stats
-  const totalStudents = students.length;
-  const activeStudents = students.filter(s => s.status === 'active').length;
-  const lineConnectedCount = students.filter(s => s.lineLinked).length;
+  // Compute key overall stats (scoped strictly for student/parent)
+  const totalStudents = scopedStudents.length;
+  const activeStudents = scopedStudents.filter(s => s.status === 'active').length;
+  const lineConnectedCount = scopedStudents.filter(s => s.lineLinked).length;
   const linePercent = totalStudents > 0 ? Math.round((lineConnectedCount / totalStudents) * 100) : 0;
 
   // Scope attendance so students/parents only see their own check-in records & photos
@@ -310,16 +405,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }));
   }, [filteredAttendanceByDate, totalForDate, lang]);
 
-  // Tuition stats
-  const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-  const totalCollected = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.totalAmount, 0);
+  // Tuition stats (respecting role/financial permissions)
+  const totalInvoiced = canViewFinancials ? scopedInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0) : 0;
+  const totalCollected = canViewFinancials ? scopedInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.totalAmount, 0) : 0;
   const collectionRate = totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 100) : 0;
 
-  // Top honor students (sorted by percentage for primary or GPA for secondary)
-  const topStudents = [...students]
+  // Top honor students (scoped for student/parent)
+  const topStudents = [...scopedStudents]
     .sort((a, b) => {
-      const sumA = calculateStudentAcademicSummary({ student: a, courses, grades, gradingSystem: systemConfig.gradingSystem });
-      const sumB = calculateStudentAcademicSummary({ student: b, courses, grades, gradingSystem: systemConfig.gradingSystem });
+      const sumA = calculateStudentAcademicSummary({ student: a, courses, grades: scopedGrades, gradingSystem: systemConfig.gradingSystem });
+      const sumB = calculateStudentAcademicSummary({ student: b, courses, grades: scopedGrades, gradingSystem: systemConfig.gradingSystem });
       const scoreA = sumA.hideGpaCalculations ? (sumA.averageRawScore ?? 0) / 25 : (sumA.hasRecordedGrades && sumA.gpax !== null ? sumA.gpax : 0);
       const scoreB = sumB.hideGpaCalculations ? (sumB.averageRawScore ?? 0) / 25 : (sumB.hasRecordedGrades && sumB.gpax !== null ? sumB.gpax : 0);
       return scoreB - scoreA;
@@ -329,12 +424,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Export selected date attendance to Excel CSV
   const handleExportSelectedDateCsv = () => {
     if (filteredAttendanceByDate.length === 0) {
-      emitMascotDashboardEvent({
+      setExportFeedback({
         type: 'warning',
-        titleTh: 'ไม่พบข้อมูลการมาเรียน',
-        titleEn: 'No Attendance Records',
-        messageTh: `ยังไม่มีบันทึกการมาเรียนในวันที่ ${selectedDate} สำหรับส่งออก CSV`,
-        messageEn: `No attendance records found on ${selectedDate} to export.`,
+        message: lang === 'th'
+          ? `ยังไม่มีบันทึกการมาเรียนในวันที่ ${selectedDate} สำหรับส่งออก CSV`
+          : `No attendance records found on ${selectedDate} to export.`,
       });
       return;
     }
@@ -390,12 +484,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     link.download = `attendance_${selectedDate}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    emitMascotDashboardEvent({
+    setExportFeedback({
       type: 'success',
-      titleTh: 'ส่งออก CSV สำเร็จ',
-      titleEn: 'CSV Export Ready',
-      messageTh: `ดาวน์โหลดข้อมูลการมาเรียน ${filteredAttendanceByDate.length} รายการเรียบร้อยแล้ว`,
-      messageEn: `Exported ${filteredAttendanceByDate.length} attendance records to CSV.`,
+      message: lang === 'th'
+        ? `ส่งออกข้อมูลการมาเรียน ${filteredAttendanceByDate.length} รายการเป็นไฟล์ CSV เรียบร้อยแล้ว`
+        : `Exported ${filteredAttendanceByDate.length} attendance records to CSV.`,
     });
   };
 
@@ -410,7 +503,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   return (
-    <div className={`dashboard-print-area h-full flex flex-col min-h-0 min-w-0 max-w-full overflow-hidden dash-shell rounded-2xl ${getModuleTone('dashboard')}`}>
+    <div className={`dashboard-print-area flex flex-col min-w-0 max-w-full dash-shell rounded-2xl ${getModuleTone('dashboard')}`}>
       {/* Print-Only Administrative Report Header */}
       <div className="hidden print:flex items-center justify-between gap-4 pb-3 mb-2 border-b-2 border-slate-300">
         <div className="flex items-center gap-3 min-w-0">
@@ -443,13 +536,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Clean Apple/Linear Top Bar: Title + 2 Primary Tabs + Overflow Menu */}
+      {/* Clean Role-Aware Top Bar: Title + Unified Sub-Lenses + Controlled Overflow Menu */}
       <div className="no-print shrink-0 saas-card px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="type-page-title truncate">
             {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
           </h1>
-          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && (
+          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'early_warning' && (
             <button
               type="button"
               onClick={() => setDashboardTab('overview')}
@@ -461,7 +554,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto min-w-0 justify-between sm:justify-end">
-          <div data-guide-id="dashboard-subtabs" className="seg-tab-group inline-flex gap-0.5">
+          <div data-guide-id="dashboard-subtabs" className="seg-tab-group inline-flex gap-0.5 overflow-x-auto max-w-full">
             <button
               type="button"
               data-active={dashboardTab === 'overview'}
@@ -480,6 +573,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               {lang === 'th' ? 'รายงาน/กราฟ' : 'Reports & Charts'}
             </button>
+
+            {canViewExecutiveMonitor && (
+              <button
+                type="button"
+                data-active={dashboardTab === 'executive_monitor'}
+                onClick={() => setDashboardTab('executive_monitor')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร' : 'Executive Monitor'}
+              </button>
+            )}
+
+            {canViewEarlyWarning && (
+              <button
+                type="button"
+                data-active={dashboardTab === 'early_warning'}
+                onClick={() => setDashboardTab('early_warning')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? 'เตือนภัยผู้เรียน' : 'Early Warning'}
+              </button>
+            )}
           </div>
 
           {isFocusMode ? (
@@ -494,119 +609,136 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>
             </button>
           ) : (
-            <details className="relative shrink-0">
-              <summary
-                className="btn-icon-tool list-none cursor-pointer [&::-webkit-details-marker]:hidden"
+            <div ref={moreMenuRef} className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsMoreMenuOpen((prev) => !prev)}
+                aria-expanded={isMoreMenuOpen}
+                className="btn-icon-tool cursor-pointer"
                 aria-label={lang === 'th' ? 'เมนูเพิ่มเติม' : 'More views & tools'}
                 title={lang === 'th' ? 'เมนูเพิ่มเติม' : 'More'}
               >
                 <MoreHorizontal className="w-4 h-4" />
-              </summary>
-              <div className="absolute right-0 top-10 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    setDashboardTab('live_attendance');
-                  }}
-                  className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'เช็คชื่อสด' : 'Live GPS'}</span>
-                  <span className="font-mono text-xs text-[var(--color-text-muted)]">{displayRecords.length}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    setDashboardTab('innovative_hub');
-                  }}
-                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    setDashboardTab('announcements');
-                  }}
-                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <BellRing className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  <span>{lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors'}</span>
-                </button>
-                {showOnboardingCard && (
+              </button>
+              {isMoreMenuOpen && (
+                <div className="absolute right-0 top-10 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.currentTarget.closest('details')?.removeAttribute('open');
-                      setDrawerMode('onboarding');
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setDashboardTab('live_attendance');
                     }}
                     className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ตั้งค่าโรงเรียน' : 'School Setup'}</span>
-                    <span className="font-mono text-xs text-[var(--color-text-muted)]">{completedOnboardingCount}/3</span>
+                    <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'เช็คชื่อสด' : 'Live GPS'}</span>
+                    <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{displayRecords.length}</span>
                   </button>
-                )}
-                {unclaimedCentralPacksCount > 0 && currentUser?.role === 'admin' && onOpenCentralExamPopup && (
+                  {!(currentRole === 'student' && schoolPermissions?.student_treasure_game === false) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setDashboardTab('innovative_hub');
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.currentTarget.closest('details')?.removeAttribute('open');
-                      onOpenCentralExamPopup();
-                    }}
-                    className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-amber-700 dark:text-amber-300 hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" />{lang === 'th' ? 'รับข้อสอบกลาง' : 'Exam Packs'}</span>
-                    <span className="font-mono text-xs">{unclaimedCentralPacksCount}</span>
-                  </button>
-                )}
-                <div className="my-1 border-t border-[var(--color-border)]" />
-                <button
-                  type="button"
-                  data-guide-id="dashboard-focus-toggle"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    handleToggleFocus();
-                  }}
-                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Maximize2 className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  <span>{lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    window.print();
-                  }}
-                  className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  <span>{lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF'}</span>
-                </button>
-                {['admin', 'super_admin', 'teacher'].includes(currentUser?.role || 'admin') && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.currentTarget.closest('details')?.removeAttribute('open');
-                      onNavigate('executive_monitor');
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setDashboardTab('announcements');
                     }}
                     className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <Monitor className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                    <span>{lang === 'th' ? 'โหมดจอทีวี / ผอ.' : 'Director Monitor'}</span>
+                    <BellRing className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    <span>{lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors'}</span>
                   </button>
-                )}
-              </div>
-            </details>
+                  {showOnboardingCard && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setDrawerMode('onboarding');
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ตั้งค่าโรงเรียน' : 'School Setup'}</span>
+                      <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{completedOnboardingCount}/3</span>
+                    </button>
+                  )}
+                  {unclaimedCentralPacksCount > 0 && currentUser?.role === 'admin' && onOpenCentralExamPopup && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        onOpenCentralExamPopup();
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-amber-700 dark:text-amber-300 hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" />{lang === 'th' ? 'รับข้อสอบกลาง' : 'Exam Packs'}</span>
+                      <span className="font-mono text-xs tabular-nums">{unclaimedCentralPacksCount}</span>
+                    </button>
+                  )}
+                  <div className="my-1 border-t border-[var(--color-border)]" />
+                  <button
+                    type="button"
+                    data-guide-id="dashboard-focus-toggle"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      handleToggleFocus();
+                    }}
+                    className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    <span>{lang === 'th' ? 'โหมดโฟกัสเนื้อหา' : 'Focus Mode'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      window.print();
+                    }}
+                    className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    <span>{lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
 
+      {exportFeedback && (
+        <div
+          role="status"
+          className={`no-print px-4 py-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
+            exportFeedback.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200'
+              : 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+          }`}
+        >
+          <span className="flex items-center gap-2 font-semibold">
+            {exportFeedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+            <span>{exportFeedback.message}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setExportFeedback(null)}
+            className="text-xs font-bold px-2 py-0.5 rounded hover:bg-black/5 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Main Tab Panels Container */}
-      <div className="dashboard-print-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1 pb-16 dash-scroll-stack">
+      <div className="dashboard-print-scroll flex-1 dash-scroll-stack pb-12">
         {/* TAB 1: DAILY OVERVIEW (3 KPIs + Max 5 Rows per Pane) */}
         {dashboardTab === 'overview' && (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
@@ -907,7 +1039,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* TAB 2 (NEW): ANALYTICS & INSIGHTS (Separated from Daily Action Mode) */}
         {dashboardTab === 'insights' && (
           <div data-guide-id="dashboard-charts" className="dash-scroll-stack animate-in fade-in duration-150">
-            {/* Insights Top Bar + Playyard Trigger */}
             <div className="no-print saas-alert-bar">
               <div className="flex items-center gap-2 min-w-0">
                 <TrendingUp className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
@@ -915,63 +1046,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {lang === 'th' ? 'วิเคราะห์สถิติการมาเรียน ผลการเรียน และความก้าวหน้า' : 'Attendance Trends, Grade Analytics & Milestones'}
                 </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !playyardCollapsed;
-                    setPlayyardCollapsed(next);
-                    if (typeof window !== 'undefined') {
-                      window.localStorage.setItem('baanpakkru_playyard_collapsed', next ? '1' : '0');
-                    }
-                  }}
-                  className="btn-tool-neutral px-2.5 py-1"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                  <span>{playyardCollapsed ? (lang === 'th' ? 'มุมพักใจบ้านพักครู' : 'Show Playyard') : (lang === 'th' ? 'พับมุมพักใจ' : 'Hide Playyard')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDrawerMode('guardian_line')}
-                  className="btn-tool-neutral px-2.5 py-1"
-                >
-                  <Receipt className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? `ค่าเทอม & LINE (${linePercent}%)` : `Tuition & LINE (${linePercent}%)`}</span>
-                </button>
-              </div>
+              {canViewFinancials && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setDrawerMode('guardian_line')}
+                    className="btn-tool-neutral px-2.5 py-1"
+                  >
+                    <Receipt className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? `ค่าเทอม & LINE (${linePercent}%)` : `Tuition & LINE (${linePercent}%)`}</span>
+                  </button>
+                </div>
+              )}
             </div>
-
-            {!playyardCollapsed && (
-              <BaanPakKruPlayyard
-                variant="dashboard"
-                compact
-                lang={lang}
-                initialMode={
-                  isStaffUser && pendingLeaveCount === 0 && ungradedHomeworkCount === 0
-                    ? 'cheer'
-                    : 'chase'
-                }
-                statusNote={
-                  isStaffUser && pendingLeaveCount === 0 && ungradedHomeworkCount === 0
-                    ? lang === 'th'
-                      ? 'งานค้างวันนี้เรียบร้อย! ชาร์โคล หมี และจิ๊ดริ๊ดมาฉลองให้คุณครูพักผ่อนครับ'
-                      : 'All caught up! Charcoal, Mee & JidRid chicks are cheering.'
-                    : undefined
-                }
-              />
-            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               <GradeLevelAnalyticsChart
-                students={students}
+                students={scopedStudents}
                 attendance={scopedAttendance}
                 courses={courses}
-                grades={grades}
+                grades={scopedGrades}
                 systemConfig={systemConfig}
                 lang={lang}
               />
               <D3DailyAttendanceLineChart
-                students={students}
+                students={scopedStudents}
                 attendance={scopedAttendance}
                 lang={lang}
               />
@@ -979,7 +1078,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <MonthlyAttendanceChart
               attendance={scopedAttendance}
-              students={students}
+              students={scopedStudents}
               lang={lang}
               selectedDate={selectedDate}
               onSelectDate={(date) => setSelectedDate(date)}
@@ -988,9 +1087,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {playerScores.length > 0 && (
               <MilestoneAchievementsPanel
                 playerScores={playerScores}
-                students={students}
+                students={scopedStudents}
                 attendance={scopedAttendance}
-                grades={grades}
+                grades={scopedGrades}
                 currentUser={currentUser}
                 lang={lang}
                 onLogLibraryVisit={(userId) =>
@@ -1001,6 +1100,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 }
               />
             )}
+          </div>
+        )}
+
+        {/* UNIFIED LENS: EXECUTIVE MONITOR */}
+        {dashboardTab === 'executive_monitor' && canViewExecutiveMonitor && school && (
+          <div className="animate-in fade-in duration-150">
+            <ExecutiveMonitorView
+              activeSchool={school}
+              students={students}
+              teachers={teachers}
+              courses={courses}
+              grades={grades}
+              attendance={attendance}
+              invoices={canViewFinancials ? invoices : []}
+              announcements={announcements}
+              infirmaryVisits={infirmaryVisits}
+              behaviorRecords={behaviorRecords}
+              sdqAssessments={sdqAssessments}
+              homeworkSubmissions={homeworkSubmissions}
+              leaveRequests={leaveRequests}
+              lang={lang}
+              onNavigate={(tab) => {
+                if (tab === 'executive_warning' && canViewEarlyWarning) {
+                  setDashboardTab('early_warning');
+                } else {
+                  onNavigate(tab);
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* UNIFIED LENS: EARLY WARNING ANALYTICS */}
+        {dashboardTab === 'early_warning' && canViewEarlyWarning && (
+          <div className="animate-in fade-in duration-150">
+            <ExecutiveEarlyWarningView
+              schoolId={school?.id}
+              students={students}
+              attendance={attendance}
+              grades={grades}
+              courses={courses}
+              sdqAssessments={sdqAssessments}
+              behaviorRecords={behaviorRecords}
+              infirmaryVisits={infirmaryVisits}
+              homeworkSubmissions={homeworkSubmissions}
+              lang={lang}
+              currentRole={currentRole}
+              currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn}
+              gradingSystem={systemConfig.gradingSystem}
+              onNavigateToTab={(tab) => onNavigate(tab as NavTab)}
+            />
           </div>
         )}
 
@@ -1541,7 +1691,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
               {[
                 {
-                  id: 'edu_battle_royale_3d',
+                  id: 'games',
                   title: 'EduBattle Royale 3D',
                   desc: lang === 'th' ? 'สมรภูมิประลองปัญญา 3D แข่งตอบคำถามชิงตำแหน่งแชมป์' : '3D interactive academic quiz battle arena with live avatars',
                   icon: Swords,
@@ -1559,7 +1709,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   actionLabel: lang === 'th' ? 'เริ่มติว' : 'Start Tutoring',
                 },
                 {
-                  id: 'study_streak_pass',
+                  id: 'study_streak',
                   title: 'Study Streak & Quest Pass',
                   desc: lang === 'th' ? 'สะสมแต้มการเข้าเรียนต่อเนื่อง ปลดล็อกสกินการ์ดและเหรียญรางวัล' : 'Daily streak challenges, avatar card borders, and rewards',
                   icon: Flame,
@@ -1568,7 +1718,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   actionLabel: lang === 'th' ? 'ดูเควสต์' : 'View Quests',
                 },
                 {
-                  id: 'coop_boss_raid',
+                  id: 'boss_raid',
                   title: 'Co-op Boss Raid',
                   desc: lang === 'th' ? 'รวมพลังตอบโจทย์ความยากระดับบอส ประสานงานพิชิตด่านร่วมกัน' : 'Collaborative classroom quiz raid with team boss battles',
                   icon: ShieldAlert,
@@ -1577,7 +1727,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   actionLabel: lang === 'th' ? 'เข้าร่วมเรดบอส' : 'Join Boss Raid',
                 },
                 {
-                  id: 'real_world_snap_quest',
+                  id: 'realworld_quests',
                   title: 'Real-World Snap Quest',
                   desc: lang === 'th' ? 'ถ่ายภาพปรากฏการณ์รอบตัวส่งตรวจด้วยการวิเคราะห์เชิงวิทยาศาสตร์' : 'Camera quest assignments linking real life to coursework',
                   icon: Camera,
@@ -1586,7 +1736,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   actionLabel: lang === 'th' ? 'ส่งเควสต์ภาพ' : 'Snap Quests',
                 },
                 {
-                  id: 'subject_lab_simulation',
+                  id: 'subject_labs',
                   title: 'Subject Lab Simulation',
                   desc: lang === 'th' ? 'ห้องทดลองวิทยาศาสตร์และฟิสิกส์เสมือนจริง ทดลองผสมสารได้อย่างปลอดภัย' : 'Interactive STEM lab simulator with chemistry & optics modules',
                   icon: FlaskConical,
@@ -1595,7 +1745,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   actionLabel: lang === 'th' ? 'เปิดห้องแล็บ' : 'Launch Lab',
                 },
                 {
-                  id: 'ai_diagnostic_learning',
+                  id: 'ai_diagnostic',
                   title: 'AI Diagnostic Learning',
                   desc: lang === 'th' ? 'ระบบตรวจวินิจฉัยจุดอ่อนรายบุคคล แนะนำเนื้อหาเสริมเฉพาะจุดอย่างแม่นยำ' : 'Personalized diagnostic learning paths detecting knowledge gaps',
                   icon: BarChart3,
@@ -1604,7 +1754,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   actionLabel: lang === 'th' ? 'ดูผลวินิจฉัย' : 'View Diagnostics',
                 },
                 {
-                  id: 'hall_of_fame_3d',
+                  id: 'hall_of_fame',
                   title: '3D Hall of Fame',
                   desc: lang === 'th' ? 'หอเกียรติยศ 3 มิติ จัดแสดงผลงานยอดเยี่ยมและถ้วยรางวัลโรงเรียน' : 'Immersive 3D gallery honoring top academic and sports achievers',
                   icon: Trophy,
@@ -1612,15 +1762,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   badge: '3D Gallery',
                   actionLabel: lang === 'th' ? 'ชมหอเกียรติยศ' : 'Visit Hall of Fame',
                 },
-                {
-                  id: 'executive_early_warning',
-                  title: 'Executive Early Warning',
-                  desc: lang === 'th' ? 'ระบบเตือนภัยล่วงหน้าตรวจจับนักเรียนเสี่ยงตกหล่นหรือขาดเรียนบ่อย' : 'Early warning intelligence identifying attendance & academic drop risks',
-                  icon: ShieldAlert,
-                  color: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700',
-                  badge: 'Executive',
-                  actionLabel: lang === 'th' ? 'วิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
-                },
+                ...(canViewEarlyWarning
+                  ? [{
+                      id: 'executive_warning',
+                      title: 'Executive Early Warning',
+                      desc: lang === 'th' ? 'ระบบเตือนภัยล่วงหน้าตรวจจับนักเรียนเสี่ยงตกหล่นหรือขาดเรียนบ่อย' : 'Early warning intelligence identifying attendance & academic drop risks',
+                      icon: ShieldAlert,
+                      color: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700',
+                      badge: 'Executive',
+                      actionLabel: lang === 'th' ? 'วิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
+                    }]
+                  : []),
               ].filter((_, index) => Math.floor(index / 3) === innovationPage).map((item) => (
                 <div
                   key={item.id}
@@ -1652,7 +1804,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                     <button
                       type="button"
-                      onClick={() => onNavigate(item.id as any)}
+                      onClick={() => {
+                        if (item.id === 'executive_warning') {
+                          setDashboardTab('early_warning');
+                          return;
+                        }
+                        onNavigate(item.id as NavTab);
+                      }}
                       className="btn-tool-tone px-3 py-1.5"
                     >
                       <span>{item.actionLabel}</span>
@@ -2001,40 +2159,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="type-card-title flex items-center gap-1.5">
-                        <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
-                        <span>{lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}</span>
-                      </span>
-                      <span className="type-kpi-sm">{collectionRate}%</span>
+                  {canViewFinancials && (
+                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="type-card-title flex items-center gap-1.5">
+                          <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
+                          <span>{lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}</span>
+                        </span>
+                        <span className="type-kpi-sm">{collectionRate}%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
+                        <div className="h-full bg-[var(--color-primary)] rounded-full" style={{ width: `${collectionRate}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between type-meta tabular-nums">
+                        <span>{lang === 'th' ? `รับชำระแล้ว ฿${totalCollected.toLocaleString()}` : `Collected ฿${totalCollected.toLocaleString()}`}</span>
+                        <span>{lang === 'th' ? `ยอดรวม ฿${totalInvoiced.toLocaleString()}` : `Total ฿${totalInvoiced.toLocaleString()}`}</span>
+                      </div>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
-                      <div className="h-full bg-[var(--color-primary)] rounded-full" style={{ width: `${collectionRate}%` }} />
-                    </div>
-                    <div className="flex items-center justify-between type-meta tabular-nums">
-                      <span>{lang === 'th' ? `รับชำระแล้ว ฿${totalCollected.toLocaleString()}` : `Collected ฿${totalCollected.toLocaleString()}`}</span>
-                      <span>{lang === 'th' ? `ยอดรวม ฿${totalInvoiced.toLocaleString()}` : `Total ฿${totalInvoiced.toLocaleString()}`}</span>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setDrawerMode(null); onNavigate('students'); }}
-                      className="btn-tool-neutral px-3 py-2 justify-center"
-                    >
-                      <Users className="w-3.5 h-3.5" />
-                      <span>{lang === 'th' ? 'จัดการผู้ปกครอง' : 'Guardians'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setDrawerMode(null); onNavigate('billing'); }}
-                      className="btn-action-primary px-3 py-2 justify-center"
-                    >
-                      <Receipt className="w-3.5 h-3.5" />
-                      <span>{lang === 'th' ? 'เปิดหน้าการเงิน' : 'Open Billing'}</span>
-                    </button>
+                    {isStaffUser && (
+                      <button
+                        type="button"
+                        onClick={() => { setDrawerMode(null); onNavigate('students'); }}
+                        className="btn-tool-neutral px-3 py-2 justify-center"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{lang === 'th' ? 'จัดการผู้ปกครอง' : 'Guardians'}</span>
+                      </button>
+                    )}
+                    {canViewFinancials && (
+                      <button
+                        type="button"
+                        onClick={() => { setDrawerMode(null); onNavigate('billing'); }}
+                        className="btn-action-primary px-3 py-2 justify-center"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>{lang === 'th' ? 'เปิดหน้าการเงิน' : 'Open Billing'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

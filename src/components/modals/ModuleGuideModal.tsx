@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { AppLanguage, UserRole } from '../../types';
 import { ROLE_WORKFLOW_STEPS } from '../../data/interactiveGuideTopics';
-import { MascotAvatar } from '../guide/MascotAvatar';
 
 export type GuideModuleId = 
   | 'dashboard'
@@ -55,8 +54,6 @@ interface ModuleGuideModalProps {
   initialRoleView?: ModuleGuideRoleView;
   lang: AppLanguage;
   currentRole: UserRole;
-  isMascotGuideEnabled?: boolean;
-  onToggleMascotGuide?: (next: boolean) => void;
   onClose: () => void;
   onNavigateToModule?: (moduleId: string) => void;
 }
@@ -772,8 +769,6 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
   initialRoleView,
   lang,
   currentRole,
-  isMascotGuideEnabled = true,
-  onToggleMascotGuide,
   onClose,
   onNavigateToModule
 }) => {
@@ -811,8 +806,8 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
         {/* Top Header */}
         <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-14 min-w-14 px-2 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
-              <MascotAvatar mood={isMascotGuideEnabled ? 'celebrate' : 'happy'} sleeping={!isMascotGuideEnabled} running={isMascotGuideEnabled} size={52} />
+            <div className="h-12 w-12 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0 text-[var(--color-primary-text)]">
+              <BookOpen className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -825,31 +820,13 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
               </div>
               <p className="text-xs text-[var(--color-text-muted)]">
                 {lang === 'th' 
-                  ? 'คู่มือภาพประกอบแยกสำหรับคุณครูและนักเรียน พร้อมโหมดชี้เมาส์นำทางทุกฟังก์ชัน'
-                  : 'Illustrated Teacher & Student guides plus live hover-to-explain cartoon navigation.'}
+                  ? 'คู่มือภาพประกอบแยกสำหรับคุณครูและนักเรียน พร้อมขั้นตอนการทำงานแต่ละโมดูล'
+                  : 'Illustrated Teacher & Student guides and step-by-step workflows for every module.'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {onToggleMascotGuide && (
-              <button
-                type="button"
-                onClick={() => onToggleMascotGuide(!isMascotGuideEnabled)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                  isMascotGuideEnabled
-                    ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700'
-                    : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
-                }`}
-              >
-                <MousePointerClick className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  {isMascotGuideEnabled
-                    ? lang === 'th' ? 'การ์ตูนชี้เมาส์: เปิด' : 'Hover Mascot: ON'
-                    : lang === 'th' ? 'การ์ตูนชี้เมาส์: ปิด' : 'Hover Mascot: OFF'}
-                </span>
-              </button>
-            )}
             <button
               type="button"
               onClick={onClose}
@@ -906,8 +883,8 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
           <span className="text-[11px] text-[var(--color-text-muted)] hidden sm:inline">
             {lang === 'th'
-              ? 'เคล็ดลับ: เปิดโหมดการ์ตูนแล้วใช้เมาส์จี้ตามปุ่มในหน้าเว็บเพื่อดูคำแนะนำแบบเรียลไทม์'
-              : 'Tip: Keep Hover Mascot ON and point at buttons across the app for live hints.'}
+              ? 'เลือกดูขั้นตอนตามบทบาทหรือค้นหาคู่มือแต่ละโมดูลได้ทันที'
+              : 'Browse role workflows or jump straight to any module guide.'}
           </span>
         </div>
 
@@ -916,7 +893,9 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <MascotAvatar mood="pointing" running size={62} />
+                <div className="w-12 h-12 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
+                  <Lightbulb className="w-6 h-6" />
+                </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-extrabold text-[var(--color-text-title)]">
                     {roleView === 'student'

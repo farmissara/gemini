@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useQuickActionListener } from '../lib/quickActionEvents';
 import { 
   BookOpen, 
   Plus, 
@@ -245,12 +244,6 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     setShowAddModal(true);
   };
 
-  useQuickActionListener('courses', (action) => {
-    if (action === 'open_add_course' && canManageCourses) {
-      handleOpenAddCourse();
-    }
-  });
-
   // Open modal for editing an existing course
   const handleOpenEditCourse = (course: Course) => {
     setEditingCourse(course);
@@ -346,10 +339,21 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         courses,
         [editingCourse.id]
       );
-      if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
-      onUpdateCourse?.(updated);
-      setEditingCourse(null);
-      setShowAddModal(false);
+      const applyCourseUpdate = () => {
+        onUpdateCourse?.(updated);
+        setEditingCourse(null);
+        setShowAddModal(false);
+      };
+      if (duplicateReasons.length > 0) {
+        setPendingConfirm({
+          title: 'พบข้อมูลรายวิชาซ้ำซ้อน',
+          description: `${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`,
+          confirmLabel: 'บันทึกต่อ',
+          onConfirm: applyCourseUpdate,
+        });
+        return;
+      }
+      applyCourseUpdate();
       return;
     }
 
@@ -374,10 +378,21 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       description: formData.description.trim(),
     };
     const duplicateReasons = getCourseDuplicateReasons([newCourse], courses);
-    if (duplicateReasons.length > 0 && !confirm(`${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`)) return;
-    onAddCourse(newCourse);
-    setActiveCourseId(newCourse.id);
-    setShowAddModal(false);
+    const applyAddCourse = () => {
+      onAddCourse(newCourse);
+      setActiveCourseId(newCourse.id);
+      setShowAddModal(false);
+    };
+    if (duplicateReasons.length > 0) {
+      setPendingConfirm({
+        title: 'พบข้อมูลรายวิชาซ้ำซ้อน',
+        description: `${duplicateReasons.join(' และ ')} ต้องการบันทึกต่อหรือไม่?`,
+        confirmLabel: 'บันทึกต่อ',
+        onConfirm: applyAddCourse,
+      });
+      return;
+    }
+    applyAddCourse();
   };
 
   const activeCourse =

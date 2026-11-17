@@ -31,9 +31,7 @@ import {
 } from 'lucide-react';
 import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
-import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { useQuickActionListener } from '../lib/quickActionEvents';
 import {
   addCalendarDays,
   formatCalendarDate,
@@ -65,6 +63,7 @@ import {
   resolveTeacherFilterKeyForUser,
   slotMatchesLoggedInTeacher,
 } from '../lib/courseTeacherFilter';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -299,23 +298,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     .sort((a, b) => a.localeCompare(b, 'th'));
 
   const [showAddModal, setShowAddModal] = useState(false);
-
-  useQuickActionListener('timetable', (action) => {
-    if (action === 'open_add_slot' && canEditTimetableSlots) {
-      setShowAddModal(true);
-    } else if (action === 'mode_classroom') {
-      handleViewModeChange('classroom');
-    } else if (action === 'mode_workload') {
-      handleViewModeChange('workload');
-    } else if (action === 'mode_substitute') {
-      handleViewModeChange('substitute');
-    } else if (action === 'mode_hours_criteria') {
-      handleViewModeChange('hours_criteria');
-    } else if (action === 'open_import_export') {
-      setShowImportExportModal(true);
-    }
-  });
   const [showScheduleSettingsModal, setShowScheduleSettingsModal] = useState(false);
+  const [pendingSlotConfirm, setPendingSlotConfirm] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    tone: 'primary' | 'danger';
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const [isConfirmingSlotAction, setIsConfirmingSlotAction] = useState(false);
   const [scheduleFilterDraft, setScheduleFilterDraft] = useState<TimetableScheduleFilters>({
     gradeLevel: '',
     classRoom: '',
@@ -497,23 +488,34 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         ? [`${slot.courseCode} (${conflict.reasons.join(', ')})`]
         : [];
     });
+    const executeUpdateSlot = async () => {
+      setIsSavingSlot(true);
+      setSlotActionError(null);
+      try {
+        await onUpdateSlot(updatedSlot);
+        setSelectedSlotForDetail(updatedSlot);
+        setEditSlotDraft(null);
+        setIsEditingSelectedSlot(false);
+      } catch (error) {
+        setSlotActionError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setIsSavingSlot(false);
+      }
+    };
+
     const warnings = [...new Set([...duplicateReasons, ...overlappingReasons])];
-    if (warnings.length > 0 && !confirm(`${warnings.join(' และ ')}\nคาบที่แก้ไขยังชนกับรายการข้างต้น ต้องการบันทึกต่อหรือไม่?`)) {
+    if (warnings.length > 0) {
+      setPendingSlotConfirm({
+        title: 'พบตารางสอนซ้อนทับกัน',
+        description: `${warnings.join(' และ ')} — คาบที่แก้ไขยังชนกับรายการข้างต้น ต้องการบันทึกต่อหรือไม่?`,
+        confirmLabel: 'ยืนยันบันทึกทับ',
+        tone: 'primary',
+        onConfirm: executeUpdateSlot,
+      });
       return;
     }
 
-    setIsSavingSlot(true);
-    setSlotActionError(null);
-    try {
-      await onUpdateSlot(updatedSlot);
-      setSelectedSlotForDetail(updatedSlot);
-      setEditSlotDraft(null);
-      setIsEditingSelectedSlot(false);
-    } catch (error) {
-      setSlotActionError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsSavingSlot(false);
-    }
+    await executeUpdateSlot();
   };
   const orderedSchoolPeriods = [...schoolPeriods].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const lessonPeriods = orderedSchoolPeriods.filter((period) => !period.isBreak);
@@ -905,13 +907,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     });
     setSentSubRequests((prev) => ({ ...prev, [requestKey]: true }));
     setSubNotice(`ส่งแจ้งเตือนขอสอนแทนไปยัง ${candidateName} (คาบ ${targetSlot.periodNumber} · ${targetSlot.courseCode}) เรียบร้อยแล้ว`);
-    emitMascotDashboardEvent({
-      type: 'success',
-      titleTh: 'แจ้งขอสอนแทนแล้ว!',
-      titleEn: 'Substitute Request Sent',
-      messageTh: `ชาร์โคลส่งเรื่องถึง ${candidateName} คาบที่ ${targetSlot.periodNumber} (${targetSlot.classRoom}) ให้แล้วครับ`,
-      messageEn: `Sent substitute teaching request to ${candidateName} for Period ${targetSlot.periodNumber} (${targetSlot.classRoom}).`,
-    });
   };
 
   const handleAssignSubstituteToSlot = async (
@@ -927,13 +922,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         coTeacherName: candidateName,
       });
       setSubNotice(`กำหนด ${candidateName} เป็นครูสอนคู่/สอนแทนในคาบ ${targetSlot.periodNumber} (${targetSlot.courseCode}) เรียบร้อยแล้ว`);
-      emitMascotDashboardEvent({
-        type: 'success',
-        titleTh: 'อัปเดตครูสอนแทนลงตารางแล้ว',
-        titleEn: 'Substitute Assigned to Timetable',
-        messageTh: `${candidateName} ถูกเพิ่มเป็นครูสอนคู่/สอนแทนในคาบที่ ${targetSlot.periodNumber} แล้ว`,
-        messageEn: `${candidateName} assigned as substitute/co-teacher for Period ${targetSlot.periodNumber}.`,
-      });
     } finally {
       setAssigningSubSlotKey(null);
     }
@@ -1056,21 +1044,32 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         ? [`มีคาบ ${slot.periodNumber} ชนกัน (${conflict.reasons.join(', ')})`]
         : [];
     });
+    const executeAddSlot = async () => {
+      setIsSavingSlot(true);
+      setSlotActionError(null);
+      try {
+        await onAddSlot(newSlot);
+        setShowAddModal(false);
+      } catch (error) {
+        setSlotActionError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setIsSavingSlot(false);
+      }
+    };
+
     const prospectiveReasons = [...new Set([...duplicateReasons, ...overlapWarnings])];
-    if (prospectiveReasons.length > 0 && !confirm(`${prospectiveReasons.join(' และ ')}\nต้องการบันทึกคาบเรียนนี้ทับหรือบันทึกต่อหรือไม่?`)) {
+    if (prospectiveReasons.length > 0) {
+      setPendingSlotConfirm({
+        title: 'พบตารางสอนซ้อนทับกัน',
+        description: `${prospectiveReasons.join(' และ ')} — ต้องการบันทึกคาบเรียนนี้ทับหรือบันทึกต่อหรือไม่?`,
+        confirmLabel: 'ยืนยันเพิ่มคาบเรียน',
+        tone: 'primary',
+        onConfirm: executeAddSlot,
+      });
       return;
     }
 
-    setIsSavingSlot(true);
-    setSlotActionError(null);
-    try {
-      await onAddSlot(newSlot);
-      setShowAddModal(false);
-    } catch (error) {
-      setSlotActionError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsSavingSlot(false);
-    }
+    await executeAddSlot();
   };
 
   const handleSavePeriodSettings = async (e: React.FormEvent) => {
@@ -2694,9 +2693,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (confirm(`ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) หรือไม่?`)) {
-                                          onDeleteSlot(slot.id);
-                                        }
+                                        setPendingSlotConfirm({
+                                          title: 'ยืนยันการลบคาบเรียน',
+                                          description: `ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) ออกจากตารางสอนหรือไม่?`,
+                                          confirmLabel: 'ลบคาบเรียน',
+                                          tone: 'danger',
+                                          onConfirm: async () => {
+                                            await onDeleteSlot(slot.id);
+                                          },
+                                        });
                                       }}
                                       className="absolute top-1 right-1 p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
                                       title="ลบคาบนี้"
@@ -3700,6 +3705,28 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmActionModal
+        isOpen={Boolean(pendingSlotConfirm)}
+        title={pendingSlotConfirm?.title || ''}
+        description={pendingSlotConfirm?.description || ''}
+        confirmLabel={pendingSlotConfirm?.confirmLabel || 'ยืนยัน'}
+        tone={pendingSlotConfirm?.tone || 'primary'}
+        isBusy={isConfirmingSlotAction}
+        onCancel={() => {
+          if (!isConfirmingSlotAction) setPendingSlotConfirm(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingSlotConfirm) return;
+          setIsConfirmingSlotAction(true);
+          try {
+            await pendingSlotConfirm.onConfirm();
+            setPendingSlotConfirm(null);
+          } finally {
+            setIsConfirmingSlotAction(false);
+          }
+        }}
+      />
     </div>
   );
 };

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import {
   AppLanguage,
+  AuthUser,
   Course,
   GradeRecord,
   GradingSystem,
@@ -32,7 +33,9 @@ import {
   courseMatchesTeacherFilter,
   teacherMatchesCourse,
 } from '../../lib/courseTeacherFilter';
-import { OPEN_GLOBAL_SEARCH_EVENT } from '../../lib/quickActionEvents';
+import { resolveLinkedStudentsForUser } from '../../lib/attendanceScope';
+
+const OPEN_GLOBAL_SEARCH_EVENT = 'eduverse:open-global-search';
 
 export type UnifiedSearchScope = 'all' | 'students' | 'teachers' | 'courses';
 
@@ -46,6 +49,7 @@ interface UnifiedNavbarSearchProps {
   activeSchool: School;
   gradingSystem?: GradingSystem;
   currentRole: UserRole;
+  currentUser?: AuthUser | null;
   currentStudentRecordId?: string;
   lang: AppLanguage;
   onOpenStudentProfile?: (student: Student) => void;
@@ -63,6 +67,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   activeSchool,
   gradingSystem = 'thai',
   currentRole,
+  currentUser,
   currentStudentRecordId,
   lang,
   onOpenStudentProfile,
@@ -82,13 +87,28 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Scoped students list (student/parent roles only see their linked record if restricted, staff see full roster)
+  const isStaff = currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'teacher';
+
+  // Scoped students list (student/parent roles only see their linked record/children, staff see full roster)
   const visibleStudents = useMemo(() => {
-    if (currentRole === 'student' && currentStudentRecordId) {
-      return students.filter((s) => s.id === currentStudentRecordId);
+    if (!isStaff) {
+      return resolveLinkedStudentsForUser(
+        currentUser || {
+          id: currentStudentRecordId || 'scoped-user',
+          fullNameTh: '',
+          fullNameEn: '',
+          email: '',
+          avatarUrl: '',
+          lineConnected: false,
+          role: currentRole,
+          schoolId: activeSchool.id,
+          studentRecordId: currentStudentRecordId,
+        },
+        students
+      );
     }
     return students;
-  }, [students, currentRole, currentStudentRecordId]);
+  }, [isStaff, currentUser, currentStudentRecordId, currentRole, activeSchool.id, students]);
 
   const roomOptions = useMemo(() => {
     return Array.from(new Set(visibleStudents.map((s) => s.room).filter(Boolean))).sort((a, b) =>
@@ -126,6 +146,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   }, [visibleStudents, roomFilter, normalizedQuery]);
 
   const matchedTeachers = useMemo(() => {
+    if (!isStaff) return [];
     return teachers.filter((t) => {
       if (deptFilter !== 'all' && t.department !== deptFilter) return false;
       if (!normalizedQuery) return true;
@@ -141,7 +162,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
         t.email,
       ].some((v) => (v || '').toLowerCase().includes(normalizedQuery));
     });
-  }, [teachers, deptFilter, normalizedQuery]);
+  }, [isStaff, teachers, deptFilter, normalizedQuery]);
 
   const courseTeacherOptions = useMemo(
     () => buildCourseTeacherOptions(courses, teachers),
@@ -345,11 +366,15 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                   label: lang === 'th' ? 'นักเรียน' : 'Students',
                   count: matchedStudents.length,
                 },
-                {
-                  id: 'teachers' as const,
-                  label: lang === 'th' ? 'ครู' : 'Teachers',
-                  count: matchedTeachers.length,
-                },
+                ...(isStaff
+                  ? [
+                      {
+                        id: 'teachers' as const,
+                        label: lang === 'th' ? 'ครู' : 'Teachers',
+                        count: matchedTeachers.length,
+                      },
+                    ]
+                  : []),
                 {
                   id: 'courses' as const,
                   label: lang === 'th' ? 'รายวิชา' : 'Courses',
@@ -477,7 +502,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                         <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                         นักเรียน ({matchedStudents.length})
                       </span>
-                      {onNavigateTab && matchedStudents.length > maxPerGroup && (
+                      {isStaff && onNavigateTab && matchedStudents.length > maxPerGroup && (
                         <button
                           type="button"
                           onClick={() => {
@@ -602,7 +627,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                         <BookOpen className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
                         รายวิชา ({matchedCourses.length})
                       </span>
-                      {onNavigateTab && matchedCourses.length > maxPerGroup && (
+                      {isStaff && onNavigateTab && matchedCourses.length > maxPerGroup && (
                         <button
                           type="button"
                           onClick={() => {
@@ -805,7 +830,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
               className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden text-xs"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-5 py-3.5 bg-indigo-700 text-white flex items-center justify-between">
+              <div className="px-5 py-3.5 bg-[var(--tone-solid)] text-white flex items-center justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold px-2 py-0.5 rounded bg-white/20 text-[11px]">

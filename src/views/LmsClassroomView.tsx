@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Course, Student, Lesson, Assignment, AppLanguage, Teacher } from '../types';
+import React, { useMemo, useState } from 'react';
+import { AuthUser, Course, Student, Lesson, Assignment, AppLanguage, Teacher } from '../types';
 import { PagedList } from '../components/PagedList';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
@@ -10,14 +10,12 @@ import {
   Upload, 
   BookOpen, 
   Video, 
-  Download, 
-  Sparkles,
-  ChevronRight,
-  ExternalLink,
-  MessageSquare
+  Download,
 } from 'lucide-react';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import { resolveLinkedStudentsForUser } from '../lib/attendanceScope';
+import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 
 interface LmsClassroomViewProps {
   courses: Course[];
@@ -26,6 +24,8 @@ interface LmsClassroomViewProps {
   lessons: Lesson[];
   assignments: Assignment[];
   lang: AppLanguage;
+  currentUser?: AuthUser | null;
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
   onCompleteLesson: (lessonId: string) => void;
   onSubmitAssignment: (assignmentId: string) => void;
 }
@@ -37,6 +37,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   lessons,
   assignments,
   lang,
+  currentUser,
+  schoolPermissions,
   onCompleteLesson,
   onSubmitAssignment,
 }) => {
@@ -45,6 +47,15 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const [selectedLessonId, setSelectedLessonId] = useState<string>(lessons[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'lessons' | 'assignments' | 'discussion'>('lessons');
   const [submittedAlert, setSubmittedAlert] = useState<string | null>(null);
+
+  const currentStudentId = useMemo(() => {
+    if (!currentUser || currentUser.role !== 'student') return '';
+    const linked = resolveLinkedStudentsForUser(currentUser, students);
+    return linked[0]?.id || currentUser.studentRecordId || currentUser.id;
+  }, [currentUser, students]);
+  const isStudentUser = currentUser?.role === 'student';
+  const canSubmitHomework =
+    !isStudentUser || isSchoolPolicyEnabled(schoolPermissions, 'student_submit_homework');
 
   const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
   const filteredCourses = courses.filter((c) =>
@@ -80,11 +91,13 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
     setTimeout(() => setSubmittedAlert(null), 3000);
   };
 
-  const completedCount = courseLessons.filter(l => l.completedByStudentIds.includes('stu-1')).length;
+  const completedCount = courseLessons.filter((l) =>
+    currentStudentId ? l.completedByStudentIds.includes(currentStudentId) : l.completedByStudentIds.length > 0
+  ).length;
   const progressPercent = courseLessons.length > 0 ? Math.round((completedCount / courseLessons.length) * 100) : 0;
 
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2 ${getModuleTone('courses')}`}>
+    <div className={`space-y-3 ${getModuleTone('courses')}`}>
       {/* Compact Classroom Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -187,7 +200,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       </div>
 
       {/* Main Tab Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="space-y-4">
       {/* Main LMS Split View */}
       {activeTab === 'lessons' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-3">
@@ -278,7 +291,9 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
             <div className="space-y-2.5">
               <PagedList items={courseLessons} pageSize={3} renderItem={(les) => {
                 const isSelected = activeLesson?.id === les.id;
-                const isDone = les.completedByStudentIds.includes('stu-1');
+                const isDone = currentStudentId
+                  ? les.completedByStudentIds.includes(currentStudentId)
+                  : les.completedByStudentIds.length > 0;
                 return (
                   <div
                     key={les.id}
@@ -325,7 +340,9 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PagedList items={courseAssignments} pageSize={2} renderItem={(asg) => {
-              const isSubmitted = asg.submittedStudentIds.includes('stu-1');
+              const isSubmitted = currentStudentId
+                ? asg.submittedStudentIds.includes(currentStudentId)
+                : false;
               return (
                 <div
                   key={asg.id}
@@ -367,13 +384,19 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                     </span>
 
                     {!isSubmitted ? (
-                      <button
-                        onClick={() => handleAssignmentSubmit(asg.id)}
-                        className="px-3.5 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>{lang === 'th' ? 'อัปโหลดงานส่งอาจารย์' : 'Submit Homework'}</span>
-                      </button>
+                      canSubmitHomework ? (
+                        <button
+                          onClick={() => handleAssignmentSubmit(asg.id)}
+                          className="px-3.5 py-1.5 rounded-lg bg-[var(--tone-solid)] hover:opacity-90 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{lang === 'th' ? 'อัปโหลดงานส่งอาจารย์' : 'Submit Homework'}</span>
+                        </button>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                          {lang === 'th' ? 'โรงเรียนปิดการส่งงานออนไลน์ชั่วคราว' : 'Online submission paused'}
+                        </span>
+                      )
                     ) : (
                       <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />

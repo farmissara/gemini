@@ -189,11 +189,15 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   // Test distance from current device to school
   const handleTestDistance = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported');
+      setLocateStatus({
+        type: 'error',
+        message: lang === 'th' ? 'เบราว์เซอร์นี้ไม่รองรับการตรวจสอบพิกัด Geolocation' : 'Geolocation is not supported',
+      });
       return;
     }
 
     setIsTestingDistance(true);
+    setLocateStatus(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setIsTestingDistance(false);
@@ -209,7 +213,12 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
       },
       () => {
         setIsTestingDistance(false);
-        alert(lang === 'th' ? 'กรุณาอนุญาตสิทธิ์ Location ในเบราว์เซอร์เพื่อทดสอบระยะทาง' : 'Please allow Location permission to test distance');
+        setLocateStatus({
+          type: 'error',
+          message: lang === 'th'
+            ? 'กรุณาอนุญาตสิทธิ์ Location ในเบราว์เซอร์เพื่อทดสอบระยะทาง'
+            : 'Please allow Location permission to test distance',
+        });
       },
       { enableHighAccuracy: true }
     );
@@ -234,7 +243,12 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   // Remove gate
   const handleRemoveGate = (gateId: string) => {
     if (gatesList.length <= 1) {
-      alert(lang === 'th' ? 'ต้องมีจุดเช็คชื่อพิกัด Geofence อย่างน้อย 1 จุดในโรงเรียน' : 'At least one campus gate must remain.');
+      setLocateStatus({
+        type: 'error',
+        message: lang === 'th'
+          ? 'ต้องมีจุดเช็คชื่อพิกัด Geofence อย่างน้อย 1 จุดในโรงเรียน'
+          : 'At least one campus gate must remain.',
+      });
       return;
     }
     setGatesList(prev => prev.filter(g => g.id !== gateId));
@@ -300,22 +314,22 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-2.5">
+    <div className="space-y-3">
       {/* Top Header Bar */}
-      <div className="shrink-0 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-3 sm:p-4 rounded-xl bg-[var(--color-primary)] text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded-md bg-blue-950 text-emerald-300 border border-blue-700">
+            <span className="p-1 rounded-md bg-white/15 text-emerald-200 border border-white/25">
               <MapPin className="w-4 h-4" />
             </span>
             <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
               <span>{lang === 'th' ? 'กำหนดพิกัด GPS ประจำโรงเรียน' : 'School GPS & Geofence Settings'}</span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-100 border border-blue-700">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/15 text-white border border-white/25">
                 {activeSchool.nameTh}
               </span>
             </h2>
           </div>
-          <p className="text-xs text-blue-100 leading-relaxed">
+          <p className="text-xs text-white/85 leading-relaxed">
             {lang === 'th'
               ? 'ครูและผู้ดูแลแก้ไขชื่อจุดเช็คชื่อได้ ผู้ดูแลระบบกำหนดพิกัดและรัศมีได้'
               : 'Teachers and admins can edit check-in point names. Admins can also edit GPS coordinates and radius.'}
@@ -394,7 +408,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           onClick={() => setActiveTab('campus_gates')}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === 'campus_gates'
-              ? 'bg-indigo-700 text-white shadow-sm'
+              ? 'bg-[var(--color-primary)] text-white shadow-sm'
               : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)]'
           }`}
         >
@@ -421,11 +435,11 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
         </button>
       </div>
 
-      {/* Main Tab Content Panel - fills height without outer scrolling */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      {/* Main Tab Content Panel */}
+      <div className="space-y-3">
         {/* TAB 1: SCHOOL CENTER & GEOFENCE RADIUS */}
         {activeTab === 'center_geofence' && (
-          <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
+          <div className="space-y-3">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
               {/* Coordinates Inputs Card */}
               <div className="lg:col-span-7 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">

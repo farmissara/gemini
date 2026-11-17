@@ -101,7 +101,7 @@ import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ViewErrorBoundary } from './components/common/ViewErrorBoundary';
 import { SchoolSwitcherModal } from './components/modals/SchoolSwitcherModal';
-import { DashboardView } from './views/DashboardView';
+import { DashboardView, type DashboardSubTab } from './views/DashboardView';
 import { StudentsView } from './views/StudentsView';
 import { TeachersView } from './views/TeachersView';
 import { CoursesView } from './views/CoursesView';
@@ -122,12 +122,10 @@ import { DigitalIdCardView } from './views/DigitalIdCardView';
 import { InfirmaryHealthView } from './views/InfirmaryHealthView';
 import { HomeworkTrackerView } from './views/HomeworkTrackerView';
 import { SuperAdminConsoleView } from './views/SuperAdminConsoleView';
-import { SchoolPermissionSettingsView } from './views/SchoolPermissionSettingsView';
 import { EduBattleRoyale3DView } from './views/EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './views/SubjectLabSimulationView';
 import { UserProfileModal } from './components/modals/UserProfileModal';
-import { SystemSettingsView } from './views/SystemSettingsView';
-import { SchoolGpsSettingsCard } from './components/SchoolGpsSettingsCard';
+import { SystemSettingsView, type SystemSettingsTab } from './views/SystemSettingsView';
 import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
 import { DataImportExportModal } from './components/modals/DataImportExportModal';
 import { ModuleGuideModal, type GuideModuleId, type ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
@@ -136,7 +134,6 @@ import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboarding
 import { OfflineIndicator } from './components/layout/OfflineIndicator';
 import { AiDiagnosticLearningView } from './views/AiDiagnosticLearningView';
 import { HallOfFame3DView } from './views/HallOfFame3DView';
-import { ExecutiveEarlyWarningView } from './views/ExecutiveEarlyWarningView';
 import { StudyStreakQuestPassView } from './views/StudyStreakQuestPassView';
 import { CoopBossRaidView } from './views/CoopBossRaidView';
 import { SocraticTutorView } from './views/SocraticTutorView';
@@ -144,7 +141,7 @@ import { RealWorldSnapQuestView } from './views/RealWorldSnapQuestView';
 import { MobileAppShell } from './components/layout/MobileAppShell';
 import { NotificationCenterModal } from './components/modals/NotificationCenterModal';
 import { AdminSuperAdminDeskView } from './views/AdminSuperAdminDeskView';
-import { ExecutiveMonitorView } from './views/ExecutiveMonitorView';
+import { ConfirmActionModal } from './components/modals/ConfirmActionModal';
 import { CentralExamHubView, CentralExamNotificationPopup } from './views/CentralExamHubView';
 import {
   buildCentralExamSignature,
@@ -165,6 +162,14 @@ import { getLocalDateString } from './lib/date';
 import type { OfflineQueueItem } from './lib/offlineSync';
 import { appendAuditLog } from './lib/auditLog';
 import { getSchoolFeatureFlags } from './lib/schoolFeatureFlags';
+import { useSchoolPermissions } from './lib/schoolPermissions';
+import {
+  filterAttendanceForUser,
+  filterLeaveRequestsForUser,
+  filterPeriodAttendanceForUser,
+  isAllowedProgramModeForRole,
+  resolveLinkedStudentsForUser,
+} from './lib/attendanceScope';
 import {
   getBiometricSoftLock,
   getPasskeyForUser,
@@ -279,6 +284,8 @@ export const App: React.FC = () => {
 
   // Navigation, Mode, Theme, Language & Mobile Drawer State
   const [currentTab, setCurrentTab] = useState<NavTab>(deepLinkParams ? 'mobile_checkin' : 'dashboard');
+  const [dashboardInitialSubTab, setDashboardInitialSubTab] = useState<DashboardSubTab>('overview');
+  const [systemSettingsInitialTab, setSystemSettingsInitialTab] = useState<SystemSettingsTab>('school_general');
   const [superAdminSubTab, setSuperAdminSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>('approvals');
   const [isGamePlaying, setIsGamePlaying] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
@@ -441,19 +448,28 @@ export const App: React.FC = () => {
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [guideModalInitialModule, setGuideModalInitialModule] = useState<GuideModuleId>('dashboard');
   const [guideModalInitialRoleView, setGuideModalInitialRoleView] = useState<ModuleGuideRoleView | undefined>(undefined);
-  const [isMascotGuideEnabled, setIsMascotGuideEnabled] = useState<boolean>(() => {
+  const [isGuideTourEnabled, setIsGuideTourEnabled] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
-    return window.localStorage.getItem('eduverse_mascot_guide_enabled') !== '0';
+    return window.localStorage.getItem('eduverse_guide_tour_enabled') !== '0';
   });
-  const handleToggleMascotGuide = (next?: boolean) => {
-    setIsMascotGuideEnabled((prev) => {
+  const handleToggleGuideTour = (next?: boolean) => {
+    setIsGuideTourEnabled((prev) => {
       const resolved = typeof next === 'boolean' ? next : !prev;
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('eduverse_mascot_guide_enabled', resolved ? '1' : '0');
+        window.localStorage.setItem('eduverse_guide_tour_enabled', resolved ? '1' : '0');
       }
       return resolved;
     });
   };
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    description: string;
+    detailNote?: string;
+    confirmLabel: string;
+    tone?: 'danger' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
+  const [isConfirmModalBusy, setIsConfirmModalBusy] = useState(false);
   const [showOnboardingTutorModal, setShowOnboardingTutorModal] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
   const [importExportInitialTab, setImportExportInitialTab] = useState<string>('students');
@@ -603,6 +619,7 @@ export const App: React.FC = () => {
   const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
   const schoolLeaveRequests = leaveRequests.filter((request) => !request.schoolId || request.schoolId === activeSchool.id);
+  const schoolPermissions = useSchoolPermissions(activeSchool.id);
   const activeFeatureFlags = activeSchool.id
     ? (featureFlagsBySchool[activeSchool.id] || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise'))
     : undefined;
@@ -701,11 +718,18 @@ export const App: React.FC = () => {
     setInfirmaryVisits([]);
     setHomeworkSubmissions([]);
     setLeaveRequests([]);
+    setShowSchoolSwitcher(false);
+    setDashboardInitialSubTab('overview');
+    setSystemSettingsInitialTab('school_general');
     if (context.user.role === 'super_admin') {
       setProgramMode('school_erp');
       setCurrentTab('super_admin_console');
-    } else {
+    } else if (context.user.role === 'parent') {
+      setProgramMode('parent_portal');
       setCurrentTab('dashboard');
+    } else {
+      setProgramMode('school_erp');
+      setCurrentTab(deepLinkParams ? 'mobile_checkin' : 'dashboard');
     }
   };
 
@@ -847,11 +871,108 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleChangeProgramMode = (nextMode: AppProgramMode) => {
+    if (!isAllowedProgramModeForRole(currentRole, nextMode)) return;
+    setProgramMode(nextMode);
+  };
+
   const navigateToAppTab = (tab: NavTab) => {
     setIsGamePlaying(false);
+
+    if (currentRole === 'parent') {
+      setProgramMode('parent_portal');
+      return;
+    }
+
+    if (tab === 'executive_monitor') {
+      if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+        setDashboardInitialSubTab('executive_monitor');
+        setProgramMode('school_erp');
+        setCurrentTab('dashboard');
+      }
+      return;
+    }
+
+    if (tab === 'executive_warning') {
+      if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+        setDashboardInitialSubTab('early_warning');
+        setProgramMode('school_erp');
+        setCurrentTab('dashboard');
+      }
+      return;
+    }
+
+    if (tab === 'school_gps') {
+      if (['super_admin', 'admin'].includes(currentRole)) {
+        setSystemSettingsInitialTab('school_gps');
+        setProgramMode('school_erp');
+        setCurrentTab('system_settings');
+      }
+      return;
+    }
+
+    if (tab === 'school_permissions') {
+      if (['super_admin', 'admin'].includes(currentRole)) {
+        setSystemSettingsInitialTab('school_permissions');
+        setProgramMode('school_erp');
+        setCurrentTab('system_settings');
+      }
+      return;
+    }
+
+    const staffOnlyTabs: NavTab[] = [
+      'students',
+      'teachers',
+      'courses',
+      'billing',
+      'announcements',
+      'central_exam_hub',
+      'attendance',
+      'system_settings',
+      'admin_superadmin_desk',
+      'super_admin_console',
+    ];
+    if (currentRole === 'student' && staffOnlyTabs.includes(tab)) {
+      setDashboardInitialSubTab('overview');
+      setCurrentTab('dashboard');
+      return;
+    }
+
+    if (currentRole === 'student') {
+      const blockedByPolicy =
+        (tab === 'mobile_checkin' && !schoolPermissions.student_self_checkin) ||
+        (['games', 'study_streak', 'boss_raid', 'realworld_quests', 'subject_labs', 'ai_diagnostic', 'socratic_tutor', 'hall_of_fame'].includes(tab) &&
+          !schoolPermissions.student_treasure_game) ||
+        (tab === 'homework' && !schoolPermissions.student_submit_homework) ||
+        (tab === 'portfolio' && !schoolPermissions.student_upload_portfolio) ||
+        (tab === 'gradebook' && !schoolPermissions.student_view_grades);
+      if (blockedByPolicy) {
+        setDashboardInitialSubTab('overview');
+        setCurrentTab('dashboard');
+        return;
+      }
+    }
+
+    if (currentRole === 'teacher') {
+      const blockedByPolicy =
+        (tab === 'billing' && !schoolPermissions.teacher_view_financials) ||
+        (tab === 'behavior_sdq' && !schoolPermissions.teacher_sdq_screening) ||
+        (tab === 'infirmary' && !schoolPermissions.teacher_infirmary_access) ||
+        (tab === 'attendance' && !schoolPermissions.teacher_attendance) ||
+        (tab === 'homework' && !schoolPermissions.teacher_homework);
+      if (blockedByPolicy) {
+        setDashboardInitialSubTab('overview');
+        setCurrentTab('dashboard');
+        return;
+      }
+    }
+
     if (currentRole === 'super_admin' && tab === 'super_admin_console') {
       setIsSuperAdminSchoolView(false);
       setProgramMode('school_erp');
+    }
+    if (tab === 'dashboard') {
+      setDashboardInitialSubTab('overview');
     }
     setCurrentTab(tab);
   };
@@ -1120,33 +1241,9 @@ export const App: React.FC = () => {
         setDataSyncError(result.success ? null : result.message);
         setDataSyncWarnings(result.warnings || []);
         setDataSyncSummary(result.warnings && result.warnings.length > 0 ? result.message : null);
-        if (!result.success) {
-          emitMascotDashboardEvent({
-            type: 'error',
-            titleTh: 'ซิงค์ข้อมูลไม่สำเร็จ',
-            titleEn: 'Data Sync Error',
-            messageTh: result.message || 'ไม่สามารถบันทึกข้อมูลล่าสุดขึ้นคลาวด์ได้ กรุณาลองใหม่',
-            messageEn: result.message || 'Could not sync latest changes to cloud storage.',
-          });
-        } else if (result.warnings && result.warnings.length > 0) {
-          emitMascotDashboardEvent({
-            type: 'warning',
-            titleTh: 'ซิงค์สำเร็จพร้อมคำเตือน',
-            titleEn: 'Synced With Warnings',
-            messageTh: result.warnings[0] || result.message,
-            messageEn: result.warnings[0] || result.message,
-          });
-        }
       }).catch((error: unknown) => {
         const errMsg = error instanceof Error ? error.message : String(error);
         setDataSyncError(errMsg);
-        emitMascotDashboardEvent({
-          type: 'error',
-          titleTh: 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
-          titleEn: 'Connection Error',
-          messageTh: errMsg || 'ระบบเชื่อมต่อฐานข้อมูลขัดข้องชั่วคราว',
-          messageEn: errMsg || 'Database synchronization failed.',
-        });
       });
     }, 500);
     return () => window.clearTimeout(timeoutId);
@@ -1185,26 +1282,33 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleCleanupOrphanGrades = async () => {
+  const handleCleanupOrphanGrades = () => {
     if (!['admin', 'super_admin'].includes(currentRole)) {
       setDataSyncError('ต้องใช้สิทธิ์ผู้ดูแลโรงเรียนเพื่อลบผลการเรียนที่ไม่มีนักเรียนอ้างอิง');
       return;
     }
     const gradeIds = orphanedGrades.map((grade) => grade.id);
-    if (gradeIds.length === 0 || !window.confirm(
-      `ยืนยันลบผลการเรียน ${gradeIds.length} รายการที่ไม่พบนักเรียนในทะเบียนของโรงเรียนนี้?`
-    )) return;
+    if (gradeIds.length === 0) return;
 
-    setIsCleaningOrphanedGrades(true);
-    try {
-      await deleteStaleGradesFromDb(activeSchool.id, gradeIds);
-      setOrphanedGrades([]);
-      setDataSyncError(null);
-    } catch (error) {
-      setDataSyncError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsCleaningOrphanedGrades(false);
-    }
+    setConfirmModal({
+      title: `ยืนยันลบผลการเรียนตกค้าง (${gradeIds.length} รายการ)`,
+      description: `ต้องการลบผลการเรียนจำนวน ${gradeIds.length} รายการที่ไม่พบนักเรียนในทะเบียนของโรงเรียนนี้หรือไม่?`,
+      detailNote: 'การดำเนินการนี้จะลบเฉพาะแถวคะแนนที่ไม่มีข้อมูลนักเรียนอ้างอิงในระบบแล้วเท่านั้น',
+      confirmLabel: `ลบ ${gradeIds.length} รายการ`,
+      tone: 'danger',
+      onConfirm: async () => {
+        setIsCleaningOrphanedGrades(true);
+        try {
+          await deleteStaleGradesFromDb(activeSchool.id, gradeIds);
+          setOrphanedGrades([]);
+          setDataSyncError(null);
+        } catch (error) {
+          setDataSyncError(error instanceof Error ? error.message : String(error));
+        } finally {
+          setIsCleaningOrphanedGrades(false);
+        }
+      },
+    });
   };
 
   const handleDeleteStudent = async (studentId: string) => {
@@ -1382,44 +1486,50 @@ export const App: React.FC = () => {
   };
 
   const handlePurgeSampleTeachers = () => {
-    if (!confirm('ยืนยันล้างข้อมูลครูตัวอย่างทั้งหมด (Sample Teachers) ออกจากโรงเรียนนี้หรือไม่? ข้อมูลจริงที่สร้างใหม่จะไม่ได้รับผลกระทบ')) return;
-    void (async () => {
-      const sampleIds = teachers
-        .filter((teacher) => /^(tch-0|tch-demo|tch-mock)/.test(teacher.id))
-        .map((teacher) => teacher.id);
-      const deletedIds: string[] = [];
-      const errors: string[] = [];
-      for (const teacherId of sampleIds) {
-        try {
-          await deleteTeacherFromDb(activeSchool.id, teacherId);
-          deletedIds.push(teacherId);
-        } catch (error) {
-          errors.push(error instanceof Error ? error.message : String(error));
-        }
-      }
-      if (deletedIds.length > 0) {
-        setTeachers((prev) => prev
-          .filter((teacher) => !deletedIds.includes(teacher.id))
-          .map((teacher) => deletedIds.includes(teacher.reportsToTeacherId || '')
-            ? { ...teacher, reportsToTeacherId: undefined }
-            : teacher));
-        if (typeof window !== 'undefined') {
+    setConfirmModal({
+      title: 'ยืนยันล้างข้อมูลครูตัวอย่างทั้งหมด',
+      description: 'ต้องการล้างข้อมูลครูตัวอย่าง (Sample Teachers) ออกจากโรงเรียนนี้หรือไม่?',
+      detailNote: 'ข้อมูลครูจริงที่สร้างหรือนำเข้าใหม่จะไม่ได้รับผลกระทบ',
+      confirmLabel: 'ยืนยันล้างข้อมูลตัวอย่าง',
+      tone: 'danger',
+      onConfirm: async () => {
+        const sampleIds = teachers
+          .filter((teacher) => /^(tch-0|tch-demo|tch-mock)/.test(teacher.id))
+          .map((teacher) => teacher.id);
+        const deletedIds: string[] = [];
+        const errors: string[] = [];
+        for (const teacherId of sampleIds) {
           try {
-            const remaining = teachers
-              .filter((teacher) => !deletedIds.includes(teacher.id))
-              .map((teacher) => deletedIds.includes(teacher.reportsToTeacherId || '')
-                ? { ...teacher, reportsToTeacherId: undefined }
-                : teacher);
-            localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(remaining));
-            const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
-            localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify([...new Set([...deleted, ...deletedIds])]));
+            await deleteTeacherFromDb(activeSchool.id, teacherId);
+            deletedIds.push(teacherId);
           } catch (error) {
-            console.warn('Could not cache purged teacher IDs:', error);
+            errors.push(error instanceof Error ? error.message : String(error));
           }
         }
-      }
-      setDataSyncError(errors.length ? `Could not delete ${errors.length} sample teacher record(s): ${errors.join('; ')}` : null);
-    })();
+        if (deletedIds.length > 0) {
+          setTeachers((prev) => prev
+            .filter((teacher) => !deletedIds.includes(teacher.id))
+            .map((teacher) => deletedIds.includes(teacher.reportsToTeacherId || '')
+              ? { ...teacher, reportsToTeacherId: undefined }
+              : teacher));
+          if (typeof window !== 'undefined') {
+            try {
+              const remaining = teachers
+                .filter((teacher) => !deletedIds.includes(teacher.id))
+                .map((teacher) => deletedIds.includes(teacher.reportsToTeacherId || '')
+                  ? { ...teacher, reportsToTeacherId: undefined }
+                  : teacher);
+              localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(remaining));
+              const deleted: string[] = JSON.parse(localStorage.getItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`) || '[]');
+              localStorage.setItem(`eduverse_deleted_teacher_ids_${activeSchool.id}`, JSON.stringify([...new Set([...deleted, ...deletedIds])]));
+            } catch (error) {
+              console.warn('Could not cache purged teacher IDs:', error);
+            }
+          }
+        }
+        setDataSyncError(errors.length ? `Could not delete ${errors.length} sample teacher record(s): ${errors.join('; ')}` : null);
+      },
+    });
   };
 
   const handleImportStudents = (newStudents: Student[]) => {
@@ -1713,11 +1823,7 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleImportGrades = (newGrades: GradeRecord[]) => {
-    const duplicateReasons = getGradeDuplicateReasons(newGrades, schoolGrades);
-    if (duplicateReasons.length > 0 &&
-      !confirm(`${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการนำเข้าต่อหรือไม่?`)) return;
-
+  const applyImportedGrades = (newGrades: GradeRecord[]) => {
     const dispatchedItems: { grade: GradeRecord; isNewRecord: boolean }[] = [];
     setGrades((prev) => {
       const updated = [...prev];
@@ -1775,6 +1881,22 @@ export const App: React.FC = () => {
         });
       }
     }
+  };
+
+  const handleImportGrades = (newGrades: GradeRecord[]) => {
+    const duplicateReasons = getGradeDuplicateReasons(newGrades, schoolGrades);
+    if (duplicateReasons.length > 0) {
+      setConfirmModal({
+        title: 'พบข้อมูลผลการเรียนซ้ำซ้อน',
+        description: `${duplicateReasons.join(' และ ')} ในรายการนำเข้าหรือทะเบียนเดิม ต้องการเขียนทับและนำเข้าต่อหรือไม่?`,
+        confirmLabel: 'นำเข้าต่อและเขียนทับ',
+        tone: 'primary',
+        onConfirm: () => applyImportedGrades(newGrades),
+      });
+      return;
+    }
+
+    applyImportedGrades(newGrades);
   };
 
   const handleRecordAttendance = (
@@ -1870,28 +1992,6 @@ export const App: React.FC = () => {
       data: { studentId, status, date: todayStr }
     });
 
-    emitMascotDashboardEvent({
-      type: status === 'late' || status === 'absent' ? 'warning' : 'success',
-      titleTh:
-        status === 'late'
-          ? 'บันทึกมาสาย'
-          : status === 'absent'
-          ? 'บันทึกขาดเรียน'
-          : isCheckOut
-          ? 'สแกนออกสำเร็จ'
-          : 'เช็คชื่อสำเร็จ',
-      titleEn:
-        status === 'late'
-          ? 'Late Arrival Recorded'
-          : status === 'absent'
-          ? 'Absence Recorded'
-          : isCheckOut
-          ? 'Check-Out Recorded'
-          : 'Check-In Recorded',
-      messageTh: `${personName} • ${statusLabel} (${nowTime})`,
-      messageEn: `${personName} • ${status} at ${nowTime}`,
-    });
-
     if (
       !isDemoMode &&
       st &&
@@ -1914,10 +2014,7 @@ export const App: React.FC = () => {
     if (!isCheckOut && (status === 'present' || status === 'late')) {
       setPlayerScores((prev) =>
         prev.map((p) => {
-          const isMatch =
-            p.studentId === studentId ||
-            p.userId === studentId ||
-            (studentId === 'stu-1' && p.userId === 'usr-student');
+          const isMatch = p.studentId === studentId || p.userId === studentId;
           if (!isMatch) return p;
           const isPresent = status === 'present';
           return {
@@ -1956,8 +2053,7 @@ export const App: React.FC = () => {
         prev.map((p) => {
           const bonus =
             bonusByStudent.get(p.studentId || '') ||
-            bonusByStudent.get(p.userId) ||
-            (p.userId === 'usr-student' ? bonusByStudent.get('stu-1') : undefined);
+            bonusByStudent.get(p.userId);
           if (!bonus) return p;
           return {
             ...p,
@@ -2501,14 +2597,38 @@ export const App: React.FC = () => {
   };
 
   const handleCompleteLesson = (lessonId: string) => {
+    const actorStudentId =
+      currentUser?.role === 'student'
+        ? resolveLinkedStudentsForUser(currentUser, schoolStudents)[0]?.id ||
+          currentUser.studentRecordId ||
+          currentUser.id
+        : undefined;
     setLessons((prev) =>
-      prev.map((l) => (l.id === lessonId ? { ...l, completed: true } : l))
+      prev.map((l) => {
+        if (l.id !== lessonId) return l;
+        const completedByStudentIds = actorStudentId
+          ? Array.from(new Set([...(l.completedByStudentIds || []), actorStudentId]))
+          : l.completedByStudentIds;
+        return { ...l, completed: true, completedByStudentIds };
+      })
     );
   };
 
   const handleSubmitAssignment = (assignmentId: string) => {
+    const actorStudentId =
+      currentUser?.role === 'student'
+        ? resolveLinkedStudentsForUser(currentUser, schoolStudents)[0]?.id ||
+          currentUser.studentRecordId ||
+          currentUser.id
+        : undefined;
     setAssignments((prev) =>
-      prev.map((a) => (a.id === assignmentId ? { ...a, submitted: true } : a))
+      prev.map((a) => {
+        if (a.id !== assignmentId) return a;
+        const submittedStudentIds = actorStudentId
+          ? Array.from(new Set([...(a.submittedStudentIds || []), actorStudentId]))
+          : a.submittedStudentIds;
+        return { ...a, submitted: true, submittedStudentIds };
+      })
     );
   };
 
@@ -2961,13 +3081,7 @@ export const App: React.FC = () => {
     try {
       const payload = item.payload as Record<string, any> | null;
       if (!payload) {
-        emitMascotDashboardEvent({
-          type: 'error',
-          titleTh: 'ซิงค์รายการออฟไลน์ไม่สำเร็จ',
-          titleEn: 'Offline Sync Failed',
-          messageTh: 'ไม่พบข้อมูลของรายการที่ค้างอยู่ในคิวออฟไลน์',
-          messageEn: 'Missing payload for queued offline item.',
-        });
+        setDataSyncError('ไม่พบข้อมูลของรายการที่ค้างอยู่ในคิวออฟไลน์');
         return false;
       }
       if (item.actionType === 'attendance' && payload.studentId) {
@@ -2982,31 +3096,18 @@ export const App: React.FC = () => {
       }
       if (item.actionType === 'health_visit') {
         handleAddInfirmaryVisit(payload as unknown as InfirmaryVisit);
-        emitMascotDashboardEvent({
-          type: 'success',
-          titleTh: 'ซิงค์ข้อมูลห้องพยาบาลแล้ว',
-          titleEn: 'Health Visit Synced',
-          messageTh: 'นำเข้ารายการห้องพยาบาลจากโหมดออฟไลน์สำเร็จ',
-          messageEn: 'Queued infirmary visit synced successfully.',
+        void sendEduVerseNotification({
+          title: 'ซิงค์ข้อมูลห้องพยาบาลแล้ว',
+          body: 'นำเข้ารายการห้องพยาบาลจากโหมดออฟไลน์สำเร็จ',
+          category: 'system',
+          tag: `offline-health-${Date.now()}`,
         });
         return true;
       }
-      emitMascotDashboardEvent({
-        type: 'warning',
-        titleTh: 'รายการออฟไลน์ยังไม่รองรับ',
-        titleEn: 'Unsupported Offline Item',
-        messageTh: 'ชนิดข้อมูลออฟไลน์นี้ยังไม่สามารถซิงค์อัตโนมัติได้',
-        messageEn: 'This queued offline item type could not be synced.',
-      });
+      setDataSyncError('ชนิดข้อมูลออฟไลน์นี้ยังไม่สามารถซิงค์อัตโนมัติได้');
       return false;
     } catch {
-      emitMascotDashboardEvent({
-        type: 'error',
-        titleTh: 'ซิงค์รายการออฟไลน์ผิดพลาด',
-        titleEn: 'Offline Sync Error',
-        messageTh: 'เกิดข้อผิดพลาดระหว่างส่งข้อมูลคิวออฟไลน์ขึ้นระบบ',
-        messageEn: 'An error occurred while syncing the offline queue item.',
-      });
+      setDataSyncError('เกิดข้อผิดพลาดระหว่างส่งข้อมูลคิวออฟไลน์ขึ้นระบบ');
       return false;
     }
   };
@@ -3100,6 +3201,56 @@ export const App: React.FC = () => {
     );
   }
 
+  // Strict Student & Parent Personal Scoping Boundary
+  const isRestrictedViewer = currentRole === 'student' || currentRole === 'parent';
+  const linkedStudentsForUser = isRestrictedViewer
+    ? resolveLinkedStudentsForUser(currentUser, schoolStudents)
+    : schoolStudents;
+  const scopedStudentIdSet = new Set<string>();
+  linkedStudentsForUser.forEach((stu) => {
+    scopedStudentIdSet.add(stu.id);
+    if (stu.studentIdNumber) scopedStudentIdSet.add(stu.studentIdNumber);
+  });
+  if (currentRole === 'student' && currentUser) {
+    scopedStudentIdSet.add(currentUser.id);
+    if (currentUser.studentRecordId) scopedStudentIdSet.add(currentUser.studentRecordId);
+    if (currentUser.studentIdNumber) scopedStudentIdSet.add(currentUser.studentIdNumber);
+  }
+  const viewStudents = isRestrictedViewer ? linkedStudentsForUser : schoolStudents;
+  const viewAttendance = isRestrictedViewer
+    ? filterAttendanceForUser(schoolAttendance, currentUser, schoolStudents)
+    : schoolAttendance;
+  const viewPeriodAttendance = isRestrictedViewer
+    ? filterPeriodAttendanceForUser(schoolPeriodAttendance, currentUser, schoolStudents)
+    : schoolPeriodAttendance;
+  const viewLeaveRequests = isRestrictedViewer
+    ? filterLeaveRequestsForUser(schoolLeaveRequests, currentUser, schoolStudents)
+    : schoolLeaveRequests;
+  const viewGrades = isRestrictedViewer
+    ? schoolGrades.filter((g) => scopedStudentIdSet.has(g.studentId))
+    : schoolGrades;
+  const viewInvoices = isRestrictedViewer
+    ? schoolInvoices.filter((inv) => scopedStudentIdSet.has(inv.studentId))
+    : schoolInvoices;
+  const viewHomeworkSubmissions = isRestrictedViewer
+    ? schoolHomeworkSubmissions.filter((sub) => scopedStudentIdSet.has(sub.studentId))
+    : schoolHomeworkSubmissions;
+  const viewInfirmaryVisits = isRestrictedViewer
+    ? schoolInfirmaryVisits.filter((v) => scopedStudentIdSet.has(v.studentId))
+    : schoolInfirmaryVisits;
+  const viewBehaviorRecords = isRestrictedViewer
+    ? schoolBehaviorRecords.filter((b) => scopedStudentIdSet.has(b.studentId))
+    : schoolBehaviorRecords;
+  const viewSdqAssessments = isRestrictedViewer
+    ? schoolSdqAssessments.filter((s) => scopedStudentIdSet.has(s.studentId))
+    : schoolSdqAssessments;
+  const viewPortfolioItems = isRestrictedViewer
+    ? schoolPortfolioItems.filter((p) => p.ownerId === currentUser?.id || scopedStudentIdSet.has(p.ownerId))
+    : schoolPortfolioItems;
+  const canEditGradesInSchool =
+    ['super_admin', 'admin'].includes(currentRole) ||
+    (currentRole === 'teacher' && schoolPermissions.teacher_grade_entry !== false);
+
   // Responsive: If on mobile screen (or user opted into mobile view), render the clean, uncluttered MobileAppShell
   if (shouldShowMobileView) {
     return (
@@ -3119,24 +3270,28 @@ export const App: React.FC = () => {
           onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
           unreadCount={unreadNotifCount}
           onOpenNotifications={() => setShowNotificationModal(true)}
-          students={schoolStudents}
+          students={viewStudents}
           teachers={schoolTeachers}
           courses={schoolCourses}
-          grades={schoolGrades}
-          invoices={schoolInvoices}
-          infirmaryVisits={infirmaryVisits}
-          behaviorRecords={behaviorRecords}
-          sdqAssessments={sdqAssessments}
-          attendance={schoolAttendance}
-          periodAttendance={schoolPeriodAttendance}
-          leaveRequests={leaveRequests}
+          grades={viewGrades}
+          invoices={viewInvoices}
+          infirmaryVisits={viewInfirmaryVisits}
+          behaviorRecords={viewBehaviorRecords}
+          sdqAssessments={viewSdqAssessments}
+          attendance={viewAttendance}
+          periodAttendance={viewPeriodAttendance}
+          leaveRequests={viewLeaveRequests}
           assignments={schoolAssignments}
-          homeworkSubmissions={homeworkSubmissions}
+          homeworkSubmissions={viewHomeworkSubmissions}
           announcements={schoolAnnouncements}
           questions={schoolQuestions}
           playerScores={playerScores}
           rewardItems={rewardItems}
           campusGates={campusGates}
+          timetableSlots={schoolTimetableSlots}
+          schoolPeriods={schoolPeriods}
+          gradingSystem={systemConfig.gradingSystem}
+          schoolPermissions={schoolPermissions}
           onRecordAttendance={handleRecordAttendance}
           onRecordPeriodAttendance={handleRecordPeriodAttendance}
           onAddLeaveRequest={handleAddLeaveRequest}
@@ -3146,10 +3301,12 @@ export const App: React.FC = () => {
           onAddQuestion={handleAddQuestion}
           onImportQuestions={handleImportQuestions}
           onUpdateStudent={handleUpdateStudent}
-          schools={schools}
+          onUpdateGrade={handleUpdateGrade}
+          onAddGrade={handleAddGrade}
+          schools={currentRole === 'super_admin' ? schools : (activeSchool.id ? [activeSchool] : [])}
           isDemoMode={isDemoMode}
           coordinationUnreadCount={coordinationUnreadCount}
-          onOpenSchoolSwitcher={() => setShowSchoolSwitcher(true)}
+          onOpenSchoolSwitcher={currentRole === 'super_admin' ? () => setShowSchoolSwitcher(true) : undefined}
           onUpdateSchool={handleUpdateSchool}
           onAddAnnouncement={handleAddAnnouncement}
           onApproveInvoiceSlip={handleApproveInvoiceSlip}
@@ -3176,7 +3333,7 @@ export const App: React.FC = () => {
           <ReportCardModal
             student={selectedStudentForReport}
             courses={schoolCourses}
-            grades={schoolGrades}
+            grades={viewGrades}
             systemConfig={systemConfig}
             onClose={() => setSelectedStudentForReport(null)}
           />
@@ -3186,8 +3343,8 @@ export const App: React.FC = () => {
           <StudentDetailModal
             student={selectedStudentForProfile}
             courses={schoolCourses}
-            grades={schoolGrades}
-            attendance={schoolAttendance}
+            grades={viewGrades}
+            attendance={viewAttendance}
             onClose={() => setSelectedStudentForProfile(null)}
             onOpenReportCard={(stu) => {
               setSelectedStudentForProfile(null);
@@ -3205,7 +3362,7 @@ export const App: React.FC = () => {
         {showProfileModal && currentUser && (
           <UserProfileModal
             currentUser={currentUser}
-            portfolioItems={schoolPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
+            portfolioItems={viewPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
             lang={lang}
             onSaveProfile={handleUpdateUserProfile}
             onAddPortfolioItem={handleAddPortfolioItem}
@@ -3214,7 +3371,7 @@ export const App: React.FC = () => {
           />
         )}
 
-        {showSchoolSwitcher && (
+        {showSchoolSwitcher && currentRole === 'super_admin' && (
           <SchoolSwitcherModal
             schools={schools}
             activeSchool={activeSchool}
@@ -3274,6 +3431,32 @@ export const App: React.FC = () => {
           />
         )}
 
+        <ConfirmActionModal
+          isOpen={Boolean(confirmModal)}
+          title={confirmModal?.title || ''}
+          description={confirmModal?.description || ''}
+          detailNote={confirmModal?.detailNote}
+          confirmLabel={confirmModal?.confirmLabel || 'ยืนยัน'}
+          tone={confirmModal?.tone || 'danger'}
+          isBusy={isConfirmModalBusy}
+          onCancel={() => {
+            if (!isConfirmModalBusy) setConfirmModal(null);
+          }}
+          onConfirm={async () => {
+            if (!confirmModal) return;
+            setIsConfirmModalBusy(true);
+            try {
+              await confirmModal.onConfirm();
+              setConfirmModal(null);
+            } catch (error) {
+              setDataSyncError(error instanceof Error ? error.message : String(error));
+              setConfirmModal(null);
+            } finally {
+              setIsConfirmModalBusy(false);
+            }
+          }}
+        />
+
         {/* Offline Status Connectivity Banner */}
         <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />
         </ViewErrorBoundary>
@@ -3286,8 +3469,8 @@ export const App: React.FC = () => {
       currentRole={currentRole}
       currentTab={programMode === 'lms_classroom' ? 'lms_classroom' : programMode === 'parent_portal' ? 'parent_portal' : currentTab}
       lang={lang}
-      isGuideEnabled={isMascotGuideEnabled}
-      onSetGuideEnabled={(next) => handleToggleMascotGuide(next)}
+      isGuideEnabled={isGuideTourEnabled}
+      onSetGuideEnabled={(next) => handleToggleGuideTour(next)}
     >
     <div className={`${isMobileInDesktopView ? 'h-dvh max-h-dvh w-full overflow-x-auto overflow-y-hidden' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
       {/* Single Sticky Top Banner when viewing Desktop View on Mobile Screen */}
@@ -3319,14 +3502,16 @@ export const App: React.FC = () => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         programMode={programMode}
-        setProgramMode={setProgramMode}
+        setProgramMode={handleChangeProgramMode}
         lang={lang}
         setLang={setLang}
         theme={theme}
         setTheme={setTheme}
         themePalette={themePalette}
         setThemePalette={setThemePalette}
-        onOpenSchoolSwitcher={() => setShowSchoolSwitcher(true)}
+        onOpenSchoolSwitcher={() => {
+          if (currentRole === 'super_admin') setShowSchoolSwitcher(true);
+        }}
         onLogout={handleLogout}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         onOpenProfile={() => setShowProfileModal(true)}
@@ -3334,22 +3519,20 @@ export const App: React.FC = () => {
           setGuideModalInitialRoleView(roleTab);
           setShowGuideModal(true);
         } : undefined}
-        isMascotGuideEnabled={isMascotGuideEnabled}
-        onToggleMascotGuide={() => handleToggleMascotGuide()}
-        onOpenImportExport={currentRole !== 'super_admin' || isSuperAdminSchoolView ? () => setShowImportExportModal(true) : undefined}
+        onOpenImportExport={(['super_admin', 'admin', 'teacher'].includes(currentRole) && (currentRole !== 'super_admin' || isSuperAdminSchoolView)) ? () => setShowImportExportModal(true) : undefined}
         onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
         onSwitchToMobileMode={() => setDeviceViewPreference('mobile')}
         coordinationUnreadCount={coordinationUnreadCount}
         onOpenCoordinationDesk={['admin', 'super_admin'].includes(currentRole) ? () => navigateToAppTab('admin_superadmin_desk') : undefined}
         onOpenExamPaymentSettings={currentRole === 'super_admin' ? handleOpenExamPaymentSettings : undefined}
-        students={schoolStudents}
-        teachers={schoolTeachers}
+        students={viewStudents}
+        teachers={isRestrictedViewer ? [] : schoolTeachers}
         courses={schoolCourses}
-        grades={schoolGrades}
+        grades={viewGrades}
         onOpenStudentProfile={setSelectedStudentForProfile}
         onOpenReportCard={setSelectedStudentForReport}
         onNavigateTab={(tab) => {
-          setProgramMode('school_erp');
+          handleChangeProgramMode('school_erp');
           navigateToAppTab(tab);
         }}
         focusMode={focusMode}
@@ -3389,13 +3572,14 @@ export const App: React.FC = () => {
                 }}
                 currentRole={currentRole}
                 isSuperAdminSchoolView={isSuperAdminSchoolView}
-                studentsCount={schoolStudents.length}
+                studentsCount={viewStudents.length}
                 teachersCount={schoolTeachers.length}
                 coursesCount={schoolCourses.length}
                 coordinationUnreadCount={coordinationUnreadCount}
                 unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                 lang={lang}
                 featureFlags={activeFeatureFlags}
+                schoolPermissions={schoolPermissions}
               />
             </div>
           </div>
@@ -3414,13 +3598,14 @@ export const App: React.FC = () => {
               setCurrentTab={navigateToAppTab}
               currentRole={currentRole}
               isSuperAdminSchoolView={isSuperAdminSchoolView}
-              studentsCount={schoolStudents.length}
+              studentsCount={viewStudents.length}
               teachersCount={schoolTeachers.length}
               coursesCount={schoolCourses.length}
               coordinationUnreadCount={coordinationUnreadCount}
               unclaimedCentralPacksCount={unclaimedCentralPacks.length}
               lang={lang}
               featureFlags={activeFeatureFlags}
+              schoolPermissions={schoolPermissions}
               desktopCollapsed={isSidebarCollapsed}
               onToggleDesktopCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
             />
@@ -3489,51 +3674,8 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'executive_monitor' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
-                  <ExecutiveMonitorView
-                    activeSchool={activeSchool}
-                    students={schoolStudents}
-                    teachers={schoolTeachers}
-                    courses={schoolCourses}
-                    grades={schoolGrades}
-                    attendance={schoolAttendance}
-                    invoices={schoolInvoices}
-                    announcements={schoolAnnouncements}
-                    infirmaryVisits={schoolInfirmaryVisits}
-                    behaviorRecords={schoolBehaviorRecords}
-                    sdqAssessments={schoolSdqAssessments}
-                    homeworkSubmissions={schoolHomeworkSubmissions}
-                    leaveRequests={leaveRequests}
-                    lang={lang}
-                    onNavigate={navigateToAppTab}
-                  />
-                )}
-
-                {/* Dedicated School GPS & Gate Geofence Settings Tab */}
-                {currentTab === 'school_gps' && (
-                  <div className="h-full flex flex-col min-h-0 overflow-hidden">
-                    <SchoolGpsSettingsCard
-                      activeSchool={activeSchool}
-                      campusGates={campusGates}
-                      currentRole={currentRole}
-                      lang={lang}
-                      onUpdateCampusGates={handleUpdateCampusGates}
-                      onSaveCampusGates={handleSaveCampusGates}
-                      onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
-                    />
-                  </div>
-                )}
-
-                {/* School Admin: Role Permissions Console for this specific school */}
-                {currentTab === 'school_permissions' && (currentRole === 'admin' || currentRole === 'super_admin') && (
-                  <SchoolPermissionSettingsView
-                    activeSchool={activeSchool}
-                    lang={lang}
-                  />
-                )}
-
-                {/* School Admin & Teachers: System & LINE Notifications Settings */}
-                {currentTab === 'system_settings' && (
+                {/* School Admin & Teachers: Unified Settings & Access Hub */}
+                {currentTab === 'system_settings' && ['admin', 'super_admin', 'teacher'].includes(currentRole) && (
                   <SystemSettingsView
                     systemConfig={systemConfig}
                     activeSchool={activeSchool}
@@ -3548,71 +3690,47 @@ export const App: React.FC = () => {
                     onUpdateConfig={setSystemConfig}
                     featureFlags={activeFeatureFlags}
                     onUpdateFeatureFlags={(flags) => handleUpdateSchoolFeatureFlags(activeSchool.id, flags)}
-                  />
-                )}
-
-                {currentTab === 'executive_warning' && (
-                  <ExecutiveEarlyWarningView
-                    lang={lang}
-                    currentRole={currentRole}
-                    currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้บริหารสถานศึกษา'}
-                    students={schoolStudents}
-                    attendance={schoolAttendance}
-                    grades={schoolGrades}
-                    courses={schoolCourses}
-                    gradingSystem={systemConfig.gradingSystem}
-                    sdqAssessments={schoolSdqAssessments}
-                    behaviorRecords={schoolBehaviorRecords}
-                    onNavigateToTab={(tab: string) => navigateToAppTab(tab as NavTab)}
-                    schoolId={activeSchool.id}
-                    infirmaryVisits={schoolInfirmaryVisits}
-                    homeworkSubmissions={schoolHomeworkSubmissions}
-                    onLogIntervention={(stuName, title) => {
-                      if (currentUser) {
-                        appendAuditLog(activeSchool.id, {
-                          actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
-                          actorRole: currentUser.role,
-                          actionType: 'intervention_logged',
-                          targetLabel: stuName,
-                          details: title,
-                        });
-                      }
-                    }}
+                    initialTab={systemSettingsInitialTab}
                   />
                 )}
 
                 {currentTab === 'dashboard' && (
                   <DashboardView
-                    students={schoolStudents}
-                    teachers={schoolTeachers}
+                    students={viewStudents}
+                    teachers={isRestrictedViewer ? [] : schoolTeachers}
                     courses={schoolCourses}
-                    attendance={schoolAttendance}
-                    grades={schoolGrades}
+                    attendance={viewAttendance}
+                    grades={viewGrades}
                     playerScores={playerScores}
-                    invoices={schoolInvoices}
+                    invoices={viewInvoices}
                     announcements={schoolAnnouncements}
                     systemConfig={systemConfig}
                     school={activeSchool}
                     currentUser={currentUser}
                     lang={lang}
-                    onNavigate={setCurrentTab}
+                    onNavigate={navigateToAppTab}
                     onQuickCheckIn={handleQuickCheckIn}
                     onRecordMilestoneActivity={handleRecordMilestoneActivity}
                     unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                     onOpenCentralExamPopup={() => setShowCentralExamPopup(true)}
                     timetableSlots={schoolTimetableSlots}
-                    leaveRequests={leaveRequests}
-                    homeworkSubmissions={schoolHomeworkSubmissions}
+                    leaveRequests={viewLeaveRequests}
+                    homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={schoolAssignments}
-                    periodAttendance={schoolPeriodAttendance}
+                    periodAttendance={viewPeriodAttendance}
                     schoolPeriods={schoolPeriods}
+                    behaviorRecords={viewBehaviorRecords}
+                    sdqAssessments={viewSdqAssessments}
+                    infirmaryVisits={viewInfirmaryVisits}
+                    schoolPermissions={schoolPermissions}
+                    initialSubTab={dashboardInitialSubTab}
                     onSelectStudent={setSelectedStudentForProfile}
                     focusMode={focusMode}
                     onToggleFocusMode={() => setFocusMode((prev) => !prev)}
                   />
                 )}
 
-                {currentTab === 'students' && (
+                {currentTab === 'students' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <StudentsView
                     students={schoolStudents}
                     courses={schoolCourses}
@@ -3636,6 +3754,11 @@ export const App: React.FC = () => {
                     onOpenImportExport={() => {
                       setImportExportInitialTab('students');
                       setShowImportExportModal(true);
+                    }}
+                    onOpenStudentAccountsSettings={() => {
+                      setSystemSettingsInitialTab('student_accounts');
+                      setProgramMode('school_erp');
+                      setCurrentTab('system_settings');
                     }}
                   />
                 )}
@@ -3817,7 +3940,7 @@ export const App: React.FC = () => {
                     courses={schoolCourses}
                     assignments={schoolAssignments}
                     teachers={schoolTeachers}
-                    students={schoolStudents}
+                    students={viewStudents}
                     onAddSlot={handleAddTimetableSlot}
                     onUpdateSlot={handleUpdateTimetableSlot}
                     onDeleteSlot={handleDeleteTimetableSlot}
@@ -3842,14 +3965,14 @@ export const App: React.FC = () => {
                       teachingLoadMaxPeriods: maxPeriods,
                     })}
                     onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
-                    leaveRequests={leaveRequests}
+                    leaveRequests={viewLeaveRequests}
                   />
                 )}
 
                 {currentTab === 'homework' && (
                   <HomeworkTrackerView
-                    submissions={schoolHomeworkSubmissions}
-                    students={schoolStudents}
+                    submissions={viewHomeworkSubmissions}
+                    students={viewStudents}
                     teachers={schoolTeachers}
                     courses={schoolCourses}
                     assignments={schoolAssignments}
@@ -3862,12 +3985,12 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'attendance' && (
+                {currentTab === 'attendance' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <AttendanceView
                     students={schoolStudents}
                     teachers={schoolTeachers}
                     attendance={schoolAttendance}
-                    leaveRequests={leaveRequests}
+                    leaveRequests={schoolLeaveRequests}
                     campusGates={campusGates}
                     activeSchool={activeSchool}
                     currentUser={currentUser}
@@ -3883,20 +4006,25 @@ export const App: React.FC = () => {
                     schoolPeriods={schoolPeriods}
                     timetableSlots={schoolTimetableSlots}
                     periodAttendance={schoolPeriodAttendance}
+                    onOpenGpsSettings={() => {
+                      setSystemSettingsInitialTab('school_gps');
+                      setProgramMode('school_erp');
+                      setCurrentTab('system_settings');
+                    }}
                   />
                 )}
 
                 {currentTab === 'mobile_checkin' && (
                   <MobileAttendanceView
-                    students={schoolStudents}
+                    students={viewStudents}
                     teachers={schoolTeachers}
                     courses={schoolCourses}
-                    attendance={schoolAttendance}
-                    periodAttendance={schoolPeriodAttendance}
+                    attendance={viewAttendance}
+                    periodAttendance={viewPeriodAttendance}
                     currentUser={currentUser}
                     school={activeSchool}
                     campusGates={campusGates}
-                    leaveRequests={leaveRequests}
+                    leaveRequests={viewLeaveRequests}
                     lang={lang}
                     initialSubTab={deepLinkParams?.subTab || 'selfie_mobile'}
                     initialPeriodCourseId={deepLinkParams?.courseId}
@@ -3914,7 +4042,7 @@ export const App: React.FC = () => {
 
                 {currentTab === 'student_id_cards' && (
                   <DigitalIdCardView
-                    students={schoolStudents}
+                    students={viewStudents}
                     school={activeSchool}
                     lang={lang}
                     currentRole={currentRole}
@@ -3924,9 +4052,9 @@ export const App: React.FC = () => {
 
                 {currentTab === 'behavior_sdq' && (
                   <BehaviorSdqView
-                    students={schoolStudents}
-                    records={schoolBehaviorRecords}
-                    sdqList={schoolSdqAssessments}
+                    students={viewStudents}
+                    records={viewBehaviorRecords}
+                    sdqList={viewSdqAssessments}
                     onAddBehaviorRecord={handleAddBehaviorRecord}
                     onAddSdqAssessment={handleAddSdqAssessment}
                     lang={lang}
@@ -3939,8 +4067,8 @@ export const App: React.FC = () => {
 
                 {currentTab === 'infirmary' && (
                   <InfirmaryHealthView
-                    visits={schoolInfirmaryVisits}
-                    students={schoolStudents}
+                    visits={viewInfirmaryVisits}
+                    students={viewStudents}
                     onAddVisit={handleAddInfirmaryVisit}
                     lang={lang}
                     currentRole={currentRole}
@@ -3950,8 +4078,8 @@ export const App: React.FC = () => {
 
                 {currentTab === 'portfolio' && (
                   <PortfolioView
-                    portfolioItems={schoolPortfolioItems}
-                    students={schoolStudents}
+                    portfolioItems={viewPortfolioItems}
+                    students={viewStudents}
                     currentUser={currentUser}
                     lang={lang}
                     onAddPortfolioItem={handleAddPortfolioItem}
@@ -3962,10 +4090,10 @@ export const App: React.FC = () => {
 
                 {currentTab === 'gradebook' && (
                   <GradebookView
-                    students={schoolStudents}
+                    students={viewStudents}
                     teachers={schoolTeachers}
                     courses={schoolCourses}
-                    grades={schoolGrades}
+                    grades={viewGrades}
                     systemConfig={systemConfig}
                     school={activeSchool}
                     currentRole={currentRole}
@@ -3976,23 +4104,24 @@ export const App: React.FC = () => {
                     onNotifyGradeChange={handleNotifyGradeChange}
                     onOpenReportCard={setSelectedStudentForReport}
                     timetableSlots={schoolTimetableSlots}
-                    attendance={schoolAttendance}
-                    periodAttendance={schoolPeriodAttendance}
-                    homeworkSubmissions={schoolHomeworkSubmissions}
+                    attendance={viewAttendance}
+                    periodAttendance={viewPeriodAttendance}
+                    homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={schoolAssignments}
                     onPracticeInAi={(topic) => {
                       setAdaptivePracticeTopic(topic);
                       navigateToAppTab('socratic_tutor');
                     }}
+                    canEditGrades={canEditGradesInSchool}
                     lang={lang}
-                    onOpenImportExport={() => {
+                    onOpenImportExport={['super_admin', 'admin', 'teacher'].includes(currentRole) ? () => {
                       setImportExportInitialTab('grades');
                       setShowImportExportModal(true);
-                    }}
+                    } : undefined}
                   />
                 )}
 
-                {currentTab === 'billing' && (
+                {currentTab === 'billing' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <BillingView
                     students={schoolStudents}
                     invoices={schoolInvoices}
@@ -4008,7 +4137,7 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'announcements' && (
+                {currentTab === 'announcements' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <AnnouncementsView
                     announcements={schoolAnnouncements}
                     systemConfig={systemConfig}
@@ -4035,11 +4164,13 @@ export const App: React.FC = () => {
             {programMode === 'lms_classroom' && (
               <LmsClassroomView
                 courses={schoolCourses}
-                students={schoolStudents}
+                students={viewStudents}
                 teachers={schoolTeachers}
                 lessons={schoolLessons}
                 assignments={schoolAssignments}
                 lang={lang}
+                currentUser={currentUser}
+                schoolPermissions={schoolPermissions}
                 onCompleteLesson={handleCompleteLesson}
                 onSubmitAssignment={handleSubmitAssignment}
               />
@@ -4048,21 +4179,22 @@ export const App: React.FC = () => {
             {/* Mode 3: Parent & Student Portal */}
             {programMode === 'parent_portal' && (
               <ParentPortalView
-                students={schoolStudents}
-                attendance={schoolAttendance}
-                invoices={schoolInvoices}
-                grades={schoolGrades}
+                students={viewStudents}
+                attendance={viewAttendance}
+                invoices={viewInvoices}
+                grades={viewGrades}
                 courses={schoolCourses}
                 systemConfig={systemConfig}
-                leaveRequests={leaveRequests}
+                leaveRequests={viewLeaveRequests}
                 lang={lang}
+                schoolPermissions={schoolPermissions}
                 onPayInvoice={handlePayInvoice}
                 onOpenReportCard={setSelectedStudentForReport}
                 onAddLeaveRequest={handleAddLeaveRequest}
                 schoolId={activeSchool.id}
-                periodAttendance={schoolPeriodAttendance}
-                homeworkSubmissions={schoolHomeworkSubmissions}
-                infirmaryVisits={schoolInfirmaryVisits}
+                periodAttendance={viewPeriodAttendance}
+                homeworkSubmissions={viewHomeworkSubmissions}
+                infirmaryVisits={viewInfirmaryVisits}
                 onSubmitInvoiceSlip={handleSubmitInvoiceSlip}
               />
             )}
@@ -4072,13 +4204,13 @@ export const App: React.FC = () => {
       </div>
 
       {/* Mobile Bottom Navigation Bar - Clean 4-item Apple-style bar */}
-      {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && !useImmersiveGameLayout && (
+      {(currentRole !== 'super_admin' || isSuperAdminSchoolView) && currentRole !== 'parent' && !useImmersiveGameLayout && (
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-3 py-1.5 grid grid-cols-4 gap-1">
         <button
           type="button"
           onClick={() => {
-            setProgramMode('school_erp');
-            setCurrentTab('dashboard');
+            handleChangeProgramMode('school_erp');
+            navigateToAppTab('dashboard');
           }}
           className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
             programMode === 'school_erp' && currentTab === 'dashboard'
@@ -4093,33 +4225,41 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={() => {
-            setProgramMode('school_erp');
-            setCurrentTab('attendance');
+            handleChangeProgramMode('school_erp');
+            if (currentRole === 'student') {
+              navigateToAppTab(schoolPermissions.student_self_checkin !== false ? 'mobile_checkin' : 'timetable');
+            } else {
+              navigateToAppTab('attendance');
+            }
           }}
           className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-            programMode === 'school_erp' && currentTab === 'attendance'
+            programMode === 'school_erp' && (currentTab === 'attendance' || currentTab === 'mobile_checkin')
               ? 'text-[var(--color-primary-text)] font-semibold'
               : 'text-[var(--color-text-muted)]'
           }`}
         >
           <QrCode className="w-5 h-5" />
-          <span>เช็คชื่อ</span>
+          <span>{currentRole === 'student' && schoolPermissions.student_self_checkin === false ? 'ตารางเรียน' : 'เช็คชื่อ'}</span>
         </button>
 
         <button
           type="button"
           onClick={() => {
-            setProgramMode('school_erp');
-            setCurrentTab('portfolio');
+            handleChangeProgramMode('school_erp');
+            if (currentRole === 'student' && !schoolPermissions.student_upload_portfolio) {
+              navigateToAppTab('gradebook');
+            } else {
+              navigateToAppTab('portfolio');
+            }
           }}
           className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-            programMode === 'school_erp' && currentTab === 'portfolio'
+            programMode === 'school_erp' && (currentTab === 'portfolio' || currentTab === 'gradebook')
               ? 'text-[var(--color-primary-text)] font-semibold'
               : 'text-[var(--color-text-muted)]'
           }`}
         >
           <Briefcase className="w-5 h-5" />
-          <span>ผลงาน</span>
+          <span>{currentRole === 'student' && !schoolPermissions.student_upload_portfolio ? 'ผลการเรียน' : 'ผลงาน'}</span>
         </button>
 
         <button
@@ -4133,8 +4273,8 @@ export const App: React.FC = () => {
       </nav>
       )}
 
-      {/* Multi-School Switcher Modal */}
-      {showSchoolSwitcher && (
+      {/* Multi-School Switcher Modal (Super Admin Only) */}
+      {showSchoolSwitcher && currentRole === 'super_admin' && (
         <SchoolSwitcherModal
           schools={schools}
           activeSchool={activeSchool}
@@ -4161,7 +4301,7 @@ export const App: React.FC = () => {
         <ReportCardModal
           student={selectedStudentForReport}
           courses={schoolCourses}
-          grades={schoolGrades}
+          grades={viewGrades}
           systemConfig={systemConfig}
           school={activeSchool}
           onClose={() => setSelectedStudentForReport(null)}
@@ -4173,8 +4313,8 @@ export const App: React.FC = () => {
         <StudentDetailModal
           student={selectedStudentForProfile}
           courses={schoolCourses}
-          grades={schoolGrades}
-          attendance={schoolAttendance}
+          grades={viewGrades}
+          attendance={viewAttendance}
           onClose={() => setSelectedStudentForProfile(null)}
           onOpenReportCard={(stu) => {
             setSelectedStudentForProfile(null);
@@ -4193,7 +4333,7 @@ export const App: React.FC = () => {
       {showProfileModal && currentUser && (
         <UserProfileModal
           currentUser={currentUser}
-          portfolioItems={schoolPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
+          portfolioItems={viewPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
           lang={lang}
           onSaveProfile={handleUpdateUserProfile}
           onAddPortfolioItem={handleAddPortfolioItem}
@@ -4203,7 +4343,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Data Import / Export Modal (Bulk CSV/Excel for Courses, Enrollment, Grades, Students, Teachers, Questions) */}
-      {showImportExportModal && (
+      {showImportExportModal && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
         <DataImportExportModal
           students={schoolStudents}
           teachers={schoolTeachers}
@@ -4237,18 +4377,16 @@ export const App: React.FC = () => {
           initialRoleView={guideModalInitialRoleView}
           lang={lang}
           currentRole={currentRole}
-          isMascotGuideEnabled={isMascotGuideEnabled}
-          onToggleMascotGuide={(next) => handleToggleMascotGuide(next)}
           onClose={() => setShowGuideModal(false)}
           onNavigateToModule={(mod) => {
             setShowGuideModal(false);
             if (mod === 'lms') {
-              setProgramMode('lms_classroom');
+              handleChangeProgramMode('lms_classroom');
             } else if (mod === 'parent_portal') {
-              setProgramMode('parent_portal');
+              handleChangeProgramMode('parent_portal');
             } else {
-              setProgramMode('school_erp');
-              setCurrentTab(mod as NavTab);
+              handleChangeProgramMode('school_erp');
+              navigateToAppTab(mod as NavTab);
             }
           }}
         />
@@ -4398,6 +4536,32 @@ export const App: React.FC = () => {
         onDismiss={() => {
           markCentralExamPopupSeen(activeSchool.id, buildCentralExamSignature(unclaimedCentralPacks));
           setShowCentralExamPopup(false);
+        }}
+      />
+
+      <ConfirmActionModal
+        isOpen={Boolean(confirmModal)}
+        title={confirmModal?.title || ''}
+        description={confirmModal?.description || ''}
+        detailNote={confirmModal?.detailNote}
+        confirmLabel={confirmModal?.confirmLabel || 'ยืนยัน'}
+        tone={confirmModal?.tone || 'danger'}
+        isBusy={isConfirmModalBusy}
+        onCancel={() => {
+          if (!isConfirmModalBusy) setConfirmModal(null);
+        }}
+        onConfirm={async () => {
+          if (!confirmModal) return;
+          setIsConfirmModalBusy(true);
+          try {
+            await confirmModal.onConfirm();
+            setConfirmModal(null);
+          } catch (error) {
+            setDataSyncError(error instanceof Error ? error.message : String(error));
+            setConfirmModal(null);
+          } finally {
+            setIsConfirmModalBusy(false);
+          }
         }}
       />
 

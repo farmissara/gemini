@@ -414,10 +414,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     currentUser?.role === 'teacher' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin' ? 'teacher' : 'student'
   );
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
-    ownStudent?.id || scopedStudents[0]?.id || students[0]?.id || 'stu-1'
+    ownStudent?.id || scopedStudents[0]?.id || (isRestrictedViewer ? '' : students[0]?.id || '')
   );
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(
-    ownTeacher?.id || teachers[0]?.id || 'tch-1'
+    ownTeacher?.id || teachers[0]?.id || ''
   );
   const [checkType, setCheckType] = useState<AttendanceCheckType>('check_in');
   const [selfieActionError, setSelfieActionError] = useState<string | null>(null);
@@ -989,9 +989,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     const selectedCourseObj = courses.find((c) => c.id === leaveCourseId);
     const substituteTeacherObj = teachers.find((t) => t.id === leaveSubstituteTeacherId);
 
+    const targetLeaveUserId = isSelfCheckin
+      ? loggedInProfile.targetId
+      : effectiveUserType === 'teacher'
+      ? (selectedTeacher?.id || '')
+      : (selectedStudent?.id || '');
+
+    if (!targetLeaveUserId) {
+      setLeaveErrorNotice(
+        effectiveUserType === 'teacher'
+          ? 'กรุณาเลือกบุคลากรก่อนส่งคำขอลา'
+          : 'กรุณาเลือกนักเรียนก่อนส่งคำขอลา'
+      );
+      return;
+    }
+
     const newLeave: LeaveRequest = {
       id: `leave-${Date.now()}`,
-      userId: isSelfCheckin ? loggedInProfile.targetId : (effectiveUserType === 'teacher' ? (selectedTeacher?.id || 'tch-1') : (selectedStudent?.id || 'stu-1')),
+      userId: targetLeaveUserId,
       userName: isSelfCheckin ? loggedInProfile.userName : activePersonName,
       userRole: isSelfCheckin ? (loggedInProfile.userType === 'student' ? 'student' : 'teacher') : effectiveUserType,
       gradeLevelOrDepartment: isSelfCheckin ? loggedInProfile.departmentOrRoom : activeDepartmentOrRoom,

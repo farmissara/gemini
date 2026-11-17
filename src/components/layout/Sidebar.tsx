@@ -42,6 +42,7 @@ import {
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone, getCategoryTone } from '../../lib/moduleTheme';
+import { SchoolPolicyId } from '../../lib/schoolPermissions';
 
 export type NavTab = 
   | 'super_admin_console'
@@ -95,6 +96,7 @@ interface SidebarProps {
   coordinationUnreadCount?: number;
   unclaimedCentralPacksCount?: number;
   featureFlags?: SchoolFeatureFlags;
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
   lang: AppLanguage;
   desktopCollapsed?: boolean;
   onToggleDesktopCollapse?: () => void;
@@ -132,6 +134,8 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'announcements',
 ]);
 
+const ARCADE_TABS = new Set<NavTab>(['games', 'boss_raid', 'study_streak', 'hall_of_fame']);
+
 const SIDEBAR_FOCUS_STORAGE_KEY = 'baanpakkru_sidebar_focus_mode';
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -145,6 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   coordinationUnreadCount = 0,
   unclaimedCentralPacksCount = 0,
   featureFlags,
+  schoolPermissions,
   lang,
   desktopCollapsed = false,
   onToggleDesktopCollapse,
@@ -189,7 +194,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  // Master Categories Definition
+  const isAllowedBySchoolPolicy = (tabId: NavTab): boolean => {
+    if (!schoolPermissions) return true;
+    if (currentRole === 'student') {
+      if (tabId === 'mobile_checkin' && schoolPermissions.student_self_checkin === false) return false;
+      if (ARCADE_TABS.has(tabId) && schoolPermissions.student_treasure_game === false) return false;
+      if (tabId === 'homework' && schoolPermissions.student_submit_homework === false) return false;
+      if (tabId === 'portfolio' && schoolPermissions.student_upload_portfolio === false) return false;
+      if (tabId === 'gradebook' && schoolPermissions.student_view_grades === false) return false;
+    }
+    if (currentRole === 'teacher') {
+      if (tabId === 'billing' && schoolPermissions.teacher_view_financials === false) return false;
+      if (tabId === 'behavior_sdq' && schoolPermissions.teacher_sdq_screening === false) return false;
+      if (tabId === 'infirmary' && schoolPermissions.teacher_infirmary_access === false) return false;
+      if ((tabId === 'attendance' || tabId === 'mobile_checkin') && schoolPermissions.teacher_attendance === false) return false;
+      if (tabId === 'homework' && schoolPermissions.teacher_homework === false) return false;
+    }
+    return true;
+  };
+
+  // Master Categories Definition (Consolidated: executive_monitor/warning in Dashboard, school_gps/permissions in System Settings)
   const categories: NavCategoryDef[] = useMemo(() => {
     const list: NavCategoryDef[] = [];
 
@@ -222,28 +246,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // Category 1: Academics & Directory
+    // Category 1: Core Classroom, Directory & Curriculum
     list.push({
       id: 'academics',
-      labelTh: 'วิชาการ & ทะเบียน',
-      labelEn: 'Academics & Directory',
+      labelTh: 'งานหลัก & ห้องเรียน',
+      labelEn: 'Core & Academics',
       shortLabelTh: 'วิชาการ',
       shortLabelEn: 'Academics',
       icon: GraduationCap,
       items: [
         {
           id: 'dashboard',
-          labelTh: 'แดชบอร์ดภาพรวม',
-          labelEn: 'Dashboard Overview',
+          labelTh: 'แดชบอร์ดหลักรวมศูนย์',
+          labelEn: 'Unified Dashboard',
           icon: LayoutDashboard,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
-        {
-          id: 'executive_monitor',
-          labelTh: 'แดชบอร์ดผู้บริหาร / มอนิเตอร์',
-          labelEn: 'Director Monitor',
-          icon: Monitor,
-          roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'students',
@@ -283,14 +300,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Award,
           roles: ['super_admin', 'admin', 'teacher'],
         },
+        {
+          id: 'homework',
+          labelTh: 'การบ้าน & ภาระงาน',
+          labelEn: 'Homework & Tasks',
+          icon: FileCheck2,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'central_exam_hub',
+          labelTh: 'คลังข้อสอบกลางมาตรฐาน',
+          labelEn: 'Central Exam Hub',
+          icon: BookOpen,
+          badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : null,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
       ],
     });
 
-    // Category 2: Student Care & Health
+    // Category 2: Student Care, Attendance & Health
     list.push({
       id: 'student_care',
-      labelTh: 'กิจการนักเรียน & สุขภาพ',
-      labelEn: 'Student Care & Health',
+      labelTh: 'เช็กชื่อ กิจการ & สุขภาพ',
+      labelEn: 'Attendance, Care & Health',
       shortLabelTh: 'กิจการ',
       shortLabelEn: 'Care',
       icon: HeartPulse,
@@ -336,19 +368,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // Category 3: Learning & Innovation
     list.push({
       id: 'innovation',
-      labelTh: 'นวัตกรรม & การเรียนรู้',
+      labelTh: 'การเรียนรู้ & นวัตกรรม',
       labelEn: 'Learning & Innovation',
-      shortLabelTh: 'การเรียนรู้',
-      shortLabelEn: 'Learning',
+      shortLabelTh: 'นวัตกรรม',
+      shortLabelEn: 'Innovation',
       icon: Sparkles,
       items: [
-        {
-          id: 'homework',
-          labelTh: 'การบ้าน & ภาระงาน',
-          labelEn: 'Homework & Tasks',
-          icon: FileCheck2,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
         {
           id: 'portfolio',
           labelTh: 'แฟ้มผลงานดิจิทัล',
@@ -357,31 +382,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
-          id: 'study_streak',
-          labelTh: 'สตรีคประจำวัน & ภารกิจการเรียน',
-          labelEn: 'Daily Study Streak',
-          icon: Flame,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
-        {
           id: 'socratic_tutor',
           labelTh: 'ติวเตอร์ปัญญาประดิษฐ์',
           labelEn: 'AI Socratic Tutor',
           icon: Sparkles,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
-        {
-          id: 'realworld_quests',
-          labelTh: 'เควสต์การเรียนรู้จากภาพถ่าย',
-          labelEn: 'Real-World Visual Quests',
-          icon: Camera,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
-        {
-          id: 'boss_raid',
-          labelTh: 'ภารกิจแก้โจทย์ท้าทายกลุ่ม',
-          labelEn: 'Co-op Challenge Quest',
-          icon: Swords,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
@@ -399,19 +403,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
+          id: 'realworld_quests',
+          labelTh: 'เควสต์การเรียนรู้จากภาพถ่าย',
+          labelEn: 'Real-World Visual Quests',
+          icon: Camera,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'study_streak',
+          labelTh: 'สตรีคประจำวัน & ภารกิจการเรียน',
+          labelEn: 'Daily Study Streak',
+          icon: Flame,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'boss_raid',
+          labelTh: 'ภารกิจแก้โจทย์ท้าทายกลุ่ม',
+          labelEn: 'Co-op Challenge Quest',
+          icon: Swords,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
           id: 'games',
           labelTh: 'เกมการเรียนรู้ฝึกสมอง',
           labelEn: 'Educational Arcade',
           icon: Swords,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
-        {
-          id: 'central_exam_hub',
-          labelTh: 'คลังข้อสอบกลางมาตรฐาน',
-          labelEn: 'Central Exam Hub',
-          icon: BookOpen,
-          badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : null,
-          roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'hall_of_fame',
@@ -423,55 +440,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 4: Administration & GPS Settings
-    list.push({
-      id: 'administration',
-      labelTh: 'การบริหารจัดการ & ระบบ',
-      labelEn: 'Administration & System',
-      shortLabelTh: 'การบริหาร',
-      shortLabelEn: 'Admin',
-      icon: SlidersHorizontal,
-      items: [
-        {
-          id: 'school_gps',
-          labelTh: 'ตั้งค่าพิกัด GPS โรงเรียน',
-          labelEn: 'School GPS Coordinates',
-          icon: MapPin,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'executive_warning',
-          labelTh: 'ระบบพยากรณ์ความเสี่ยง',
-          labelEn: 'Early Warning Analytics',
-          icon: ShieldAlert,
-          roles: ['super_admin', 'admin'],
-        },
-        {
-          id: 'school_permissions',
-          labelTh: 'กำหนดสิทธิ์บทบาทในโรงเรียน',
-          labelEn: 'School Role Permissions',
-          icon: SlidersHorizontal,
-          roles: ['super_admin', 'admin'],
-        },
-        {
-          id: 'admin_superadmin_desk',
-          labelTh: 'จดหมายประสานงานส่วนกลาง',
-          labelEn: 'Admin Desk',
-          icon: Mail,
-          badge: coordinationUnreadCount > 0 ? `${coordinationUnreadCount} ใหม่` : null,
-          roles: ['admin'],
-        },
-        {
-          id: 'system_settings',
-          labelTh: 'ตั้งค่าระบบ & การแจ้งเตือน',
-          labelEn: 'System Settings',
-          icon: MessageSquare,
-          roles: ['super_admin', 'admin'],
-        },
-      ],
-    });
-
-    // Category 5: Finance & Announcements
+    // Category 4: Finance & Announcements
     list.push({
       id: 'finance',
       labelTh: 'การเงิน & การสื่อสาร',
@@ -497,8 +466,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
+    // Category 5: Unified Administration & Settings Hub
+    list.push({
+      id: 'administration',
+      labelTh: 'ศูนย์ตั้งค่า & การประสานงาน',
+      labelEn: 'Settings & Admin Hub',
+      shortLabelTh: 'ตั้งค่า',
+      shortLabelEn: 'Settings',
+      icon: SlidersHorizontal,
+      items: [
+        {
+          id: 'admin_superadmin_desk',
+          labelTh: 'จดหมายประสานงานส่วนกลาง',
+          labelEn: 'Admin Desk',
+          icon: Mail,
+          badge: coordinationUnreadCount > 0 ? `${coordinationUnreadCount} ใหม่` : null,
+          roles: ['admin'],
+        },
+        {
+          id: 'system_settings',
+          labelTh: 'ศูนย์ตั้งค่าระบบ สิทธิ์ & GPS',
+          labelEn: 'Settings, Roles & GPS',
+          icon: SlidersHorizontal,
+          roles: ['super_admin', 'admin'],
+        },
+      ],
+    });
+
     return list;
-  }, [currentRole, isSuperAdminSchoolView, studentsCount, teachersCount, coursesCount]);
+  }, [currentRole, isSuperAdminSchoolView, studentsCount, teachersCount, coursesCount, coordinationUnreadCount, unclaimedCentralPacksCount]);
 
   // Search filtered items across all categories
   const searchResults = useMemo(() => {
@@ -509,6 +505,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       cat.items.forEach(item => {
         if (!item.roles.includes(currentRole)) return;
         if (!isTabEnabledByFeatureFlags(item.id, featureFlags)) return;
+        if (!isAllowedBySchoolPolicy(item.id)) return;
         if (
           item.labelTh.toLowerCase().includes(query) ||
           item.labelEn.toLowerCase().includes(query) ||
@@ -519,14 +516,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     });
     return results;
-  }, [searchFilter, categories, currentRole, featureFlags]);
+  }, [searchFilter, categories, currentRole, featureFlags, schoolPermissions]);
 
   const activeCatId = categories.find(c => c.items.some(i => i.id === currentTab))?.id;
   useEffect(() => {
     if (activeCatId) {
-      setCollapsed(Object.fromEntries(categories.map((category) => [category.id, category.id !== activeCatId])));
+      setCollapsed((prev) => {
+        if (prev[activeCatId] === false) return prev;
+        return { ...prev, [activeCatId]: false };
+      });
     }
-  }, [activeCatId, categories]);
+  }, [activeCatId]);
 
   const pinned = useMemo(() => {
     const ids: NavTab[] = currentRole === 'student'
@@ -536,9 +536,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       : ['dashboard', 'attendance', 'students', 'gradebook'];
     const all = categories.flatMap(c => c.items);
     return ids
-      .map(id => all.find(i => i.id === id && i.roles.includes(currentRole) && isTabEnabledByFeatureFlags(i.id, featureFlags)))
+      .map(id => all.find(i =>
+        i.id === id &&
+        i.roles.includes(currentRole) &&
+        isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+        isAllowedBySchoolPolicy(i.id)
+      ))
       .filter((i): i is NavItemDef => Boolean(i));
-  }, [categories, currentRole, featureFlags]);
+  }, [categories, currentRole, featureFlags, schoolPermissions]);
 
   const hiddenByFocusCount = useMemo(() => {
     if (!supportsFocusMode || !focusMode) return 0;
@@ -547,7 +552,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     categories.forEach((cat) => {
       cat.items.forEach((item) => {
         if (seen.has(item.id)) return;
-        if (!item.roles.includes(currentRole) || !isTabEnabledByFeatureFlags(item.id, featureFlags)) return;
+        if (!item.roles.includes(currentRole) || !isTabEnabledByFeatureFlags(item.id, featureFlags) || !isAllowedBySchoolPolicy(item.id)) return;
         seen.add(item.id);
         if (!FOCUS_TEACHER_TABS.has(item.id) && item.id !== currentTab) {
           hidden += 1;
@@ -555,32 +560,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     });
     return hidden;
-  }, [categories, currentRole, featureFlags, focusMode, supportsFocusMode, currentTab]);
+  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, currentTab]);
 
-  const toneOf = (id: NavTab) => getModuleTone(id);
   const pinnedIds = new Set(pinned.map(p => p.id));
 
   const renderItem = (item: NavItemDef, onClick?: () => void) => {
     const Icon = item.icon;
     const isActive = currentTab === item.id;
+    const isNumericBadge = Boolean(item.badge && /^\d+$/.test(String(item.badge)));
     return (
       <button
         key={item.id}
         type="button"
         data-nav-tab={item.id}
         onClick={() => { setCurrentTab(item.id); onClick?.(); }}
-        className={`w-full flex min-h-9 items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[12px] transition cursor-pointer ${
+        className={`${getModuleTone(item.id)} w-full flex min-h-9 items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[12px] transition cursor-pointer ${
           isActive
-            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
+            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
         <span className="flex items-center gap-2.5 truncate">
-          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
+          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--tone)]' : 'text-[var(--color-text-muted)]'}`} />
           <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
         </span>
-        {item.badge && !/^\d+$/.test(String(item.badge)) && (
-          <span className="shrink-0 text-[10px] font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
+        {item.badge && (
+          <span
+            className={`shrink-0 tabular-nums ${
+              isNumericBadge
+                ? 'text-[11px] font-medium text-[var(--color-text-muted)]'
+                : 'text-[10px] font-semibold text-rose-600 dark:text-rose-400'
+            }`}
+          >
             {item.badge}
           </span>
         )}
@@ -593,6 +604,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       cat.items.filter((i) =>
         i.roles.includes(currentRole) &&
         isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+        isAllowedBySchoolPolicy(i.id) &&
         (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
       )
     );
@@ -643,9 +655,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setCurrentTab(item.id)}
                 title={lang === 'th' ? item.labelTh : item.labelEn}
                 aria-label={lang === 'th' ? item.labelTh : item.labelEn}
-                className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                className={`${getModuleTone(item.id)} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                   isActive
-                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                    ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
                     : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                 }`}
               >
@@ -662,7 +674,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-60 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+    <aside className="w-66 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
       <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex items-center gap-1.5" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -751,12 +763,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   i.roles.includes(currentRole) &&
                   !pinnedIds.has(i.id) &&
                   isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+                  isAllowedBySchoolPolicy(i.id) &&
                   (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
               );
               if (items.length === 0) return null;
               const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
               const CategoryIcon = cat.icon;
               const isActiveCategory = cat.id === activeCatId;
+              const catTone = getCategoryTone(cat.id);
               return (
                 <div key={cat.id} className="space-y-1">
                   <button
@@ -764,13 +778,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     aria-expanded={!isCollapsed}
                     aria-controls={`sidebar-category-${cat.id}`}
                     onClick={() => {
-                      if (isCollapsed) {
-                        setCollapsed(Object.fromEntries(categories.map((category) => [category.id, category.id !== cat.id])));
-                      } else {
-                        setCollapsed((previous) => ({ ...previous, [cat.id]: true }));
-                      }
+                      setCollapsed((previous) => ({
+                        ...previous,
+                        [cat.id]: !(previous[cat.id] ?? cat.id !== activeCatId),
+                      }));
                     }}
-                    className={`w-full flex min-h-9 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
+                    className={`${catTone} w-full flex min-h-9 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
                       isActiveCategory
                         ? 'text-[var(--color-text-title)]'
                         : !isCollapsed
@@ -779,7 +792,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      <CategoryIcon className="h-3.5 w-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      <CategoryIcon className={`h-3.5 w-3.5 shrink-0 ${isActiveCategory ? 'text-[var(--tone)]' : 'text-[var(--color-text-muted)]'}`} />
                       <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
                     </span>
                     {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-60" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />}

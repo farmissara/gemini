@@ -23,7 +23,6 @@ import {
   Download,
   Printer,
 } from 'lucide-react';
-import { emitMascotDashboardEvent } from '../components/guide/InteractiveMascotGuide';
 import { 
   Student, 
   BehaviorRecord, 
@@ -38,38 +37,7 @@ import { getBehaviorDuplicateReasons, getSdqDuplicateReasons } from '../lib/dupl
 import { getLocalDateString } from '../lib/date';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
-
-const PaginatedTableRows = <T,>({
-  items,
-  colSpan,
-  renderRow,
-  pageSize = 8
-}: {
-  items: readonly T[];
-  colSpan: number;
-  renderRow: (item: T) => React.ReactNode;
-  pageSize?: number;
-}) => {
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  return (
-    <>
-      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
-      {pageCount > 1 && (
-        <tr>
-          <td colSpan={colSpan} className="p-2">
-            <div className="flex items-center justify-between">
-              <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-              <span className="text-[11px] text-[var(--color-text-muted)]">{currentPage + 1} / {pageCount}</span>
-              <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-};
+import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 
 interface BehaviorSdqViewProps {
   schoolId?: string;
@@ -362,17 +330,10 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    emitMascotDashboardEvent({
-      type: 'success',
-      titleTh: 'ส่งออกรายงาน SDQ แล้ว!',
-      titleEn: 'SDQ CSV Exported',
-      messageTh: `หมีจัดทำไฟล์สรุปผล SDQ พร้อมแนวทางดูแล ${filteredSdqList.length} รายการให้เรียบร้อย`,
-      messageEn: `Exported ${filteredSdqList.length} SDQ screening summaries with care recommendations.`,
-    });
   };
 
   return (
-    <div className={`${getModuleTone('behavior_sdq')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
+    <div className={`${getModuleTone('behavior_sdq')} space-y-3`}>
       {/* Compact Top Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">

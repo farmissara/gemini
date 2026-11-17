@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Home, 
   Clock, 
@@ -42,7 +42,9 @@ import {
   Lock,
   KeyRound,
   Trash2,
-  MoreHorizontal
+  MoreHorizontal,
+  ClipboardCheck,
+  Search
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -72,13 +74,21 @@ import {
   InfirmaryVisit,
   BehaviorRecord,
   SdqAssessment,
-  SchoolFeatureFlags
+  SchoolFeatureFlags,
+  TimetableSlot,
+  SchoolPeriodTime,
+  GradingSystem
 } from '../../types';
 import { getLocalDateString } from '../../lib/date';
+import { calculateGrade } from '../../lib/schoolSettings';
+import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
+import { slotHasTeacher } from '../../lib/timetableTeachers';
+import { SchoolPolicyId } from '../../lib/schoolPermissions';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
   isRestrictedAttendanceViewer,
+  resolveLinkedStudentsForUser,
   resolveOwnStudent,
 } from '../../lib/attendanceScope';
 import { MobileAttendanceView } from '../../views/MobileAttendanceView';
@@ -113,6 +123,8 @@ export type MobileTab =
   | 'executive'
   | 'checkin'
   | 'leave'
+  | 'gradebook'
+  | 'timetable'
   | 'games'
   | 'profile'
   | 'homework'
@@ -195,6 +207,12 @@ interface MobileAppShellProps {
   onAddQuestion: (q: QuizQuestion) => void;
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onUpdateStudent?: (student: Student) => void;
+  timetableSlots?: TimetableSlot[];
+  schoolPeriods?: SchoolPeriodTime[];
+  gradingSystem?: GradingSystem;
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
+  onUpdateGrade?: (gradeId: string, updates: Partial<GradeRecord>) => void;
+  onAddGrade?: (grade: GradeRecord, options?: { notify?: boolean }) => void;
   // Role-first Mobile & Desktop Continuity Props
   schools?: School[];
   isDemoMode?: boolean;
@@ -258,6 +276,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onAddQuestion,
   onImportQuestions,
   onUpdateStudent,
+  timetableSlots = [],
+  schoolPeriods = DEFAULT_SCHOOL_PERIODS,
+  gradingSystem = activeSchool.gradingSystem || 'thai',
+  schoolPermissions,
+  onUpdateGrade,
+  onAddGrade,
   schools = [],
   isDemoMode = false,
   coordinationUnreadCount = 0,
@@ -347,15 +371,83 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const [gameHubPage, setGameHubPage] = useState(0);
   const [profilePage, setProfilePage] = useState(0);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+
+  // Mobile Teacher Quick Gradebook state
+  const [mobileGradeCourseId, setMobileGradeCourseId] = useState<string>(courses[0]?.id || '');
+  const [mobileGradeSearch, setMobileGradeSearch] = useState('');
+  const [mobileGradeRoom, setMobileGradeRoom] = useState('all');
+  const [mobileGradeToast, setMobileGradeToast] = useState<string | null>(null);
+
+  // Mobile Timetable state
+  const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()] || 'mon';
+  const [selectedTimetableDay, setSelectedTimetableDay] = useState<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>(todayDayKey);
+  const [timetableOnlyMine, setTimetableOnlyMine] = useState<boolean>(currentRole === 'teacher');
+
+  useEffect(() => {
+    if (!mobileGradeCourseId && courses.length > 0) {
+      setMobileGradeCourseId(courses[0].id);
+    }
+  }, [courses, mobileGradeCourseId]);
+
+  useEffect(() => {
+    if (!isHeaderMenuOpen) return;
+    const handleOutside = (event: MouseEvent) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
+        setIsHeaderMenuOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsHeaderMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isHeaderMenuOpen]);
 
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const todayStr = getLocalDateString();
 
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
+  const linkedStudents = useMemo(
+    () => (isRestrictedViewer ? resolveLinkedStudentsForUser(currentUser, students) : students),
+    [currentUser, isRestrictedViewer, students]
+  );
   const ownStudent = resolveOwnStudent(currentUser, students);
-  const currentPersonId = ownStudent?.id || currentUser?.id || students[0]?.id;
+  const currentPersonId = ownStudent?.id || currentUser?.id;
   const scopedAttendance = filterAttendanceForUser(attendance, currentUser, students);
   const todayCheckin = scopedAttendance.find(a => a.date === todayStr);
+
+  // Enforce school-level role policies at runtime on mobile
+  const canSelfCheckin =
+    currentRole === 'student'
+      ? schoolPermissions?.student_self_checkin !== false
+      : currentRole === 'teacher'
+      ? schoolPermissions?.teacher_attendance !== false
+      : true;
+  const canPlayGames =
+    currentRole === 'student' ? schoolPermissions?.student_treasure_game !== false : true;
+  const canEditGradesMobile =
+    currentRole === 'admin' ||
+    currentRole === 'super_admin' ||
+    (currentRole === 'teacher' && schoolPermissions?.teacher_grade_entry !== false);
+  const canAccessHomework =
+    currentRole === 'student'
+      ? schoolPermissions?.student_submit_homework !== false
+      : currentRole === 'teacher'
+      ? schoolPermissions?.teacher_homework !== false
+      : true;
+  const canViewFinancialsMobile =
+    currentRole === 'admin' ||
+    currentRole === 'super_admin' ||
+    currentRole === 'parent' ||
+    (currentRole === 'teacher' && schoolPermissions?.teacher_view_financials !== false);
 
   // Scoped leave requests (students/parents see ONLY their own leave counts)
   const myLeaves = isRestrictedViewer
@@ -364,13 +456,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const pendingLeavesCount = myLeaves.filter(l => l.status === 'pending').length;
 
   // Pending homework
-  const myCompletedSubmissions = new Set(homeworkSubmissions.filter(h => h.studentId === currentPersonId).map(h => h.assignmentId));
+  const myCompletedSubmissions = new Set(homeworkSubmissions.filter(h => currentPersonId && h.studentId === currentPersonId).map(h => h.assignmentId));
   const pendingHomeworkCount = assignments.filter(a => !myCompletedSubmissions.has(a.id)).length;
 
   const currentScore = playerScores.find(p => p.userId === currentUser?.id) || {
     exp: 1450,
     gems: 45,
-    rankTitle: 'Silver Scholar ⚔️',
+    rankTitle: 'Silver Scholar',
     battleWins: 12,
     streak: 3
   };
@@ -457,61 +549,66 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               </button>
             )}
 
-            <details className="relative">
-              <summary
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] list-none cursor-pointer [&::-webkit-details-marker]:hidden"
+            <div ref={headerMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
+                aria-expanded={isHeaderMenuOpen}
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                 aria-label={lang === 'th' ? 'เมนูเพิ่มเติม' : 'Menu'}
               >
                 <MoreHorizontal className="w-5 h-5" />
-              </summary>
-              <div className="absolute right-0 top-12 z-50 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    onSwitchToDesktopMode();
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Laptop className="w-4 h-4 text-[var(--color-text-muted)]" />
-                  <span>{lang === 'th' ? 'สลับมุมมองคอมพิวเตอร์' : 'Desktop View'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    setLang(lang === 'th' ? 'en' : 'th');
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <span className="flex items-center gap-2"><Globe className="w-4 h-4 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ภาษา' : 'Language'}</span>
-                  <span className="font-mono text-xs text-[var(--color-text-muted)]">{lang.toUpperCase()}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    setThemePalette(isLight ? 'sapphire' : 'light_sky');
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  {isLight ? <Moon className="w-4 h-4 text-[var(--color-text-muted)]" /> : <Sun className="w-4 h-4 text-[var(--color-text-muted)]" />}
-                  <span>{isLight ? (lang === 'th' ? 'โหมดกลางคืน' : 'Dark Mode') : (lang === 'th' ? 'โหมดสว่าง' : 'Light Mode')}</span>
-                </button>
-                <div className="my-1 border-t border-[var(--color-border)]" />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.closest('details')?.removeAttribute('open');
-                    onLogout();
-                  }}
-                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
-                </button>
-              </div>
-            </details>
+              </button>
+              {isHeaderMenuOpen && (
+                <div className="absolute right-0 top-12 z-50 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      onSwitchToDesktopMode();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <Laptop className="w-4 h-4 text-[var(--color-text-muted)]" />
+                    <span>{lang === 'th' ? 'สลับมุมมองคอมพิวเตอร์' : 'Desktop View'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      setLang(lang === 'th' ? 'en' : 'th');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2"><Globe className="w-4 h-4 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ภาษา' : 'Language'}</span>
+                    <span className="font-mono text-xs text-[var(--color-text-muted)]">{lang.toUpperCase()}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      setThemePalette(isLight ? 'sapphire' : 'light_warm');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    {isLight ? <Moon className="w-4 h-4 text-[var(--color-text-muted)]" /> : <Sun className="w-4 h-4 text-[var(--color-text-muted)]" />}
+                    <span>{isLight ? (lang === 'th' ? 'โหมดกลางคืน' : 'Dark Mode') : (lang === 'th' ? 'โหมดสว่าง' : 'Light Mode')}</span>
+                  </button>
+                  <div className="my-1 border-t border-[var(--color-border)]" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -574,11 +671,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 {/* 1 Large Primary Action Button */}
                 <button
                   type="button"
-                  onClick={() => setActiveTab('checkin')}
+                  onClick={() => setActiveTab(canSelfCheckin ? 'checkin' : 'timetable')}
                   className="w-full min-h-[56px] px-5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-base flex items-center justify-between transition active:scale-[0.99] cursor-pointer"
                 >
                   <span>
-                    {currentRole === 'teacher'
+                    {!canSelfCheckin
+                      ? (lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today Timetable')
+                      : currentRole === 'teacher'
                       ? (lang === 'th' ? 'เช็คชื่อเข้าสอน' : 'Class Check-in')
                       : currentRole === 'parent'
                       ? (lang === 'th' ? 'ดูเวลาเข้า-ออกบุตรหลาน' : 'Child Attendance')
@@ -589,6 +688,40 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
                 {/* Single-line Clean List Rows (Zero explanatory subtitles, generous breathing room) */}
                 <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                  {(currentRole === 'teacher' || currentRole === 'student') && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('timetable')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {currentRole === 'teacher'
+                          ? (lang === 'th' ? 'ตารางสอนวันนี้' : 'Today Teaching Schedule')
+                          : (lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today Timetable')}
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                        {timetableSlots.filter((s) => s.dayOfWeek === todayDayKey).length} {lang === 'th' ? 'คาบ' : 'slots'}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
+
+                  {currentRole === 'teacher' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('gradebook')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
+                        {lang === 'th' ? 'กรอกคะแนน ปพ.5 ด่วน' : 'Quick Gradebook (PP.5)'}
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                        {courses.length} {lang === 'th' ? 'วิชา' : 'courses'}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
+
                   {currentRole === 'teacher' && (
                     <button
                       type="button"
@@ -630,20 +763,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </span>
                   </button>
 
-                  {currentRole === 'teacher' && onJumpToDesktopTab && (
-                    <button
-                      type="button"
-                      onClick={() => onJumpToDesktopTab('gradebook')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'กรอกคะแนน ปพ.5' : 'Gradebook'}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                    </button>
-                  )}
-
-                  {currentRole === 'student' && (
+                  {currentRole === 'student' && canAccessHomework && (
                     <button
                       type="button"
                       onClick={() => setActiveTab('homework')}
@@ -659,7 +779,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </button>
                   )}
 
-                  {(currentRole === 'student' || currentRole === 'teacher') && (
+                  {(currentRole === 'teacher' || (currentRole === 'student' && canPlayGames)) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -749,29 +869,28 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         {/* TAB EXECUTIVE: CLEAN, MOBILE-FIRST DIRECTOR DASHBOARD */}
         {activeTab === 'executive' && (
           <div className="flex flex-col gap-3 py-1 animate-in fade-in duration-200">
-            {/* Header Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white shadow-lg space-y-2">
+            {/* Header Card (Clean semantic token surface) */}
+            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] flex items-center justify-center font-bold shrink-0">
                     <Monitor className="w-4 h-4" />
                   </div>
-                  <div>
-                    <h2 className="text-sm font-black flex items-center gap-1.5">
-                      <span>แดชบอร์ดสรุปผู้บริหาร</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-semibold">ผอ. / MIS</span>
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'แดชบอร์ดสรุปผู้บริหาร · ผอ. / MIS' : 'Executive Summary · MIS'}
                     </h2>
-                    <p className="text-[11px] text-slate-300">{activeSchool.nameTh || activeSchool.nameEn}</p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">{activeSchool.nameTh || activeSchool.nameEn}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onSwitchToDesktopMode}
-                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
-                  title="สลับไปจอทีวีห้องผู้บริหารขนาดเต็ม"
+                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
+                  title="สลับไปมุมมองคอมพิวเตอร์"
                 >
-                  <Laptop className="w-3 h-3" />
-                  <span>จอทีวี</span>
+                  <Laptop className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'จอใหญ่' : 'Desktop'}</span>
                 </button>
               </div>
             </div>
@@ -832,7 +951,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
               </div>
 
-              {/* Card 4: Finance */}
+              {/* Card 4: Finance (Respects teacher_view_financials) */}
+              {canViewFinancialsMobile && (
               <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ยอดจัดเก็บค่าเทอม</span>
@@ -841,14 +961,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   </div>
                 </div>
                 <div>
-                  <div className="text-xl font-black text-blue-700 dark:text-blue-400 font-mono">
+                  <div className="text-xl font-black text-blue-700 dark:text-blue-400 font-mono tabular-nums">
                     ฿{execMetrics.totalCollected.toLocaleString()}
                   </div>
-                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
                     ค้างชำระ {execMetrics.pendingCount} ใบเสร็จ
                   </p>
                 </div>
               </div>
+              )}
             </div>
 
             {/* School Composition Summary */}
@@ -965,16 +1086,369 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           </div>
         )}
 
+        {/* TAB: TEACHER QUICK GRADEBOOK (ปพ.5 มือถือ) */}
+        {activeTab === 'gradebook' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('home')}
+                className="min-h-[40px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
+              </button>
+              <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'กรอกคะแนน ปพ.5 ด่วน' : 'Quick Gradebook'}
+              </h2>
+            </div>
+
+            {!canEditGradesMobile && (
+              <div className="p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-xs text-amber-900 dark:text-amber-200">
+                {lang === 'th'
+                  ? 'สิทธิ์การแก้ไขคะแนนถูกจำกัดโดยผู้บริหารโรงเรียน (แสดงผลแบบอ่านอย่างเดียว)'
+                  : 'Grade editing is restricted by school policy (read-only mode).'}
+              </div>
+            )}
+
+            {mobileGradeToast && (
+              <div role="status" className="p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span className="truncate">{mobileGradeToast}</span>
+              </div>
+            )}
+
+            <div className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'เลือกรายวิชา' : 'Select Course'}
+                </label>
+                <select
+                  value={mobileGradeCourseId}
+                  onChange={(e) => setMobileGradeCourseId(e.target.value)}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} · {lang === 'th' ? c.titleTh : c.titleEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={mobileGradeSearch}
+                    onChange={(e) => setMobileGradeSearch(e.target.value)}
+                    placeholder={lang === 'th' ? 'ค้นหาชื่อ / รหัสนักเรียน' : 'Search student...'}
+                    className="w-full min-h-[44px] pl-8 pr-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden"
+                  />
+                </div>
+                <select
+                  value={mobileGradeRoom}
+                  onChange={(e) => setMobileGradeRoom(e.target.value)}
+                  className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] focus:outline-hidden"
+                >
+                  <option value="all">{lang === 'th' ? 'ทุกห้องเรียน' : 'All Rooms'}</option>
+                  {[...new Set(students.map((s) => `${s.gradeLevel} ${s.room}`.trim()).filter(Boolean))].map((roomLabel) => (
+                    <option key={roomLabel} value={roomLabel}>{roomLabel}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {(() => {
+              const selectedCourse = courses.find((c) => c.id === mobileGradeCourseId) || courses[0];
+              if (!selectedCourse) {
+                return (
+                  <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'ยังไม่มีรายวิชาในโรงเรียน' : 'No courses available'}
+                  </div>
+                );
+              }
+              const enrolledSet = new Set(selectedCourse.enrolledStudentIds || []);
+              const baseStudents =
+                enrolledSet.size > 0
+                  ? students.filter((s) => enrolledSet.has(s.id))
+                  : students;
+              const filteredStudents = baseStudents.filter((s) => {
+                const roomLabel = `${s.gradeLevel} ${s.room}`.trim();
+                if (mobileGradeRoom !== 'all' && roomLabel !== mobileGradeRoom) return false;
+                if (mobileGradeSearch.trim()) {
+                  const q = mobileGradeSearch.toLowerCase();
+                  const hay = `${s.firstNameTh} ${s.lastNameTh} ${s.studentIdNumber} ${s.room}`.toLowerCase();
+                  return hay.includes(q);
+                }
+                return true;
+              });
+
+              const updateStudentCourseScore = (
+                student: Student,
+                existingGrade: GradeRecord | undefined,
+                field: 'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore',
+                rawValue: number
+              ) => {
+                if (!canEditGradesMobile) return;
+                const maxMap = { midtermScore: 30, finalScore: 40, assignmentScore: 20, quizScore: 10 } as const;
+                const clamped = Math.max(0, Math.min(maxMap[field], Number.isFinite(rawValue) ? Math.round(rawValue) : 0));
+                const nextMidterm = field === 'midtermScore' ? clamped : existingGrade?.midtermScore ?? 0;
+                const nextFinal = field === 'finalScore' ? clamped : existingGrade?.finalScore ?? 0;
+                const nextAssignment = field === 'assignmentScore' ? clamped : existingGrade?.assignmentScore ?? 0;
+                const nextQuiz = field === 'quizScore' ? clamped : existingGrade?.quizScore ?? 0;
+                const totalScore = Math.min(100, nextMidterm + nextFinal + nextAssignment + nextQuiz);
+                const graded = calculateGrade(totalScore, gradingSystem);
+
+                if (existingGrade && onUpdateGrade) {
+                  onUpdateGrade(existingGrade.id, {
+                    [field]: clamped,
+                    totalScore,
+                    letterGrade: graded.letter,
+                    gradePoint: graded.point,
+                  });
+                } else if (onAddGrade) {
+                  onAddGrade({
+                    id: `grd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    schoolId: activeSchool.id,
+                    studentId: student.id,
+                    courseId: selectedCourse.id,
+                    academicYear: activeSchool.academicYear || '2568',
+                    semester: activeSchool.currentSemester || '1',
+                    midtermScore: nextMidterm,
+                    finalScore: nextFinal,
+                    assignmentScore: nextAssignment,
+                    quizScore: nextQuiz,
+                    totalScore,
+                    letterGrade: graded.letter,
+                    gradePoint: graded.point,
+                  });
+                }
+                setMobileGradeToast(
+                  lang === 'th'
+                    ? `บันทึก ${student.firstNameTh} · รวม ${totalScore} (${graded.letter})`
+                    : `Saved ${student.firstNameEn} · ${totalScore} (${graded.letter})`
+                );
+                window.setTimeout(() => setMobileGradeToast(null), 2200);
+              };
+
+              return (
+                <PagedList
+                  items={filteredStudents}
+                  pageSize={5}
+                  previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
+                  nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
+                  paginationLabel={lang === 'th' ? 'หน้าคะแนนนักเรียน' : 'Gradebook pages'}
+                  emptyState={
+                    <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+                      {lang === 'th' ? 'ไม่พบนักเรียนที่ตรงกับตัวกรอง' : 'No matching students'}
+                    </div>
+                  }
+                  renderItem={(stu) => {
+                    const grade = grades.find((g) => g.courseId === selectedCourse.id && g.studentId === stu.id);
+                    const midterm = grade?.midtermScore ?? 0;
+                    const finalScore = grade?.finalScore ?? 0;
+                    const assignment = grade?.assignmentScore ?? 0;
+                    const quiz = grade?.quizScore ?? 0;
+                    const total = grade?.totalScore ?? 0;
+                    const letter = grade?.letterGrade ?? '-';
+                    return (
+                      <div key={stu.id} className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                              {stu.firstNameTh} {stu.lastNameTh}
+                            </p>
+                            <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
+                              {stu.studentIdNumber} · {stu.gradeLevel} {stu.room}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0 tabular-nums">
+                            <span className="text-base font-extrabold font-mono text-[var(--color-primary-text)]">{total}</span>
+                            <span className="text-xs font-bold text-[var(--color-text-muted)] ml-1.5">({letter})</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {(
+                            [
+                              { field: 'midtermScore', label: 'กลาง/30', max: 30, value: midterm },
+                              { field: 'finalScore', label: 'ปลาย/40', max: 40, value: finalScore },
+                              { field: 'assignmentScore', label: 'งาน/20', max: 20, value: assignment },
+                              { field: 'quizScore', label: 'สอบ/10', max: 10, value: quiz },
+                            ] as const
+                          ).map((cell) => (
+                            <label key={cell.field} className="p-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-center block">
+                              <span className="block text-[10px] text-[var(--color-text-muted)] font-medium">{cell.label}</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={cell.max}
+                                disabled={!canEditGradesMobile}
+                                value={cell.value}
+                                onChange={(e) => updateStudentCourseScore(stu, grade, cell.field, Number(e.target.value))}
+                                className="w-full min-h-[36px] text-center text-sm font-mono font-bold tabular-nums text-[var(--color-text-title)] bg-transparent disabled:opacity-60 focus:outline-hidden"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+              );
+            })()}
+          </div>
+        )}
+
+        {/* TAB: MOBILE TIMETABLE TODAY (ตารางสอน/เรียนวันนี้) */}
+        {activeTab === 'timetable' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('home')}
+                className="min-h-[40px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
+              </button>
+              <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                {currentRole === 'teacher'
+                  ? (lang === 'th' ? 'ตารางสอนประจำวัน' : 'Teaching Schedule')
+                  : (lang === 'th' ? 'ตารางเรียนประจำวัน' : 'Class Timetable')}
+              </h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                {(
+                  [
+                    { id: 'mon', th: 'จ.', en: 'Mon' },
+                    { id: 'tue', th: 'อ.', en: 'Tue' },
+                    { id: 'wed', th: 'พ.', en: 'Wed' },
+                    { id: 'thu', th: 'พฤ.', en: 'Thu' },
+                    { id: 'fri', th: 'ศ.', en: 'Fri' },
+                    { id: 'sat', th: 'ส.', en: 'Sat' },
+                    { id: 'sun', th: 'อา.', en: 'Sun' },
+                  ] as const
+                ).map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setSelectedTimetableDay(d.id)}
+                    className={`min-h-[36px] px-3 rounded-lg text-xs font-semibold cursor-pointer transition whitespace-nowrap ${
+                      selectedTimetableDay === d.id
+                        ? 'bg-[var(--color-primary)] text-white'
+                        : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                    }`}
+                  >
+                    {lang === 'th' ? d.th : d.en}
+                  </button>
+                ))}
+              </div>
+
+              {currentRole === 'teacher' && (
+                <button
+                  type="button"
+                  onClick={() => setTimetableOnlyMine((prev) => !prev)}
+                  className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold cursor-pointer whitespace-nowrap ${
+                    timetableOnlyMine
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
+                  }`}
+                >
+                  {timetableOnlyMine ? (lang === 'th' ? 'คาบฉัน' : 'Mine') : (lang === 'th' ? 'ทั้งหมด' : 'All')}
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              const teacherName = currentUser?.fullNameTh || currentUser?.fullNameEn || '';
+              const daySlots = timetableSlots
+                .filter((s) => s.dayOfWeek === selectedTimetableDay)
+                .filter((s) => {
+                  if (currentRole === 'teacher' && timetableOnlyMine && teacherName) {
+                    return slotHasTeacher(s, teacherName);
+                  }
+                  if (currentRole === 'student' && ownStudent) {
+                    const studentRoom = (ownStudent.room || '').trim();
+                    const linkedCourse = courses.find((c) => c.id === s.courseId);
+                    const enrolledInCourse = linkedCourse?.enrolledStudentIds?.includes(ownStudent.id);
+                    const matchesRoom =
+                      !s.classRoom ||
+                      !studentRoom ||
+                      s.classRoom.includes(studentRoom) ||
+                      s.classRoom.includes(ownStudent.gradeLevel);
+                    return Boolean(enrolledInCourse || matchesRoom);
+                  }
+                  return true;
+                })
+                .slice()
+                .sort((a, b) => a.periodNumber - b.periodNumber);
+
+              if (daySlots.length === 0) {
+                return (
+                  <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-muted)] space-y-2">
+                    <Calendar className="w-8 h-8 mx-auto opacity-60" />
+                    <p>{lang === 'th' ? 'ไม่มีคาบเรียนในวันที่เลือก' : 'No scheduled periods for this day'}</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2.5">
+                  {daySlots.map((slot) => {
+                    const periodDef = schoolPeriods.find((p) => p.periodNumber === slot.periodNumber);
+                    const course = courses.find((c) => c.id === slot.courseId);
+                    return (
+                      <div key={slot.id} className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-3">
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2 text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums">
+                            <span>{lang === 'th' ? `คาบที่ ${slot.periodNumber}` : `Period ${slot.periodNumber}`}</span>
+                            <span aria-hidden="true">·</span>
+                            <span>{slot.startTime || periodDef?.startTime || '--:--'} - {slot.endTime || periodDef?.endTime || '--:--'}</span>
+                          </div>
+                          <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                            {lang === 'th'
+                              ? (course?.titleTh || slot.courseTitleTh || slot.courseCode || course?.code || 'รายวิชา')
+                              : (course?.titleEn || slot.courseTitleEn || slot.courseCode || course?.code || 'Course')}
+                          </h3>
+                          <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                            {slot.classRoom || ''} {slot.room ? `· ${slot.room}` : ''}
+                          </p>
+                        </div>
+
+                        {currentRole === 'teacher' && canSelfCheckin && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('checkin')}
+                            className="min-h-[44px] px-3 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer hover:opacity-90"
+                          >
+                            <ClipboardCheck className="w-4 h-4" />
+                            <span>{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* TAB D: GAMES HUB (เมนูรวมเกมส์) */}
         {activeTab === 'games' && (
           <div className="animate-in fade-in duration-200 space-y-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-700 via-rose-700 to-indigo-800 text-white shadow-lg space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold text-amber-100">
-                <span>🎮 ศูนย์รวมเกมส์ & สนามประลอง</span>
+            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--color-primary-text)] tabular-nums">
+                <span>ศูนย์รวมเกมส์ & สนามประลอง</span>
                 <span>EXP: {currentScore.exp}</span>
               </div>
-              <h2 className="text-base font-black">เลือกเกมเพื่อเริ่มเล่น (โหมดอาร์เคดเต็มจอ)</h2>
-              <p className="text-[11px] text-slate-100">สนามประลองปัญญาและแล็บจำลอง โหมดเกมตอบสด หน้าจออาร์เคดกระชับ ไร้ความรก</p>
+              <h2 className="text-base font-bold text-[var(--color-text-title)]">เลือกเกมเพื่อเริ่มเล่น (โหมดอาร์เคดเต็มจอ)</h2>
+              <p className="text-[11px] text-[var(--color-text-muted)]">สนามประลองปัญญาและแล็บจำลอง โหมดเกมตอบสด หน้าจออาร์เคดกระชับ</p>
             </div>
 
             <div className="space-y-2.5">
@@ -984,21 +1458,21 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveGameView('arcade_studio')}
-                    className="w-full p-4 rounded-2xl border-2 border-cyan-500/70 bg-gradient-to-r from-cyan-950/60 via-indigo-950/60 to-slate-900 hover:border-cyan-400 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-md cursor-pointer"
+                    className="w-full p-4 rounded-2xl border-2 border-[var(--color-primary)] bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center font-bold shrink-0">
+                      <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shrink-0">
                         <Sparkles className="w-6 h-6" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-black text-sm text-white">EduArcade ศูนย์เกม 7 สไตล์</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-black">NEW • 8 สาระ</span>
+                          <h3 className="font-bold text-sm text-[var(--color-text-title)]">EduArcade ศูนย์เกม 7 สไตล์</h3>
+                          <span className="text-[11px] font-bold text-[var(--color-primary-text)]">· 8 สาระ</span>
                         </div>
-                        <p className="text-xs text-cyan-100/80 mt-0.5">ยิงอุกกาบาตสมการ จับคู่ 8 สาระ ต่อคำศัพท์ ChronoSort &amp; ภารกิจรายวัน</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">ยิงอุกกาบาตสมการ จับคู่ 8 สาระ ต่อคำศัพท์ ChronoSort &amp; ภารกิจรายวัน</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-cyan-300 shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
                   </button>
 
                   {/* Game 1: 3D EduArena Battle Royale */}
@@ -1150,7 +1624,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <div className="space-y-4 animate-in fade-in duration-200">
             {profilePage === 0 && (
               <DigitalIdCardView
-                students={currentRole === 'student' && ownStudent ? [ownStudent] : students}
+                students={isRestrictedViewer ? linkedStudents : students}
                 school={activeSchool}
                 lang={lang}
                 currentRole={currentRole}
@@ -1183,23 +1657,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     <button
                       type="button"
                       onClick={() => setThemePalette('light_warm')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_warm' ? 'bg-amber-400 text-slate-950 font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${isLight ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
                     >
-                      อบอุ่น
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setThemePalette('light_sky')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'light_sky' ? 'bg-[var(--color-primary)] text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
-                    >
-                      ฟ้าคราม
+                      {lang === 'th' ? 'สว่าง' : 'Light'}
                     </button>
                     <button
                       type="button"
                       onClick={() => setThemePalette('sapphire')}
-                      className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${themePalette === 'sapphire' ? 'bg-indigo-700 text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${!isLight ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
                     >
-                      มืดคราม
+                      {lang === 'th' ? 'มืดคราม' : 'Dark'}
                     </button>
                   </div>
                 </div>
@@ -1596,19 +2063,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             </span>
           </button>
 
-          {/* SLOT 2: CHECK-IN (All roles) */}
+          {/* SLOT 2: CHECK-IN (or Timetable for student when self check-in is disabled) */}
           <button
             type="button"
-            onClick={() => setActiveTab('checkin')}
+            onClick={() => setActiveTab(canSelfCheckin ? 'checkin' : 'timetable')}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'checkin' || activeTab === 'leave'
+              activeTab === 'checkin' || activeTab === 'leave' || (!canSelfCheckin && activeTab === 'timetable')
                 ? 'text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <Clock className="w-5 h-5 mb-0.5" />
+            {canSelfCheckin ? <Clock className="w-5 h-5 mb-0.5" /> : <Calendar className="w-5 h-5 mb-0.5" />}
             <span className="text-[11px] truncate max-w-full">
-              {currentRole === 'parent' ? (lang === 'th' ? 'มาเรียน' : 'Logs') : (lang === 'th' ? 'เช็คชื่อ' : 'Check-in')}
+              {!canSelfCheckin
+                ? (lang === 'th' ? 'ตารางเรียน' : 'Schedule')
+                : currentRole === 'parent'
+                ? (lang === 'th' ? 'มาเรียน' : 'Logs')
+                : (lang === 'th' ? 'เช็คชื่อ' : 'Check-in')}
             </span>
           </button>
 
@@ -1645,15 +2116,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           ) : currentRole === 'teacher' ? (
             <button
               type="button"
-              onClick={() => setActiveTab('homework')}
+              onClick={() => setActiveTab('gradebook')}
               className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'homework'
+                activeTab === 'gradebook'
                   ? 'text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
-              <BookOpen className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'การบ้าน' : 'Tasks'}</span>
+              <ClipboardCheck className="w-5 h-5 mb-0.5" />
+              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'คะแนน' : 'Grades'}</span>
             </button>
           ) : currentRole === 'parent' ? (
             <button
@@ -1672,17 +2143,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <button
               type="button"
               onClick={() => {
-                setActiveTab('games');
-                setActiveGameView('hub');
+                if (canPlayGames) {
+                  setActiveTab('games');
+                  setActiveGameView('hub');
+                } else {
+                  setActiveTab('homework');
+                }
               }}
               className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'games'
+                (canPlayGames ? activeTab === 'games' : activeTab === 'homework')
                   ? 'text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
-              <Gamepad2 className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'เกมส์' : 'Arcade'}</span>
+              {canPlayGames ? <Gamepad2 className="w-5 h-5 mb-0.5" /> : <BookOpen className="w-5 h-5 mb-0.5" />}
+              <span className="text-[11px] truncate max-w-full">
+                {canPlayGames ? (lang === 'th' ? 'เกมส์' : 'Arcade') : (lang === 'th' ? 'การบ้าน' : 'Tasks')}
+              </span>
             </button>
           )}
 

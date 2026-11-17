@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Compass, Play, Power } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Compass, Play, Power, X } from 'lucide-react';
 import { AppLanguage, UserRole } from '../../types';
 import { MODULE_GUIDED_TOURS, ModuleTourStep, resolveTourStepsForPage } from '../../data/moduleGuidedTours';
 
@@ -57,6 +57,19 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
     }
   }, [isGuideEnabled]);
 
+  useEffect(() => {
+    if (activeTourSteps.length === 0) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveTourModuleId(null);
+        setActiveTourSteps([]);
+        setActiveTourStepIndex(0);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTourSteps.length]);
+
   const toggleGuideEnabled = useCallback(() => {
     onSetGuideEnabled(!isGuideEnabled);
   }, [isGuideEnabled, onSetGuideEnabled]);
@@ -66,7 +79,6 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
       if (!isGuideEnabled) {
         onSetGuideEnabled(true);
       }
-      // Allow DOM a tick if guide was just toggled ON
       const { steps } = resolveTourStepsForPage(moduleId, currentRole, lang);
       if (steps.length === 0) return false;
       setActiveTourModuleId(moduleId);
@@ -139,7 +151,89 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
     ]
   );
 
-  return <GuideTourContext.Provider value={value}>{children}</GuideTourContext.Provider>;
+  const currentStep = activeTourSteps[activeTourStepIndex] || null;
+
+  return (
+    <GuideTourContext.Provider value={value}>
+      {children}
+      {currentStep && (
+        <aside
+          role="dialog"
+          aria-label={lang === 'th' ? 'คำแนะนำการใช้งานทีละขั้นตอน' : 'Step-by-step guide'}
+          className="fixed bottom-4 right-4 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-4 space-y-3 print:hidden animate-in fade-in duration-150"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                <Compass className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums">
+                  {lang === 'th' ? 'ขั้นตอนที่' : 'Step'} {activeTourStepIndex + 1} / {activeTourSteps.length}
+                </div>
+                <h4 className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                  {lang === 'th' ? currentStep.titleTh : currentStep.titleEn}
+                </h4>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={endTour}
+              aria-label={lang === 'th' ? 'ปิดทัวร์แนะนำ' : 'Close tour'}
+              className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+            {lang === 'th' ? currentStep.descriptionTh : currentStep.descriptionEn}
+          </p>
+
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
+            <button
+              type="button"
+              onClick={prevTourStep}
+              disabled={activeTourStepIndex === 0}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-body)] disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'ก่อนหน้า' : 'Prev'}</span>
+            </button>
+
+            <div className="flex items-center gap-1">
+              {activeTourSteps.map((step, index) => (
+                <button
+                  key={`${step.id || step.titleTh}-${index}`}
+                  type="button"
+                  onClick={() => goToTourStep(index)}
+                  aria-label={`Step ${index + 1}`}
+                  className={`h-1.5 rounded-full transition cursor-pointer ${
+                    index === activeTourStepIndex
+                      ? 'w-4 bg-[var(--color-primary)]'
+                      : 'w-1.5 bg-[var(--color-border)] hover:bg-[var(--color-text-muted)]'
+                  }`}
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={nextTourStep}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold hover:opacity-95 transition cursor-pointer"
+            >
+              <span>
+                {activeTourStepIndex + 1 >= activeTourSteps.length
+                  ? lang === 'th' ? 'เสร็จสิ้น' : 'Done'
+                  : lang === 'th' ? 'ถัดไป' : 'Next'}
+              </span>
+              {activeTourStepIndex + 1 < activeTourSteps.length && <ChevronRight className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </aside>
+      )}
+    </GuideTourContext.Provider>
+  );
 };
 
 export function useGuideTour() {

@@ -33,7 +33,8 @@ import {
   KeyRound,
   GraduationCap,
   Upload,
-  Trash2
+  Trash2,
+  Shield
 } from 'lucide-react';
 import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, SchoolTier } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
@@ -48,12 +49,25 @@ import {
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLoginSettingsCard';
+import { SchoolPermissionSettingsView } from './SchoolPermissionSettingsView';
 import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { getAuditLogs } from '../lib/auditLog';
 import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+
+export type SystemSettingsTab =
+  | 'line_events'
+  | 'line_connection'
+  | 'preview_simulator'
+  | 'subscribers'
+  | 'school_general'
+  | 'school_gps'
+  | 'school_permissions'
+  | 'student_accounts'
+  | 'student_login_config'
+  | 'saas_audit';
 
 interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
@@ -69,6 +83,7 @@ interface SystemSettingsViewProps {
   onUpdateConfig: (updated: SystemConfig) => void;
   featureFlags?: SchoolFeatureFlags;
   onUpdateFeatureFlags?: (flags: SchoolFeatureFlags) => void;
+  initialTab?: SystemSettingsTab;
 }
 
 export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
@@ -85,9 +100,15 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   onUpdateConfig,
   featureFlags: externalFeatureFlags,
   onUpdateFeatureFlags,
+  initialTab,
 }) => {
   const { presets: customPresets, updatePresets: updateCustomPresets, resetPresets: resetCustomPresets } = useSchoolCustomPresets(activeSchool.id);
-  const [activeTab, setActiveTab] = useState<'line_events' | 'line_connection' | 'preview_simulator' | 'subscribers' | 'school_general' | 'school_gps' | 'student_accounts' | 'student_login_config' | 'saas_audit'>('line_events');
+  const [activeTab, setActiveTab] = useState<SystemSettingsTab>(initialTab || 'line_events');
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [localFlags, setLocalFlags] = useState<SchoolFeatureFlags>(
     () => externalFeatureFlags || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise')
   );
@@ -552,7 +573,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   ];
 
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-3.5 ${getModuleTone('system_settings')}`}>
+    <div className={`flex flex-col space-y-4 ${getModuleTone('system_settings')}`}>
       {/* Top Header Card */}
       <div className="shrink-0 app-page-header p-4 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -703,6 +724,18 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         {['admin', 'super_admin'].includes(currentRole) && (
           <button
             type="button"
+            data-active={activeTab === 'school_permissions'}
+            onClick={() => setActiveTab('school_permissions')}
+            className="seg-tab-btn"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'สิทธิ์บทบาทโรงเรียน' : 'Role Permissions'}</span>
+          </button>
+        )}
+
+        {['admin', 'super_admin'].includes(currentRole) && (
+          <button
+            type="button"
             data-active={activeTab === 'student_accounts'}
             onClick={() => setActiveTab('student_accounts')}
             className="seg-tab-btn"
@@ -738,7 +771,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       </div>
 
       {/* Tab Panels Container */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="space-y-4">
       {/* TAB 1: LINE Notification Events & Rules */}
       {activeTab === 'line_events' && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -1791,13 +1824,14 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   </p>
                 </div>
               </div>
-              <a
-                href={`mailto:${generalConfig.masterEmail || 'farmissara@gmail.com'}`}
-                className="text-xs font-bold text-blue-700 dark:text-blue-300 hover:underline flex items-center gap-1 self-center bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg shadow-xs"
+              <button
+                type="button"
+                onClick={() => handleCopy(generalConfig.masterEmail || 'farmissara@gmail.com', 'masterEmail')}
+                className="text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 flex items-center gap-1.5 self-center bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg shadow-xs cursor-pointer"
               >
-                <Mail className="w-3.5 h-3.5" />
-                <span>เปิดโปรแกรมส่งอีเมล</span>
-              </a>
+                {copiedField === 'masterEmail' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedField === 'masterEmail' ? 'คัดลอกอีเมล Master แล้ว' : 'คัดลอกอีเมล Master'}</span>
+              </button>
             </div>
 
             {/* Backup Info */}
@@ -1958,6 +1992,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           />
         </div>
       )}
+
+      {activeTab === 'school_permissions' &&
+        ['admin', 'super_admin'].includes(currentRole) && (
+          <div className="animate-in fade-in duration-200">
+            <SchoolPermissionSettingsView activeSchool={activeSchool} lang={lang} />
+          </div>
+        )}
 
       {activeTab === 'student_accounts' &&
         ['admin', 'super_admin'].includes(currentRole) && (

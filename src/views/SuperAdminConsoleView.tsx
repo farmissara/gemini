@@ -433,14 +433,18 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             <div className="flex items-center gap-2 text-[11px] text-[var(--color-text-muted)] flex-wrap">
               <span>Super Admin Console</span>
               <span>·</span>
-              <a
-                href="mailto:farmissara@gmail.com"
-                className="inline-flex items-center gap-1 text-[var(--tone)] font-mono hover:underline"
-                title="อีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText('farmissara@gmail.com');
+                  setFeedbackToast(lang === 'th' ? 'คัดลอกอีเมล Master (farmissara@gmail.com) แล้ว' : 'Copied Master email');
+                }}
+                className="inline-flex items-center gap-1 text-[var(--tone)] font-mono hover:underline cursor-pointer"
+                title="คลิกเพื่อคัดลอกอีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
               >
                 <Mail className="w-3 h-3" />
                 <span>farmissara@gmail.com</span>
-              </a>
+              </button>
             </div>
           </div>
         </div>
