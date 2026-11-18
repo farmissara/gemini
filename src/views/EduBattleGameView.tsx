@@ -40,11 +40,16 @@ import {
   ChevronUp,
   Bot,
   Play,
+  Radio,
+  Gift,
+  Palette,
+  ClipboardCheck,
 } from 'lucide-react';
-import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
+import { QuizQuestion, PlayerScore, RewardItem, RewardRedemptionRequest, AuthUser, AppLanguage } from '../types';
 import { COMPREHENSIVE_QUESTION_BANK } from '../data/examQuestionBanks';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
+import { LiveClassroomArenaView } from './LiveClassroomArenaView';
 import { MeteorMathBlasterGame } from '../components/games/MeteorMathBlasterGame';
 import { ConceptMatchBlitzGame } from '../components/games/ConceptMatchBlitzGame';
 import { WordBuilderPuzzleGame } from '../components/games/WordBuilderPuzzleGame';
@@ -64,9 +69,11 @@ import {
   playGrandVictoryFanfare,
   playPowerupChimeSound,
 } from '../lib/labSoundEffects';
+import { getProfileFrame, triggerHaptic } from '../lib/arcadeStore';
 
 export type EduGameSubTab =
   | 'hub'
+  | 'live_room'
   | 'meteor_blaster'
   | 'concept_match'
   | 'word_builder'
@@ -82,6 +89,7 @@ interface EduBattleGameViewProps {
   questions: QuizQuestion[];
   playerScores: PlayerScore[];
   rewardItems: RewardItem[];
+  rewardRedemptions?: RewardRedemptionRequest[];
   currentUser: AuthUser | null;
   lang: AppLanguage;
   initialSubTab?: EduGameSubTab;
@@ -91,6 +99,9 @@ interface EduBattleGameViewProps {
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onRedeemReward: (itemId: string, costGems: number) => void;
+  onEquipCosmetic?: (payload: { frameId?: string; title?: string }) => void;
+  onReviewRedemption?: (requestId: string, status: 'approved' | 'rejected', teacherNote?: string) => void;
+  onCreateCustomReward?: (item: RewardItem) => void;
   onOpenCentralExamHub?: () => void;
   onExit?: () => void;
 }
@@ -99,6 +110,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   questions,
   playerScores,
   rewardItems,
+  rewardRedemptions = [],
   currentUser,
   lang,
   initialSubTab,
@@ -107,6 +119,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onImportQuestions,
   onEarnRewards,
   onRedeemReward,
+  onEquipCosmetic,
+  onReviewRedemption,
+  onCreateCustomReward,
   onGamePlayingChange,
   onOpenCentralExamHub,
   onExit
@@ -122,6 +137,13 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   );
   const [hubCategory, setHubCategory] = useState<'all' | 'arcade' | 'battle' | 'lab'>('all');
   const [showMissionsDrawer, setShowMissionsDrawer] = useState(false);
+  const [shopSection, setShopSection] = useState<'perks' | 'cosmetics' | 'history' | 'approvals'>('perks');
+  const [showCreateRewardForm, setShowCreateRewardForm] = useState(false);
+  const [newRewardTitle, setNewRewardTitle] = useState('');
+  const [newRewardDesc, setNewRewardDesc] = useState('');
+  const [newRewardCost, setNewRewardCost] = useState(80);
+  const [newRewardStock, setNewRewardStock] = useState(20);
+  const [shopNotice, setShopNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -547,17 +569,24 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   });
 
   // Current user's real player stats (zero fake numbers when starting fresh)
-  const currentPlayerStats = playerScores.find(p => p.userId === currentUser?.id) || {
+  const currentPlayerStats: PlayerScore = playerScores.find(p => p.userId === currentUser?.id) || {
     userId: currentUser?.id || 'temp',
     name: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้เล่น',
-    role: currentUser?.role || 'student',
+    role: currentUser?.role === 'teacher' ? 'teacher' : 'student',
     avatarUrl: currentUser?.avatarUrl || '',
     exp: 0,
     gems: 0,
     rankTitle: 'Rookie Explorer',
     battleWins: 0,
     streak: 0,
+    dailyStreak: 0,
+    equippedFrameId: 'frame-default',
+    unlockedItemIds: [],
   };
+
+  const currentFrame = getProfileFrame(currentPlayerStats.equippedFrameId);
+  const pendingApprovalCount = rewardRedemptions.filter((r) => r.status === 'pending').length;
+  const myRedemptions = rewardRedemptions.filter((r) => r.userId === effectiveUserId);
 
   const playerLevel = Math.floor(currentPlayerStats.exp / 500) + 1;
   const levelProgressPct = Math.round(((currentPlayerStats.exp % 500) / 500) * 100);
@@ -684,7 +713,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   // Hide ALL outer chrome while inside any playable game so there is NEVER a double/triple header!
   const isInActiveGame =
-    ['meteor_blaster', 'concept_match', 'word_builder', 'chrono_sort', 'battle_royale_3d', 'subject_labs'].includes(
+    ['live_room', 'meteor_blaster', 'concept_match', 'word_builder', 'chrono_sort', 'battle_royale_3d', 'subject_labs'].includes(
       activeSubTab
     ) ||
     (activeSubTab === 'arena' && battleState === 'playing');
@@ -739,8 +768,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 tabular-nums">
+            {(currentPlayerStats.dailyStreak || 0) > 0 && (
+              <div className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-orange-500/40 text-orange-400 text-xs font-black font-mono">
+                <Flame className="w-3.5 h-3.5 fill-orange-400" />
+                <span>{currentPlayerStats.dailyStreak} วัน</span>
+              </div>
+            )}
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-amber-400 text-xs font-black font-mono">
-              <Flame className="w-3.5 h-3.5 fill-amber-400" />
+              <Zap className="w-3.5 h-3.5 fill-amber-400" />
               <span>{currentPlayerStats.exp.toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-cyan-400 text-xs font-black font-mono">
@@ -762,19 +797,32 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       {activeSubTab === 'hub' && (
         <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
           <div className="max-w-5xl mx-auto space-y-5">
-            {/* Compact Gen Z Player Strip */}
+            {/* Compact Gen Z Player Strip with Equipped Frame, Title & Daily Streak */}
             <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-zinc-950 font-black text-sm flex items-center justify-center shrink-0">
-                  Lv.{playerLevel}
-                </div>
+                {currentPlayerStats.avatarUrl ? (
+                  <img
+                    src={currentPlayerStats.avatarUrl}
+                    alt={currentPlayerStats.name}
+                    className={`w-12 h-12 rounded-2xl object-cover shrink-0 ${currentFrame.ringClass}`}
+                  />
+                ) : (
+                  <div
+                    className={`w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-zinc-950 font-black text-sm flex items-center justify-center shrink-0 ${currentFrame.ringClass}`}
+                  >
+                    Lv.{playerLevel}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
                     <h1 className="text-sm sm:text-base font-black text-white truncate">
                       {currentPlayerStats.name}
                     </h1>
                     <span className="text-[11px] font-mono font-bold text-amber-400 shrink-0 tabular-nums">
-                      {currentPlayerStats.exp.toLocaleString()} XP
+                      Lv.{playerLevel} · {currentPlayerStats.exp.toLocaleString()} XP
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-orange-400 shrink-0 tabular-nums">
+                      🔥 {currentPlayerStats.dailyStreak || 0} วันติด
                     </span>
                   </div>
                   <div className="flex items-center gap-2 max-w-xs">
@@ -785,7 +833,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       />
                     </div>
                     <span className="text-[10px] font-mono text-zinc-400 shrink-0 tabular-nums">
-                      {currentPlayerStats.exp % 500}/500
+                      {currentPlayerStats.equippedTitle || currentPlayerStats.rankTitle}
                     </span>
                   </div>
                 </div>
@@ -891,6 +939,39 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </section>
             )}
 
+            {/* Featured Real-Time 6-Digit PIN Classroom Arena Banner */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                setActiveSubTab('live_room');
+              }}
+              className="w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-600/20 via-zinc-900 to-cyan-500/20 border border-rose-500/40 hover:border-rose-400 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                  <Radio className="w-6 h-6" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-mono font-bold text-rose-300 uppercase tracking-wider">
+                    Live Classroom · 6-Digit PIN
+                  </p>
+                  <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+                    ห้องแข่งสดทั้งห้อง (Quiz Race & Live Boss Raid)
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {canManageBank
+                      ? 'เปิดห้องสร้างรหัส PIN 6 หลักขึ้นจอโปรเจกเตอร์ ให้นักเรียนแข่งตอบสดพร้อมกันทั้งห้อง'
+                      : 'กรอกรหัส PIN 6 หลักจากหน้าจอคุณครู เพื่อแข่งความเร็วและร่วมตีบอสกับเพื่อนแบบเรียลไทม์'}
+                  </p>
+                </div>
+              </div>
+              <span className="min-h-[42px] px-4 rounded-xl bg-rose-500 text-white font-black text-xs inline-flex items-center justify-center gap-1.5 shrink-0">
+                <span>{canManageBank ? 'เปิดห้อง / กรอก PIN' : 'กรอก PIN เข้าร่วม'}</span>
+                <ChevronRight className="w-4 h-4" />
+              </span>
+            </button>
+
             {/* Category Filter Row */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               {([
@@ -959,6 +1040,20 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: REAL-TIME 6-DIGIT PIN LIVE CLASSROOM ARENA */}
+      {activeSubTab === 'live_room' && (
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
+          <LiveClassroomArenaView
+            questions={questions}
+            currentUser={currentUser}
+            currentPlayerProfile={currentPlayerStats}
+            lang={lang}
+            onEarnRewards={onEarnRewards}
+            onBack={handleBackFromGame}
+          />
         </div>
       )}
 
@@ -1560,84 +1655,124 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         </div>
       )}
 
-      {/* TAB 3: Leaderboard */}
+      {/* TAB 3: Real School Leaderboard with Frames, Titles & Daily Streaks */}
       {activeSubTab === 'leaderboard' && (
         <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
           <div className="max-w-4xl mx-auto space-y-4">
             {playerScores.length === 0 ? (
               <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-8 text-center space-y-2">
                 <Trophy className="w-8 h-8 text-amber-400 mx-auto" />
-                <h3 className="text-sm font-black text-white">ยังไม่มีคะแนนในตารางอันดับ</h3>
+                <h3 className="text-sm font-black text-white">ยังไม่มีคะแนนในตารางอันดับโรงเรียน</h3>
                 <p className="text-xs text-zinc-400">
-                  เริ่มเล่นเกมเพื่อสะสม EXP และขึ้นอันดับหนึ่งของโรงเรียน
+                  เริ่มเล่นเกมหรือเข้าร่วมห้องแข่งสด 6 หลักเพื่อสะสม EXP และบันทึกสถิติจริงลงระบบ
                 </p>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {playerScores.slice(0, 3).map((player, idx) => (
-                    <div
-                      key={player.userId}
-                      className={`rounded-2xl p-4 border text-center space-y-2.5 ${
-                        idx === 0
-                          ? 'bg-zinc-900 border-amber-400/60'
-                          : 'bg-zinc-900 border-zinc-800'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-xs font-mono font-black">
-                        <span className={idx === 0 ? 'text-amber-400' : 'text-zinc-400'}>
-                          #{idx + 1}
-                        </span>
-                        <span className="text-amber-400 tabular-nums">
-                          {player.exp.toLocaleString()} XP
-                        </span>
+                  {playerScores.slice(0, 3).map((player, idx) => {
+                    const pFrame = getProfileFrame(player.equippedFrameId);
+                    return (
+                      <div
+                        key={player.userId}
+                        className={`rounded-2xl p-4 border text-center space-y-2.5 ${
+                          idx === 0
+                            ? 'bg-zinc-900 border-amber-400/60'
+                            : 'bg-zinc-900 border-zinc-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-xs font-mono font-black">
+                          <span className={idx === 0 ? 'text-amber-400' : 'text-zinc-400'}>
+                            #{idx + 1}
+                          </span>
+                          <span className="text-amber-400 tabular-nums">
+                            {player.exp.toLocaleString()} XP
+                          </span>
+                        </div>
+                        {player.avatarUrl ? (
+                          <img
+                            src={player.avatarUrl}
+                            alt={player.name}
+                            className={`w-14 h-14 rounded-2xl object-cover mx-auto ${pFrame.ringClass}`}
+                          />
+                        ) : (
+                          <div
+                            className={`w-14 h-14 rounded-2xl bg-zinc-800 text-sm font-black text-white flex items-center justify-center mx-auto ${pFrame.ringClass}`}
+                          >
+                            {player.name.slice(0, 2)}
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="text-sm font-bold text-white truncate">{player.name}</h4>
+                          <p className={`text-[11px] font-semibold truncate ${pFrame.badgeTextClass}`}>
+                            {player.equippedTitle || player.rankTitle}
+                          </p>
+                          {(player.dailyStreak || 0) > 0 && (
+                            <p className="text-[10px] font-mono text-orange-400 mt-0.5 tabular-nums">
+                              🔥 สตรีค {player.dailyStreak} วันติด
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <img
-                        src={player.avatarUrl}
-                        alt={player.name}
-                        className="w-14 h-14 rounded-2xl object-cover border border-zinc-700 mx-auto"
-                      />
-                      <div>
-                        <h4 className="text-sm font-bold text-white truncate">{player.name}</h4>
-                        <p className="text-[11px] text-zinc-400 truncate">{player.rankTitle}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-zinc-800 font-bold text-xs text-zinc-400 uppercase tracking-wider">
-                    อันดับคะแนนทั้งหมด
+                  <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between font-bold text-xs text-zinc-400 uppercase tracking-wider">
+                    <span>ตารางอันดับจริงของโรงเรียน</span>
+                    <span className="font-mono text-zinc-300 tabular-nums">
+                      {playerScores.length} คน
+                    </span>
                   </div>
                   <div className="divide-y divide-zinc-800/80">
-                    {playerScores.map((p, rank) => (
-                      <div
-                        key={p.userId}
-                        className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-zinc-800/40 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="w-6 font-mono font-black text-xs text-zinc-400 shrink-0 tabular-nums">
-                            #{rank + 1}
-                          </span>
-                          <img
-                            src={p.avatarUrl}
-                            alt={p.name}
-                            className="w-9 h-9 rounded-xl object-cover shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate">{p.name}</p>
-                            <p className="text-[11px] text-zinc-400 truncate">{p.rankTitle}</p>
+                    {playerScores.map((p, rank) => {
+                      const pFrame = getProfileFrame(p.equippedFrameId);
+                      const isMe = p.userId === currentUser?.id;
+                      return (
+                        <div
+                          key={p.userId}
+                          className={`px-4 py-3 flex items-center justify-between gap-3 transition-colors ${
+                            isMe ? 'bg-amber-400/5' : 'hover:bg-zinc-800/40'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="w-6 font-mono font-black text-xs text-zinc-400 shrink-0 tabular-nums">
+                              #{rank + 1}
+                            </span>
+                            {p.avatarUrl ? (
+                              <img
+                                src={p.avatarUrl}
+                                alt={p.name}
+                                className={`w-9 h-9 rounded-xl object-cover shrink-0 ${pFrame.ringClass}`}
+                              />
+                            ) : (
+                              <div
+                                className={`w-9 h-9 rounded-xl bg-zinc-800 text-xs font-black text-white flex items-center justify-center shrink-0 ${pFrame.ringClass}`}
+                              >
+                                {p.name.slice(0, 2)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white truncate">
+                                {p.name} {isMe ? '(คุณ)' : ''}
+                              </p>
+                              <p className="text-[11px] text-zinc-400 truncate">
+                                {p.equippedTitle || p.rankTitle}
+                                {(p.dailyStreak || 0) > 0 ? ` · 🔥 ${p.dailyStreak} วัน` : ''}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0 tabular-nums">
+                            <span className="font-mono font-black text-xs text-amber-400 block">
+                              {p.exp.toLocaleString()} XP
+                            </span>
+                            <span className="text-[10px] font-mono text-cyan-400">{p.gems} Gems</span>
                           </div>
                         </div>
-
-                        <div className="text-right shrink-0 tabular-nums">
-                          <span className="font-mono font-black text-xs text-amber-400 block">
-                            {p.exp.toLocaleString()} XP
-                          </span>
-                          <span className="text-[10px] font-mono text-cyan-400">{p.gems} Gems</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -1646,76 +1781,430 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         </div>
       )}
 
-      {/* TAB 4: Reward Item Store (Clean Responsive Grid instead of 1-item PagedList) */}
-      {activeSubTab === 'shop' && (
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
-          <div className="max-w-5xl mx-auto space-y-4">
-            <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center shrink-0">
-                  <Coins className="w-5 h-5" />
+      {/* TAB 4: Upgraded Reward Shop (Real School Perks + Instant Cosmetics + Teacher Approvals) */}
+      {activeSubTab === 'shop' && (() => {
+        const perkItems = rewardItems.filter(
+          (item) => item.category !== 'frame' && item.category !== 'title'
+        );
+        const cosmeticItems = rewardItems.filter(
+          (item) => item.category === 'frame' || item.category === 'title'
+        );
+        const unlockedSet = new Set(currentPlayerStats.unlockedItemIds || []);
+
+        const handleSubmitNewReward = (e: React.FormEvent) => {
+          e.preventDefault();
+          if (!newRewardTitle.trim() || !onCreateCustomReward) return;
+          onCreateCustomReward({
+            id: `perk-school-${Date.now()}`,
+            titleTh: newRewardTitle.trim(),
+            titleEn: newRewardTitle.trim(),
+            costGems: Math.max(10, Number(newRewardCost) || 50),
+            category: 'perk',
+            stock: Math.max(1, Number(newRewardStock) || 10),
+            iconName: 'gift',
+            descriptionTh: newRewardDesc.trim() || 'สิทธิพิเศษของโรงเรียน (ครูอนุมัติเมื่อนักเรียนแลก)',
+            requiresApproval: true,
+          });
+          setNewRewardTitle('');
+          setNewRewardDesc('');
+          setNewRewardCost(80);
+          setNewRewardStock(20);
+          setShowCreateRewardForm(false);
+          setShopNotice('เพิ่มรางวัลสิทธิพิเศษเข้าหน้าร้านของโรงเรียนเรียบร้อยแล้ว');
+          setTimeout(() => setShopNotice(null), 3500);
+        };
+
+        return (
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+            <div className="max-w-5xl mx-auto space-y-4">
+              {/* Wallet Header */}
+              <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center shrink-0">
+                    <Coins className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-black text-white">ร้านค้าสิทธิพิเศษ & แต่งโปรไฟล์</h4>
+                    <p className="text-xs text-zinc-400 truncate">
+                      นำ Gems จากการเล่นเกมมาแลกสิทธิ์จริงในโรงเรียน หรือกรอบโปรไฟล์และฉายา
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h4 className="text-sm font-black text-white">กระเป๋า Gems ของฉัน</h4>
-                  <p className="text-xs text-zinc-400 truncate">เล่นเกมเก็บ Gems เพื่อแลกของรางวัล</p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-cyan-400 font-mono font-black text-base tabular-nums">
+                    {currentPlayerStats.gems} Gems
+                  </div>
+                  {canManageBank && onCreateCustomReward && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateRewardForm((v) => !v)}
+                      className="min-h-[42px] px-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-black flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>เพิ่มรางวัล</span>
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-cyan-400 font-mono font-black text-base shrink-0 tabular-nums">
-                {currentPlayerStats.gems} Gems
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {rewardItems.map((item) => {
-                const canAfford = currentPlayerStats.gems >= item.costGems;
-                return (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 flex flex-col justify-between gap-4"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="w-10 h-10 rounded-xl bg-amber-400/15 text-amber-400 flex items-center justify-center">
-                          <Medal className="w-5 h-5" />
-                        </div>
-                        <span className="text-[11px] font-mono font-black text-cyan-400 tabular-nums">
-                          {item.costGems} Gems
-                        </span>
-                      </div>
+              {shopNotice && (
+                <div className="px-3.5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{shopNotice}</span>
+                </div>
+              )}
 
-                      <div>
-                        <h4 className="text-sm font-black text-white">{item.titleTh}</h4>
-                        <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
-                          {item.descriptionTh}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-zinc-800 space-y-2">
-                      <div className="text-[11px] text-zinc-400 font-mono tabular-nums">
-                        คงเหลือ {item.stock} ชิ้น
-                      </div>
-                      <button
-                        type="button"
-                        disabled={!canAfford}
-                        onClick={() => onRedeemReward(item.id, item.costGems)}
-                        className={`w-full min-h-[42px] rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 ${
-                          canAfford
-                            ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 cursor-pointer'
-                            : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                        }`}
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>{canAfford ? 'แลกของรางวัล' : 'Gems ไม่พอ'}</span>
-                      </button>
+              {/* Teacher Custom School Perk Creator */}
+              {showCreateRewardForm && canManageBank && (
+                <form
+                  onSubmit={handleSubmitNewReward}
+                  className="p-4 rounded-2xl bg-zinc-900 border border-amber-400/40 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-black text-amber-300">สร้างรางวัลสิทธิพิเศษของโรงเรียน</h5>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateRewardForm(false)}
+                      className="text-xs text-zinc-400 hover:text-white cursor-pointer"
+                    >
+                      ปิด
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <input
+                      type="text"
+                      required
+                      placeholder="ชื่อรางวัล เช่น คูปองน้ำฟรี 1 แก้ว"
+                      value={newRewardTitle}
+                      onChange={(e) => setNewRewardTitle(e.target.value)}
+                      className="sm:col-span-2 min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white placeholder-zinc-500"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        min={10}
+                        value={newRewardCost}
+                        onChange={(e) => setNewRewardCost(Number(e.target.value))}
+                        placeholder="Gems"
+                        className="min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white font-mono"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        value={newRewardStock}
+                        onChange={(e) => setNewRewardStock(Number(e.target.value))}
+                        placeholder="จำนวน"
+                        className="min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white font-mono"
+                      />
                     </div>
                   </div>
-                );
-              })}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="เงื่อนไขการใช้สิทธิ์..."
+                      value={newRewardDesc}
+                      onChange={(e) => setNewRewardDesc(e.target.value)}
+                      className="flex-1 min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white placeholder-zinc-500"
+                    />
+                    <button
+                      type="submit"
+                      className="min-h-[42px] px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs cursor-pointer"
+                    >
+                      บันทึกรางวัล
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Shop Section Switcher */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'perks' as const, label: 'สิทธิพิเศษโรงเรียน', icon: Gift },
+                  { id: 'cosmetics' as const, label: 'กรอบ & ฉายาโปรไฟล์', icon: Palette },
+                  { id: 'history' as const, label: `ประวัติของฉัน (${myRedemptions.length})`, icon: Clock },
+                  ...(canManageBank
+                    ? [
+                        {
+                          id: 'approvals' as const,
+                          label: `อนุมัติคำขอ (${pendingApprovalCount})`,
+                          icon: ClipboardCheck,
+                        },
+                      ]
+                    : []),
+                ].map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setShopSection(id)}
+                    className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
+                      shopSection === id
+                        ? 'bg-zinc-100 text-zinc-950'
+                        : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* SECTION 1: REAL SCHOOL PERKS (Teacher Approval) */}
+              {shopSection === 'perks' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {perkItems.map((item) => {
+                    const canAfford = currentPlayerStats.gems >= item.costGems && item.stock > 0;
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 flex flex-col justify-between gap-4"
+                      >
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-amber-400/15 text-amber-400 flex items-center justify-center">
+                              <Gift className="w-5 h-5" />
+                            </div>
+                            <span className="text-xs font-mono font-black text-cyan-400 tabular-nums">
+                              {item.costGems} Gems
+                            </span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-white">{item.titleTh}</h4>
+                            <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                              {item.descriptionTh}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-zinc-800 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono tabular-nums">
+                            <span>คงเหลือ {item.stock} สิทธิ์</span>
+                            <span className="text-amber-300">ครูอนุมัติ</span>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!canAfford}
+                            onClick={() => {
+                              onRedeemReward(item.id, item.costGems);
+                              setShopNotice(`ส่งคำขอแลก "${item.titleTh}" ให้คุณครูตรวจสอบแล้ว`);
+                              setTimeout(() => setShopNotice(null), 3500);
+                            }}
+                            className={`w-full min-h-[44px] rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 ${
+                              canAfford
+                                ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 cursor-pointer'
+                                : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                            }`}
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>
+                              {item.stock <= 0
+                                ? 'หมดชั่วคราว'
+                                : canAfford
+                                  ? 'ส่งคำขอแลกสิทธิ์'
+                                  : 'Gems ไม่พอ'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* SECTION 2: INSTANT-EQUIP PROFILE FRAMES & TITLES */}
+              {shopSection === 'cosmetics' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {cosmeticItems.map((item) => {
+                    const isOwned = unlockedSet.has(item.id);
+                    const isEquipped =
+                      (item.frameId && currentPlayerStats.equippedFrameId === item.frameId) ||
+                      (item.titleLabel && currentPlayerStats.equippedTitle === item.titleLabel);
+                    const canAfford = currentPlayerStats.gems >= item.costGems;
+                    const previewFrame = item.frameId ? getProfileFrame(item.frameId) : null;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`rounded-2xl bg-zinc-900 border p-4 flex flex-col justify-between gap-4 ${
+                          isEquipped ? 'border-cyan-400' : 'border-zinc-800'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            {previewFrame ? (
+                              <div
+                                className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${previewFrame.previewGradient} p-0.5`}
+                              >
+                                <div className="w-full h-full rounded-[14px] bg-zinc-950 flex items-center justify-center text-xs font-black text-white">
+                                  VIP
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-11 h-11 rounded-2xl bg-violet-500/15 text-violet-300 flex items-center justify-center">
+                                <Award className="w-5 h-5" />
+                              </div>
+                            )}
+                            <span className="text-xs font-mono font-black text-cyan-400 tabular-nums">
+                              {isOwned ? 'เป็นเจ้าของแล้ว' : `${item.costGems} Gems`}
+                            </span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-white">{item.titleTh}</h4>
+                            <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                              {item.descriptionTh}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={!isOwned && !canAfford}
+                          onClick={() => {
+                            if (isOwned && onEquipCosmetic) {
+                              onEquipCosmetic({
+                                frameId: item.frameId,
+                                title: item.titleLabel,
+                              });
+                              setShopNotice(`สวมใส่ "${item.titleTh}" เรียบร้อยแล้ว`);
+                              setTimeout(() => setShopNotice(null), 2500);
+                            } else {
+                              onRedeemReward(item.id, item.costGems);
+                              setShopNotice(`ปลดล็อกและสวมใส่ "${item.titleTh}" แล้ว!`);
+                              setTimeout(() => setShopNotice(null), 3000);
+                            }
+                          }}
+                          className={`w-full min-h-[44px] rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 ${
+                            isEquipped
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 cursor-default'
+                              : isOwned
+                                ? 'bg-zinc-100 hover:bg-white text-zinc-950 cursor-pointer'
+                                : canAfford
+                                  ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 cursor-pointer'
+                                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                          }`}
+                        >
+                          <span>
+                            {isEquipped
+                              ? 'กำลังสวมใส่อยู่'
+                              : isOwned
+                                ? 'สวมใส่เลย'
+                                : canAfford
+                                  ? 'ปลดล็อก & สวมใส่ทันที'
+                                  : 'Gems ไม่พอ'}
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* SECTION 3: MY REDEMPTION REQUESTS HISTORY */}
+              {shopSection === 'history' && (
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 divide-y divide-zinc-800">
+                  {myRedemptions.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-zinc-400">
+                      ยังไม่มีประวัติการส่งคำขอแลกสิทธิพิเศษในโรงเรียน
+                    </div>
+                  ) : (
+                    myRedemptions.map((req) => (
+                      <div
+                        key={req.id}
+                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{req.itemTitleTh}</p>
+                          <p className="text-[11px] text-zinc-400 font-mono tabular-nums">
+                            ใช้ {req.costGems} Gems · {new Date(req.requestedAt).toLocaleDateString('th-TH')}
+                            {req.reviewedBy ? ` · ตรวจโดย ${req.reviewedBy}` : ''}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-xs font-black shrink-0 ${
+                            req.status === 'approved'
+                              ? 'text-emerald-400'
+                              : req.status === 'rejected'
+                                ? 'text-rose-400'
+                                : 'text-amber-400'
+                          }`}
+                        >
+                          {req.status === 'approved'
+                            ? 'อนุมัติแล้ว — ใช้สิทธิ์ได้'
+                            : req.status === 'rejected'
+                              ? 'ไม่อนุมัติ (คืน Gems แล้ว)'
+                              : 'รอคุณครูอนุมัติ'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* SECTION 4: TEACHER / ADMIN APPROVAL QUEUE */}
+              {shopSection === 'approvals' && canManageBank && (
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 divide-y divide-zinc-800">
+                  {rewardRedemptions.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-zinc-400">
+                      ยังไม่มีคำขอแลกสิทธิพิเศษจากนักเรียนในโรงเรียน
+                    </div>
+                  ) : (
+                    rewardRedemptions.map((req) => (
+                      <div
+                        key={req.id}
+                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-sm font-black text-white truncate">
+                            {req.studentName}{' '}
+                            {req.gradeRoom ? (
+                              <span className="text-xs font-normal text-zinc-400">
+                                ({req.gradeRoom})
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="text-xs font-bold text-amber-300 truncate">
+                            ขอแลก: {req.itemTitleTh} ({req.costGems} Gems)
+                          </p>
+                          <p className="text-[11px] text-zinc-400 font-mono tabular-nums">
+                            {new Date(req.requestedAt).toLocaleString('th-TH')}
+                            {req.reviewedBy ? ` · โดย ${req.reviewedBy}` : ''}
+                          </p>
+                        </div>
+
+                        {req.status === 'pending' && onReviewRedemption ? (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => onReviewRedemption(req.id, 'approved')}
+                              className="min-h-[42px] px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs cursor-pointer"
+                            >
+                              อนุมัติสิทธิ์
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onReviewRedemption(req.id, 'rejected')}
+                              className="min-h-[42px] px-4 rounded-xl bg-zinc-800 hover:bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold text-xs cursor-pointer"
+                            >
+                              ปฏิเสธ & คืน Gems
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className={`text-xs font-black shrink-0 ${
+                              req.status === 'approved' ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {req.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว'}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Add New Question Modal */}
       {showAddModal && (

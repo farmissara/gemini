@@ -41,6 +41,7 @@ import {
   Rocket
 } from 'lucide-react';
 import { getModuleTone } from '../lib/moduleTheme';
+import { triggerHaptic } from '../lib/arcadeStore';
 
 interface SubjectLabSimulationViewProps {
   currentUserRole?: UserRole;
@@ -347,6 +348,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
           : (activeQuest.successMessageEn || activeQuest.successDescEn || 'Mission accomplished!');
         setReactionMessage(`🎉 ${successMsg}`);
         triggerSound(playSuccessSound);
+        triggerHaptic('success');
 
         if (!completedQuestIds.includes(activeQuest.id)) {
           const nextCompleted = [...completedQuestIds, activeQuest.id];
@@ -355,13 +357,14 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
             localStorage.setItem('eduverse_completed_lab_quests', JSON.stringify(nextCompleted));
           } catch {}
           if (onEarnRewards) {
-            onEarnRewards('student', activeQuest.expReward, activeQuest.gemReward, true);
+            onEarnRewards('temp', activeQuest.expReward, activeQuest.gemReward, true);
           }
         }
       } else {
         // Failure / Comic Explosion
         setReactionState('exploded');
         triggerSound(playExplosionSound);
+        triggerHaptic('error');
 
         let failDetail = '';
         if (!itemsMatch) {
@@ -822,76 +825,69 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
   };
 
   return (
-    <div className={`h-full w-full flex flex-col bg-slate-950 text-white select-none overflow-hidden font-sans ${getModuleTone('subject_labs')}`}>
+    <div className={`h-full w-full flex flex-col bg-[#09090B] text-white select-none overflow-hidden font-sans ${getModuleTone('subject_labs')}`}>
       
-      {/* ========================================================= */}
-      {/* 1. TOP HEADER BAR: Compact, Single-line, No Multi-line Wrapping */}
-      {/* ========================================================= */}
-      <header className="shrink-0 h-12 px-3 sm:px-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2 z-20">
+      {/* SINGLE CRISP GEN Z TOP BAR */}
+      <header className="shrink-0 h-14 px-3 sm:px-5 bg-[#09090B] border-b border-zinc-800/80 flex items-center justify-between gap-2 z-20">
         
-        {/* Left: Compact Exit Button & Title Badge */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           {onBackToGames && (
             <button
               type="button"
               onClick={onBackToGames}
-              className="h-8 px-2.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-200 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-semibold flex items-center gap-1.5 shrink-0 whitespace-nowrap transition cursor-pointer active:scale-95"
-              title="ออกจากเวิร์กช็อป กลับสู่หน้าหลัก"
+              className="min-h-[40px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-800 text-xs font-bold flex items-center gap-1.5 shrink-0 whitespace-nowrap transition cursor-pointer active:scale-95"
+              title="ออกจากห้องแล็บ"
             >
-              <ArrowLeft className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <ArrowLeft className="w-4 h-4 shrink-0" />
               <span>ออก</span>
             </button>
           )}
 
-          <div className={`h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 shrink-0 ${activeConfig.badgeBg}`}>
-            <activeConfig.icon className="w-3.5 h-3.5 shrink-0" />
-            <span className="font-extrabold whitespace-nowrap">{activeConfig.stageTitleTh}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <activeConfig.icon className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span className="text-sm font-black tracking-tight text-white truncate">
+              {activeConfig.stageTitleTh}
+            </span>
           </div>
         </div>
 
-        {/* Right: Progress Tracker, Sound Toggle, Zoom & Teacher Button */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Progress Tracker Pill */}
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-xs shrink-0">
-            <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="text-slate-300 text-[11px] hidden xs:inline">ผ่าน:</span>
-            <span className="font-bold text-amber-300 font-mono text-xs">{completedQuestIds.length}/{quests.length}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono font-black text-amber-400 tabular-nums shrink-0">
+            <Trophy className="w-3.5 h-3.5 shrink-0" />
+            <span>{completedQuestIds.length}/{quests.length}</span>
           </div>
 
-          {/* Zoom Buttons (Hidden on smallest mobile to prevent crowding) */}
-          <div className="hidden sm:flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5 border border-slate-700 shrink-0">
+          <div className="hidden sm:flex items-center gap-0.5 bg-zinc-900 rounded-xl p-1 border border-zinc-800 shrink-0">
             <button
               type="button"
               onClick={handleZoomOut}
-              className="p-1 rounded hover:bg-slate-700 text-slate-200 hover:text-white text-xs cursor-pointer"
+              className="w-7 h-7 rounded-lg hover:bg-zinc-800 text-zinc-300 hover:text-white flex items-center justify-center cursor-pointer"
               title="ย่อขนาด"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[10px] font-mono px-1 text-slate-200 font-bold">
+            <span className="text-[11px] font-mono px-1.5 text-zinc-200 font-bold tabular-nums">
               {Math.round(labZoom * 100)}%
             </span>
             <button
               type="button"
               onClick={handleZoomIn}
-              className="p-1 rounded hover:bg-slate-700 text-slate-200 hover:text-white text-xs cursor-pointer"
+              className="w-7 h-7 rounded-lg hover:bg-zinc-800 text-zinc-300 hover:text-white flex items-center justify-center cursor-pointer"
               title="ขยายขนาด"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Sound Toggle */}
           <button
             type="button"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs transition shrink-0 cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 flex items-center justify-center transition shrink-0 cursor-pointer"
             title={soundEnabled ? 'ปิดเสียง' : 'เปิดเสียง'}
           >
-            {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-300" />}
+            {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-zinc-500" />}
           </button>
 
-          {/* Teacher Custom Quest Creator */}
           {(currentUserRole === 'teacher' || currentUserRole === 'admin') && (
             <button
               type="button"
@@ -900,19 +896,17 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 setNewSubject(activeSubject);
                 setShowTeacherBuilder(true);
               }}
-              className="hidden md:flex items-center gap-1 h-8 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shrink-0 cursor-pointer"
+              className="hidden md:flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-black transition shrink-0 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
               <span>สร้างโจทย์</span>
             </button>
           )}
         </div>
       </header>
 
-      {/* ========================================================= */}
-      {/* 2. SECONDARY SUB-NAV: Dedicated Horizontal Subject Tabs */}
-      {/* ========================================================= */}
-      <nav className="shrink-0 bg-slate-950 border-b border-slate-800/80 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar z-10">
+      {/* SUBJECT SELECTOR STRIP */}
+      <nav className="shrink-0 bg-[#09090B] border-b border-zinc-800/80 px-3 sm:px-5 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar z-10">
         {(Object.keys(SUBJECT_CONFIGS) as LabSubjectCategory[]).map(subjKey => {
           const cfg = SUBJECT_CONFIGS[subjKey];
           const Icon = cfg.icon;
@@ -923,15 +917,16 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               key={subjKey}
               type="button"
               onClick={() => {
+                triggerHaptic('light');
                 setActiveSubject(subjKey);
                 const firstQuest = quests.find(q => q.subject === subjKey);
                 if (firstQuest) setSelectedQuestId(firstQuest.id);
                 handleResetLab();
               }}
-              className={`h-7 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
+              className={`min-h-[38px] px-3.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-blue-400'
-                  : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:text-white'
+                  ? 'bg-amber-400 text-zinc-950 font-black'
+                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:text-white'
               }`}
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -941,26 +936,22 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
         })}
       </nav>
 
-      {/* ========================================================= */}
-      {/* 3. MAIN WORKSPACE: Standard Flow, No Text Collisions, Smooth Scroll */}
-      {/* ========================================================= */}
-      <main className="flex-1 min-h-0 w-full p-2.5 sm:p-4 overflow-y-auto">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 pb-6">
+      {/* MAIN WORKSPACE */}
+      <main className="flex-1 min-h-0 w-full p-3 sm:p-5 overflow-y-auto">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 pb-6">
           
-          {/* ========================================================= */}
           {/* ZONE 1: APPARATUS STAGE, TOOLS & FEEDBACK (Left 6 cols) */}
-          {/* ========================================================= */}
-          <section className="md:col-span-6 flex flex-col gap-3 rounded-2xl bg-slate-900 border border-slate-800 p-3 sm:p-4 shadow-xl">
+          <section className="md:col-span-6 flex flex-col gap-3 rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
             
             {/* Top of stage: Items currently on stage */}
-            <div className="pb-2 border-b border-slate-800">
+            <div className="pb-2 border-b border-zinc-800">
               <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="text-xs font-bold text-slate-300 flex items-center gap-1">
+                <span className="text-xs font-bold text-zinc-300 flex items-center gap-1">
                   <span>{activeConfig.trayLabelTh}</span>
                 </span>
-                <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                <span className="text-[11px] font-mono font-black text-amber-400 flex items-center gap-1 tabular-nums">
                   <Trophy className="w-3.5 h-3.5" />
-                  <span>+{activeQuest.expReward} EXP</span>
+                  <span>+{activeQuest.expReward} XP</span>
                 </span>
               </div>
 
@@ -1029,21 +1020,21 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               </div>
             </div>
 
-            {/* Controls & Action Row - Slim Inline Controls */}
-            <div className="pt-2 border-t border-slate-800 flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
+            {/* Controls & Action Row */}
+            <div className="pt-2 border-t border-zinc-800 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {/* Tool 1 (Stir / Angle / Blend / Loop / Inscribe / Inspect) */}
                   <button
                     type="button"
                     onClick={() => {
+                      triggerHaptic('light');
                       setIsStirred(!isStirred);
                       triggerSound(playBubbleSound);
                     }}
-                    className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                    className={`min-h-[40px] px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isStirred 
-                        ? 'bg-indigo-700 text-white border-indigo-400 shadow-xs' 
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400' 
+                        : 'bg-[#09090B] hover:bg-zinc-800 text-zinc-200 border-zinc-800'
                     }`}
                     title={activeConfig.tool1LabelTh}
                   >
@@ -1051,17 +1042,17 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     <span>{activeConfig.tool1LabelTh}</span>
                   </button>
 
-                  {/* Tool 2 (Burner / Thruster / Simmer / Overclock / Lamp / Compass) */}
                   <button
                     type="button"
                     onClick={() => {
+                      triggerHaptic('light');
                       setIsBurnerActive(!isBurnerActive);
                       triggerSound(playSparkSound);
                     }}
-                    className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                    className={`min-h-[40px] px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
                       isBurnerActive 
-                        ? 'bg-amber-700 text-white border-amber-400 shadow-xs animate-pulse' 
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-400' 
+                        : 'bg-[#09090B] hover:bg-zinc-800 text-zinc-200 border-zinc-800'
                     }`}
                     title={activeConfig.tool2LabelTh}
                   >
@@ -1069,11 +1060,10 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     <span>{activeConfig.tool2LabelTh}</span>
                   </button>
 
-                  {/* Reset Button */}
                   <button
                     type="button"
                     onClick={handleResetLab}
-                    className="h-8 px-2 rounded-lg bg-slate-800 hover:bg-rose-950/50 text-slate-200 hover:text-rose-200 border border-slate-700 hover:border-rose-500/40 transition flex items-center justify-center cursor-pointer shrink-0 text-xs"
+                    className="min-h-[40px] px-3 rounded-xl bg-[#09090B] hover:bg-rose-500/15 text-zinc-300 hover:text-rose-300 border border-zinc-800 hover:border-rose-500/40 transition flex items-center justify-center cursor-pointer shrink-0 text-xs font-bold"
                     title="ล้างแท่นทดลอง"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -1081,14 +1071,13 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                   </button>
                 </div>
 
-                {/* Main Action Button */}
                 <button
                   type="button"
                   disabled={reactionState === 'reacting'}
                   onClick={handleAnalyzeReaction}
-                  className="flex-1 min-w-[130px] h-8 px-3 rounded-lg bg-gradient-to-r from-blue-700 via-indigo-700 to-cyan-700 hover:from-blue-600 hover:to-cyan-600 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="flex-1 min-w-[140px] min-h-[42px] px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
-                  <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
+                  <Zap className="w-4 h-4 fill-current shrink-0" />
                   <span className="truncate">
                     {reactionState === 'reacting'
                       ? 'กำลังประมวลผล...'
@@ -1097,14 +1086,13 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 </button>
               </div>
 
-              {/* Reaction Feedback Box */}
               {reactionMessage && (
-                <div className={`p-2.5 rounded-xl text-xs border leading-relaxed animate-in fade-in duration-200 shadow-md ${
+                <div className={`p-3 rounded-xl text-xs border leading-relaxed ${
                   reactionState === 'success'
-                    ? 'bg-emerald-950/90 border-emerald-500 text-emerald-100'
+                    ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-100'
                     : reactionState === 'exploded'
-                    ? 'bg-rose-950/90 border-rose-500 text-rose-100'
-                    : 'bg-slate-800 border-slate-700 text-slate-200'
+                    ? 'bg-rose-950/80 border-rose-500/60 text-rose-100'
+                    : 'bg-[#09090B] border-zinc-800 text-zinc-200'
                 }`}>
                   <div className="font-bold flex items-center gap-1.5 mb-0.5 text-xs">
                     {reactionState === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
@@ -1112,8 +1100,8 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                     <span>{reactionMessage}</span>
                   </div>
                   {(reactionState === 'success' || reactionState === 'exploded') && (
-                    <p className="text-[11px] text-slate-200 mt-1 pl-5">
-                      💡 <strong className="text-white">สาระองค์ความรู้:</strong> {activeQuest.scientificExplanationTh}
+                    <p className="text-[11px] text-zinc-300 mt-1 pl-5">
+                      <strong className="text-white">สาระองค์ความรู้:</strong> {activeQuest.scientificExplanationTh}
                     </p>
                   )}
                 </div>
@@ -1122,23 +1110,20 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
 
           </section>
 
-          {/* ========================================================= */}
           {/* ZONE 2: QUEST MISSION & SUBJECT ITEM SHELF (Right 6 cols) */}
-          {/* ========================================================= */}
-          <section className="md:col-span-6 flex flex-col gap-2.5 rounded-2xl bg-slate-900 border border-slate-800 p-3 sm:p-4 shadow-xl">
+          <section className="md:col-span-6 flex flex-col gap-3 rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
             
-            {/* Space-Saving Mission HUD with Pop-up Story Modal Trigger */}
-            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-between gap-2 shadow-xs">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="p-3 rounded-xl bg-[#09090B] border border-zinc-800 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <Target className="w-4 h-4 text-cyan-400 shrink-0" />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-white text-xs truncate">{activeQuest.titleTh}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-white text-xs truncate">{activeQuest.titleTh}</span>
+                    <span className="text-[11px] font-mono text-zinc-400 shrink-0">
                       {activeQuest.gradeLevel}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-300 truncate">
+                  <p className="text-[11px] text-zinc-400 truncate mt-0.5">
                     <strong className="text-amber-300">เป้าหมาย:</strong> {activeQuest.targetGoalTh}
                   </p>
                 </div>
@@ -1147,26 +1132,24 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <button
                 type="button"
                 onClick={() => setShowQuestModal(true)}
-                className="shrink-0 h-7 px-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-[11px] font-bold border border-blue-400/40 flex items-center gap-1 cursor-pointer transition active:scale-95 whitespace-nowrap shadow-xs"
+                className="shrink-0 min-h-[38px] px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition whitespace-nowrap"
                 title="กดดูโจทย์และคำอธิบายฉบับเต็ม"
               >
-                <BookOpen className="w-3.5 h-3.5" />
+                <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
                 <span>ดูโจทย์เต็ม</span>
               </button>
             </div>
 
-            {/* Item Shelf Section */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between text-xs px-0.5">
-                <span className="font-bold text-white flex items-center gap-1.5 text-xs">
-                  <Atom className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span className="font-black text-white flex items-center gap-1.5 text-xs">
+                  <Atom className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span>{activeConfig.shelfLabelTh}</span>
                 </span>
-                <span className="text-[11px] text-slate-300">{activeConfig.trayHintTh}</span>
+                <span className="text-[11px] text-zinc-400">{activeConfig.trayHintTh}</span>
               </div>
 
-              {/* Items Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {activeQuest.availableItems.map(item => {
                   const isSelected = beakerItems.some(i => i.id === item.id);
                   return (
@@ -1174,34 +1157,37 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       key={item.id}
                       type="button"
                       disabled={isSelected || reactionState === 'reacting'}
-                      onClick={() => handleAddItemToBeaker(item)}
-                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
+                      onClick={() => {
+                        triggerHaptic('light');
+                        handleAddItemToBeaker(item);
+                      }}
+                      className={`min-h-[54px] p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-950/60 border-emerald-500/70 text-emerald-200'
-                          : 'bg-slate-800 hover:bg-slate-700 hover:border-blue-400 border-slate-700 active:scale-95 shadow-xs'
+                          ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-200'
+                          : 'bg-[#09090B] hover:bg-zinc-800/80 hover:border-cyan-400/70 border-zinc-800 active:scale-[0.98]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span 
-                          className="w-4 h-4 rounded-full shrink-0 border border-white/30 shadow-xs" 
+                          className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/25" 
                           style={{ backgroundColor: item.color }} 
                         />
                         <div className="min-w-0">
-                          <div className="font-mono text-xs font-bold text-white truncate">
+                          <div className="font-mono text-xs font-black text-white truncate">
                             {item.formula}
                           </div>
-                          <div className="text-[11px] text-slate-300 truncate mt-0.5">
+                          <div className="text-[11px] text-zinc-400 truncate mt-0.5">
                             {item.nameTh}
                           </div>
                         </div>
                       </div>
 
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap ${
+                      <span className={`text-[11px] font-black shrink-0 whitespace-nowrap ${
                         isSelected 
-                          ? 'bg-emerald-900/70 text-emerald-200 border border-emerald-500/60' 
-                          : 'bg-blue-700 hover:bg-blue-800 text-white shadow-xs'
+                          ? 'text-emerald-400' 
+                          : 'text-cyan-400'
                       }`}>
-                        {isSelected ? '✓ ในแท่นแล้ว' : '+ เลือก'}
+                        {isSelected ? 'เลือกแล้ว' : '+ เลือก'}
                       </span>
                     </button>
                   );
@@ -1209,12 +1195,11 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               </div>
             </div>
 
-            {/* Quest Pagination Switcher */}
             {subjectQuests.length > 1 && (
-              <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-slate-300" />
-                  <span>สลับโจทย์ในหมวดนี้:</span>
+              <div className="pt-3 border-t border-zinc-800 flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-xs font-bold text-zinc-400 flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>สลับโจทย์ในหมวดนี้</span>
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {subjectQuests.map((q, idx) => (
@@ -1222,13 +1207,14 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       key={q.id}
                       type="button"
                       onClick={() => {
+                        triggerHaptic('light');
                         setSelectedQuestId(q.id);
                         handleResetLab();
                       }}
-                      className={`h-7 px-3 rounded-lg text-xs font-bold transition shrink-0 cursor-pointer ${
+                      className={`min-h-[36px] px-3 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
                         q.id === activeQuest.id
-                          ? 'bg-cyan-500 text-slate-950 font-black shadow-md'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:text-white'
+                          ? 'bg-cyan-400 text-zinc-950 font-black'
+                          : 'bg-[#09090B] hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:text-white'
                       }`}
                     >
                       {completedQuestIds.includes(q.id) ? '✓ ' : ''}ข้อ {idx + 1}

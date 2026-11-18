@@ -24,11 +24,13 @@ import {
   Course,
   GradeRecord,
   GradingSystem,
+  PlayerScore,
   School,
   SchoolPeriodTime,
   Student,
   TimetableSlot,
 } from '../../types';
+import { getProfileFrame } from '../../lib/arcadeStore';
 import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
 import { calculateGrade } from '../../lib/schoolSettings';
 import {
@@ -41,6 +43,7 @@ interface StudentMobileHomeProps {
   currentUser: AuthUser | null;
   activeSchool: School;
   ownStudent?: Student;
+  playerProfile?: PlayerScore;
   lang: AppLanguage;
   todayCheckin?: AttendanceRecord;
   scopedAttendance: AttendanceRecord[];
@@ -92,6 +95,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   currentUser,
   activeSchool,
   ownStudent,
+  playerProfile,
   lang,
   todayCheckin,
   scopedAttendance,
@@ -293,36 +297,52 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         />
 
         {/* Top Identity Strip */}
-        <div className="relative z-10 p-5 pb-3 flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <p className="text-xs font-medium text-sky-200/95 tabular-nums">
-              {greetingText} · {formattedDate}
-            </p>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug truncate">
-              {displayName}
-            </h1>
-            <p className="text-xs text-slate-200/90 tabular-nums truncate">
-              {ownStudent
-                ? `${ownStudent.gradeLevel} ${ownStudent.room} · รหัส ${ownStudent.studentIdNumber}`
-                : lang === 'th'
-                  ? activeSchool.nameTh
-                  : activeSchool.nameEn}
-            </p>
-          </div>
+        {(() => {
+          const equippedFrame = getProfileFrame(playerProfile?.equippedFrameId);
+          const hasCustomFrame =
+            playerProfile?.equippedFrameId && playerProfile.equippedFrameId !== 'frame-default';
+          const dailyStreak = playerProfile?.dailyStreak || 0;
+          return (
+            <div className="relative z-10 p-5 pb-3 flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <p className="text-xs font-medium text-sky-200/95 tabular-nums">
+                  {greetingText} · {formattedDate}
+                  {dailyStreak > 0 ? ` · 🔥 ${dailyStreak} วันติด` : ''}
+                </p>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug truncate">
+                  {displayName}
+                </h1>
+                <p className="text-xs text-slate-200/90 tabular-nums truncate">
+                  {ownStudent
+                    ? `${ownStudent.gradeLevel} ${ownStudent.room} · รหัส ${ownStudent.studentIdNumber}`
+                    : lang === 'th'
+                      ? activeSchool.nameTh
+                      : activeSchool.nameEn}
+                  {playerProfile?.equippedTitle ? ` · ${playerProfile.equippedTitle}` : ''}
+                </p>
+              </div>
 
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              referrerPolicy="no-referrer"
-              className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white/50 shadow-md shrink-0 bg-slate-800"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md ring-1 ring-white/30 text-white font-bold text-base flex items-center justify-center shrink-0">
-              {initials}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  className={`w-12 h-12 rounded-2xl object-cover shadow-md shrink-0 bg-slate-800 ${
+                    hasCustomFrame ? equippedFrame.ringClass : 'ring-2 ring-white/50'
+                  }`}
+                />
+              ) : (
+                <div
+                  className={`w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md text-white font-bold text-base flex items-center justify-center shrink-0 ${
+                    hasCustomFrame ? equippedFrame.ringClass : 'ring-1 ring-white/30'
+                  }`}
+                >
+                  {initials}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Bottom Primary Action Inside Hero */}
         <div className="relative z-10 px-5 pb-5 pt-2">

@@ -24,6 +24,7 @@ import {
   QuizQuestion,
   PlayerScore,
   RewardItem,
+  RewardRedemptionRequest,
   PeriodAttendanceRecord,
   PortfolioItem,
   SchoolPeriodTime,
@@ -43,6 +44,19 @@ import {
   AdaptivePracticeTopic,
   SchoolFeatureFlags
 } from './types';
+import {
+  DEFAULT_ARCADE_REWARDS,
+  computeRankTitle,
+  computeUpdatedDailyStreak,
+  createRewardRedemptionRequest,
+  loadSchoolArcadeProfiles,
+  loadSchoolRewardRedemptions,
+  loadSchoolRewardsCatalog,
+  saveSchoolCustomReward,
+  triggerHaptic,
+  updateRewardRedemptionStatus,
+  upsertArcadePlayerProfile,
+} from './lib/arcadeStore';
 import {
   INITIAL_SYSTEM_CONFIG,
   INITIAL_ROLE_PERMISSIONS,
@@ -466,7 +480,8 @@ export const App: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [playerScores, setPlayerScores] = useState<PlayerScore[]>([]);
-  const [rewardItems, setRewardItems] = useState<RewardItem[]>([]);
+  const [rewardItems, setRewardItems] = useState<RewardItem[]>(DEFAULT_ARCADE_REWARDS);
+  const [rewardRedemptions, setRewardRedemptions] = useState<RewardRedemptionRequest[]>([]);
   const [periodAttendance, setPeriodAttendance] = useState<PeriodAttendanceRecord[]>([]);
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>([]);
@@ -1376,7 +1391,7 @@ export const App: React.FC = () => {
         setAssignments(prev => prev.length > 0 ? prev.filter(a => a.schoolId === activeSchool.id) : []);
         setQuestions(prev => prev.length > 0 ? prev.filter(q => q.schoolId === activeSchool.id) : []);
         setPlayerScores(prev => prev);
-        setRewardItems(prev => prev);
+        setRewardItems(prev => (prev.length > 0 ? prev : DEFAULT_ARCADE_REWARDS));
         setPeriodAttendance(data.periodAttendance || []);
         setPortfolioItems((prev) => {
           try {
@@ -1406,6 +1421,29 @@ export const App: React.FC = () => {
       active = false;
     };
   }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView]);
+
+  // Load real school-scoped Arcade Profiles, Rewards Catalog & Teacher Perk Redemptions from Supabase + local cache
+  useEffect(() => {
+    if (!activeSchool.id) return;
+    let active = true;
+    Promise.all([
+      loadSchoolArcadeProfiles(activeSchool.id),
+      loadSchoolRewardsCatalog(activeSchool.id),
+      loadSchoolRewardRedemptions(activeSchool.id),
+    ])
+      .then(([profiles, catalog, redemptions]) => {
+        if (!active) return;
+        setPlayerScores(profiles);
+        setRewardItems(catalog);
+        setRewardRedemptions(redemptions);
+      })
+      .catch(() => {
+        // graceful fallback handled inside arcadeStore
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeSchool.id]);
 
   useEffect(() => {
     if (
@@ -3046,19 +3084,69 @@ export const App: React.FC = () => {
   };
 
   const handleEarnRewards = (userId: string, exp: number, gems: number, isWin: boolean) => {
-    setPlayerScores((prev) =>
-      prev.map((p) =>
-        p.userId === userId
-          ? {
-              ...p,
-              exp: p.exp + exp,
-              gems: p.gems + gems,
-              battleWins: isWin ? p.battleWins + 1 : p.battleWins,
-              streak: isWin ? p.streak + 1 : 0,
-            }
-          : p
-      )
-    );
+    const resolvedUserId = userId === 'temp' && currentUser?.id ? currentUser.id : userId;
+    if (!resolvedUserId) return;
+
+    triggerHaptic(isWin ? 'success' : 'light');
+
+    setPlayerScores((prev) => {
+      const existing = prev.find((p) => p.userId === resolvedUserId);
+      const streakUpdate = computeUpdatedDailyStreak(
+        existing?.dailyStreak,
+        existing?.lastPlayedDate
+      );
+      const nextExp = (existing?.exp || 0) + Math.max(0, exp);
+      const nextGems = (existing?.gems || 0) + Math.max(0, gems);
+      const nextWins = (existing?.battleWins || 0) + (isWin ? 1 : 0);
+      const nextWinStreak = isWin ? (existing?.streak || 0) + 1 : 0;
+
+      const updatedProfile: PlayerScore = existing
+        ? {
+            ...existing,
+            schoolId: activeSchool.id,
+            name:
+              existing.userId === currentUser?.id
+                ? currentUser.fullNameTh || currentUser.fullNameEn || existing.name
+                : existing.name,
+            avatarUrl:
+              existing.userId === currentUser?.id && currentUser.avatarUrl
+                ? currentUser.avatarUrl
+                : existing.avatarUrl,
+            exp: nextExp,
+            gems: nextGems,
+            rankTitle: computeRankTitle(nextExp),
+            battleWins: nextWins,
+            streak: nextWinStreak,
+            dailyStreak: streakUpdate.dailyStreak,
+            lastPlayedDate: streakUpdate.lastPlayedDate,
+          }
+        : {
+            userId: resolvedUserId,
+            schoolId: activeSchool.id,
+            studentId: currentUser?.studentRecordId,
+            name: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้เล่น',
+            role: currentUser?.role === 'teacher' ? 'teacher' : 'student',
+            avatarUrl: currentUser?.avatarUrl || '',
+            exp: nextExp,
+            gems: nextGems,
+            rankTitle: computeRankTitle(nextExp),
+            battleWins: nextWins,
+            streak: nextWinStreak,
+            dailyStreak: streakUpdate.dailyStreak,
+            lastPlayedDate: streakUpdate.lastPlayedDate,
+            equippedFrameId: 'frame-default',
+            unlockedItemIds: [],
+          };
+
+      if (activeSchool.id) {
+        upsertArcadePlayerProfile(activeSchool.id, updatedProfile).catch(() => {});
+      }
+
+      const nextList = existing
+        ? prev.map((p) => (p.userId === resolvedUserId ? updatedProfile : p))
+        : [updatedProfile, ...prev];
+      return [...nextList].sort((a, b) => b.exp - a.exp);
+    });
   };
 
   const handleRecordMilestoneActivity = (
@@ -3100,14 +3188,146 @@ export const App: React.FC = () => {
   };
 
   const handleRedeemReward = (rewardId: string, costGems: number) => {
-    if (!currentUser) return;
+    if (!currentUser || !activeSchool.id) return;
+    const item = rewardItems.find((r) => r.id === rewardId);
+    const currentProfile = playerScores.find((p) => p.userId === currentUser.id);
+    if (!item || !currentProfile || currentProfile.gems < costGems) {
+      triggerHaptic('error');
+      return;
+    }
+
+    const isCosmetic = item.category === 'frame' || item.category === 'title';
+    const alreadyOwned = (currentProfile.unlockedItemIds || []).includes(item.id);
+    if (isCosmetic && alreadyOwned) {
+      handleEquipCosmetic({
+        frameId: item.frameId,
+        title: item.titleLabel,
+      });
+      return;
+    }
+
+    triggerHaptic('success');
+
+    const nextUnlocked = isCosmetic
+      ? Array.from(new Set([...(currentProfile.unlockedItemIds || []), item.id]))
+      : currentProfile.unlockedItemIds || [];
+
+    const updatedProfile: PlayerScore = {
+      ...currentProfile,
+      gems: Math.max(0, currentProfile.gems - costGems),
+      unlockedItemIds: nextUnlocked,
+      equippedFrameId: item.frameId || currentProfile.equippedFrameId || 'frame-default',
+      equippedTitle: item.titleLabel || currentProfile.equippedTitle,
+    };
+
     setPlayerScores((prev) =>
-      prev.map((p) =>
-        p.userId === currentUser.id && p.gems >= costGems
-          ? { ...p, gems: p.gems - costGems }
-          : p
+      prev.map((p) => (p.userId === currentUser.id ? updatedProfile : p))
+    );
+    upsertArcadePlayerProfile(activeSchool.id, updatedProfile).catch(() => {});
+
+    if (!isCosmetic) {
+      // Decrease available stock and submit a real approval request for teachers/admins
+      setRewardItems((prev) =>
+        prev.map((r) => (r.id === item.id && r.stock > 0 ? { ...r, stock: r.stock - 1 } : r))
+      );
+      const matchedStudent = students.find(
+        (s) => s.id === currentUser.studentRecordId || s.studentIdNumber === currentUser.studentIdNumber
+      );
+      const request: RewardRedemptionRequest = {
+        id: `redeem-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        schoolId: activeSchool.id,
+        userId: currentUser.id,
+        studentName: currentUser.fullNameTh || currentUser.fullNameEn || 'นักเรียน',
+        gradeRoom: matchedStudent
+          ? `${matchedStudent.gradeLevel} ${matchedStudent.room}`.trim()
+          : currentUser.gradeLevel
+            ? `${currentUser.gradeLevel} ${currentUser.room || ''}`.trim()
+            : undefined,
+        itemId: item.id,
+        itemTitleTh: item.titleTh,
+        costGems,
+        category: item.category,
+        status: item.requiresApproval === false ? 'approved' : 'pending',
+        requestedAt: new Date().toISOString(),
+      };
+      setRewardRedemptions((prev) => [request, ...prev]);
+      createRewardRedemptionRequest(activeSchool.id, request).catch(() => {});
+    }
+  };
+
+  const handleEquipCosmetic = (payload: { frameId?: string; title?: string }) => {
+    if (!currentUser || !activeSchool.id) return;
+    triggerHaptic('light');
+    setPlayerScores((prev) => {
+      const existing = prev.find((p) => p.userId === currentUser.id);
+      if (!existing) return prev;
+      const updated: PlayerScore = {
+        ...existing,
+        equippedFrameId:
+          payload.frameId !== undefined ? payload.frameId : existing.equippedFrameId,
+        equippedTitle:
+          payload.title !== undefined ? payload.title : existing.equippedTitle,
+      };
+      upsertArcadePlayerProfile(activeSchool.id, updated).catch(() => {});
+      return prev.map((p) => (p.userId === currentUser.id ? updated : p));
+    });
+  };
+
+  const handleReviewRedemption = (
+    requestId: string,
+    status: 'approved' | 'rejected',
+    teacherNote?: string
+  ) => {
+    if (!currentUser || !activeSchool.id) return;
+    const target = rewardRedemptions.find((r) => r.id === requestId);
+    if (!target || target.status !== 'pending') return;
+
+    const reviewerName = currentUser.fullNameTh || currentUser.fullNameEn || 'ครูผู้ดูแล';
+    triggerHaptic(status === 'approved' ? 'success' : 'light');
+
+    setRewardRedemptions((prev) =>
+      prev.map((r) =>
+        r.id === requestId
+          ? {
+              ...r,
+              status,
+              reviewedBy: reviewerName,
+              reviewedAt: new Date().toISOString(),
+              teacherNote,
+            }
+          : r
       )
     );
+    updateRewardRedemptionStatus(
+      activeSchool.id,
+      requestId,
+      status,
+      reviewerName,
+      teacherNote
+    ).catch(() => {});
+
+    // Refund Gems automatically when a school perk request is rejected
+    if (status === 'rejected') {
+      setPlayerScores((prev) =>
+        prev.map((p) => {
+          if (p.userId !== target.userId) return p;
+          const refunded = { ...p, gems: p.gems + target.costGems };
+          upsertArcadePlayerProfile(activeSchool.id, refunded).catch(() => {});
+          return refunded;
+        })
+      );
+    }
+  };
+
+  const handleCreateCustomReward = (item: RewardItem) => {
+    if (!activeSchool.id) return;
+    const scopedItem: RewardItem = {
+      ...item,
+      schoolId: activeSchool.id,
+    };
+    setRewardItems((prev) => [scopedItem, ...prev]);
+    saveSchoolCustomReward(activeSchool.id, scopedItem).catch(() => {});
+    triggerHaptic('success');
   };
 
   const handleAddPortfolioItem = (item: PortfolioItem) => {
@@ -3719,6 +3939,10 @@ export const App: React.FC = () => {
           onUpdateCampusGates={['admin', 'super_admin'].includes(currentRole) ? handleUpdateCampusGates : undefined}
           onSaveCampusGates={['admin', 'super_admin'].includes(currentRole) ? handleSaveCampusGates : undefined}
           onUpdateSchoolCoordinates={['admin', 'super_admin'].includes(currentRole) ? handleUpdateSchoolCoordinates : undefined}
+          rewardRedemptions={rewardRedemptions}
+          onEquipCosmetic={handleEquipCosmetic}
+          onReviewRedemption={handleReviewRedemption}
+          onCreateCustomReward={handleCreateCustomReward}
         />
 
         {/* Modals for Mobile View */}
@@ -4252,6 +4476,10 @@ export const App: React.FC = () => {
                     onImportQuestions={handleImportQuestions}
                     onEarnRewards={handleEarnRewards}
                     onRedeemReward={handleRedeemReward}
+                    rewardRedemptions={rewardRedemptions}
+                    onEquipCosmetic={handleEquipCosmetic}
+                    onReviewRedemption={handleReviewRedemption}
+                    onCreateCustomReward={handleCreateCustomReward}
                     onGamePlayingChange={setIsGamePlaying}
                     onOpenCentralExamHub={() => navigateToAppTab('central_exam_hub')}
                     onExit={() => {

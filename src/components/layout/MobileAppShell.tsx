@@ -58,6 +58,7 @@ import {
   GitBranch,
   ShoppingBag,
   Coins,
+  Radio,
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -77,7 +78,8 @@ import {
   Announcement, 
   QuizQuestion, 
   PlayerScore, 
-  RewardItem, 
+  RewardItem,
+  RewardRedemptionRequest,
   CampusGateGeofence,
   AttendanceStatus,
   AttendanceCheckType,
@@ -292,6 +294,10 @@ interface MobileAppShellProps {
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
+  rewardRedemptions?: RewardRedemptionRequest[];
+  onEquipCosmetic?: (payload: { frameId?: string; title?: string }) => void;
+  onReviewRedemption?: (requestId: string, status: 'approved' | 'rejected', teacherNote?: string) => void;
+  onCreateCustomReward?: (item: RewardItem) => void;
 }
 
 export const MobileAppShell: React.FC<MobileAppShellProps> = ({
@@ -367,6 +373,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
+  rewardRedemptions = [],
+  onEquipCosmetic,
+  onReviewRedemption,
+  onCreateCustomReward,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
     getPasskeyForUser(currentUser?.id)
@@ -726,12 +736,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       !(currentPersonId && a.submittedStudentIds?.includes(currentPersonId))
   ).length;
 
-  const currentScore = playerScores.find(p => p.userId === currentUser?.id) || {
+  const currentScore: PlayerScore = playerScores.find(p => p.userId === currentUser?.id) || {
+    userId: currentUser?.id || 'guest',
+    schoolId: activeSchool?.id,
+    name: (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) || currentUser?.fullNameTh || currentUser?.email || (lang === 'th' ? 'ผู้เล่น' : 'Player'),
+    role: currentRole === 'student' ? 'student' : 'teacher',
+    avatarUrl: currentUser?.avatarUrl || '',
     exp: 0,
     gems: 0,
     rankTitle: lang === 'th' ? 'ผู้เริ่มต้น' : 'Beginner',
     battleWins: 0,
-    streak: 0
+    streak: 0,
+    dailyStreak: 0,
+    equippedFrameId: 'frame-default',
+    unlockedItemIds: [],
   };
 
   const myOwnPortfolioCount = useMemo(() => {
@@ -943,6 +961,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 currentUser={currentUser}
                 activeSchool={activeSchool}
                 ownStudent={ownStudent}
+                playerProfile={currentScore}
                 lang={lang}
                 todayCheckin={todayCheckin}
                 scopedAttendance={scopedAttendance}
@@ -2679,7 +2698,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 />
                 <div className="relative z-10 p-4 space-y-2">
                   <div className="flex items-center justify-between gap-2 text-xs font-mono font-black tabular-nums">
-                    <span className="text-amber-400">LV.{playerLv} ARCADE</span>
+                    <span className="text-amber-400">
+                      LV.{playerLv}
+                      {(currentScore.dailyStreak || 0) > 0 ? ` · 🔥 ${currentScore.dailyStreak} วัน` : ' ARCADE'}
+                    </span>
                     <div className="flex items-center gap-2.5">
                       <span className="text-amber-300 flex items-center gap-1">
                         <Flame className="w-3.5 h-3.5 fill-current" />
@@ -2696,6 +2718,33 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   </h2>
                 </div>
               </section>
+
+              {/* Featured 1-Tap Live Classroom 6-Digit PIN Card */}
+              <button
+                type="button"
+                onClick={() => openArcadeSubTab('live_room')}
+                className="w-full p-3.5 rounded-2xl bg-[#09090B] border border-rose-500/45 hover:border-rose-400 text-left flex items-center justify-between gap-3 transition active:scale-[0.98] cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                    <Radio className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-mono font-bold text-rose-300 uppercase tracking-wider">
+                      Live PIN · 6 หลัก
+                    </p>
+                    <h3 className="text-sm font-black text-white truncate">
+                      ห้องแข่งสดทั้งห้อง (Quiz & Boss)
+                    </h3>
+                    <p className="text-[11px] text-zinc-400 truncate">
+                      {currentRole === 'student'
+                        ? 'กรอกรหัส PIN 6 หลักแข่งสดกับเพื่อน'
+                        : 'เปิดห้องสร้างรหัส PIN 6 หลักขึ้นจอ'}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-rose-400 shrink-0" />
+              </button>
 
               {/* Category Filter Strip */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
@@ -2754,22 +2803,40 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 })}
               </div>
 
-              {/* Clean Compact Utility Row: Leaderboard/Shop & Hall of Fame */}
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
+              {/* Clean Compact Utility Row: Leaderboard, Shop & Hall of Fame */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => openArcadeSubTab('leaderboard')}
+                  className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+                      อันดับ
+                    </p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
+                      {playerScores.length} คน
+                    </p>
+                  </div>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => openArcadeSubTab('shop')}
-                  className="min-h-[54px] px-3.5 py-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
+                  className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
                     <ShoppingBag className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-black text-[var(--color-text-title)] truncate">
-                      ร้านแลกของ
+                    <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+                      แลกของ
                     </p>
                     <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
-                      {currentScore.gems} Gems
+                      {currentScore.gems} G
                     </p>
                   </div>
                 </button>
@@ -2777,17 +2844,17 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveGameView('hall_of_fame')}
-                  className="min-h-[54px] px-3.5 py-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
+                  className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                    <Trophy className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Award className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-black text-[var(--color-text-title)] truncate">
-                      ถ้วยรางวัล
+                    <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+                      เกียรติยศ
                     </p>
                     <p className="text-[10px] text-[var(--color-text-muted)] truncate">
-                      ผลงานจริง
+                      ถ้วย 3D
                     </p>
                   </div>
                 </button>
@@ -3424,6 +3491,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 questions={questions}
                 playerScores={playerScores}
                 rewardItems={rewardItems}
+                rewardRedemptions={rewardRedemptions}
                 currentUser={currentUser}
                 lang={lang}
                 initialSubTab={arcadeInitialSubTab}
@@ -3432,6 +3500,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 onImportQuestions={onImportQuestions}
                 onEarnRewards={onEarnRewards}
                 onRedeemReward={onRedeemReward}
+                onEquipCosmetic={onEquipCosmetic}
+                onReviewRedemption={onReviewRedemption}
+                onCreateCustomReward={onCreateCustomReward}
                 onExit={() => setActiveGameView('hub')}
               />
             </div>
@@ -3443,6 +3514,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 questions={questions}
                 playerScores={playerScores}
                 rewardItems={rewardItems}
+                rewardRedemptions={rewardRedemptions}
                 currentUser={currentUser}
                 lang={lang}
                 initialSubTab="arena"
@@ -3451,6 +3523,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 onImportQuestions={onImportQuestions}
                 onEarnRewards={onEarnRewards}
                 onRedeemReward={onRedeemReward}
+                onEquipCosmetic={onEquipCosmetic}
+                onReviewRedemption={onReviewRedemption}
+                onCreateCustomReward={onCreateCustomReward}
                 onExit={() => setActiveGameView('hub')}
               />
             </div>

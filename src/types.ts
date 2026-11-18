@@ -580,6 +580,7 @@ export interface QuizQuestion {
 
 export interface PlayerScore {
   userId: string;
+  schoolId?: string;
   studentId?: string;
   name: string;
   role: 'student' | 'teacher';
@@ -589,6 +590,11 @@ export interface PlayerScore {
   rankTitle: string;
   battleWins: number;
   streak: number;
+  dailyStreak?: number;
+  lastPlayedDate?: string;
+  equippedFrameId?: string;
+  equippedTitle?: string;
+  unlockedItemIds?: string[];
   attendanceDays?: number;
   attendanceStreak?: number;
   libraryVisits?: number;
@@ -639,15 +645,36 @@ export interface EvaluatedMilestone {
 
 export interface RewardItem {
   id: string;
+  schoolId?: string;
   titleTh: string;
   titleEn: string;
   costGems: number;
-  category: 'perk' | 'item' | 'badge' | 'skin' | 'boost';
+  category: 'perk' | 'item' | 'badge' | 'skin' | 'boost' | 'frame' | 'title';
   stock: number;
   iconName: string;
   descriptionTh: string;
   skinId?: string;
+  frameId?: string;
+  titleLabel?: string;
+  requiresApproval?: boolean;
   boostMultiplier?: number;
+}
+
+export interface RewardRedemptionRequest {
+  id: string;
+  schoolId: string;
+  userId: string;
+  studentName: string;
+  gradeRoom?: string;
+  itemId: string;
+  itemTitleTh: string;
+  costGems: number;
+  category: RewardItem['category'];
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  teacherNote?: string;
 }
 
 export interface CharacterSkin {
