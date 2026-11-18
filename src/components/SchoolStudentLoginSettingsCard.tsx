@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   GraduationCap,
   KeyRound,
@@ -22,11 +22,27 @@ import {
 } from 'lucide-react';
 import { School, AppLanguage } from '../types';
 import { QrCodeMatrix } from './QrCodeMatrix';
+import { getSupabaseClient } from '../lib/supabase';
 
 interface SchoolStudentLoginSettingsCardProps {
   activeSchool: School;
   lang: AppLanguage;
   onUpdateSchool?: (updates: Partial<School>) => void;
+}
+
+function getSuggestedSchoolShortCode(school: School): string {
+  const words = school.nameEn
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean);
+  return words.map((word) => word[0]).join('').slice(0, 8).toLowerCase();
+}
+
+function getSchoolShortCode(school: School): string {
+  const savedShortCode = school.customLoginSlug?.trim();
+  return savedShortCode && savedShortCode.toLowerCase() !== school.code.toLowerCase()
+    ? savedShortCode
+    : getSuggestedSchoolShortCode(school);
 }
 
 export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettingsCardProps> = ({
@@ -39,7 +55,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
     activeSchool.studentLoginIdentifierType || 'both'
   );
   const [customSlug, setCustomSlug] = useState<string>(
-    activeSchool.customLoginSlug || activeSchool.code.toLowerCase() || 'school-portal'
+    getSchoolShortCode(activeSchool)
   );
   const [defaultPasswordType, setDefaultPasswordType] = useState<'student_id' | 'birthdate' | 'custom' | 'pin'>(
     activeSchool.studentDefaultPasswordType || 'birthdate'
@@ -51,14 +67,67 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
   const [copiedSlug, setCopiedSlug] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showQrPrintModal, setShowQrPrintModal] = useState(false);
+  const [shortCodeAvailability, setShortCodeAvailability] = useState<
+    'idle' | 'checking' | 'available' | 'taken' | 'error'
+  >('idle');
+  const [shortCodeAvailabilityMessage, setShortCodeAvailabilityMessage] = useState('');
+
+  useEffect(() => {
+    setCustomSlug(getSchoolShortCode(activeSchool));
+  }, [activeSchool.id, activeSchool.code, activeSchool.customLoginSlug]);
+
+  useEffect(() => {
+    let current = true;
+    const candidate = customSlug.trim().toLowerCase();
+    if (candidate.length < 2 || candidate.length > 16) {
+      setShortCodeAvailability('idle');
+      setShortCodeAvailabilityMessage('');
+      return () => {
+        current = false;
+      };
+    }
+
+    setShortCodeAvailability('checking');
+    setShortCodeAvailabilityMessage('');
+    const timeout = window.setTimeout(async () => {
+      const client = getSupabaseClient();
+      if (!client) {
+        if (current) {
+          setShortCodeAvailability('error');
+          setShortCodeAvailabilityMessage('ไม่สามารถเชื่อมต่อฐานข้อมูลเพื่อตรวจสอบรหัสได้');
+        }
+        return;
+      }
+
+      const { data, error } = await client.rpc('is_school_login_shortcode_available', {
+        target_school_id: activeSchool.id,
+        candidate_shortcode: candidate,
+      });
+      if (!current) return;
+      if (error || typeof data !== 'boolean') {
+        setShortCodeAvailability('error');
+        setShortCodeAvailabilityMessage('ตรวจสอบรหัสไม่ได้ กรุณาตรวจสอบว่าได้รัน migration ล่าสุดแล้ว');
+        return;
+      }
+      setShortCodeAvailability(data ? 'available' : 'taken');
+      setShortCodeAvailabilityMessage(
+        data ? 'รหัสนี้ยังว่าง สามารถใช้ได้' : 'มีโรงเรียนอื่นใช้รหัสนี้แล้ว กรุณาเลือกตัวย่ออื่น'
+      );
+    }, 350);
+
+    return () => {
+      current = false;
+      window.clearTimeout(timeout);
+    };
+  }, [activeSchool.id, customSlug]);
 
   // Dedicated School Login Link
   const schoolLoginUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
     const origin = window.location.origin;
     const cleanSlug = encodeURIComponent(customSlug.trim() || activeSchool.id);
-    return `${origin}/?schoolId=${activeSchool.id}&schoolCode=${encodeURIComponent(activeSchool.code)}&school=${cleanSlug}&loginMode=student`;
-  }, [activeSchool.id, activeSchool.code, customSlug]);
+    return `${origin}/?schoolId=${activeSchool.id}&schoolCode=${cleanSlug}&school=${cleanSlug}&loginMode=student`;
+  }, [activeSchool.id, customSlug]);
 
   const handleCopyLink = () => {
     if (navigator.clipboard) {
@@ -76,11 +145,25 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSave = async () => {
+    const shortCode = customSlug.trim();
+    if (shortCode.length < 2 || shortCode.length > 16) {
+      setSaveError('รหัสโรงเรียนต้องมีความยาว 2–16 ตัวอักษร');
+      return;
+    }
+    if (shortCodeAvailability !== 'available') {
+      setSaveError(
+        shortCodeAvailability === 'taken'
+          ? 'รหัสโรงเรียนนี้มีผู้ใช้งานแล้ว กรุณาเลือกตัวย่ออื่น'
+          : 'กรุณารอให้ระบบตรวจสอบรหัสโรงเรียนก่อนบันทึก'
+      );
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
     const updates: Partial<School> = {
       studentLoginIdentifierType: identifierType,
-      customLoginSlug: customSlug.trim(),
+      customLoginSlug: shortCode,
       studentDefaultPasswordType: defaultPasswordType,
       studentDefaultPasswordNote: passwordNote.trim(),
       customSchoolLoginUrl: schoolLoginUrl,
@@ -100,7 +183,12 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'ไม่สามารถบันทึกการตั้งค่าลงฐานข้อมูลได้');
+      const message = err instanceof Error ? err.message : '';
+      setSaveError(
+        /duplicate key|schools_custom_login_slug_unique_lower_idx|23505/i.test(message)
+          ? 'รหัสโรงเรียนแบบสั้นนี้ถูกใช้งานแล้ว กรุณาเลือกรหัสอื่น'
+          : message || 'ไม่สามารถบันทึกการตั้งค่าลงฐานข้อมูลได้'
+      );
     } finally {
       setSaving(false);
     }
@@ -143,7 +231,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
             <button
               type="button"
               onClick={() => void handleSave()}
-              disabled={saving}
+              disabled={saving || shortCodeAvailability !== 'available'}
               className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-2 shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-60"
             >
               <Save className="w-4 h-4" />
@@ -285,7 +373,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[var(--color-text-title)]">
-                  ชื่อย่อ / รหัสอ้างอิง URL โรงเรียน (School Slug / Shortcode)
+                  ตัวย่อโรงเรียนภาษาอังกฤษ (รหัสสำหรับนักเรียน)
                 </label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-[var(--color-text-muted)] px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] shrink-0">
@@ -294,11 +382,32 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                   <input
                     type="text"
                     value={customSlug}
-                    onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                    placeholder="เช่น bkk-wittaya หรือ sch-bkk01"
+                    onChange={(e) => {
+                      setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''));
+                      setSaveError(null);
+                    }}
+                    maxLength={16}
+                    placeholder="เช่น bpk, bkkw หรือ skt01"
                     className="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                   />
                 </div>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  ผู้ดูแลโรงเรียนเลือกตัวย่อได้เอง ระบบตรวจสอบรหัสซ้ำให้อัตโนมัติ รหัสเดิมยังใช้ได้ (2–16 ตัวอักษร)
+                </p>
+                <p
+                  aria-live="polite"
+                  className={`text-[11px] font-semibold ${
+                    shortCodeAvailability === 'available'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : shortCodeAvailability === 'taken' || shortCodeAvailability === 'error'
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {shortCodeAvailability === 'checking'
+                    ? 'กำลังตรวจสอบรหัส...'
+                    : shortCodeAvailabilityMessage}
+                </p>
               </div>
 
               {/* Full Generated Link Card */}
@@ -427,7 +536,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                   {activeSchool.nameTh}
                 </div>
                 <div className="text-[11px] text-[var(--color-text-muted)] font-mono">
-                  รหัสโรงเรียน: {activeSchool.code}
+                  รหัสโรงเรียน: {customSlug ? customSlug.toUpperCase() : 'ยังไม่กำหนด'}
                 </div>
               </div>
 
@@ -527,7 +636,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                   รหัสผ่านเริ่มต้น: {passwordNote}
                 </div>
                 <div className="font-mono text-[10px] text-blue-700 pt-1">
-                  รหัสสถานศึกษา: {activeSchool.code}
+                  รหัสโรงเรียน: {customSlug ? customSlug.toUpperCase() : 'ยังไม่กำหนด'}
                 </div>
               </div>
             </div>

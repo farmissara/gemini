@@ -655,7 +655,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               {lang === 'th' ? portalSchool.nameTh : portalSchool.nameEn || portalSchool.nameTh}
                             </p>
                             <p className="text-[11px] text-blue-800 dark:text-blue-300 font-mono truncate">
-                              {lang === 'th' ? 'รหัสสถานศึกษา' : 'School Code'}: {portalSchool.code}
+                              {lang === 'th' ? 'รหัสโรงเรียน' : 'School Code'}: {portalSchool.customLoginSlug || portalSchool.code}
                             </p>
                           </div>
                         </div>

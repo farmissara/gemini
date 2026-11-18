@@ -1229,3 +1229,5 @@ GRANT EXECUTE ON FUNCTION public.delete_school_permanently(TEXT) TO authenticate
 -- Persistent Super Admin settings, global role enforcement, account/audit/count
 -- RPCs, and registration cancellation are installed by
 -- migrations/20261119_super_admin_module_hardening.sql.
+-- Short school login codes, uniqueness enforcement, and availability checks
+-- are installed by migrations/20261119_short_school_login_codes.sql.

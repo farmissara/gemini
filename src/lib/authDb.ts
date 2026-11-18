@@ -433,6 +433,12 @@ export async function updateSchoolSettingsInSupabase(
       error.code === '42703' ||
       /student_login_identifier_type|custom_login_slug|student_default_password|schema cache|could not find the '.*' column/i.test(error.message))
   ) {
+    if (
+      updates.customLoginSlug !== undefined &&
+      /custom_login_slug|schema cache|could not find the '.*' column/i.test(error.message)
+    ) {
+      throw new Error('การตั้งรหัสโรงเรียนแบบสั้นต้องใช้ migration 20261119_short_school_login_codes.sql ก่อน');
+    }
     const corePayload = { ...payload };
     delete (corePayload as Record<string, unknown>).student_login_identifier_type;
     delete (corePayload as Record<string, unknown>).custom_login_slug;
