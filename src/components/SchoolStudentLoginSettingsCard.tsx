@@ -154,13 +154,16 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
       setSaveError(
         shortCodeAvailability === 'taken'
           ? 'รหัสโรงเรียนนี้มีผู้ใช้งานแล้ว กรุณาเลือกตัวย่ออื่น'
-          : 'กรุณารอให้ระบบตรวจสอบรหัสโรงเรียนก่อนบันทึก'
+          : shortCodeAvailability === 'error'
+          ? shortCodeAvailabilityMessage || 'ตรวจสอบรหัสโรงเรียนไม่สำเร็จ กรุณาลองใหม่'
+          : 'กำลังตรวจสอบรหัสโรงเรียน กรุณารอสักครู่แล้วกดบันทึกอีกครั้ง'
       );
       return;
     }
 
     setSaving(true);
     setSaveError(null);
+    setSaveSuccess(false);
     const updates: Partial<School> = {
       studentLoginIdentifierType: identifierType,
       customLoginSlug: shortCode,
@@ -169,16 +172,13 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
       customSchoolLoginUrl: schoolLoginUrl,
     };
 
-    // Save to local storage for school persistence
     try {
-      localStorage.setItem(`eduverse_school_login_config_${activeSchool.id}`, JSON.stringify(updates));
-    } catch {
-      // ignore
-    }
-
-    try {
-      if (onUpdateSchool) {
-        await onUpdateSchool(updates);
+      if (!onUpdateSchool) throw new Error('ไม่พบฟังก์ชันบันทึกการตั้งค่าโรงเรียน');
+      await onUpdateSchool(updates);
+      try {
+        localStorage.setItem(`eduverse_school_login_config_${activeSchool.id}`, JSON.stringify(updates));
+      } catch {
+        // The database save has already succeeded; local storage is only a same-device fallback.
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3500);
@@ -231,7 +231,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
             <button
               type="button"
               onClick={() => void handleSave()}
-              disabled={saving || shortCodeAvailability !== 'available'}
+              disabled={saving}
               className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-2 shadow-lg transition active:scale-95 cursor-pointer disabled:opacity-60"
             >
               <Save className="w-4 h-4" />
@@ -385,6 +385,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                     onChange={(e) => {
                       setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''));
                       setSaveError(null);
+                      setSaveSuccess(false);
                     }}
                     maxLength={16}
                     placeholder="เช่น bpk, bkkw หรือ skt01"
