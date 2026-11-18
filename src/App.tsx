@@ -177,7 +177,7 @@ import {
   setBiometricSoftLock,
   verifyBiometricPasskey,
 } from './lib/webAuthn';
-import { LayoutDashboard, QrCode, Briefcase, X, User, Check, Copy, Database, Fingerprint, Lock, LogOut } from 'lucide-react';
+import { LayoutDashboard, QrCode, Briefcase, X, User, Check, Copy, Database, Fingerprint, Lock, LogOut, RotateCw } from 'lucide-react';
 
 const EMPTY_SCHOOL: School = {
   id: '',
@@ -357,11 +357,15 @@ export const App: React.FC = () => {
     }
     return false;
   });
+  const [isPortraitScreen, setIsPortraitScreen] = useState<boolean>(() => (
+    typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+  ));
   const [deviceViewPreference, setDeviceViewPreference] = useState<'auto' | 'mobile' | 'desktop'>('auto');
 
   useEffect(() => {
     const handleResize = () => {
       setIsMobileScreen(window.innerWidth < 768);
+      setIsPortraitScreen(window.innerHeight > window.innerWidth);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -3478,7 +3482,15 @@ export const App: React.FC = () => {
       isGuideEnabled={isGuideTourEnabled}
       onSetGuideEnabled={(next) => handleToggleGuideTour(next)}
     >
-    <div className={`${isMobileInDesktopView ? 'h-dvh max-h-dvh w-full overflow-x-auto overflow-y-hidden' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
+    <div className={`${useImmersiveGameLayout ? 'game-immersive-root' : ''} ${isMobileInDesktopView ? 'h-dvh max-h-dvh w-full overflow-x-auto overflow-y-hidden' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
+      {useImmersiveGameLayout && isPortraitScreen && (
+        <div className="fixed top-3 left-1/2 z-[60] -translate-x-1/2 pointer-events-none">
+          <div className="flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/85 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md">
+            <RotateCw className="h-4 w-4 shrink-0 rotate-90 text-amber-300" />
+            <span>{lang === 'th' ? 'หมุนจอแนวนอนเพื่อเห็นพื้นที่เกมมากขึ้น' : 'Rotate to landscape for a wider game view'}</span>
+          </div>
+        </div>
+      )}
       {/* Single Sticky Top Banner when viewing Desktop View on Mobile Screen */}
       {isMobileInDesktopView && (
         <div className="sticky top-0 z-50 bg-[var(--color-primary)] text-white px-3 py-1.5 text-xs flex items-center justify-between gap-2 shrink-0">

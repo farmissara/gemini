@@ -447,8 +447,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const [freezeCooldown, setFreezeCooldown] = useState(0);
 
   // Camera Zoom in / out controls (Range 0.45x - 2.2x)
-  const zoomMultiplierRef = useRef<number>(1.0);
-  const [zoomScale, setZoomScale] = useState<number>(1.0);
+  const zoomMultiplierRef = useRef<number>(0.8);
+  const [zoomScale, setZoomScale] = useState<number>(0.8);
 
   // Quiz Modal State
   const [activeQuestion, setActiveQuestion] = useState<QuizQuestion | null>(null);

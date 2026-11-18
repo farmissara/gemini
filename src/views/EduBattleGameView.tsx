@@ -1279,9 +1279,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
           {/* ACTIVE BATTLE PLAYING SCREEN - TRUE ARCADE SCROLLABLE & RESPONSIVE LAYOUT */}
           {battleState === 'playing' && (
-            <div className="flex-1 min-h-0 flex flex-col justify-start p-3 sm:p-5 max-w-xl mx-auto w-full overflow-y-auto space-y-3 select-none">
+            <div className="game-arena-landscape flex-1 min-h-0 flex flex-col justify-start p-2 sm:p-3 max-w-6xl mx-auto w-full overflow-y-auto space-y-2 select-none">
               {/* TOP DUAL HP GAUGES */}
-              <div className="shrink-0 space-y-1.5">
+              <div className="game-arena-hud shrink-0 space-y-1.5">
                 <div className="grid grid-cols-2 gap-2 items-center">
                   {/* Player HP */}
                   <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
@@ -1356,7 +1356,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* CENTER: HIGH VISIBILITY QUESTION CARD */}
-              <div className="py-1 space-y-2 shrink-0">
+              <div className="game-arena-question py-1 space-y-2 shrink-0">
                 <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/95 border border-slate-800 shadow-xl space-y-1.5 text-center">
                   <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-200">
                     {currentQ.subject} • ระดับ {currentQ.gradeLevel}
@@ -1385,7 +1385,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* Tactical Lifelines Bar */}
-              <div className="shrink-0 grid grid-cols-3 gap-2">
+              <div className="game-arena-tools shrink-0 grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   disabled={fiftyFiftyLeft <= 0 || selectedAnswer !== null}
@@ -1432,7 +1432,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* BOTTOM: 4 LARGE ARCADE BUTTONS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-2 shrink-0">
+              <div className="game-arena-answers grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-2 shrink-0">
                 {currentQ.options.map((opt, idx) => {
                   const letters = ['A', 'B', 'C', 'D'];
                   const letterColors = [

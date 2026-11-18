@@ -1104,3 +1104,53 @@ textarea::placeholder {
     max-width: 100% !important;
   }
 }
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .game-immersive-root .max-w-2xl,
+  .game-immersive-root .max-w-3xl,
+  .game-immersive-root .max-w-4xl {
+    max-width: 100%;
+  }
+
+  .game-immersive-root .p-4 {
+    padding: 0.5rem;
+  }
+
+  .game-immersive-root .p-5 {
+    padding: 0.625rem;
+  }
+
+  .game-immersive-root .p-6 {
+    padding: 0.75rem;
+  }
+
+  .game-arena-landscape {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 0.5rem;
+    align-content: start;
+  }
+
+  .game-arena-hud {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .game-arena-question {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+  }
+
+  .game-arena-tools {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .game-arena-answers {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+  }
+}
