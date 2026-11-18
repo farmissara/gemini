@@ -46,8 +46,12 @@ import {
 import {
   INITIAL_SYSTEM_CONFIG,
   INITIAL_ROLE_PERMISSIONS,
-  INITIAL_SUBSCRIPTION_PLANS,
 } from './data/mockData';
+import {
+  fetchSuperAdminSettings,
+  saveSuperAdminSetting,
+  saveSuperAdminSettings,
+} from './lib/superAdminSettings';
 import {
   isPasswordRecoveryRedirect,
   restoreSupabaseSession,
@@ -249,7 +253,37 @@ export const App: React.FC = () => {
   // Super Admin Management State (RBAC, Promotions, Subscription Plans)
   const [rolePermissions, setRolePermissions] = useState<RolePermissionConfig[]>(INITIAL_ROLE_PERMISSIONS);
   const [promotions, setPromotions] = useState<PromotionCampaign[]>([]);
-  const [subscriptionPlans, setSubscriptionPlans] = useState<SchoolSubscriptionPlan[]>(INITIAL_SUBSCRIPTION_PLANS);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SchoolSubscriptionPlan[]>([]);
+  const [superAdminConfigError, setSuperAdminConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.role !== 'super_admin' || isDemoMode) return;
+    let active = true;
+    setSuperAdminConfigError(null);
+    fetchSuperAdminSettings()
+      .then((settings) => {
+        if (!active) return;
+        if (Array.isArray(settings.role_permissions)) {
+          setRolePermissions(settings.role_permissions as RolePermissionConfig[]);
+        }
+        if (Array.isArray(settings.promotions)) {
+          setPromotions(settings.promotions as PromotionCampaign[]);
+        }
+        if (Array.isArray(settings.subscription_plans)) {
+          setSubscriptionPlans(settings.subscription_plans as SchoolSubscriptionPlan[]);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setSuperAdminConfigError(
+            error instanceof Error ? error.message : 'โหลดการตั้งค่า Super Admin ไม่สำเร็จ'
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.id, currentUser?.role, isDemoMode]);
 
   // Parse URL query params for direct Period QR / Check-in Link entry
   const deepLinkParams = (() => {
@@ -882,8 +916,35 @@ export const App: React.FC = () => {
     setProgramMode(nextMode);
   };
 
+  const hasGlobalRolePermission = (permission: keyof RolePermissionConfig['permissions']) => {
+    if (currentRole === 'super_admin') return true;
+    return rolePermissions.find((item) => item.role === currentRole)?.permissions[permission] ?? true;
+  };
+
+  useEffect(() => {
+    const permissions = rolePermissions.find((item) => item.role === currentRole)?.permissions;
+    const restrictedTab =
+      (currentTab === 'behavior_sdq' && permissions?.manageSdq === false) ||
+      (currentTab === 'infirmary' && permissions?.viewInfirmary === false);
+    if (restrictedTab) {
+      setCurrentTab('dashboard');
+    }
+  }, [currentTab, currentRole, rolePermissions]);
+
   const navigateToAppTab = (tab: NavTab) => {
     setIsGamePlaying(false);
+
+    const requiredGlobalPermission: Partial<Record<NavTab, keyof RolePermissionConfig['permissions']>> = {
+      behavior_sdq: 'manageSdq',
+      infirmary: 'viewInfirmary',
+    };
+    const requiredPermission = requiredGlobalPermission[tab];
+    if (requiredPermission && !hasGlobalRolePermission(requiredPermission)) {
+      setCurrentTab('dashboard');
+      setProgramMode('school_erp');
+      setDataSyncError('บทบาทของคุณไม่ได้รับอนุญาตให้เข้าถึงโมดูลนี้จากการตั้งค่าส่วนกลาง');
+      return;
+    }
 
     if (currentRole === 'parent') {
       setProgramMode('parent_portal');
@@ -3664,12 +3725,28 @@ export const App: React.FC = () => {
                     schools={schools}
                     onUpdateSchools={setSchools}
                     rolePermissions={rolePermissions}
-                    onUpdateRolePermissions={setRolePermissions}
+                    onUpdateRolePermissions={async (next) => {
+                      await saveSuperAdminSetting('role_permissions', next);
+                      setRolePermissions(next);
+                      setSuperAdminConfigError(null);
+                    }}
                     promotions={promotions}
-                    onUpdatePromotions={setPromotions}
+                    onUpdatePromotions={async (next) => {
+                      await saveSuperAdminSetting('promotions', next);
+                      setPromotions(next);
+                      setSuperAdminConfigError(null);
+                    }}
                     subscriptionPlans={subscriptionPlans}
-                    onUpdateSubscriptionPlans={setSubscriptionPlans}
-                    allUsers={currentUser ? [currentUser] : []}
+                    configError={superAdminConfigError}
+                    onSavePromoAssignment={async (nextPromotions, nextPlans) => {
+                      await saveSuperAdminSettings({
+                        promotions: nextPromotions,
+                        subscription_plans: nextPlans,
+                      });
+                      setPromotions(nextPromotions);
+                      setSubscriptionPlans(nextPlans);
+                      setSuperAdminConfigError(null);
+                    }}
                     lang={lang}
                     isDemoMode={isDemoMode}
                     onViewSchool={handleViewSchool}
@@ -4068,7 +4145,7 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'behavior_sdq' && (
+                {currentTab === 'behavior_sdq' && hasGlobalRolePermission('manageSdq') && (
                   <BehaviorSdqView
                     students={viewStudents}
                     records={viewBehaviorRecords}
@@ -4083,7 +4160,7 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'infirmary' && (
+                {currentTab === 'infirmary' && hasGlobalRolePermission('viewInfirmary') && (
                   <InfirmaryHealthView
                     visits={viewInfirmaryVisits}
                     students={viewStudents}

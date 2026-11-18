@@ -1191,30 +1191,22 @@ export async function fetchSchoolCounts(schoolIds: string[]): Promise<Record<str
 
   const client = getSupabaseClient();
   if (!client) return result;
+  if (schoolIds.length === 0) return result;
 
-  try {
-    const [{ data: studentRows }, { data: teacherRows }] = await Promise.all([
-      client.from('students').select('school_id'),
-      client.from('teachers').select('school_id'),
-    ]);
-
-    (studentRows || []).forEach((row: { school_id: string }) => {
-      if (row.school_id) {
-        if (!result[row.school_id]) result[row.school_id] = { studentsCount: 0, teachersCount: 0 };
-        result[row.school_id].studentsCount += 1;
-      }
-    });
-
-    (teacherRows || []).forEach((row: { school_id: string }) => {
-      if (row.school_id) {
-        if (!result[row.school_id]) result[row.school_id] = { studentsCount: 0, teachersCount: 0 };
-        result[row.school_id].teachersCount += 1;
-      }
-    });
-  } catch (err) {
-    console.warn('Error fetching school counts from Supabase:', err);
+  const { data, error } = await client.rpc('get_super_admin_school_counts', {
+    target_school_ids: schoolIds,
+  });
+  if (error) throw new Error(`Could not load school counts: ${error.message}`);
+  for (const row of (data || []) as Array<{
+    school_id: string;
+    students_count: number;
+    teachers_count: number;
+  }>) {
+    result[row.school_id] = {
+      studentsCount: Number(row.students_count),
+      teachersCount: Number(row.teachers_count),
+    };
   }
-
   return result;
 }
 

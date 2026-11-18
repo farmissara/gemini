@@ -28,6 +28,18 @@ export interface PendingSchoolRegistration {
   email_confirmed: boolean;
 }
 
+export interface SuperAdminAccount {
+  id: string;
+  email: string;
+  full_name_th: string;
+  full_name_en: string;
+  role: UserRole;
+  school_id: string | null;
+  status: 'pending' | 'active' | 'suspended';
+  avatar_url: string;
+  created_at: string;
+}
+
 export interface StudentAccountLink {
   id: string;
   school_id: string;
@@ -265,7 +277,7 @@ export async function updateSchoolStatusInSupabase(
   if (!data) throw new Error('The school status was not updated.');
 }
 
-export async function deleteSchoolPermanentlyInSupabase(schoolId: string): Promise<void> {
+export async function deleteSchoolPermanentlyInSupabase(schoolId: string): Promise<string | null> {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
   if (!schoolId.trim()) throw new Error('A school must be selected before it can be deleted.');
@@ -274,6 +286,56 @@ export async function deleteSchoolPermanentlyInSupabase(schoolId: string): Promi
     target_school_id: schoolId,
   });
   if (error) throw new Error(`ไม่สามารถลบโรงเรียนได้: ${error.message}`);
+
+  const cleanupFailures: string[] = [];
+  for (const bucket of ['school-logos', 'school-attachments']) {
+    try {
+      const paths = await listStorageFiles(client, bucket, schoolId);
+      for (let offset = 0; offset < paths.length; offset += 100) {
+        const { error: storageError } = await client.storage.from(bucket).remove(paths.slice(offset, offset + 100));
+        if (storageError) throw storageError;
+      }
+    } catch (cleanupError) {
+      cleanupFailures.push(
+        `${bucket}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+      );
+    }
+  }
+  if (cleanupFailures.length > 0) {
+    console.error(`School ${schoolId} was deleted, but Storage cleanup failed:`, cleanupFailures);
+    return `ลบโรงเรียนจากฐานข้อมูลแล้ว แต่ลบไฟล์ Storage ไม่ครบ: ${cleanupFailures.join('; ')}`;
+  }
+  return null;
+}
+
+async function listStorageFiles(
+  client: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  bucket: string,
+  folder: string
+): Promise<string[]> {
+  const files: string[] = [];
+  let offset = 0;
+  const pageSize = 100;
+  while (true) {
+    const { data, error } = await client.storage.from(bucket).list(folder, {
+      limit: pageSize,
+      offset,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+    if (error) throw error;
+    const entries = data || [];
+    for (const entry of entries) {
+      const path = `${folder}/${entry.name}`;
+      if (entry.id) {
+        files.push(path);
+      } else {
+        files.push(...(await listStorageFiles(client, bucket, path)));
+      }
+    }
+    if (entries.length < pageSize) break;
+    offset += pageSize;
+  }
+  return files;
 }
 
 export async function fetchSchoolLoginPortalInfo(params: {
@@ -830,24 +892,20 @@ export async function cancelPendingSchoolRegistrationInSupabase(
     target_user_id: userId,
     target_school_id: schoolId,
   });
-  if (!rpcError) return;
+  if (rpcError) throw new Error(`ไม่สามารถยกเลิกคำขอสมัครโรงเรียนได้: ${rpcError.message}`);
+}
 
-  const { error: profileErr } = await client
-    .from('user_profiles')
-    .delete()
-    .eq('id', userId)
-    .eq('school_id', schoolId);
-  if (profileErr) {
-    throw new Error(`ไม่สามารถยกเลิกคำขอสมัครโรงเรียนได้: ${profileErr.message}`);
-  }
-
-  const { error: schoolErr } = await client
-    .from('schools')
-    .delete()
-    .eq('id', schoolId)
-    .eq('status', 'pending');
-  if (schoolErr) {
-    console.warn('Could not delete pending school record:', schoolErr.message);
-  }
+export async function listSuperAdminAccounts(
+  limit = 100,
+  offset = 0
+): Promise<SuperAdminAccount[]> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  const { data, error } = await client.rpc('list_super_admin_accounts', {
+    page_limit: limit,
+    page_offset: offset,
+  });
+  if (error) throw new Error(`Could not load user accounts: ${error.message}`);
+  return (data || []) as SuperAdminAccount[];
 }
 

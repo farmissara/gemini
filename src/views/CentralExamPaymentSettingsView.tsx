@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CreditCard,
   QrCode,
@@ -25,6 +25,7 @@ import {
   DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS,
   fetchCentralExamPaymentSettings,
   generatePromptPayPayload,
+  loadCentralExamPaymentSettings,
   saveCentralExamPaymentSettings,
 } from '../lib/centralExamBank';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
@@ -43,13 +44,28 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
   const [settings, setSettings] = useState<CentralExamPaymentSettings>(() => fetchCentralExamPaymentSettings());
   const [savedToast, setSavedToast] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [testAmount, setTestAmount] = useState<number>(390);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setSettings(fetchCentralExamPaymentSettings());
+    let active = true;
+    setSettingsLoading(true);
+    loadCentralExamPaymentSettings()
+      .then((loaded) => {
+        if (active) setSettings(loaded);
+      })
+      .catch((error: unknown) => {
+        if (active) setUploadError(error instanceof Error ? error.message : 'โหลดการตั้งค่าชำระเงินไม่สำเร็จ');
+      })
+      .finally(() => {
+        if (active) setSettingsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleCopy = (text: string, label: string) => {
@@ -94,34 +110,53 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
     }
   };
 
-  const handleSave = () => {
-    const updated = saveCentralExamPaymentSettings({
-      ...settings,
-      updatedBy: adminEmail,
-    });
-    setSettings(updated);
-    setSavedToast('บันทึกการตั้งค่า QR PromptPay เรียบร้อยแล้ว! ทุกโรงเรียนจะเห็นข้อมูลใหม่ทันที');
-    setTimeout(() => setSavedToast(null), 4000);
-    if (onSaved) onSaved(updated);
+  const handleSave = async () => {
+    try {
+      if (settings.enablePromptPay) {
+        generatePromptPayPayload(settings.promptPayId, testAmount, settings.promptPayType);
+      }
+      const updated = await saveCentralExamPaymentSettings({
+        ...settings,
+        updatedBy: adminEmail,
+      });
+      setSettings(updated);
+      setUploadError(null);
+      setSavedToast('บันทึกการตั้งค่า QR PromptPay เรียบร้อยแล้ว! ทุกโรงเรียนจะเห็นข้อมูลใหม่ทันที');
+      setTimeout(() => setSavedToast(null), 4000);
+      if (onSaved) onSaved(updated);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'บันทึกการตั้งค่าชำระเงินไม่สำเร็จ');
+    }
   };
 
   const handleReset = () => {
     setShowResetConfirm(true);
   };
 
-  const handleConfirmReset = () => {
-    const reset = saveCentralExamPaymentSettings({
-      ...DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS,
-      updatedBy: adminEmail,
-    });
-    setSettings(reset);
-    setShowResetConfirm(false);
-    setSavedToast('คืนค่าเริ่มต้นเรียบร้อยแล้ว');
-    setTimeout(() => setSavedToast(null), 3000);
+  const handleConfirmReset = async () => {
+    try {
+      const reset = await saveCentralExamPaymentSettings({
+        ...DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS,
+        updatedBy: adminEmail,
+      });
+      setSettings(reset);
+      setUploadError(null);
+      setShowResetConfirm(false);
+      setSavedToast('คืนค่าเริ่มต้นเรียบร้อยแล้ว');
+      setTimeout(() => setSavedToast(null), 3000);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'คืนค่าการตั้งค่าไม่สำเร็จ');
+    }
   };
 
   // Preview generated payload
-  const promptPayPayload = generatePromptPayPayload(settings.promptPayId, testAmount);
+  const promptPayPayload = useMemo(() => {
+    try {
+      return generatePromptPayPayload(settings.promptPayId, testAmount, settings.promptPayType);
+    } catch {
+      return '';
+    }
+  }, [settings.promptPayId, settings.promptPayType, testAmount]);
 
   return (
     <div className={`${getModuleTone('central_exam_hub')} space-y-5`}>
@@ -149,6 +184,7 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
           <button
             type="button"
             onClick={handleSave}
+            disabled={settingsLoading}
             className="btn-action-primary px-4 py-2.5 text-xs flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Save className="w-4 h-4 shrink-0" />
@@ -222,6 +258,7 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
                     value={settings.promptPayId}
                     onChange={(e) => setSettings((prev) => ({ ...prev, promptPayId: e.target.value }))}
                     placeholder="เช่น 081-999-8888 หรือ 0105559000001"
+                    inputMode="numeric"
                     className="w-full px-3 py-2 text-xs font-mono font-bold rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                   />
                   <Phone className="w-3.5 h-3.5 absolute right-3 top-2.5 text-[var(--color-text-muted)] pointer-events-none" />
@@ -505,16 +542,24 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
                     </div>
                   ) : (
                     <div className="space-y-1.5 flex flex-col items-center">
-                      <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
-                        <QrCodeMatrix
-                          value={promptPayPayload}
-                          size={176}
-                          label={`PromptPay QR ฿${testAmount}`}
-                        />
-                      </div>
-                      <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
-                        ✓ สร้าง QR PromptPay EMVCo มาตรฐานอัตโนมัติ
-                      </div>
+                      {promptPayPayload ? (
+                        <>
+                          <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
+                            <QrCodeMatrix
+                              value={promptPayPayload}
+                              size={176}
+                              label={`PromptPay QR ฿${testAmount}`}
+                            />
+                          </div>
+                          <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                            ✓ สร้าง QR PromptPay EMVCo มาตรฐานอัตโนมัติ
+                          </div>
+                        </>
+                      ) : (
+                        <p role="alert" className="max-w-52 text-center text-xs text-rose-700">
+                          หมายเลขพร้อมเพย์ไม่ตรงกับประเภทที่เลือก
+                        </p>
+                      )}
                     </div>
                   )}
 

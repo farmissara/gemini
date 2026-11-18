@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   BellRing,
   BookOpen,
@@ -24,6 +24,7 @@ import {
   fetchCentralExamPaymentSettings,
   generatePromptPayPayload,
   getStrandMeta,
+  loadCentralExamPaymentSettings,
 } from '../lib/centralExamBank';
 import {
   CentralExamPack,
@@ -61,12 +62,31 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [slipFilePreview, setSlipFilePreview] = useState<string | null>(null);
   const [slipUploadError, setSlipUploadError] = useState<string | null>(null);
+  const [paymentSettingsError, setPaymentSettingsError] = useState<string | null>(null);
   const strandMeta = getStrandMeta(pack.strand);
-  const paymentSettings = useMemo(() => fetchCentralExamPaymentSettings(), []);
+  const [paymentSettings, setPaymentSettings] = useState(() => fetchCentralExamPaymentSettings());
+
+  useEffect(() => {
+    let active = true;
+    loadCentralExamPaymentSettings()
+      .then((settings) => {
+        if (active) setPaymentSettings(settings);
+      })
+      .catch((error: unknown) => {
+        if (active) setPaymentSettingsError(error instanceof Error ? error.message : 'โหลดข้อมูลชำระเงินไม่สำเร็จ');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const promptPayCode = useMemo(() => {
-    return generatePromptPayPayload(paymentSettings.promptPayId, pack.priceThb);
-  }, [paymentSettings.promptPayId, pack.priceThb]);
+    try {
+      return generatePromptPayPayload(paymentSettings.promptPayId, pack.priceThb, paymentSettings.promptPayType);
+    } catch {
+      return '';
+    }
+  }, [paymentSettings.promptPayId, paymentSettings.promptPayType, pack.priceThb]);
 
   const handleCopyPromptPay = () => {
     if (navigator.clipboard) {
@@ -222,7 +242,11 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
           </div>
         </div>
 
-        {method === 'promptpay' ? (
+        {method === 'promptpay' ? paymentSettingsError ? (
+          <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-800">
+            โหลดข้อมูลผู้รับชำระเงินไม่สำเร็จ จึงยังไม่สามารถแสดงวิธีชำระเงินได้: {paymentSettingsError}
+          </p>
+        ) : (
           <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col items-center gap-2.5 text-center shadow-xs">
             {/* Header Badge */}
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-extrabold">
@@ -244,7 +268,7 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
                   ✓ QR Code รับเงินอย่างเป็นทางการ (Super Admin)
                 </div>
               </div>
-            ) : (
+            ) : promptPayCode ? (
               <div className="space-y-1 flex flex-col items-center">
                 <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
                   <QrCodeMatrix
@@ -257,8 +281,11 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
                   ✓ สแกนได้ด้วยแอปธนาคารทุกแห่งในไทย
                 </div>
               </div>
+            ) : (
+              <p role="alert" className="text-xs text-rose-700">
+                หมายเลขพร้อมเพย์ไม่ถูกต้องตามประเภทที่กำหนด
+              </p>
             )}
-
             <div className="text-sm font-extrabold text-slate-900">
               ยอดชำระ <span className="text-amber-600 text-lg font-black">฿{pack.priceThb.toLocaleString()}</span>
             </div>

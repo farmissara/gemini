@@ -39,6 +39,7 @@ import {
 import { CentralExamPack, LearningStrandId, QuizQuestion, SchoolExamEntitlement } from '../types';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 
 interface SuperAdminCentralExamManagerProps {
   isDemoMode: boolean;
@@ -56,6 +57,9 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [inspectPackId, setInspectPackId] = useState<string | null>(null);
+  const [pendingPackDeletion, setPendingPackDeletion] = useState<CentralExamPack | null>(null);
+  const [deletingPack, setDeletingPack] = useState(false);
+  const [priceDraftByPack, setPriceDraftByPack] = useState<Record<string, string>>({});
 
   // Create Pack Modal
   const [showCreatePackModal, setShowCreatePackModal] = useState(false);
@@ -267,9 +271,30 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     [packs, inspectPackId]
   );
 
+  const persistPack = async (pack: CentralExamPack): Promise<boolean> => {
+    try {
+      const result = await upsertCentralExamPack(pack, isDemoMode);
+      setPacks(result.packs);
+      return true;
+    } catch (error) {
+      setFeedbackMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'บันทึกชุดข้อสอบไม่สำเร็จ',
+      });
+      return false;
+    }
+  };
+
   const handleCreatePack = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPackForm.titleTh.trim()) return;
+    if (newPackForm.publishNow) {
+      setFeedbackMessage({
+        type: 'error',
+        text: 'ไม่สามารถเผยแพร่ชุดข้อสอบที่ยังไม่มีข้อสอบได้ กรุณาบันทึกเป็นฉบับร่างก่อน',
+      });
+      return;
+    }
     const strandMeta = getStrandMeta(newPackForm.strand);
     const now = new Date().toISOString();
     const pack: CentralExamPack = {
@@ -291,8 +316,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       updatedAt: now,
     };
 
-    const res = await upsertCentralExamPack(pack, isDemoMode);
-    setPacks(res.packs);
+    if (!(await persistPack(pack))) return;
     setShowCreatePackModal(false);
     setInspectPackId(pack.id);
     setNewPackForm({
@@ -314,14 +338,23 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   };
 
   const handleTogglePricing = async (pack: CentralExamPack, pricingType: 'free' | 'paid', priceThb?: number) => {
+    if (pricingType === 'paid' &&
+      (typeof priceThb !== 'number' || !Number.isFinite(priceThb) || priceThb < 1)) {
+      setFeedbackMessage({ type: 'error', text: 'ราคาชุดข้อสอบต้องมากกว่า 0 บาท' });
+      return;
+    }
     const updated: CentralExamPack = {
       ...pack,
       pricingType,
       priceThb: pricingType === 'free' ? 0 : Math.max(0, Number(priceThb ?? (pack.priceThb || 390))),
       updatedAt: new Date().toISOString(),
     };
-    const res = await upsertCentralExamPack(updated, isDemoMode);
-    setPacks(res.packs);
+    if (!(await persistPack(updated))) return;
+    setPriceDraftByPack((current) => {
+      const next = { ...current };
+      delete next[pack.id];
+      return next;
+    });
     setFeedbackMessage({
       type: 'success',
       text:
@@ -346,8 +379,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       publishedAt: nextStatus === 'published' ? new Date().toISOString() : pack.publishedAt,
       updatedAt: new Date().toISOString(),
     };
-    const res = await upsertCentralExamPack(updated, isDemoMode);
-    setPacks(res.packs);
+    if (!(await persistPack(updated))) return;
     setFeedbackMessage({
       type: 'success',
       text:
@@ -357,14 +389,31 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     });
   };
 
-  const handleDeletePack = async (pack: CentralExamPack) => {
-    const res = await deleteCentralExamPack(pack.id, isDemoMode);
-    setPacks(res.packs);
-    if (inspectPackId === pack.id) setInspectPackId(null);
-    setFeedbackMessage({
-      type: 'success',
-      text: `ลบชุดข้อสอบ "${pack.titleTh}" เรียบร้อยแล้ว`,
-    });
+  const handleDeletePack = (pack: CentralExamPack) => {
+    setPendingPackDeletion(pack);
+  };
+
+  const handleConfirmDeletePack = async () => {
+    if (!pendingPackDeletion) return;
+    const pack = pendingPackDeletion;
+    setDeletingPack(true);
+    try {
+      const res = await deleteCentralExamPack(pack.id, isDemoMode);
+      setPacks(res.packs);
+      if (inspectPackId === pack.id) setInspectPackId(null);
+      setFeedbackMessage({
+        type: 'success',
+        text: `ลบชุดข้อสอบ "${pack.titleTh}" เรียบร้อยแล้ว`,
+      });
+      setPendingPackDeletion(null);
+    } catch (error) {
+      setFeedbackMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'ลบชุดข้อสอบไม่สำเร็จ',
+      });
+    } finally {
+      setDeletingPack(false);
+    }
   };
 
   const openAddQuestionForPack = (pack: CentralExamPack) => {
@@ -415,8 +464,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       questions: [createdQ, ...targetPack.questions],
       updatedAt: new Date().toISOString(),
     };
-    const res = await upsertCentralExamPack(updatedPack, isDemoMode);
-    setPacks(res.packs);
+    if (!(await persistPack(updatedPack))) return;
     setAddQuestionTargetPackId(null);
     setInspectPackId(targetPack.id);
     setFeedbackMessage({
@@ -431,8 +479,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       questions: pack.questions.filter((q) => q.id !== questionId),
       updatedAt: new Date().toISOString(),
     };
-    const res = await upsertCentralExamPack(updatedPack, isDemoMode);
-    setPacks(res.packs);
+    if (!(await persistPack(updatedPack))) return;
   };
 
   const handleDownloadCsvTemplate = () => {
@@ -484,8 +531,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
         questions: [...tagged, ...targetPack.questions],
         updatedAt: now,
       };
-      const res = await upsertCentralExamPack(updatedPack, isDemoMode);
-      setPacks(res.packs);
+      if (!(await persistPack(updatedPack))) return;
       setInspectPackId(targetPack.id);
       setShowImportModal(false);
       setImportRawText('');
@@ -520,8 +566,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       updatedAt: now,
     };
 
-    const res = await upsertCentralExamPack(newPack, isDemoMode);
-    setPacks(res.packs);
+    if (!(await persistPack(newPack))) return;
     setInspectPackId(newPack.id);
     setShowImportModal(false);
     setImportRawText('');
@@ -806,10 +851,17 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                         <span className="text-[11px] text-[var(--color-text-muted)]">ราคา (฿):</span>
                         <input
                           type="number"
-                          min={0}
+                          min={1}
                           step={10}
-                          value={pack.priceThb}
-                          onChange={(e) => handleTogglePricing(pack, 'paid', Number(e.target.value))}
+                          value={priceDraftByPack[pack.id] ?? String(pack.priceThb)}
+                          onChange={(e) => setPriceDraftByPack((current) => ({
+                            ...current,
+                            [pack.id]: e.target.value,
+                          }))}
+                          onBlur={(e) => {
+                            const value = Number(e.currentTarget.value);
+                            if (value !== pack.priceThb) void handleTogglePricing(pack, 'paid', value);
+                          }}
                           className="w-24 px-2 py-1 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-xs font-bold text-[var(--color-text-title)] tabular-nums"
                         />
                       </div>
@@ -1856,6 +1908,19 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
           </div>
         </div>
       )}
+      <ConfirmActionModal
+        isOpen={Boolean(pendingPackDeletion)}
+        tone="danger"
+        title="ยืนยันลบชุดข้อสอบ"
+        description={`ต้องการลบชุดข้อสอบ "${pendingPackDeletion?.titleTh || ''}" อย่างถาวรหรือไม่?`}
+        detailNote="โรงเรียนจะไม่สามารถรับหรือซื้อชุดข้อสอบนี้ได้อีก การลบจะเกิดขึ้นเมื่อฐานข้อมูลยืนยันสำเร็จเท่านั้น"
+        confirmLabel="ลบชุดข้อสอบ"
+        isBusy={deletingPack}
+        onCancel={() => {
+          if (!deletingPack) setPendingPackDeletion(null);
+        }}
+        onConfirm={handleConfirmDeletePack}
+      />
     </div>
   );
 };

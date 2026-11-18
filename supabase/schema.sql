@@ -1225,3 +1225,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.delete_school_permanently(TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_school_permanently(TEXT) TO authenticated;
+
+-- Persistent Super Admin settings, global role enforcement, account/audit/count
+-- RPCs, and registration cancellation are installed by
+-- migrations/20261119_super_admin_module_hardening.sql.

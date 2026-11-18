@@ -32,12 +32,14 @@ import {
   approvePendingSchoolRegistration,
   cancelPendingSchoolRegistrationInSupabase,
   deleteSchoolPermanentlyInSupabase,
+  listSuperAdminAccounts,
   listPendingSchoolRegistrations,
   PendingSchoolRegistration,
+  SuperAdminAccount,
 } from '../lib/authDb';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { fetchSchoolCounts } from '../lib/supabase';
-import { getAuditLogs } from '../lib/auditLog';
+import { fetchAuditLogsFromSupabase, getAuditLogs } from '../lib/auditLog';
 import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
@@ -45,7 +47,6 @@ import {
   School, 
   SchoolTier,
   SchoolFeatureFlags,
-  AuthUser, 
   UserRole, 
   RolePermissionConfig, 
   PromotionCampaign, 
@@ -57,12 +58,15 @@ interface SuperAdminConsoleViewProps {
   schools: School[];
   onUpdateSchools: React.Dispatch<React.SetStateAction<School[]>>;
   rolePermissions: RolePermissionConfig[];
-  onUpdateRolePermissions: React.Dispatch<React.SetStateAction<RolePermissionConfig[]>>;
+  onUpdateRolePermissions: (next: RolePermissionConfig[]) => Promise<void>;
   promotions: PromotionCampaign[];
-  onUpdatePromotions: React.Dispatch<React.SetStateAction<PromotionCampaign[]>>;
+  onUpdatePromotions: (next: PromotionCampaign[]) => Promise<void>;
   subscriptionPlans: SchoolSubscriptionPlan[];
-  onUpdateSubscriptionPlans: React.Dispatch<React.SetStateAction<SchoolSubscriptionPlan[]>>;
-  allUsers: AuthUser[];
+  onSavePromoAssignment: (
+    promotions: PromotionCampaign[],
+    plans: SchoolSubscriptionPlan[]
+  ) => Promise<void>;
+  configError?: string | null;
   onToggleUserStatus?: (userId: string) => void;
   lang: AppLanguage;
   isDemoMode: boolean;
@@ -82,8 +86,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   promotions,
   onUpdatePromotions,
   subscriptionPlans,
-  onUpdateSubscriptionPlans,
-  allUsers,
+  onSavePromoAssignment,
+  configError,
   lang,
   isDemoMode,
   onViewSchool,
@@ -99,6 +103,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   const [flagEditorSchool, setFlagEditorSchool] = useState<School | null>(null);
   const [flagDraft, setFlagDraft] = useState<SchoolFeatureFlags | null>(null);
   const [auditSchoolFilter, setAuditSchoolFilter] = useState<string>('all');
+  const [accounts, setAccounts] = useState<SuperAdminAccount[]>([]);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [auditEntries, setAuditEntries] = useState<Array<ReturnType<typeof getAuditLogs>[number] & { schoolName: string }>>([]);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [schoolCountError, setSchoolCountError] = useState<string | null>(null);
+  const [settingsWriteError, setSettingsWriteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -163,9 +173,13 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
     const schoolIds = schools.map(s => s.id);
     if (schoolIds.length === 0) return;
     setIsCountingSchools(true);
+    setSchoolCountError(null);
     fetchSchoolCounts(schoolIds)
       .then(counts => {
         setLiveSchoolCounts(counts);
+      })
+      .catch((error: unknown) => {
+        setSchoolCountError(error instanceof Error ? error.message : 'โหลดจำนวนสมาชิกโรงเรียนไม่สำเร็จ');
       })
       .finally(() => {
         setIsCountingSchools(false);
@@ -175,6 +189,45 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   useEffect(() => {
     refreshLiveSchoolCounts();
   }, [schools, activeSubTab, registrationRefreshKey, isDemoMode]);
+
+  useEffect(() => {
+    if (permissionSection !== 'accounts' || isDemoMode) return;
+    let active = true;
+    setAccountError(null);
+    const loadAccounts = async () => {
+      const all: SuperAdminAccount[] = [];
+      let offset = 0;
+      while (active) {
+        const page = await listSuperAdminAccounts(500, offset);
+        all.push(...page);
+        if (page.length < 500) break;
+        offset += page.length;
+      }
+      if (active) setAccounts(all);
+    };
+    void loadAccounts().catch((error: unknown) => {
+      if (active) setAccountError(error instanceof Error ? error.message : 'โหลดบัญชีผู้ใช้ไม่สำเร็จ');
+    });
+    return () => {
+      active = false;
+    };
+  }, [permissionSection, isDemoMode]);
+
+  useEffect(() => {
+    if (activeSubTab !== 'audit_logs' || isDemoMode) return;
+    let active = true;
+    setAuditError(null);
+    fetchAuditLogsFromSupabase(auditSchoolFilter === 'all' ? undefined : auditSchoolFilter)
+      .then((entries) => {
+        if (active) setAuditEntries(entries);
+      })
+      .catch((error: unknown) => {
+        if (active) setAuditError(error instanceof Error ? error.message : 'โหลดประวัติระบบไม่สำเร็จ');
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeSubTab, auditSchoolFilter, isDemoMode]);
 
   // New Promotion Form State
   const [showNewPromoModal, setShowNewPromoModal] = useState(false);
@@ -252,26 +305,22 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   const currentRoleConfig = rolePermissions.find((r) => r.role === selectedRole) || rolePermissions[0];
 
   // Toggle specific permission
-  const handleTogglePermission = (permKey: keyof RolePermissionConfig['permissions']) => {
-    onUpdateRolePermissions((prev) =>
-      prev.map((r) => {
-        if (r.role === selectedRole) {
-          return {
-            ...r,
-            permissions: {
-              ...r.permissions,
-              [permKey]: !r.permissions[permKey],
-            },
-          };
-        }
-        return r;
-      })
+  const handleTogglePermission = async (permKey: keyof RolePermissionConfig['permissions']) => {
+    const next = rolePermissions.map((role) => role.role === selectedRole
+      ? { ...role, permissions: { ...role.permissions, [permKey]: !role.permissions[permKey] } }
+      : role
     );
-    showToast(`อัปเดตสิทธิ์ "${permKey}" ของบทบาท ${selectedRole} เรียบร้อยแล้ว`);
+    setSettingsWriteError(null);
+    try {
+      await onUpdateRolePermissions(next);
+      showToast(`อัปเดตสิทธิ์ "${permKey}" ของบทบาท ${selectedRole} เรียบร้อยแล้ว`);
+    } catch (error) {
+      setSettingsWriteError(error instanceof Error ? error.message : 'บันทึกสิทธิ์ไม่สำเร็จ');
+    }
   };
 
   // Add new promotion campaign
-  const handleCreatePromo = (e: React.FormEvent) => {
+  const handleCreatePromo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPromoForm.code || !newPromoForm.titleTh) return;
 
@@ -291,7 +340,14 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       descriptionTh: newPromoForm.descriptionTh,
     };
 
-    onUpdatePromotions((prev) => [newCampaign, ...prev]);
+    const nextPromotions = [newCampaign, ...promotions];
+    setSettingsWriteError(null);
+    try {
+      await onUpdatePromotions(nextPromotions);
+    } catch (error) {
+      setSettingsWriteError(error instanceof Error ? error.message : 'บันทึกแคมเปญไม่สำเร็จ');
+      return;
+    }
     setShowNewPromoModal(false);
     setNewPromoForm({
       code: '',
@@ -310,74 +366,69 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   };
 
   // Toggle promotion status
-  const handleTogglePromoStatus = (promoId: string) => {
-    onUpdatePromotions((prev) =>
-      prev.map((p) => {
-        if (p.id === promoId) {
-          const nextStatus = p.status === 'active' ? 'expired' : 'active';
-          return { ...p, status: nextStatus };
-        }
-        return p;
-      })
+  const handleTogglePromoStatus = async (promoId: string) => {
+    const next = promotions.map((promotion) => promotion.id === promoId
+      ? { ...promotion, status: promotion.status === 'active' ? 'expired' as const : 'active' as const }
+      : promotion
     );
-    showToast('ปรับปรุงสถานะแคมเปญโปรโมชั่นเรียบร้อยแล้ว');
+    setSettingsWriteError(null);
+    try {
+      await onUpdatePromotions(next);
+      showToast('ปรับปรุงสถานะแคมเปญโปรโมชั่นเรียบร้อยแล้ว');
+    } catch (error) {
+      setSettingsWriteError(error instanceof Error ? error.message : 'บันทึกสถานะแคมเปญไม่สำเร็จ');
+    }
   };
 
   // Apply promotion to school
-  const handleApplyPromoToSchool = (e: React.FormEvent) => {
+  const handleApplyPromoToSchool = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetSchool = schools.find((s) => s.id === selectedSchoolForPromo);
     const targetPromo = promotions.find((p) => p.code === selectedPromoCodeToApply);
 
     if (!targetSchool || !targetPromo) return;
 
-    // Update school record
-    onUpdateSchools((prev) =>
-      prev.map((s) => (s.id === targetSchool.id ? { ...s, appliedPromoCode: targetPromo.code } : s))
-    );
-
-    // Update plan fee
-    onUpdateSubscriptionPlans((prev) => {
-      const existing = prev.find((p) => p.schoolId === targetSchool.id);
-      const baseFee = existing ? existing.monthlyFee : 6500;
-      let finalPrice = baseFee;
-
-      if (targetPromo.discountType === 'percentage') {
-        finalPrice = Math.round(baseFee * (1 - targetPromo.discountValue / 100));
-      } else if (targetPromo.discountType === 'fixed_amount') {
-        finalPrice = Math.max(0, baseFee - targetPromo.discountValue);
-      } else if (targetPromo.discountType === 'free_trial_months') {
-        finalPrice = 0;
-      }
-
-      if (existing) {
-        return prev.map((p) =>
-          p.schoolId === targetSchool.id
-            ? { ...p, appliedPromoCode: targetPromo.code, finalPrice }
-            : p
-        );
-      } else {
-        const newPlan: SchoolSubscriptionPlan = {
+    const existing = subscriptionPlans.find((plan) => plan.schoolId === targetSchool.id);
+    const baseFee = existing ? existing.monthlyFee : 6500;
+    const finalPrice = targetPromo.discountType === 'percentage'
+      ? Math.round(baseFee * (1 - targetPromo.discountValue / 100))
+      : targetPromo.discountType === 'fixed_amount'
+        ? Math.max(0, baseFee - targetPromo.discountValue)
+        : targetPromo.discountType === 'free_trial_months'
+          ? 0
+          : baseFee;
+    const nextPlans = existing
+      ? subscriptionPlans.map((plan) => plan.schoolId === targetSchool.id
+        ? { ...plan, appliedPromoCode: targetPromo.code, finalPrice }
+        : plan
+      )
+      : [{
           id: `sub-${Date.now()}`,
           schoolId: targetSchool.id,
           schoolName: targetSchool.nameTh,
-          planName: 'Professional',
+          planName: 'Professional' as const,
           maxStudents: 1500,
           monthlyFee: baseFee,
           appliedPromoCode: targetPromo.code,
           finalPrice,
-          billingCycle: 'yearly',
-          status: 'active',
+          billingCycle: 'yearly' as const,
+          status: 'active' as const,
           expiryDate: '2027-05-31',
-        };
-        return [newPlan, ...prev];
-      }
-    });
-
-    // Increment promotion redemptions
-    onUpdatePromotions((prev) =>
-      prev.map((p) => (p.id === targetPromo.id ? { ...p, currentRedemptions: p.currentRedemptions + 1 } : p))
+        }, ...subscriptionPlans];
+    const nextPromotions = promotions.map((promotion) => promotion.id === targetPromo.id
+      ? { ...promotion, currentRedemptions: promotion.currentRedemptions + 1 }
+      : promotion
     );
+    setSettingsWriteError(null);
+    try {
+      await onSavePromoAssignment(nextPromotions, nextPlans);
+    } catch (error) {
+      setSettingsWriteError(error instanceof Error ? error.message : 'บันทึกการผูกโปรโมชั่นไม่สำเร็จ');
+      return;
+    }
+    onUpdateSchools((current) => current.map((school) => (
+      school.id === targetSchool.id ? { ...school, appliedPromoCode: targetPromo.code } : school
+    )));
 
     showToast(`ผูกโปรโมชั่น ${targetPromo.code} กับโรงเรียน ${targetSchool.nameTh} สำเร็จแล้ว`);
   };
@@ -407,7 +458,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
     setDeletingSchoolId(school.id);
     setSchoolStatusError(null);
     try {
-      await deleteSchoolPermanentlyInSupabase(school.id);
+      const cleanupWarning = await deleteSchoolPermanentlyInSupabase(school.id);
       onUpdateSchools((current) => current.filter((item) => item.id !== school.id));
       setSelectedSchoolForPromo((current) =>
         current === school.id ? schools.find((item) => item.id !== school.id)?.id || '' : current
@@ -418,7 +469,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       ));
       setPendingSchoolDeletion(null);
       setRegistrationRefreshKey((current) => current + 1);
-      showToast(`ลบโรงเรียน "${school.nameTh}" และข้อมูลที่เกี่ยวข้องถาวรแล้ว`);
+      if (cleanupWarning) setSchoolStatusError(cleanupWarning);
+      showToast(cleanupWarning
+        ? `ลบโรงเรียน "${school.nameTh}" จากฐานข้อมูลแล้ว`
+        : `ลบโรงเรียน "${school.nameTh}" และข้อมูลที่เกี่ยวข้องถาวรแล้ว`);
     } catch (error) {
       setSchoolStatusError(error instanceof Error ? error.message : 'ลบโรงเรียนไม่สำเร็จ');
       setPendingSchoolDeletion(null);
@@ -447,6 +501,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <div className="fixed bottom-6 right-6 z-50 p-3.5 rounded-xl bg-slate-900 text-white border border-slate-700 shadow-xl text-xs flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{feedbackToast}</span>
+        </div>
+      )}
+      {(configError || settingsWriteError || schoolCountError) && (
+        <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+          {settingsWriteError || configError || schoolCountError}
         </div>
       )}
 
@@ -687,7 +746,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <div className="space-y-6">
           <div className="flex gap-2">
             <button type="button" onClick={() => setPermissionSection('policies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${permissionSection === 'policies' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)]'}`}>กำหนดสิทธิ์</button>
-            <button type="button" onClick={() => setPermissionSection('accounts')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${permissionSection === 'accounts' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)]'}`}>บัญชีผู้ใช้ ({allUsers.length})</button>
+            <button type="button" onClick={() => setPermissionSection('accounts')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${permissionSection === 'accounts' ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)]'}`}>บัญชีผู้ใช้ ({accounts.length})</button>
           </div>
           {permissionSection === 'policies' && (
           <>
@@ -810,13 +869,13 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                  {allUsers.slice(accountPage * 5, (accountPage + 1) * 5).map((u) => {
-                    const sch = schools.find((s) => s.id === u.schoolId);
+                  {accounts.slice(accountPage * 5, (accountPage + 1) * 5).map((u) => {
+                    const sch = schools.find((s) => s.id === u.school_id);
                     return (
                       <tr key={u.id} className="hover:bg-[var(--color-card-subtle)]">
                         <td className="py-2.5 px-3 flex items-center gap-2 font-medium text-[var(--color-text-title)]">
-                          <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
-                          <span>{u.fullNameTh}</span>
+                          <img src={u.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          <span>{u.full_name_th}</span>
                         </td>
                         <td className="py-2.5 px-3 text-[var(--color-text-muted)] font-mono text-[11px]">{u.email}</td>
                         <td className="py-2.5 px-3">
@@ -832,11 +891,17 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                             {u.role.toUpperCase()}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-[var(--color-text-body)]">{sch?.nameTh || u.schoolId}</td>
+                        <td className="py-2.5 px-3 text-[var(--color-text-body)]">{sch?.nameTh || u.school_id || '—'}</td>
                         <td className="py-2.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-300 font-semibold text-[11px]">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Active</span>
+                          <span className={`inline-flex items-center gap-1 font-semibold text-[11px] ${
+                            u.status === 'active'
+                              ? 'text-emerald-800 dark:text-emerald-300'
+                              : u.status === 'pending'
+                                ? 'text-amber-800 dark:text-amber-300'
+                                : 'text-rose-800 dark:text-rose-300'
+                          }`}>
+                            {u.status === 'active' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                            <span>{u.status}</span>
                           </span>
                         </td>
                       </tr>
@@ -845,11 +910,15 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 </tbody>
               </table>
             </div>
-            {allUsers.length > 5 && (
+            {accountError && <p role="alert" className="text-xs text-rose-700">{accountError}</p>}
+            {!accountError && accounts.length === 0 && (
+              <p className="py-4 text-center text-xs text-[var(--color-text-muted)]">ไม่พบบัญชีผู้ใช้</p>
+            )}
+            {accounts.length > 5 && (
               <div className="flex items-center justify-between text-xs text-[var(--color-text-body)]">
                 <button type="button" onClick={() => setAccountPage(page => Math.max(0, page - 1))} disabled={accountPage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-                <span>หน้า {accountPage + 1} / {Math.ceil(allUsers.length / 5)} · {allUsers.length} บัญชี</span>
-                <button type="button" onClick={() => setAccountPage(page => Math.min(Math.ceil(allUsers.length / 5) - 1, page + 1))} disabled={accountPage >= Math.ceil(allUsers.length / 5) - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
+                <span>หน้า {accountPage + 1} / {Math.ceil(accounts.length / 5)} · {accounts.length} บัญชี</span>
+                <button type="button" onClick={() => setAccountPage(page => Math.min(Math.ceil(accounts.length / 5) - 1, page + 1))} disabled={accountPage >= Math.ceil(accounts.length / 5) - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
               </div>
             )}
           </div>}
@@ -1037,10 +1106,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
                       <div className="text-right">
                         <div className="font-bold text-[var(--color-primary-text)] font-mono text-sm">
-                          ฿{plan?.finalPrice?.toLocaleString() || '11,250'} / ปี
+                          {plan ? `฿${plan.finalPrice.toLocaleString()} / ปี` : 'ยังไม่ได้กำหนดแพ็กเกจ'}
                         </div>
                         <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-semibold">
-                          โค้ดที่ใช้: {sch.appliedPromoCode || plan?.appliedPromoCode || 'BACK2SCHOOL26'}
+                          โค้ดที่ใช้: {sch.appliedPromoCode || plan?.appliedPromoCode || '—'}
                         </div>
                       </div>
                     </div>
@@ -1102,6 +1171,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text-body)]">
                 {schools.slice(schoolPage * 4, (schoolPage + 1) * 4).map((s) => {
                   const live = liveSchoolCounts[s.id];
+                  const plan = subscriptionPlans.find((item) => item.schoolId === s.id);
                   const actualStudents = live ? live.studentsCount : (s.studentsCount || 0);
                   const actualTeachers = live ? live.teachersCount : (s.teachersCount || 0);
                   return (
@@ -1118,7 +1188,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       </td>
                     <td className="py-3 px-3">
                       <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-700">
-                        {s.appliedPromoCode || 'BACK2SCHOOL26'}
+                        {s.appliedPromoCode || plan?.appliedPromoCode || '—'}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right">
@@ -1222,10 +1292,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
       {/* View 6: Multi-School Audit Logs */}
       {activeSubTab === 'audit_logs' && (() => {
-        const targetSchools = auditSchoolFilter === 'all' ? schools : schools.filter((s) => s.id === auditSchoolFilter);
-        const entries = targetSchools
-          .flatMap((s) => getAuditLogs(s.id).map((log) => ({ ...log, schoolName: s.nameTh })))
-          .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        const entries = isDemoMode
+          ? (auditSchoolFilter === 'all' ? schools : schools.filter((school) => school.id === auditSchoolFilter))
+              .flatMap((school) => getAuditLogs(school.id).map((log) => ({ ...log, schoolName: school.nameTh })))
+              .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+          : auditEntries;
         return (
           <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1249,6 +1320,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               </select>
             </div>
 
+            {auditError && <p role="alert" className="text-xs text-rose-700">{auditError}</p>}
             {entries.length === 0 ? (
               <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">
                 ยังไม่มีบันทึกเหตุการณ์ในระบบ

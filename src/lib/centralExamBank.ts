@@ -205,51 +205,59 @@ export async function upsertCentralExamPack(
     publishedAt: pack.status === 'published' ? pack.publishedAt || new Date().toISOString() : undefined,
     updatedAt: new Date().toISOString(),
   };
-
-  const currentLocal = readLocalPacks();
-  const exists = currentLocal.some((p) => p.id === normalizedPack.id);
-  const nextLocal = exists
-    ? currentLocal.map((p) => (p.id === normalizedPack.id ? normalizedPack : p))
-    : [normalizedPack, ...currentLocal];
-  writeLocalPacks(nextLocal);
+  if (normalizedPack.status === 'published' && normalizedPack.questions.length === 0) {
+    throw new Error('A published exam pack must contain at least one question.');
+  }
+  if (normalizedPack.pricingType === 'paid' && normalizedPack.priceThb < 1) {
+    throw new Error('Paid exam packs must have a price greater than zero.');
+  }
 
   if (isDemoMode) {
+    const currentLocal = readLocalPacks();
+    const nextLocal = currentLocal.some((p) => p.id === normalizedPack.id)
+      ? currentLocal.map((p) => (p.id === normalizedPack.id ? normalizedPack : p))
+      : [normalizedPack, ...currentLocal];
+    writeLocalPacks(nextLocal);
     dispatchCentralExamsUpdated();
     return { ok: true, packs: nextLocal, persistedToDb: false };
   }
 
   const client = getSupabaseClient();
-  if (!client) {
-    dispatchCentralExamsUpdated();
-    return { ok: true, packs: nextLocal, persistedToDb: false };
-  }
+  if (!client) throw new Error('Supabase is not configured.');
 
-  try {
-    const { error } = await client
-      .from('central_exam_packs')
-      .upsert(mapPackToDb(normalizedPack), { onConflict: 'id' });
-    dispatchCentralExamsUpdated();
-    return { ok: true, packs: nextLocal, persistedToDb: !error };
-  } catch {
-    dispatchCentralExamsUpdated();
-    return { ok: true, packs: nextLocal, persistedToDb: false };
-  }
+  const { error } = await client
+    .from('central_exam_packs')
+    .upsert(mapPackToDb(normalizedPack), { onConflict: 'id' });
+  if (error) throw new Error(`Could not save exam pack: ${error.message}`);
+
+  const currentLocal = readLocalPacks();
+  const nextLocal = currentLocal.some((p) => p.id === normalizedPack.id)
+    ? currentLocal.map((p) => (p.id === normalizedPack.id ? normalizedPack : p))
+    : [normalizedPack, ...currentLocal];
+  writeLocalPacks(nextLocal);
+  dispatchCentralExamsUpdated();
+  return { ok: true, packs: nextLocal, persistedToDb: true };
 }
 
 export async function deleteCentralExamPack(
   packId: string,
   isDemoMode: boolean
 ): Promise<{ ok: boolean; packs: CentralExamPack[] }> {
-  const nextLocal = readLocalPacks().filter((p) => p.id !== packId);
-  writeLocalPacks(nextLocal);
-
-  if (!isDemoMode) {
+  if (isDemoMode) {
+    const nextLocal = readLocalPacks().filter((p) => p.id !== packId);
+    writeLocalPacks(nextLocal);
+    dispatchCentralExamsUpdated();
+    return { ok: true, packs: nextLocal };
+  }
+  {
     const client = getSupabaseClient();
-    if (client) {
-      await client.from('central_exam_packs').delete().eq('id', packId).then(() => undefined, () => undefined);
-    }
+    if (!client) throw new Error('Supabase is not configured.');
+    const { error } = await client.from('central_exam_packs').delete().eq('id', packId);
+    if (error) throw new Error(`Could not delete exam pack: ${error.message}`);
   }
 
+  const nextLocal = readLocalPacks().filter((p) => p.id !== packId);
+  writeLocalPacks(nextLocal);
   dispatchCentralExamsUpdated();
   return { ok: true, packs: nextLocal };
 }
@@ -840,6 +848,19 @@ export const DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS: CentralExamPaymentSettings =
   updatedBy: 'Super Admin (baanpakkru@gmail.com)',
 };
 
+export async function loadCentralExamPaymentSettings(): Promise<CentralExamPaymentSettings> {
+  const client = getSupabaseClient();
+  if (!client) return fetchCentralExamPaymentSettings();
+
+  const { data, error } = await client.rpc('get_central_exam_payment_settings');
+  if (error) throw new Error(`Could not load central exam payment settings: ${error.message}`);
+  const settings = data && typeof data === 'object' && !Array.isArray(data)
+    ? { ...DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS, ...(data as Partial<CentralExamPaymentSettings>) }
+    : DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS;
+  cacheCentralExamPaymentSettings(settings);
+  return settings;
+}
+
 export function fetchCentralExamPaymentSettings(): CentralExamPaymentSettings {
   if (typeof window === 'undefined') return DEFAULT_CENTRAL_EXAM_PAYMENT_SETTINGS;
   try {
@@ -859,20 +880,31 @@ export function fetchCentralExamPaymentSettings(): CentralExamPaymentSettings {
   }
 }
 
-export function saveCentralExamPaymentSettings(settings: CentralExamPaymentSettings): CentralExamPaymentSettings {
+export async function saveCentralExamPaymentSettings(settings: CentralExamPaymentSettings): Promise<CentralExamPaymentSettings> {
   const updated: CentralExamPaymentSettings = {
     ...settings,
     lastUpdated: new Date().toISOString(),
   };
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  const { error } = await client.rpc('save_super_admin_setting', {
+    target_key: 'central_exam_payment_settings',
+    target_value: updated,
+  });
+  if (error) throw new Error(`Could not save central exam payment settings: ${error.message}`);
+  cacheCentralExamPaymentSettings(updated);
+  return updated;
+}
+
+function cacheCentralExamPaymentSettings(updated: CentralExamPaymentSettings): void {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(CENTRAL_EXAM_PAYMENT_STORAGE_KEY, JSON.stringify(updated));
       window.dispatchEvent(new CustomEvent(EXAM_PAYMENT_SETTINGS_UPDATED_EVENT, { detail: updated }));
     } catch (err) {
-      console.warn('Could not save payment settings to localStorage:', err);
+      console.warn('Payment settings were saved remotely but could not be cached locally:', err);
     }
   }
-  return updated;
 }
 
 /**
@@ -897,21 +929,23 @@ function crc16(data: string): string {
  * Generates an EMVCo Thai PromptPay standard QR string
  * Supported: Mobile phone (10 digits) or National ID / Tax ID (13 digits)
  */
-export function generatePromptPayPayload(promptPayId: string, amountThb?: number): string {
+export function generatePromptPayPayload(
+  promptPayId: string,
+  amountThb?: number,
+  promptPayType: CentralExamPaymentSettings['promptPayType'] = 'phone'
+): string {
   const rawId = (promptPayId || '').replace(/[^0-9]/g, '');
-  if (!rawId) {
-    return `EDUVERSE:PAY:PROMPTPAY:${promptPayId || '0819998888'}:${amountThb || 0}`;
+  if (
+    (promptPayType === 'phone' && !(rawId.length === 10 && rawId.startsWith('0'))) ||
+    (['national_id', 'tax_id'].includes(promptPayType) && rawId.length !== 13) ||
+    (promptPayType === 'e_wallet' && rawId.length !== 15)
+  ) {
+    throw new Error('PromptPay ID does not match the selected identifier type.');
   }
 
-  // Determine PromptPay target type: Mobile (10 digits) vs National ID / Tax ID (13 digits)
-  const isMobile = rawId.length === 10 && rawId.startsWith('0');
-  const targetTag = isMobile ? '01' : '02';
-  
-  let formattedTarget = rawId;
-  if (isMobile) {
-    // Convert 08x-xxx-xxxx to 00668xxxxxxxx (13 chars)
-    formattedTarget = '0066' + rawId.slice(1);
-  }
+  const isMobile = promptPayType === 'phone';
+  const targetTag = isMobile ? '01' : promptPayType === 'e_wallet' ? '03' : '02';
+  const formattedTarget = isMobile ? '0066' + rawId.slice(1) : rawId;
 
   const aid = 'A000000677010111';
   const subtag00 = `00${String(aid.length).padStart(2, '0')}${aid}`;
