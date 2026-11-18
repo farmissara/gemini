@@ -1,43 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Swords, 
-  Shield, 
-  Flame, 
-  Zap, 
-  Heart, 
-  Users, 
-  Sparkles, 
-  Award, 
-  HelpCircle, 
-  CheckCircle2, 
-  ChevronRight, 
+import React, { useState, useMemo } from 'react';
+import {
+  Swords,
+  Flame,
+  Zap,
+  Heart,
+  Users,
+  Sparkles,
+  CheckCircle2,
   RotateCcw,
   SlidersHorizontal,
-  Plus,
-  Play,
-  Share2,
   Trophy,
-  ArrowRight,
-  ZoomIn,
-  ZoomOut
+  ArrowLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
-import { 
-  AppLanguage, 
+import {
+  AppLanguage,
   AuthUser,
-  BossRaidConfig, 
+  BossRaidConfig,
   PortfolioItem,
   QuizQuestion,
-  RaidParty, 
-  RaidPartyMember, 
+  RaidParty,
+  RaidPartyMember,
   UserRole,
 } from '../types';
-import { 
-  INITIAL_BOSS_RAID_CONFIG, 
-  INITIAL_RAID_PARTIES 
+import {
+  INITIAL_BOSS_RAID_CONFIG,
+  INITIAL_RAID_PARTIES,
 } from '../data/innovativeFeaturesData';
-import { PagedList } from '../components/PagedList';
+import { COMPREHENSIVE_QUESTION_BANK } from '../data/examQuestionBanks';
 import { playHeavyImpactSound, playComboStreakSound, playGrandVictoryFanfare } from '../lib/labSoundEffects';
-import { getModuleTone } from '../lib/moduleTheme';
 
 interface CoopBossRaidViewProps {
   questions?: QuizQuestion[];
@@ -58,7 +51,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   schoolId,
   currentUser,
   onAwardPortfolioItem,
-  onExit
+  onExit,
 }) => {
   const [savedToPortfolio, setSavedToPortfolio] = useState(false);
   const canManageRaid = currentRole === 'teacher' || currentRole === 'admin';
@@ -67,30 +60,47 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [attackAnimation, setAttackAnimation] = useState<boolean>(false);
   const [lastDamage, setLastDamage] = useState<number | null>(null);
+  const [comboCount, setComboCount] = useState<number>(0);
   const [activeHintToast, setActiveHintToast] = useState<string | null>(null);
   const [victoryCelebration, setVictoryCelebration] = useState<boolean>(false);
-  const [bossZoom, setBossZoom] = useState<number>(0.85);
-  const [raidPanel, setRaidPanel] = useState<'arena' | 'question' | 'parties'>('question');
-  const [examFilter, setExamFilter] = useState<'default' | 'teacher_created' | 'all_bank'>('default');
+  const [examFilter, setExamFilter] = useState<'all_bank' | 'teacher_created'>('all_bank');
   const [questionCursor, setQuestionCursor] = useState<number>(0);
-
-  // Teacher Topic Switcher state
   const [isTeacherPanelOpen, setIsTeacherPanelOpen] = useState<boolean>(false);
+  const [showSquadDrawer, setShowSquadDrawer] = useState<boolean>(false);
 
-  const teacherCreatedQuestions = questions.filter(
-    q => q.id.startsWith('q-custom-') || q.id.startsWith('csv-') || q.category === 'exam'
+  const teacherCreatedQuestions = useMemo(
+    () =>
+      questions.filter(
+        (q) => q.id.startsWith('q-custom-') || q.id.startsWith('csv-') || q.category === 'exam'
+      ),
+    [questions]
   );
-  const raidPool =
-    examFilter === 'teacher_created'
-      ? (teacherCreatedQuestions.length > 0 ? teacherCreatedQuestions : questions)
-      : examFilter === 'all_bank'
-      ? questions
-      : [];
+
+  // Combine real school questions + built-in comprehensive curriculum bank so Boss Raid NEVER gets stuck on 1 question
+  const mergedQuestionBank = useMemo(() => {
+    const seen = new Set<string>();
+    const combined: QuizQuestion[] = [];
+    for (const q of [...questions, ...COMPREHENSIVE_QUESTION_BANK]) {
+      if (q && q.id && !seen.has(q.id) && Array.isArray(q.options) && q.options.length >= 2) {
+        seen.add(q.id);
+        combined.push(q);
+      }
+    }
+    return combined;
+  }, [questions]);
+
+  const raidPool = useMemo(() => {
+    if (examFilter === 'teacher_created') {
+      if (teacherCreatedQuestions.length > 0) return teacherCreatedQuestions;
+      if (questions.length > 0) return questions;
+    }
+    return mergedQuestionBank;
+  }, [examFilter, teacherCreatedQuestions, questions, mergedQuestionBank]);
 
   const applyQuizQuestionToBoss = (q: QuizQuestion) => {
     setSelectedAnswer(null);
     setLastDamage(null);
-    setBossConfig(prev => ({
+    setBossConfig((prev) => ({
       ...prev,
       subject: q.subject,
       activeQuestion: {
@@ -99,227 +109,275 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
         options: q.options,
         correctIndex: q.correctIndex,
         explanationTh: q.explanationTh || 'ตรวจสอบคำอธิบายในคลังข้อสอบ',
-        baseDamage: Math.max(250, q.points * 3),
-      }
+        baseDamage: Math.max(280, (q.points || 100) * 3),
+      },
     }));
   };
 
-  // Attack handler when user answers question
   const handleAttackBoss = (optionIdx: number) => {
     if (bossConfig.status !== 'in_battle' || selectedAnswer !== null) return;
     setSelectedAnswer(optionIdx);
 
     const isCorrect = optionIdx === bossConfig.activeQuestion.correctIndex;
     if (isCorrect) {
+      const nextCombo = comboCount + 1;
+      setComboCount(nextCombo);
       playHeavyImpactSound();
-      playComboStreakSound(2);
-      const damage = Math.round(bossConfig.activeQuestion.baseDamage * 1.5);
+      playComboStreakSound(Math.min(5, nextCombo));
+      const multiplier = 1 + Math.min(1.5, nextCombo * 0.25);
+      const damage = Math.round(bossConfig.activeQuestion.baseDamage * multiplier);
       setLastDamage(damage);
       setAttackAnimation(true);
 
       const nextHp = Math.max(0, bossConfig.bossCurrentHp - damage);
-      setBossConfig(prev => ({
+      setBossConfig((prev) => ({
         ...prev,
         bossCurrentHp: nextHp,
-        status: nextHp === 0 ? 'defeated' : 'in_battle'
+        status: nextHp === 0 ? 'defeated' : 'in_battle',
       }));
 
-      // Update party damage
-      setParties(prev => prev.map((p, idx) => {
-        if (idx === 0) {
-          return {
-            ...p,
-            totalDamage: p.totalDamage + damage,
-            comboMultiplier: Number((p.comboMultiplier + 0.5).toFixed(1)),
-            members: p.members.map(m => m.id === 'pm-1' ? { ...m, hasAnswered: true, damageDealt: m.damageDealt + damage } : m)
-          };
-        }
-        return p;
-      }));
+      setParties((prev) =>
+        prev.map((p, idx) => {
+          if (idx === 0) {
+            return {
+              ...p,
+              totalDamage: p.totalDamage + damage,
+              comboMultiplier: Number((1 + nextCombo * 0.25).toFixed(2)),
+              members: p.members.map((m) =>
+                m.id === 'pm-1'
+                  ? { ...m, hasAnswered: true, damageDealt: m.damageDealt + damage }
+                  : m
+              ),
+            };
+          }
+          return p;
+        })
+      );
 
       if (nextHp === 0) {
         setVictoryCelebration(true);
         playGrandVictoryFanfare();
       }
     } else {
+      setComboCount(0);
       setLastDamage(0);
       setAttackAnimation(false);
     }
 
     setTimeout(() => {
       setAttackAnimation(false);
-    }, 1200);
+    }, 900);
   };
 
-  // Peer-tutoring assist trigger
   const handleSendPeerAssist = (member: RaidPartyMember) => {
     setActiveHintToast(
       lang === 'th'
-        ? `ตัวอย่าง: ส่งการ์ดคำใบ้ให้ ${member.name} (ยังไม่เชื่อมต่อผู้เล่นจริง)`
-        : `Demo: hint card prepared for ${member.name}; no live player connection.`
+        ? `ส่งคำใบ้ช่วย ${member.name.split(' ')[0]} แล้ว`
+        : `Hint sent to ${member.name.split(' ')[0]}`
     );
 
-    setParties(prev => prev.map(p => ({
-      ...p,
-      members: p.members.map(m => m.id === member.id ? { ...m, isHelping: true } : m)
-    })));
+    setParties((prev) =>
+      prev.map((p) => ({
+        ...p,
+        members: p.members.map((m) => (m.id === member.id ? { ...m, isHelping: true } : m)),
+      }))
+    );
 
-    setTimeout(() => setActiveHintToast(null), 3500);
+    setTimeout(() => setActiveHintToast(null), 2600);
   };
 
-  // Reset / Next Question (uses teacher/school bank when selected)
   const handleNextRaidQuestion = () => {
     if (raidPool.length > 0) {
-      const nextIdx = (questionCursor + 1) % raidPool.length;
+      let nextIdx = (questionCursor + 1) % raidPool.length;
+      if (raidPool[nextIdx].id === bossConfig.activeQuestion.id && raidPool.length > 1) {
+        nextIdx = (nextIdx + 1) % raidPool.length;
+      }
       setQuestionCursor(nextIdx);
       applyQuizQuestionToBoss(raidPool[nextIdx]);
       return;
     }
     setSelectedAnswer(null);
     setLastDamage(null);
-    setBossConfig(prev => ({
-      ...prev,
-      activeQuestion: {
-        id: `bq-${Date.now()}`,
-        questionTh: 'ถ้าปล่อยก้อนหินมวล 2 kg ให้ตกอย่างอิสระจากตึกสูง ผ่านไป 3 วินาที ก้อนหินจะมีความเร็วเท่าใด? (กำหนด g = 10 m/s²)',
-        options: ['30 m/s', '20 m/s', '60 m/s', '10 m/s'],
-        correctIndex: 0,
-        explanationTh: 'จากสมการ v = u + gt โดย u = 0 จะได้ v = 10 × 3 = 30 m/s',
-        baseDamage: 300,
-      }
-    }));
   };
 
   const handleRestartBoss = () => {
-    setBossConfig(INITIAL_BOSS_RAID_CONFIG);
+    const startIdx = Math.floor(Math.random() * Math.max(1, raidPool.length));
+    const firstQ = raidPool[startIdx];
+    setQuestionCursor(startIdx);
+    setComboCount(0);
     setParties(INITIAL_RAID_PARTIES);
     setSelectedAnswer(null);
     setLastDamage(null);
     setVictoryCelebration(false);
+    setSavedToPortfolio(false);
+    setBossConfig({
+      ...INITIAL_BOSS_RAID_CONFIG,
+      ...(firstQ
+        ? {
+            subject: firstQ.subject,
+            activeQuestion: {
+              id: firstQ.id,
+              questionTh: firstQ.questionTh,
+              options: firstQ.options,
+              correctIndex: firstQ.correctIndex,
+              explanationTh: firstQ.explanationTh || 'ตรวจสอบคำอธิบายในคลังข้อสอบ',
+              baseDamage: Math.max(280, (firstQ.points || 100) * 3),
+            },
+          }
+        : {}),
+    });
   };
 
-  const hpPercent = Math.round((bossConfig.bossCurrentHp / bossConfig.bossMaxHp) * 100);
+  const hpPercent = Math.max(0, Math.min(100, Math.round((bossConfig.bossCurrentHp / bossConfig.bossMaxHp) * 100)));
 
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('boss_raid')}`}>
-      {/* Toast Alert */}
+    <div className="h-full flex flex-col min-h-0 overflow-hidden bg-[#09090B] text-white font-sans select-none">
+      {/* Subtle Toast */}
       {activeHintToast && (
-        <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-slate-900 text-white shadow-xl border border-[var(--tone)]/50 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-yellow-400 shrink-0" />
-          <p className="text-xs font-semibold">{activeHintToast}</p>
+        <div className="fixed top-16 right-4 z-50 px-3.5 py-2 rounded-xl bg-zinc-900 text-zinc-100 shadow-2xl border border-amber-400/40 flex items-center gap-2 text-xs font-bold">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{activeHintToast}</span>
         </div>
       )}
 
-      {/* Top Banner Header */}
-      <div className="shrink-0 app-page-header p-3 sm:p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
-          <div className="flex items-start gap-3 min-w-0 max-w-xl">
-            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-              <Swords className="w-5 h-5" />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'โหมดห้องเรียนร่วมมือสู้บอส (Co-op Boss Raid & Peer Tutoring)' : 'Cooperative Classroom Boss Raid'}</span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--color-text-title)]">
-                <span>{bossConfig.bossNameTh}</span>
-              </h1>
-              <p className="text-[var(--color-text-body)] text-xs leading-relaxed hidden sm:block">
-                {lang === 'th' 
-                  ? 'ผนึกกำลังตอบคำถามเพื่อลดเลือดบอสประจำคาบเรียน สมาชิกสามารถกดส่งคำใบ้ช่วยติวให้เพื่อนได้ทันที'
-                  : 'Defeat lesson bosses together through collaborative problem solving and real-time peer tutoring.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {onExit && (
-              <button
-                type="button"
-                onClick={onExit}
-                className="btn-action-danger"
-              >
-                <span>ออกจากเกม</span>
-              </button>
-            )}
-
-            {/* Quick Action Button for Teacher */}
-            {canManageRaid && (
-              <button
-                type="button"
-                onClick={() => setIsTeacherPanelOpen(!isTeacherPanelOpen)}
-                className="btn-tool-tone"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ควบคุมบอส (ครู)' : 'Teacher Controls'}</span>
-              </button>
-            )}
-
+      {/* Single-Row Gen Z Top Bar (52px) */}
+      <header className="h-14 px-3 sm:px-5 border-b border-zinc-800/80 bg-[#09090B] flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {onExit && (
             <button
               type="button"
-              onClick={handleRestartBoss}
-              className="btn-tool-neutral"
-              title="Restart Raid"
+              onClick={onExit}
+              className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-bold cursor-pointer shrink-0 transition"
             >
-              <RotateCcw className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" />
+              <span>ออก</span>
             </button>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-base font-black tracking-tight text-white truncate">
+              Boss Raid
+            </h1>
+            <p className="text-[11px] text-zinc-400 truncate">
+              {bossConfig.bossNameTh}
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Teacher Control Strip */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {comboCount > 0 && (
+            <div className="px-2.5 py-1 rounded-lg bg-amber-400/15 border border-amber-400/30 text-amber-400 text-xs font-black font-mono tabular-nums flex items-center gap-1">
+              <Flame className="w-3.5 h-3.5" />
+              <span>x{(1 + Math.min(1.5, comboCount * 0.25)).toFixed(1)}</span>
+            </div>
+          )}
+
+          {canManageRaid && (
+            <button
+              type="button"
+              onClick={() => setIsTeacherPanelOpen(!isTeacherPanelOpen)}
+              className={`w-10 h-10 rounded-xl border flex items-center justify-center cursor-pointer transition ${
+                isTeacherPanelOpen
+                  ? 'bg-amber-400 text-zinc-950 border-amber-300'
+                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-800'
+              }`}
+              title={lang === 'th' ? 'ควบคุมบอส (ครู)' : 'Teacher Controls'}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleRestartBoss}
+            className="w-10 h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white flex items-center justify-center cursor-pointer transition"
+            title="เริ่มรอบใหม่"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Teacher Control Strip (Only when teacher toggles it) */}
       {canManageRaid && isTeacherPanelOpen && (
-        <div className="p-4 rounded-xl bg-indigo-950/70 border border-indigo-700/60 text-white flex flex-wrap items-center justify-between gap-4 text-xs">
-          <div className="flex items-center gap-4">
-            <span className="font-bold text-indigo-300">
-              {lang === 'th' ? 'สลับหัวข้อบอส:' : 'Switch Raid Topic:'}
-            </span>
+        <div className="shrink-0 px-3 sm:px-5 py-2.5 bg-zinc-900/90 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-zinc-400">บอส:</span>
             <button
               type="button"
-              onClick={() => {
-                setBossConfig(prev => ({
+              onClick={() =>
+                setBossConfig((prev) => ({
                   ...prev,
-                  bossNameTh: 'โกเลมสะเทินกรด-เบส (Acid-Base Golem)',
+                  bossNameTh: 'โกเลมสะเทินกรด-เบส',
                   subject: 'เคมี ม.ปลาย',
-                  topicTh: 'การคำนวณจุดยุติและอินดิเคเตอร์'
-                }));
-              }}
-              className="px-3 py-1.5 rounded-lg bg-indigo-800 hover:bg-indigo-700 font-semibold cursor-pointer"
+                  topicTh: 'การคำนวณจุดยุติและอินดิเคเตอร์',
+                }))
+              }
+              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold cursor-pointer"
             >
-              🧪 เคมี (กรด-เบส)
+              เคมี (กรด-เบส)
             </button>
             <button
               type="button"
-              onClick={() => {
-                setBossConfig(prev => ({
+              onClick={() =>
+                setBossConfig((prev) => ({
                   ...prev,
-                  bossNameTh: 'จอมอสูรไวยากรณ์ (Grammar Titan)',
-                  subject: 'ภาษาอังกฤษ ม.ปลาย',
-                  topicTh: 'Subject-Verb Agreement & Conjunctions'
-                }));
-              }}
-              className="px-3 py-1.5 rounded-lg bg-indigo-800 hover:bg-indigo-700 font-semibold cursor-pointer"
+                  bossNameTh: 'จอมอสูรไวยากรณ์',
+                  subject: 'ภาษาอังกฤษ',
+                  topicTh: 'Subject-Verb Agreement',
+                }))
+              }
+              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold cursor-pointer"
             >
-              📚 ภาษาอังกฤษ (Grammar)
+              อังกฤษ (Grammar)
             </button>
+            {questions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const nextFilter = examFilter === 'all_bank' ? 'teacher_created' : 'all_bank';
+                  setExamFilter(nextFilter);
+                  setQuestionCursor(0);
+                  const nextPool =
+                    nextFilter === 'teacher_created'
+                      ? teacherCreatedQuestions.length > 0
+                        ? teacherCreatedQuestions
+                        : questions
+                      : mergedQuestionBank;
+                  if (nextPool.length > 0) applyQuizQuestionToBoss(nextPool[0]);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg font-bold cursor-pointer ${
+                  examFilter === 'teacher_created'
+                    ? 'bg-amber-400 text-zinc-950'
+                    : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+                }`}
+              >
+                {examFilter === 'teacher_created' ? 'ใช้ข้อสอบครูอยู่' : 'สลับใช้ข้อสอบครู'}
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-slate-300">
-              {lang === 'th' ? 'ปรับเลือดบอส:' : 'Boss HP:'}
-            </span>
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setBossConfig(prev => ({ ...prev, bossCurrentHp: Math.min(prev.bossMaxHp, prev.bossCurrentHp + 500) }))}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 font-bold"
+              onClick={() =>
+                setBossConfig((prev) => ({
+                  ...prev,
+                  bossCurrentHp: Math.min(prev.bossMaxHp, prev.bossCurrentHp + 500),
+                }))
+              }
+              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 font-mono font-bold cursor-pointer"
             >
               +500 HP
             </button>
             <button
               type="button"
-              onClick={() => setBossConfig(prev => ({ ...prev, bossCurrentHp: Math.max(0, prev.bossCurrentHp - 500) }))}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 font-bold"
+              onClick={() =>
+                setBossConfig((prev) => ({
+                  ...prev,
+                  bossCurrentHp: Math.max(0, prev.bossCurrentHp - 500),
+                }))
+              }
+              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 font-mono font-bold cursor-pointer"
             >
               -500 HP
             </button>
@@ -327,347 +385,274 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
         </div>
       )}
 
-      {/* Exam Source Selector for Boss Raid (Teacher-Created Exams Support) */}
-      {questions.length > 0 && (
-        <div className="shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
-          <span className="font-bold text-amber-300">ชุดข้อสอบโจมตีบอส:</span>
-          {[
-            { id: 'default' as const, label: 'บอสมาตรฐาน' },
-            {
-              id: 'teacher_created' as const,
-              label: teacherCreatedQuestions.length > 0
-                ? `👨‍🏫 ข้อสอบที่ครูสร้าง (${teacherCreatedQuestions.length} ข้อ)`
-                : `👨‍🏫 ข้อสอบโรงเรียน/ครู (${questions.length} ข้อ)`,
-            },
-            { id: 'all_bank' as const, label: `📚 คลังข้อสอบทั้งหมด (${questions.length} ข้อ)` },
-          ].map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => {
-                setExamFilter(opt.id);
-                setQuestionCursor(0);
-                if (opt.id === 'default') {
-                  setBossConfig(prev => ({
-                    ...prev,
-                    subject: INITIAL_BOSS_RAID_CONFIG.subject,
-                    activeQuestion: INITIAL_BOSS_RAID_CONFIG.activeQuestion,
-                  }));
-                  setSelectedAnswer(null);
-                  setLastDamage(null);
-                } else {
-                  const pool = opt.id === 'teacher_created'
-                    ? (teacherCreatedQuestions.length > 0 ? teacherCreatedQuestions : questions)
-                    : questions;
-                  if (pool.length > 0) applyQuizQuestionToBoss(pool[0]);
-                }
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                examFilter === opt.id
-                  ? 'bg-amber-400 text-slate-950'
-                  : 'text-slate-200 hover:text-white underline-offset-4 hover:underline'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="shrink-0 flex lg:hidden flex-wrap gap-1.5 rounded-xl bg-slate-900 border border-slate-800 p-1.5" role="group" aria-label={lang === 'th' ? 'ส่วนของเกม' : 'Raid panels'}>
-        {([
-          ['arena', lang === 'th' ? 'สนามบอส' : 'Boss Arena'],
-          ['question', lang === 'th' ? 'ตอบคำถาม' : 'Answer Question'],
-          ['parties', lang === 'th' ? 'ทีมพันธมิตร' : 'Allied Teams']
-        ] as const).map(([panel, label]) => (
-          <button
-            key={panel}
-            type="button"
-            aria-pressed={raidPanel === panel}
-            onClick={() => setRaidPanel(panel)}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-              raidPanel === panel
-                ? 'bg-amber-400 text-slate-950'
-                : 'text-slate-200 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Main Raid Stage: Left Boss Visual & Health Bar, Right Co-op Question & Party Matrix */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-y-auto pb-1">
-        {/* Left Column: Boss Arena Visual */}
-        <div className={`${raidPanel === 'arena' ? 'flex' : 'hidden'} lg:flex lg:col-span-5 min-h-[220px] bg-gradient-to-b from-slate-900 via-slate-950 to-black rounded-2xl border border-slate-800 p-3 sm:p-3.5 shadow-xl flex-col justify-between text-white relative overflow-hidden`}>
-          {/* Boss HP Bar & Zoom Control */}
-          <div>
-            <div className="flex items-center justify-between text-xs font-bold mb-2">
-              <span className="flex items-center gap-1.5 text-red-400">
-                <Heart className="w-4 h-4 fill-current" />
-                <span>BOSS HEALTH</span>
-              </span>
-              <div className="flex items-center gap-2">
-                {/* Boss Zoom Controls */}
-                <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-lg px-1.5 py-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setBossZoom(prev => Math.max(0.5, Number((prev - 0.15).toFixed(2))))}
-                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
-                    title="ซูมออกบอส (-)"
-                  >
-                    <ZoomOut className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBossZoom(1.0)}
-                    className="text-[10px] font-mono text-amber-300 font-bold px-1 hover:underline cursor-pointer"
-                    title="รีเซ็ตซูม 1.0x"
-                  >
-                    {bossZoom}x
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBossZoom(prev => Math.min(1.8, Number((prev + 0.15).toFixed(2))))}
-                    className="p-1 text-slate-300 hover:text-amber-300 active:scale-90 transition cursor-pointer"
-                    title="ซูมเข้าบอส (+)"
-                  >
-                    <ZoomIn className="w-3 h-3" />
-                  </button>
+      {/* Main Content */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-5 py-3 sm:py-5">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Mobile Compact Live Boss HP Bar (Always visible while answering on mobile!) */}
+          <div className="lg:hidden rounded-2xl bg-zinc-900 border border-zinc-800 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`w-11 h-11 rounded-xl bg-gradient-to-br from-rose-600 to-purple-800 border border-rose-500/60 flex items-center justify-center shrink-0 transition-transform duration-200 ${
+                    attackAnimation ? 'scale-90' : ''
+                  }`}
+                >
+                  <Swords className="w-5 h-5 text-amber-300" />
                 </div>
-                <span className="text-slate-300 font-mono text-[11px]">
-                  {bossConfig.bossCurrentHp}/{bossConfig.bossMaxHp} ({hpPercent}%)
-                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-white truncate">{bossConfig.bossNameTh}</p>
+                  <p className="text-[11px] text-zinc-400 truncate">{bossConfig.subject}</p>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                {lastDamage !== null && lastDamage > 0 ? (
+                  <span className="text-sm font-black text-rose-400 font-mono tabular-nums">
+                    -{lastDamage} HP
+                  </span>
+                ) : (
+                  <span className="text-xs font-black font-mono text-rose-400 tabular-nums">
+                    {hpPercent}%
+                  </span>
+                )}
+                <p className="text-[10px] font-mono text-zinc-400 tabular-nums">
+                  {bossConfig.bossCurrentHp}/{bossConfig.bossMaxHp}
+                </p>
               </div>
             </div>
 
-            <div className="w-full h-3.5 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
-              <div 
-                className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 rounded-full transition-all duration-300"
+            <div className="w-full h-2.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
+              <div
+                className="h-full bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 rounded-full transition-all duration-300"
                 style={{ width: `${hpPercent}%` }}
               />
             </div>
+          </div>
 
-            {/* Boss Character Visual Card (Scalable with Zoom) */}
-            <div 
-              style={{ transform: `scale(${bossZoom})`, transformOrigin: 'center' }}
-              className={`my-3 py-3 flex flex-col items-center justify-center transition-transform duration-200 ${attackAnimation ? 'scale-95 animate-shake' : ''}`}
+          {/* Desktop Boss Visual Stage */}
+          <div className="hidden lg:flex lg:col-span-5 rounded-3xl bg-zinc-900 border border-zinc-800 p-5 flex-col justify-between relative overflow-hidden min-h-[420px]">
+            <div>
+              <div className="flex items-center justify-between text-xs font-bold mb-2 tabular-nums">
+                <span className="flex items-center gap-1.5 text-rose-400">
+                  <Heart className="w-4 h-4 fill-current" />
+                  <span>BOSS HP</span>
+                </span>
+                <span className="font-mono text-zinc-300">
+                  {bossConfig.bossCurrentHp} / {bossConfig.bossMaxHp} ({hpPercent}%)
+                </span>
+              </div>
+
+              <div className="w-full h-3 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
+                <div
+                  className="h-full bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 rounded-full transition-all duration-300"
+                  style={{ width: `${hpPercent}%` }}
+                />
+              </div>
+            </div>
+
+            <div
+              className={`my-6 flex flex-col items-center justify-center transition-transform duration-200 ${
+                attackAnimation ? 'scale-90' : ''
+              }`}
             >
               <div className="relative">
-                {/* Boss Avatar / Crest */}
-                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-red-600 via-purple-700 to-slate-900 border-4 border-red-500/80 shadow-2xl shadow-red-500/30 flex items-center justify-center text-white relative overflow-hidden">
-                  <div className="absolute inset-0 bg-radial from-red-500/20 to-transparent animate-pulse" />
-                  <Swords className="w-12 h-12 text-yellow-300 drop-shadow-md" />
+                <div className="w-36 h-36 rounded-3xl bg-gradient-to-br from-rose-600 via-purple-800 to-zinc-950 border-2 border-rose-500/70 shadow-2xl shadow-rose-600/20 flex items-center justify-center">
+                  <Swords className="w-14 h-14 text-amber-300" />
                 </div>
 
-                {/* Floating Damage Number */}
-                {lastDamage !== null && (
-                  <div className="absolute -top-3 -right-3 px-2.5 py-0.5 rounded-full bg-red-600 text-white font-black text-xs shadow-lg animate-bounce">
-                    -{lastDamage} HP!
+                {lastDamage !== null && lastDamage > 0 && (
+                  <div className="absolute -top-3 -right-4 px-3 py-1 rounded-xl bg-rose-600 text-white font-black text-sm font-mono shadow-lg tabular-nums">
+                    -{lastDamage}
                   </div>
                 )}
               </div>
 
-              <h3 className="text-base font-black text-white mt-2.5 text-center">
+              <h2 className="text-lg font-black text-white mt-4 text-center">
                 {bossConfig.bossNameTh}
-              </h3>
-              <p className="text-[11px] text-red-300 mt-0.5 font-medium">
-                {bossConfig.bossTitleTh}
-              </p>
-            </div>
-          </div>
-
-          {/* Bottom Raid Info */}
-          <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
-            <span className="truncate max-w-[150px]">{bossConfig.topicTh}</span>
-            <span className="text-amber-400 font-bold flex items-center gap-1 shrink-0">
-              <Flame className="w-3 h-3" />
-              <span>คอมโบ x2.0</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Right Column: Active Attack Question & Co-op Party Matrix */}
-        <div className={`${raidPanel !== 'arena' ? 'flex' : 'hidden'} lg:flex lg:col-span-7 flex-col min-h-0 space-y-3 pr-1 overflow-y-auto`}>
-          <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-100 dark:bg-amber-950 px-3 py-2 text-[11px] font-semibold text-amber-950 dark:text-amber-200">
-            โหมดสาธิต: รายชื่อทีมและผลการแข่งขันเป็นข้อมูลตัวอย่าง ยังไม่เชื่อมผู้เล่นออนไลน์จริง
-          </div>
-          {/* Question Card (Always visible on desktop, selectable on mobile) */}
-          <div className={`${raidPanel === 'question' ? 'block' : 'hidden lg:block'} bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs`}>
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
-                {bossConfig.subject}
-              </span>
-              <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
-                {lang === 'th' ? `พลังโจมตีพื้นฐาน: ${bossConfig.activeQuestion.baseDamage} DMG` : `Base: ${bossConfig.activeQuestion.baseDamage} DMG`}
-              </span>
+              </h2>
+              <p className="text-xs text-zinc-400 mt-1 text-center">{bossConfig.bossTitleTh}</p>
             </div>
 
-            <div className="mt-4">
-              <p className="font-bold text-sm text-[var(--color-text-title)] leading-relaxed mb-4">
+            <div className="pt-3 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+              <span className="truncate">{bossConfig.subject}</span>
+              <span className="text-amber-400 font-bold font-mono shrink-0">
+                คลัง {raidPool.length} ข้อ
+              </span>
+            </div>
+          </div>
+
+          {/* Question & Attack Arena */}
+          <div className="lg:col-span-7 flex flex-col gap-3">
+            <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800">
+                <span className="text-xs font-bold text-rose-400 truncate">
+                  {bossConfig.subject}
+                </span>
+                <span className="text-xs font-black font-mono text-amber-400 shrink-0 tabular-nums">
+                  {bossConfig.activeQuestion.baseDamage} DMG
+                </span>
+              </div>
+
+              <p className="font-bold text-base sm:text-lg text-white leading-relaxed">
                 {bossConfig.activeQuestion.questionTh}
               </p>
 
-              {/* Options */}
+              {/* Tactile >= 52px Answer Options */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {bossConfig.activeQuestion.options.map((opt, optIdx) => {
                   const isSelected = selectedAnswer === optIdx;
+                  const isCorrectOpt = optIdx === bossConfig.activeQuestion.correctIndex;
+                  const choiceLabel = ['A', 'B', 'C', 'D'][optIdx] || String(optIdx + 1);
+
+                  let btnClass =
+                    'bg-zinc-950 border-zinc-800 hover:border-rose-500/70 hover:bg-zinc-800/80 text-zinc-100';
+                  if (selectedAnswer !== null) {
+                    if (isCorrectOpt) {
+                      btnClass = 'bg-emerald-600/20 border-emerald-400 text-emerald-200';
+                    } else if (isSelected) {
+                      btnClass = 'bg-rose-600/25 border-rose-500 text-rose-200';
+                    } else {
+                      btnClass = 'bg-zinc-950/60 border-zinc-800/60 text-zinc-500';
+                    }
+                  }
+
                   return (
                     <button
                       key={optIdx}
                       type="button"
                       disabled={selectedAnswer !== null || bossConfig.status !== 'in_battle'}
                       onClick={() => handleAttackBoss(optIdx)}
-                      className={`p-3 rounded-xl border text-left text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center justify-between ${
-                        isSelected
-                          ? optIdx === bossConfig.activeQuestion.correctIndex
-                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-md'
-                            : 'bg-rose-700 text-white border-rose-800 shadow-md'
-                          : selectedAnswer !== null && optIdx === bossConfig.activeQuestion.correctIndex
-                          ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold'
-                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] hover:border-rose-500 text-[var(--color-text-title)]'
-                      }`}
+                      className={`min-h-[54px] px-3.5 py-3 rounded-2xl border text-left text-sm font-bold transition active:scale-[0.98] cursor-pointer flex items-center gap-3 ${btnClass}`}
                     >
-                      <span>{opt}</span>
-                      <Zap className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-amber-300' : 'text-amber-600 dark:text-amber-400'}`} />
+                      <span className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-700/80 text-xs font-mono font-black flex items-center justify-center shrink-0">
+                        {choiceLabel}
+                      </span>
+                      <span className="flex-1 leading-snug">{opt}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Question Feedback & Next */}
-              {selectedAnswer !== null && (
-                <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-[var(--color-text-body)]">
-                    {bossConfig.activeQuestion.explanationTh}
-                  </span>
+              {/* Feedback & Instant Next Attack CTA */}
+              {selectedAnswer !== null && bossConfig.status === 'in_battle' && (
+                <div className="pt-3 border-t border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <p
+                      className={`text-xs font-black ${
+                        selectedAnswer === bossConfig.activeQuestion.correctIndex
+                          ? 'text-emerald-400'
+                          : 'text-rose-400'
+                      }`}
+                    >
+                      {selectedAnswer === bossConfig.activeQuestion.correctIndex
+                        ? `โจมตีสำเร็จ! -${lastDamage || 0} HP`
+                        : 'พลาดเป้า! ลองข้อถัดไปเพื่อเก็บคอมโบใหม่'}
+                    </p>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      {bossConfig.activeQuestion.explanationTh}
+                    </p>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleNextRaidQuestion}
-                    className="px-4 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold transition cursor-pointer shrink-0 ml-2"
+                    className="min-h-[44px] px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-black transition active:scale-95 cursor-pointer shrink-0 inline-flex items-center justify-center gap-1.5"
                   >
-                    {lang === 'th' ? 'โจทย์ข้อถัดไป' : 'Next Question'}
+                    <span>{lang === 'th' ? 'โจมตีข้อถัดไป' : 'Next Attack'}</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Co-op Party Matrix (Always accessible on desktop, selectable on mobile) */}
-          <details open className={`${raidPanel === 'parties' ? 'block' : 'hidden lg:block'} bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 shadow-xs`}>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-              <div>
-                <h4 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                  <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                  {lang === 'th' ? 'ทีมพันธมิตรห้องเรียน & ระบบเพื่อนช่วยติว' : 'Classroom Co-op Squads'}
-                </h4>
-              </div>
-              <span className="shrink-0 text-xs font-black text-indigo-700 dark:text-indigo-300">
-                {parties.length} {lang === 'th' ? 'ทีม • รายละเอียด ▾' : 'teams • details ▾'}
-              </span>
-            </summary>
+            {/* Collapsible Squad Panel (Clean & Secondary) */}
+            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowSquadDrawer((v) => !v)}
+                className="w-full min-h-[48px] px-4 py-3 flex items-center justify-between text-left cursor-pointer hover:bg-zinc-800/50 transition"
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-zinc-100">
+                    ทีมร่วมสู้บอส ({parties[0]?.totalDamage || 0} DMG)
+                  </span>
+                </div>
+                {showSquadDrawer ? (
+                  <ChevronUp className="w-4 h-4 text-zinc-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-zinc-400" />
+                )}
+              </button>
 
-            {/* Squads List */}
-            <div className="mt-4 space-y-3 border-t border-[var(--color-border)] pt-4">
-              <p className="text-xs text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'หากเพื่อนในทีมยังตอบไม่ได้ กดปุ่ม "ติวเพื่อน" เพื่อส่งแนวทางคิดให้เพื่อน' : 'Peer assist: Send tutoring tips to help teammates answer'}
-              </p>
-              <PagedList
-                items={parties}
-                pageSize={1}
-                renderItem={(party) => (
-                <div
-                  key={party.id}
-                  className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-[var(--color-text-title)]">
-                      {party.partyName}
-                    </span>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-bold">
-                        Combo x{party.comboMultiplier}
-                      </span>
-                      <span className="font-black text-rose-700 dark:text-rose-300">
-                        {party.totalDamage} DMG
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Members Strip */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {party.members.map((member) => (
-                      <div
-                        key={member.id}
-                        className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between ${
-                          member.hasAnswered
-                            ? 'bg-emerald-100/70 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700'
-                            : 'bg-[var(--color-card)] border-[var(--color-border)]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={member.avatarUrl}
-                            alt={member.name}
-                            className="w-7 h-7 rounded-full object-cover shrink-0"
-                          />
-                          <div className="truncate min-w-0">
-                            <p className="font-bold text-[var(--color-text-title)] truncate text-[11px]">
-                              {member.name.split(' ')[1] || member.name}
-                            </p>
-                            <p className="text-[10px] text-[var(--color-text-muted)] truncate">
-                              {member.roleTitle}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
-                          {member.hasAnswered ? (
-                            <span className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-0.5">
-                              <CheckCircle2 className="w-3 h-3" />
-                              +{member.damageDealt}
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleSendPeerAssist(member)}
-                              className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 hover:underline flex items-center gap-0.5 cursor-pointer"
-                            >
-                              <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                              <span>{lang === 'th' ? 'ส่งคำใบ้ติว' : 'Assist'}</span>
-                            </button>
-                          )}
-                        </div>
+              {showSquadDrawer && (
+                <div className="px-4 pb-4 pt-1 border-t border-zinc-800 space-y-2.5">
+                  {parties.map((party) => (
+                    <div key={party.id} className="space-y-2">
+                      <div className="flex items-center justify-between text-xs pt-2">
+                        <span className="font-bold text-zinc-200">{party.partyName}</span>
+                        <span className="font-mono font-bold text-rose-400 tabular-nums">
+                          {party.totalDamage} DMG · x{party.comboMultiplier}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {party.members.map((member) => (
+                          <div
+                            key={member.id}
+                            className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={member.avatarUrl}
+                                alt={member.name}
+                                className="w-7 h-7 rounded-full object-cover shrink-0"
+                              />
+                              <p className="text-[11px] font-bold text-zinc-200 truncate">
+                                {member.name.split(' ')[1] || member.name}
+                              </p>
+                            </div>
+                            {member.hasAnswered ? (
+                              <span className="text-[11px] font-mono font-bold text-emerald-400 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />+{member.damageDealt}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleSendPeerAssist(member)}
+                                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 text-left cursor-pointer"
+                              >
+                                ส่งคำใบ้
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-              />
             </div>
-          </details>
+          </div>
         </div>
       </div>
 
-      {/* Victory Celebration Modal */}
+      {/* Victory Modal */}
       {victoryCelebration && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border-4 border-amber-400 rounded-3xl max-w-md w-full max-h-[92vh] overflow-y-auto p-6 text-center space-y-4 shadow-2xl relative animate-fade-in">
-            <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-400/40">
-              <Trophy className="w-10 h-10" />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-amber-400/50 rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-400 text-zinc-950 flex items-center justify-center">
+              <Trophy className="w-8 h-8" />
             </div>
 
-            <h3 className="text-2xl font-black text-[var(--color-text-title)]">
-              🎉 {lang === 'th' ? 'พิชิตบอสประจำบทเรียนสำเร็จ!' : 'BOSS DEFEATED!'}
-            </h3>
-            <p className="text-xs text-[var(--color-text-body)]">
-              {lang === 'th' 
-                ? 'พลังแห่งความร่วมมือของทั้งห้องเรียนช่วยให้พิชิตข้อสอบไซบอร์กได้สำเร็จ ทุกคนได้รับโบนัส 200 XP และ 80 เหรียญความรู้!' 
-                : 'Great teamwork! Every participant receives 200 XP and 80 Knowledge Tokens.'}
-            </p>
-
-            <div className="p-3 bg-amber-100 dark:bg-amber-950 rounded-xl border border-amber-300 dark:border-amber-700 text-xs font-bold text-amber-950 dark:text-amber-200">
-              📦 ปลดล็อกหีบสมบัติ: "การ์ดยกเว้นการบ้านประจำสัปดาห์"
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-white">
+                {lang === 'th' ? 'พิชิตบอสสำเร็จ!' : 'BOSS DEFEATED'}
+              </h3>
+              <p className="text-xs text-zinc-400">
+                {lang === 'th'
+                  ? `โค่น ${bossConfig.bossNameTh} เรียบร้อย รับโบนัส +200 XP`
+                  : `Defeated ${bossConfig.bossNameTh}. +200 XP earned.`}
+              </p>
             </div>
 
             {onAwardPortfolioItem && (
@@ -681,32 +666,40 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                     ownerId: currentUser?.studentRecordId || currentUser?.id || 'stu-boss-winner',
                     ownerRole: currentRole === 'teacher' || currentRole === 'admin' ? 'teacher' : 'student',
                     ownerName: currentUser?.fullNameTh || currentUserName,
-                    title: `เกียรติบัตรผู้พิชิต Co-op Boss Raid: ${bossConfig.bossNameTh}`,
+                    title: `ผู้พิชิต Co-op Boss Raid: ${bossConfig.bossNameTh}`,
                     category: 'competition',
                     year: String(new Date().getFullYear() + 543),
-                    description: `ร่วมมือกับทีมพิชิตโจทย์วิชา ${bossConfig.subject} (${bossConfig.topicTh}) สำเร็จ`,
+                    description: `พิชิตโจทย์วิชา ${bossConfig.subject} (${bossConfig.topicTh}) สำเร็จ`,
                     skills: [bossConfig.subject, 'Teamwork', 'Problem Solving'],
                     certifiedBySchool: true,
                     scoreBonus: 15,
                   });
                   setSavedToPortfolio(true);
                 }}
-                className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-900 disabled:opacity-75 text-white font-bold text-xs shadow-sm transition cursor-pointer"
+                className="w-full min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs transition cursor-pointer"
               >
-                {savedToPortfolio ? '✓ บันทึกเกียรติบัตรลง Portfolio แล้ว' : 'บันทึกเกียรติบัตรลง Digital Portfolio'}
+                {savedToPortfolio ? 'บันทึกเกียรติบัตรแล้ว' : 'บันทึกเกียรติบัตรลง Portfolio'}
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                setSavedToPortfolio(false);
-                handleRestartBoss();
-              }}
-              className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-sm shadow-md transition cursor-pointer"
-            >
-              {lang === 'th' ? 'รับรางวัลและเริ่มรอบใหม่' : 'Claim Loot & Continue'}
-            </button>
+            <div className="flex gap-2">
+              {onExit && (
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="flex-1 min-h-[46px] rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs cursor-pointer transition"
+                >
+                  ออก
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleRestartBoss}
+                className="flex-1 min-h-[46px] rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-sm transition cursor-pointer"
+              >
+                {lang === 'th' ? 'เล่นรอบใหม่' : 'Play Again'}
+              </button>
+            </div>
           </div>
         </div>
       )}

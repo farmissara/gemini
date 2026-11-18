@@ -35,11 +35,14 @@ import {
   Split,
   Timer,
   Award,
-  Smartphone,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Bot,
+  Play,
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
-import { getModuleTone } from '../lib/moduleTheme';
-import { enterLandscapeGameMode, exitLandscapeGameMode, isLandscapeViewport, isMobileViewport } from '../lib/screenOrientation';
+import { COMPREHENSIVE_QUESTION_BANK } from '../data/examQuestionBanks';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
 import { MeteorMathBlasterGame } from '../components/games/MeteorMathBlasterGame';
@@ -108,50 +111,33 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onOpenCentralExamHub,
   onExit
 }) => {
-  const [isMobileScreen, setIsMobileScreen] = useState(() => isMobileViewport());
-  const [isLandscape, setIsLandscape] = useState(() => isLandscapeViewport());
-  const [orientationNotice, setOrientationNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileScreen(isMobileViewport());
-      setIsLandscape(isLandscapeViewport());
-    };
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-    };
-  }, []);
-
-  const handleToggleLandscape = async () => {
-    if (isLandscape && document.fullscreenElement) {
-      await exitLandscapeGameMode();
-      setIsLandscape(isLandscapeViewport());
-      return;
-    }
-    const res = await enterLandscapeGameMode();
-    setIsLandscape(isLandscapeViewport());
-    if (!res.ok) {
-      setOrientationNotice('หมุนมือถือเป็นแนวนอนได้เลย เกมจะจัดหน้าจอแนวนอนให้อัตโนมัติ');
-      window.setTimeout(() => setOrientationNotice(null), 3500);
-    }
-  };
-
-  const isMobile = isMobileMode || isMobileScreen;
-
   const effectiveUserId = currentUser?.id || 'temp';
+  const canManageBank =
+    currentUser?.role === 'teacher' ||
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin';
 
   const [activeSubTab, setActiveSubTab] = useState<EduGameSubTab>(
     initialSubTab || 'hub'
   );
+  const [hubCategory, setHubCategory] = useState<'all' | 'arcade' | 'battle' | 'lab'>('all');
+  const [showMissionsDrawer, setShowMissionsDrawer] = useState(false);
 
   useEffect(() => {
     if (initialSubTab) {
       setActiveSubTab(initialSubTab);
     }
   }, [initialSubTab]);
+
+  const handleBackFromGame = () => {
+    setIs3DBattlePlaying(false);
+    setBattleState('idle');
+    if (isMobileMode && initialSubTab && initialSubTab !== 'hub' && onExit) {
+      onExit();
+      return;
+    }
+    setActiveSubTab('hub');
+  };
 
   // Daily Arcade Missions Progress
   const [missionProgress, setMissionProgress] = useState<ArcadeMissionProgress>(() =>
@@ -219,6 +205,19 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   // Import State
   const [importNotification, setImportNotification] = useState<string | null>(null);
 
+  // Combine real school questions + built-in curriculum bank so 1v1 Arena NEVER crashes on empty school bank
+  const combinedQuestionPool: QuizQuestion[] = React.useMemo(() => {
+    const seen = new Set<string>();
+    const list: QuizQuestion[] = [];
+    for (const q of [...questions, ...COMPREHENSIVE_QUESTION_BANK]) {
+      if (q && q.id && !seen.has(q.id) && Array.isArray(q.options) && q.options.length >= 2) {
+        seen.add(q.id);
+        list.push(q);
+      }
+    }
+    return list;
+  }, [questions]);
+
   // Separate teacher-created/imported exams vs standard bank
   const teacherCreatedQuestions = questions.filter(
     q => q.id.startsWith('q-custom-') || q.id.startsWith('csv-') || q.category === 'exam'
@@ -227,10 +226,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   // Active Questions for Battle (filtered by exam source & subject)
   const sourceFilteredQuestions =
     examSource === 'teacher_created'
-      ? (teacherCreatedQuestions.length > 0 ? teacherCreatedQuestions : questions)
+      ? (teacherCreatedQuestions.length > 0 ? teacherCreatedQuestions : questions.length > 0 ? questions : combinedQuestionPool)
       : examSource === 'standard'
-      ? questions.filter(q => q.category === 'standard_exam' || q.category === 'onet')
-      : questions;
+      ? combinedQuestionPool.filter(q => q.category === 'standard_exam' || q.category === 'onet')
+      : combinedQuestionPool;
 
   const matchesSubjectFilter = (q: QuizQuestion, subjFilter: string) => {
     if (subjFilter === 'all') return true;
@@ -250,8 +249,13 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       ? sourceFilteredQuestions
       : sourceFilteredQuestions.filter(q => matchesSubjectFilter(q, selectedSubject));
 
-  const battleQuestions = subjectFilteredQuestions.length > 0 ? subjectFilteredQuestions : sourceFilteredQuestions;
-  const currentQ = battleQuestions[currentQuestionIndex % Math.max(1, battleQuestions.length)] || questions[0];
+  const battleQuestions =
+    subjectFilteredQuestions.length > 0
+      ? subjectFilteredQuestions
+      : sourceFilteredQuestions.length > 0
+      ? sourceFilteredQuestions
+      : combinedQuestionPool;
+  const currentQ = battleQuestions[currentQuestionIndex % Math.max(1, battleQuestions.length)];
 
   // Synthesized Arcade Sound Effects
   const playArcadeSound = (freq: number, type: OscillatorType = 'sine', duration = 0.15) => {
@@ -296,6 +300,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   }, [battleState, timer]);
 
   const handleStartBattle = () => {
+    if (battleQuestions.length === 0) return;
     playArcadeSound(523, 'triangle', 0.12);
     setTimeout(() => playArcadeSound(659, 'triangle', 0.12), 100);
     setTimeout(() => playArcadeSound(784, 'sine', 0.25), 200);
@@ -316,7 +321,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   };
 
   const handleUseFiftyFifty = () => {
-    if (battleState !== 'playing' || selectedAnswer !== null || fiftyFiftyLeft <= 0) return;
+    if (!currentQ || battleState !== 'playing' || selectedAnswer !== null || fiftyFiftyLeft <= 0) return;
     const wrongIndices = currentQ.options
       .map((_, i) => i)
       .filter((i) => i !== currentQ.correctIndex && !eliminatedIndices.includes(i));
@@ -358,7 +363,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   };
 
   const handleAnswer = (index: number) => {
-    if (selectedAnswer !== null || battleState !== 'playing' || eliminatedIndices.includes(index)) return;
+    if (!currentQ || selectedAnswer !== null || battleState !== 'playing' || eliminatedIndices.includes(index)) return;
     setSelectedAnswer(index);
 
     const isCorrect = index === currentQ.correctIndex;
@@ -541,17 +546,17 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     return matchesSubject && matchesSearch;
   });
 
-  // Current user's player stats
+  // Current user's real player stats (zero fake numbers when starting fresh)
   const currentPlayerStats = playerScores.find(p => p.userId === currentUser?.id) || {
     userId: currentUser?.id || 'temp',
-    name: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้เล่น EduVerse',
+    name: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้เล่น',
     role: currentUser?.role || 'student',
-    avatarUrl: currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-    exp: 3450,
-    gems: 240,
-    rankTitle: 'Gold Scholar ⭐',
-    battleWins: 18,
-    streak: 4
+    avatarUrl: currentUser?.avatarUrl || '',
+    exp: 0,
+    gems: 0,
+    rankTitle: 'Rookie Explorer',
+    battleWins: 0,
+    streak: 0,
   };
 
   const playerLevel = Math.floor(currentPlayerStats.exp / 500) + 1;
@@ -559,85 +564,106 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
   const ARCADE_GAME_CARDS: {
     id: EduGameSubTab;
+    category: 'arcade' | 'battle' | 'lab';
     titleTh: string;
-    genreEn: string;
-    badge: string;
+    tagEn: string;
     descriptionTh: string;
     strandsTh: string;
-    gradient: string;
+    accentBg: string;
+    accentText: string;
+    accentBorder: string;
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
     {
       id: 'meteor_blaster',
-      titleTh: '☄️ ยิงอุกกาบาตสมการ',
-      genreEn: 'Canvas Space Shooter',
-      badge: 'ใหม่ • ARCADE',
-      descriptionTh: 'ขับยานอวกาศยิงทำลายอุกกาบาตโจทย์คณิต ป.1–ม.6 และสูตรฟิสิกส์ มีไอเทม Freeze & Nova Burst',
-      strandsTh: 'คณิตศาสตร์ • ฟิสิกส์',
-      gradient: 'from-cyan-500/20 via-sky-900/40 to-slate-900 border-cyan-500/40 hover:border-cyan-400',
+      category: 'arcade',
+      titleTh: 'Meteor Math Blaster',
+      tagEn: 'SPACE SHOOTER',
+      descriptionTh: 'ยิงอุกกาบาตสมการคณิตและสูตรฟิสิกส์กลางอวกาศ พร้อมสกิล Freeze & Nova',
+      strandsTh: 'คณิต · ฟิสิกส์',
+      accentBg: 'bg-cyan-500/15',
+      accentText: 'text-cyan-400',
+      accentBorder: 'hover:border-cyan-400/70',
       icon: Rocket,
     },
     {
       id: 'concept_match',
-      titleTh: '🃏 จับคู่ & Memory 8 สาระ',
-      genreEn: 'Lightning Pair & Memory Flip',
-      badge: 'ใหม่ • 8 สาระ',
-      descriptionTh: 'เล่นได้ทั้งโหมดจับคู่ความเร็วสูงและพลิกการ์ดความจำ 12 ใบ พร้อมแฟลชการ์ดทบทวนความรู้หลังจบเกม',
-      strandsTh: 'ครบทั้ง 8 กลุ่มสาระฯ',
-      gradient: 'from-violet-500/20 via-indigo-900/40 to-slate-900 border-violet-500/40 hover:border-violet-400',
+      category: 'arcade',
+      titleTh: 'Match & Memory Blitz',
+      tagEn: 'SPEED & MEMORY',
+      descriptionTh: 'จับคู่ความรู้ความเร็วสูงและพลิกการ์ดความจำ 12 ใบ ครบทุกกลุ่มสาระ',
+      strandsTh: '8 กลุ่มสาระ',
+      accentBg: 'bg-violet-500/15',
+      accentText: 'text-violet-400',
+      accentBorder: 'hover:border-violet-400/70',
       icon: Grid2x2,
     },
     {
       id: 'word_builder',
-      titleTh: '🔤 ต่อคำศัพท์สองภาษา',
-      genreEn: 'Interactive Letter Tiles',
-      badge: 'ใหม่ • ศัพท์วิชาการ',
-      descriptionTh: 'แตะเรียงตัวอักษรสร้างคำศัพท์สำคัญทั้งวิทยาศาสตร์ อังกฤษ สังคม ศิลปะ พร้อม 3 ตัวช่วยเปิดอักษร',
-      strandsTh: 'อังกฤษ • วิทย์ • 8 สาระฯ',
-      gradient: 'from-amber-500/20 via-orange-900/35 to-slate-900 border-amber-500/40 hover:border-amber-400',
+      category: 'arcade',
+      titleTh: 'Word Builder Puzzle',
+      tagEn: 'VOCAB TILES',
+      descriptionTh: 'ต่อคำศัพท์สองภาษาจากคำใบ้ สะสมสตรีคและใช้ตัวช่วยเปิดตัวอักษร',
+      strandsTh: 'อังกฤษ · วิทย์',
+      accentBg: 'bg-amber-500/15',
+      accentText: 'text-amber-400',
+      accentBorder: 'hover:border-amber-400/70',
       icon: SpellCheck2,
     },
     {
       id: 'chrono_sort',
-      titleTh: '⚡ ChronoSort & สายพานด่วน',
-      genreEn: 'Conveyor Rush & Sequence Tower',
-      badge: 'ใหม่ • LOGIC',
-      descriptionTh: 'แยกหมวดสายพานซ้าย/ขวา (คำเป็น-คำตาย, กรด-เบส, จำนวนเฉพาะ) และเรียงลำดับไทม์ไลน์-อัลกอริทึม',
-      strandsTh: 'ไทย • วิทย์ • สังคม • โค้ดดิ้ง',
-      gradient: 'from-emerald-500/20 via-teal-900/35 to-slate-900 border-emerald-500/40 hover:border-emerald-400',
+      category: 'arcade',
+      titleTh: 'ChronoSort Rush',
+      tagEn: 'LOGIC & TIMELINE',
+      descriptionTh: 'แยกหมวดสายพานซ้าย-ขวาสุดไว และเรียงลำดับไทม์ไลน์-อัลกอริทึม',
+      strandsTh: 'ไทย · สังคม · โค้ด',
+      accentBg: 'bg-emerald-500/15',
+      accentText: 'text-emerald-400',
+      accentBorder: 'hover:border-emerald-400/70',
       icon: GitBranch,
     },
     {
       id: 'arena',
-      titleTh: '⚔️ 1v1 ดวลตอบสดความเร็ว',
-      genreEn: 'Live HP Duel + Lifelines',
-      badge: 'อัพเกรด 3 ตัวช่วย',
-      descriptionTh: 'ประลองตอบคำถามจากคลังข้อสอบโรงเรียนและข้อสอบกลาง พร้อมไอเทม 50/50, +7s และโล่กันดาเมจ',
-      strandsTh: `คลังข้อสอบ ${questions.length} ข้อ`,
-      gradient: 'from-rose-500/20 via-pink-900/35 to-slate-900 border-rose-500/40 hover:border-rose-400',
+      category: 'battle',
+      titleTh: '1v1 Speed Duel',
+      tagEn: 'LIVE HP DUEL',
+      descriptionTh: 'ดวลตอบคำถามจับเวลา 15 วิ พร้อมตัวช่วย 50/50, +7s และโล่กันพลาด',
+      strandsTh: `${combinedQuestionPool.length} ข้อสอบ`,
+      accentBg: 'bg-rose-500/15',
+      accentText: 'text-rose-400',
+      accentBorder: 'hover:border-rose-400/70',
       icon: Swords,
     },
     {
       id: 'battle_royale_3d',
-      titleTh: '🎮 3D EduArena Battle Royale',
-      genreEn: 'Three.js 3D Exploration',
-      badge: '3D THREE.JS',
-      descriptionTh: 'เดินสำรวจสนามประลอง 3 มิติ เก็บหีบสมบัติ หลบหลุมอันตราย และชิงคะแนนสูงสุดในห้อง',
-      strandsTh: '8 กลุ่มสาระฯ เต็มรูปแบบ',
-      gradient: 'from-indigo-500/20 via-purple-900/35 to-slate-900 border-indigo-500/40 hover:border-indigo-400',
+      category: 'battle',
+      titleTh: '3D Battle Royale',
+      tagEn: '3D EXPLORE',
+      descriptionTh: 'วิ่งสำรวจเกาะ 3 มิติ ล่าหีบความรู้และแอร์ดรอปคูณคะแนน 2 เท่า',
+      strandsTh: '8 กลุ่มสาระ',
+      accentBg: 'bg-indigo-500/15',
+      accentText: 'text-indigo-400',
+      accentBorder: 'hover:border-indigo-400/70',
       icon: Gamepad2,
     },
     {
       id: 'subject_labs',
-      titleTh: '🧪 เวิร์กช็อปจำลอง 6 มิติ',
-      genreEn: 'Hands-on Interactive Labs',
-      badge: 'SIMULATION',
-      descriptionTh: 'ทดลองผสมสารเคมี ยิงจรวดฟิสิกส์ ครัวไวยากรณ์อังกฤษ ลอจิกบล็อกโค้ดดิ้ง และแผนที่ภูมิศาสตร์โลก',
-      strandsTh: 'STEM • ภาษา • สังคมฯ',
-      gradient: 'from-blue-500/20 via-cyan-900/35 to-slate-900 border-blue-500/40 hover:border-blue-400',
+      category: 'lab',
+      titleTh: 'Interactive Subject Labs',
+      tagEn: '6D SIMULATION',
+      descriptionTh: 'ทดลองผสมสารเคมี ยิงจรวดฟิสิกส์ ครัวไวยากรณ์ บล็อกโค้ด และแผนที่โลก',
+      strandsTh: 'STEM · ภาษา · สังคม',
+      accentBg: 'bg-sky-500/15',
+      accentText: 'text-sky-400',
+      accentBorder: 'hover:border-sky-400/70',
       icon: FlaskConical,
     },
   ];
+
+  const visibleGameCards =
+    hubCategory === 'all'
+      ? ARCADE_GAME_CARDS
+      : ARCADE_GAME_CARDS.filter((c) => c.category === hubCategory);
 
   const missionTargetTabMap: Record<DailyArcadeMission['id'], EduGameSubTab> = {
     meteor: 'meteor_blaster',
@@ -647,263 +673,161 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     duel: 'arena',
   };
 
+  const readyMissionCount = DAILY_ARCADE_MISSIONS.filter((m) => {
+    const count = missionProgress.counts[m.id] || 0;
+    return count >= m.target && !missionProgress.claimed[m.id];
+  }).length;
+
+  const completedMissionCount = DAILY_ARCADE_MISSIONS.filter(
+    (m) => missionProgress.claimed[m.id]
+  ).length;
+
+  // Hide ALL outer chrome while inside any playable game so there is NEVER a double/triple header!
+  const isInActiveGame =
+    ['meteor_blaster', 'concept_match', 'word_builder', 'chrono_sort', 'battle_royale_3d', 'subject_labs'].includes(
+      activeSubTab
+    ) ||
+    (activeSubTab === 'arena' && battleState === 'playing');
+
   return (
-    <div className={`w-full h-full min-h-0 flex flex-col overflow-hidden bg-slate-950 text-white select-none ${getModuleTone('games')}`}>
-      {/* Mobile Top Arcade HUD */}
-      {isMobile && (
-        <header className="shrink-0 px-3 py-2 bg-slate-900/95 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between gap-2 z-20">
-          <div className="flex items-center gap-2 min-w-0">
+    <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-[#09090B] text-white select-none font-sans">
+      {/* SINGLE CRISP GEN Z TOP BAR (Only shown on Hub / 1v1 Lobby / Leaderboard / Shop / Bank) */}
+      {!isInActiveGame && (
+        <header className="shrink-0 h-14 px-3 sm:px-5 bg-[#09090B] border-b border-zinc-800/80 flex items-center justify-between gap-2 z-20">
+          <div className="flex items-center gap-2.5 min-w-0">
             {onExit && (
               <button
                 type="button"
                 onClick={onExit}
-                className="p-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 active:scale-95 transition cursor-pointer"
-                title="ออกจากเกม"
+                className="min-h-[40px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 hover:text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
               >
                 <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">ออก</span>
               </button>
             )}
-            <div className="flex items-center gap-2 min-w-0">
-              <img
-                src={currentPlayerStats.avatarUrl}
-                alt={currentPlayerStats.name}
-                className="w-8 h-8 rounded-xl object-cover border border-amber-400 shrink-0 shadow-xs"
-              />
-              <div className="truncate text-left leading-tight">
-                <div className="text-xs font-black text-white truncate max-w-[110px] sm:max-w-[180px]">
-                  {currentPlayerStats.name}
-                </div>
-                <div className="text-[10px] text-amber-300 font-semibold truncate">
-                  Lv.{playerLevel} • {currentPlayerStats.rankTitle}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => void handleToggleLandscape()}
-              className={`px-2 py-1 rounded-xl border text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
-                isLandscape
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
-                  : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
-              }`}
-              title={isLandscape ? 'แนวนอน (หมุน/เต็มจอ)' : 'สลับแนวนอน'}
-            >
-              <Smartphone className={`w-3.5 h-3.5 transition-transform ${isLandscape ? 'rotate-90 text-emerald-300' : 'text-amber-300'}`} />
-              <span className="hidden xs:inline">{isLandscape ? 'แนวนอน' : 'หมุนจอ'}</span>
-            </button>
-            <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-black tabular-nums">
-              <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span>{currentPlayerStats.exp.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-black tabular-nums">
-              <Coins className="w-3.5 h-3.5 text-cyan-300" />
-              <span>{currentPlayerStats.gems}</span>
-            </div>
-          </div>
-        </header>
-      )}
-      {orientationNotice && (
-        <div className="shrink-0 mx-2.5 mt-1.5 px-3 py-1.5 rounded-xl bg-indigo-950/90 border border-indigo-500/40 text-[11px] font-semibold text-indigo-100 text-center">
-          {orientationNotice}
-        </div>
-      )}
-
-      {/* Keep game modes visible; place supporting tools behind one compact menu. */}
-      {battleState !== 'playing' && !is3DBattlePlaying && (
-        <div className="shrink-0 flex items-center gap-2 px-2.5 py-2 bg-slate-900/95 border-b border-slate-800/80 z-20">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {[
-              { id: 'hub' as const, label: isMobile ? 'ศูนย์เกม' : (lang === 'th' ? 'ศูนย์เกม 7 สไตล์' : 'Arcade Hub'), icon: LayoutGrid },
-              { id: 'meteor_blaster' as const, label: isMobile ? 'ยิงสมการ' : '☄️ ยิงสมการ', icon: Rocket },
-              { id: 'concept_match' as const, label: isMobile ? 'จับคู่' : '🃏 จับคู่ 8 สาระ', icon: Grid2x2 },
-              { id: 'word_builder' as const, label: isMobile ? 'ต่อศัพท์' : '🔤 ต่อคำศัพท์', icon: SpellCheck2 },
-              { id: 'chrono_sort' as const, label: isMobile ? 'แยกหมวด' : '⚡ ChronoSort', icon: GitBranch },
-              { id: 'arena' as const, label: isMobile ? '1v1' : '⚔️ 1v1 ดวลสด', icon: Swords },
-              { id: 'battle_royale_3d' as const, label: isMobile ? '3D' : '🎮 3D Arena', icon: Gamepad2 },
-              { id: 'subject_labs' as const, label: isMobile ? 'แล็บ' : '🧪 แล็บ 6 สาระ', icon: FlaskConical },
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  setActiveSubTab(id);
-                  setShowUtilitiesMenu(false);
-                }}
-                aria-pressed={activeSubTab === id}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
-                  activeSubTab === id
-                    ? 'bg-[var(--tone-solid)] text-white shadow-md'
-                    : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-
-          {onExit && !isMobile && (
-            <button
-              type="button"
-              onClick={onExit}
-              className="shrink-0 px-2.5 py-1.5 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
-            >
-              {lang === 'th' ? '← กลับ' : '← Exit'}
-            </button>
-          )}
-
-          <div className="relative ml-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowUtilitiesMenu(prev => !prev)}
-              aria-expanded={showUtilitiesMenu}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                ['bank', 'leaderboard', 'shop'].includes(activeSubTab)
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'bg-slate-800/80 text-slate-200 border border-slate-700 hover:text-white'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'คลัง & ร้านค้า' : 'Tools'}</span>
-            </button>
-            {showUtilitiesMenu && (
-              <div className="absolute right-0 top-full mt-2 z-30 min-w-52 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
-                {[
-                  { id: 'bank' as const, label: lang === 'th' ? `คลังโจทย์ (${questions.length} ข้อ)` : `Question Bank (${questions.length})`, icon: BookOpen },
-                  { id: 'leaderboard' as const, label: lang === 'th' ? 'ตารางอันดับ Hall of Fame' : 'Leaderboard', icon: Trophy },
-                  { id: 'shop' as const, label: lang === 'th' ? `ร้านค้ารางวัล (${currentPlayerStats.gems} Gems)` : 'Reward Store', icon: ShoppingBag },
-                ].map(({ id, label, icon: Icon }) => (
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'hub' as const, label: 'เกม', icon: LayoutGrid },
+                { id: 'leaderboard' as const, label: 'อันดับ', icon: Trophy },
+                { id: 'shop' as const, label: 'แลกของ', icon: ShoppingBag },
+                ...(canManageBank
+                  ? [{ id: 'bank' as const, label: 'คลังข้อสอบ', icon: BookOpen }]
+                  : []),
+              ].map(({ id, label, icon: Icon }) => {
+                const isActive = activeSubTab === id || (id === 'hub' && activeSubTab === 'arena');
+                return (
                   <button
                     key={id}
                     type="button"
                     onClick={() => {
+                      setBattleState('idle');
                       setActiveSubTab(id);
-                      setShowUtilitiesMenu(false);
                     }}
-                    className={`w-full px-3 py-2 rounded-lg text-left text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
-                      activeSubTab === id ? 'bg-indigo-700 text-white' : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                    className={`min-h-[34px] px-2.5 sm:px-3 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
+                      isActive
+                        ? 'bg-zinc-100 text-zinc-950'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                     <span>{label}</span>
                   </button>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
 
-          {importNotification && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{importNotification}</span>
+          <div className="flex items-center gap-2 shrink-0 tabular-nums">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-amber-400 text-xs font-black font-mono">
+              <Flame className="w-3.5 h-3.5 fill-amber-400" />
+              <span>{currentPlayerStats.exp.toLocaleString()}</span>
             </div>
-          )}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-cyan-400 text-xs font-black font-mono">
+              <Coins className="w-3.5 h-3.5" />
+              <span>{currentPlayerStats.gems}</span>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {importNotification && !isInActiveGame && (
+        <div className="shrink-0 mx-4 mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{importNotification}</span>
         </div>
       )}
 
-      {/* TAB: ARCADE STUDIO HUB (ศูนย์รวม 7 เกมส์การเรียนรู้ + ภารกิจรายวัน) */}
+      {/* TAB: ARCADE STUDIO HUB */}
       {activeSubTab === 'hub' && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
-          <div className="max-w-7xl mx-auto space-y-5">
-            {/* Player Level & Studio Header */}
-            <div className="rounded-3xl p-4 sm:p-6 bg-gradient-to-br from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-500/30 shadow-xl">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="relative shrink-0">
-                    <img
-                      src={currentPlayerStats.avatarUrl}
-                      alt={currentPlayerStats.name}
-                      className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-lg"
-                    />
-                    <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 text-[10px] font-black shadow">
-                      Lv.{playerLevel}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+          <div className="max-w-5xl mx-auto space-y-5">
+            {/* Compact Gen Z Player Strip */}
+            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-zinc-950 font-black text-sm flex items-center justify-center shrink-0">
+                  Lv.{playerLevel}
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-sm sm:text-base font-black text-white truncate">
+                      {currentPlayerStats.name}
+                    </h1>
+                    <span className="text-[11px] font-mono font-bold text-amber-400 shrink-0 tabular-nums">
+                      {currentPlayerStats.exp.toLocaleString()} XP
                     </span>
                   </div>
-                  <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[11px] font-black">
-                        EduArcade Studio • 7 รูปแบบเกมการเรียนรู้
-                      </span>
-                      <span className="text-xs font-bold text-amber-300">{currentPlayerStats.rankTitle}</span>
+                  <div className="flex items-center gap-2 max-w-xs">
+                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.max(4, levelProgressPct)}%` }}
+                      />
                     </div>
-                    <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight truncate">
-                      สวัสดี {currentPlayerStats.name} — เลือกภารกิจเกมสนุกได้ทั้ง 8 สาระ!
-                    </h1>
-                    <div className="flex items-center gap-3 max-w-md">
-                      <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                        <div
-                          className="h-full bg-gradient-to-r from-amber-400 to-cyan-400 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.max(8, levelProgressPct)}%` }}
-                        />
-                      </div>
-                      <span className="text-[11px] font-mono text-slate-300 shrink-0">
-                        {currentPlayerStats.exp % 500}/500 EXP สู่ Lv.{playerLevel + 1}
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-mono text-zinc-400 shrink-0 tabular-nums">
+                      {currentPlayerStats.exp % 500}/500
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <div className="px-3.5 py-2 rounded-2xl bg-slate-950/70 border border-amber-500/30 flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    <div className="text-left">
-                      <div className="text-[10px] text-slate-400 font-bold">EXP รวม</div>
-                      <div className="text-sm font-black text-amber-300">{currentPlayerStats.exp.toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <div className="px-3.5 py-2 rounded-2xl bg-slate-950/70 border border-cyan-500/30 flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-cyan-400" />
-                    <div className="text-left">
-                      <div className="text-[10px] text-slate-400 font-bold">Gems</div>
-                      <div className="text-sm font-black text-cyan-300">{currentPlayerStats.gems}</div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubTab('shop')}
-                    className="px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    <span>แลกรางวัล</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubTab('leaderboard')}
-                    className="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <Trophy className="w-4 h-4 text-amber-300" />
-                    <span>อันดับ</span>
-                  </button>
-                  {onOpenCentralExamHub && (currentUser?.role === 'admin' || currentUser?.role === 'teacher' || currentUser?.role === 'super_admin') && (
-                    <button
-                      type="button"
-                      onClick={onOpenCentralExamHub}
-                      className="px-3.5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      <span>คลังข้อสอบกลาง</span>
-                    </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowMissionsDrawer((v) => !v)}
+                  className={`min-h-[40px] px-3.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition ${
+                    readyMissionCount > 0
+                      ? 'bg-amber-400 text-zinc-950 border-amber-300'
+                      : 'bg-zinc-950 hover:bg-zinc-800 text-zinc-200 border-zinc-800'
+                  }`}
+                >
+                  <Award className="w-4 h-4" />
+                  <span>
+                    ภารกิจ ({completedMissionCount}/{DAILY_ARCADE_MISSIONS.length})
+                  </span>
+                  {showMissionsDrawer ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
                   )}
-                </div>
+                </button>
+
+                {onOpenCentralExamHub && canManageBank && (
+                  <button
+                    type="button"
+                    onClick={onOpenCentralExamHub}
+                    className="min-h-[40px] px-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">ข้อสอบกลาง</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Daily Arcade Missions Strip */}
-            <section className="rounded-3xl bg-slate-900/90 border border-slate-800 p-4 sm:p-5 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-400" />
-                  <h2 className="text-sm sm:text-base font-black text-white">
-                    ภารกิจอาร์เคดประจำวัน (Daily Arcade Missions)
-                  </h2>
-                </div>
-                <span className="text-xs text-slate-400">เล่นเกมหลากหลายเพื่อปลดล็อกโบนัส EXP &amp; Gems ทุกวัน</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            {/* Collapsible Daily Missions Drawer */}
+            {showMissionsDrawer && (
+              <section className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                 {DAILY_ARCADE_MISSIONS.map((mission) => {
                   const currentCount = missionProgress.counts[mission.id] || 0;
                   const clamped = Math.min(currentCount, mission.target);
@@ -914,118 +838,126 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   return (
                     <div
                       key={mission.id}
-                      className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 transition ${
-                        isClaimed
-                          ? 'bg-emerald-950/30 border-emerald-700/40'
-                          : isReady
-                          ? 'bg-amber-950/40 border-amber-500/60 shadow-lg shadow-amber-950/30'
-                          : 'bg-slate-950/70 border-slate-800'
-                      }`}
+                      className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between gap-2.5"
                     >
                       <div className="space-y-1.5">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-bold text-white leading-snug">{mission.titleTh}</span>
-                          <span className="text-[11px] font-mono font-black text-cyan-300 shrink-0">
+                          <span className="text-xs font-bold text-zinc-100 leading-snug">
+                            {mission.titleTh}
+                          </span>
+                          <span className="text-[11px] font-mono font-black text-amber-400 shrink-0 tabular-nums">
                             {clamped}/{mission.target}
                           </span>
                         </div>
-                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              isClaimed ? 'bg-emerald-400' : isReady ? 'bg-amber-400' : 'bg-indigo-500'
+                            className={`h-full rounded-full ${
+                              isClaimed ? 'bg-emerald-400' : isReady ? 'bg-amber-400' : 'bg-cyan-400'
                             }`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-0.5">
-                        <span className="text-[11px] font-bold text-amber-300">
-                          +{mission.rewardExp} EXP • +{mission.rewardGems} Gems
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-mono font-bold text-zinc-400">
+                          +{mission.rewardExp} XP · +{mission.rewardGems}
                         </span>
                         {isClaimed ? (
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[11px] font-black flex items-center gap-1">
+                          <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
                             <Check className="w-3 h-3" /> รับแล้ว
                           </span>
                         ) : isReady ? (
                           <button
                             type="button"
                             onClick={() => handleClaimMission(mission)}
-                            className="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-black transition cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-zinc-950 text-[11px] font-black cursor-pointer"
                           >
-                            รับรางวัล!
+                            รับรางวัล
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => setActiveSubTab(missionTargetTabMap[mission.id])}
-                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold transition cursor-pointer"
+                            className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer"
                           >
-                            เล่นเลย →
+                            เล่นเลย
                           </button>
                         )}
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            </section>
+              </section>
+            )}
 
-            {/* 7 Diverse Games Showcase Grid */}
-            <section className="space-y-3 pb-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm sm:text-base font-black text-white">
-                  เลือกสไตล์เกมที่ชอบ — 7 รูปแบบความสนุกได้ความรู้จริง
-                </h2>
+            {/* Category Filter Row */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {([
+                { id: 'all', label: 'ทั้งหมด (7)' },
+                { id: 'arcade', label: 'Arcade ไวๆ' },
+                { id: 'battle', label: 'ดวล & 3D' },
+                { id: 'lab', label: 'แล็บจำลอง' },
+              ] as const).map((cat) => (
                 <button
+                  key={cat.id}
                   type="button"
-                  onClick={() => setActiveSubTab('bank')}
-                  className="text-xs font-bold text-indigo-300 hover:text-indigo-200 underline underline-offset-4 cursor-pointer"
+                  onClick={() => setHubCategory(cat.id)}
+                  className={`min-h-[38px] px-3.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
+                    hubCategory === cat.id
+                      ? 'bg-amber-400 text-zinc-950'
+                      : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white'
+                  }`}
                 >
-                  จัดการคลังข้อสอบ ({questions.length} ข้อ)
+                  {cat.label}
                 </button>
-              </div>
+              ))}
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {ARCADE_GAME_CARDS.map((card) => {
-                  const Icon = card.icon;
-                  return (
-                    <button
-                      key={card.id}
-                      type="button"
-                      onClick={() => setActiveSubTab(card.id)}
-                      className={`group text-left rounded-3xl p-5 border bg-gradient-to-br ${card.gradient} transition-all hover:-translate-y-0.5 hover:shadow-2xl flex flex-col justify-between gap-4 cursor-pointer`}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-slate-950/70 border border-white/15 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
-                            <Icon className="w-6 h-6 text-amber-300" />
-                          </div>
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-950/70 border border-white/15 text-[10px] font-black tracking-wide text-amber-300 uppercase">
-                            {card.badge}
-                          </span>
+            {/* Clean Gen Z Game Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
+              {visibleGameCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => setActiveSubTab(card.id)}
+                    className={`group text-left rounded-2xl p-4 sm:p-5 bg-zinc-900 border border-zinc-800 ${card.accentBorder} transition-all active:scale-[0.98] flex flex-col justify-between gap-4 cursor-pointer`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div
+                          className={`w-11 h-11 rounded-2xl ${card.accentBg} ${card.accentText} flex items-center justify-center shrink-0`}
+                        >
+                          <Icon className="w-5 h-5" />
                         </div>
-
-                        <div className="space-y-1">
-                          <div className="text-[11px] font-semibold text-cyan-300">{card.genreEn}</div>
-                          <h3 className="text-base sm:text-lg font-black text-white">{card.titleTh}</h3>
-                          <p className="text-xs text-slate-200/90 leading-relaxed">
-                            {card.descriptionTh}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-slate-300">{card.strandsTh}</span>
-                        <span className="px-3.5 py-1.5 rounded-xl bg-white/15 group-hover:bg-amber-400 group-hover:text-slate-950 text-white text-xs font-black transition-colors">
-                          เข้าเล่นทันที →
+                        <span className="text-[10px] font-mono font-bold tracking-wider text-zinc-400 uppercase">
+                          {card.tagEn}
                         </span>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+
+                      <div className="space-y-1">
+                        <h3 className="text-base font-black text-white tracking-tight">
+                          {card.titleTh}
+                        </h3>
+                        <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                          {card.descriptionTh}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-zinc-400">{card.strandsTh}</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-black text-white group-hover:text-amber-400 transition-colors">
+                        <span>เล่นเลย</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -1037,7 +969,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             userId={effectiveUserId}
             onEarnRewards={onEarnRewards}
             onMissionProgress={(count) => recordMissionProgress('meteor', count)}
-            onBack={() => setActiveSubTab('hub')}
+            onBack={handleBackFromGame}
           />
         </div>
       )}
@@ -1049,7 +981,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             userId={effectiveUserId}
             onEarnRewards={onEarnRewards}
             onMissionProgress={() => recordMissionProgress('match', 1)}
-            onBack={() => setActiveSubTab('hub')}
+            onBack={handleBackFromGame}
           />
         </div>
       )}
@@ -1061,7 +993,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             userId={effectiveUserId}
             onEarnRewards={onEarnRewards}
             onMissionProgress={(solvedCount) => recordMissionProgress('word', solvedCount)}
-            onBack={() => setActiveSubTab('hub')}
+            onBack={handleBackFromGame}
           />
         </div>
       )}
@@ -1073,7 +1005,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             userId={effectiveUserId}
             onEarnRewards={onEarnRewards}
             onMissionProgress={() => recordMissionProgress('sort', 1)}
-            onBack={() => setActiveSubTab('hub')}
+            onBack={handleBackFromGame}
           />
         </div>
       )}
@@ -1088,10 +1020,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             rewardItems={rewardItems}
             onEarnRewards={onEarnRewards}
             onGamePhaseChange={setIs3DBattlePlaying}
-            onExit={() => {
-              setIs3DBattlePlaying(false);
-              setActiveSubTab('hub');
-            }}
+            onExit={handleBackFromGame}
           />
         </div>
       )}
@@ -1104,127 +1033,75 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
             lang={lang}
             onEarnRewards={onEarnRewards}
-            onBackToGames={() => setActiveSubTab('hub')}
+            onBackToGames={handleBackFromGame}
           />
         </div>
       )}
 
-      {/* TAB 1: 1v1 Battle Arena */}
+      {/* TAB 1: 1v1 Speed Duel Arena */}
       {activeSubTab === 'arena' && (
-        <div className="w-full flex-1 min-h-0 flex flex-col overflow-y-auto">
-          {/* LOBBY / PRE-BATTLE MATCHUP SCREEN */}
+        <div className="w-full flex-1 min-h-0 flex flex-col overflow-y-auto bg-[#09090B]">
+          {/* PRE-BATTLE LOBBY */}
           {battleState === 'idle' && (
-            <div className="w-full flex-1 min-h-0 flex flex-col p-3 sm:p-5 max-w-4xl mx-auto overflow-y-auto space-y-4">
-              {/* Left / Main Match Launcher Card */}
-              <div className="space-y-4 w-full rounded-3xl bg-slate-900 border border-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {onExit && (
-                        <button
-                          type="button"
-                          onClick={onExit}
-                          className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                          title="ออกจากเกม กลับสู่หน้าหลัก"
-                        >
-                          <ArrowLeft className="w-3.5 h-3.5" />
-                          <span>กลับหน้าหลัก</span>
-                        </button>
-                      )}
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-black">
-                        <Swords className="w-3.5 h-3.5" />
-                        <span>1v1 Speed Duel Arena</span>
-                      </div>
+            <div className="w-full flex-1 min-h-0 flex flex-col p-3 sm:p-6 max-w-2xl mx-auto justify-start space-y-4">
+              <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 sm:p-6 space-y-5">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-rose-400">
+                      1v1 SPEED DUEL
+                    </p>
+                    <h2 className="text-xl font-black text-white tracking-tight">
+                      {lang === 'th' ? 'ดวลตอบสด 1v1 ความเร็ว' : '1v1 Live Knowledge Duel'}
+                    </h2>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-zinc-400 tabular-nums">
+                    {battleQuestions.length} ข้อพร้อมดวล
+                  </span>
+                </div>
+
+                {/* Clean VS Matchup Card */}
+                <div className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-2">
+                  <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black text-sm flex items-center justify-center">
+                      YOU
                     </div>
-                    <span className="text-xs font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">
-                      {battleQuestions.length} ข้อในหมวดนี้
-                    </span>
+                    <p className="text-xs font-black text-white truncate w-full">
+                      {currentPlayerStats.name}
+                    </p>
+                    <span className="text-[11px] font-mono font-bold text-emerald-400">100 HP</span>
                   </div>
 
-                  <h2 className={`${isMobile ? 'text-lg text-center font-black text-white' : 'text-2xl font-black text-white'}`}>
-                    {lang === 'th' ? 'ประลองตอบสด 1v1 ดวลความเร็ว' : '1v1 Live Knowledge Duel'}
-                  </h2>
-
-                  {/* VS MATCHUP SHOWCASE (ARCADE GAMING STYLE) */}
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800/90 flex items-center justify-between shadow-2xl">
-                    {/* You (Player) */}
-                    <div className="flex flex-col items-center gap-1 w-5/12 text-center">
-                      <div className="relative">
-                        <img
-                          src={currentPlayerStats.avatarUrl}
-                          alt="You"
-                          className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg shadow-emerald-500/20"
-                        />
-                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-emerald-500 text-slate-950 text-[9px] font-black">
-                          YOU
-                        </span>
-                      </div>
-                      <div className="text-xs font-black text-white truncate w-full">
-                        {currentPlayerStats.name}
-                      </div>
-                      <div className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                        100 HP
-                      </div>
+                  <div className="flex flex-col items-center shrink-0 px-2">
+                    <div className="w-10 h-10 rounded-full bg-rose-500 text-white font-black text-xs flex items-center justify-center">
+                      VS
                     </div>
-
-                    {/* VS Center Badge */}
-                    <div className="flex flex-col items-center justify-center shrink-0 w-2/12">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-rose-600/40 animate-pulse">
-                        VS
-                      </div>
-                      <span className="text-[9px] text-slate-300 font-mono mt-1">15s / ข้อ</span>
-                    </div>
-
-                    {/* Rival Bot */}
-                    <div className="flex flex-col items-center gap-1 w-5/12 text-center">
-                      <div className="relative">
-                        <img
-                          src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80"
-                          alt="Rival"
-                          className="w-14 h-14 rounded-2xl object-cover border-2 border-rose-400 shadow-lg shadow-rose-500/20"
-                        />
-                        <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-rose-500 text-white text-[9px] font-black">
-                          RIVAL
-                        </span>
-                      </div>
-                      <div className="text-xs font-black text-white truncate w-full">
-                        กัญญา วงศ์สวัสดิ์
-                      </div>
-                      <div className="text-[10px] text-rose-300 font-bold bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
-                        100 HP
-                      </div>
-                    </div>
+                    <span className="text-[10px] font-mono text-zinc-500 mt-1">15s / ข้อ</span>
                   </div>
 
-                  {/* Exam Source Selector (Teacher-Created Exams vs All Banks) */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <label className="text-xs font-bold text-amber-300 block">
-                        {lang === 'th' ? 'เลือกชุดข้อสอบที่ใช้เล่น:' : 'Exam Source:'}
-                      </label>
-                      {(currentUser?.role === 'teacher' || currentUser?.role === 'admin') && (
-                        <button
-                          type="button"
-                          onClick={() => setActiveSubTab('bank')}
-                          className="text-[11px] font-bold text-indigo-300 hover:text-indigo-200 underline underline-offset-2 cursor-pointer"
-                        >
-                          {lang === 'th' ? '+ จัดการข้อสอบที่ครูสร้าง' : '+ Manage Teacher Exams'}
-                        </button>
-                      )}
+                  <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 flex items-center justify-center">
+                      <Bot className="w-6 h-6" />
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <p className="text-xs font-black text-white truncate w-full">AI Speed Bot</p>
+                    <span className="text-[11px] font-mono font-bold text-rose-400">100 HP</span>
+                  </div>
+                </div>
+
+                {/* Exam Source (Only show toggle if school has custom questions) */}
+                {questions.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                      ชุดข้อสอบ
+                    </p>
+                    <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-zinc-950 border border-zinc-800">
                       {[
-                        { id: 'all' as const, label: `📚 ทั้งหมด (${questions.length} ข้อ)` },
+                        { id: 'all' as const, label: `ทั้งหมด (${combinedQuestionPool.length})` },
                         {
                           id: 'teacher_created' as const,
-                          label: teacherCreatedQuestions.length > 0
-                            ? `👨‍🏫 ข้อสอบที่ครูสร้าง (${teacherCreatedQuestions.length} ข้อ)`
-                            : `👨‍🏫 ข้อสอบโรงเรียน/ครู (${questions.length} ข้อ)`,
+                          label: `ข้อสอบครู (${teacherCreatedQuestions.length || questions.length})`,
                         },
-                        { id: 'standard' as const, label: '📘 ข้อสอบมาตรฐาน' },
-                      ].map(src => (
+                        { id: 'standard' as const, label: 'ข้อสอบกลาง' },
+                      ].map((src) => (
                         <button
                           key={src.id}
                           type="button"
@@ -1232,10 +1109,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                             setExamSource(src.id);
                             setCurrentQuestionIndex(0);
                           }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          className={`min-h-[38px] px-2 rounded-lg text-xs font-bold transition cursor-pointer truncate ${
                             examSource === src.id
-                              ? 'bg-amber-400 text-slate-950 shadow-sm'
-                              : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white'
+                              ? 'bg-amber-400 text-zinc-950'
+                              : 'text-zinc-400 hover:text-white'
                           }`}
                         >
                           {src.label}
@@ -1243,200 +1120,154 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       ))}
                     </div>
                   </div>
+                )}
 
-                  {/* Subject Filter Links */}
-                  <div className="space-y-1.5 pt-1">
-                    <label className="text-xs font-bold text-slate-200 block">
-                      {lang === 'th' ? `เลือกหมวดวิชา (พบ ${battleQuestions.length} ข้อ):` : `Subject (${battleQuestions.length}):`}
-                    </label>
-                    <div className="flex flex-wrap gap-1.5 pb-1">
-                      {[
-                        { id: 'all', label: '⭐ ทั้ง 8 สาระ' },
-                        { id: 'ภาษาไทย', label: '🇹🇭 ไทย' },
-                        { id: 'คณิตศาสตร์', label: '📐 คณิต' },
-                        { id: 'วิทยาศาสตร์', label: '🔬 วิทย์/AI' },
-                        { id: 'สังคมศึกษา', label: '🌏 สังคมฯ' },
-                        { id: 'สุขศึกษา', label: '🩺 สุขศึกษาฯ' },
-                        { id: 'ศิลปะ', label: '🎨 ศิลปะ' },
-                        { id: 'การงานอาชีพ', label: '🛠️ การงานฯ' },
-                        { id: 'ภาษาอังกฤษ', label: '🇬🇧 อังกฤษ' }
-                      ].map(subj => (
-                        <button
-                          key={subj.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedSubject(subj.id);
-                            setCurrentQuestionIndex(0);
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer ${
-                            selectedSubject === subj.id
-                              ? 'bg-rose-500 text-white shadow-sm'
-                              : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
-                          }`}
-                        >
-                          {subj.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Big Glowing Start Duel Button */}
-                  <div className="pt-2 space-y-2">
-                    <button
-                      type="button"
-                      onClick={handleStartBattle}
-                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-600 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white font-black text-sm shadow-xl shadow-rose-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                      <span>{lang === 'th' ? `เริ่มประลอง 1v1 (${battleQuestions.length} ข้อ)` : 'Launch 1v1 Battle Now'}</span>
-                    </button>
-
-                    <p className="text-[11px] text-center text-slate-300">
-                      ⚡ ตอบถูกทำดาเมจ 25+ HP • สตรีคคอมโบแรงขึ้น • รับ EXP & Gems
-                    </p>
+                {/* Subject Filter */}
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                    หมวดวิชา
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'all', label: 'ทั้ง 8 สาระ' },
+                      { id: 'ภาษาไทย', label: 'ไทย' },
+                      { id: 'คณิตศาสตร์', label: 'คณิต' },
+                      { id: 'วิทยาศาสตร์', label: 'วิทย์/AI' },
+                      { id: 'สังคมศึกษา', label: 'สังคม' },
+                      { id: 'สุขศึกษา', label: 'สุขศึกษา' },
+                      { id: 'ศิลปะ', label: 'ศิลปะ' },
+                      { id: 'การงานอาชีพ', label: 'การงาน' },
+                      { id: 'ภาษาอังกฤษ', label: 'อังกฤษ' },
+                    ].map((subj) => (
+                      <button
+                        key={subj.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSubject(subj.id);
+                          setCurrentQuestionIndex(0);
+                        }}
+                        className={`min-h-[36px] px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          selectedSubject === subj.id
+                            ? 'bg-rose-500 text-white'
+                            : 'bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white'
+                        }`}
+                      >
+                        {subj.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                {/* Primary Start CTA */}
+                <button
+                  type="button"
+                  onClick={handleStartBattle}
+                  disabled={battleQuestions.length === 0}
+                  className="w-full min-h-[52px] rounded-2xl bg-rose-500 hover:bg-rose-400 disabled:opacity-50 text-white font-black text-sm active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>เริ่มดวล 1v1 ทันที</span>
+                </button>
               </div>
-
-              {/* Desktop Rules Side Card (Only on desktop) */}
-              {!isMobile && (
-                <div className="rounded-3xl bg-slate-900 border border-slate-800 p-6 flex flex-col justify-between space-y-4">
-                  <div className="p-4 rounded-2xl bg-indigo-950/60 border border-indigo-700/50 text-xs text-indigo-200 space-y-2">
-                    <div className="font-bold flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>กติกาการแข่งขัน</span>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                      <li>เวลา 15 วินาทีต่อข้อ ยิ่งตอบไวยิ่งได้แต้มเยอะ</li>
-                      <li>ตอบถูกทำดาเมจ 25+ HP ใส่คู่ต่อสู้</li>
-                      <li>ลด HP ฝั่งตรงข้ามเหลือ 0 หรือทำคะแนนสูงสุดเพื่อรับชัยชนะ</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* ACTIVE BATTLE PLAYING SCREEN - TRUE ARCADE SCROLLABLE & RESPONSIVE LAYOUT */}
-          {battleState === 'playing' && (
-            <div className="game-arena-landscape flex-1 min-h-0 flex flex-col justify-start p-2 sm:p-3 max-w-6xl mx-auto w-full overflow-y-auto space-y-2 select-none">
-              {/* TOP DUAL HP GAUGES */}
-              <div className="game-arena-hud shrink-0 space-y-1.5">
-                <div className="grid grid-cols-2 gap-2 items-center">
-                  {/* Player HP */}
-                  <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                        <span className="font-black text-white truncate text-xs">{currentPlayerStats.name}</span>
-                      </div>
-                      <span className="font-mono text-emerald-400 font-black text-xs shrink-0">{playerHp} HP</span>
-                    </div>
-                    <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/60">
-                      <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.max(0, playerHp)}%` }}
-                      />
-                    </div>
-                  </div>
+          {/* ACTIVE BATTLE PLAYING SCREEN (Full viewport, zero stacked headers) */}
+          {battleState === 'playing' && currentQ && (
+            <div className="flex-1 min-h-0 flex flex-col max-w-3xl mx-auto w-full px-3 sm:px-5 py-3 space-y-3 overflow-y-auto">
+              {/* Single Compact Match HUD */}
+              <div className="flex items-center justify-between gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setBattleState('idle')}
+                  className="min-h-[38px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>ออก</span>
+                </button>
 
-                  {/* Opponent HP */}
-                  <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-rose-400 font-black text-xs shrink-0">{opponentHp} HP</span>
-                      <div className="flex items-center gap-1.5 min-w-0 justify-end">
-                        <span className="font-black text-white truncate text-xs">กัญญา (Rival)</span>
-                        <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse shrink-0" />
-                      </div>
-                    </div>
-                    <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/60">
-                      <div
-                        className="h-full bg-gradient-to-r from-rose-500 to-red-600 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.max(0, opponentHp)}%` }}
-                      />
-                    </div>
+                <div
+                  className={`min-h-[38px] px-3.5 rounded-xl border font-mono font-black text-sm flex items-center gap-1.5 tabular-nums ${
+                    timer <= 5
+                      ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                      : 'bg-zinc-900 border-zinc-800 text-cyan-400'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>00:{timer < 10 ? `0${timer}` : timer}</span>
+                </div>
+
+                <div className="min-h-[38px] px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono font-black text-amber-400 flex items-center gap-2 tabular-nums">
+                  {streak > 1 && (
+                    <span className="flex items-center gap-0.5 text-rose-400">
+                      <Flame className="w-3.5 h-3.5 fill-current" />
+                      {streak}x
+                    </span>
+                  )}
+                  <span>{roundScore} pts</span>
+                </div>
+              </div>
+
+              {/* Dual HP Gauges */}
+              <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                <div className="p-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs tabular-nums">
+                    <span className="font-bold text-white truncate">{currentPlayerStats.name}</span>
+                    <span className="font-mono font-black text-emerald-400 shrink-0">{playerHp} HP</span>
+                  </div>
+                  <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.max(0, playerHp)}%` }}
+                    />
                   </div>
                 </div>
 
-                {/* MATCH HUD BAR */}
-                <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-indigo-300 text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30">
-                      ข้อ {currentQuestionIndex + 1}/{battleQuestions.length}
-                    </span>
-                    {streak > 1 && (
-                      <span className="flex items-center gap-1 font-black text-amber-400 text-xs animate-bounce">
-                        <Flame className="w-3.5 h-3.5 fill-amber-400" />
-                        {streak}x Combo!
-                      </span>
-                    )}
+                <div className="p-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs tabular-nums">
+                    <span className="font-mono font-black text-rose-400 shrink-0">{opponentHp} HP</span>
+                    <span className="font-bold text-white truncate">AI Speed Bot</span>
                   </div>
-
-                  {/* Center Pulse Countdown Badge */}
-                  <div className={`flex items-center gap-1 font-mono font-black text-xs px-2.5 py-0.5 rounded-full shrink-0 ${
-                    timer <= 5 
-                      ? 'bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse' 
-                      : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                  }`}>
-                    <Clock className="w-3.5 h-3.5 shrink-0" />
-                    <span>00:{timer < 10 ? `0${timer}` : timer}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <span className="font-bold text-amber-300 text-xs font-mono">{roundScore} pts</span>
-                    <button
-                      type="button"
-                      onClick={() => setBattleState('idle')}
-                      className="text-[11px] text-slate-300 hover:text-rose-300 font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 cursor-pointer"
-                    >
-                      ยอมแพ้
-                    </button>
+                  <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-rose-500 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.max(0, opponentHp)}%` }}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* CENTER: HIGH VISIBILITY QUESTION CARD */}
-              <div className="game-arena-question py-1 space-y-2 shrink-0">
-                <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/95 border border-slate-800 shadow-xl space-y-1.5 text-center">
-                  <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-200">
-                    {currentQ.subject} • ระดับ {currentQ.gradeLevel}
-                  </div>
-                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white leading-relaxed break-words">
-                    {currentQ.questionTh}
-                  </h3>
-                  {currentQ.questionEn && currentQ.questionEn !== currentQ.questionTh && (
-                    <p className="text-xs text-slate-300 italic break-words">
-                      {currentQ.questionEn}
-                    </p>
-                  )}
-                </div>
-
-                {/* Floating Damage & Explanation Feedback Banner */}
+              {/* Question Card */}
+              <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 sm:p-6 space-y-2 text-center shrink-0">
+                <p className="text-[11px] font-bold text-zinc-400">
+                  ข้อ {currentQuestionIndex + 1}/{battleQuestions.length} · {currentQ.subject}
+                </p>
+                <h3 className="text-base sm:text-lg font-black text-white leading-relaxed break-words">
+                  {currentQ.questionTh}
+                </h3>
                 {battleFeedback && (
-                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs space-y-1 animate-in fade-in slide-in-from-top-1 text-center">
-                    <p className="font-black text-xs text-amber-300">{battleFeedback}</p>
+                  <div className="pt-2 border-t border-zinc-800 space-y-1">
+                    <p className="font-black text-xs text-amber-400">{battleFeedback}</p>
                     {currentQ.explanationTh && (
-                      <p className="text-[11px] text-slate-300 leading-tight break-words">
-                        💡 {currentQ.explanationTh}
-                      </p>
+                      <p className="text-[11px] text-zinc-400 leading-snug">{currentQ.explanationTh}</p>
                     )}
                   </div>
                 )}
               </div>
 
-              {/* Tactical Lifelines Bar */}
-              <div className="game-arena-tools shrink-0 grid grid-cols-3 gap-2">
+              {/* Lifelines */}
+              <div className="grid grid-cols-3 gap-2 shrink-0">
                 <button
                   type="button"
                   disabled={fiftyFiftyLeft <= 0 || selectedAnswer !== null}
                   onClick={handleUseFiftyFifty}
-                  className={`px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  className={`min-h-[42px] px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                     fiftyFiftyLeft > 0 && selectedAnswer === null
-                      ? 'bg-indigo-900/70 hover:bg-indigo-800 border-indigo-500/50 text-indigo-100'
-                      : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
+                      ? 'bg-zinc-900 hover:bg-zinc-800 border-cyan-500/40 text-cyan-300'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-600 cursor-not-allowed'
                   }`}
                 >
-                  <Split className="w-3.5 h-3.5 text-cyan-300" />
+                  <Split className="w-3.5 h-3.5" />
                   <span>50/50 ({fiftyFiftyLeft})</span>
                 </button>
 
@@ -1444,55 +1275,51 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   type="button"
                   disabled={timeBoostLeft <= 0 || selectedAnswer !== null}
                   onClick={handleUseTimeBoost}
-                  className={`px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  className={`min-h-[42px] px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                     timeBoostLeft > 0 && selectedAnswer === null
-                      ? 'bg-amber-900/60 hover:bg-amber-800/80 border-amber-500/50 text-amber-100'
-                      : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
+                      ? 'bg-zinc-900 hover:bg-zinc-800 border-amber-500/40 text-amber-300'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-600 cursor-not-allowed'
                   }`}
                 >
-                  <Timer className="w-3.5 h-3.5 text-amber-300" />
-                  <span>+7 วินาที ({timeBoostLeft})</span>
+                  <Timer className="w-3.5 h-3.5" />
+                  <span>+7 วิ ({timeBoostLeft})</span>
                 </button>
 
                 <button
                   type="button"
                   disabled={shieldCharges <= 0 || shieldActive || selectedAnswer !== null}
                   onClick={handleUseShield}
-                  className={`px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  className={`min-h-[42px] px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                     shieldActive
-                      ? 'bg-emerald-600/30 border-emerald-400 text-emerald-200'
+                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
                       : shieldCharges > 0 && selectedAnswer === null
-                      ? 'bg-emerald-900/60 hover:bg-emerald-800/80 border-emerald-500/50 text-emerald-100'
-                      : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
+                      ? 'bg-zinc-900 hover:bg-zinc-800 border-emerald-500/40 text-emerald-300'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-600 cursor-not-allowed'
                   }`}
                 >
-                  <Shield className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>{shieldActive ? 'โล่กำลังทำงาน' : `โล่กันพลาด (${shieldCharges})`}</span>
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>{shieldActive ? 'โล่ทำงาน' : `โล่ (${shieldCharges})`}</span>
                 </button>
               </div>
 
-              {/* BOTTOM: 4 LARGE ARCADE BUTTONS */}
-              <div className="game-arena-answers grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-2 shrink-0">
+              {/* 4 Tactile Answer Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pb-4 shrink-0">
                 {currentQ.options.map((opt, idx) => {
                   const letters = ['A', 'B', 'C', 'D'];
-                  const letterColors = [
-                    'bg-blue-500/20 text-blue-300 border-blue-500/40',
-                    'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-                    'bg-amber-500/20 text-amber-300 border-amber-500/40',
-                    'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                  ];
                   const isEliminated = eliminatedIndices.includes(idx);
 
-                  let btnStyle = 'bg-slate-900 hover:bg-slate-800 active:bg-slate-800 border-slate-700 text-slate-100';
+                  let btnStyle =
+                    'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 hover:border-zinc-600 text-zinc-100';
                   if (isEliminated && selectedAnswer === null) {
-                    btnStyle = 'bg-slate-950/50 border-slate-800 text-slate-600 line-through opacity-40 cursor-not-allowed';
+                    btnStyle =
+                      'bg-zinc-950 border-zinc-900 text-zinc-700 line-through opacity-40 cursor-not-allowed';
                   } else if (selectedAnswer !== null) {
                     if (idx === currentQ.correctIndex) {
-                      btnStyle = 'bg-emerald-800/80 border-emerald-400 text-white font-black shadow-lg shadow-emerald-500/30 scale-[1.01]';
+                      btnStyle = 'bg-emerald-600/25 border-emerald-400 text-emerald-200 font-black';
                     } else if (idx === selectedAnswer) {
-                      btnStyle = 'bg-rose-800/80 border-rose-400 text-white font-bold';
+                      btnStyle = 'bg-rose-600/25 border-rose-500 text-rose-200 font-bold';
                     } else {
-                      btnStyle = 'bg-slate-900/90 border-slate-700 text-slate-300';
+                      btnStyle = 'bg-zinc-950/60 border-zinc-800 text-zinc-500';
                     }
                   }
 
@@ -1502,10 +1329,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       type="button"
                       disabled={selectedAnswer !== null || isEliminated}
                       onClick={() => handleAnswer(idx)}
-                      className={`min-h-[50px] sm:min-h-[56px] p-2.5 sm:p-3 rounded-2xl border text-left text-xs sm:text-sm font-semibold transition-all flex items-center gap-2.5 sm:gap-3 cursor-pointer active:scale-98 ${btnStyle}`}
+                      className={`min-h-[54px] px-3.5 py-3 rounded-2xl border text-left text-sm font-bold transition active:scale-[0.98] flex items-center gap-3 cursor-pointer ${btnStyle}`}
                     >
-                      <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-xs font-black font-mono border ${letterColors[idx % 4]}`}>
-                        {letters[idx]}
+                      <span className="w-7 h-7 rounded-lg bg-zinc-950 border border-zinc-700 flex items-center justify-center shrink-0 text-xs font-black font-mono text-zinc-300">
+                        {letters[idx] || idx + 1}
                       </span>
                       <span className="flex-1 leading-snug break-words">{opt}</span>
                     </button>
@@ -1517,60 +1344,60 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
           {/* BATTLE FINISHED SCREEN */}
           {battleState === 'finished' && (
-            <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-4 max-w-sm mx-auto text-center space-y-4 animate-in zoom-in-95">
-              <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-white shadow-2xl ${
-                playerHp > opponentHp 
-                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 shadow-amber-500/30 animate-bounce' 
-                  : 'bg-gradient-to-tr from-slate-700 to-slate-600 text-slate-300'
-              }`}>
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-4 max-w-sm mx-auto text-center space-y-5">
+              <div
+                className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center ${
+                  playerHp > opponentHp
+                    ? 'bg-amber-400 text-zinc-950'
+                    : 'bg-zinc-800 text-zinc-300'
+                }`}
+              >
                 {playerHp > opponentHp ? (
-                  <Trophy className="w-10 h-10" />
+                  <Trophy className="w-8 h-8" />
                 ) : (
-                  <RotateCcw className="w-10 h-10" />
+                  <RotateCcw className="w-8 h-8" />
                 )}
               </div>
 
               <div className="space-y-1">
                 <h3 className="text-xl font-black text-white">
-                  {playerHp > opponentHp ? '🎉 ได้รับชัยชนะ!' : '⚔️ จบการประลองรอบนี้'}
+                  {playerHp > opponentHp ? 'ชนะการดวล 1v1!' : 'จบการดวลรอบนี้'}
                 </h3>
-                <p className="text-xs text-slate-300">
-                  {playerHp > opponentHp 
-                    ? 'ตอบคำถามได้อย่างยอดเยี่ยม ทำดาเมจชนะคู่แข่ง!' 
-                    : 'คะแนนดีมากแล้ว ฝึกฝนโจทย์เพิ่มเติมเพื่อคว้าชัยในรอบถัดไป'}
+                <p className="text-xs text-zinc-400">
+                  คะแนนรอบนี้ {roundScore.toLocaleString()} pts
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-900 border border-slate-800 w-full">
-                <div className="space-y-0.5 text-center">
-                  <span className="text-[10px] text-slate-300 font-bold uppercase">EXP สะสม</span>
-                  <div className="text-lg font-black text-amber-400">
-                    +{playerHp > opponentHp ? 250 : 80} EXP
+              <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-zinc-900 border border-zinc-800 w-full tabular-nums">
+                <div>
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">EXP</span>
+                  <div className="text-lg font-black font-mono text-amber-400">
+                    +{playerHp > opponentHp ? 250 : 80}
                   </div>
                 </div>
-                <div className="space-y-0.5 text-center">
-                  <span className="text-[10px] text-slate-300 font-bold uppercase">เพชร Gems</span>
-                  <div className="text-lg font-black text-cyan-300">
-                    +{playerHp > opponentHp ? 30 : 10} Gems
+                <div>
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">GEMS</span>
+                  <div className="text-lg font-black font-mono text-cyan-400">
+                    +{playerHp > opponentHp ? 30 : 10}
                   </div>
                 </div>
               </div>
 
-              <div className="w-full space-y-2 pt-2">
+              <div className="w-full space-y-2">
                 <button
                   type="button"
                   onClick={handleStartBattle}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-black text-sm shadow-lg shadow-rose-600/30 transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full min-h-[48px] rounded-2xl bg-rose-500 hover:bg-rose-400 text-white font-black text-sm transition cursor-pointer active:scale-95 flex items-center justify-center gap-2"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>ดวลใหม่อีกรอบ</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBattleState('idle')}
-                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-all cursor-pointer"
+                  onClick={handleBackFromGame}
+                  className="w-full min-h-[44px] rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-bold text-xs transition cursor-pointer"
                 >
-                  กลับสู่ห้องล็อบบี้
+                  กลับหน้าเกม
                 </button>
               </div>
             </div>
@@ -1733,177 +1560,160 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         </div>
       )}
 
-      {/* TAB 3: Leaderboard & Hall of Fame */}
+      {/* TAB 3: Leaderboard */}
       {activeSubTab === 'leaderboard' && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {playerScores.slice(0, 3).map((player, idx) => (
-              <div 
-                key={player.userId}
-                className={`relative rounded-3xl p-6 border text-center space-y-3 overflow-hidden text-white ${
-                  idx === 0 
-                    ? 'bg-gradient-to-b from-amber-950 via-slate-900 to-slate-950 border-amber-500/50 shadow-xl shadow-amber-500/10'
-                    : idx === 1
-                    ? 'bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-slate-500/40'
-                    : 'bg-gradient-to-b from-amber-900/90 via-slate-900 to-slate-950 border-amber-700/40'
-                }`}
-              >
-                <div className="absolute top-3 right-3 text-2xl font-black text-white/50">
-                  #{idx + 1}
-                </div>
-
-                <div className="relative mx-auto w-20 h-20">
-                  <img 
-                    src={player.avatarUrl} 
-                    alt={player.name}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-white/25 shadow-lg mx-auto"
-                  />
-                  <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-black text-xs shadow-md">
-                    {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-bold text-white">{player.name}</h4>
-                  <p className="text-[11px] text-amber-300 font-semibold">{player.rankTitle}</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-800 flex items-center justify-around text-xs">
-                  <div>
-                    <span className="text-[10px] text-slate-300 block">EXP รวม</span>
-                    <span className="font-extrabold text-amber-400">{player.exp.toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-300 block">ชนะประลอง</span>
-                    <span className="font-extrabold text-white">{player.battleWins} ครั้ง</span>
-                  </div>
-                </div>
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {playerScores.length === 0 ? (
+              <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-8 text-center space-y-2">
+                <Trophy className="w-8 h-8 text-amber-400 mx-auto" />
+                <h3 className="text-sm font-black text-white">ยังไม่มีคะแนนในตารางอันดับ</h3>
+                <p className="text-xs text-zinc-400">
+                  เริ่มเล่นเกมเพื่อสะสม EXP และขึ้นอันดับหนึ่งของโรงเรียน
+                </p>
               </div>
-            ))}
-          </div>
-
-          {/* Full Rank Table */}
-          <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden text-white">
-            <div className="p-4 border-b border-slate-800 font-bold text-xs text-slate-300 uppercase tracking-wider">
-              ทำเนียบผู้เรียนและอาจารย์คะแนนสูงสุด (Hall of Fame)
-            </div>
-            <div>
-              <PagedList items={playerScores} pageSize={5} renderItem={(p, rank) => (
-                <div key={p.userId} className="p-4 flex items-center justify-between hover:bg-slate-800/70 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 font-black text-sm text-slate-300">
-                      #{rank + 1}
-                    </span>
-                    <img 
-                      src={p.avatarUrl} 
-                      alt={p.name}
-                      className="w-10 h-10 rounded-xl object-cover"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white">{p.name}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                          {p.role === 'teacher' ? 'อาจารย์' : 'นักเรียน'}
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {playerScores.slice(0, 3).map((player, idx) => (
+                    <div
+                      key={player.userId}
+                      className={`rounded-2xl p-4 border text-center space-y-2.5 ${
+                        idx === 0
+                          ? 'bg-zinc-900 border-amber-400/60'
+                          : 'bg-zinc-900 border-zinc-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-xs font-mono font-black">
+                        <span className={idx === 0 ? 'text-amber-400' : 'text-zinc-400'}>
+                          #{idx + 1}
+                        </span>
+                        <span className="text-amber-400 tabular-nums">
+                          {player.exp.toLocaleString()} XP
                         </span>
                       </div>
-                      <span className="text-[11px] text-amber-300 font-semibold">{p.rankTitle}</span>
+                      <img
+                        src={player.avatarUrl}
+                        alt={player.name}
+                        className="w-14 h-14 rounded-2xl object-cover border border-zinc-700 mx-auto"
+                      />
+                      <div>
+                        <h4 className="text-sm font-bold text-white truncate">{player.name}</h4>
+                        <p className="text-[11px] text-zinc-400 truncate">{player.rankTitle}</p>
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
 
-                  <div className="flex items-center gap-6 text-xs">
-                    <div className="text-right">
-                      <span className="font-bold text-amber-400 block">{p.exp.toLocaleString()} EXP</span>
-                      <span className="text-[10px] text-slate-300">{p.gems} Gems</span>
-                    </div>
-                    <div className="text-right hidden sm:block">
-                      <span className="font-bold text-white">{p.battleWins} ชนะ</span>
-                      <span className="text-[10px] text-rose-300">{p.streak} สตรีค</span>
-                    </div>
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-zinc-800 font-bold text-xs text-zinc-400 uppercase tracking-wider">
+                    อันดับคะแนนทั้งหมด
+                  </div>
+                  <div className="divide-y divide-zinc-800/80">
+                    {playerScores.map((p, rank) => (
+                      <div
+                        key={p.userId}
+                        className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-zinc-800/40 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="w-6 font-mono font-black text-xs text-zinc-400 shrink-0 tabular-nums">
+                            #{rank + 1}
+                          </span>
+                          <img
+                            src={p.avatarUrl}
+                            alt={p.name}
+                            className="w-9 h-9 rounded-xl object-cover shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">{p.name}</p>
+                            <p className="text-[11px] text-zinc-400 truncate">{p.rankTitle}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0 tabular-nums">
+                          <span className="font-mono font-black text-xs text-amber-400 block">
+                            {p.exp.toLocaleString()} XP
+                          </span>
+                          <span className="text-[10px] font-mono text-cyan-400">{p.gems} Gems</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )} />
-            </div>
-          </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* TAB 4: Reward Item Store */}
+      {/* TAB 4: Reward Item Store (Clean Responsive Grid instead of 1-item PagedList) */}
       {activeSubTab === 'shop' && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-white">
-            <div className="flex items-center gap-3">
-              <Coins className="w-6 h-6 text-cyan-400" />
-              <div>
-                <h4 className="text-sm font-bold text-white">ยอดเพชรของคุณในกระเป๋า</h4>
-                <p className="text-xs text-slate-300">สะสมได้จากการชนะแบทเทิลและการทำแบบทดสอบความรู้</p>
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+          <div className="max-w-5xl mx-auto space-y-4">
+            <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center shrink-0">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-black text-white">กระเป๋า Gems ของฉัน</h4>
+                  <p className="text-xs text-zinc-400 truncate">เล่นเกมเก็บ Gems เพื่อแลกของรางวัล</p>
+                </div>
+              </div>
+              <div className="px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-cyan-400 font-mono font-black text-base shrink-0 tabular-nums">
+                {currentPlayerStats.gems} Gems
               </div>
             </div>
-            <div className="px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 font-black text-lg flex items-center gap-2">
-              <Coins className="w-5 h-5 text-cyan-300" />
-              <span>{currentPlayerStats.gems} Gems</span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {rewardItems.map((item) => {
+                const canAfford = currentPlayerStats.gems >= item.costGems;
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 flex flex-col justify-between gap-4"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="w-10 h-10 rounded-xl bg-amber-400/15 text-amber-400 flex items-center justify-center">
+                          <Medal className="w-5 h-5" />
+                        </div>
+                        <span className="text-[11px] font-mono font-black text-cyan-400 tabular-nums">
+                          {item.costGems} Gems
+                        </span>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-black text-white">{item.titleTh}</h4>
+                        <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                          {item.descriptionTh}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-zinc-800 space-y-2">
+                      <div className="text-[11px] text-zinc-400 font-mono tabular-nums">
+                        คงเหลือ {item.stock} ชิ้น
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!canAfford}
+                        onClick={() => onRedeemReward(item.id, item.costGems)}
+                        className={`w-full min-h-[42px] rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 ${
+                          canAfford
+                            ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 cursor-pointer'
+                            : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>{canAfford ? 'แลกของรางวัล' : 'Gems ไม่พอ'}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-
-          <div>
-            <PagedList items={rewardItems} pageSize={1} renderItem={(item) => {
-              const canAfford = currentPlayerStats.gems >= item.costGems;
-              return (
-                <div 
-                  key={item.id}
-                  className="rounded-3xl bg-slate-900 border border-slate-800 p-5 flex flex-col justify-between space-y-4 hover:border-slate-700 transition-all group text-white"
-                >
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform">
-                      <Medal className="w-6 h-6 text-indigo-300" />
-                    </div>
-
-                    <div>
-                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
-                        item.category === 'skin' 
-                          ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30' 
-                          : item.category === 'boost'
-                            ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
-                            : 'bg-slate-800 text-slate-200'
-                      }`}>
-                        {item.category === 'skin' ? '🎮 สกินตัวละคร 3D' : item.category === 'boost' ? '⚡ บูสเตอร์ช่วยเล่น' : item.category}
-                      </span>
-                      <h4 className="text-sm font-bold text-white mt-1">{item.titleTh}</h4>
-                      <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
-                        {item.descriptionTh}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-300">คงเหลือ {item.stock} ชิ้น</span>
-                      <span className="font-extrabold text-cyan-300 flex items-center gap-1">
-                        <Coins className="w-3.5 h-3.5" />
-                        {item.costGems} Gems
-                      </span>
-                    </div>
-
-                    <button
-                      disabled={!canAfford}
-                      onClick={() => onRedeemReward(item.id, item.costGems)}
-                      className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                        canAfford
-                          ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md shadow-emerald-900/40 cursor-pointer'
-                          : 'bg-slate-800 text-slate-300 cursor-not-allowed'
-                      }`}
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>{canAfford ? 'แลกของรางวัลนี้' : 'เพชรไม่เพียงพอ'}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            }} />
-          </div>
-        </div>
         </div>
       )}
 

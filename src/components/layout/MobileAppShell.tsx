@@ -52,6 +52,12 @@ import {
   Maximize2,
   Minimize2,
   Smartphone,
+  Rocket,
+  Grid2x2,
+  SpellCheck2,
+  GitBranch,
+  ShoppingBag,
+  Coins,
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -134,7 +140,7 @@ import {
   isLandscapeViewport,
 } from '../../lib/screenOrientation';
 import { MobileAttendanceView } from '../../views/MobileAttendanceView';
-import { EduBattleGameView } from '../../views/EduBattleGameView';
+import { EduBattleGameView, type EduGameSubTab } from '../../views/EduBattleGameView';
 import { EduBattleRoyale3DView } from '../../views/EduBattleRoyale3DView';
 import { CoopBossRaidView } from '../../views/CoopBossRaidView';
 import { SubjectLabSimulationView } from '../../views/SubjectLabSimulationView';
@@ -428,8 +434,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   };
   const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
   const [activeGameView, setActiveGameView] = useState<'hub' | 'arcade_studio' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
+  const [arcadeInitialSubTab, setArcadeInitialSubTab] = useState<EduGameSubTab>('hub');
+  const [mobileGameCategory, setMobileGameCategory] = useState<'all' | 'arcade' | 'battle' | 'lab'>('all');
   const [isLandscapeScreen, setIsLandscapeScreen] = useState<boolean>(() => isLandscapeViewport());
   const [gameOrientationNotice, setGameOrientationNotice] = useState<string | null>(null);
+
+  const openArcadeSubTab = (tab: EduGameSubTab) => {
+    setArcadeInitialSubTab(tab);
+    setActiveGameView('arcade_studio');
+  };
 
   useEffect(() => {
     const syncOrientation = () => setIsLandscapeScreen(isLandscapeViewport());
@@ -2541,168 +2554,247 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           );
         })()}
 
-        {activeTab === 'games' && (
-          <div className="animate-in fade-in duration-200 space-y-5 pb-4">
-            {/* Illustrated Arcade & Labs Hero Card */}
-            <section className="relative rounded-3xl overflow-hidden bg-slate-950 shadow-md min-h-[168px] flex flex-col justify-end">
-              <img
-                src={arcadeBannerImg}
-                alt={lang === 'th' ? 'ศูนย์เกมความรู้และแล็บจำลอง' : 'Learning Games and Labs'}
-                referrerPolicy="no-referrer"
-                className="absolute inset-0 w-full h-full object-cover object-center"
-              />
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-t from-slate-950/92 via-slate-950/55 to-slate-950/20"
-              />
-              <div className="relative z-10 p-5 space-y-1">
-                <div className="flex items-center justify-between gap-2 text-xs font-semibold text-amber-300 tabular-nums">
-                  <span>{lang === 'th' ? 'ศูนย์เกมความรู้และแล็บจำลอง' : 'Games & Interactive Labs'}</span>
-                  <span>
-                    {currentScore.exp.toLocaleString()} EXP · {currentScore.gems} 💎
-                  </span>
+        {activeTab === 'games' && (() => {
+          const mobileGamesList: {
+            id: string;
+            category: 'arcade' | 'battle' | 'lab';
+            title: string;
+            subtitle: string;
+            tag: string;
+            iconBg: string;
+            iconText: string;
+            icon: React.ComponentType<{ className?: string }>;
+            onLaunch: () => void;
+          }[] = [
+            {
+              id: 'meteor_blaster',
+              category: 'arcade',
+              title: 'Meteor Blaster',
+              subtitle: 'ยิงอุกกาบาตสมการ',
+              tag: 'คณิต · ฟิสิกส์',
+              iconBg: 'bg-cyan-500/15',
+              iconText: 'text-cyan-400',
+              icon: Rocket,
+              onLaunch: () => openArcadeSubTab('meteor_blaster'),
+            },
+            {
+              id: 'concept_match',
+              category: 'arcade',
+              title: 'Match & Memory',
+              subtitle: 'จับคู่ & พลิกการ์ดไว',
+              tag: '8 กลุ่มสาระ',
+              iconBg: 'bg-violet-500/15',
+              iconText: 'text-violet-400',
+              icon: Grid2x2,
+              onLaunch: () => openArcadeSubTab('concept_match'),
+            },
+            {
+              id: 'word_builder',
+              category: 'arcade',
+              title: 'Word Builder',
+              subtitle: 'ต่อคำศัพท์สองภาษา',
+              tag: 'อังกฤษ · วิทย์',
+              iconBg: 'bg-amber-500/15',
+              iconText: 'text-amber-400',
+              icon: SpellCheck2,
+              onLaunch: () => openArcadeSubTab('word_builder'),
+            },
+            {
+              id: 'chrono_sort',
+              category: 'arcade',
+              title: 'ChronoSort',
+              subtitle: 'สายพานด่วน & เรียงลำดับ',
+              tag: 'ตรรกะ · สังคม',
+              iconBg: 'bg-emerald-500/15',
+              iconText: 'text-emerald-400',
+              icon: GitBranch,
+              onLaunch: () => openArcadeSubTab('chrono_sort'),
+            },
+            {
+              id: '1v1_arena',
+              category: 'battle',
+              title: '1v1 Speed Duel',
+              subtitle: 'ดวลตอบสด 15 วิ',
+              tag: '50/50 · โล่',
+              iconBg: 'bg-rose-500/15',
+              iconText: 'text-rose-400',
+              icon: Swords,
+              onLaunch: () => openArcadeSubTab('arena'),
+            },
+            {
+              id: 'battle_royale_3d',
+              category: 'battle',
+              title: '3D Battle Royale',
+              subtitle: 'ล่าหีบสมบัติเกาะ 3 มิติ',
+              tag: '3D EXPLORE',
+              iconBg: 'bg-indigo-500/15',
+              iconText: 'text-indigo-400',
+              icon: Gamepad2,
+              onLaunch: () => setActiveGameView('battle_royale_3d'),
+            },
+            {
+              id: 'boss_raid',
+              category: 'battle',
+              title: 'Co-op Boss Raid',
+              subtitle: 'ตีบอสประจำบทเรียน',
+              tag: 'COMBO DMG',
+              iconBg: 'bg-orange-500/15',
+              iconText: 'text-orange-400',
+              icon: Flame,
+              onLaunch: () => setActiveGameView('boss_raid'),
+            },
+            {
+              id: 'subject_labs',
+              category: 'lab',
+              title: 'Subject Labs',
+              subtitle: 'ทดลองเคมี ฟิสิกส์ โค้ด',
+              tag: '6D LAB',
+              iconBg: 'bg-sky-500/15',
+              iconText: 'text-sky-400',
+              icon: FlaskConical,
+              onLaunch: () => setActiveGameView('subject_labs'),
+            },
+          ];
+
+          const filteredMobileGames =
+            mobileGameCategory === 'all'
+              ? mobileGamesList
+              : mobileGamesList.filter((g) => g.category === mobileGameCategory);
+
+          const playerLv = Math.floor(currentScore.exp / 500) + 1;
+
+          return (
+            <div className="animate-in fade-in duration-200 space-y-4 pb-6">
+              {/* Sleek Gen Z Arcade Hero Banner */}
+              <section className="relative rounded-3xl overflow-hidden bg-[#09090B] border border-zinc-800 min-h-[148px] flex flex-col justify-end">
+                <img
+                  src={arcadeBannerImg}
+                  alt={lang === 'th' ? 'ศูนย์เกมความรู้' : 'Learning Arcade'}
+                  referrerPolicy="no-referrer"
+                  className="absolute inset-0 w-full h-full object-cover object-center opacity-55"
+                />
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-gradient-to-t from-[#09090B] via-[#09090B]/70 to-transparent"
+                />
+                <div className="relative z-10 p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-xs font-mono font-black tabular-nums">
+                    <span className="text-amber-400">LV.{playerLv} ARCADE</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-amber-300 flex items-center gap-1">
+                        <Flame className="w-3.5 h-3.5 fill-current" />
+                        {currentScore.exp.toLocaleString()}
+                      </span>
+                      <span className="text-cyan-300 flex items-center gap-1">
+                        <Coins className="w-3.5 h-3.5" />
+                        {currentScore.gems}
+                      </span>
+                    </div>
+                  </div>
+                  <h2 className="text-lg font-black text-white tracking-tight">
+                    {lang === 'th' ? 'กดแล้วเล่นได้ทันที' : 'Tap & Play Instantly'}
+                  </h2>
                 </div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                  {lang === 'th' ? 'เลือกโหมดการเรียนรู้ที่อยากเล่น' : 'Choose Your Learning Mode'}
-                </h2>
-                <p className="text-xs text-slate-200/90">
-                  {lang === 'th'
-                    ? 'เล่นสนุกพร้อมเก็บคะแนนฝึกทักษะทุกกลุ่มสาระในโหมดเต็มจอ'
-                    : 'Practice every subject through interactive arcade and lab challenges.'}
-                </p>
+              </section>
+
+              {/* Category Filter Strip */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                {([
+                  { id: 'all', label: 'ทั้งหมด (8)' },
+                  { id: 'arcade', label: 'Arcade ไวๆ' },
+                  { id: 'battle', label: 'ดวล & 3D' },
+                  { id: 'lab', label: 'แล็บจำลอง' },
+                ] as const).map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setMobileGameCategory(cat.id)}
+                    className={`min-h-[38px] px-3.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
+                      mobileGameCategory === cat.id
+                        ? 'bg-zinc-900 dark:bg-amber-400 text-white dark:text-zinc-950'
+                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-muted)]'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
               </div>
-            </section>
 
-            {/* Featured Primary Game Mode */}
-            <button
-              type="button"
-              onClick={() => setActiveGameView('arcade_studio')}
-              className="w-full p-4 rounded-2xl border border-blue-400/50 bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-[var(--color-primary)] text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-[var(--color-primary-text)]">
-                    {lang === 'th' ? 'แนะนำ · ครบ 8 กลุ่มสาระ' : 'Featured · All Subjects'}
-                  </p>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)] truncate">
-                    EduArcade ศูนย์เกม 7 สไตล์
-                  </h3>
-                  <p className="text-xs text-[var(--color-text-muted)] line-clamp-1 mt-0.5">
-                    ยิงอุกกาบาตสมการ จับคู่ ต่อคำศัพท์ ChronoSort
-                  </p>
-                </div>
+              {/* Direct 1-Tap Gen Z 2-Column Game Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {filteredMobileGames.map((game) => {
+                  const Icon = game.icon;
+                  return (
+                    <button
+                      key={game.id}
+                      type="button"
+                      onClick={game.onLaunch}
+                      className="p-3.5 rounded-2xl bg-[#09090B] border border-zinc-800 hover:border-zinc-600 text-left flex flex-col justify-between gap-3.5 transition active:scale-[0.97] cursor-pointer min-h-[132px]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div
+                          className={`w-10 h-10 rounded-xl ${game.iconBg} ${game.iconText} flex items-center justify-center shrink-0`}
+                        >
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-zinc-400 text-right leading-tight">
+                          {game.tag}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-black text-sm text-white leading-snug tracking-tight">
+                          {game.title}
+                        </h3>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
+                          {game.subtitle}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-              <ChevronRight className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-            </button>
 
-            {/* Clean 2-Column Visual Grid — No Clunky 1/3 Pagination */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveGameView('battle_royale_3d')}
-                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-amber-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                  <Gamepad2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
-                    3D Battle Royale
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
-                    วิ่งล่าหีบสมบัติ ตอบคำถาม 3 มิติ
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveGameView('1v1_arena')}
-                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-rose-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                  <Swords className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
-                    1v1 ดวลความเร็ว
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
-                    แข่งตอบโจทย์ไวกับบอทหรือเพื่อน
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveGameView('boss_raid')}
-                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-orange-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-                  <Flame className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
-                    Co-op Boss Raid
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
-                    รวมพลังตีบอสประจำวิชา
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveGameView('subject_labs')}
-                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-sky-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                  <FlaskConical className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
-                    แล็บจำลอง 6 สาระ
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
-                    เคมี ฟิสิกส์ ไวยากรณ์ โค้ดดิ้ง
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            {/* Separate Real Achievements Showcase Row */}
-            <div className="pt-1 space-y-2">
-              <h3 className="text-xs font-semibold text-[var(--color-text-muted)] px-1">
-                {lang === 'th' ? 'เกียรติยศและผลงานจริง' : 'Achievements & Awards'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setActiveGameView('hall_of_fame')}
-                className="w-full p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-amber-400 text-left flex items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                    <Trophy className="w-5 h-5" />
+              {/* Clean Compact Utility Row: Leaderboard/Shop & Hall of Fame */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => openArcadeSubTab('shop')}
+                  className="min-h-[54px] px-3.5 py-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+                    <ShoppingBag className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-sm text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'ถ้วยรางวัลและเกียรติบัตรของฉัน' : 'My Trophies & Certificates'}
-                    </h4>
-                    <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
-                      {lang === 'th'
-                        ? 'แสดงผลจากแฟ้มผลงานจริงและคะแนนสะสม'
-                        : 'Generated from real portfolio items and honors'}
+                    <p className="text-xs font-black text-[var(--color-text-title)] truncate">
+                      ร้านแลกของ
+                    </p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
+                      {currentScore.gems} Gems
                     </p>
                   </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-              </button>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveGameView('hall_of_fame')}
+                  className="min-h-[54px] px-3.5 py-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-[var(--color-text-title)] truncate">
+                      ถ้วยรางวัล
+                    </p>
+                    <p className="text-[10px] text-[var(--color-text-muted)] truncate">
+                      ผลงานจริง
+                    </p>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* TAB E: PROFILE & DIGITAL VIRTUAL ID CARD */}
         {activeTab === 'profile' && (
@@ -3303,51 +3395,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       </nav>
 
       {/* ======================================================== */}
-      {/* IMMERSIVE FULLSCREEN GAME TAKEOVER (แสดงเต็มจอ ไม่มีเมนูรก) */}
+      {/* IMMERSIVE FULLSCREEN GAME TAKEOVER (แสดงเต็มจอ ไม่มีเมนูรกหรือปุ่มทับกัน) */}
       {/* ======================================================== */}
       {activeGameView !== 'hub' && (
-        <div className="game-immersive-root fixed inset-0 z-50 bg-slate-950 w-full h-dvh flex flex-col overflow-hidden animate-in fade-in duration-200">
-          {(activeGameView === 'boss_raid' ||
-            activeGameView === 'subject_labs' ||
-            activeGameView === 'hall_of_fame') && (
-            <div className="fixed right-3 top-3 z-[60] flex flex-col items-end gap-1.5">
-              <button
-                type="button"
-                onClick={async () => {
-                  setGameOrientationNotice(null);
-                  if (isLandscapeScreen) {
-                    await exitLandscapeGameMode();
-                    return;
-                  }
-                  const res = await enterLandscapeGameMode();
-                  if (!res.ok && !isLandscapeViewport()) {
-                    setGameOrientationNotice(
-                      lang === 'th'
-                        ? 'เอียงโทรศัพท์เป็นแนวนอนเพื่อเล่นเต็มจอได้เลย'
-                        : 'Rotate phone sideways for landscape view'
-                    );
-                    window.setTimeout(() => setGameOrientationNotice(null), 4000);
-                  }
-                }}
-                className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-slate-700/80 bg-slate-900/90 text-white text-[11px] font-bold inline-flex items-center gap-1.5 shadow-lg backdrop-blur cursor-pointer hover:bg-slate-800"
-                title={isLandscapeScreen ? 'ออกจากเต็มจอแนวนอน' : 'ขยายเต็มจอ / หมุนเป็นแนวนอน'}
-              >
-                {isLandscapeScreen ? (
-                  <Minimize2 className="w-3.5 h-3.5 text-amber-300" />
-                ) : (
-                  <Smartphone className="w-3.5 h-3.5 rotate-90 text-sky-300" />
-                )}
-                <span>{isLandscapeScreen ? 'ออกแนวนอน' : 'หมุนจอ / เต็มจอ'}</span>
-              </button>
-              {gameOrientationNotice && (
-                <div className="rounded-lg bg-slate-900/95 border border-sky-500/40 px-2.5 py-1 text-[10px] text-sky-200 shadow-lg max-w-[210px]">
-                  {gameOrientationNotice}
-                </div>
-              )}
-            </div>
-          )}
+        <div className="game-immersive-root fixed inset-0 z-50 bg-[#09090B] w-full h-dvh flex flex-col overflow-hidden animate-in fade-in duration-200">
           <ViewErrorBoundary
-            resetKey={`game:${activeGameView}`}
+            resetKey={`game:${activeGameView}:${arcadeInitialSubTab}`}
             lang={lang}
             viewName={`mobile-game:${activeGameView}`}
             onBackHome={() => setActiveGameView('hub')}
@@ -3366,14 +3419,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
 
           {activeGameView === 'arcade_studio' && (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950">
+            <div className="h-full w-full overflow-hidden flex flex-col bg-[#09090B]">
               <EduBattleGameView
                 questions={questions}
                 playerScores={playerScores}
                 rewardItems={rewardItems}
                 currentUser={currentUser}
                 lang={lang}
-                initialSubTab="hub"
+                initialSubTab={arcadeInitialSubTab}
                 isMobileMode={true}
                 onAddQuestion={onAddQuestion}
                 onImportQuestions={onImportQuestions}
@@ -3385,7 +3438,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
 
           {activeGameView === '1v1_arena' && (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-slate-950">
+            <div className="h-full w-full overflow-hidden flex flex-col bg-[#09090B]">
               <EduBattleGameView
                 questions={questions}
                 playerScores={playerScores}
@@ -3404,7 +3457,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
 
           {activeGameView === 'boss_raid' && (
-            <div className="h-full w-full overflow-y-auto flex flex-col bg-slate-950 p-1 sm:p-3">
+            <div className="h-full w-full overflow-hidden flex flex-col bg-[#09090B]">
               <CoopBossRaidView
                 questions={questions}
                 lang={lang}

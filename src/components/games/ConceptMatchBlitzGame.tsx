@@ -55,21 +55,18 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
   const [selectedStrand, setSelectedStrand] = useState<LearningStrandId>('foreign_lang');
   const [gameVariant, setGameVariant] = useState<'lightning_link' | 'memory_flip'>('lightning_link');
 
-  // Shared stats
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [rewarded, setRewarded] = useState<{ exp: number; gems: number } | null>(null);
 
-  // Lightning Link State
   const [activePairs, setActivePairs] = useState<MatchPairItem[]>([]);
   const [rightShuffled, setRightShuffled] = useState<MatchPairItem[]>([]);
   const [selectedLeftId, setSelectedLeftId] = useState<string | null>(null);
   const [matchedIds, setMatchedIds] = useState<Set<string>>(new Set());
   const [latestNote, setLatestNote] = useState<string | null>(null);
 
-  // Memory Flip State
   const [memoryCards, setMemoryCards] = useState<MemoryCardTile[]>([]);
   const [flippedUids, setFlippedUids] = useState<string[]>([]);
   const [lockFlip, setLockFlip] = useState(false);
@@ -137,7 +134,7 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
       setSelectedLeftId(null);
       setCombo(nextCombo);
       setScore(nextScore);
-      setLatestNote(`${rightItem.left} ↔ ${rightItem.right} : ${rightItem.noteTh}`);
+      setLatestNote(`${rightItem.left} = ${rightItem.right} · ${rightItem.noteTh}`);
       playComboStreakSound(nextCombo);
 
       if (nextMatched.size >= activePairs.length) {
@@ -176,13 +173,13 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
           setCombo(nextCombo);
           setScore(nextScore);
           if (pairInfo) {
-            setLatestNote(`${pairInfo.left} ↔ ${pairInfo.right} : ${pairInfo.noteTh}`);
+            setLatestNote(`${pairInfo.left} = ${pairInfo.right} · ${pairInfo.noteTh}`);
           }
           playComboStreakSound(nextCombo);
           if (updated.every((c) => c.matched)) {
             completeRound(nextScore, mistakes);
           }
-        }, 320);
+        }, 280);
       } else {
         window.setTimeout(() => {
           setFlippedUids([]);
@@ -190,129 +187,127 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
           setCombo(0);
           setMistakes((m) => m + 1);
           playErrorBuzzSound();
-        }, 720);
+        }, 650);
       }
     }
   };
 
+  const matchedCount =
+    gameVariant === 'lightning_link'
+      ? matchedIds.size
+      : Math.floor(memoryCards.filter((c) => c.matched).length / 2);
+  const progressPct = activePairs.length > 0 ? Math.round((matchedCount / activePairs.length) * 100) : 0;
+
   return (
-    <div className="h-full flex flex-col bg-slate-950 text-white rounded-2xl border border-slate-800 overflow-hidden">
-      {/* HUD Header */}
-      <div className="shrink-0 px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <div className="h-full w-full flex flex-col bg-[#09090B] text-white overflow-hidden select-none">
+      {/* Minimal Single-Row Top Bar */}
+      <header className="shrink-0 h-13 px-3 sm:px-4 bg-zinc-950/95 border-b border-white/10 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
           <button
             type="button"
             onClick={onBack}
-            className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1 cursor-pointer"
+            className="min-h-[40px] min-w-[40px] px-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95"
+            aria-label="กลับศูนย์เกม"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Arcade Hub</span>
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">ออก</span>
           </button>
-          <span className="text-sm font-extrabold text-emerald-300 flex items-center gap-1.5">
-            <Grid2x2 className="w-4 h-4" />
-            <span>8-Strand Match & Memory</span>
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <Grid2x2 className="w-4 h-4 text-violet-400 shrink-0" />
+            <span className="text-sm font-extrabold tracking-tight text-white truncate">
+              Match & Memory
+            </span>
+          </div>
         </div>
 
         {phase === 'PLAYING' && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 font-bold text-amber-300 tabular-nums">
-              {score.toLocaleString()} pts
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 font-bold text-slate-200 tabular-nums">
-              {elapsedSec}s
-            </span>
-            {combo >= 2 && (
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-black tabular-nums">
-                COMBO x{combo}
-              </span>
-            )}
+          <div className="flex items-center gap-3 text-xs shrink-0 tabular-nums">
+            <span className="font-extrabold text-amber-300">{score.toLocaleString()}</span>
+            <span className="text-zinc-400 font-mono">{elapsedSec}s</span>
+            {combo >= 2 && <span className="font-black text-emerald-400">x{combo}</span>}
           </div>
         )}
-      </div>
+      </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5">
         {phase === 'TITLE_MENU' && (
-          <div className="max-w-3xl mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5">
-            <div className="space-y-1 text-center">
-              <h2 className="text-xl font-black text-white">จับคู่คำศัพท์ สูตร และแนวคิด 8 กลุ่มสาระฯ</h2>
-              <p className="text-xs text-slate-300">
-                เลือกโหมดการเล่น (จับคู่สายฟ้า หรือ เปิดป้ายความจำ) และเลือกหมวดหมู่ที่อยากฝึกจากครบทั้ง 8 สาระการเรียนรู้
+          <div className="max-w-2xl mx-auto rounded-3xl bg-zinc-900/90 border border-white/10 p-5 sm:p-6 space-y-5">
+            <div className="text-center space-y-1.5">
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                จับคู่คำศัพท์ & ความจำ 8 สาระ
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-400">
+                เลือกโหมดและกลุ่มสาระที่อยากฝึก แล้วทำคอมโบให้ไวที่สุด
               </p>
             </div>
 
-            {/* Game Variant Selector */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Clean Mode Selector */}
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setGameVariant('lightning_link')}
-                className={`p-3.5 rounded-xl border text-left transition cursor-pointer ${
+                className={`p-3.5 rounded-2xl border text-left transition cursor-pointer active:scale-[0.98] ${
                   gameVariant === 'lightning_link'
-                    ? 'bg-emerald-500/20 border-emerald-400 text-white'
-                    : 'bg-slate-800 border-slate-700 text-slate-300'
+                    ? 'bg-violet-500/15 border-violet-400 text-white'
+                    : 'bg-zinc-950/70 border-white/10 text-zinc-300 hover:border-white/25'
                 }`}
               >
                 <div className="font-extrabold text-sm flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-amber-300" />
-                  <span>Lightning Pair Link (จับคู่สายฟ้า)</span>
+                  <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>จับคู่สายฟ้า</span>
                 </div>
-                <div className="text-xs text-slate-300 mt-1">
-                  แตะคำถามด้านซ้ายแล้วจับคู่ความหมายด้านขวาให้ไวที่สุดเพื่อทำคอมโบ
-                </div>
+                <div className="text-[11px] text-zinc-400 mt-1">แตะซ้ายเชื่อมขวาให้ไว</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setGameVariant('memory_flip')}
-                className={`p-3.5 rounded-xl border text-left transition cursor-pointer ${
+                className={`p-3.5 rounded-2xl border text-left transition cursor-pointer active:scale-[0.98] ${
                   gameVariant === 'memory_flip'
-                    ? 'bg-indigo-500/20 border-indigo-400 text-white'
-                    : 'bg-slate-800 border-slate-700 text-slate-300'
+                    ? 'bg-violet-500/15 border-violet-400 text-white'
+                    : 'bg-zinc-950/70 border-white/10 text-zinc-300 hover:border-white/25'
                 }`}
               >
                 <div className="font-extrabold text-sm flex items-center gap-1.5">
-                  <Grid2x2 className="w-4 h-4 text-cyan-300" />
-                  <span>Memory Flip 12 Cards (เปิดป้ายความจำ)</span>
+                  <Grid2x2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span>เปิดการ์ดความจำ</span>
                 </div>
-                <div className="text-xs text-slate-300 mt-1">
-                  พลิกแผ่นป้ายจำตำแหน่งแล้วจับคู่แนวคิดที่ตรงกันให้ครบทุกใบ
-                </div>
+                <div className="text-[11px] text-zinc-400 mt-1">พลิกการ์ด 12 ใบจับคู่</div>
               </button>
             </div>
 
             {/* 8-Strand Selector */}
             <div className="space-y-2">
-              <div className="text-xs font-bold text-slate-200">เลือกกลุ่มสาระวิชา (ครบทั้ง 8 สาระ):</div>
+              <div className="text-xs font-bold text-zinc-300">เลือกวิชา</div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {LEARNING_STRANDS.map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setSelectedStrand(s.id)}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    className={`min-h-[52px] p-2.5 rounded-xl border text-left transition cursor-pointer ${
                       selectedStrand === s.id
-                        ? 'bg-emerald-600/25 border-emerald-400 text-white'
-                        : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'
+                        ? 'bg-emerald-500/15 border-emerald-400 text-white'
+                        : 'bg-zinc-950/70 border-white/10 text-zinc-300 hover:border-white/25'
                     }`}
                   >
-                    <div className="text-[11px] font-mono text-emerald-300 font-bold">สาระ {s.code}</div>
+                    <div className="text-[10px] font-mono text-emerald-400 font-bold">{s.code}</div>
                     <div className="text-xs font-bold mt-0.5 line-clamp-1">{s.nameTh}</div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-800/70 border border-slate-700 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="font-bold text-white">{activeDeck.titleTh}</div>
-                <div className="text-slate-300">{activeDeck.subtitleTh}</div>
+            <div className="pt-1 space-y-3">
+              <div className="text-xs text-zinc-400 text-center">
+                ชุดที่เลือก: <strong className="text-white">{activeDeck.titleTh}</strong>
               </div>
               <button
                 type="button"
                 onClick={startRound}
-                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                className="w-full min-h-[52px] rounded-2xl bg-violet-500 hover:bg-violet-400 text-white font-black text-base flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
               >
-                <Play className="w-4 h-4" />
+                <Play className="w-5 h-5 fill-current" />
                 <span>เริ่มเล่นเลย</span>
               </button>
             </div>
@@ -320,32 +315,34 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
         )}
 
         {phase === 'PLAYING' && (
-          <div className="max-w-4xl mx-auto space-y-4">
-            <div className="flex items-center justify-between text-xs text-slate-300">
-              <span className="font-bold text-white">{activeDeck.titleTh}</span>
-              <span>
-                จับคู่แล้ว:{' '}
-                <strong className="text-emerald-300 tabular-nums">
-                  {gameVariant === 'lightning_link'
-                    ? matchedIds.size
-                    : memoryCards.filter((c) => c.matched).length / 2}
-                  /{activePairs.length}
-                </strong>{' '}
-                · พลาด {mistakes} ครั้ง
-              </span>
+          <div className="max-w-3xl mx-auto space-y-4">
+            {/* Progress Strip */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-zinc-200 truncate">{activeDeck.titleTh}</span>
+                <span className="text-zinc-400 tabular-nums shrink-0">
+                  {matchedCount}/{activePairs.length} คู่ · พลาด {mistakes}
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                <div
+                  className="h-full bg-violet-400 rounded-full transition-all duration-200"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
             </div>
 
             {latestNote && (
-              <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-600/40 text-xs text-emerald-100 flex items-center gap-2">
+              <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-100 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
-                <span>{latestNote}</span>
+                <span className="leading-snug">{latestNote}</span>
               </div>
             )}
 
             {gameVariant === 'lightning_link' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                 <div className="space-y-2">
-                  <div className="text-[11px] font-bold text-cyan-300 uppercase">1. เลือกหัวข้อ / คำศัพท์</div>
+                  <div className="text-[11px] font-bold text-cyan-400">1. เลือกคำหลัก</div>
                   {activePairs.map((pair) => {
                     const isMatched = matchedIds.has(pair.id);
                     const isSelected = selectedLeftId === pair.id;
@@ -358,16 +355,16 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
                           playCardFlipSound();
                           setSelectedLeftId(pair.id);
                         }}
-                        className={`w-full p-3 rounded-xl border text-left text-xs font-bold transition cursor-pointer ${
+                        className={`w-full min-h-[54px] p-3 rounded-2xl border text-left text-xs sm:text-sm font-bold transition cursor-pointer active:scale-[0.98] ${
                           isMatched
-                            ? 'bg-emerald-950/50 border-emerald-700/50 text-emerald-300 opacity-60'
+                            ? 'bg-emerald-950/35 border-emerald-500/30 text-emerald-400/70 opacity-50'
                             : isSelected
-                            ? 'bg-cyan-600 border-cyan-300 text-white shadow-md'
-                            : 'bg-slate-900 border-slate-700 hover:border-cyan-400 text-white'
+                              ? 'bg-cyan-500 border-cyan-300 text-zinc-950 shadow-md'
+                              : 'bg-zinc-900 border-white/10 hover:border-cyan-400/60 text-white'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span>{pair.left}</span>
+                          <span className="leading-snug">{pair.left}</span>
                           {isMatched && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                         </div>
                       </button>
@@ -376,7 +373,7 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-[11px] font-bold text-amber-300 uppercase">2. จับคู่ความหมายที่ตรงกัน</div>
+                  <div className="text-[11px] font-bold text-amber-400">2. แตะคู่ที่ตรงกัน</div>
                   {rightShuffled.map((pair) => {
                     const isMatched = matchedIds.has(pair.id);
                     return (
@@ -385,22 +382,22 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
                         type="button"
                         disabled={isMatched || !selectedLeftId}
                         onClick={() => handleRightTap(pair)}
-                        className={`w-full p-3 rounded-xl border text-left text-xs font-semibold transition cursor-pointer ${
+                        className={`w-full min-h-[54px] p-3 rounded-2xl border text-left text-xs sm:text-sm font-semibold transition cursor-pointer active:scale-[0.98] ${
                           isMatched
-                            ? 'bg-emerald-950/50 border-emerald-700/50 text-emerald-300 opacity-60'
+                            ? 'bg-emerald-950/35 border-emerald-500/30 text-emerald-400/70 opacity-50'
                             : selectedLeftId
-                            ? 'bg-slate-900 border-amber-500/40 hover:bg-amber-600 hover:border-amber-300 text-white'
-                            : 'bg-slate-900 border-slate-800 text-slate-300'
+                              ? 'bg-zinc-900 border-amber-400/45 hover:bg-amber-400 hover:text-zinc-950 text-white'
+                              : 'bg-zinc-900/60 border-white/10 text-zinc-400'
                         }`}
                       >
-                        {pair.right}
+                        <span className="leading-snug">{pair.right}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                 {memoryCards.map((card, index) => {
                   const isFlipped = card.matched || flippedUids.includes(card.uid);
                   return (
@@ -409,21 +406,20 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
                       type="button"
                       disabled={card.matched}
                       onClick={() => handleFlipCard(card)}
-                      className={`min-h-[96px] p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+                      className={`min-h-[96px] p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
                         card.matched
-                          ? 'bg-emerald-950/50 border-emerald-500/60 text-emerald-200'
+                          ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
                           : isFlipped
-                          ? 'bg-indigo-700 border-cyan-300 text-white shadow-lg'
-                          : 'bg-slate-900 border-slate-700 hover:border-indigo-400 text-slate-300'
+                            ? 'bg-violet-600 border-violet-300 text-white shadow-lg'
+                            : 'bg-zinc-900 border-white/10 hover:border-violet-400/60 text-zinc-300'
                       }`}
                     >
                       {isFlipped ? (
-                        <span className="text-xs font-bold leading-snug">{card.text}</span>
+                        <span className="text-xs font-bold leading-snug break-words">{card.text}</span>
                       ) : (
-                        <div className="space-y-1">
-                          <div className="text-base font-black text-indigo-300">#{index + 1}</div>
-                          <div className="text-[10px] text-slate-400">แตะเพื่อเปิด</div>
-                        </div>
+                        <span className="text-base font-black text-violet-300/80 tabular-nums">
+                          {index + 1}
+                        </span>
                       )}
                     </button>
                   );
@@ -434,59 +430,57 @@ export const ConceptMatchBlitzGame: React.FC<ConceptMatchBlitzGameProps> = ({
         )}
 
         {phase === 'GAME_OVER' && (
-          <div className="max-w-3xl mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 flex items-center justify-center">
-                  <Trophy className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-white">จับคู่ครบสมบูรณ์! ({score.toLocaleString()} แต้ม)</h3>
-                  <p className="text-xs text-slate-300">
-                    ใช้เวลา {elapsedSec} วินาที · พลาด {mistakes} ครั้ง
-                  </p>
-                </div>
+          <div className="max-w-xl mx-auto rounded-3xl bg-zinc-900 border border-white/10 p-5 sm:p-6 space-y-5">
+            <div className="text-center space-y-1.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-300 flex items-center justify-center mx-auto">
+                <Trophy className="w-6 h-6" />
               </div>
+              <h3 className="text-2xl font-black text-white tabular-nums">
+                {score.toLocaleString()} คะแนน
+              </h3>
+              <p className="text-xs text-zinc-400 tabular-nums">
+                ใช้เวลา {elapsedSec} วินาที · พลาด {mistakes} ครั้ง
+              </p>
               {rewarded && (
-                <div className="flex items-center gap-2 text-xs font-extrabold">
-                  <span className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
-                    <Flame className="w-3.5 h-3.5" /> +{rewarded.exp} EXP
+                <div className="flex items-center justify-center gap-4 pt-2 text-xs font-extrabold tabular-nums">
+                  <span className="text-amber-300 flex items-center gap-1">
+                    <Flame className="w-4 h-4" /> +{rewarded.exp} EXP
                   </span>
-                  <span className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 flex items-center gap-1">
-                    <Coins className="w-3.5 h-3.5" /> +{rewarded.gems} Gems
+                  <span className="text-cyan-300 flex items-center gap-1">
+                    <Coins className="w-4 h-4" /> +{rewarded.gems} Gems
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-emerald-300">คลังความรู้ที่ทบทวนได้จากรอบนี้:</div>
+            <div className="space-y-2 border-t border-white/10 pt-4">
+              <div className="text-xs font-bold text-zinc-300">สรุปคู่ความรู้รอบนี้</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {activePairs.map((pair) => (
-                  <div key={pair.id} className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs">
+                  <div key={pair.id} className="p-2.5 rounded-xl bg-zinc-950/70 border border-white/10 text-xs">
                     <div className="font-bold text-white">
                       {pair.left} ↔ <span className="text-emerald-300">{pair.right}</span>
                     </div>
-                    <div className="text-[11px] text-slate-300 mt-0.5">{pair.noteTh}</div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">{pair.noteTh}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={() => setPhase('TITLE_MENU')}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 cursor-pointer"
+                className="min-h-[48px] rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 cursor-pointer"
               >
-                เปลี่ยนสาระวิชา
+                เปลี่ยนวิชา
               </button>
               <button
                 type="button"
                 onClick={startRound}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
+                className="min-h-[48px] rounded-2xl bg-violet-500 hover:bg-violet-400 text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-4 h-4" />
                 <span>เล่นอีกรอบ</span>
               </button>
             </div>

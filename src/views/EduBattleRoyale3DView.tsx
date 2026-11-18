@@ -37,6 +37,7 @@ import {
   ZoomOut,
   ArrowLeft,
   Smartphone,
+  Heart,
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
 import { enterLandscapeGameMode, exitLandscapeGameMode, isMobileViewport } from '../lib/screenOrientation';
@@ -468,9 +469,23 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   // Floating Notification Banner
   const [hudAlert, setHudAlert] = useState<string | null>('🔥 เริ่มต้นแมตช์ล่าสมบัติ 3D! วิ่งหาหีบสมบัติและตอบคำถามชิงคะแนน');
   const [webGlError, setWebGlError] = useState(false);
+  const [openedFallbackIndices, setOpenedFallbackIndices] = useState<number[]>([]);
 
   // Victory / Game Over
   const [gameWon, setGameWon] = useState(false);
+
+  // Refs to avoid stale closures inside Three.js animation loop & keydown listener
+  const nearChestIdRef = useRef<string | null>(null);
+  const nearAirdropRef = useRef<boolean>(false);
+  const isOutsideStormRef = useRef<boolean>(false);
+  const activeBoosterNitroRef = useRef<boolean>(false);
+  const triggerInteractionRef = useRef<() => void>(() => {});
+  const handleUseFreezeTrapRef = useRef<() => void>(() => {});
+  const handleUseNitroRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    activeBoosterNitroRef.current = activeBooster.nitro;
+  }, [activeBooster.nitro]);
 
   useEffect(() => {
     onGamePhaseChange?.(gamePhase === 'playing');
@@ -655,6 +670,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     setPlayerHp(100);
     setTimerSeconds(playMode === 'classroom' || playMode === 'teacher_room' ? teacherTimePerQuestion * teacherChestCount + 30 : 90);
     setOpenedChestsCount(0);
+    setOpenedFallbackIndices([]);
     setCorrectCount(0);
     setTotalExp(0);
     setTotalGems(0);
@@ -662,6 +678,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     setStormRadius(110);
     setStormPhase(1);
     setIsOutsideStorm(false);
+    isOutsideStormRef.current = false;
     setGameWon(false);
 
     // Refresh chests with selected bank questions
@@ -1266,9 +1283,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     // 12. Input Event Listeners
     const onKeyDown = (e: KeyboardEvent) => {
       keysRef.current[e.code] = true;
-      if (e.code === 'KeyE') triggerInteraction();
-      if (e.code === 'KeyQ' || e.code === 'Digit1') handleUseFreezeTrap();
-      if (e.code === 'KeyF' || e.code === 'Digit2') handleUseNitro();
+      if (e.code === 'KeyE') triggerInteractionRef.current();
+      if (e.code === 'KeyQ' || e.code === 'Digit1') handleUseFreezeTrapRef.current();
+      if (e.code === 'KeyF' || e.code === 'Digit2') handleUseNitroRef.current();
     };
     const onKeyUp = (e: KeyboardEvent) => {
       keysRef.current[e.code] = false;
@@ -1333,8 +1350,12 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     const gravity = -25;
     let frameId = 0;
 
+    let lastHudSyncAt = 0;
+    let lastStormDamageAt = 0;
+
     const tick = () => {
       const dt = Math.min(animClock.getDelta(), 0.1);
+      const nowMs = performance.now();
 
       // 1. Calculate inputs (Keyboard + Touch Joystick)
       let moveForward = 0;
@@ -1352,7 +1373,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         moveTurn -= touchJoystickRef.current.deltaX;
       }
 
-      const isSprint = keysRef.current['ShiftLeft'] || keysRef.current['ControlLeft'] || mobileActionsRef.current.sprint || activeBooster.nitro;
+      const isNitro = activeBoosterNitroRef.current;
+      const isSprint = keysRef.current['ShiftLeft'] || keysRef.current['ControlLeft'] || mobileActionsRef.current.sprint || isNitro;
       const isCrouch = keysRef.current['KeyC'] || mobileActionsRef.current.crouch;
       const isJump = keysRef.current['Space'] || keysRef.current['KeyJ'] || mobileActionsRef.current.jump;
 
@@ -1361,17 +1383,12 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       playerYaw += moveTurn * rotSpeed * dt;
       playerYawRef.current = playerYaw;
 
-      // Update Compass Heading
-      let deg = Math.round(((-playerYaw * 180) / Math.PI) % 360);
-      if (deg < 0) deg += 360;
-      setCompassHeading(deg);
-
       // Speed
       let speed = 7.5;
       if (isSprint) speed *= 1.7;
       if (isCrouch) speed *= 0.55;
       speed *= currentSkin.speedMultiplier;
-      if (activeBooster.nitro) speed *= 1.45;
+      if (isNitro) speed *= 1.45;
 
       const moveDist = moveForward * speed * dt;
       const isMoving = Math.abs(moveDist) > 0.001;
@@ -1432,7 +1449,6 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       }
 
       // Smooth Follow Camera with Dynamic Zoom Multiplier
-      // When zMult is larger (e.g. 1.8x zoom in), camDist is smaller; when zMult is smaller (e.g. 0.6x zoom out), camDist is larger
       const zMult = Math.max(0.5, Math.min(2.5, zoomMultiplierRef.current));
       const camDist = (isCrouch ? 5.5 : 7.2) / zMult;
       const camHeight = (isCrouch ? 3.0 : 4.0) / THREE.MathUtils.lerp(0.85, 1.3, (zMult - 0.5) / 1.7);
@@ -1444,15 +1460,17 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       const lookTarget = playerPos.clone().add(new THREE.Vector3(0, 1.5, 0));
       camera.lookAt(lookTarget);
 
-      // Safe Zone Storm Damage Check
+      // Safe Zone Storm Damage Check (only update React state when changed / throttled)
       const distFromStormCenter = Math.hypot(playerPos.x, playerPos.z);
       const currentStormR = stormMesh.scale.x * 110;
-      if (distFromStormCenter > currentStormR) {
-        setIsOutsideStorm(true);
-        // drain HP slowly
-        setPlayerHp(hp => Math.max(0, hp - 0.15));
-      } else {
-        setIsOutsideStorm(false);
+      const nextOutsideStorm = distFromStormCenter > currentStormR;
+      if (nextOutsideStorm !== isOutsideStormRef.current) {
+        isOutsideStormRef.current = nextOutsideStorm;
+        setIsOutsideStorm(nextOutsideStorm);
+      }
+      if (nextOutsideStorm && nowMs - lastStormDamageAt > 300) {
+        lastStormDamageAt = nowMs;
+        setPlayerHp(hp => Math.max(0, Number((hp - 1.2).toFixed(1))));
       }
 
       // Animate Safe Zone Scale
@@ -1480,12 +1498,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         }
       });
 
-      setNearestChestDist(Math.round(closestDist * 2.5));
-
-      if (closeChest && closestDist < 4.0) {
-        setNearChestId((closeChest as ChestItem).id);
-      } else {
-        setNearChestId(null);
+      const nextNearChestId = closeChest && closestDist < 4.5 ? (closeChest as ChestItem).id : null;
+      if (nextNearChestId !== nearChestIdRef.current) {
+        nearChestIdRef.current = nextNearChestId;
+        setNearChestId(nextNearChestId);
       }
 
       // Animate Airdrop Falling
@@ -1498,12 +1514,24 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         airdropRef.current.mesh.position.y = airdropRef.current.y;
       }
 
-      // Check near Airdrop
+      // Check near Airdrop (only trigger state when value changes)
+      let nextNearAirdrop = false;
       if (airdropRef.current && !airdropRef.current.claimed && !airdropRef.current.falling) {
         const distAirdrop = Math.hypot(playerPos.x - airdropRef.current.x, playerPos.z - airdropRef.current.z);
-        setNearAirdrop(distAirdrop < 4.5);
-      } else {
-        setNearAirdrop(false);
+        nextNearAirdrop = distAirdrop < 4.8;
+      }
+      if (nextNearAirdrop !== nearAirdropRef.current) {
+        nearAirdropRef.current = nextNearAirdrop;
+        setNearAirdrop(nextNearAirdrop);
+      }
+
+      // Throttled HUD updates (~4x/sec instead of 60x/sec) to keep 60fps smooth on mobile
+      if (nowMs - lastHudSyncAt > 250) {
+        lastHudSyncAt = nowMs;
+        let deg = Math.round(((-playerYaw * 180) / Math.PI) % 360);
+        if (deg < 0) deg += 360;
+        setCompassHeading(deg);
+        setNearestChestDist(Math.round(closestDist * 2.5));
       }
 
       // Animate Bot Classmates
@@ -1563,25 +1591,43 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     };
   }, [currentSkin, arenaQuestions]);
 
+  // 2D Interactive Fallback chest opener (works when WebGL is disabled/software-only)
+  const openFallbackChest = (idx: number) => {
+    if (openedFallbackIndices.includes(idx) || arenaQuestions.length === 0) return;
+    battleAudio.playChestOpen();
+    playLootBeamSound();
+    setOpenedFallbackIndices(prev => [...prev, idx]);
+    setOpenedChestsCount(prev => prev + 1);
+    setCurrentStage(Math.min(totalStages, idx + 1));
+    setIsAirdropQuestion(false);
+    setActiveQuestion(arenaQuestions[idx % arenaQuestions.length]);
+    setQuestionTimer(teacherTimePerQuestion || 20);
+    setSelectedAnswerIndex(null);
+    setQuestionFeedback(null);
+  };
+
   // Trigger Interaction (Chest or Airdrop)
   const triggerInteraction = () => {
     // 1. Airdrop claim
-    if (nearAirdrop && airdropRef.current && !airdropRef.current.claimed) {
+    if (nearAirdropRef.current && airdropRef.current && !airdropRef.current.claimed) {
       battleAudio.playChestOpen();
       airdropRef.current.claimed = true;
       airdropRef.current.mesh.visible = false;
+      nearAirdropRef.current = false;
+      setNearAirdrop(false);
       setIsAirdropQuestion(true);
       setActiveQuestion(airdropRef.current.question);
       setQuestionTimer(25);
       setSelectedAnswerIndex(null);
       setQuestionFeedback(null);
-      setHudAlert('🌟 แอร์ดรอปทองคำเปิดแล้ว! ตอบโจทย์พิเศษรับโบนัส EXP 2 เท่า');
+      setHudAlert('แอร์ดรอปทองคำเปิดแล้ว! ตอบโจทย์พิเศษรับโบนัส EXP 2 เท่า');
       return;
     }
 
     // 2. Chest claim
-    if (!nearChestId) return;
-    const chest = chestsRef.current.find(c => c.id === nearChestId);
+    const targetChestId = nearChestIdRef.current || nearChestId;
+    if (!targetChestId) return;
+    const chest = chestsRef.current.find(c => c.id === targetChestId);
     if (!chest || chest.opened) return;
 
     battleAudio.playChestOpen();
@@ -1595,14 +1641,20 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     const light = chest.mesh.children[3];
     if (light) light.visible = false;
 
+    nearChestIdRef.current = null;
+    setNearChestId(null);
     setOpenedChestsCount(prev => prev + 1);
     setCurrentStage(Math.min(totalStages, chest.stage));
     setIsAirdropQuestion(false);
     setActiveQuestion(chest.question);
-    setQuestionTimer(20);
+    setQuestionTimer(teacherTimePerQuestion || 20);
     setSelectedAnswerIndex(null);
     setQuestionFeedback(null);
   };
+
+  triggerInteractionRef.current = triggerInteraction;
+  handleUseFreezeTrapRef.current = handleUseFreezeTrap;
+  handleUseNitroRef.current = handleUseNitro;
 
   // Handle Quiz Answer
   const handleAnswer = (index: number) => {
@@ -1630,7 +1682,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         onEarnRewards(currentUser.id, expGain, gemGain, false);
       }
 
-      if (openedChestsCount + 1 >= totalChests) {
+      if (openedChestsCount >= totalChests) {
         setTimeout(() => {
           setGameWon(true);
           playGrandVictoryFanfare();
@@ -1747,342 +1799,235 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* 1. PRE-GAME MATCH SETUP & LOBBY SCREEN (โหมดเลือกล่วงหน้า) */}
       {/* ======================================================== */}
       {gamePhase === 'lobby' && (
-        <div className="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-y-auto p-3 sm:p-5 text-white animate-in fade-in">
-          {/* Lobby Top Navigation */}
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
-                <Gamepad2 className="w-6 h-6 fill-slate-950 text-slate-950" />
-              </div>
+        <div className="absolute inset-0 z-40 bg-[#09090B] flex flex-col overflow-hidden text-white">
+          {/* Clean Gen Z Lobby Top Bar */}
+          <div className="h-14 px-3 sm:px-5 border-b border-zinc-800/80 flex items-center justify-between gap-2 shrink-0 bg-[#09090B]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <button
+                type="button"
+                onClick={onExit}
+                className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-bold cursor-pointer shrink-0 transition"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>ออก</span>
+              </button>
               <div className="min-w-0">
-                <h2 className="text-sm sm:text-base md:text-lg font-black tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <span>EduBattle 3D • ตั้งค่าการแข่งขัน</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 font-bold shrink-0">
-                    PRE-MATCH LOBBY
-                  </span>
+                <h2 className="text-sm sm:text-base font-black tracking-tight text-white truncate">
+                  EduBattle 3D
                 </h2>
-                <p className="text-xs text-slate-300 truncate">
-                  เลือกโหมดเล่นเดี่ยว หรือให้ครูตั้งค่ากิจกรรมในเครื่องนี้
+                <p className="text-[11px] text-zinc-400 truncate">
+                  ล่าหีบความรู้ในเกาะ 3D · พร้อมใช้ <span className="font-mono text-amber-400 font-bold">{arenaQuestions.length}</span> ข้อ
                 </p>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={onExit}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold cursor-pointer border border-slate-700 flex items-center gap-1.5 shrink-0 ml-2"
+              onClick={handleStartBattleMatch}
+              className="min-h-[40px] px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs sm:text-sm tracking-tight active:scale-95 transition flex items-center gap-1.5 cursor-pointer shrink-0"
             >
-              <span>✕ กลับ</span>
+              <Play className="w-4 h-4 fill-current" />
+              <span>เริ่มเล่น</span>
             </button>
           </div>
 
-          <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 shrink-0">
-            โหมดนี้เป็นตัวอย่างในเครื่อง ยังไม่เชื่อมผู้เล่นออนไลน์หรือห้องแข่งขันจริง
-          </p>
-
-          {/* Lobby Configuration Grid - All Modes & Exam Bank Immediately Visible */}
-          <div className="flex-1 min-h-0 py-3 max-w-4xl mx-auto w-full flex flex-col justify-start space-y-5">
-            {/* SECTION 1: SELECT GAME MODE (เล่นคนเดียว / เล่นกับเพื่อน / เล่นทั้งห้อง) */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-cyan-300">
-                  <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-xs font-mono font-black border border-cyan-400/40">1</span>
-                  <span>เลือกรูปแบบการเล่นเกมล่าสมบัติ (เล่นคนเดียว / เล่นกับเพื่อน / เล่นทั้งห้อง)</span>
+          {/* Scrollable Quick Setup Body */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-5 py-4">
+            <div className="max-w-3xl mx-auto space-y-5">
+              {/* 1. Mode Segmented Control */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">โหมดการเล่น</p>
+                <div className="grid grid-cols-3 gap-2 p-1 rounded-2xl bg-zinc-900 border border-zinc-800">
+                  {([
+                    { id: 'solo', label: 'เล่นเดี่ยว', sub: 'Solo', icon: User },
+                    { id: 'friend', label: 'กับเพื่อน', sub: 'Party', icon: Users },
+                    { id: 'classroom', label: 'ทั้งห้อง', sub: 'Class', icon: Trophy },
+                  ] as const).map((m) => {
+                    const Icon = m.icon;
+                    const active = playMode === m.id || (m.id === 'classroom' && playMode === 'teacher_room');
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          battleAudio.playClick();
+                          setPlayMode(m.id);
+                        }}
+                        className={`min-h-[52px] rounded-xl px-2.5 py-2 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs font-bold transition cursor-pointer ${
+                          active
+                            ? 'bg-amber-400 text-zinc-950 shadow-sm'
+                            : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span>{m.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {/* Mode 1: Solo */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    battleAudio.playClick();
-                    setPlayMode('solo');
-                  }}
-                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    playMode === 'solo'
-                      ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400'
-                      : 'bg-slate-900 border-slate-700 hover:border-slate-500 text-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                      <User className="w-4 h-4" />
-                    </span>
-                    {playMode === 'solo' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-400 text-slate-950 font-black">เลือกแล้ว</span>}
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-white">เล่นคนเดียว (Solo)</h4>
-                    <p className="text-xs text-slate-300 mt-1">
-                      วิ่งสำรวจล่าหีบสมบัติในด่าน 3D ท้าทายจับเวลา ทำลายสถิติคะแนนส่วนตัว
-                    </p>
-                  </div>
-                </button>
-
-                {/* Mode 2: Play with Friends */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    battleAudio.playClick();
-                    setPlayMode('friend');
-                  }}
-                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    playMode === 'friend'
-                      ? 'bg-purple-500/20 border-purple-400 text-white shadow-lg shadow-purple-500/20 ring-1 ring-purple-400'
-                      : 'bg-slate-900 border-slate-700 hover:border-slate-500 text-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="p-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                      <Users className="w-4 h-4" />
-                    </span>
-                    {playMode === 'friend' ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-400 text-slate-950 font-black">เลือกแล้ว</span>
-                    ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/25 text-purple-200 font-bold">2-4 คน</span>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-white">เล่นกับเพื่อน (Party / 2-4 คน)</h4>
-                    <p className="text-xs text-slate-300 mt-1">
-                      ชวนเพื่อน 2-4 คน แข่งขันเก็บหีบสมบัติเทียบคะแนนและส่งคำใบ้ช่วยเหลือ
-                    </p>
-                  </div>
-                </button>
-
-                {/* Mode 3: Classroom Live Arena (Whole Class) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    battleAudio.playClick();
-                    setPlayMode('classroom');
-                  }}
-                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    playMode === 'classroom' || playMode === 'teacher_room'
-                      ? 'bg-amber-500/20 border-amber-400 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-400'
-                      : 'bg-slate-900 border-slate-700 hover:border-slate-500 text-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      <Trophy className="w-4 h-4" />
-                    </span>
-                    {playMode === 'classroom' || playMode === 'teacher_room' ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black">เลือกแล้ว</span>
-                    ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-200 font-bold">ทั้งห้อง</span>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-white">เล่นทั้งห้อง (Classroom Live)</h4>
-                    <p className="text-xs text-slate-300 mt-1">
-                      ทัวร์นาเมนต์ประลองสดทั้งห้องเรียน พร้อม PIN ห้อง Live Leaderboard และวงบีบ
-                    </p>
-                  </div>
-                </button>
-              </div>
-
-              {/* Mode Sub-configuration Panel when Friend or Whole Class selected */}
-              {(playMode === 'classroom' || playMode === 'teacher_room' || playMode === 'friend') && (
-                <div className="rounded-2xl bg-slate-900 border border-amber-500/40 p-3.5 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-amber-300">
-                      ⚙️ ตั้งค่าห้องเล่น ({playMode === 'friend' ? 'ห้องเล่นกับเพื่อน 2-4 คน' : 'ห้องแข่งขันทั้งห้องเรียน'})
-                    </span>
-                    <span className="font-mono text-xs text-amber-300 font-bold">PIN: {teacherRoomPin}</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                {(playMode === 'classroom' || playMode === 'teacher_room' || playMode === 'friend') && (
+                  <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
                     <div>
-                      <label className="text-[11px] font-bold text-slate-200 block mb-1">ชื่อห้องกิจกรรม *</label>
+                      <label className="text-[11px] font-bold text-zinc-400 block mb-1">ชื่อกิจกรรม</label>
                       <input
                         type="text"
                         value={teacherActivityName}
                         onChange={(e) => setTeacherActivityName(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-white font-semibold"
-                        placeholder="เช่น ล่าสมบัติวิทย์ ม.4"
+                        className="w-full min-h-[40px] px-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-semibold"
+                        placeholder="เช่น ล่าสมบัติวิทย์"
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-bold text-slate-200 block mb-1">รหัส PIN เข้าร่วม</label>
+                      <label className="text-[11px] font-bold text-zinc-400 block mb-1">รหัสห้อง PIN</label>
                       <div className="flex gap-1.5">
                         <input
                           type="text"
                           value={teacherRoomPin}
                           onChange={(e) => setTeacherRoomPin(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-600 font-mono text-amber-300 font-bold"
+                          className="w-full min-h-[40px] px-3 rounded-xl bg-zinc-950 border border-zinc-800 font-mono text-amber-400 font-bold"
                         />
                         <button
                           type="button"
                           onClick={() => setTeacherRoomPin(String(Math.floor(100000 + Math.random() * 900000)))}
-                          className="px-2 py-1 text-amber-300 hover:text-amber-200 underline underline-offset-2 font-bold text-xs shrink-0 cursor-pointer"
+                          className="px-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold text-xs shrink-0 cursor-pointer"
                         >
-                          สุ่ม PIN
+                          สุ่ม
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="text-[11px] font-bold text-slate-200 block mb-1">จำนวนหีบสมบัติ (ข้อ)</label>
+                      <label className="text-[11px] font-bold text-zinc-400 block mb-1">จำนวนหีบ</label>
                       <select
                         value={teacherChestCount}
                         onChange={(e) => setTeacherChestCount(Number(e.target.value))}
-                        className="w-full px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-white font-semibold"
+                        className="w-full min-h-[40px] px-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-semibold"
                       >
-                        <option value={5}>5 ข้อ (แบบด่วน)</option>
-                        <option value={8}>8 ข้อ (มาตรฐาน)</option>
-                        <option value={10}>10 ข้อ (เข้มข้น)</option>
-                        <option value={15}>15 ข้อ (ทั้งบท)</option>
+                        <option value={5}>5 หีบ (ไว)</option>
+                        <option value={8}>8 หีบ (มาตรฐาน)</option>
+                        <option value={10}>10 หีบ (เข้มข้น)</option>
+                        <option value={15}>15 หีบ (มาราธอน)</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-[11px] font-bold text-slate-200 block mb-1">เวลาตอบต่อข้อ</label>
+                      <label className="text-[11px] font-bold text-zinc-400 block mb-1">เวลาต่อข้อ</label>
                       <select
                         value={teacherTimePerQuestion}
                         onChange={(e) => setTeacherTimePerQuestion(Number(e.target.value))}
-                        className="w-full px-2.5 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-white font-semibold"
+                        className="w-full min-h-[40px] px-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-semibold"
                       >
-                        <option value={15}>15 วินาที (สปีด)</option>
-                        <option value={20}>20 วินาที (มาตรฐาน)</option>
-                        <option value={30}>30 วินาที (คำนวณ)</option>
+                        <option value={15}>15 วินาที</option>
+                        <option value={20}>20 วินาที</option>
+                        <option value={30}>30 วินาที</option>
                       </select>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* SECTION 2: SELECT EXAM SOURCE (INCLUDING TEACHER-CREATED EXAMS) & GRADE */}
-            <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-3.5 sm:p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-amber-300">
-                  <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs font-mono font-black border border-amber-400/40">2</span>
-                  <span>เลือกชุดข้อสอบที่ใช้เล่นในเกม</span>
-                </div>
-                <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                  พร้อมใช้ {arenaQuestions.length} ข้อ
-                </span>
+                )}
               </div>
 
-              {/* Exam Categories Grid - Always Visible, Highlighting Teacher-Created Exams */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {EXAM_CATEGORIES.map((cat) => {
-                  const isSelected = selectedBankCategory === cat.id;
-                  const isTeacherCat = cat.id === 'teacher_created';
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        battleAudio.playClick();
-                        setSelectedBankCategory(cat.id);
-                      }}
-                      className={`px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                        isSelected
-                          ? 'bg-amber-500/20 border-amber-400 text-white shadow-md ring-1 ring-amber-400/60'
-                          : isTeacherCat
-                          ? 'bg-indigo-950/60 border-indigo-500/60 text-indigo-100 hover:border-indigo-400'
-                          : 'bg-slate-800/80 border-slate-700 text-slate-200 hover:border-slate-500 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base shrink-0">{cat.icon}</span>
+              {/* 2. Subject Bank Selection */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">วิชา / คลังข้อสอบ</p>
+                  <div className="flex items-center gap-1 overflow-x-auto">
+                    {EXAM_GRADE_LEVELS.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => {
+                          battleAudio.playClick();
+                          setSelectedGradeFilter(g.id);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer shrink-0 ${
+                          selectedGradeFilter === g.id
+                            ? 'bg-zinc-100 text-zinc-950'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {g.labelTh}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {EXAM_CATEGORIES.map((cat) => {
+                    const isSelected = selectedBankCategory === cat.id;
+                    const isTeacherCat = cat.id === 'teacher_created';
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          battleAudio.playClick();
+                          setSelectedBankCategory(cat.id);
+                        }}
+                        className={`min-h-[54px] px-3 py-2.5 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
+                          isSelected
+                            ? 'bg-amber-400/15 border-amber-400 text-white'
+                            : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                        }`}
+                      >
                         <div className="min-w-0">
-                          <p className="font-bold text-xs text-white truncate">
-                            {cat.labelTh}
-                          </p>
-                          <p className="text-[10px] text-slate-300 truncate">
+                          <p className="font-bold text-xs text-white truncate">{cat.labelTh}</p>
+                          <p className="text-[10px] text-zinc-400 truncate">
                             {isTeacherCat
                               ? teacherCustomCount > 0
-                                ? `ข้อสอบที่ครูสร้าง/นำเข้า ${teacherCustomCount} ข้อ`
-                                : `ใช้ข้อสอบโรงเรียน ${questions.length} ข้อ`
+                                ? `ข้อสอบครู ${teacherCustomCount} ข้อ`
+                                : `ข้อสอบโรงเรียน ${questions.length} ข้อ`
                               : cat.descriptionTh}
                           </p>
                         </div>
-                      </div>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />}
-                    </button>
-                  );
-                })}
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Grade Level Selector */}
-              <div className="pt-1 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-slate-300 mr-1">ระดับชั้น:</span>
-                {EXAM_GRADE_LEVELS.map((g) => {
-                  const isSelected = selectedGradeFilter === g.id;
-                  return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() => {
-                        battleAudio.playClick();
-                        setSelectedGradeFilter(g.id);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-amber-400 text-slate-950 font-bold'
-                          : 'text-slate-300 hover:text-white underline-offset-4 hover:underline'
-                      }`}
-                    >
-                      {g.labelTh}
-                    </button>
-                  );
-                })}
+              {/* 3. Character Skin */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">ตัวละคร 3D</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {SKINS.map((skin) => {
+                    const isSelected = selectedSkinId === skin.id;
+                    return (
+                      <button
+                        key={skin.id}
+                        type="button"
+                        onClick={() => {
+                          battleAudio.playClick();
+                          setSelectedSkinId(skin.id);
+                        }}
+                        className={`min-h-[52px] p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+                          isSelected
+                            ? 'bg-emerald-500/15 border-emerald-400 text-white'
+                            : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-zinc-300'
+                        }`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg ${skin.previewColor} shrink-0`} />
+                        <div className="min-w-0">
+                          <p className="font-bold text-xs text-white truncate">{skin.nameTh.split(' ')[0]}</p>
+                          <span className="text-[10px] text-emerald-400 font-mono">x{skin.speedMultiplier} SPD</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* SECTION 3: COMPACT CHARACTER SKIN SELECTION */}
-            <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-bold text-emerald-300">
-                <span>3. เลือกตัวละครสำรวจ 3D</span>
-                <span className="text-slate-300 font-normal">สกินปัจจุบัน: {SKINS.find(s => s.id === selectedSkinId)?.nameTh}</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {SKINS.map((skin) => {
-                  const isSelected = selectedSkinId === skin.id;
-                  return (
-                    <button
-                      key={skin.id}
-                      type="button"
-                      onClick={() => {
-                        battleAudio.playClick();
-                        setSelectedSkinId(skin.id);
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
-                        isSelected
-                          ? 'bg-emerald-500/20 border-emerald-400 text-white ring-1 ring-emerald-400'
-                          : 'bg-slate-800/80 border-slate-700 hover:border-slate-500 text-slate-200'
-                      }`}
-                    >
-                      <div className={`w-7 h-7 rounded-lg ${skin.previewColor} flex items-center justify-center text-white font-bold text-xs shrink-0`}>
-                        ★
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-xs text-white truncate">
-                          {skin.nameTh.split(' ')[0]}
-                        </p>
-                        <span className="text-[10px] text-emerald-300 font-mono block">
-                          สปีด x{skin.speedMultiplier}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* LAUNCH BUTTON */}
-            <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800">
-              <div className="text-xs text-slate-300">
-                🎮 โหมด: <strong className="text-white">{playMode === 'solo' ? 'เล่นคนเดียว' : playMode === 'friend' ? `เล่นกับเพื่อน (${teacherActivityName})` : `เล่นทั้งห้อง (${teacherActivityName})`}</strong> • ชุดข้อสอบ <strong className="text-amber-300">{EXAM_CATEGORIES.find(c => c.id === selectedBankCategory)?.labelTh}</strong> ({arenaQuestions.length} ข้อ)
-              </div>
-
+          {/* Sticky Bottom Play CTA */}
+          <div className="p-3 sm:p-4 border-t border-zinc-800/80 bg-[#09090B] shrink-0">
+            <div className="max-w-3xl mx-auto">
               <button
                 type="button"
                 onClick={handleStartBattleMatch}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-sm tracking-wide shadow-xl shadow-amber-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border-2 border-yellow-200"
+                className="w-full min-h-[50px] rounded-2xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-sm tracking-tight active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Zap className="w-4 h-4 fill-slate-950 text-slate-950" />
-                <span>เริ่มเล่นล่าสมบัติทันที</span>
+                <Zap className="w-4 h-4 fill-current" />
+                <span>เริ่มล่าสมบัติทันที ({arenaQuestions.length} ข้อ)</span>
               </button>
             </div>
           </div>
@@ -2090,54 +2035,55 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 2. MINIMALIST MOBILE-FIRST FLOATING TOP BAR (เมื่อเล่นเกม) */}
+      {/* 2. MINIMALIST SINGLE-ROW FLOATING TOP BAR (เมื่อเล่นเกม) */}
       {/* ======================================================== */}
       {gamePhase === 'playing' && (
-        <div className="absolute top-2 sm:top-3 inset-x-2 sm:inset-x-3 z-30 flex items-center justify-between pointer-events-none gap-1 sm:gap-2">
-          {/* Left: Prominent Exit Button + Mini Player Status Badge */}
-          <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0">
+        <div className="absolute top-2.5 inset-x-2.5 sm:inset-x-4 z-30 flex items-center justify-between pointer-events-none gap-1.5">
+          {/* Left: Exit + Compact HP & XP */}
+          <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
             <button
               type="button"
               onClick={onExit}
-              className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-black shadow-lg shadow-rose-900/40 flex items-center gap-1 cursor-pointer active:scale-95 border border-rose-500/50"
-              title="ออกจากเกม กลับสู่หน้าหลัก"
+              className="min-h-[38px] px-2.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 text-zinc-100 text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95 border border-zinc-800 backdrop-blur-md"
+              title="ออกจากเกม"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">ออกจากเกม</span>
+              <span className="hidden md:inline">ออก</span>
             </button>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl text-xs">
-              <span className="text-rose-400 font-bold flex items-center gap-1 text-xs">
-                ❤️ <span className="font-mono">{Math.round(playerHp)}</span>
+            <div className="min-h-[38px] flex items-center gap-2 px-2.5 rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 text-xs tabular-nums">
+              <span className="text-rose-400 font-bold flex items-center gap-1">
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                <span>{Math.round(playerHp)}</span>
               </span>
-              <div className="w-10 sm:w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-300 ${playerHp > 50 ? 'bg-emerald-500' : playerHp > 20 ? 'bg-amber-500' : 'bg-rose-500 animate-pulse'}`}
+              <div className="w-10 sm:w-14 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${playerHp > 50 ? 'bg-emerald-500' : playerHp > 20 ? 'bg-amber-400' : 'bg-rose-500'}`}
                   style={{ width: `${playerHp}%` }}
                 />
               </div>
-              <span className="text-amber-300 font-extrabold font-mono text-[11px] sm:text-xs pl-1 border-l border-slate-700 hidden xs:inline">
-                🏆 {totalExp}
+              <span className="text-amber-400 font-bold hidden sm:inline-flex items-center gap-1 pl-1.5 border-l border-zinc-800">
+                <Trophy className="w-3.5 h-3.5" />
+                {totalExp}
               </span>
             </div>
           </div>
 
-          {/* Center: Minimal Objective Badge */}
-          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-xl text-[11px] sm:text-xs font-mono pointer-events-auto shrink min-w-0">
-            <span className="text-cyan-300 font-bold flex items-center gap-1">
-              <Package className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          {/* Center: Chests + Timer */}
+          <div className="min-h-[38px] flex items-center gap-2 px-3 rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 text-xs font-mono pointer-events-auto tabular-nums">
+            <span className="text-cyan-400 font-bold flex items-center gap-1">
+              <Package className="w-3.5 h-3.5 shrink-0" />
               <span>{openedChestsCount}/{totalChests}</span>
             </span>
-            <span className="text-slate-300">·</span>
+            <span className="text-zinc-600">·</span>
             <span className="text-amber-400 font-bold flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <Clock className="w-3.5 h-3.5 shrink-0" />
               <span>{timerSeconds}s</span>
             </span>
           </div>
 
-          {/* Right: Sound, Fullscreen, and on-demand game menu */}
-          <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0">
-            {/* Sound Toggle */}
+          {/* Right: Sound, Fullscreen, Drawer */}
+          <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -2149,33 +2095,30 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   battleAudio.startAmbientMusic();
                 }
               }}
-              className="p-1.5 sm:p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 border border-slate-700/80 shadow-xl cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 text-zinc-200 border border-zinc-800 flex items-center justify-center cursor-pointer backdrop-blur-md"
               title={isMuted ? 'เปิดเสียง' : 'ปิดเสียง'}
             >
-              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
+              {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
             </button>
 
-            {/* Fullscreen / Landscape Rotation Toggle (visible on mobile & desktop) */}
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="flex items-center gap-1 p-1.5 sm:p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-200 border border-slate-700/80 shadow-xl cursor-pointer"
-              title={isFullscreen ? 'ย่อหน้าต่าง' : 'เต็มจอ / หมุนแนวนอน'}
+              className="w-9 h-9 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 text-zinc-200 border border-zinc-800 flex items-center justify-center cursor-pointer backdrop-blur-md"
+              title={isFullscreen ? 'ย่อหน้าต่าง' : 'เต็มจอ'}
             >
-              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-              <Smartphone className="w-3 h-3 sm:hidden rotate-90 text-amber-300" />
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
-            {/* MENU BUTTON (On-Demand Drawer) */}
             <button
               type="button"
               onClick={() => {
                 battleAudio.playClick();
                 setShowGameMenuDrawer(true);
               }}
-              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 active:scale-95 transition-all cursor-pointer border border-yellow-200"
+              className="min-h-[38px] px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition"
             >
-              <Menu className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <Menu className="w-4 h-4" />
               <span className="hidden sm:inline">เมนู</span>
             </button>
           </div>
@@ -2185,39 +2128,43 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* ======================================================== */}
       {/* 3. 3D WEBGL VIEWPORT (OR 2D PLAYABLE FALLBACK) */}
       {/* ======================================================== */}
-      <div className="relative flex-1 w-full h-full min-h-0 overflow-hidden bg-gradient-to-b from-amber-950/60 via-slate-900 to-slate-950">
+      <div className="relative flex-1 w-full h-full min-h-0 overflow-hidden bg-[#09090B]">
         {/* Three.js canvas container */}
         <div ref={mountRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
 
         {/* Interactive 2D Treasure Hunt Fallback when WebGL is disabled/unavailable */}
         {webGlError && gamePhase === 'playing' && !activeQuestion && (
-          <div className="absolute inset-0 z-10 overflow-y-auto pt-16 pb-20 px-4 flex flex-col items-center justify-start bg-gradient-to-b from-slate-900 via-indigo-950/80 to-slate-950">
+          <div className="absolute inset-0 z-10 overflow-y-auto pt-16 pb-24 px-4 flex flex-col items-center justify-start bg-[#09090B]">
             <div className="max-w-2xl w-full space-y-4">
-              <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-center">
-                <p className="text-xs font-bold text-amber-300">
-                  🗺️ โหมดล่าสมบัติ 2D Interactive (อุปกรณ์นี้ไม่รองรับ 3D WebGL • เล่นล่าหีบข้อสอบได้ครบทุกด่าน)
-                </p>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-3.5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-amber-400">โหมดล่าสมบัติ 2D Interactive</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">แตะหีบสมบัติเพื่อเปิดโจทย์และสะสมคะแนนให้ครบทุกหีบ</p>
+                </div>
+                <span className="text-xs font-mono font-black text-emerald-400 shrink-0 tabular-nums">
+                  {openedFallbackIndices.length}/{totalChests}
+                </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {Array.from({ length: totalChests }).map((_, idx) => {
                   const chestId = `chest-${idx}`;
-                  const isOpened = openedChestsCount > idx;
+                  const isOpened = openedFallbackIndices.includes(idx);
                   return (
                     <button
                       key={chestId}
                       type="button"
                       disabled={isOpened}
-                      onClick={() => triggerInteraction()}
-                      className={`p-4 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center gap-2 ${
+                      onClick={() => openFallbackChest(idx)}
+                      className={`min-h-[112px] p-4 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-2 ${
                         isOpened
-                          ? 'bg-emerald-950/80 border-emerald-600/70 text-emerald-200 cursor-default'
-                          : 'bg-slate-800/90 hover:bg-amber-500/20 border-amber-400/50 text-white shadow-lg hover:scale-[1.02]'
+                          ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 cursor-default'
+                          : 'bg-zinc-900 hover:bg-zinc-800 border-amber-400/50 text-white active:scale-95'
                       }`}
                     >
                       <Package className={`w-7 h-7 ${isOpened ? 'text-emerald-400' : 'text-amber-400'}`} />
-                      <span className="text-xs font-bold">หีบสมบัติ #{idx + 1}</span>
-                      <span className="text-[10px] text-slate-300">
-                        {isOpened ? 'เปิดแล้ว ✓' : 'คลิกเพื่อเปิดตอบคำถาม'}
+                      <span className="text-xs font-black">หีบ #{idx + 1}</span>
+                      <span className="text-[11px] text-zinc-400">
+                        {isOpened ? 'เปิดแล้ว' : 'แตะเพื่อเปิด'}
                       </span>
                     </button>
                   );
