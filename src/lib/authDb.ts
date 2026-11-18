@@ -162,10 +162,17 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
     .from('user_profiles')
     .select('id, school_id, student_id, role, status, full_name_th, full_name_en, avatar_url, phone')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (profileError) {
     throw new Error(`Could not load your school profile: ${profileError.message}`);
+  }
+  if (!profile) {
+    throw new Error(
+      email.trim().toLowerCase() === MASTER_SYSTEM_EMAIL.trim().toLowerCase()
+        ? 'The Master Super Admin account is missing its system profile. Run the latest database migration or contact the database administrator.'
+        : 'Your account profile is missing or it could not be read. Contact your school administrator.'
+    );
   }
   if (!isUserRole(profile.role)) {
     throw new Error('Your account has an invalid application role. Contact your school administrator.');

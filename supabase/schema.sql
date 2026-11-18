@@ -650,6 +650,38 @@ CREATE TRIGGER on_auth_user_created_profile
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_auth_user_signup();
 
+CREATE OR REPLACE FUNCTION public.ensure_master_super_admin_profile()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF lower(coalesce(NEW.email, '')) <> 'baanpakkru@gmail.com' THEN
+        RETURN NEW;
+    END IF;
+
+    INSERT INTO public.user_profiles (
+        id, school_id, role, status, full_name_th, full_name_en, avatar_url, phone
+    )
+    VALUES (
+        NEW.id, NULL, 'super_admin', 'active',
+        'ผู้ดูแลระบบสูงสุด', 'Super Admin', '', NULL
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET school_id = NULL, role = 'super_admin', status = 'active';
+
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.ensure_master_super_admin_profile() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS on_auth_master_super_admin_created ON auth.users;
+CREATE TRIGGER on_auth_master_super_admin_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.ensure_master_super_admin_profile();
+
 DROP TRIGGER IF EXISTS on_auth_user_email_confirmed ON auth.users;
 CREATE TRIGGER on_auth_user_email_confirmed
     AFTER UPDATE OF email_confirmed_at ON auth.users
