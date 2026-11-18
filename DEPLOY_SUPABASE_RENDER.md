@@ -66,10 +66,11 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
    ```
 
    Function ใช้ `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ฝั่งเซิร์ฟเวอร์ของ Supabase; ห้ามใส่ service-role key ใน frontend หรือ `VITE_*` secret `APP_SITE_URL` เป็น URL ของเว็บที่ต้องการให้ลิงก์เชิญกลับมา
-7. Deploy ฟังก์ชันบัญชีนักเรียนผ่าน GitHub Actions:
-   - สร้าง Personal Access Token ใน Supabase ที่ **Account → Access Tokens** จากนั้นใน GitHub Repository ไปที่ **Settings → Secrets and variables → Actions** แล้วเพิ่ม Repository secrets `SUPABASE_ACCESS_TOKEN` และ `SUPABASE_PROJECT_ID` (Project ID/Reference ของ Supabase)
-   - เมื่อ push การเปลี่ยนแปลงใน `supabase/functions/manage-student-credentials/` ไปยัง `main` หรือ `master` workflow `.github/workflows/deploy-student-credentials.yml` จะ deploy ฟังก์ชันให้อัตโนมัติ หรือสั่งรันจาก **Actions → Deploy student credential Edge Function → Run workflow**
-   - Migration ในข้อ 14 ยังต้องรันใน SQL Editor แยกต่างหาก และไม่ต้องใส่ `service_role` key ใน GitHub secrets
+7. Deploy ฟังก์ชันบัญชีนักเรียนจาก Supabase Dashboard โดยตรง:
+   - ก่อน Deploy ให้นำ `supabase/migrations/20261120_student_temporary_credentials.sql` ไปรันใน **SQL Editor**
+   - เปิด **Edge Functions** แล้วเลือกสร้าง/Deploy function ใหม่ผ่าน Editor ตั้งชื่อ `manage-student-credentials`
+   - คัดลอกโค้ดทั้งหมดจาก `supabase/functions/manage-student-credentials/index.ts` มาวางใน Editor แล้วกด Deploy
+   การรัน SQL อย่างเดียวไม่สามารถ Deploy Edge Function ได้
 8. บัญชีครู/ผู้ปกครองของโรงเรียนที่มีอยู่แล้วต้องสร้างโดยผู้ดูแลผ่าน Supabase Dashboard หรือช่องทางที่เชื่อถือได้ และกำหนด role ผ่าน SQL Editor เท่านั้น ตัวอย่างกำหนดผู้ดูแลเพิ่มเติม:
 
    ```sql
