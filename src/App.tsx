@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   UserRole, 
   School,
@@ -160,10 +160,16 @@ import {
   markCentralExamPopupSeen,
   saveSchoolQuestionsBatch,
 } from './lib/centralExamBank';
-import { getStoredNotifications, sendEduVerseNotification } from './lib/pushNotifications';
+import {
+  getScopedNotificationsForUser,
+  getScopedUnreadCountForUser,
+  sendEduVerseNotification,
+} from './lib/pushNotifications';
 import { getParentUnreadNotificationCount, sendPrivateParentNotification } from './lib/parentNotifications';
 import { dispatchGradeAlert } from './lib/gradeNotifications';
 import { getLocalDateString } from './lib/date';
+import { getHolidayForDate, isWeekendDate, syncPublicHolidaysFromApi } from './lib/thaiHolidays';
+import { slotHasTeacher } from './lib/timetableTeachers';
 import type { OfflineQueueItem } from './lib/offlineSync';
 import { appendAuditLog } from './lib/auditLog';
 import { getSchoolFeatureFlags } from './lib/schoolFeatureFlags';
@@ -176,6 +182,7 @@ import {
   resolveLinkedStudentsForUser,
 } from './lib/attendanceScope';
 import {
+  filterAnnouncementsForRole,
   filterAssignmentsForPersonalRole,
   filterCoursesForPersonalRole,
   filterTimetableSlotsForPersonalRole,
@@ -303,6 +310,9 @@ export const App: React.FC = () => {
       const code = sp.get('code') || undefined;
       const expStr = sp.get('exp');
       const token = sp.get('token') || undefined;
+      const checkTypeParam = sp.get('checkType');
+      const checkType: 'check_in' | 'check_out' | undefined =
+        checkTypeParam === 'check_out' ? 'check_out' : checkTypeParam === 'check_in' ? 'check_in' : undefined;
       const expiresAt = expStr && !Number.isNaN(Number(expStr)) ? Number(expStr) : undefined;
       const periodNumber = periodStr && !Number.isNaN(Number(periodStr)) ? Number(periodStr) : undefined;
       const isPeriodDeepLink = tab === 'mobile_checkin' || subTab === 'period_checkin' || Boolean(courseId);
@@ -317,6 +327,7 @@ export const App: React.FC = () => {
         code,
         expiresAt,
         token,
+        checkType,
       };
     } catch {
       return null;
@@ -325,6 +336,13 @@ export const App: React.FC = () => {
 
   // Navigation, Mode, Theme, Language & Mobile Drawer State
   const [currentTab, setCurrentTab] = useState<NavTab>(deepLinkParams ? 'mobile_checkin' : 'dashboard');
+  const [timetableCheckinTarget, setTimetableCheckinTarget] = useState<{
+    courseId?: string;
+    courseCode?: string;
+    periodNumber: number;
+    date: string;
+    checkType: 'check_in' | 'check_out';
+  } | null>(null);
   const [dashboardInitialSubTab, setDashboardInitialSubTab] = useState<DashboardSubTab>('overview');
   const [systemSettingsInitialTab, setSystemSettingsInitialTab] = useState<SystemSettingsTab>('school_general');
   const [superAdminSubTab, setSuperAdminSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>('approvals');
@@ -528,34 +546,8 @@ export const App: React.FC = () => {
   const [eduBattleInitialSubTab, setEduBattleInitialSubTab] = useState<'battle_royale_3d' | 'bank' | undefined>(undefined);
 
   useEffect(() => {
-    if (currentUser?.role === 'parent') {
-      let active = true;
-      const updateUnread = async () => {
-        try {
-          const count = await getParentUnreadNotificationCount();
-          if (active) setUnreadNotifCount(count);
-        } catch (error) {
-          console.error('Could not refresh private child notification count:', error);
-        }
-      };
-      void updateUnread();
-      const interval = window.setInterval(updateUnread, 30000);
-      return () => {
-        active = false;
-        window.clearInterval(interval);
-      };
-    }
-
-    const updateUnread = () => {
-      const items = getStoredNotifications();
-      setUnreadNotifCount(items.filter(n => !n.read).length);
-    };
-    updateUnread();
-    window.addEventListener('eduverse:notification', updateUnread);
-    return () => {
-      window.removeEventListener('eduverse:notification', updateUnread);
-    };
-  }, [currentUser?.id, currentUser?.role]);
+    void syncPublicHolidaysFromApi(new Date().getFullYear());
+  }, []);
 
   useEffect(() => {
     if (!currentUser || !['admin', 'super_admin'].includes(currentRole)) {
@@ -665,6 +657,83 @@ export const App: React.FC = () => {
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
   const schoolLeaveRequests = leaveRequests.filter((request) => !request.schoolId || request.schoolId === activeSchool.id);
   const schoolPermissions = useSchoolPermissions(activeSchool.id);
+  const isRestrictedViewer = currentRole === 'student' || currentRole === 'parent';
+  const linkedStudentsForUser = useMemo(
+    () => (isRestrictedViewer ? resolveLinkedStudentsForUser(currentUser, schoolStudents) : schoolStudents),
+    [currentUser, isRestrictedViewer, schoolStudents]
+  );
+  const ownStudentIds = useMemo(() => {
+    const ids = new Set<string>();
+    linkedStudentsForUser.forEach((stu) => {
+      ids.add(stu.id);
+      if (stu.studentIdNumber) ids.add(stu.studentIdNumber);
+    });
+    if (currentRole === 'student' && currentUser) {
+      ids.add(currentUser.id);
+      if (currentUser.studentRecordId) ids.add(currentUser.studentRecordId);
+      if (currentUser.studentIdNumber) ids.add(currentUser.studentIdNumber);
+    }
+    return Array.from(ids);
+  }, [currentRole, currentUser, linkedStudentsForUser]);
+  const viewAnnouncements = useMemo(
+    () => filterAnnouncementsForRole(schoolAnnouncements, currentUser),
+    [schoolAnnouncements, currentUser]
+  );
+
+  useEffect(() => {
+    if (!currentUser) {
+      setUnreadNotifCount(0);
+      return;
+    }
+    if (currentUser.role === 'parent') {
+      let active = true;
+      const updateUnread = async () => {
+        try {
+          const count = await getParentUnreadNotificationCount();
+          const extraUnread = getScopedNotificationsForUser({
+            currentUser,
+            schoolId: activeSchool.id,
+            ownStudentIds,
+            announcements: viewAnnouncements,
+            lang,
+          }).filter((n) => (n.sourceKind === 'announcement' || n.sourceKind === 'holiday') && !n.read).length;
+          if (active) setUnreadNotifCount(count + extraUnread);
+        } catch (error) {
+          console.error('Could not refresh private child notification count:', error);
+        }
+      };
+      void updateUnread();
+      window.addEventListener('eduverse:notification', updateUnread);
+      window.addEventListener('eduverse:holidays-updated', updateUnread);
+      const interval = window.setInterval(updateUnread, 30000);
+      return () => {
+        active = false;
+        window.clearInterval(interval);
+        window.removeEventListener('eduverse:notification', updateUnread);
+        window.removeEventListener('eduverse:holidays-updated', updateUnread);
+      };
+    }
+
+    const updateUnread = () => {
+      setUnreadNotifCount(
+        getScopedUnreadCountForUser({
+          currentUser,
+          schoolId: activeSchool.id,
+          ownStudentIds,
+          announcements: viewAnnouncements,
+          lang,
+        })
+      );
+    };
+    updateUnread();
+    window.addEventListener('eduverse:notification', updateUnread);
+    window.addEventListener('eduverse:holidays-updated', updateUnread);
+    return () => {
+      window.removeEventListener('eduverse:notification', updateUnread);
+      window.removeEventListener('eduverse:holidays-updated', updateUnread);
+    };
+  }, [currentUser, activeSchool.id, ownStudentIds, viewAnnouncements, lang]);
+
   const activeFeatureFlags = activeSchool.id
     ? (featureFlagsBySchool[activeSchool.id] || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise'))
     : undefined;
@@ -938,6 +1007,9 @@ export const App: React.FC = () => {
 
   const navigateToAppTab = (tab: NavTab) => {
     setIsGamePlaying(false);
+    if (tab !== 'mobile_checkin') {
+      setTimetableCheckinTarget(null);
+    }
 
     const requiredGlobalPermission: Partial<Record<NavTab, keyof RolePermissionConfig['permissions']>> = {
       behavior_sdq: 'manageSdq',
@@ -1947,6 +2019,9 @@ export const App: React.FC = () => {
           category: 'homework',
           priority: 'normal',
           tag: `grade-import-${Date.now()}`,
+          schoolId: activeSchool.id,
+          targetStudentIds: Array.from(new Set(dispatchedItems.map((d) => d.grade.studentId))),
+          targetRoles: ['student', 'parent', 'teacher', 'admin', 'super_admin'],
           metadata: {
             alertType: 'grade_update',
             count: dispatchedItems.length,
@@ -2058,11 +2133,18 @@ export const App: React.FC = () => {
     const personName = extra?.userName || (st ? `${st.firstNameTh} ${st.lastNameTh}` : (tc ? tc.fullNameTh : 'นักเรียน/บุคลากร'));
     const statusLabel = status === 'present' ? 'มาเรียน (ตรงเวลา)' : status === 'late' ? 'มาสาย' : 'ลา';
 
+    const isCurrentActor = currentUser && (currentUser.id === studentId || currentUser.studentRecordId === studentId);
     sendEduVerseNotification({
       title: isCheckOut ? '🔔 บันทึกสแกนเลิกเรียนสำเร็จ' : '🔔 บันทึกการเข้าเรียนสำเร็จ',
       body: `${personName} • สถานะ: ${statusLabel} เวลา ${nowTime}`,
       category: 'attendance',
       tag: `att-${studentId}-${todayStr}`,
+      schoolId: activeSchool.id,
+      targetStudentIds: st ? [st.id, st.studentIdNumber || ''].filter(Boolean) : undefined,
+      targetUserIds: tc
+        ? [tc.id, ...(isCurrentActor && currentUser ? [currentUser.id] : [])]
+        : (isCurrentActor && currentUser ? [currentUser.id] : undefined),
+      targetRoles: st ? ['student', 'parent', 'teacher', 'admin', 'super_admin'] : ['teacher', 'admin', 'super_admin'],
       data: { studentId, status, date: todayStr }
     });
 
@@ -2145,6 +2227,8 @@ export const App: React.FC = () => {
       body: `นำเข้าบันทึกการเช็คชื่อจำนวน ${taggedRecords.length} รายการจากไฟล์ Excel/CSV เรียบร้อยแล้ว`,
       category: 'attendance',
       tag: `att-import-${Date.now()}`,
+      schoolId: activeSchool.id,
+      targetRoles: ['teacher', 'admin', 'super_admin'],
     });
   };
 
@@ -2184,6 +2268,9 @@ export const App: React.FC = () => {
           body: `${studentName} • วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} (${firstRec.timeSlot})`,
           category: 'attendance',
           priority: 'normal',
+          schoolId: activeSchool.id,
+          targetStudentIds: student ? [student.id, student.studentIdNumber || ''].filter(Boolean) : [firstRec.studentId],
+          targetRoles: ['student', 'parent', 'teacher', 'admin', 'super_admin'],
         }).catch(() => {});
       } else {
         sendEduVerseNotification({
@@ -2191,6 +2278,9 @@ export const App: React.FC = () => {
           body: `วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} บันทึกรายชื่อแล้ว ${taggedRecords.length} คน`,
           category: 'attendance',
           priority: 'normal',
+          schoolId: activeSchool.id,
+          targetStudentIds: Array.from(new Set(taggedRecords.map((r) => r.studentId))),
+          targetRoles: ['student', 'parent', 'teacher', 'admin', 'super_admin'],
         }).catch(() => {});
       }
     }
@@ -2324,9 +2414,32 @@ export const App: React.FC = () => {
       const currentHours = now.getHours();
       const currentMins = now.getMinutes();
       const totalMinutes = currentHours * 60 + currentMins;
+      const dayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[now.getDay()];
+
+      // Skip schedule reminders on weekends and official/school holidays
+      if (isWeekendDate(todayStr)) return;
+      const todayHoliday = getHolidayForDate(todayStr, activeSchool.id);
+      if (todayHoliday) {
+        const holidayKey = `${todayStr}-holiday-${todayHoliday.id}-${currentUser.id}`;
+        if (!firedAlerts.has(holidayKey)) {
+          firedAlerts.add(holidayKey);
+          sendEduVerseNotification({
+            title: `🗓️ วันหยุด: ${todayHoliday.nameTh}`,
+            body: 'ไม่มีการเรียนการสอนในวันนี้ (ระบบหยุดการแจ้งเตือนเข้าคาบเรียนอัตโนมัติ)',
+            category: 'announcement',
+            priority: 'normal',
+            tag: holidayKey,
+            schoolId: activeSchool.id,
+            targetUserIds: [currentUser.id],
+            targetRoles: [currentUser.role],
+            sourceKind: 'holiday',
+          }).catch(() => {});
+        }
+        return;
+      }
 
       // 1. Morning School Arrival (07:30 - 08:00: reminder to check-in)
-      const morningKey = `${todayStr}-morning-arrival`;
+      const morningKey = `${todayStr}-morning-arrival-${currentUser.id}`;
       if (totalMinutes >= 450 && totalMinutes <= 480 && !firedAlerts.has(morningKey)) {
         firedAlerts.add(morningKey);
         sendEduVerseNotification({
@@ -2334,11 +2447,15 @@ export const App: React.FC = () => {
           body: 'ยินดีต้อนรับสู่โรงเรียน กรุณาถ่ายรูปหรือสแกนบัตรเช็คอินผ่านพิกัด GPS ประตูโรงเรียนก่อนเวลา 08:00 น.',
           category: 'attendance',
           priority: 'normal',
+          tag: morningKey,
+          schoolId: activeSchool.id,
+          targetUserIds: [currentUser.id],
+          targetRoles: [currentUser.role],
         }).catch(() => {});
       }
 
       // 2. Morning Late Alert (> 08:05: if not checked in yet)
-      const lateKey = `${todayStr}-morning-late-alert`;
+      const lateKey = `${todayStr}-morning-late-alert-${currentUser.id}`;
       if (totalMinutes >= 485 && totalMinutes <= 540 && !firedAlerts.has(lateKey)) {
         firedAlerts.add(lateKey);
         const userHasCheckedIn = attendance.some(
@@ -2356,12 +2473,16 @@ export const App: React.FC = () => {
             body: 'ขณะนี้เลยเวลา 08:00 น. แล้ว ระบบยังไม่พบบันทึกการเช็คอินเข้าโรงเรียนของคุณ กรุณาติดต่อครูเวรประจำวันหรือสแกนเช็คชื่อด่วน',
             category: 'attendance',
             priority: 'urgent',
+            tag: lateKey,
+            schoolId: activeSchool.id,
+            targetUserIds: [currentUser.id],
+            targetRoles: [currentUser.role],
           }).catch(() => {});
         }
       }
 
       // 3. Afternoon Departure Check-out (15:30 - 16:30)
-      const departureKey = `${todayStr}-afternoon-departure`;
+      const departureKey = `${todayStr}-afternoon-departure-${currentUser.id}`;
       if (totalMinutes >= 930 && totalMinutes <= 990 && !firedAlerts.has(departureKey)) {
         firedAlerts.add(departureKey);
         sendEduVerseNotification({
@@ -2369,53 +2490,87 @@ export const App: React.FC = () => {
           body: 'หมดเวลาเรียนตามตารางแล้ว กรุณาสแกนหรือถ่ายรูปเช็คเอาท์ (Check-out) ก่อนเดินทางกลับบ้านอย่างปลอดภัย',
           category: 'attendance',
           priority: 'normal',
+          tag: departureKey,
+          schoolId: activeSchool.id,
+          targetUserIds: [currentUser.id],
+          targetRoles: [currentUser.role],
         }).catch(() => {});
       }
 
-      // 4. Period Timetable Notifications (Start, End, and Late/Missed alerts)
+      // 4. Period Timetable Notifications — strictly only for this user's scheduled slots today
+      const personalTodaySlots = filterTimetableSlotsForPersonalRole(
+        schoolTimetableSlots,
+        currentUser,
+        schoolStudents,
+        schoolCourses
+      ).filter((slot) => {
+        if (slot.dayOfWeek !== dayKey) return false;
+        if (currentUser.role === 'teacher') {
+          const teacherName = currentUser.fullNameTh || currentUser.fullNameEn || '';
+          return teacherName ? slotHasTeacher(slot, teacherName) : true;
+        }
+        return true;
+      });
+
       const periodsToCheck = (schoolPeriods.length > 0 ? schoolPeriods : DEFAULT_SCHOOL_PERIODS).filter(
         (p) => !p.isBreak && p.periodNumber > 0
       );
 
       periodsToCheck.forEach((p) => {
+        const matchedSlot = personalTodaySlots.find((s) => s.periodNumber === p.periodNumber);
+        if (!matchedSlot) return;
+
         const [sH, sM] = p.startTime.split(':').map(Number);
         const [eH, eM] = p.endTime.split(':').map(Number);
         const startMin = sH * 60 + sM;
         const endMin = eH * 60 + eM;
+        const subjectLabel = matchedSlot.courseTitleTh || matchedSlot.courseCode || `คาบที่ ${p.periodNumber}`;
 
         // 4.1. Period Start & Check-in Reminder (within 5 minutes before or at start)
-        const pStartKey = `${todayStr}-p${p.periodNumber}-start`;
+        const pStartKey = `${todayStr}-p${p.periodNumber}-start-${currentUser.id}`;
         if (totalMinutes >= startMin - 5 && totalMinutes <= startMin + 3 && !firedAlerts.has(pStartKey)) {
           firedAlerts.add(pStartKey);
           sendEduVerseNotification({
-            title: `⏰ เริ่มคาบเรียนที่ ${p.periodNumber} (${p.startTime} - ${p.endTime})`,
-            body: `ใกล้เริ่มคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเข้าห้องเรียนและสแกน Barcode/QR เพื่อเช็คชื่อเข้าเรียน (Check-in)`,
+            title: `⏰ คาบที่ ${p.periodNumber}: ${subjectLabel} (${p.startTime} - ${p.endTime})`,
+            body: `ใกล้เริ่มวิชา ${subjectLabel} ห้อง ${matchedSlot.room || '-'} แล้ว กรุณาเช็คชื่อเข้าคาบเรียน (Check-in)`,
             category: 'attendance',
             priority: 'urgent',
+            tag: pStartKey,
+            schoolId: activeSchool.id,
+            targetUserIds: [currentUser.id],
+            targetRoles: [currentUser.role],
           }).catch(() => {});
         }
 
         // 4.2. Mid-period Late / Missed Check-in Reminder (10 mins after start)
-        const pLateKey = `${todayStr}-p${p.periodNumber}-missed`;
+        const pLateKey = `${todayStr}-p${p.periodNumber}-missed-${currentUser.id}`;
         if (totalMinutes >= startMin + 10 && totalMinutes <= startMin + 15 && !firedAlerts.has(pLateKey)) {
           firedAlerts.add(pLateKey);
           sendEduVerseNotification({
-            title: `⚠️ แจ้งเตือนลืมเช็คชื่อคาบที่ ${p.periodNumber}`,
-            body: `คาบที่ ${p.periodNumber} (${p.startTime} - ${p.endTime}) เริ่มไปแล้ว 10 นาที หากเข้าห้องเรียนแล้ว กรุณาสแกน Barcode/QR หรือแจ้งอาจารย์ผู้สอน`,
+            title: `⚠️ แจ้งเตือนเช็คชื่อคาบที่ ${p.periodNumber}: ${subjectLabel}`,
+            body: `วิชา ${subjectLabel} (${p.startTime} - ${p.endTime}) เริ่มไปแล้ว 10 นาที กรุณาตรวจสอบการเช็คชื่อเข้าคาบเรียน`,
             category: 'attendance',
             priority: 'urgent',
+            tag: pLateKey,
+            schoolId: activeSchool.id,
+            targetUserIds: [currentUser.id],
+            targetRoles: [currentUser.role],
           }).catch(() => {});
         }
 
         // 4.3. Period End & Check-out Reminder (within 3 mins of end)
-        const pEndKey = `${todayStr}-p${p.periodNumber}-end`;
+        const pEndKey = `${todayStr}-p${p.periodNumber}-end-${currentUser.id}`;
         if (totalMinutes >= endMin - 2 && totalMinutes <= endMin + 3 && !firedAlerts.has(pEndKey)) {
           firedAlerts.add(pEndKey);
           sendEduVerseNotification({
-            title: `🔔 สิ้นสุดคาบเรียนที่ ${p.periodNumber} (${p.endTime} น.)`,
-            body: `หมดเวลาคาบเรียนที่ ${p.periodNumber} แล้ว กรุณาเช็คชื่อออก (Check-out) และเตรียมตัวสำหรับคาบถัดไป`,
+            title: `🔔 สิ้นสุดคาบที่ ${p.periodNumber}: ${subjectLabel} (${p.endTime} น.)`,
+            body: `หมดเวลาวิชา ${subjectLabel} แล้ว สามารถกดเช็คชื่อออกคาบเรียน (Check-out) ได้จากตารางเรียน`,
             category: 'attendance',
             priority: 'normal',
+            tag: pEndKey,
+            schoolId: activeSchool.id,
+            targetUserIds: [currentUser.id],
+            targetRoles: [currentUser.role],
           }).catch(() => {});
         }
       });
@@ -2424,7 +2579,7 @@ export const App: React.FC = () => {
     checkScheduleAndAttendance();
     const interval = setInterval(checkScheduleAndAttendance, 30000);
     return () => clearInterval(interval);
-  }, [schoolPeriods, attendance, currentUser]);
+  }, [schoolPeriods, attendance, currentUser, activeSchool.id, schoolTimetableSlots, schoolStudents, schoolCourses]);
 
   const handleSaveCampusGates = async (gates: CampusGateGeofence[]) => {
     if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
@@ -2660,7 +2815,27 @@ export const App: React.FC = () => {
   };
 
   const handleAddAnnouncement = (newAnn: Announcement) => {
-    setAnnouncements((prev) => [{ ...newAnn, schoolId: activeSchool.id }, ...prev]);
+    const scopedAnn: Announcement = { ...newAnn, schoolId: activeSchool.id };
+    setAnnouncements((prev) => [scopedAnn, ...prev]);
+    const audienceRoles: UserRole[] =
+      scopedAnn.targetAudience === 'students'
+        ? ['student', 'teacher', 'admin', 'super_admin']
+        : scopedAnn.targetAudience === 'parents'
+          ? ['parent', 'teacher', 'admin', 'super_admin']
+          : scopedAnn.targetAudience === 'teachers'
+            ? ['teacher', 'admin', 'super_admin']
+            : ['student', 'parent', 'teacher', 'admin', 'super_admin'];
+    void sendEduVerseNotification({
+      title: `📢 ประกาศโรงเรียน: ${scopedAnn.title}`,
+      body: scopedAnn.content,
+      category: 'announcement',
+      priority: scopedAnn.category === 'urgent' ? 'urgent' : 'normal',
+      tag: `ann-${scopedAnn.id}`,
+      schoolId: activeSchool.id,
+      isBroadcast: true,
+      targetRoles: audienceRoles,
+      sourceKind: 'announcement',
+    });
   };
 
   const handleBroadcastLine = (announcementId: string) => {
@@ -2738,6 +2913,8 @@ export const App: React.FC = () => {
       title: `รับข้อสอบกลางเข้าโรงเรียนสำเร็จ: ${pack.titleTh}`,
       body: `เพิ่มข้อสอบใหม่ ${res.addedQuestions.length} ข้อเข้าคลังข้อสอบของ ${activeSchool.nameTh} แล้ว`,
       category: 'system',
+      schoolId: activeSchool.id,
+      targetRoles: ['admin', 'super_admin', 'teacher'],
     });
   };
 
@@ -2767,6 +2944,8 @@ export const App: React.FC = () => {
       title: `⚡ ปลดล็อกข้อสอบกลางทันที: ${pack.titleTh}`,
       body: `ปลดล็อก ${res.addedQuestions.length} ข้อเข้าคลังโรงเรียนแล้ว (แนบสลิป 100% รอตรวจสอบย้อนหลัง)`,
       category: 'billing',
+      schoolId: activeSchool.id,
+      targetRoles: ['admin', 'super_admin'],
     });
   };
 
@@ -3140,6 +3319,9 @@ export const App: React.FC = () => {
           category: 'homework',
           priority: 'normal',
           tag: `quiz-sync-${courseId}-${Date.now()}`,
+          schoolId: activeSchool.id,
+          targetStudentIds: Array.from(new Set(syncedRecords.map((r) => r.grade.studentId))),
+          targetRoles: ['student', 'parent', 'teacher', 'admin', 'super_admin'],
           metadata: {
             alertType: 'grade_update',
             courseId,
@@ -3175,6 +3357,8 @@ export const App: React.FC = () => {
           body: 'นำเข้ารายการห้องพยาบาลจากโหมดออฟไลน์สำเร็จ',
           category: 'system',
           tag: `offline-health-${Date.now()}`,
+          schoolId: activeSchool.id,
+          targetRoles: ['teacher', 'admin', 'super_admin'],
         });
         return true;
       }
@@ -3277,21 +3461,8 @@ export const App: React.FC = () => {
     );
   }
 
-  // Strict Student & Parent Personal Scoping Boundary
-  const isRestrictedViewer = currentRole === 'student' || currentRole === 'parent';
-  const linkedStudentsForUser = isRestrictedViewer
-    ? resolveLinkedStudentsForUser(currentUser, schoolStudents)
-    : schoolStudents;
-  const scopedStudentIdSet = new Set<string>();
-  linkedStudentsForUser.forEach((stu) => {
-    scopedStudentIdSet.add(stu.id);
-    if (stu.studentIdNumber) scopedStudentIdSet.add(stu.studentIdNumber);
-  });
-  if (currentRole === 'student' && currentUser) {
-    scopedStudentIdSet.add(currentUser.id);
-    if (currentUser.studentRecordId) scopedStudentIdSet.add(currentUser.studentRecordId);
-    if (currentUser.studentIdNumber) scopedStudentIdSet.add(currentUser.studentIdNumber);
-  }
+  // Strict Student & Parent Personal Scoping Boundary (uses earlier scoped boundary)
+  const scopedStudentIdSet = new Set<string>(ownStudentIds);
   const viewStudents = isRestrictedViewer ? linkedStudentsForUser : schoolStudents;
   const viewCourses = filterCoursesForPersonalRole(schoolCourses, currentUser, schoolStudents);
   const viewAssignments = filterAssignmentsForPersonalRole(schoolAssignments, viewCourses, currentUser);
@@ -3376,7 +3547,7 @@ export const App: React.FC = () => {
           leaveRequests={viewLeaveRequests}
           assignments={viewAssignments}
           homeworkSubmissions={viewHomeworkSubmissions}
-          announcements={schoolAnnouncements}
+          announcements={viewAnnouncements}
           questions={schoolQuestions}
           playerScores={playerScores}
           rewardItems={rewardItems}
@@ -3412,12 +3583,13 @@ export const App: React.FC = () => {
             setProgramMode('school_erp');
             navigateToAppTab(tab);
           }}
-          initialMobileTab={deepLinkParams ? 'checkin' : 'home'}
-          initialAttendanceSubTab={deepLinkParams?.subTab || 'selfie_mobile'}
-          initialPeriodCourseId={deepLinkParams?.courseId}
-          initialPeriodNumber={deepLinkParams?.periodNumber}
-          initialPeriodDate={deepLinkParams?.date}
-          initialPeriodCode={deepLinkParams?.code}
+          initialMobileTab={(timetableCheckinTarget || deepLinkParams) ? 'checkin' : 'home'}
+          initialAttendanceSubTab={timetableCheckinTarget ? 'period_checkin' : (deepLinkParams?.subTab || 'selfie_mobile')}
+          initialPeriodCourseId={timetableCheckinTarget?.courseId ?? deepLinkParams?.courseId}
+          initialPeriodNumber={timetableCheckinTarget?.periodNumber ?? deepLinkParams?.periodNumber}
+          initialPeriodDate={timetableCheckinTarget?.date ?? deepLinkParams?.date}
+          initialPeriodCode={timetableCheckinTarget?.courseCode ?? deepLinkParams?.code}
+          initialPeriodCheckType={timetableCheckinTarget?.checkType ?? deepLinkParams?.checkType}
           onBiometricLock={handleLockWithBiometrics}
         />
 
@@ -3435,7 +3607,7 @@ export const App: React.FC = () => {
         {selectedStudentForProfile && (
           <StudentDetailModal
             student={selectedStudentForProfile}
-            courses={schoolCourses}
+            courses={viewCourses}
             grades={viewGrades}
             attendance={viewAttendance}
             onClose={() => setSelectedStudentForProfile(null)}
@@ -3490,11 +3662,22 @@ export const App: React.FC = () => {
           <NotificationCenterModal
             isOpen={showNotificationModal}
             currentUser={currentUser}
+            schoolId={activeSchool.id}
+            ownStudentIds={ownStudentIds}
+            announcements={viewAnnouncements}
             onUnreadCountChange={setUnreadNotifCount}
             onClose={() => {
               setShowNotificationModal(false);
               if (currentUser.role !== 'parent') {
-                setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+                setUnreadNotifCount(
+                  getScopedUnreadCountForUser({
+                    currentUser,
+                    schoolId: activeSchool.id,
+                    ownStudentIds,
+                    announcements: viewAnnouncements,
+                    lang,
+                  })
+                );
               }
             }}
             lang={lang}
@@ -3815,12 +3998,12 @@ export const App: React.FC = () => {
                   <DashboardView
                     students={viewStudents}
                     teachers={isRestrictedViewer ? [] : schoolTeachers}
-                    courses={schoolCourses}
+                    courses={viewCourses}
                     attendance={viewAttendance}
                     grades={viewGrades}
                     playerScores={playerScores}
                     invoices={viewInvoices}
-                    announcements={schoolAnnouncements}
+                    announcements={viewAnnouncements}
                     systemConfig={systemConfig}
                     school={activeSchool}
                     currentUser={currentUser}
@@ -4083,6 +4266,11 @@ export const App: React.FC = () => {
                     })}
                     onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
                     leaveRequests={viewLeaveRequests}
+                    periodAttendance={viewPeriodAttendance}
+                    onOpenPeriodCheckin={(params) => {
+                      setTimetableCheckinTarget(params);
+                      navigateToAppTab('mobile_checkin');
+                    }}
                   />
                 )}
 
@@ -4134,7 +4322,7 @@ export const App: React.FC = () => {
                 {currentTab === 'mobile_checkin' && (
                   <MobileAttendanceView
                     students={viewStudents}
-                    teachers={schoolTeachers}
+                    teachers={isRestrictedViewer ? [] : schoolTeachers}
                     courses={viewCourses}
                     attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
@@ -4143,11 +4331,12 @@ export const App: React.FC = () => {
                     campusGates={campusGates}
                     leaveRequests={viewLeaveRequests}
                     lang={lang}
-                    initialSubTab={deepLinkParams?.subTab || 'selfie_mobile'}
-                    initialPeriodCourseId={deepLinkParams?.courseId}
-                    initialPeriodNumber={deepLinkParams?.periodNumber}
-                    initialPeriodDate={deepLinkParams?.date}
-                    initialPeriodCode={deepLinkParams?.code}
+                    initialSubTab={timetableCheckinTarget ? 'period_checkin' : (deepLinkParams?.subTab || 'selfie_mobile')}
+                    initialPeriodCourseId={timetableCheckinTarget?.courseId ?? deepLinkParams?.courseId}
+                    initialPeriodNumber={timetableCheckinTarget?.periodNumber ?? deepLinkParams?.periodNumber}
+                    initialPeriodDate={timetableCheckinTarget?.date ?? deepLinkParams?.date}
+                    initialPeriodCode={timetableCheckinTarget?.courseCode ?? deepLinkParams?.code}
+                    initialPeriodCheckType={timetableCheckinTarget?.checkType ?? deepLinkParams?.checkType}
                     initialPeriodExpiresAt={deepLinkParams?.expiresAt}
                     initialPeriodToken={deepLinkParams?.token}
                     onRecordAttendance={handleRecordAttendance}
@@ -4417,7 +4606,7 @@ export const App: React.FC = () => {
       {selectedStudentForReport && (
         <ReportCardModal
           student={selectedStudentForReport}
-          courses={schoolCourses}
+          courses={viewCourses}
           grades={viewGrades}
           systemConfig={systemConfig}
           school={activeSchool}
@@ -4429,7 +4618,7 @@ export const App: React.FC = () => {
       {selectedStudentForProfile && (
         <StudentDetailModal
           student={selectedStudentForProfile}
-          courses={schoolCourses}
+          courses={viewCourses}
           grades={viewGrades}
           attendance={viewAttendance}
           onClose={() => setSelectedStudentForProfile(null)}
@@ -4550,11 +4739,22 @@ export const App: React.FC = () => {
         <NotificationCenterModal
           isOpen={showNotificationModal}
           currentUser={currentUser}
+          schoolId={activeSchool.id}
+          ownStudentIds={ownStudentIds}
+          announcements={viewAnnouncements}
           onUnreadCountChange={setUnreadNotifCount}
           onClose={() => {
             setShowNotificationModal(false);
             if (currentUser.role !== 'parent') {
-              setUnreadNotifCount(getStoredNotifications().filter(n => !n.read).length);
+              setUnreadNotifCount(
+                getScopedUnreadCountForUser({
+                  currentUser,
+                  schoolId: activeSchool.id,
+                  ownStudentIds,
+                  announcements: viewAnnouncements,
+                  lang,
+                })
+              );
             }
           }}
           lang={lang}

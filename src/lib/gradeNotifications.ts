@@ -132,8 +132,12 @@ export async function dispatchGradeAlert(
     category: 'homework',
     priority: 'normal',
     tag: `grade-${grade.id}`,
+    schoolId,
+    targetStudentIds: [student.id, ...(student.studentIdNumber ? [student.studentIdNumber] : [])],
+    targetRoles: ['student', 'parent', 'teacher', 'admin', 'super_admin'],
     metadata: {
       alertType: 'grade_update',
+      schoolId,
       studentId: student.id,
       courseId: grade.courseId,
       gradeId: grade.id,

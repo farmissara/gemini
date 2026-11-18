@@ -154,6 +154,7 @@ interface MobileAttendanceViewProps {
   initialPeriodNumber?: number;
   initialPeriodDate?: string;
   initialPeriodCode?: string;
+  initialPeriodCheckType?: 'check_in' | 'check_out';
   initialPeriodExpiresAt?: number;
   initialPeriodToken?: string;
   currentRole?: UserRole;
@@ -183,6 +184,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   initialPeriodNumber,
   initialPeriodDate,
   initialPeriodCode,
+  initialPeriodCheckType,
   initialPeriodExpiresAt,
   initialPeriodToken,
   currentRole = 'admin',
@@ -591,7 +593,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [studentPeriodCodeInput, setStudentPeriodCodeInput] = useState<string>(initialPeriodCode || '');
   const [studentPeriodCheckinMsg, setStudentPeriodCheckinMsg] = useState<string | null>(null);
   const [studentPeriodCheckinError, setStudentPeriodCheckinError] = useState<string | null>(null);
-  const [periodCheckType, setPeriodCheckType] = useState<'check_in' | 'check_out'>('check_in');
+  const [periodCheckType, setPeriodCheckType] = useState<'check_in' | 'check_out'>(
+    initialPeriodCheckType || 'check_in'
+  );
 
   // Teacher hourly/period leave state
   const [leaveScope, setLeaveScope] = useState<'full_day' | 'period_hourly'>('full_day');
@@ -613,11 +617,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [showGpsAdminModal, setShowGpsAdminModal] = useState<boolean>(false);
 
   useEffect(() => {
+    if (initialSubTab) {
+      const safe = !isStaffUser && initialSubTab === 'teacher_proxy' ? 'selfie_mobile' : initialSubTab;
+      setSubTab(safe);
+    }
     if (initialPeriodCourseId) setSelectedCourseId(initialPeriodCourseId);
     if (initialPeriodNumber) setSelectedPeriod(initialPeriodNumber);
     if (initialPeriodDate) setPeriodDate(initialPeriodDate);
     if (initialPeriodCode) setStudentPeriodCodeInput(initialPeriodCode);
-  }, [initialPeriodCourseId, initialPeriodNumber, initialPeriodDate, initialPeriodCode]);
+    if (initialPeriodCheckType) setPeriodCheckType(initialPeriodCheckType);
+  }, [
+    isStaffUser,
+    initialSubTab,
+    initialPeriodCourseId,
+    initialPeriodNumber,
+    initialPeriodDate,
+    initialPeriodCode,
+    initialPeriodCheckType,
+  ]);
 
   // Strict classroom & enrollment calculation for period attendance
   const periodStudentIds: string[] = useMemo(() => {

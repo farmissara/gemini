@@ -44,7 +44,9 @@ import {
   Trash2,
   MoreHorizontal,
   ClipboardCheck,
-  Search
+  Search,
+  CalendarDays,
+  LogIn,
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -91,6 +93,26 @@ import {
   resolveLinkedStudentsForUser,
   resolveOwnStudent,
 } from '../../lib/attendanceScope';
+import {
+  filterAnnouncementsForRole,
+  filterAssignmentsForPersonalRole,
+  filterCoursesForPersonalRole,
+  filterTimetableSlotsForPersonalRole,
+} from '../../lib/studentDataScope';
+import {
+  addCalendarDays,
+  getBangkokDateInputValue,
+  getCalendarWeekStart,
+} from '../../lib/timetableCalendar';
+import {
+  getHolidayForDate,
+  getHolidaysForDate,
+  getHolidaysInMonth,
+  getUpcomingHolidays,
+  isWeekendDate,
+  syncPublicHolidaysFromApi,
+} from '../../lib/thaiHolidays';
+import { GoogleCalendarSyncModal } from '../GoogleCalendarSyncModal';
 import { MobileAttendanceView } from '../../views/MobileAttendanceView';
 import { EduBattleGameView } from '../../views/EduBattleGameView';
 import { EduBattleRoyale3DView } from '../../views/EduBattleRoyale3DView';
@@ -232,6 +254,7 @@ interface MobileAppShellProps {
   initialPeriodNumber?: number;
   initialPeriodDate?: string;
   initialPeriodCode?: string;
+  initialPeriodCheckType?: 'check_in' | 'check_out';
   onBiometricLock?: () => void;
 }
 
@@ -300,6 +323,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   initialPeriodNumber,
   initialPeriodDate,
   initialPeriodCode,
+  initialPeriodCheckType,
   onBiometricLock,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
@@ -380,10 +404,52 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const [mobileGradeRoom, setMobileGradeRoom] = useState('all');
   const [mobileGradeToast, setMobileGradeToast] = useState<string | null>(null);
 
-  // Mobile Timetable state
-  const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()] || 'mon';
+  // Mobile Timetable & Calendar state
+  const todayBangkokStr = getBangkokDateInputValue();
+  const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[
+    new Date(`${todayBangkokStr}T00:00:00+07:00`).getDay()
+  ] || 'mon';
   const [selectedTimetableDay, setSelectedTimetableDay] = useState<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>(todayDayKey);
   const [timetableOnlyMine, setTimetableOnlyMine] = useState<boolean>(currentRole === 'teacher');
+  const [mobileTimetableMode, setMobileTimetableMode] = useState<'day' | 'calendar'>('day');
+  const [mobileCalendarMonthCursor, setMobileCalendarMonthCursor] = useState<{ year: number; month: number }>(() => ({
+    year: Number(todayBangkokStr.slice(0, 4)),
+    month: Number(todayBangkokStr.slice(5, 7)) - 1,
+  }));
+  const [mobileSelectedCalendarDate, setMobileSelectedCalendarDate] = useState<string>(todayBangkokStr);
+  const [showMobileCalendarSync, setShowMobileCalendarSync] = useState(false);
+  const [holidaySyncTick, setHolidaySyncTick] = useState(0);
+
+  // Dynamic Check-in deep-link state so tapping any timetable slot jumps cleanly into Period Check-in/Check-out
+  const [mobileAttendanceInitialSubTab, setMobileAttendanceInitialSubTab] = useState<
+    'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin'
+  >(initialAttendanceSubTab);
+  const [mobilePeriodCourseId, setMobilePeriodCourseId] = useState<string | undefined>(initialPeriodCourseId);
+  const [mobilePeriodNumber, setMobilePeriodNumber] = useState<number | undefined>(initialPeriodNumber);
+  const [mobilePeriodDate, setMobilePeriodDate] = useState<string | undefined>(initialPeriodDate);
+  const [mobilePeriodCheckType, setMobilePeriodCheckType] = useState<'check_in' | 'check_out' | undefined>(
+    initialPeriodCheckType
+  );
+
+  useEffect(() => {
+    setMobileAttendanceInitialSubTab(initialAttendanceSubTab);
+    setMobilePeriodCourseId(initialPeriodCourseId);
+    setMobilePeriodNumber(initialPeriodNumber);
+    setMobilePeriodDate(initialPeriodDate);
+    setMobilePeriodCheckType(initialPeriodCheckType);
+  }, [initialAttendanceSubTab, initialPeriodCourseId, initialPeriodNumber, initialPeriodDate, initialPeriodCheckType]);
+
+  useEffect(() => {
+    void syncPublicHolidaysFromApi(mobileCalendarMonthCursor.year).then(() => {
+      setHolidaySyncTick((v) => v + 1);
+    });
+  }, [mobileCalendarMonthCursor.year]);
+
+  useEffect(() => {
+    const onHolidaysUpdated = () => setHolidaySyncTick((v) => v + 1);
+    window.addEventListener('eduverse:holidays-updated', onHolidaysUpdated);
+    return () => window.removeEventListener('eduverse:holidays-updated', onHolidaysUpdated);
+  }, []);
 
   useEffect(() => {
     if (!mobileGradeCourseId && courses.length > 0) {
@@ -455,9 +521,96 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     : leaveRequests;
   const pendingLeavesCount = myLeaves.filter(l => l.status === 'pending').length;
 
-  // Pending homework
-  const myCompletedSubmissions = new Set(homeworkSubmissions.filter(h => currentPersonId && h.studentId === currentPersonId).map(h => h.assignmentId));
-  const pendingHomeworkCount = assignments.filter(a => !myCompletedSubmissions.has(a.id)).length;
+  // Role-scoped courses, timetable slots, assignments, and announcements (strict student/parent isolation)
+  const scopedCourses = useMemo(
+    () => (isRestrictedViewer ? filterCoursesForPersonalRole(courses, currentUser, students) : courses),
+    [courses, currentUser, isRestrictedViewer, students]
+  );
+  const scopedTimetableSlots = useMemo(
+    () =>
+      isRestrictedViewer
+        ? filterTimetableSlotsForPersonalRole(timetableSlots, currentUser, students, scopedCourses)
+        : timetableSlots,
+    [timetableSlots, currentUser, isRestrictedViewer, students, scopedCourses]
+  );
+  const scopedAssignments = useMemo(
+    () =>
+      isRestrictedViewer
+        ? filterAssignmentsForPersonalRole(assignments, scopedCourses, currentUser)
+        : assignments,
+    [assignments, scopedCourses, currentUser, isRestrictedViewer]
+  );
+  const scopedAnnouncements = useMemo(
+    () => filterAnnouncementsForRole(announcements, currentUser),
+    [announcements, currentUser]
+  );
+
+  const teacherFullName = currentUser?.fullNameTh || currentUser?.fullNameEn || '';
+  const todayMySlots = useMemo(() => {
+    return scopedTimetableSlots
+      .filter((s) => s.dayOfWeek === todayDayKey)
+      .filter((s) => {
+        if (currentRole === 'teacher' && timetableOnlyMine && teacherFullName) {
+          return slotHasTeacher(s, teacherFullName);
+        }
+        return true;
+      })
+      .slice()
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+  }, [scopedTimetableSlots, todayDayKey, currentRole, timetableOnlyMine, teacherFullName]);
+
+  const todayHoliday = useMemo(
+    () => (holidaySyncTick >= 0 ? getHolidayForDate(todayBangkokStr, activeSchool.id) : null),
+    [holidaySyncTick, todayBangkokStr, activeSchool.id]
+  );
+  const upcomingHoliday = useMemo(
+    () =>
+      holidaySyncTick >= 0
+        ? getUpcomingHolidays(todayBangkokStr, 10, activeSchool.id).find((h) => h.date !== todayBangkokStr) || null
+        : null,
+    [holidaySyncTick, todayBangkokStr, activeSchool.id]
+  );
+
+  const openPeriodCheckinFromSlot = (
+    slot: TimetableSlot,
+    dateValue: string,
+    checkType: 'check_in' | 'check_out'
+  ) => {
+    const resolvedCourseId =
+      slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id;
+    setMobileAttendanceInitialSubTab('period_checkin');
+    setMobilePeriodCourseId(resolvedCourseId);
+    setMobilePeriodNumber(slot.periodNumber);
+    setMobilePeriodDate(dateValue);
+    setMobilePeriodCheckType(checkType);
+    setActiveTab('checkin');
+  };
+
+  const getSlotTodayCheckStatus = (slot: TimetableSlot, dateValue: string) => {
+    const resolvedCourseId =
+      slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id || slot.courseCode;
+    const matches = periodAttendance.filter(
+      (rec) =>
+        rec.date === dateValue &&
+        rec.periodNumber === slot.periodNumber &&
+        (rec.courseId === resolvedCourseId || rec.courseCode === slot.courseCode)
+    );
+    return {
+      hasCheckIn: matches.some((m) => (m.recordType || 'check_in') === 'check_in'),
+      hasCheckOut: matches.some((m) => m.recordType === 'check_out'),
+    };
+  };
+
+  // Pending homework (excluding closed and submitted)
+  const myCompletedSubmissions = new Set(
+    homeworkSubmissions.filter((h) => currentPersonId && h.studentId === currentPersonId).map((h) => h.assignmentId)
+  );
+  const pendingHomeworkCount = scopedAssignments.filter(
+    (a) =>
+      a.status !== 'closed' &&
+      !myCompletedSubmissions.has(a.id) &&
+      !(currentPersonId && a.submittedStudentIds?.includes(currentPersonId))
+  ).length;
 
   const currentScore = playerScores.find(p => p.userId === currentUser?.id) || {
     exp: 1450,
@@ -661,46 +814,210 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               />
             ) : (
               <>
-                {/* Minimal Apple Greeting Header (Title only, zero subtitle clutter) */}
-                <div className="pt-1 pb-1">
+                {/* Crisp Personal Greeting + Class/Department Context */}
+                <div className="pt-1 space-y-1">
                   <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
                   </h1>
+                  <p className="text-xs font-medium text-[var(--color-text-muted)] truncate tabular-nums">
+                    {currentRole === 'student' && ownStudent
+                      ? `${ownStudent.gradeLevel} ${ownStudent.room} · รหัส ${ownStudent.studentIdNumber}`
+                      : currentRole === 'parent' && linkedStudents.length > 0
+                        ? `${lang === 'th' ? 'ผู้ปกครองของ' : 'Parent of'} ${linkedStudents[0].firstNameTh} (${linkedStudents[0].gradeLevel} ${linkedStudents[0].room})`
+                        : currentRole === 'teacher'
+                          ? `${currentUser?.department || (lang === 'th' ? 'ครูผู้สอน' : 'Teacher')} · ${lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}`
+                          : lang === 'th'
+                            ? activeSchool.nameTh
+                            : activeSchool.nameEn}
+                  </p>
                 </div>
+
+                {/* Today / Upcoming Holiday Alert */}
+                {todayHoliday ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileTimetableMode('calendar');
+                      setActiveTab('timetable');
+                    }}
+                    className="w-full rounded-2xl border border-rose-300 dark:border-rose-800 bg-rose-50/90 dark:bg-rose-950/50 p-4 text-left flex items-center justify-between gap-3 cursor-pointer"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                        <CalendarDays className="w-4 h-4 shrink-0" />
+                        <span>{todayHoliday.type === 'school' ? 'วันหยุดพิเศษโรงเรียน' : 'วันหยุดราชการวันนี้'}</span>
+                      </p>
+                      <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                        {todayHoliday.nameTh}
+                      </p>
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
+                        งดการเรียนการสอนปกติ · แตะเพื่อดูปฏิทินวันหยุด
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-rose-500 shrink-0" />
+                  </button>
+                ) : upcomingHoliday ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileTimetableMode('calendar');
+                      setActiveTab('timetable');
+                    }}
+                    className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-left flex items-center justify-between gap-3 cursor-pointer hover:border-rose-300 transition"
+                  >
+                    <div className="min-w-0 flex items-center gap-2.5">
+                      <CalendarDays className="w-4 h-4 text-rose-500 shrink-0" />
+                      <p className="text-xs text-[var(--color-text-body)] truncate tabular-nums">
+                        วันหยุดถัดไป: <strong className="text-[var(--color-text-title)]">{upcomingHoliday.nameTh}</strong> ({upcomingHoliday.date})
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                  </button>
+                ) : null}
 
                 {/* 1 Large Primary Action Button */}
                 <button
                   type="button"
-                  onClick={() => setActiveTab(canSelfCheckin ? 'checkin' : 'timetable')}
-                  className="w-full min-h-[56px] px-5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-base flex items-center justify-between transition active:scale-[0.99] cursor-pointer"
+                  onClick={() => {
+                    setMobileAttendanceInitialSubTab('selfie_mobile');
+                    setActiveTab(canSelfCheckin ? 'checkin' : 'timetable');
+                  }}
+                  className="w-full min-h-[56px] px-5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-base flex items-center justify-between transition active:scale-[0.99] cursor-pointer shadow-xs"
                 >
-                  <span>
-                    {!canSelfCheckin
-                      ? (lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today Timetable')
-                      : currentRole === 'teacher'
-                      ? (lang === 'th' ? 'เช็คชื่อเข้าสอน' : 'Class Check-in')
-                      : currentRole === 'parent'
-                      ? (lang === 'th' ? 'ดูเวลาเข้า-ออกบุตรหลาน' : 'Child Attendance')
-                      : (lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check-in & Out')}
-                  </span>
+                  <div className="text-left">
+                    <span className="block">
+                      {!canSelfCheckin
+                        ? lang === 'th'
+                          ? 'ตารางเรียนวันนี้'
+                          : 'Today Timetable'
+                        : currentRole === 'teacher'
+                          ? lang === 'th'
+                            ? 'เช็คชื่อเข้าสอน'
+                            : 'Class Check-in'
+                          : currentRole === 'parent'
+                            ? lang === 'th'
+                              ? 'ดูเวลาเข้า-ออกบุตรหลาน'
+                              : 'Child Attendance'
+                            : lang === 'th'
+                              ? 'เช็คชื่อเข้า-ออก'
+                              : 'Check-in & Out'}
+                    </span>
+                    {todayCheckin && currentRole !== 'parent' && (
+                      <span className="block text-[11px] font-normal text-white/85 tabular-nums">
+                        {lang === 'th' ? `เช็คชื่อเข้า รร. แล้ว เวลา ${todayCheckin.time} น.` : `Checked in at ${todayCheckin.time}`}
+                      </span>
+                    )}
+                  </div>
                   <ChevronRight className="w-5 h-5 shrink-0" />
                 </button>
 
-                {/* Single-line Clean List Rows (Zero explanatory subtitles, generous breathing room) */}
+                {/* Quick Today Next Period Card (with direct Check-in/Check-out) */}
+                {(currentRole === 'student' || currentRole === 'teacher') &&
+                  !todayHoliday &&
+                  !isWeekendDate(todayBangkokStr) &&
+                  todayMySlots.length > 0 && (() => {
+                    const nextSlot = todayMySlots[0];
+                    const status = getSlotTodayCheckStatus(nextSlot, todayBangkokStr);
+                    return (
+                      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-[var(--color-primary-text)] tabular-nums">
+                            {lang === 'th'
+                              ? `คาบเรียนวันนี้ · คาบ ${nextSlot.periodNumber} (${nextSlot.startTime}–${nextSlot.endTime})`
+                              : `Period ${nextSlot.periodNumber} · ${nextSlot.startTime}–${nextSlot.endTime}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMobileTimetableMode('day');
+                              setActiveTab('timetable');
+                            }}
+                            className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer tabular-nums"
+                          >
+                            ทั้งหมด {todayMySlots.length} คาบ
+                          </button>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                            {nextSlot.courseCode} · {nextSlot.courseTitleTh || nextSlot.courseTitleEn}
+                          </p>
+                          <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
+                            {nextSlot.classRoom} {nextSlot.room ? `· ห้อง ${nextSlot.room}` : ''} · {nextSlot.teacherName}
+                          </p>
+                        </div>
+                        {canSelfCheckin && (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => openPeriodCheckinFromSlot(nextSlot, todayBangkokStr, 'check_in')}
+                              className="min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition"
+                            >
+                              <LogIn className="w-4 h-4" />
+                              <span>{status.hasCheckIn ? 'เช็คอินแล้ว' : 'เช็คอินคาบนี้'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openPeriodCheckinFromSlot(nextSlot, todayBangkokStr, 'check_out')}
+                              className="min-h-[44px] rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition"
+                            >
+                              <LogOut className="w-4 h-4" />
+                              <span>{status.hasCheckOut ? 'เช็คเอาท์แล้ว' : 'เช็คเอาท์คาบ'}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                {/* Single-line Clean List Rows */}
                 <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
                   {(currentRole === 'teacher' || currentRole === 'student') && (
                     <button
                       type="button"
-                      onClick={() => setActiveTab('timetable')}
+                      onClick={() => {
+                        setMobileTimetableMode('day');
+                        setActiveTab('timetable');
+                      }}
                       className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                     >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {currentRole === 'teacher'
-                          ? (lang === 'th' ? 'ตารางสอนวันนี้' : 'Today Teaching Schedule')
-                          : (lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today Timetable')}
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
+                        <span>
+                          {currentRole === 'teacher'
+                            ? lang === 'th'
+                              ? 'ตารางสอนวันนี้'
+                              : 'Today Teaching Schedule'
+                            : lang === 'th'
+                              ? 'ตารางเรียนวันนี้'
+                              : 'Today Timetable'}
+                        </span>
                       </span>
                       <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {timetableSlots.filter((s) => s.dayOfWeek === todayDayKey).length} {lang === 'th' ? 'คาบ' : 'slots'}
+                        {todayHoliday
+                          ? lang === 'th'
+                            ? 'วันหยุด'
+                            : 'Holiday'
+                          : `${todayMySlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
+
+                  {(currentRole === 'teacher' || currentRole === 'student' || currentRole === 'parent') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileTimetableMode('calendar');
+                        setActiveTab('timetable');
+                      }}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <Calendar className="w-4 h-4 text-rose-500" />
+                        <span>{lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}</span>
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] flex items-center gap-2 shrink-0">
+                        <span>.ics</span>
                         <ChevronRight className="w-4 h-4" />
                       </span>
                     </button>
@@ -712,11 +1029,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       onClick={() => setActiveTab('gradebook')}
                       className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                     >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'กรอกคะแนน ปพ.5 ด่วน' : 'Quick Gradebook (PP.5)'}
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <ClipboardCheck className="w-4 h-4 text-emerald-600" />
+                        <span>{lang === 'th' ? 'กรอกคะแนน ปพ.5 ด่วน' : 'Quick Gradebook (PP.5)'}</span>
                       </span>
                       <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {courses.length} {lang === 'th' ? 'วิชา' : 'courses'}
+                        {scopedCourses.length} {lang === 'th' ? 'วิชา' : 'courses'}
                         <ChevronRight className="w-4 h-4" />
                       </span>
                     </button>
@@ -728,8 +1046,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       onClick={() => setActiveTab('executive')}
                       className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                     >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <BarChart3 className="w-4 h-4 text-indigo-600" />
+                        <span>{lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}</span>
                       </span>
                       <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
                         {execMetrics.attendanceRate}%
@@ -744,7 +1063,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                         {lang === 'th' ? 'เช็คอินวันนี้' : 'Today'}
                       </span>
                       <span className="text-xs font-semibold tabular-nums text-[var(--color-text-muted)]">
-                        {todayCheckin ? `${todayCheckin.time} น.` : (lang === 'th' ? 'ยังไม่เช็คอิน' : 'Pending')}
+                        {todayCheckin ? `${todayCheckin.time} น.` : lang === 'th' ? 'ยังไม่เช็คอิน' : 'Pending'}
                       </span>
                     </div>
                   )}
@@ -754,8 +1073,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     onClick={() => setActiveTab('leave')}
                     className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                   >
-                    <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}
+                    <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                      <FileText className="w-4 h-4 text-amber-600" />
+                      <span>{lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}</span>
                     </span>
                     <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
                       {pendingLeavesCount > 0 ? `${pendingLeavesCount}` : ''}
@@ -769,11 +1089,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       onClick={() => setActiveTab('homework')}
                       className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                     >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'การบ้านและงานค้าง' : 'Homework'}
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <BookOpen className="w-4 h-4 text-blue-600" />
+                        <span>{lang === 'th' ? 'การบ้านและงานค้าง' : 'Homework'}</span>
                       </span>
                       <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {pendingHomeworkCount > 0 ? pendingHomeworkCount : ''}
+                        {pendingHomeworkCount > 0 ? `${pendingHomeworkCount} งาน` : 'ครบแล้ว'}
                         <ChevronRight className="w-4 h-4" />
                       </span>
                     </button>
@@ -789,28 +1110,28 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       }}
                       className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                     >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'เกมส์ความรู้ & แล็บจำลอง' : 'Learning Games & Labs'}
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <Gamepad2 className="w-4 h-4 text-purple-600" />
+                        <span>{lang === 'th' ? 'เกมส์ความรู้ & แล็บจำลอง' : 'Learning Games & Labs'}</span>
                       </span>
                       <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
                     </button>
                   )}
 
-                  {currentRole === 'parent' && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('announcements')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements'}
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {announcements.length}
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('announcements')}
+                    className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                  >
+                    <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                      <Megaphone className="w-4 h-4 text-emerald-600" />
+                      <span>{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}</span>
+                    </span>
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                      {scopedAnnouncements.length}
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
+                  </button>
 
                   <button
                     type="button"
@@ -1039,14 +1360,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           <div className="h-full min-h-0 animate-in fade-in duration-200">
             <MobileAttendanceView
               embeddedMobile
-              initialSubTab={initialAttendanceSubTab}
-              initialPeriodCourseId={initialPeriodCourseId}
-              initialPeriodNumber={initialPeriodNumber}
-              initialPeriodDate={initialPeriodDate}
+              initialSubTab={mobileAttendanceInitialSubTab}
+              initialPeriodCourseId={mobilePeriodCourseId}
+              initialPeriodNumber={mobilePeriodNumber}
+              initialPeriodDate={mobilePeriodDate}
               initialPeriodCode={initialPeriodCode}
+              initialPeriodCheckType={mobilePeriodCheckType}
               students={students}
-              teachers={teachers}
-              courses={courses}
+              teachers={isRestrictedViewer ? [] : teachers}
+              courses={scopedCourses}
               attendance={attendance}
               periodAttendance={periodAttendance}
               currentUser={currentUser}
@@ -1069,8 +1391,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               embeddedMobile
               initialSubTab="leave_request"
               students={students}
-              teachers={teachers}
-              courses={courses}
+              teachers={isRestrictedViewer ? [] : teachers}
+              courses={scopedCourses}
               attendance={attendance}
               periodAttendance={periodAttendance}
               currentUser={currentUser}
@@ -1302,142 +1624,382 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           </div>
         )}
 
-        {/* TAB: MOBILE TIMETABLE TODAY (ตารางสอน/เรียนวันนี้) */}
-        {activeTab === 'timetable' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab('home')}
-                className="min-h-[40px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-              </button>
-              <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                {currentRole === 'teacher'
-                  ? (lang === 'th' ? 'ตารางสอนประจำวัน' : 'Teaching Schedule')
-                  : (lang === 'th' ? 'ตารางเรียนประจำวัน' : 'Class Timetable')}
-              </h2>
-            </div>
+        {/* TAB: MOBILE TIMETABLE + CALENDAR + PUBLIC HOLIDAYS */}
+        {activeTab === 'timetable' && (() => {
+          const monthHolidays = getHolidaysInMonth(
+            mobileCalendarMonthCursor.year,
+            mobileCalendarMonthCursor.month,
+            activeSchool.id
+          );
+          const firstDayOfMonth = new Date(
+            Date.UTC(mobileCalendarMonthCursor.year, mobileCalendarMonthCursor.month, 1)
+          );
+          const daysInMonth = new Date(
+            Date.UTC(mobileCalendarMonthCursor.year, mobileCalendarMonthCursor.month + 1, 0)
+          ).getUTCDate();
+          const leadingBlanks = (firstDayOfMonth.getUTCDay() + 6) % 7;
+          const monthCells: Array<{ dateStr: string; dayNum: number } | null> = [
+            ...Array.from({ length: leadingBlanks }, () => null),
+            ...Array.from({ length: daysInMonth }, (_, i) => {
+              const d = i + 1;
+              const dateStr = `${mobileCalendarMonthCursor.year}-${String(mobileCalendarMonthCursor.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              return { dateStr, dayNum: d };
+            }),
+          ];
+          const monthTitleTh = firstDayOfMonth.toLocaleDateString('th-TH', {
+            timeZone: 'UTC',
+            month: 'long',
+            year: 'numeric',
+          });
+          const selectedCalDateObj = new Date(`${mobileSelectedCalendarDate}T00:00:00Z`);
+          const calDayKey = ([null, 'mon', 'tue', 'wed', 'thu', 'fri', null] as const)[
+            selectedCalDateObj.getUTCDay()
+          ] || null;
+          const selectedDateHolidays = getHolidaysForDate(mobileSelectedCalendarDate, activeSchool.id);
+          const selectedCalDaySlots = calDayKey
+            ? scopedTimetableSlots
+                .filter((s) => s.dayOfWeek === calDayKey)
+                .filter((s) => !(currentRole === 'teacher' && timetableOnlyMine && teacherFullName) || slotHasTeacher(s, teacherFullName))
+                .slice()
+                .sort((a, b) => a.periodNumber - b.periodNumber)
+            : [];
 
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                {(
-                  [
-                    { id: 'mon', th: 'จ.', en: 'Mon' },
-                    { id: 'tue', th: 'อ.', en: 'Tue' },
-                    { id: 'wed', th: 'พ.', en: 'Wed' },
-                    { id: 'thu', th: 'พฤ.', en: 'Thu' },
-                    { id: 'fri', th: 'ศ.', en: 'Fri' },
-                    { id: 'sat', th: 'ส.', en: 'Sat' },
-                    { id: 'sun', th: 'อา.', en: 'Sun' },
-                  ] as const
-                ).map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => setSelectedTimetableDay(d.id)}
-                    className={`min-h-[36px] px-3 rounded-lg text-xs font-semibold cursor-pointer transition whitespace-nowrap ${
-                      selectedTimetableDay === d.id
-                        ? 'bg-[var(--color-primary)] text-white'
-                        : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                    }`}
-                  >
-                    {lang === 'th' ? d.th : d.en}
-                  </button>
-                ))}
-              </div>
-
-              {currentRole === 'teacher' && (
+          return (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => setTimetableOnlyMine((prev) => !prev)}
-                  className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold cursor-pointer whitespace-nowrap ${
-                    timetableOnlyMine
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
-                  }`}
+                  onClick={() => setActiveTab('home')}
+                  className="min-h-[40px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                 >
-                  {timetableOnlyMine ? (lang === 'th' ? 'คาบฉัน' : 'Mine') : (lang === 'th' ? 'ทั้งหมด' : 'All')}
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
                 </button>
-              )}
-            </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileCalendarSync(true)}
+                    className="min-h-[36px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-primary-text)] inline-flex items-center gap-1.5 cursor-pointer hover:bg-[var(--color-card-subtle)]"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'เชื่อมต่อ Calendar' : 'Sync .ics'}</span>
+                  </button>
+                </div>
+              </div>
 
-            {(() => {
-              const teacherName = currentUser?.fullNameTh || currentUser?.fullNameEn || '';
-              const daySlots = timetableSlots
-                .filter((s) => s.dayOfWeek === selectedTimetableDay)
-                .filter((s) => {
-                  if (currentRole === 'teacher' && timetableOnlyMine && teacherName) {
-                    return slotHasTeacher(s, teacherName);
-                  }
-                  if (currentRole === 'student' && ownStudent) {
-                    const studentRoom = (ownStudent.room || '').trim();
-                    const linkedCourse = courses.find((c) => c.id === s.courseId);
-                    const enrolledInCourse = linkedCourse?.enrolledStudentIds?.includes(ownStudent.id);
-                    const matchesRoom =
-                      !s.classRoom ||
-                      !studentRoom ||
-                      s.classRoom.includes(studentRoom) ||
-                      s.classRoom.includes(ownStudent.gradeLevel);
-                    return Boolean(enrolledInCourse || matchesRoom);
-                  }
-                  return true;
-                })
-                .slice()
-                .sort((a, b) => a.periodNumber - b.periodNumber);
+              {/* Mode Switch: Day vs Month Calendar */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                  <button
+                    type="button"
+                    onClick={() => setMobileTimetableMode('day')}
+                    className={`min-h-[36px] px-3 rounded-lg text-xs font-bold cursor-pointer transition ${
+                      mobileTimetableMode === 'day'
+                        ? 'bg-[var(--color-primary)] text-white'
+                        : 'text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    {currentRole === 'teacher' ? 'รายวัน (สอน)' : 'ตารางเรียนรายวัน'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileTimetableMode('calendar')}
+                    className={`min-h-[36px] px-3 rounded-lg text-xs font-bold cursor-pointer transition ${
+                      mobileTimetableMode === 'calendar'
+                        ? 'bg-[var(--color-primary)] text-white'
+                        : 'text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    ปฏิทิน + วันหยุด
+                  </button>
+                </div>
 
-              if (daySlots.length === 0) {
-                return (
-                  <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-muted)] space-y-2">
-                    <Calendar className="w-8 h-8 mx-auto opacity-60" />
-                    <p>{lang === 'th' ? 'ไม่มีคาบเรียนในวันที่เลือก' : 'No scheduled periods for this day'}</p>
+                {currentRole === 'teacher' && (
+                  <button
+                    type="button"
+                    onClick={() => setTimetableOnlyMine((prev) => !prev)}
+                    className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold cursor-pointer whitespace-nowrap ${
+                      timetableOnlyMine
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                        : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    {timetableOnlyMine ? (lang === 'th' ? 'คาบฉัน' : 'Mine') : (lang === 'th' ? 'ทั้งหมด' : 'All')}
+                  </button>
+                )}
+              </div>
+
+              {mobileTimetableMode === 'day' ? (
+                <>
+                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                    {(
+                      [
+                        { id: 'mon', th: 'จ.', en: 'Mon' },
+                        { id: 'tue', th: 'อ.', en: 'Tue' },
+                        { id: 'wed', th: 'พ.', en: 'Wed' },
+                        { id: 'thu', th: 'พฤ.', en: 'Thu' },
+                        { id: 'fri', th: 'ศ.', en: 'Fri' },
+                        { id: 'sat', th: 'ส.', en: 'Sat' },
+                        { id: 'sun', th: 'อา.', en: 'Sun' },
+                      ] as const
+                    ).map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setSelectedTimetableDay(d.id)}
+                        className={`min-h-[36px] flex-1 px-3 rounded-lg text-xs font-semibold cursor-pointer transition whitespace-nowrap ${
+                          selectedTimetableDay === d.id
+                            ? 'bg-[var(--color-primary)] text-white'
+                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                        }`}
+                      >
+                        {lang === 'th' ? d.th : d.en}
+                      </button>
+                    ))}
                   </div>
-                );
-              }
 
-              return (
-                <div className="space-y-2.5">
-                  {daySlots.map((slot) => {
-                    const periodDef = schoolPeriods.find((p) => p.periodNumber === slot.periodNumber);
-                    const course = courses.find((c) => c.id === slot.courseId);
-                    return (
-                      <div key={slot.id} className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-3">
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-2 text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums">
-                            <span>{lang === 'th' ? `คาบที่ ${slot.periodNumber}` : `Period ${slot.periodNumber}`}</span>
-                            <span aria-hidden="true">·</span>
-                            <span>{slot.startTime || periodDef?.startTime || '--:--'} - {slot.endTime || periodDef?.endTime || '--:--'}</span>
-                          </div>
-                          <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                            {lang === 'th'
-                              ? (course?.titleTh || slot.courseTitleTh || slot.courseCode || course?.code || 'รายวิชา')
-                              : (course?.titleEn || slot.courseTitleEn || slot.courseCode || course?.code || 'Course')}
-                          </h3>
-                          <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                            {slot.classRoom || ''} {slot.room ? `· ${slot.room}` : ''}
-                          </p>
+                  {selectedTimetableDay === todayDayKey && todayHoliday && (
+                    <div className="rounded-2xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 p-3.5 text-xs space-y-1">
+                      <p className="font-bold text-rose-700 dark:text-rose-200 flex items-center gap-1.5">
+                        <CalendarDays className="w-4 h-4 shrink-0" />
+                        <span>วันนี้หยุด: {todayHoliday.nameTh}</span>
+                      </p>
+                      <p className="text-[11px] text-rose-600 dark:text-rose-300">
+                        งดการเรียนการสอนปกติตามปฏิทินวันหยุดราชการ/โรงเรียน
+                      </p>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const daySlots = scopedTimetableSlots
+                      .filter((s) => s.dayOfWeek === selectedTimetableDay)
+                      .filter((s) => {
+                        if (currentRole === 'teacher' && timetableOnlyMine && teacherFullName) {
+                          return slotHasTeacher(s, teacherFullName);
+                        }
+                        return true;
+                      })
+                      .slice()
+                      .sort((a, b) => a.periodNumber - b.periodNumber);
+
+                    if (daySlots.length === 0) {
+                      return (
+                        <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-muted)] space-y-2">
+                          <Calendar className="w-8 h-8 mx-auto opacity-60" />
+                          <p>{lang === 'th' ? 'ไม่มีคาบเรียนในวันที่เลือก' : 'No scheduled periods for this day'}</p>
                         </div>
+                      );
+                    }
 
-                        {currentRole === 'teacher' && canSelfCheckin && (
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab('checkin')}
-                            className="min-h-[44px] px-3 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer hover:opacity-90"
-                          >
-                            <ClipboardCheck className="w-4 h-4" />
-                            <span>{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
-                          </button>
-                        )}
+                    return (
+                      <div className="space-y-2.5">
+                        {daySlots.map((slot) => {
+                          const periodDef = schoolPeriods.find((p) => p.periodNumber === slot.periodNumber);
+                          const course = scopedCourses.find((c) => c.id === slot.courseId || c.code === slot.courseCode);
+                          const status = getSlotTodayCheckStatus(slot, todayBangkokStr);
+                          return (
+                            <div
+                              key={slot.id}
+                              className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 space-y-0.5">
+                                  <div className="flex items-center gap-2 text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums">
+                                    <span>{lang === 'th' ? `คาบที่ ${slot.periodNumber}` : `Period ${slot.periodNumber}`}</span>
+                                    <span aria-hidden="true">·</span>
+                                    <span>
+                                      {slot.startTime || periodDef?.startTime || '--:--'} - {slot.endTime || periodDef?.endTime || '--:--'}
+                                    </span>
+                                  </div>
+                                  <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                                    {slot.courseCode} ·{' '}
+                                    {lang === 'th'
+                                      ? course?.titleTh || slot.courseTitleTh || slot.courseCode || 'รายวิชา'
+                                      : course?.titleEn || slot.courseTitleEn || slot.courseCode || 'Course'}
+                                  </h3>
+                                  <p className="text-xs text-[var(--color-text-muted)] truncate">
+                                    {slot.classRoom || ''}
+                                    {slot.room ? ` · ห้อง ${slot.room}` : ''}
+                                    {slot.teacherName ? ` · ${slot.teacherName}` : ''}
+                                  </p>
+                                </div>
+                                {(status.hasCheckIn || status.hasCheckOut) && (
+                                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                                    {status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
+                                  </span>
+                                )}
+                              </div>
+
+                              {(currentRole === 'teacher' || currentRole === 'student') && canSelfCheckin && (
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[var(--color-border)]">
+                                  <button
+                                    type="button"
+                                    onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, 'check_in')}
+                                    className="min-h-[42px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                  >
+                                    <LogIn className="w-4 h-4" />
+                                    <span>{status.hasCheckIn ? 'เช็คอินซ้ำ' : 'เช็คอินเข้าคาบ'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, 'check_out')}
+                                    className="min-h-[42px] px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                  >
+                                    <LogOut className="w-4 h-4" />
+                                    <span>{status.hasCheckOut ? 'เช็คเอาท์ซ้ำ' : 'เช็คเอาท์คาบ'}</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
-                  })}
+                  })()}
+                </>
+              ) : (
+                <div className="space-y-3">
+                  {/* Month Selector Header */}
+                  <div className="flex items-center justify-between gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMobileCalendarMonthCursor((prev) =>
+                          prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 }
+                        )
+                      }
+                      className="min-h-[38px] px-3 rounded-xl border border-[var(--color-border)] text-xs font-bold cursor-pointer"
+                    >
+                      ก่อนหน้า
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileCalendarMonthCursor({
+                          year: Number(todayBangkokStr.slice(0, 4)),
+                          month: Number(todayBangkokStr.slice(5, 7)) - 1,
+                        });
+                        setMobileSelectedCalendarDate(todayBangkokStr);
+                      }}
+                      className="text-sm font-bold text-[var(--color-text-title)] cursor-pointer"
+                    >
+                      {monthTitleTh}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMobileCalendarMonthCursor((prev) =>
+                          prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 }
+                        )
+                      }
+                      className="min-h-[38px] px-3 rounded-xl border border-[var(--color-border)] text-xs font-bold cursor-pointer"
+                    >
+                      ถัดไป
+                    </button>
+                  </div>
+
+                  {/* Mobile 7-col Calendar */}
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 space-y-2">
+                    <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-[var(--color-text-muted)]">
+                      {['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'].map((d, i) => (
+                        <div key={d} className={i >= 5 ? 'text-rose-500' : ''}>{d}</div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {monthCells.map((cell, idx) => {
+                        if (!cell) return <div key={`mblank-${idx}`} className="h-12" />;
+                        const cellHol = monthHolidays.find((h) => h.date === cell.dateStr);
+                        const isToday = cell.dateStr === todayBangkokStr;
+                        const isSel = cell.dateStr === mobileSelectedCalendarDate;
+                        const isWknd = isWeekendDate(cell.dateStr);
+                        return (
+                          <button
+                            key={cell.dateStr}
+                            type="button"
+                            onClick={() => setMobileSelectedCalendarDate(cell.dateStr)}
+                            className={`h-12 rounded-xl border flex flex-col items-center justify-center gap-0.5 text-xs font-bold tabular-nums cursor-pointer transition ${
+                              isSel
+                                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                                : cellHol
+                                  ? 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
+                                  : isWknd
+                                    ? 'border-transparent text-[var(--color-text-muted)]'
+                                    : 'border-[var(--color-border)] text-[var(--color-text-title)]'
+                            }`}
+                          >
+                            <span className={isToday ? 'underline decoration-2' : ''}>{cell.dayNum}</span>
+                            {cellHol && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Selected Calendar Day Details */}
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
+                        วันที่ {mobileSelectedCalendarDate}
+                      </h3>
+                      <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                        {selectedDateHolidays.length > 0 ? 'วันหยุด' : `${selectedCalDaySlots.length} คาบ`}
+                      </span>
+                    </div>
+
+                    {selectedDateHolidays.map((h) => (
+                      <div key={h.id} className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 p-3 text-xs space-y-0.5">
+                        <p className="font-bold text-rose-700 dark:text-rose-200">{h.nameTh}</p>
+                        <p className="text-[11px] text-rose-600 dark:text-rose-300">{h.nameEn}</p>
+                      </div>
+                    ))}
+
+                    {selectedCalDaySlots.map((slot) => (
+                      <div key={slot.id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2">
+                        <div>
+                          <p className="text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums">
+                            คาบ {slot.periodNumber} · {slot.startTime}–{slot.endTime}
+                          </p>
+                          <p className="text-xs font-bold text-[var(--color-text-title)]">
+                            {slot.courseCode} · {slot.courseTitleTh}
+                          </p>
+                        </div>
+                        {(currentRole === 'teacher' || currentRole === 'student') && canSelfCheckin && selectedDateHolidays.length === 0 && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, 'check_in')}
+                              className="min-h-[38px] rounded-lg bg-emerald-600 text-white text-[11px] font-bold cursor-pointer"
+                            >
+                              เช็คอินเข้าคาบ
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, 'check_out')}
+                              className="min-h-[38px] rounded-lg bg-indigo-600 text-white text-[11px] font-bold cursor-pointer"
+                            >
+                              เช็คเอาท์คาบ
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {monthHolidays.length > 0 && (
+                      <div className="pt-2 border-t border-[var(--color-border)] space-y-1.5">
+                        <p className="text-xs font-bold text-[var(--color-text-title)]">วันหยุดประจำเดือน ({monthHolidays.length})</p>
+                        {monthHolidays.map((h) => (
+                          <p key={h.id} className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                            <span className="font-semibold text-rose-600 dark:text-rose-400">{h.date}</span> · {h.nameTh}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              );
-            })()}
-          </div>
-        )}
+              )}
+            </div>
+          );
+        })()}
 
         {/* TAB D: GAMES HUB (เมนูรวมเกมส์) */}
         {activeTab === 'games' && (
@@ -1904,14 +2466,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             </div>
 
             <PagedList
-              items={assignments}
+              items={scopedAssignments}
               pageSize={2}
               previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
               nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
               paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าการบ้าน' : 'Homework pages'}
               emptyState={<div className="text-center py-12 text-[var(--color-text-muted)] text-xs">ไม่มีการบ้านในระบบ</div>}
               renderItem={(asg) => {
-                const isDone = myCompletedSubmissions.has(asg.id);
+                const isDone = myCompletedSubmissions.has(asg.id) || Boolean(currentPersonId && asg.submittedStudentIds?.includes(currentPersonId));
                 return (
                   <div
                     key={asg.id}
@@ -1923,7 +2485,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   >
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-semibold text-[var(--color-text-muted)]">
-                        {courses.find(c => c.id === asg.courseId)?.code || courses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
+                        {scopedCourses.find(c => c.id === asg.courseId)?.code || scopedCourses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
                       </span>
                       <span className={`font-bold ${
                         isDone ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
@@ -1997,7 +2559,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
 
                 <PagedList
-                  items={announcements}
+                  items={scopedAnnouncements}
                   pageSize={2}
                   previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
                   nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
@@ -2066,7 +2628,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           {/* SLOT 2: CHECK-IN (or Timetable for student when self check-in is disabled) */}
           <button
             type="button"
-            onClick={() => setActiveTab(canSelfCheckin ? 'checkin' : 'timetable')}
+            onClick={() => {
+              if (canSelfCheckin) {
+                setMobileAttendanceInitialSubTab('selfie_mobile');
+                setMobilePeriodCourseId(undefined);
+                setMobilePeriodNumber(undefined);
+                setMobilePeriodDate(undefined);
+                setMobilePeriodCheckType(undefined);
+                setActiveTab('checkin');
+              } else {
+                setActiveTab('timetable');
+              }
+            }}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'checkin' || activeTab === 'leave' || (!canSelfCheckin && activeTab === 'timetable')
                 ? 'text-[var(--color-primary-text)] font-bold'
@@ -2278,6 +2851,29 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
           </ViewErrorBoundary>
         </div>
+      )}
+
+      {showMobileCalendarSync && (
+        <GoogleCalendarSyncModal
+          slots={scopedTimetableSlots}
+          assignments={scopedAssignments}
+          courses={scopedCourses}
+          schoolId={activeSchool.id}
+          schoolName={activeSchool.nameTh || activeSchool.nameEn}
+          academicYear={activeSchool.academicYear || '2569'}
+          semester={activeSchool.currentSemester || '1'}
+          filterLabel={
+            currentRole === 'student' && ownStudent
+              ? `${ownStudent.gradeLevel} ${ownStudent.room}`
+              : currentRole === 'teacher'
+                ? teacherFullName || 'ตารางสอนของฉัน'
+                : 'ตารางเรียนโรงเรียน'
+          }
+          defaultStartDate={todayBangkokStr}
+          defaultEndDate={addCalendarDays(todayBangkokStr, 120)}
+          calendarWeekStart={getCalendarWeekStart(todayBangkokStr)}
+          onClose={() => setShowMobileCalendarSync(false)}
+        />
       )}
     </div>
   );

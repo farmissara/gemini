@@ -1,5 +1,6 @@
 import { Assignment, Course, DayOfWeek, TimetableSlot } from '../types';
 import { parseSlotTeachersFromRaw } from './timetableTeachers';
+import { getHolidaysInRange } from './thaiHolidays';
 
 const BANGKOK_OFFSET_MINUTES = 7 * 60;
 const ICAL_DAYS: Record<DayOfWeek, string> = {
@@ -32,6 +33,10 @@ function formatDateInput(date: Date): string {
     String(date.getUTCMonth() + 1).padStart(2, '0'),
     String(date.getUTCDate()).padStart(2, '0'),
   ].join('-');
+}
+
+function formatIcsAllDayValue(dateStr: string): string {
+  return dateStr.replace(/-/g, '');
 }
 
 function parseTime(value: string): number | null {
@@ -114,6 +119,7 @@ export interface BuildTimetableIcsOptions {
   courses?: Course[];
   includeTimetable?: boolean;
   includeAssignments?: boolean;
+  includeHolidays?: boolean;
 }
 
 function parseAssignmentDueWindow(dueDateRaw: string): {
@@ -157,6 +163,7 @@ export function buildTimetableIcs(
     courses = [],
     includeTimetable = true,
     includeAssignments = assignments.length > 0,
+    includeHolidays = true,
   } = options;
 
   const startDate = parseDateInput(startDateValue);
@@ -255,8 +262,28 @@ export function buildTimetableIcs(
     });
   }
 
+  if (includeHolidays) {
+    const holidays = getHolidaysInRange(startDateValue, endDateValue, schoolId);
+    holidays.forEach((holiday) => {
+      const nextDate = addCalendarDays(holiday.date, 1);
+      const categoryLabel = holiday.type === 'school' ? 'วันหยุดพิเศษโรงเรียน' : 'วันหยุดราชการ';
+      const uid = `${encodeURIComponent(schoolId)}-hol-${encodeURIComponent(holiday.id)}@baanpakkru`;
+      events.push([
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART;VALUE=DATE:${formatIcsAllDayValue(holiday.date)}`,
+        `DTEND;VALUE=DATE:${formatIcsAllDayValue(nextDate)}`,
+        `SUMMARY:${escapeIcsText(`${categoryLabel}: ${holiday.nameTh}`)}`,
+        `DESCRIPTION:${escapeIcsText(`${holiday.nameTh} (${holiday.nameEn})\nประเภท: ${categoryLabel}`)}`,
+        'TRANSP:TRANSPARENT',
+        'END:VEVENT',
+      ]);
+    });
+  }
+
   if (events.length === 0) {
-    throw new Error('ไม่พบตารางเรียนหรือกำหนดส่งงานที่พร้อมส่งออก');
+    throw new Error('ไม่พบตารางเรียน กำหนดส่งงาน หรือวันหยุดที่พร้อมส่งออก');
   }
 
   const lines = [

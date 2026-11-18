@@ -69,8 +69,10 @@ import {
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
+import { getHolidayForDate, getUpcomingHolidays, isWeekendDate } from '../lib/thaiHolidays';
 import { filterAttendanceForUser, resolveLinkedStudentsForUser } from '../lib/attendanceScope';
 import {
+  filterAnnouncementsForRole,
   filterAssignmentsForPersonalRole,
   filterCoursesForPersonalRole,
   filterTimetableSlotsForPersonalRole,
@@ -284,6 +286,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     () => filterTimetableSlotsForPersonalRole(timetableSlots, currentUser, students, scopedCourses),
     [currentUser, scopedCourses, students, timetableSlots]
   );
+  const scopedAnnouncements = useMemo(
+    () => filterAnnouncementsForRole(announcements, currentUser),
+    [announcements, currentUser]
+  );
+  const todayHoliday = useMemo(
+    () => getHolidayForDate(todayStr, school?.id),
+    [todayStr, school?.id]
+  );
+  const upcomingHoliday = useMemo(
+    () => getUpcomingHolidays(todayStr, 30, school?.id)[0] || null,
+    [todayStr, school?.id]
+  );
+  const isTodayWeekend = useMemo(() => isWeekendDate(todayStr), [todayStr]);
 
   // Teacher / Admin Today's Desk computations
   const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
@@ -430,8 +445,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Top honor students (scoped for student/parent)
   const topStudents = [...scopedStudents]
     .sort((a, b) => {
-      const sumA = calculateStudentAcademicSummary({ student: a, courses, grades: scopedGrades, gradingSystem: systemConfig.gradingSystem });
-      const sumB = calculateStudentAcademicSummary({ student: b, courses, grades: scopedGrades, gradingSystem: systemConfig.gradingSystem });
+      const sumA = calculateStudentAcademicSummary({ student: a, courses: scopedCourses, grades: scopedGrades, gradingSystem: systemConfig.gradingSystem });
+      const sumB = calculateStudentAcademicSummary({ student: b, courses: scopedCourses, grades: scopedGrades, gradingSystem: systemConfig.gradingSystem });
       const scoreA = sumA.hideGpaCalculations ? (sumA.averageRawScore ?? 0) / 25 : (sumA.hasRecordedGrades && sumA.gpax !== null ? sumA.gpax : 0);
       const scoreB = sumB.hideGpaCalculations ? (sumB.averageRawScore ?? 0) / 25 : (sumB.hasRecordedGrades && sumB.gpax !== null ? sumB.gpax : 0);
       return scoreB - scoreA;
@@ -766,17 +781,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
               {isMoreMenuOpen && (
                 <div className="absolute right-0 top-10 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      setDashboardTab('live_attendance');
-                    }}
-                    className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'เช็คชื่อสด' : 'Live GPS'}</span>
-                    <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{displayRecords.length}</span>
-                  </button>
+                  {(isStaffUser || currentRole === 'parent') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setDashboardTab('live_attendance');
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? (currentRole === 'parent' ? 'ประวัติเข้า-ออก' : 'เช็คชื่อสด') : (currentRole === 'parent' ? 'Attendance Log' : 'Live GPS')}</span>
+                      <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{displayRecords.length}</span>
+                    </button>
+                  )}
                   {!(currentRole === 'student' && schoolPermissions?.student_treasure_game === false) && (
                     <button
                       type="button"
@@ -907,34 +924,62 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ? `ปีการศึกษา ${systemConfig.academicYear} (${formatSemesterLabel(systemConfig.currentSemester)})`
                       : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
                   </span>
+                  {(todayHoliday || upcomingHoliday) && (
+                    <>
+                      <span className="text-[var(--color-text-muted)]" aria-hidden="true">·</span>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('timetable')}
+                        className={`font-semibold hover:underline cursor-pointer ${
+                          todayHoliday
+                            ? 'text-rose-700 dark:text-rose-300'
+                            : 'text-amber-700 dark:text-amber-300'
+                        }`}
+                      >
+                        {todayHoliday
+                          ? (lang === 'th' ? `วันหยุดวันนี้: ${todayHoliday.nameTh}` : `Holiday Today: ${todayHoliday.nameEn}`)
+                          : upcomingHoliday
+                            ? (lang === 'th' ? `วันหยุดถัดไป (${upcomingHoliday.date}): ${upcomingHoliday.nameTh}` : `Upcoming (${upcomingHoliday.date}): ${upcomingHoliday.nameEn}`)
+                            : null}
+                      </button>
+                    </>
+                  )}
                 </div>
                 <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-[var(--color-text-title)] truncate">
                   {timeGreeting}, {userDisplayName}
                 </h2>
                 <p className="text-xs text-[var(--color-text-muted)] truncate">
-                  {currentRole === 'teacher'
-                    ? teacherNextSlot
+                  {todayHoliday
+                    ? lang === 'th'
+                      ? `วันนี้เป็นวันหยุด: ${todayHoliday.nameTh} · สามารถเช็กปฏิทินโรงเรียนและงานค้างได้`
+                      : `Holiday Today: ${todayHoliday.nameEn} · Check school calendar & assignments`
+                    : isTodayWeekend
                       ? lang === 'th'
-                        ? `วันนี้คุณมีสอน ${todayScheduledSlots.length} คาบ · คาบแรก ${teacherNextSlot.courseTitleTh || teacherNextSlot.courseCode} (${teacherNextSlot.room || 'ห้องเรียน'})`
-                        : `You have ${todayScheduledSlots.length} classes today · First: ${teacherNextSlot.courseTitleEn || teacherNextSlot.courseCode}`
-                      : lang === 'th'
-                        ? 'วันนี้ยังไม่มีคาบสอนในตาราง · พร้อมตรวจงานและบันทึกคะแนน ปพ.5'
-                        : 'No classes scheduled today · Ready for grading and student support'
-                    : currentRole === 'student'
-                      ? lang === 'th'
-                        ? `วันนี้มีเรียน ${todayScheduledSlots.length} คาบ · ติดตามงานที่ได้รับมอบหมายและเวลาเข้าเรียนของคุณ`
-                        : `${todayScheduledSlots.length} classes today · Track your attendance and assignments`
-                      : currentRole === 'parent'
-                        ? primaryScopedStudent
+                        ? 'วันหยุดสุดสัปดาห์ · ไม่มีคาบเรียนปกติ ตรวจสอบปฏิทินวันหยุดราชการได้ในตารางเรียน'
+                        : 'Weekend · Check upcoming holidays and assignments in your calendar'
+                      : currentRole === 'teacher'
+                        ? teacherNextSlot
                           ? lang === 'th'
-                            ? `ข้อมูลผู้เรียนในความดูแล: ${primaryScopedStudent.firstNameTh} ${primaryScopedStudent.lastNameTh} (ชั้น ${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
-                            : `Linked student: ${primaryScopedStudent.firstNameEn} ${primaryScopedStudent.lastNameEn} (${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
+                            ? `วันนี้คุณมีสอน ${todayScheduledSlots.length} คาบ · คาบแรก ${teacherNextSlot.courseTitleTh || teacherNextSlot.courseCode} (${teacherNextSlot.room || 'ห้องเรียน'})`
+                            : `You have ${todayScheduledSlots.length} classes today · First: ${teacherNextSlot.courseTitleEn || teacherNextSlot.courseCode}`
                           : lang === 'th'
-                            ? 'ติดตามการเข้าเรียน ผลการเรียน และประกาศของบุตรหลาน'
-                            : 'Track your child’s attendance, grades, and school updates'
-                        : lang === 'th'
-                          ? `ภาพรวมสถานศึกษาประจำวัน · นักเรียนในระบบ ${totalStudents} คน · พร้อมใช้งานทุกโมดูล`
-                          : `Daily campus summary · ${totalStudents} active students`}
+                            ? 'วันนี้ยังไม่มีคาบสอนในตาราง · พร้อมตรวจงานและบันทึกคะแนน ปพ.5'
+                            : 'No classes scheduled today · Ready for grading and student support'
+                        : currentRole === 'student'
+                          ? lang === 'th'
+                            ? `วันนี้มีเรียน ${todayScheduledSlots.length} คาบ · ติดตามงานที่ได้รับมอบหมายและเวลาเข้าเรียนของคุณ`
+                            : `${todayScheduledSlots.length} classes today · Track your attendance and assignments`
+                          : currentRole === 'parent'
+                            ? primaryScopedStudent
+                              ? lang === 'th'
+                                ? `ข้อมูลผู้เรียนในความดูแล: ${primaryScopedStudent.firstNameTh} ${primaryScopedStudent.lastNameTh} (ชั้น ${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
+                                : `Linked student: ${primaryScopedStudent.firstNameEn} ${primaryScopedStudent.lastNameEn} (${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
+                              : lang === 'th'
+                                ? 'ติดตามการเข้าเรียน ผลการเรียน และประกาศของบุตรหลาน'
+                                : 'Track your child’s attendance, grades, and school updates'
+                            : lang === 'th'
+                              ? `ภาพรวมสถานศึกษาประจำวัน · นักเรียนในระบบ ${totalStudents} คน · พร้อมใช้งานทุกโมดูล`
+                              : `Daily campus summary · ${totalStudents} active students`}
                 </p>
               </div>
 
@@ -1197,7 +1242,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                         </div>
                         <div className="flex items-baseline gap-2.5">
-                          <span className="type-kpi tabular-nums">{announcements.length}</span>
+                          <span className="type-kpi tabular-nums">{scopedAnnouncements.length}</span>
                           <span className="type-meta">{lang === 'th' ? 'ข่าวสารล่าสุด' : 'school updates'}</span>
                         </div>
                       </button>
@@ -1526,7 +1571,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           actionRows.push({
                             id: 'parent-announcements',
                             label: lang === 'th' ? 'ข่าวสารและประกาศโรงเรียน' : 'School Announcements',
-                            value: `${announcements.length} ${lang === 'th' ? 'ประกาศ' : 'posts'}`,
+                            value: `${scopedAnnouncements.length} ${lang === 'th' ? 'ประกาศ' : 'posts'}`,
                             onClick: () => setDashboardTab('announcements'),
                           });
                         }
@@ -1586,7 +1631,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           actionRows.push({
                             id: 'gradebook',
                             label: lang === 'th' ? 'บันทึกคะแนน ปพ.5' : 'Gradebook',
-                            value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
+                            value: `${scopedCourses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
                             onClick: () => onNavigate('gradebook'),
                           });
                         }
@@ -2439,7 +2484,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 <div className="saas-card-body divide-y divide-[var(--color-border)]">
-                  <PagedList items={announcements} pageSize={3} renderItem={(item) => (
+                  <PagedList items={scopedAnnouncements} pageSize={3} renderItem={(item) => (
                     <div key={item.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5 min-w-0">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="type-card-title">{item.title}</span>
@@ -2508,8 +2553,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {(() => {
                           const summary = calculateStudentAcademicSummary({
                             student: st,
-                            courses,
-                            grades,
+                            courses: scopedCourses,
+                            grades: scopedGrades,
                             gradingSystem: systemConfig.gradingSystem,
                           });
                           if (summary.hideGpaCalculations) {
