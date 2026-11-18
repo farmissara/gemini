@@ -41,3 +41,7 @@ create policy "student_career_quests_all"
   to anon, authenticated
   using (true)
   with check (true);
+
+grant select, insert, update, delete on public.student_career_quests to anon, authenticated;
+
+notify pgrst, 'reload schema';

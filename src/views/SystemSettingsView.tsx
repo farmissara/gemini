@@ -36,7 +36,7 @@ import {
   Trash2,
   Shield
 } from 'lucide-react';
-import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, SchoolTier } from '../types';
+import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
 import {
   approveStudentAccountInSupabase,
@@ -55,10 +55,11 @@ import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLoginSettingsCard';
 import { SchoolPermissionSettingsView } from './SchoolPermissionSettingsView';
+import { SchoolPackagesAndAiPanel } from '../components/admin/SchoolPackagesAndAiPanel';
 import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { getAuditLogs } from '../lib/auditLog';
-import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import { getSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
@@ -79,6 +80,8 @@ interface SystemSettingsViewProps {
   activeSchool: School;
   students: Student[];
   currentRole: UserRole;
+  currentUser?: AuthUser | null;
+  promotions?: PromotionCampaign[];
   lang: AppLanguage;
   campusGates?: CampusGateGeofence[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
@@ -96,6 +99,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   activeSchool,
   students,
   currentRole,
+  currentUser,
+  promotions = [],
   lang,
   campusGates = [],
   onUpdateCampusGates,
@@ -870,7 +875,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             className="seg-tab-btn"
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'แพ็กเกจโมดูล & Audit Log' : 'Modules & Audit Log'}</span>
+            <span>{lang === 'th' ? 'แพ็กเกจระบบ สิทธิ์ AI & Audit Log' : 'Packages, AI Access & Audit Log'}</span>
           </button>
         )}
       </div>
@@ -2476,80 +2481,25 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           </div>
         )}
 
-      {/* TAB 9: SaaS Module Feature Flags & Audit Log */}
+      {/* TAB 9: SaaS Leveled Packages, AI Access Control & Audit Log */}
       {activeTab === 'saas_audit' &&
         ['admin', 'super_admin'].includes(currentRole) && (() => {
           const allLogs = getAuditLogs(activeSchool.id);
           const filteredLogs = auditFilter === 'all' ? allLogs : allLogs.filter(l => l.actionType === auditFilter);
-          const applyTier = (tier: SchoolTier) => {
-            const next = { ...TIER_PRESETS[tier] };
-            setLocalFlags(next);
-            saveSchoolFeatureFlags(activeSchool.id, next);
-            onUpdateFeatureFlags?.(next);
-          };
-          const toggleFlag = (key: keyof Omit<SchoolFeatureFlags, 'tier'>) => {
-            const next = { ...localFlags, [key]: !localFlags[key] };
-            setLocalFlags(next);
-            saveSchoolFeatureFlags(activeSchool.id, next);
-            onUpdateFeatureFlags?.(next);
-          };
           return (
             <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                      ขนาดโรงเรียน &amp; เปิด/ปิดโมดูลใช้งาน (Feature Flags)
-                    </h3>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      ปรับความซับซ้อนของเมนูตามขนาดสถานศึกษาเพื่อลดความรกหน้าจอให้ครูและผู้ปกครอง
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {(['small', 'standard', 'enterprise'] as SchoolTier[]).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => applyTier(t)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                          localFlags.tier === t
-                            ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
-                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)]'
-                        }`}
-                      >
-                        {t === 'small' ? 'โรงเรียนขนาดเล็ก' : t === 'standard' ? 'ขนาดกลาง' : 'ครบทุกฟีเจอร์'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
-                  {FEATURE_FLAG_LABELS.map((item) => {
-                    const enabled = localFlags[item.key];
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => toggleFlag(item.key)}
-                        className={`p-3 rounded-xl border text-left flex items-center justify-between gap-2 transition cursor-pointer ${
-                          enabled
-                            ? 'bg-[var(--color-card)] border-[var(--color-primary)]'
-                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] opacity-75'
-                        }`}
-                      >
-                        <span className="font-semibold text-[var(--color-text-title)]">{item.labelTh}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          enabled
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
-                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                        }`}>
-                          {enabled ? 'เปิด' : 'ปิด'}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <SchoolPackagesAndAiPanel
+                activeSchool={activeSchool}
+                currentRole={currentRole}
+                currentUser={currentUser}
+                lang={lang}
+                flags={localFlags}
+                promotions={promotions}
+                onUpdateFlags={(next) => {
+                  setLocalFlags(next);
+                  onUpdateFeatureFlags?.(next);
+                }}
+              />
 
               <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">

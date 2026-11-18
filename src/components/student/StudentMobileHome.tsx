@@ -67,6 +67,10 @@ interface StudentMobileHomeProps {
   canAccessHomework: boolean;
   canPlayGames: boolean;
   canViewGrades: boolean;
+  canViewTimetable?: boolean;
+  canOpenPortfolio?: boolean;
+  canOpenLeave?: boolean;
+  canOpenAnnouncements?: boolean;
   getSlotTodayCheckStatus: (
     slot: TimetableSlot,
     dateValue: string
@@ -120,6 +124,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   canAccessHomework,
   canPlayGames,
   canViewGrades,
+  canViewTimetable = true,
+  canOpenPortfolio = true,
+  canOpenLeave = true,
+  canOpenAnnouncements = true,
   getSlotTodayCheckStatus,
   onOpenCheckin,
   onTriggerPeriodCheckin,
@@ -349,6 +357,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         })()}
 
         {/* Bottom Primary Action Inside Hero */}
+        {(canSelfCheckin || canViewTimetable) && (
         <div className="relative z-10 px-5 pb-5 pt-2">
           <button
             type="button"
@@ -403,6 +412,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
           </button>
         </div>
+        )}
       </section>
 
       {/* 2. VISUAL PROGRESS CARDS — Attendance, Grades & Homework (60-30-10 Discipline) */}
@@ -766,6 +776,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {/* Tile 1: Timetable */}
+          {canViewTimetable && (
           <button
             type="button"
             onClick={() => onOpenTimetable('day')}
@@ -789,6 +800,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               </p>
             </div>
           </button>
+          )}
 
           {/* Tile 2: Grades */}
           {canViewGrades && (
@@ -812,6 +824,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           )}
 
           {/* Tile 3: Portfolio (Real Data) */}
+          {canOpenPortfolio && (
           <button
             type="button"
             onClick={onOpenPortfolio}
@@ -835,6 +848,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               </p>
             </div>
           </button>
+          )}
 
           {/* Tile 4: Homework */}
           {canAccessHomework && (
@@ -864,6 +878,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           )}
 
           {/* Tile 5: Leave Request */}
+          {canOpenLeave && (
           <button
             type="button"
             onClick={onOpenLeave}
@@ -887,6 +902,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               </p>
             </div>
           </button>
+          )}
 
           {/* Tile 6: Games or Announcements */}
           {canPlayGames ? (
@@ -907,7 +923,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 </p>
               </div>
             </button>
-          ) : (
+          ) : canOpenAnnouncements ? (
             <button
               type="button"
               onClick={() => onOpenAnnouncements()}
@@ -925,7 +941,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 </p>
               </div>
             </button>
-          )}
+          ) : null}
         </div>
 
         {onOpenCareerQuest && (
@@ -956,7 +972,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
       </section>
 
       {/* 5. LATEST SCHOOL ANNOUNCEMENT HIGHLIGHT (Single Clean Editorial Card) */}
-      {latestAnnouncement && (
+      {canOpenAnnouncements && latestAnnouncement && (
         <section aria-label={lang === 'th' ? 'ประกาศล่าสุด' : 'Latest announcement'} className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-xs font-semibold text-[var(--color-text-muted)]">

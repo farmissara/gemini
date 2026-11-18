@@ -61,6 +61,10 @@ interface StudentDesktopDashboardProps {
   studentCanSelfCheckin: boolean;
   studentCanViewGrades: boolean;
   studentCanUploadPortfolio?: boolean;
+  canOpenCareerQuest?: boolean;
+  canViewTimetable?: boolean;
+  canAccessHomework?: boolean;
+  canViewDigitalId?: boolean;
   onNavigate: (tab: NavTab) => void;
   onOpenAnnouncementsTab: () => void;
   onOpenPhotoRecord: (record: AttendanceRecord) => void;
@@ -97,6 +101,10 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
   studentCanSelfCheckin,
   studentCanViewGrades,
   studentCanUploadPortfolio = true,
+  canOpenCareerQuest = true,
+  canViewTimetable = true,
+  canAccessHomework = true,
+  canViewDigitalId = true,
   onNavigate,
   onOpenAnnouncementsTab,
   onOpenPhotoRecord,
@@ -371,7 +379,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                     : 'School Check-in'}
               </span>
             </button>
-          ) : (
+          ) : canViewTimetable ? (
             <button
               type="button"
               onClick={() => onNavigate('timetable')}
@@ -380,16 +388,18 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
               <Calendar className="w-4 h-4 shrink-0" />
               <span>{lang === 'th' ? 'ดูตารางเรียนวันนี้' : 'View Today’s Schedule'}</span>
             </button>
-          )}
+          ) : null}
 
-          <button
-            type="button"
-            onClick={() => onNavigate('timetable')}
-            className="min-h-[44px] px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-bg)] text-[var(--color-text-title)] text-sm font-medium inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <span>{lang === 'th' ? 'ตารางเรียน' : 'Timetable'}</span>
-            <ArrowUpRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-          </button>
+          {canViewTimetable && (
+            <button
+              type="button"
+              onClick={() => onNavigate('timetable')}
+              className="min-h-[44px] px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-bg)] text-[var(--color-text-title)] text-sm font-medium inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <span>{lang === 'th' ? 'ตารางเรียน' : 'Timetable'}</span>
+              <ArrowUpRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+            </button>
+          )}
         </div>
       </section>
 
@@ -416,14 +426,16 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                   {attendanceStanding.label}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => onNavigate(studentCanSelfCheckin ? 'mobile_checkin' : 'timetable')}
-                className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <span>{lang === 'th' ? 'รายละเอียด' : 'Details'}</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              {(studentCanSelfCheckin || canViewTimetable) && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate(studentCanSelfCheckin ? 'mobile_checkin' : 'timetable')}
+                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <span>{lang === 'th' ? 'รายละเอียด' : 'Details'}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Big Tabular Metric */}
@@ -695,13 +707,15 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                     {lang === 'th' ? 'สรุปภาระงานและแบบฝึกหัดทั้งหมด' : 'Overview of assigned work'}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('homework')}
-                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                >
-                  {lang === 'th' ? 'เปิดหน้าการบ้าน →' : 'Open tasks →'}
-                </button>
+                {canAccessHomework && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('homework')}
+                    className="text-xs font-medium text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                  >
+                    {lang === 'th' ? 'เปิดหน้าการบ้าน →' : 'Open tasks →'}
+                  </button>
+                )}
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold tracking-tight text-[var(--color-text-title)] tabular-nums">
@@ -752,14 +766,16 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                         : `${todayScheduledSlots.length} periods scheduled`}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => onNavigate('timetable')}
-                className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <span>{lang === 'th' ? 'ดูตารางทั้งหมด' : 'Full timetable'}</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              {canViewTimetable && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('timetable')}
+                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <span>{lang === 'th' ? 'ดูตารางทั้งหมด' : 'Full timetable'}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {todayHoliday || isTodayWeekend ? (
@@ -867,14 +883,16 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                       : 'No assignments yet'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => onNavigate('homework')}
-                className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
-              >
-                <span>{lang === 'th' ? 'เปิดหน้าการบ้าน' : 'All tasks'}</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              {canAccessHomework && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('homework')}
+                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <span>{lang === 'th' ? 'เปิดหน้าการบ้าน' : 'All tasks'}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {homeworkStats.total > 0 && (
@@ -969,14 +987,16 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                   <span>{lang === 'th' ? 'แฟ้มผลงานของฉัน' : 'My Portfolio'}</span>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => onNavigate('student_id_cards')}
-                className="inline-flex items-center gap-1.5 hover:text-[var(--color-primary-text)] transition cursor-pointer"
-              >
-                <CreditCard className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                <span>{lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital Student ID'}</span>
-              </button>
+              {canViewDigitalId && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('student_id_cards')}
+                  className="inline-flex items-center gap-1.5 hover:text-[var(--color-primary-text)] transition cursor-pointer"
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital Student ID'}</span>
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -985,6 +1005,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       {/* ==================================================================== */}
       {/* 4. CAREER QUEST AI LAUNCH & READINESS STRIP                          */}
       {/* ==================================================================== */}
+      {canOpenCareerQuest && (
       <section
         aria-label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน Career Quest AI' : 'Career Quest AI'}
         className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -1040,6 +1061,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
           <ChevronRight className="w-4 h-4" />
         </button>
       </section>
+      )}
     </div>
   );
 };

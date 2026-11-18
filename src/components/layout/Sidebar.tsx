@@ -515,7 +515,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     categories.forEach(cat => {
       cat.items.forEach(item => {
         if (!item.roles.includes(currentRole)) return;
-        if (!isTabEnabledByFeatureFlags(item.id, featureFlags)) return;
+        if (!isTabEnabledByFeatureFlags(item.id, featureFlags, currentRole)) return;
         if (!isAllowedBySchoolPolicy(item.id)) return;
         if (
           item.labelTh.toLowerCase().includes(query) ||
@@ -550,7 +550,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       .map(id => all.find(i =>
         i.id === id &&
         i.roles.includes(currentRole) &&
-        isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+        isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
         isAllowedBySchoolPolicy(i.id)
       ))
       .filter((i): i is NavItemDef => Boolean(i));
@@ -563,7 +563,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     categories.forEach((cat) => {
       cat.items.forEach((item) => {
         if (seen.has(item.id)) return;
-        if (!item.roles.includes(currentRole) || !isTabEnabledByFeatureFlags(item.id, featureFlags) || !isAllowedBySchoolPolicy(item.id)) return;
+        if (!item.roles.includes(currentRole) || !isTabEnabledByFeatureFlags(item.id, featureFlags, currentRole) || !isAllowedBySchoolPolicy(item.id)) return;
         seen.add(item.id);
         if (!FOCUS_TEACHER_TABS.has(item.id) && item.id !== currentTab) {
           hidden += 1;
@@ -614,7 +614,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const visibleItems = categories.flatMap((cat) =>
       cat.items.filter((i) =>
         i.roles.includes(currentRole) &&
-        isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+        isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
         isAllowedBySchoolPolicy(i.id) &&
         (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
       )
@@ -773,7 +773,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 (i) =>
                   i.roles.includes(currentRole) &&
                   !pinnedIds.has(i.id) &&
-                  isTabEnabledByFeatureFlags(i.id, featureFlags) &&
+                  isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
                   isAllowedBySchoolPolicy(i.id) &&
                   (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
               );

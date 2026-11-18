@@ -45,6 +45,7 @@ import type {
   HomeworkSubmission,
   LeaveRequest,
   LeaveStatus,
+  PackageLevelId,
   School,
   SchoolFeatureFlags,
   SchoolTier,
@@ -59,7 +60,15 @@ import {
   listPendingSchoolRegistrations,
   PendingSchoolRegistration,
 } from '../../lib/authDb';
-import { getSchoolFeatureFlags, saveSchoolFeatureFlags, TIER_PRESETS } from '../../lib/schoolFeatureFlags';
+import {
+  buildFlagsFromLevel,
+  getPackageLevelLabel,
+  getSchoolFeatureFlags,
+  normalizeSchoolTier,
+  saveSchoolFeatureFlags,
+  TIER_PRESETS,
+} from '../../lib/schoolFeatureFlags';
+import { saveSchoolFeatureFlagsToDb } from '../../lib/schoolPackageStore';
 import { getLocalDateString } from '../../lib/date';
 
 // Reusable Mobile Bottom Sheet (Thumb-zone friendly)
@@ -978,13 +987,13 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
     setFlagDraft(getSchoolFeatureFlags(school.id));
   };
 
-  const handleApplyTier = (tier: SchoolTier) => {
+  const handleApplyTier = async (tier: PackageLevelId) => {
     if (!selectedSchoolSheet) return;
-    const nextFlags = { ...TIER_PRESETS[tier] };
+    const nextFlags = buildFlagsFromLevel(tier);
     setFlagDraft(nextFlags);
-    saveSchoolFeatureFlags(selectedSchoolSheet.id, nextFlags);
+    await saveSchoolFeatureFlagsToDb(selectedSchoolSheet.id, nextFlags);
     onUpdateSchoolFeatureFlags?.(selectedSchoolSheet.id, nextFlags);
-    notify(`อัปเดตแพ็กเกจ ${selectedSchoolSheet.nameTh} เป็น ${tier.toUpperCase()}`);
+    notify(`อัปเดตแพ็กเกจ ${selectedSchoolSheet.nameTh} เป็น ${getPackageLevelLabel(tier, lang)}`);
   };
 
   return (
@@ -1376,25 +1385,25 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
               </div>
             )}
 
-            {/* Tier Presets */}
+            {/* Leveled Packages */}
             {flagDraft && (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'แพ็กเกจโมดูลโรงเรียน (Tier)' : 'School Feature Tier'}
+                  {lang === 'th' ? 'ระดับแพ็กเกจโมดูลโรงเรียน (Level 1–4)' : 'School Package Level (1–4)'}
                 </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['small', 'standard', 'enterprise'] as SchoolTier[]).map((tier) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {(['level_1', 'level_2', 'level_3', 'level_4'] as PackageLevelId[]).map((tier) => (
                     <button
                       key={tier}
                       type="button"
-                      onClick={() => handleApplyTier(tier)}
-                      className={`min-h-[44px] rounded-xl border text-xs font-bold uppercase cursor-pointer transition ${
-                        flagDraft.tier === tier
+                      onClick={() => void handleApplyTier(tier)}
+                      className={`min-h-[44px] px-2.5 rounded-xl border text-xs font-bold cursor-pointer transition text-left ${
+                        normalizeSchoolTier(flagDraft.tier) === tier
                           ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
                           : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
                       }`}
                     >
-                      {tier}
+                      {getPackageLevelLabel(tier, lang)}
                     </button>
                   ))}
                 </div>

@@ -25,9 +25,11 @@ import {
   RefreshCw,
   BookOpen,
   Trash2,
+  Package,
 } from 'lucide-react';
 import { SuperAdminCentralExamManager } from './SuperAdminCentralExamManager';
 import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
+import { SuperAdminPackagesPanel } from '../components/admin/SuperAdminPackagesPanel';
 import {
   approvePendingSchoolRegistration,
   cancelPendingSchoolRegistrationInSupabase,
@@ -40,12 +42,23 @@ import {
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { fetchSchoolCounts } from '../lib/supabase';
 import { fetchAuditLogsFromSupabase, getAuditLogs } from '../lib/auditLog';
-import { FEATURE_FLAG_LABELS, TIER_PRESETS, getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import {
+  DEFAULT_PACKAGE_CATALOG,
+  FEATURE_FLAG_LABELS,
+  PACKAGE_CATEGORY_META,
+  buildFlagsFromLevel,
+  countEnabledFeatures,
+  getPackageLevelLabel,
+  getSchoolFeatureFlags,
+  getStoredPackageCatalog,
+  normalizeSchoolTier,
+} from '../lib/schoolFeatureFlags';
+import { loadPackageCatalog, saveSchoolFeatureFlagsToDb } from '../lib/schoolPackageStore';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
 import { 
   School, 
-  SchoolTier,
+  PackageLevelConfig,
   SchoolFeatureFlags,
   UserRole, 
   RolePermissionConfig, 
@@ -75,7 +88,7 @@ interface SuperAdminConsoleViewProps {
   onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
   coordinationUnreadCount?: number;
   onOpenCoordinationDesk?: () => void;
-  initialSubTab?: 'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs';
+  initialSubTab?: 'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs';
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -97,9 +110,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   onOpenCoordinationDesk,
   initialSubTab,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs'>(
+  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs'>(
     initialSubTab || 'approvals'
   );
+  const [packageCatalog, setPackageCatalog] = useState<PackageLevelConfig[]>(() => getStoredPackageCatalog() || DEFAULT_PACKAGE_CATALOG);
   const [flagEditorSchool, setFlagEditorSchool] = useState<School | null>(null);
   const [flagDraft, setFlagDraft] = useState<SchoolFeatureFlags | null>(null);
   const [auditSchoolFilter, setAuditSchoolFilter] = useState<string>('all');
@@ -115,6 +129,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       setActiveSubTab(initialSubTab);
     }
   }, [initialSubTab]);
+
+  useEffect(() => {
+    void loadPackageCatalog().then(({ catalog }) => setPackageCatalog(catalog));
+  }, []);
   const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
   const [pendingRegistrations, setPendingRegistrations] = useState<PendingSchoolRegistration[]>([]);
@@ -579,6 +597,15 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         </button>
         <button
           type="button"
+          data-active={activeSubTab === 'packages'}
+          onClick={() => setActiveSubTab('packages')}
+          className="seg-tab-btn"
+        >
+          <Package className="w-3.5 h-3.5" />
+          <span>แพ็กเกจ &amp; เปิด/ปิดทุกโมดูล</span>
+        </button>
+        <button
+          type="button"
           data-active={activeSubTab === 'schools'}
           onClick={() => setActiveSubTab('schools')}
           className="seg-tab-btn"
@@ -606,17 +633,25 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         </button>
         <button
           type="button"
+          data-active={activeSubTab === 'audit_logs'}
           onClick={() => setActiveSubTab('audit_logs')}
-          className={`flex items-center gap-2 px-4 py-2.5 border-b-2 text-xs font-bold transition shrink-0 cursor-pointer ${
-            activeSubTab === 'audit_logs'
-              ? 'border-[var(--color-primary)] text-[var(--color-primary-text)]'
-              : 'border-transparent text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-          }`}
+          className="seg-tab-btn"
         >
-          <ShieldCheck className="w-4 h-4" />
+          <ShieldCheck className="w-3.5 h-3.5" />
           <span>Audit Log ตรวจสอบระบบ</span>
         </button>
       </div>
+
+      {activeSubTab === 'packages' && (
+        <SuperAdminPackagesPanel
+          lang={lang}
+          onCatalogSaved={(nextCatalog) => setPackageCatalog(nextCatalog)}
+          onOrderApprovedFlags={(schoolId, activatedFlags) => {
+            onUpdateSchoolFeatureFlags?.(schoolId, activatedFlags);
+          }}
+          onNotify={(msg) => showToast(msg)}
+        />
+      )}
 
       {activeSubTab === 'approvals' && (
         <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 shadow-xs space-y-4">
@@ -1216,7 +1251,10 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                           },
                           {
                             id: 'feature_flags',
-                            label: `ตั้งค่าโมดูล (${getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise').tier})`,
+                            label: (() => {
+                              const currentSchoolFlags = getSchoolFeatureFlags(s.id, s.schoolTier || 'enterprise');
+                              return `ตั้งค่าโมดูล (${getPackageLevelLabel(currentSchoolFlags.tier, lang, packageCatalog)} · ${countEnabledFeatures(currentSchoolFlags)}/${FEATURE_FLAG_LABELS.length})`;
+                            })(),
                             icon: <Sparkles className="w-3.5 h-3.5" />,
                             variant: 'warning',
                             onClick: () => {
@@ -1355,56 +1393,100 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         );
       })()}
 
-      {/* Modal: School Feature Flags & Tier Editor */}
+      {/* Modal: School Feature Flags & Leveled Package Editor */}
       {flagEditorSchool && flagDraft && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto text-xs">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-3xl p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div>
                 <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  แพ็กเกจ &amp; โมดูลใช้งาน: {flagEditorSchool.nameTh}
+                  แพ็กเกจ &amp; โมดูลใช้งานทั้ง {FEATURE_FLAG_LABELS.length} ฟังก์ชัน: {flagEditorSchool.nameTh}
                 </h3>
-                <p className="text-[11px] text-[var(--color-text-muted)]">เลือกขนาดโรงเรียนหรือเปิด/ปิดแต่ละโมดูลเฉพาะแห่ง</p>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  เลือกระดับแพ็กเกจ (Level 1–4) กำหนดสิทธิ์ AI นักเรียน หรือเปิด/ปิดแต่ละโมดูลเฉพาะแห่ง
+                </p>
               </div>
               <button type="button" onClick={() => setFlagEditorSchool(null)} className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {(['small', 'standard', 'enterprise'] as SchoolTier[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setFlagDraft({ ...TIER_PRESETS[t] })}
-                  className={`px-3 py-1.5 rounded-lg font-bold border cursor-pointer ${
-                    flagDraft.tier === t
-                      ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
-                      : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
-                  }`}
-                >
-                  {t === 'small' ? 'ขนาดเล็ก (Small)' : t === 'standard' ? 'ขนาดกลาง (Standard)' : 'ครบทุกโมดูล (Enterprise)'}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {FEATURE_FLAG_LABELS.map((item) => {
-                const enabled = flagDraft[item.key];
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {packageCatalog.map((pkg) => {
+                const isSelected = normalizeSchoolTier(flagDraft.tier) === pkg.id;
                 return (
                   <button
-                    key={item.key}
+                    key={pkg.id}
                     type="button"
-                    onClick={() => setFlagDraft((prev) => prev ? { ...prev, [item.key]: !prev[item.key] } : prev)}
-                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer ${
-                      enabled ? 'border-[var(--color-primary)] bg-[var(--color-card)]' : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] opacity-75'
+                    onClick={() =>
+                      setFlagDraft(buildFlagsFromLevel(pkg.id, packageCatalog, flagDraft.allowStudentsAi))
+                    }
+                    className={`p-2.5 rounded-xl font-bold border text-left cursor-pointer transition ${
+                      isSelected
+                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)]'
                     }`}
                   >
-                    <span className="font-semibold text-[var(--color-text-title)]">{item.labelTh}</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-                      {enabled ? 'เปิด' : 'ปิด'}
-                    </span>
+                    <div className="text-[10px] opacity-85">LEVEL {pkg.levelNumber}</div>
+                    <div className="truncate">{pkg.nameTh.replace(/^Level \d+\s*·\s*/, '')}</div>
+                    <div className="text-[10px] font-mono tabular-nums opacity-90">
+                      ฿{pkg.yearlyPriceThb.toLocaleString()}/ปี · {countEnabledFeatures(pkg.features)} โมดูล
+                    </div>
                   </button>
+                );
+              })}
+            </div>
+
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-3">
+              <div>
+                <div className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>อนุญาตให้นักเรียนใช้งานฟังก์ชัน AI ของโรงเรียน (allowStudentsAi)</span>
+                </div>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  เปิด/ปิดสิทธิ์ฝั่งนักเรียนในการเข้า Career Quest AI, Socratic Tutor และ Snap &amp; Solve
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFlagDraft((prev) => prev ? { ...prev, allowStudentsAi: !prev.allowStudentsAi } : prev)}
+                className={`px-3 py-1.5 rounded-lg font-bold whitespace-nowrap cursor-pointer ${
+                  flagDraft.allowStudentsAi
+                    ? 'bg-emerald-700 text-white'
+                    : 'border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
+                }`}
+              >
+                {flagDraft.allowStudentsAi ? 'เปิด AI นักเรียน' : 'ปิด AI นักเรียน'}
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {PACKAGE_CATEGORY_META.map((cat) => {
+                const items = FEATURE_FLAG_LABELS.filter((item) => item.category === cat.id);
+                return (
+                  <div key={cat.id} className="space-y-1.5">
+                    <div className="font-bold text-[var(--color-text-title)]">{cat.labelTh}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {items.map((item) => {
+                        const enabled = flagDraft[item.key];
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setFlagDraft((prev) => prev ? { ...prev, [item.key]: !prev[item.key] } : prev)}
+                            className={`p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 cursor-pointer ${
+                              enabled ? 'border-[var(--color-primary)] bg-[var(--color-card)]' : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] opacity-75'
+                            }`}
+                          >
+                            <span className="font-semibold text-[var(--color-text-title)] truncate">{item.labelTh}</span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${enabled ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+                              {enabled ? 'เปิด' : 'ปิด'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -1415,8 +1497,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  saveSchoolFeatureFlags(flagEditorSchool.id, flagDraft);
+                onClick={async () => {
+                  await saveSchoolFeatureFlagsToDb(flagEditorSchool.id, flagDraft);
                   onUpdateSchoolFeatureFlags?.(flagEditorSchool.id, flagDraft);
                   showToast(`อัปเดตโมดูลใช้งานของ ${flagEditorSchool.nameTh} สำเร็จแล้ว`);
                   setFlagEditorSchool(null);

@@ -65,7 +65,8 @@ import {
   PeriodAttendanceRecord,
   BehaviorRecord,
   SdqAssessment,
-  InfirmaryVisit
+  InfirmaryVisit,
+  SchoolFeatureFlags,
 } from '../types';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
@@ -86,6 +87,7 @@ import { D3DailyAttendanceLineChart } from '../components/D3DailyAttendanceLineC
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { SchoolPolicyId } from '../lib/schoolPermissions';
+import { isTabEnabledByFeatureFlags } from '../lib/schoolFeatureFlags';
 import { ExecutiveMonitorView } from './ExecutiveMonitorView';
 import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
 import { StudentDesktopDashboard } from '../components/student/StudentDesktopDashboard';
@@ -131,6 +133,7 @@ interface DashboardViewProps {
   sdqAssessments?: SdqAssessment[];
   infirmaryVisits?: InfirmaryVisit[];
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
+  featureFlags?: SchoolFeatureFlags;
   initialSubTab?: DashboardSubTab;
   onSelectStudent?: (student: Student) => void;
   focusMode?: boolean;
@@ -164,6 +167,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   sdqAssessments = [],
   infirmaryVisits = [],
   schoolPermissions,
+  featureFlags,
   initialSubTab,
   onSelectStudent,
   focusMode: controlledFocusMode,
@@ -183,13 +187,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const twoDaysAgoStr = getLocalDateString(new Date(Date.now() - 2 * 86400000));
 
   const currentRole = currentUser?.role || 'admin';
+  const isModuleEnabled = (tab: NavTab) => isTabEnabledByFeatureFlags(tab, featureFlags, currentRole);
   const canViewExecutiveMonitor = ['super_admin', 'admin', 'teacher'].includes(currentRole);
-  const canViewEarlyWarning = ['super_admin', 'admin'].includes(currentRole);
+  const canViewEarlyWarning = ['super_admin', 'admin'].includes(currentRole) && isModuleEnabled('executive_warning');
   const canViewFinancials =
-    currentRole === 'super_admin' ||
-    currentRole === 'admin' ||
-    currentRole === 'parent' ||
-    (currentRole === 'teacher' && (schoolPermissions?.teacher_view_financials ?? true));
+    isModuleEnabled('billing') &&
+    (currentRole === 'super_admin' ||
+      currentRole === 'admin' ||
+      currentRole === 'parent' ||
+      (currentRole === 'teacher' && (schoolPermissions?.teacher_view_financials ?? true)));
 
   const resolveAllowedSubTab = (candidate?: DashboardSubTab): DashboardSubTab => {
     if (!candidate) return 'overview';
@@ -596,27 +602,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   const teacherNextSlot = todayScheduledSlots[0] || null;
-  const studentCanSelfCheckin = schoolPermissions?.student_self_checkin !== false;
-  const studentCanViewGrades = schoolPermissions?.student_view_grades !== false;
-  const parentCanViewGrades = schoolPermissions?.student_view_grades !== false;
-  const parentCanPayTuition = schoolPermissions?.parent_promptpay_tuition !== false;
+  const studentCanSelfCheckin = schoolPermissions?.student_self_checkin !== false && isModuleEnabled('mobile_checkin');
+  const studentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
+  const parentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
+  const parentCanPayTuition = schoolPermissions?.parent_promptpay_tuition !== false && isModuleEnabled('billing');
 
   const morningQuickActions: Array<{ id: string; label: string; tab: NavTab; primary?: boolean }> = [];
   if (currentRole === 'admin' || currentRole === 'super_admin') {
-    morningQuickActions.push(
-      { id: 'att', label: lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance', tab: 'attendance', primary: true },
-      { id: 'tt', label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable', tab: 'timetable' }
-    );
+    if (isModuleEnabled('attendance')) {
+      morningQuickActions.push({ id: 'att', label: lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance', tab: 'attendance', primary: true });
+    }
+    if (isModuleEnabled('timetable')) {
+      morningQuickActions.push({ id: 'tt', label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable', tab: 'timetable' });
+    }
   } else if (currentRole === 'teacher') {
-    morningQuickActions.push(
-      {
+    if (schoolPermissions?.teacher_attendance !== false && isModuleEnabled('attendance')) {
+      morningQuickActions.push({
         id: 'att',
         label: lang === 'th' ? 'เช็คชื่อประจำวัน/คาบ' : 'Take Attendance',
-        tab: schoolPermissions?.teacher_attendance !== false ? 'attendance' : 'mobile_checkin',
+        tab: 'attendance',
         primary: true,
-      },
-      { id: 'gb', label: lang === 'th' ? 'สมุดคะแนน ปพ.5' : 'Gradebook ปพ.5', tab: 'gradebook' }
-    );
+      });
+    } else if (isModuleEnabled('mobile_checkin')) {
+      morningQuickActions.push({
+        id: 'att',
+        label: lang === 'th' ? 'เช็คชื่อประจำวัน/คาบ' : 'Take Attendance',
+        tab: 'mobile_checkin',
+        primary: true,
+      });
+    }
+    if (isModuleEnabled('gradebook')) {
+      morningQuickActions.push({ id: 'gb', label: lang === 'th' ? 'สมุดคะแนน ปพ.5' : 'Gradebook ปพ.5', tab: 'gradebook' });
+    }
   } else if (currentRole === 'student') {
     if (studentCanSelfCheckin) {
       morningQuickActions.push({
@@ -626,12 +643,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         primary: true,
       });
     }
-    morningQuickActions.push({
-      id: 'tt',
-      label: lang === 'th' ? 'ตารางเรียนวันนี้' : 'My Timetable',
-      tab: 'timetable',
-      primary: !studentCanSelfCheckin,
-    });
+    if (isModuleEnabled('timetable')) {
+      morningQuickActions.push({
+        id: 'tt',
+        label: lang === 'th' ? 'ตารางเรียนวันนี้' : 'My Timetable',
+        tab: 'timetable',
+        primary: !studentCanSelfCheckin,
+      });
+    }
     if (studentCanViewGrades && morningQuickActions.length < 2) {
       morningQuickActions.push({
         id: 'gb',
@@ -640,21 +659,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     }
   } else if (currentRole === 'parent') {
-    morningQuickActions.push({
-      id: 'gb',
-      label: parentCanViewGrades
-        ? (lang === 'th' ? 'ผลการเรียนบุตรหลาน' : 'Child Grades')
-        : (lang === 'th' ? 'ตารางเรียนบุตรหลาน' : 'Class Schedule'),
-      tab: parentCanViewGrades ? 'gradebook' : 'timetable',
-      primary: true,
-    });
+    if (parentCanViewGrades) {
+      morningQuickActions.push({
+        id: 'gb',
+        label: lang === 'th' ? 'ผลการเรียนบุตรหลาน' : 'Child Grades',
+        tab: 'gradebook',
+        primary: true,
+      });
+    } else if (isModuleEnabled('timetable')) {
+      morningQuickActions.push({
+        id: 'gb',
+        label: lang === 'th' ? 'ตารางเรียนบุตรหลาน' : 'Class Schedule',
+        tab: 'timetable',
+        primary: true,
+      });
+    }
     if (parentCanPayTuition) {
       morningQuickActions.push({
         id: 'bill',
         label: lang === 'th' ? 'ค่าเล่าเรียน & ใบเสร็จ' : 'Tuition & Receipts',
         tab: 'billing',
       });
-    } else {
+    } else if (isModuleEnabled('announcements')) {
       morningQuickActions.push({
         id: 'ann',
         label: lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements',
@@ -785,7 +811,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
               {isMoreMenuOpen && (
                 <div className="absolute right-0 top-10 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
-                  {(isStaffUser || currentRole === 'parent') && (
+                  {((isStaffUser && isModuleEnabled('attendance')) || currentRole === 'parent') && (
                     <button
                       type="button"
                       onClick={() => {
@@ -798,7 +824,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{displayRecords.length}</span>
                     </button>
                   )}
-                  {!(currentRole === 'student' && schoolPermissions?.student_treasure_game === false) && (
+                  {!(currentRole === 'student' && schoolPermissions?.student_treasure_game === false) &&
+                    ((['games', 'socratic_tutor', 'study_streak', 'boss_raid', 'realworld_quests', 'subject_labs', 'ai_diagnostic', 'hall_of_fame'] as NavTab[]).some((tab) => isModuleEnabled(tab)) || canViewEarlyWarning) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -811,17 +838,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      setDashboardTab('announcements');
-                    }}
-                    className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <BellRing className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                    <span>{currentRole === 'student' ? (lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements') : (lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors')}</span>
-                  </button>
+                  {isModuleEnabled('announcements') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setDashboardTab('announcements');
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <BellRing className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                      <span>{currentRole === 'student' ? (lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements') : (lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors')}</span>
+                    </button>
+                  )}
                   {showOnboardingCard && (
                     <button
                       type="button"
@@ -932,7 +961,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               scopedAnnouncements={scopedAnnouncements}
               studentCanSelfCheckin={studentCanSelfCheckin}
               studentCanViewGrades={studentCanViewGrades}
-              studentCanUploadPortfolio={schoolPermissions?.student_upload_portfolio !== false}
+              studentCanUploadPortfolio={schoolPermissions?.student_upload_portfolio !== false && isModuleEnabled('portfolio')}
+              canOpenCareerQuest={isModuleEnabled('career_quest')}
+              canViewTimetable={isModuleEnabled('timetable')}
+              canAccessHomework={schoolPermissions?.student_submit_homework !== false && isModuleEnabled('homework')}
+              canViewDigitalId={isModuleEnabled('student_id_cards')}
               onNavigate={onNavigate}
               onOpenAnnouncementsTab={() => setDashboardTab('announcements')}
               onOpenPhotoRecord={openPhotoRecord}
@@ -1289,7 +1322,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Admin KPI 1: On-Time Rate */}
                     <button
                       type="button"
-                      onClick={() => onNavigate('attendance')}
+                      onClick={() => {
+                        if (isModuleEnabled('attendance')) onNavigate('attendance');
+                      }}
                       className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -1309,7 +1344,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Admin KPI 2: Actionable Pending Items */}
                     <button
                       type="button"
-                      onClick={() => onNavigate(pendingLeaveCount > 0 ? 'attendance' : 'homework')}
+                      onClick={() => {
+                        const target = pendingLeaveCount > 0 ? 'attendance' : 'homework';
+                        if (isModuleEnabled(target)) onNavigate(target);
+                        else if (isModuleEnabled('gradebook')) onNavigate('gradebook');
+                      }}
                       className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -1507,27 +1546,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           ? (lang === 'th' ? 'รายการสำคัญสำหรับผู้ปกครอง' : 'Family Action Items')
                           : (lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items')}
                     </h2>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onNavigate(
-                          currentRole === 'student'
-                            ? 'timetable'
-                            : currentRole === 'parent'
-                              ? (parentCanViewGrades ? 'gradebook' : 'timetable')
-                              : schoolPermissions?.teacher_attendance !== false
-                                ? 'attendance'
-                                : 'timetable'
-                        )
-                      }
-                      className="no-print type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
-                    >
-                      {currentRole === 'student'
-                        ? (lang === 'th' ? 'ตารางเรียน →' : 'Timetable →')
-                        : currentRole === 'parent'
-                          ? (parentCanViewGrades ? (lang === 'th' ? 'ผลการเรียน →' : 'Grades →') : (lang === 'th' ? 'ตารางเรียน →' : 'Timetable →'))
-                          : (lang === 'th' ? 'เช็คชื่อ →' : 'Attendance →')}
-                    </button>
+                    {(() => {
+                      const headerTarget: { tab: NavTab; label: string } | null =
+                        currentRole === 'student'
+                          ? isModuleEnabled('timetable')
+                            ? { tab: 'timetable', label: lang === 'th' ? 'ตารางเรียน →' : 'Timetable →' }
+                            : isModuleEnabled('homework') && schoolPermissions?.student_submit_homework !== false
+                              ? { tab: 'homework', label: lang === 'th' ? 'การบ้าน →' : 'Homework →' }
+                              : studentCanViewGrades
+                                ? { tab: 'gradebook', label: lang === 'th' ? 'ผลการเรียน →' : 'Grades →' }
+                                : null
+                          : currentRole === 'parent'
+                            ? parentCanViewGrades
+                              ? { tab: 'gradebook', label: lang === 'th' ? 'ผลการเรียน →' : 'Grades →' }
+                              : isModuleEnabled('timetable')
+                                ? { tab: 'timetable', label: lang === 'th' ? 'ตารางเรียน →' : 'Timetable →' }
+                                : null
+                            : schoolPermissions?.teacher_attendance !== false && isModuleEnabled('attendance')
+                              ? { tab: 'attendance', label: lang === 'th' ? 'เช็คชื่อ →' : 'Attendance →' }
+                              : isModuleEnabled('timetable')
+                                ? { tab: 'timetable', label: lang === 'th' ? 'ตารางสอน →' : 'Timetable →' }
+                                : isModuleEnabled('gradebook')
+                                  ? { tab: 'gradebook', label: lang === 'th' ? 'บันทึกคะแนน →' : 'Gradebook →' }
+                                  : null;
+
+                      if (!headerTarget) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => onNavigate(headerTarget.tab)}
+                          className="no-print type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+                        >
+                          {headerTarget.label}
+                        </button>
+                      );
+                    })()}
                   </div>
 
                   <div className="saas-card-body">
@@ -1541,14 +1594,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       }> = [];
 
                       if (currentRole === 'student') {
-                        todayScheduledSlots.slice(0, 3).forEach((slot) => {
-                          actionRows.push({
-                            id: `slot-${slot.id}`,
-                            label: `${lang === 'th' ? 'คาบ' : 'P'}${slot.periodNumber} · ${slot.courseTitleTh || slot.courseTitleEn || slot.courseCode || ''}`,
-                            value: slot.room || (lang === 'th' ? 'ห้องเรียน' : 'Class'),
-                            onClick: () => onNavigate('timetable'),
+                        if (isModuleEnabled('timetable')) {
+                          todayScheduledSlots.slice(0, 3).forEach((slot) => {
+                            actionRows.push({
+                              id: `slot-${slot.id}`,
+                              label: `${lang === 'th' ? 'คาบ' : 'P'}${slot.periodNumber} · ${slot.courseTitleTh || slot.courseTitleEn || slot.courseCode || ''}`,
+                              value: slot.room || (lang === 'th' ? 'ห้องเรียน' : 'Class'),
+                              onClick: () => onNavigate('timetable'),
+                            });
                           });
-                        });
+                        }
                         if (studentCanSelfCheckin) {
                           actionRows.push({
                             id: 'student-checkin',
@@ -1557,12 +1612,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('mobile_checkin'),
                           });
                         }
-                        actionRows.push({
-                          id: 'student-homework',
-                          label: lang === 'th' ? 'การบ้านและแบบฝึกหัด' : 'Homework & Tasks',
-                          value: `${scopedAssignments.length} ${lang === 'th' ? 'รายการ' : 'tasks'}`,
-                          onClick: () => onNavigate('homework'),
-                        });
+                        if (isModuleEnabled('homework') && schoolPermissions?.student_submit_homework !== false) {
+                          actionRows.push({
+                            id: 'student-homework',
+                            label: lang === 'th' ? 'การบ้านและแบบฝึกหัด' : 'Homework & Tasks',
+                            value: `${scopedAssignments.length} ${lang === 'th' ? 'รายการ' : 'tasks'}`,
+                            onClick: () => onNavigate('homework'),
+                          });
+                        }
                         if (studentCanViewGrades && actionRows.length < 5) {
                           actionRows.push({
                             id: 'student-grades',
@@ -1589,12 +1646,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => setDashboardTab('live_attendance'),
                           });
                         }
-                        actionRows.push({
-                          id: 'parent-timetable',
-                          label: lang === 'th' ? 'ตารางเรียนวันนี้ของบุตรหลาน' : 'Child’s Classes Today',
-                          value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
-                          onClick: () => onNavigate('timetable'),
-                        });
+                        if (isModuleEnabled('timetable')) {
+                          actionRows.push({
+                            id: 'parent-timetable',
+                            label: lang === 'th' ? 'ตารางเรียนวันนี้ของบุตรหลาน' : 'Child’s Classes Today',
+                            value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
+                            onClick: () => onNavigate('timetable'),
+                          });
+                        }
                         if (parentCanViewGrades) {
                           actionRows.push({
                             id: 'parent-grades',
@@ -1603,7 +1662,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('gradebook'),
                           });
                         }
-                        if (actionRows.length < 5) {
+                        if (isModuleEnabled('announcements') && actionRows.length < 5) {
                           actionRows.push({
                             id: 'parent-announcements',
                             label: lang === 'th' ? 'ข่าวสารและประกาศโรงเรียน' : 'School Announcements',
@@ -1613,7 +1672,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         }
                       } else {
                         // Staff (Admin & Teacher)
-                        if (currentRole === 'teacher' && todayScheduledSlots.length > 0) {
+                        if (currentRole === 'teacher' && todayScheduledSlots.length > 0 && isModuleEnabled('timetable')) {
                           actionRows.push({
                             id: 'teacher-next-slot',
                             label: `${lang === 'th' ? 'คาบสอนวันนี้' : 'Classes Today'} (${todayScheduledSlots[0].courseTitleTh || todayScheduledSlots[0].courseCode})`,
@@ -1621,7 +1680,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('timetable'),
                           });
                         }
-                        if (pendingLeaveCount > 0) {
+                        if (pendingLeaveCount > 0 && isModuleEnabled('attendance')) {
                           actionRows.push({
                             id: 'leaves',
                             label: lang === 'th' ? 'ใบลารออนุมัติ' : 'Pending Leaves',
@@ -1630,7 +1689,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('attendance'),
                           });
                         }
-                        if (ungradedHomeworkCount > 0) {
+                        if (ungradedHomeworkCount > 0 && isModuleEnabled('homework')) {
                           actionRows.push({
                             id: 'homework',
                             label: lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade',
@@ -1639,7 +1698,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('homework'),
                           });
                         }
-                        if (isStaffUser && uncheckedTodayCount > 0 && schoolPermissions?.teacher_attendance !== false) {
+                        if (isStaffUser && uncheckedTodayCount > 0 && schoolPermissions?.teacher_attendance !== false && isModuleEnabled('attendance')) {
                           actionRows.push({
                             id: 'unchecked',
                             label: lang === 'th' ? 'นักเรียนยังไม่เช็คชื่อวันนี้' : 'Unchecked Students Today',
@@ -1647,7 +1706,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('attendance'),
                           });
                         }
-                        if (teacherLeavesTodayCount > 0 && (currentRole === 'admin' || currentRole === 'super_admin')) {
+                        if (teacherLeavesTodayCount > 0 && (currentRole === 'admin' || currentRole === 'super_admin') && isModuleEnabled('timetable')) {
                           actionRows.push({
                             id: 'staff-leave',
                             label: lang === 'th' ? 'ครูลาวันนี้ (หาครูสอนแทน)' : 'Staff on Leave Today',
@@ -1655,7 +1714,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('timetable'),
                           });
                         }
-                        if (currentRole !== 'teacher' || todayScheduledSlots.length === 0) {
+                        if ((currentRole !== 'teacher' || todayScheduledSlots.length === 0) && isModuleEnabled('timetable')) {
                           actionRows.push({
                             id: 'timetable',
                             label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable',
@@ -1663,7 +1722,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('timetable'),
                           });
                         }
-                        if (actionRows.length < 5) {
+                        if (actionRows.length < 5 && isModuleEnabled('gradebook')) {
                           actionRows.push({
                             id: 'gradebook',
                             label: lang === 'th' ? 'บันทึกคะแนน ปพ.5' : 'Gradebook',
@@ -1673,7 +1732,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         }
                       }
 
-                      return (
+                      return actionRows.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-[var(--color-text-muted)]">
+                          {lang === 'th' ? 'ไม่มีรายการที่เปิดใช้งานในแพ็กเกจปัจจุบัน' : 'No active module tasks in current package'}
+                        </div>
+                      ) : (
                         <div className="divide-y divide-[var(--color-border)]">
                           {actionRows.slice(0, 5).map((row) => (
                             <button
@@ -1697,7 +1760,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </section>
             </div>
 
-            {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
+            {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && isModuleEnabled('career_quest') && (
               <section
                 aria-label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน Career Quest AI' : 'Career Quest AI'}
                 className="no-print saas-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -2389,7 +2452,97 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
 
         {/* TAB 3: INNOVATIVE CLASSROOM HUB */}
-        {dashboardTab === 'innovative_hub' && (
+        {dashboardTab === 'innovative_hub' && (() => {
+          const hubItems = [
+            {
+              id: 'games',
+              title: 'EduBattle Royale 3D',
+              desc: lang === 'th' ? 'สมรภูมิประลองปัญญา 3D แข่งตอบคำถามชิงตำแหน่งแชมป์' : '3D interactive academic quiz battle arena with live avatars',
+              icon: Swords,
+              color: 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700',
+              badge: '3D Realtime',
+              actionLabel: lang === 'th' ? 'เข้าสู่สนาม 3D' : 'Enter 3D Arena',
+            },
+            {
+              id: 'socratic_tutor',
+              title: 'Socratic AI Tutor',
+              desc: lang === 'th' ? 'ผู้ช่วยติวอัจฉริยะที่ใช้หลักตั้งคำถามกระตุ้นกระบวนการคิด' : 'Inquiry-based AI learning mentor guiding critical thinking',
+              icon: BrainCircuit,
+              color: 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700',
+              badge: 'AI Powered',
+              actionLabel: lang === 'th' ? 'เริ่มติว' : 'Start Tutoring',
+            },
+            {
+              id: 'study_streak',
+              title: 'Study Streak & Quest Pass',
+              desc: lang === 'th' ? 'สะสมแต้มการเข้าเรียนต่อเนื่อง ปลดล็อกสกินการ์ดและเหรียญรางวัล' : 'Daily streak challenges, avatar card borders, and rewards',
+              icon: Flame,
+              color: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700',
+              badge: 'Gamified',
+              actionLabel: lang === 'th' ? 'ดูเควสต์' : 'View Quests',
+            },
+            {
+              id: 'boss_raid',
+              title: 'Co-op Boss Raid',
+              desc: lang === 'th' ? 'รวมพลังตอบโจทย์ความยากระดับบอส ประสานงานพิชิตด่านร่วมกัน' : 'Collaborative classroom quiz raid with team boss battles',
+              icon: ShieldAlert,
+              color: 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700',
+              badge: 'Multiplayer',
+              actionLabel: lang === 'th' ? 'เข้าร่วมเรดบอส' : 'Join Boss Raid',
+            },
+            {
+              id: 'realworld_quests',
+              title: 'Real-World Snap Quest',
+              desc: lang === 'th' ? 'ถ่ายภาพปรากฏการณ์รอบตัวส่งตรวจด้วยการวิเคราะห์เชิงวิทยาศาสตร์' : 'Camera quest assignments linking real life to coursework',
+              icon: Camera,
+              color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700',
+              badge: 'Hands-on',
+              actionLabel: lang === 'th' ? 'ส่งเควสต์ภาพ' : 'Snap Quests',
+            },
+            {
+              id: 'subject_labs',
+              title: 'Subject Lab Simulation',
+              desc: lang === 'th' ? 'ห้องทดลองวิทยาศาสตร์และฟิสิกส์เสมือนจริง ทดลองผสมสารได้อย่างปลอดภัย' : 'Interactive STEM lab simulator with chemistry & optics modules',
+              icon: FlaskConical,
+              color: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700',
+              badge: 'Interactive Lab',
+              actionLabel: lang === 'th' ? 'เปิดห้องแล็บ' : 'Launch Lab',
+            },
+            {
+              id: 'ai_diagnostic',
+              title: 'AI Diagnostic Learning',
+              desc: lang === 'th' ? 'ระบบตรวจวินิจฉัยจุดอ่อนรายบุคคล แนะนำเนื้อหาเสริมเฉพาะจุดอย่างแม่นยำ' : 'Personalized diagnostic learning paths detecting knowledge gaps',
+              icon: BarChart3,
+              color: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700',
+              badge: 'Adaptive',
+              actionLabel: lang === 'th' ? 'ดูผลวินิจฉัย' : 'View Diagnostics',
+            },
+            {
+              id: 'hall_of_fame',
+              title: '3D Hall of Fame',
+              desc: lang === 'th' ? 'หอเกียรติยศ 3 มิติ จัดแสดงผลงานยอดเยี่ยมและถ้วยรางวัลโรงเรียน' : 'Immersive 3D gallery honoring top academic and sports achievers',
+              icon: Trophy,
+              color: 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700',
+              badge: '3D Gallery',
+              actionLabel: lang === 'th' ? 'ชมหอเกียรติยศ' : 'Visit Hall of Fame',
+            },
+            ...(canViewEarlyWarning
+              ? [{
+                  id: 'executive_warning',
+                  title: 'Executive Early Warning',
+                  desc: lang === 'th' ? 'ระบบเตือนภัยล่วงหน้าตรวจจับนักเรียนเสี่ยงตกหล่นหรือขาดเรียนบ่อย' : 'Early warning intelligence identifying attendance & academic drop risks',
+                  icon: ShieldAlert,
+                  color: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700',
+                  badge: 'Executive',
+                  actionLabel: lang === 'th' ? 'วิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
+                }]
+              : []),
+          ].filter((item) => item.id === 'executive_warning' ? canViewEarlyWarning : isModuleEnabled(item.id as NavTab));
+
+          const totalHubPages = Math.max(1, Math.ceil(hubItems.length / 3));
+          const safeHubPage = Math.min(innovationPage, totalHubPages - 1);
+
+          return (
           <div className="space-y-3 animate-in fade-in duration-150">
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
@@ -2398,100 +2551,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {lang === 'th' ? 'นวัตกรรมการเรียนรู้ดิจิทัล' : 'Digital Learning Hub'}
                 </h2>
               </div>
-              <div className="saas-control-group">
-                {[0, 1, 2].map((page) => (
-                  <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-2.5 py-1 rounded-md type-meta font-semibold cursor-pointer ${innovationPage === page ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'}`}>
-                    {page + 1} / 3
-                  </button>
-                ))}
-              </div>
+              {totalHubPages > 1 && (
+                <div className="saas-control-group">
+                  {Array.from({ length: totalHubPages }, (_, page) => (
+                    <button key={page} type="button" onClick={() => setInnovationPage(page)} className={`px-2.5 py-1 rounded-md type-meta font-semibold cursor-pointer ${safeHubPage === page ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'}`}>
+                      {page + 1} / {totalHubPages}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+            {hubItems.length === 0 ? (
+              <div className="saas-card saas-card-body py-10 text-center text-xs text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'โมดูลนวัตกรรมและ AI ยังไม่ได้เปิดใช้งานสำหรับแพ็กเกจหรือสิทธิ์ของคุณ' : 'No innovation or AI modules enabled for your role/package'}
+              </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-              {[
-                {
-                  id: 'games',
-                  title: 'EduBattle Royale 3D',
-                  desc: lang === 'th' ? 'สมรภูมิประลองปัญญา 3D แข่งตอบคำถามชิงตำแหน่งแชมป์' : '3D interactive academic quiz battle arena with live avatars',
-                  icon: Swords,
-                  color: 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700',
-                  badge: '3D Realtime',
-                  actionLabel: lang === 'th' ? 'เข้าสู่สนาม 3D' : 'Enter 3D Arena',
-                },
-                {
-                  id: 'socratic_tutor',
-                  title: 'Socratic AI Tutor',
-                  desc: lang === 'th' ? 'ผู้ช่วยติวอัจฉริยะที่ใช้หลักตั้งคำถามกระตุ้นกระบวนการคิด' : 'Inquiry-based AI learning mentor guiding critical thinking',
-                  icon: BrainCircuit,
-                  color: 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700',
-                  badge: 'AI Powered',
-                  actionLabel: lang === 'th' ? 'เริ่มติว' : 'Start Tutoring',
-                },
-                {
-                  id: 'study_streak',
-                  title: 'Study Streak & Quest Pass',
-                  desc: lang === 'th' ? 'สะสมแต้มการเข้าเรียนต่อเนื่อง ปลดล็อกสกินการ์ดและเหรียญรางวัล' : 'Daily streak challenges, avatar card borders, and rewards',
-                  icon: Flame,
-                  color: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700',
-                  badge: 'Gamified',
-                  actionLabel: lang === 'th' ? 'ดูเควสต์' : 'View Quests',
-                },
-                {
-                  id: 'boss_raid',
-                  title: 'Co-op Boss Raid',
-                  desc: lang === 'th' ? 'รวมพลังตอบโจทย์ความยากระดับบอส ประสานงานพิชิตด่านร่วมกัน' : 'Collaborative classroom quiz raid with team boss battles',
-                  icon: ShieldAlert,
-                  color: 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700',
-                  badge: 'Multiplayer',
-                  actionLabel: lang === 'th' ? 'เข้าร่วมเรดบอส' : 'Join Boss Raid',
-                },
-                {
-                  id: 'realworld_quests',
-                  title: 'Real-World Snap Quest',
-                  desc: lang === 'th' ? 'ถ่ายภาพปรากฏการณ์รอบตัวส่งตรวจด้วยการวิเคราะห์เชิงวิทยาศาสตร์' : 'Camera quest assignments linking real life to coursework',
-                  icon: Camera,
-                  color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700',
-                  badge: 'Hands-on',
-                  actionLabel: lang === 'th' ? 'ส่งเควสต์ภาพ' : 'Snap Quests',
-                },
-                {
-                  id: 'subject_labs',
-                  title: 'Subject Lab Simulation',
-                  desc: lang === 'th' ? 'ห้องทดลองวิทยาศาสตร์และฟิสิกส์เสมือนจริง ทดลองผสมสารได้อย่างปลอดภัย' : 'Interactive STEM lab simulator with chemistry & optics modules',
-                  icon: FlaskConical,
-                  color: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700',
-                  badge: 'Interactive Lab',
-                  actionLabel: lang === 'th' ? 'เปิดห้องแล็บ' : 'Launch Lab',
-                },
-                {
-                  id: 'ai_diagnostic',
-                  title: 'AI Diagnostic Learning',
-                  desc: lang === 'th' ? 'ระบบตรวจวินิจฉัยจุดอ่อนรายบุคคล แนะนำเนื้อหาเสริมเฉพาะจุดอย่างแม่นยำ' : 'Personalized diagnostic learning paths detecting knowledge gaps',
-                  icon: BarChart3,
-                  color: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700',
-                  badge: 'Adaptive',
-                  actionLabel: lang === 'th' ? 'ดูผลวินิจฉัย' : 'View Diagnostics',
-                },
-                {
-                  id: 'hall_of_fame',
-                  title: '3D Hall of Fame',
-                  desc: lang === 'th' ? 'หอเกียรติยศ 3 มิติ จัดแสดงผลงานยอดเยี่ยมและถ้วยรางวัลโรงเรียน' : 'Immersive 3D gallery honoring top academic and sports achievers',
-                  icon: Trophy,
-                  color: 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700',
-                  badge: '3D Gallery',
-                  actionLabel: lang === 'th' ? 'ชมหอเกียรติยศ' : 'Visit Hall of Fame',
-                },
-                ...(canViewEarlyWarning
-                  ? [{
-                      id: 'executive_warning',
-                      title: 'Executive Early Warning',
-                      desc: lang === 'th' ? 'ระบบเตือนภัยล่วงหน้าตรวจจับนักเรียนเสี่ยงตกหล่นหรือขาดเรียนบ่อย' : 'Early warning intelligence identifying attendance & academic drop risks',
-                      icon: ShieldAlert,
-                      color: 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700',
-                      badge: 'Executive',
-                      actionLabel: lang === 'th' ? 'วิเคราะห์ความเสี่ยง' : 'View Risk Alerts',
-                    }]
-                  : []),
-              ].filter((_, index) => Math.floor(index / 3) === innovationPage).map((item) => (
+              {hubItems.filter((_, index) => Math.floor(index / 3) === safeHubPage).map((item) => (
                 <div
                   key={item.id}
                   className="saas-card saas-card-body hover:border-[var(--color-primary)] transition flex flex-col justify-between group"
@@ -2538,8 +2614,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ))}
             </div>
+            )}
           </div>
-        )}
+          );
+        })()}
 
         {/* TAB 4: OFFICIAL ANNOUNCEMENTS & HONOR ROLL */}
         {dashboardTab === 'announcements' && (
@@ -2820,19 +2898,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
               {drawerMode === 'onboarding' ? (
                 <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => { setDrawerMode(null); onNavigate('students'); }}
-                    className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                  >
-                    <div className="min-w-0">
-                      <div className="type-card-title">1. {lang === 'th' ? 'นำเข้าข้อมูลนักเรียน & รายวิชา' : 'Import Students & Courses'}</div>
-                      <div className="type-meta mt-0.5">{students.length} {lang === 'th' ? 'นักเรียน' : 'students'} · {courses.length} {lang === 'th' ? 'วิชา' : 'courses'}</div>
-                    </div>
-                    <span className={`type-meta font-bold shrink-0 ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                      {step1Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'ดำเนินการ' : 'Setup')}
-                    </span>
-                  </button>
+                  {isModuleEnabled('students') && (
+                    <button
+                      type="button"
+                      onClick={() => { setDrawerMode(null); onNavigate('students'); }}
+                      className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <div className="min-w-0">
+                        <div className="type-card-title">1. {lang === 'th' ? 'นำเข้าข้อมูลนักเรียน & รายวิชา' : 'Import Students & Courses'}</div>
+                        <div className="type-meta mt-0.5">{students.length} {lang === 'th' ? 'นักเรียน' : 'students'} · {courses.length} {lang === 'th' ? 'วิชา' : 'courses'}</div>
+                      </div>
+                      <span className={`type-meta font-bold shrink-0 ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                        {step1Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'ดำเนินการ' : 'Setup')}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => { setDrawerMode(null); onNavigate('system_settings'); }}
@@ -2846,19 +2926,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {step2Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'ตั้งค่า' : 'Setup')}
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setDrawerMode(null); onNavigate('timetable'); }}
-                    className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                  >
-                    <div className="min-w-0">
-                      <div className="type-card-title">3. {lang === 'th' ? 'จัดตารางเรียน & ภาคเรียน' : 'Timetable & Semester'}</div>
-                      <div className="type-meta mt-0.5">{timetableSlots.length} {lang === 'th' ? 'คาบในระบบ' : 'slots'}</div>
-                    </div>
-                    <span className={`type-meta font-bold shrink-0 ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                      {step3Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'จัดตาราง' : 'Setup')}
-                    </span>
-                  </button>
+                  {isModuleEnabled('timetable') && (
+                    <button
+                      type="button"
+                      onClick={() => { setDrawerMode(null); onNavigate('timetable'); }}
+                      className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <div className="min-w-0">
+                        <div className="type-card-title">3. {lang === 'th' ? 'จัดตารางเรียน & ภาคเรียน' : 'Timetable & Semester'}</div>
+                        <div className="type-meta mt-0.5">{timetableSlots.length} {lang === 'th' ? 'คาบในระบบ' : 'slots'}</div>
+                      </div>
+                      <span className={`type-meta font-bold shrink-0 ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                        {step3Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'จัดตาราง' : 'Setup')}
+                      </span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">

@@ -193,7 +193,18 @@ import { getHolidayForDate, isWeekendDate, syncPublicHolidaysFromApi } from './l
 import { slotHasTeacher } from './lib/timetableTeachers';
 import type { OfflineQueueItem } from './lib/offlineSync';
 import { appendAuditLog } from './lib/auditLog';
-import { getSchoolFeatureFlags } from './lib/schoolFeatureFlags';
+import {
+  getSchoolFeatureFlags,
+  isTabEnabledByFeatureFlags,
+  isProgramModeEnabledByFeatureFlags,
+  getRequiredPackageLevelForTab,
+  getPackageLevelLabel,
+} from './lib/schoolFeatureFlags';
+import {
+  loadPackageCatalog,
+  loadSchoolFeatureFlagsFromDb,
+  saveSchoolFeatureFlagsToDb,
+} from './lib/schoolPackageStore';
 import { useSchoolPermissions } from './lib/schoolPermissions';
 import {
   filterAttendanceForUser,
@@ -948,13 +959,28 @@ export const App: React.FC = () => {
 
   const handleUpdateSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFlags) => {
     setFeatureFlagsBySchool((prev) => ({ ...prev, [schoolId]: flags }));
+    setSchools((prev) =>
+      prev.map((school) =>
+        school.id === schoolId
+          ? { ...school, schoolTier: flags.tier, aiStudentEnabled: flags.allowStudentsAi }
+          : school
+      )
+    );
+    setActiveSchool((prev) =>
+      prev.id === schoolId
+        ? { ...prev, schoolTier: flags.tier, aiStudentEnabled: flags.allowStudentsAi }
+        : prev
+    );
+    if (!isDemoMode) {
+      void saveSchoolFeatureFlagsToDb(schoolId, flags);
+    }
     if (currentUser) {
       appendAuditLog(schoolId, {
         actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
         actorRole: currentUser.role,
         actionType: 'feature_flags_update',
         targetLabel: flags.tier,
-        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier})`,
+        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier}) · สิทธิ์ AI นักเรียน: ${flags.allowStudentsAi ? 'เปิด' : 'ปิด'}`,
       });
     }
   };
@@ -1008,6 +1034,13 @@ export const App: React.FC = () => {
 
   const handleChangeProgramMode = (nextMode: AppProgramMode) => {
     if (!isAllowedProgramModeForRole(currentRole, nextMode)) return;
+    if (!isProgramModeEnabledByFeatureFlags(nextMode, activeFeatureFlags)) {
+      const requiredLevel = nextMode === 'parent_portal' ? 'level_2' : 'level_3';
+      setDataSyncError(
+        `โหมดนี้ยังไม่เปิดใช้งานในแพ็กเกจปัจจุบัน (ต้องอัปเกรดเป็น ${getPackageLevelLabel(requiredLevel, lang)})`
+      );
+      return;
+    }
     setProgramMode(nextMode);
   };
 
@@ -1025,6 +1058,30 @@ export const App: React.FC = () => {
       setCurrentTab('dashboard');
     }
   }, [currentTab, currentRole, rolePermissions]);
+
+  useEffect(() => {
+    if (programMode === 'lms_classroom' && !isProgramModeEnabledByFeatureFlags('lms_classroom', activeFeatureFlags)) {
+      setProgramMode('school_erp');
+      setCurrentTab('dashboard');
+      return;
+    }
+    if (
+      programMode === 'parent_portal' &&
+      currentRole !== 'parent' &&
+      !isProgramModeEnabledByFeatureFlags('parent_portal', activeFeatureFlags)
+    ) {
+      setProgramMode('school_erp');
+      setCurrentTab('dashboard');
+      return;
+    }
+    if (
+      programMode === 'school_erp' &&
+      !(currentTab === 'super_admin_console' && currentRole === 'super_admin') &&
+      !isTabEnabledByFeatureFlags(currentTab, activeFeatureFlags, currentRole)
+    ) {
+      setCurrentTab('dashboard');
+    }
+  }, [programMode, currentTab, activeFeatureFlags, currentRole]);
 
   const navigateToAppTab = (tab: NavTab) => {
     setIsGamePlaying(false);
@@ -1059,6 +1116,17 @@ export const App: React.FC = () => {
     }
 
     if (tab === 'executive_warning') {
+      if (!isTabEnabledByFeatureFlags('executive_warning', activeFeatureFlags, currentRole)) {
+        setDataSyncError(
+          `ระบบเตือนภัยความเสี่ยงยังไม่เปิดใช้งานในแพ็กเกจปัจจุบัน (ต้องอัปเกรดเป็น ${getPackageLevelLabel(
+            getRequiredPackageLevelForTab('executive_warning') ?? 'level_3',
+            lang
+          )})`
+        );
+        setDashboardInitialSubTab('overview');
+        setCurrentTab('dashboard');
+        return;
+      }
       if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
         setDashboardInitialSubTab('early_warning');
         setProgramMode('school_erp');
@@ -1130,6 +1198,28 @@ export const App: React.FC = () => {
         setCurrentTab('dashboard');
         return;
       }
+    }
+
+    if (
+      !(currentRole === 'super_admin' && tab === 'super_admin_console') &&
+      !isTabEnabledByFeatureFlags(tab, activeFeatureFlags, currentRole)
+    ) {
+      const isStudentAiTab =
+        currentRole === 'student' &&
+        ['ai_diagnostic', 'socratic_tutor', 'realworld_quests', 'career_quest'].includes(tab) &&
+        activeFeatureFlags?.allowStudentsAi === false;
+      setDashboardInitialSubTab('overview');
+      setProgramMode('school_erp');
+      setCurrentTab('dashboard');
+      setDataSyncError(
+        isStudentAiTab
+          ? 'ผู้ดูแลโรงเรียนปิดการใช้งานฟังก์ชัน AI สำหรับนักเรียนชั่วคราว'
+          : `โมดูลนี้ยังไม่เปิดใช้งานในแพ็กเกจปัจจุบัน (ต้องอัปเกรดเป็น ${getPackageLevelLabel(
+              getRequiredPackageLevelForTab(tab) ?? 'level_2',
+              lang
+            )})`
+      );
+      return;
     }
 
     if (currentRole === 'super_admin' && tab === 'super_admin_console') {
@@ -1445,6 +1535,29 @@ export const App: React.FC = () => {
       active = false;
     };
   }, [activeSchool.id]);
+
+  // Load Package Catalog & School Feature Flags (+ Student AI switch) from Supabase with local fallback
+  useEffect(() => {
+    if (isDemoMode) return;
+    let active = true;
+    void loadPackageCatalog();
+    if (!activeSchool.id) {
+      return () => {
+        active = false;
+      };
+    }
+    loadSchoolFeatureFlagsFromDb(activeSchool.id, activeSchool.schoolTier || 'enterprise')
+      .then((flags) => {
+        if (!active) return;
+        setFeatureFlagsBySchool((prev) => ({ ...prev, [activeSchool.id]: flags }));
+      })
+      .catch(() => {
+        // local cache fallback handled in schoolPackageStore
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeSchool.id, activeSchool.schoolTier, isDemoMode]);
 
   useEffect(() => {
     if (
@@ -3899,6 +4012,7 @@ export const App: React.FC = () => {
           schoolPeriods={schoolPeriods}
           gradingSystem={systemConfig.gradingSystem}
           schoolPermissions={schoolPermissions}
+          featureFlags={activeFeatureFlags}
           onRecordAttendance={handleRecordAttendance}
           onRecordPeriodAttendance={handleRecordPeriodAttendance}
           onAddLeaveRequest={handleAddLeaveRequest}
@@ -4174,6 +4288,7 @@ export const App: React.FC = () => {
         }}
         focusMode={focusMode}
         onToggleFocusMode={() => setFocusMode((prev) => !prev)}
+        featureFlags={activeFeatureFlags}
       />}
       {!useImmersiveGameLayout && dataSyncError && (
         <div role="alert" className="shrink-0 mx-4 sm:mx-6 mt-2 px-3.5 py-2 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 text-xs text-rose-800 dark:text-rose-200 flex items-center justify-between gap-2">
@@ -4334,6 +4449,8 @@ export const App: React.FC = () => {
                     activeSchool={activeSchool}
                     students={schoolStudents}
                     currentRole={currentRole}
+                    currentUser={currentUser}
+                    promotions={promotions}
                     lang={lang}
                     campusGates={campusGates}
                     onUpdateCampusGates={handleUpdateCampusGates}
@@ -4376,6 +4493,7 @@ export const App: React.FC = () => {
                     sdqAssessments={viewSdqAssessments}
                     infirmaryVisits={viewInfirmaryVisits}
                     schoolPermissions={schoolPermissions}
+                    featureFlags={activeFeatureFlags}
                     initialSubTab={dashboardInitialSubTab}
                     onSelectStudent={setSelectedStudentForProfile}
                     focusMode={focusMode}
@@ -4483,7 +4601,11 @@ export const App: React.FC = () => {
                     onCreateCustomReward={handleCreateCustomReward}
                     onGamePlayingChange={setIsGamePlaying}
                     onOpenCentralExamHub={() => navigateToAppTab('central_exam_hub')}
-                    onOpenCareerQuest={() => navigateToAppTab('career_quest')}
+                    onOpenCareerQuest={
+                      isTabEnabledByFeatureFlags('career_quest', activeFeatureFlags, currentRole)
+                        ? () => navigateToAppTab('career_quest')
+                        : undefined
+                    }
                     onExit={() => {
                       setEduBattleInitialSubTab(undefined);
                       setCurrentTab('dashboard');
@@ -4816,10 +4938,14 @@ export const App: React.FC = () => {
                     periodAttendance={viewPeriodAttendance}
                     homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={viewAssignments}
-                    onPracticeInAi={(topic) => {
-                      setAdaptivePracticeTopic(topic);
-                      navigateToAppTab('socratic_tutor');
-                    }}
+                    onPracticeInAi={
+                      isTabEnabledByFeatureFlags('socratic_tutor', activeFeatureFlags, currentRole)
+                        ? (topic) => {
+                            setAdaptivePracticeTopic(topic);
+                            navigateToAppTab('socratic_tutor');
+                          }
+                        : undefined
+                    }
                     canEditGrades={canEditGradesInSchool}
                     lang={lang}
                     onOpenImportExport={['super_admin', 'admin', 'teacher'].includes(currentRole) ? () => {
@@ -4886,25 +5012,39 @@ export const App: React.FC = () => {
 
             {/* Mode 3: Parent & Student Portal */}
             {programMode === 'parent_portal' && (
-              <ParentPortalView
-                students={viewStudents}
-                attendance={viewAttendance}
-                invoices={viewInvoices}
-                grades={viewGrades}
-                courses={viewCourses}
-                systemConfig={systemConfig}
-                leaveRequests={viewLeaveRequests}
-                lang={lang}
-                schoolPermissions={schoolPermissions}
-                onPayInvoice={handlePayInvoice}
-                onOpenReportCard={setSelectedStudentForReport}
-                onAddLeaveRequest={handleAddLeaveRequest}
-                schoolId={activeSchool.id}
-                periodAttendance={viewPeriodAttendance}
-                homeworkSubmissions={viewHomeworkSubmissions}
-                infirmaryVisits={viewInfirmaryVisits}
-                onSubmitInvoiceSlip={handleSubmitInvoiceSlip}
-              />
+              isProgramModeEnabledByFeatureFlags('parent_portal', activeFeatureFlags) ? (
+                <ParentPortalView
+                  students={viewStudents}
+                  attendance={viewAttendance}
+                  invoices={viewInvoices}
+                  grades={viewGrades}
+                  courses={viewCourses}
+                  systemConfig={systemConfig}
+                  leaveRequests={viewLeaveRequests}
+                  lang={lang}
+                  schoolPermissions={schoolPermissions}
+                  onPayInvoice={handlePayInvoice}
+                  onOpenReportCard={setSelectedStudentForReport}
+                  onAddLeaveRequest={handleAddLeaveRequest}
+                  schoolId={activeSchool.id}
+                  periodAttendance={viewPeriodAttendance}
+                  homeworkSubmissions={viewHomeworkSubmissions}
+                  infirmaryVisits={viewInfirmaryVisits}
+                  onSubmitInvoiceSlip={handleSubmitInvoiceSlip}
+                />
+              ) : (
+                <div className="saas-card saas-card-body max-w-lg mx-auto my-8 text-center space-y-3">
+                  <Lock className="w-8 h-8 text-amber-500 mx-auto" />
+                  <h3 className="type-section-title">
+                    {lang === 'th' ? 'พอร์ทัลผู้ปกครองยังไม่เปิดใช้งานในแพ็กเกจของโรงเรียน' : 'Parent Portal is not included in the current school package'}
+                  </h3>
+                  <p className="type-meta">
+                    {lang === 'th'
+                      ? `กรุณาติดต่อผู้ดูแลโรงเรียนเพื่ออัปเกรดเป็น ${getPackageLevelLabel('level_2', lang)} ขึ้นไป`
+                      : `Please contact your school admin to upgrade to ${getPackageLevelLabel('level_2', lang)}.`}
+                  </p>
+                </div>
+              )
             )}
             </ViewErrorBoundary>
           </div>
@@ -4930,45 +5070,84 @@ export const App: React.FC = () => {
           <span>หน้าหลัก</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            handleChangeProgramMode('school_erp');
-            if (currentRole === 'student') {
-              navigateToAppTab(schoolPermissions.student_self_checkin !== false ? 'mobile_checkin' : 'timetable');
-            } else {
-              navigateToAppTab('attendance');
-            }
-          }}
-          className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-            programMode === 'school_erp' && (currentTab === 'attendance' || currentTab === 'mobile_checkin')
-              ? 'text-[var(--color-primary-text)] font-semibold'
-              : 'text-[var(--color-text-muted)]'
-          }`}
-        >
-          <QrCode className="w-5 h-5" />
-          <span>{currentRole === 'student' && schoolPermissions.student_self_checkin === false ? 'ตารางเรียน' : 'เช็คชื่อ'}</span>
-        </button>
+        {(() => {
+          const slot2Target: NavTab =
+            currentRole === 'student'
+              ? (schoolPermissions.student_self_checkin !== false && isTabEnabledByFeatureFlags('mobile_checkin', activeFeatureFlags, currentRole)
+                  ? 'mobile_checkin'
+                  : isTabEnabledByFeatureFlags('timetable', activeFeatureFlags, currentRole)
+                    ? 'timetable'
+                    : 'dashboard')
+              : (isTabEnabledByFeatureFlags('attendance', activeFeatureFlags, currentRole)
+                  ? 'attendance'
+                  : isTabEnabledByFeatureFlags('timetable', activeFeatureFlags, currentRole)
+                    ? 'timetable'
+                    : 'dashboard');
+          const slot2Label =
+            slot2Target === 'mobile_checkin' || slot2Target === 'attendance'
+              ? 'เช็คชื่อ'
+              : slot2Target === 'timetable'
+                ? 'ตารางเรียน'
+                : 'หน้าหลัก';
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                handleChangeProgramMode('school_erp');
+                navigateToAppTab(slot2Target);
+              }}
+              className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+                programMode === 'school_erp' && currentTab === slot2Target
+                  ? 'text-[var(--color-primary-text)] font-semibold'
+                  : 'text-[var(--color-text-muted)]'
+              }`}
+            >
+              <QrCode className="w-5 h-5" />
+              <span>{slot2Label}</span>
+            </button>
+          );
+        })()}
 
-        <button
-          type="button"
-          onClick={() => {
-            handleChangeProgramMode('school_erp');
-            if (currentRole === 'student' && !schoolPermissions.student_upload_portfolio) {
-              navigateToAppTab('gradebook');
-            } else {
-              navigateToAppTab('portfolio');
-            }
-          }}
-          className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-            programMode === 'school_erp' && (currentTab === 'portfolio' || currentTab === 'gradebook')
-              ? 'text-[var(--color-primary-text)] font-semibold'
-              : 'text-[var(--color-text-muted)]'
-          }`}
-        >
-          <Briefcase className="w-5 h-5" />
-          <span>{currentRole === 'student' && !schoolPermissions.student_upload_portfolio ? 'ผลการเรียน' : 'ผลงาน'}</span>
-        </button>
+        {(() => {
+          const canPortfolio =
+            isTabEnabledByFeatureFlags('portfolio', activeFeatureFlags, currentRole) &&
+            (currentRole !== 'student' || schoolPermissions.student_upload_portfolio);
+          const canGrades =
+            isTabEnabledByFeatureFlags('gradebook', activeFeatureFlags, currentRole) &&
+            (currentRole !== 'student' || schoolPermissions.student_view_grades !== false);
+          const slot3Target: NavTab = canPortfolio
+            ? 'portfolio'
+            : canGrades
+              ? 'gradebook'
+              : isTabEnabledByFeatureFlags('homework', activeFeatureFlags, currentRole)
+                ? 'homework'
+                : 'dashboard';
+          const slot3Label =
+            slot3Target === 'portfolio'
+              ? 'ผลงาน'
+              : slot3Target === 'gradebook'
+                ? 'ผลการเรียน'
+                : slot3Target === 'homework'
+                  ? 'การบ้าน'
+                  : 'หน้าหลัก';
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                handleChangeProgramMode('school_erp');
+                navigateToAppTab(slot3Target);
+              }}
+              className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+                programMode === 'school_erp' && currentTab === slot3Target
+                  ? 'text-[var(--color-primary-text)] font-semibold'
+                  : 'text-[var(--color-text-muted)]'
+              }`}
+            >
+              <Briefcase className="w-5 h-5" />
+              <span>{slot3Label}</span>
+            </button>
+          );
+        })()}
 
         <button
           type="button"

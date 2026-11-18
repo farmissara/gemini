@@ -69,6 +69,7 @@ export interface School {
   studentDefaultPasswordNote?: string;
   customSchoolLoginUrl?: string;
   schoolTier?: SchoolTier;
+  aiStudentEnabled?: boolean;
 }
 
 export interface RolePermissionConfig {
@@ -1224,23 +1225,88 @@ export interface CentralExamPaymentSettings {
   updatedBy: string;
 }
 
-// 13. Multi-Tenant SaaS Feature Flags, Audit Logs & Campus Workflows
-export type SchoolTier = 'small' | 'standard' | 'enterprise';
+// 13. Multi-Tenant SaaS Feature Flags, Leveled Packages, Audit Logs & Campus Workflows
+export type PackageLevelId = 'level_1' | 'level_2' | 'level_3' | 'level_4';
+export type SchoolTier = PackageLevelId | 'small' | 'standard' | 'enterprise';
 
-export interface SchoolFeatureFlags {
+export type PackageFeatureCategoryId =
+  | 'academics'
+  | 'student_care'
+  | 'finance_portal'
+  | 'learning_games'
+  | 'ai_suite';
+
+export type SchoolFeatureFlagKey =
+  | 'students'
+  | 'teachers'
+  | 'courses'
+  | 'timetable'
+  | 'gradebook'
+  | 'homework'
+  | 'announcements'
+  | 'student_id_cards'
+  | 'attendance'
+  | 'mobile_checkin'
+  | 'behavior_sdq'
+  | 'infirmary'
+  | 'billing'
+  | 'portfolio'
+  | 'parent_portal'
+  | 'lms_classroom'
+  | 'central_exam_hub'
+  | 'executive_warning'
+  | 'subject_labs'
+  | 'games_3d'
+  | 'boss_raid'
+  | 'study_streak'
+  | 'hall_of_fame'
+  | 'ai_diagnostic'
+  | 'socratic_tutor'
+  | 'realworld_quests'
+  | 'career_quest';
+
+export interface SchoolFeatureFlags extends Record<SchoolFeatureFlagKey, boolean> {
   tier: SchoolTier;
-  lms_classroom: boolean;
-  central_exam_hub: boolean;
-  executive_warning: boolean;
-  ai_diagnostic: boolean;
-  socratic_tutor: boolean;
-  games_3d: boolean;
-  subject_labs: boolean;
-  realworld_quests: boolean;
-  boss_raid: boolean;
-  study_streak: boolean;
-  hall_of_fame: boolean;
-  infirmary: boolean;
+  allowStudentsAi: boolean;
+}
+
+export interface PackageLevelConfig {
+  id: PackageLevelId;
+  levelNumber: 1 | 2 | 3 | 4;
+  nameTh: string;
+  nameEn: string;
+  audienceTh: string;
+  audienceEn: string;
+  descriptionTh: string;
+  yearlyPriceThb: number;
+  monthlyPriceThb: number;
+  maxStudents: number;
+  isAvailable: boolean;
+  highlightBadgeTh?: string;
+  features: Record<SchoolFeatureFlagKey, boolean>;
+}
+
+export interface SchoolPackagePurchaseOrder {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  targetLevel: PackageLevelId;
+  targetLevelNameTh: string;
+  billingCycle: 'monthly' | 'yearly';
+  listPriceThb: number;
+  promoCode?: string;
+  discountThb: number;
+  finalAmountThb: number;
+  paymentMethod: 'promptpay' | 'invoice';
+  slipUrl?: string;
+  transferNote?: string;
+  requestedByName: string;
+  requestedByEmail?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
 }
 
 export interface AuditLogEntry {

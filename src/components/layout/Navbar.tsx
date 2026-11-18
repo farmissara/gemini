@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { UserRole, SystemConfig, AppProgramMode, AppLanguage, AppTheme, School, AuthUser, ThemePalette, Course, GradeRecord, Student, Teacher } from '../../types';
+import { UserRole, SystemConfig, AppProgramMode, AppLanguage, AppTheme, School, AuthUser, ThemePalette, Course, GradeRecord, Student, Teacher, SchoolFeatureFlags } from '../../types';
 import {
   Globe,
   LogOut,
@@ -19,6 +19,7 @@ import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { isAllowedProgramModeForRole } from '../../lib/attendanceScope';
+import { isProgramModeEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 
 interface NavbarProps {
   currentTab?: string;
@@ -60,6 +61,7 @@ interface NavbarProps {
   onNavigateTab?: (tab: 'students' | 'teachers' | 'courses' | 'gradebook') => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
+  featureFlags?: SchoolFeatureFlags;
 }
 
 const buildInitialsAvatar = (name?: string) => {
@@ -105,6 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigateTab,
   focusMode = false,
   onToggleFocusMode,
+  featureFlags,
 }) => {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -115,7 +118,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     .map((mode) => currentRole === 'student' && mode.id === 'school_erp'
       ? { ...mode, th: 'หน้าหลักนักเรียน', en: 'Student Home' }
       : mode)
-    .filter((mode) => isAllowedProgramModeForRole(currentRole, mode.id));
+    .filter(
+      (mode) =>
+        isAllowedProgramModeForRole(currentRole, mode.id) &&
+        isProgramModeEnabledByFeatureFlags(mode.id, featureFlags)
+    );
 
   useEffect(() => {
     if (!isAccountMenuOpen) return;

@@ -103,6 +103,7 @@ import { calculateGrade } from '../../lib/schoolSettings';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
 import { slotHasTeacher } from '../../lib/timetableTeachers';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
+import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -268,6 +269,7 @@ interface MobileAppShellProps {
   schoolPeriods?: SchoolPeriodTime[];
   gradingSystem?: GradingSystem;
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
+  featureFlags?: SchoolFeatureFlags;
   onUpdateGrade?: (gradeId: string, updates: Partial<GradeRecord>) => void;
   onAddGrade?: (grade: GradeRecord, options?: { notify?: boolean }) => void;
   // Role-first Mobile & Desktop Continuity Props
@@ -348,6 +350,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   schoolPeriods = DEFAULT_SCHOOL_PERIODS,
   gradingSystem = activeSchool.gradingSystem || 'thai',
   schoolPermissions,
+  featureFlags,
   onUpdateGrade,
   onAddGrade,
   schools = [],
@@ -617,30 +620,44 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const scopedAttendance = filterAttendanceForUser(attendance, currentUser, students);
   const todayCheckin = scopedAttendance.find(a => a.date === todayStr);
 
-  // Enforce school-level role policies at runtime on mobile
+  const isModuleEnabled = (tab: NavTab) => isTabEnabledByFeatureFlags(tab, featureFlags, currentRole);
+
+  // Enforce school-level role policies + package feature flags at runtime on mobile
   const canSelfCheckin =
-    currentRole === 'student'
+    isModuleEnabled('mobile_checkin') &&
+    (currentRole === 'student'
       ? schoolPermissions?.student_self_checkin !== false
       : currentRole === 'teacher'
       ? schoolPermissions?.teacher_attendance !== false
-      : true;
+      : true);
   const canPlayGames =
-    currentRole === 'student' ? schoolPermissions?.student_treasure_game !== false : true;
+    (currentRole === 'student' ? schoolPermissions?.student_treasure_game !== false : true) &&
+    (isModuleEnabled('games') || isModuleEnabled('subject_labs') || isModuleEnabled('boss_raid'));
   const canEditGradesMobile =
     currentRole === 'admin' ||
     currentRole === 'super_admin' ||
     (currentRole === 'teacher' && schoolPermissions?.teacher_grade_entry !== false);
   const canAccessHomework =
-    currentRole === 'student'
+    isModuleEnabled('homework') &&
+    (currentRole === 'student'
       ? schoolPermissions?.student_submit_homework !== false
       : currentRole === 'teacher'
       ? schoolPermissions?.teacher_homework !== false
-      : true;
+      : true);
   const canViewFinancialsMobile =
-    currentRole === 'admin' ||
-    currentRole === 'super_admin' ||
-    currentRole === 'parent' ||
-    (currentRole === 'teacher' && schoolPermissions?.teacher_view_financials !== false);
+    isModuleEnabled('billing') &&
+    (currentRole === 'admin' ||
+      currentRole === 'super_admin' ||
+      currentRole === 'parent' ||
+      (currentRole === 'teacher' && schoolPermissions?.teacher_view_financials !== false));
+  const canViewTimetable = isModuleEnabled('timetable');
+  const canOpenPortfolio =
+    isModuleEnabled('portfolio') &&
+    (currentRole !== 'student' || schoolPermissions?.student_upload_portfolio !== false);
+  const canOpenCareerQuest = currentRole !== 'parent' && isModuleEnabled('career_quest');
+  const canOpenAnnouncements = isModuleEnabled('announcements');
+  const canOpenLeave = isModuleEnabled('mobile_checkin') || isModuleEnabled('attendance');
+  const canViewDigitalId = isModuleEnabled('student_id_cards');
 
   // Scoped leave requests (students/parents see ONLY their own leave counts)
   const myLeaves = isRestrictedViewer
@@ -765,7 +782,50 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   }, [portfolioItems, currentUser, ownStudent]);
 
   const canViewGradesStudent =
-    currentRole === 'student' ? schoolPermissions?.student_view_grades !== false : true;
+    isModuleEnabled('gradebook') &&
+    (currentRole === 'student' ? schoolPermissions?.student_view_grades !== false : true);
+
+  useEffect(() => {
+    const blockedTab =
+      (activeTab === 'checkin' && !canSelfCheckin) ||
+      (activeTab === 'leave' && !canOpenLeave) ||
+      (activeTab === 'gradebook' && !isModuleEnabled('gradebook')) ||
+      (activeTab === 'student_grades' && !canViewGradesStudent) ||
+      (activeTab === 'portfolio' && !canOpenPortfolio) ||
+      (activeTab === 'career_quest' && !canOpenCareerQuest) ||
+      (activeTab === 'timetable' && !canViewTimetable) ||
+      (activeTab === 'games' && !canPlayGames) ||
+      (activeTab === 'homework' && !canAccessHomework) ||
+      (activeTab === 'announcements' && !canOpenAnnouncements);
+    if (blockedTab) {
+      setActiveTab('home');
+    }
+  }, [
+    activeTab,
+    canSelfCheckin,
+    canOpenLeave,
+    canViewGradesStudent,
+    canOpenPortfolio,
+    canOpenCareerQuest,
+    canViewTimetable,
+    canPlayGames,
+    canAccessHomework,
+    canOpenAnnouncements,
+    featureFlags,
+    currentRole,
+  ]);
+
+  useEffect(() => {
+    if (activeGameView === 'hub') return;
+    const blockedGame =
+      ((activeGameView === 'arcade_studio' || activeGameView === 'battle_royale_3d' || activeGameView === '1v1_arena') && !isModuleEnabled('games')) ||
+      (activeGameView === 'boss_raid' && !isModuleEnabled('boss_raid')) ||
+      (activeGameView === 'subject_labs' && !isModuleEnabled('subject_labs')) ||
+      (activeGameView === 'hall_of_fame' && !isModuleEnabled('hall_of_fame'));
+    if (blockedGame) {
+      setActiveGameView('hub');
+    }
+  }, [activeGameView, featureFlags, currentRole]);
 
   // Executive Dashboard Metrics (Mobile Optimized)
   const execMetrics = useMemo(() => {
@@ -986,6 +1046,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 canAccessHomework={canAccessHomework}
                 canPlayGames={canPlayGames}
                 canViewGrades={canViewGradesStudent}
+                canViewTimetable={canViewTimetable}
+                canOpenPortfolio={canOpenPortfolio}
+                canOpenLeave={canOpenLeave}
+                canOpenAnnouncements={canOpenAnnouncements}
                 getSlotTodayCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
                 onOpenCheckin={() => {
                   setMobileAttendanceInitialSubTab('selfie_mobile');
@@ -1008,7 +1072,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   setActiveTab('games');
                   setActiveGameView('hub');
                 }}
-                onOpenCareerQuest={() => setActiveTab('career_quest')}
+                onOpenCareerQuest={canOpenCareerQuest ? () => setActiveTab('career_quest') : undefined}
               />
             ) : (
               <>
@@ -1072,6 +1136,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 ) : null}
 
                 {/* 1 Large Primary Action Button */}
+                {(canSelfCheckin || canViewTimetable) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1106,6 +1171,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   </div>
                   <ChevronRight className="w-5 h-5 shrink-0" />
                 </button>
+                )}
 
                 {/* Timed Period Check-in/Out Missions + Active Period Red Highlight */}
                 {currentRole === 'teacher' &&
@@ -1251,7 +1317,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
                 {/* Single-line Clean List Rows */}
                 <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                  {currentRole === 'teacher' && (
+                  {currentRole === 'teacher' && canViewTimetable && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1277,7 +1343,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </button>
                   )}
 
-                  {(currentRole === 'teacher' || currentRole === 'parent') && (
+                  {(currentRole === 'teacher' || currentRole === 'parent') && canViewTimetable && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1297,7 +1363,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </button>
                   )}
 
-                  {currentRole === 'teacher' && (
+                  {currentRole === 'teacher' && isModuleEnabled('gradebook') && (
                     <button
                       type="button"
                       onClick={() => setActiveTab('gradebook')}
@@ -1342,22 +1408,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('leave')}
-                    className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                  >
-                    <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                      <FileText className="w-4 h-4 text-amber-600" />
-                      <span>{lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}</span>
-                    </span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                      {pendingLeavesCount > 0 ? `${pendingLeavesCount}` : ''}
-                      <ChevronRight className="w-4 h-4" />
-                    </span>
-                  </button>
+                  {canOpenLeave && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('leave')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <FileText className="w-4 h-4 text-amber-600" />
+                        <span>{lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}</span>
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                        {pendingLeavesCount > 0 ? `${pendingLeavesCount}` : ''}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
 
-                  {currentRole === 'teacher' && (
+                  {currentRole === 'teacher' && canOpenCareerQuest && (
                     <button
                       type="button"
                       onClick={() => setActiveTab('career_quest')}
@@ -1371,7 +1439,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </button>
                   )}
 
-                  {currentRole === 'teacher' && (
+                  {currentRole === 'teacher' && canPlayGames && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1388,20 +1456,22 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('announcements')}
-                    className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                  >
-                    <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                      <Megaphone className="w-4 h-4 text-emerald-600" />
-                      <span>{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}</span>
-                    </span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                      {scopedAnnouncements.length}
-                      <ChevronRight className="w-4 h-4" />
-                    </span>
-                  </button>
+                  {canOpenAnnouncements && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('announcements')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <Megaphone className="w-4 h-4 text-emerald-600" />
+                        <span>{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}</span>
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+                        {scopedAnnouncements.length}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -1409,7 +1479,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                   >
                     <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'บัตรดิจิทัล & ตั้งค่า' : 'Digital ID & Settings'}
+                      {canViewDigitalId
+                        ? (lang === 'th' ? 'บัตรดิจิทัล & ตั้งค่า' : 'Digital ID & Settings')
+                        : (lang === 'th' ? 'ตั้งค่าบัญชี' : 'Account Settings')}
                     </span>
                     <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
                   </button>
@@ -2659,97 +2731,106 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             iconBg: string;
             iconText: string;
             icon: React.ComponentType<{ className?: string }>;
+            enabled: boolean;
             onLaunch: () => void;
-          }[] = [
+          }[] = ([
             {
               id: 'meteor_blaster',
-              category: 'arcade',
+              category: 'arcade' as const,
               title: 'Meteor Blaster',
               subtitle: 'ยิงอุกกาบาตสมการ',
               tag: 'คณิต · ฟิสิกส์',
               iconBg: 'bg-cyan-500/15',
               iconText: 'text-cyan-400',
               icon: Rocket,
+              enabled: isModuleEnabled('games'),
               onLaunch: () => openArcadeSubTab('meteor_blaster'),
             },
             {
               id: 'concept_match',
-              category: 'arcade',
+              category: 'arcade' as const,
               title: 'Match & Memory',
               subtitle: 'จับคู่ & พลิกการ์ดไว',
               tag: '8 กลุ่มสาระ',
               iconBg: 'bg-violet-500/15',
               iconText: 'text-violet-400',
               icon: Grid2x2,
+              enabled: isModuleEnabled('games'),
               onLaunch: () => openArcadeSubTab('concept_match'),
             },
             {
               id: 'word_builder',
-              category: 'arcade',
+              category: 'arcade' as const,
               title: 'Word Builder',
               subtitle: 'ต่อคำศัพท์สองภาษา',
               tag: 'อังกฤษ · วิทย์',
               iconBg: 'bg-amber-500/15',
               iconText: 'text-amber-400',
               icon: SpellCheck2,
+              enabled: isModuleEnabled('games'),
               onLaunch: () => openArcadeSubTab('word_builder'),
             },
             {
               id: 'chrono_sort',
-              category: 'arcade',
+              category: 'arcade' as const,
               title: 'ChronoSort',
               subtitle: 'สายพานด่วน & เรียงลำดับ',
               tag: 'ตรรกะ · สังคม',
               iconBg: 'bg-emerald-500/15',
               iconText: 'text-emerald-400',
               icon: GitBranch,
+              enabled: isModuleEnabled('games'),
               onLaunch: () => openArcadeSubTab('chrono_sort'),
             },
             {
               id: '1v1_arena',
-              category: 'battle',
+              category: 'battle' as const,
               title: '1v1 Speed Duel',
               subtitle: 'ดวลตอบสด 15 วิ',
               tag: '50/50 · โล่',
               iconBg: 'bg-rose-500/15',
               iconText: 'text-rose-400',
               icon: Swords,
+              enabled: isModuleEnabled('games'),
               onLaunch: () => openArcadeSubTab('arena'),
             },
             {
               id: 'battle_royale_3d',
-              category: 'battle',
+              category: 'battle' as const,
               title: '3D Battle Royale',
               subtitle: 'ล่าหีบสมบัติเกาะ 3 มิติ',
               tag: '3D EXPLORE',
               iconBg: 'bg-indigo-500/15',
               iconText: 'text-indigo-400',
               icon: Gamepad2,
+              enabled: isModuleEnabled('games'),
               onLaunch: () => setActiveGameView('battle_royale_3d'),
             },
             {
               id: 'boss_raid',
-              category: 'battle',
+              category: 'battle' as const,
               title: 'Co-op Boss Raid',
               subtitle: 'ตีบอสประจำบทเรียน',
               tag: 'COMBO DMG',
               iconBg: 'bg-orange-500/15',
               iconText: 'text-orange-400',
               icon: Flame,
+              enabled: isModuleEnabled('boss_raid'),
               onLaunch: () => setActiveGameView('boss_raid'),
             },
             {
               id: 'subject_labs',
-              category: 'lab',
+              category: 'lab' as const,
               title: 'Subject Labs',
               subtitle: 'ทดลองเคมี ฟิสิกส์ โค้ด',
               tag: '6D LAB',
               iconBg: 'bg-sky-500/15',
               iconText: 'text-sky-400',
               icon: FlaskConical,
+              enabled: isModuleEnabled('subject_labs'),
               onLaunch: () => setActiveGameView('subject_labs'),
             },
-          ];
+          ]).filter((g) => g.enabled);
 
           const filteredMobileGames =
             mobileGameCategory === 'all'
@@ -2796,6 +2877,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               </section>
 
               {/* Featured 1-Tap Live Classroom 6-Digit PIN Card */}
+              {isModuleEnabled('games') && (
               <button
                 type="button"
                 onClick={() => openArcadeSubTab('live_room')}
@@ -2821,8 +2903,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
                 <ChevronRight className="w-5 h-5 text-rose-400 shrink-0" />
               </button>
+              )}
 
-              {currentRole !== 'parent' && (
+              {canOpenCareerQuest && (
                 <button
                   type="button"
                   onClick={() => setActiveTab('career_quest')}
@@ -2853,7 +2936,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               {/* Category Filter Strip */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 {([
-                  { id: 'all', label: 'ทั้งหมด (8)' },
+                  { id: 'all', label: `ทั้งหมด (${mobileGamesList.length})` },
                   { id: 'arcade', label: 'Arcade ไวๆ' },
                   { id: 'battle', label: 'ดวล & 3D' },
                   { id: 'lab', label: 'แล็บจำลอง' },
@@ -2909,59 +2992,65 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
               {/* Clean Compact Utility Row: Leaderboard, Shop & Hall of Fame */}
               <div className="grid grid-cols-3 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => openArcadeSubTab('leaderboard')}
-                  className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                    <Trophy className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
-                      อันดับ
-                    </p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
-                      {playerScores.length} คน
-                    </p>
-                  </div>
-                </button>
+                {isModuleEnabled('games') && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openArcadeSubTab('leaderboard')}
+                      className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                        <Trophy className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+                          อันดับ
+                        </p>
+                        <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
+                          {playerScores.length} คน
+                        </p>
+                      </div>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => openArcadeSubTab('shop')}
-                  className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
-                    <ShoppingBag className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
-                      แลกของ
-                    </p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
-                      {currentScore.gems} G
-                    </p>
-                  </div>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => openArcadeSubTab('shop')}
+                      className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+                        <ShoppingBag className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+                          แลกของ
+                        </p>
+                        <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
+                          {currentScore.gems} G
+                        </p>
+                      </div>
+                    </button>
+                  </>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => setActiveGameView('hall_of_fame')}
-                  className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
-                      เกียรติยศ
-                    </p>
-                    <p className="text-[10px] text-[var(--color-text-muted)] truncate">
-                      ถ้วย 3D
-                    </p>
-                  </div>
-                </button>
+                {isModuleEnabled('hall_of_fame') && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveGameView('hall_of_fame')}
+                    className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+                        เกียรติยศ
+                      </p>
+                      <p className="text-[10px] text-[var(--color-text-muted)] truncate">
+                        ถ้วย 3D
+                      </p>
+                    </div>
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -2971,32 +3060,34 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         {activeTab === 'profile' && (
           <div className="space-y-4 animate-in fade-in duration-200 pb-4">
             {/* Clean Top Segmented Toggle */}
-            <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-              <button
-                type="button"
-                onClick={() => setProfilePage(0)}
-                className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
-                  profilePage === 0
-                    ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                {lang === 'th' ? 'บัตรดิจิทัล' : 'Digital ID'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setProfilePage(1)}
-                className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
-                  profilePage === 1
-                    ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                {lang === 'th' ? 'ตั้งค่าบัญชี' : 'Account Settings'}
-              </button>
-            </div>
+            {canViewDigitalId && (
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setProfilePage(0)}
+                  className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
+                    profilePage === 0
+                      ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  {lang === 'th' ? 'บัตรดิจิทัล' : 'Digital ID'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProfilePage(1)}
+                  className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
+                    profilePage === 1
+                      ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  {lang === 'th' ? 'ตั้งค่าบัญชี' : 'Account Settings'}
+                </button>
+              </div>
+            )}
 
-            {profilePage === 0 && (
+            {canViewDigitalId && profilePage === 0 && (
               <DigitalIdCardView
                 students={currentRole === 'student' ? (ownStudent ? [ownStudent] : []) : isRestrictedViewer ? linkedStudents : students}
                 school={activeSchool}
@@ -3008,13 +3099,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             )}
 
             {/* Quick Profile Actions & Settings */}
-            {profilePage === 1 && <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
+            {(profilePage === 1 || !canViewDigitalId) && <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
               <h3 className="text-xs font-semibold text-[var(--color-text-muted)]">
                 {lang === 'th' ? 'บัญชีและการตั้งค่า' : 'Account & Preferences'}
               </h3>
 
               <div className="space-y-2 text-xs">
-                {currentRole === 'student' && (
+                {currentRole === 'student' && canOpenPortfolio && (
                   <button
                     type="button"
                     onClick={() => setActiveTab('portfolio')}
@@ -3436,7 +3527,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             </span>
           </button>
 
-          {/* SLOT 2: CHECK-IN (or Timetable for student when self check-in is disabled) */}
+          {/* SLOT 2: CHECK-IN (or Timetable / Announcements fallback) */}
           <button
             type="button"
             onClick={() => {
@@ -3447,8 +3538,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 setMobilePeriodDate(undefined);
                 setMobilePeriodCheckType(undefined);
                 setActiveTab('checkin');
-              } else {
+              } else if (canViewTimetable) {
                 setActiveTab('timetable');
+              } else if (canOpenAnnouncements) {
+                setActiveTab('announcements');
+              } else {
+                setActiveTab('home');
               }
             }}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
@@ -3460,7 +3555,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {canSelfCheckin ? <Clock className="w-5 h-5 mb-0.5" /> : <Calendar className="w-5 h-5 mb-0.5" />}
             <span className="text-[11px] truncate max-w-full">
               {!canSelfCheckin
-                ? (lang === 'th' ? 'ตารางเรียน' : 'Schedule')
+                ? canViewTimetable
+                  ? (lang === 'th' ? 'ตารางเรียน' : 'Schedule')
+                  : canOpenAnnouncements
+                    ? (lang === 'th' ? 'ประกาศ' : 'News')
+                    : (lang === 'th' ? 'หน้าหลัก' : 'Home')
                 : currentRole === 'parent'
                 ? (lang === 'th' ? 'มาเรียน' : 'Logs')
                 : (lang === 'th' ? 'เช็คชื่อ' : 'Check-in')}
@@ -3500,7 +3599,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           ) : currentRole === 'teacher' ? (
             <button
               type="button"
-              onClick={() => setActiveTab('gradebook')}
+              onClick={() => {
+                if (isModuleEnabled('gradebook')) setActiveTab('gradebook');
+                else if (canViewTimetable) setActiveTab('timetable');
+                else if (canOpenAnnouncements) setActiveTab('announcements');
+                else setActiveTab('executive');
+              }}
               className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'gradebook'
                   ? 'text-[var(--color-primary-text)] font-bold'
@@ -3508,12 +3612,22 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               }`}
             >
               <ClipboardCheck className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'คะแนน' : 'Grades'}</span>
+              <span className="text-[11px] truncate max-w-full">
+                {isModuleEnabled('gradebook')
+                  ? (lang === 'th' ? 'คะแนน' : 'Grades')
+                  : canViewTimetable
+                    ? (lang === 'th' ? 'ตารางสอน' : 'Schedule')
+                    : (lang === 'th' ? 'ภาพรวม' : 'Overview')}
+              </span>
             </button>
           ) : currentRole === 'parent' ? (
             <button
               type="button"
-              onClick={() => setActiveTab('announcements')}
+              onClick={() => {
+                if (canOpenAnnouncements) setActiveTab('announcements');
+                else if (canViewTimetable) setActiveTab('timetable');
+                else setActiveTab('profile');
+              }}
               className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 activeTab === 'announcements'
                   ? 'text-[var(--color-primary-text)] font-bold'
@@ -3521,7 +3635,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               }`}
             >
               <BellRing className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'ประกาศ' : 'News'}</span>
+              <span className="text-[11px] truncate max-w-full">
+                {canOpenAnnouncements
+                  ? (lang === 'th' ? 'ประกาศ' : 'News')
+                  : canViewTimetable
+                    ? (lang === 'th' ? 'ตารางเรียน' : 'Schedule')
+                    : (lang === 'th' ? 'บัตร' : 'ID')}
+              </span>
             </button>
           ) : (
             <button
@@ -3530,19 +3650,31 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 if (canPlayGames) {
                   setActiveTab('games');
                   setActiveGameView('hub');
-                } else {
+                } else if (canAccessHomework) {
                   setActiveTab('homework');
+                } else if (canViewGradesStudent) {
+                  setActiveTab('student_grades');
+                } else if (canOpenPortfolio) {
+                  setActiveTab('portfolio');
+                } else {
+                  setActiveTab('profile');
                 }
               }}
               className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                (canPlayGames ? activeTab === 'games' : activeTab === 'homework')
+                (canPlayGames ? activeTab === 'games' : canAccessHomework ? activeTab === 'homework' : activeTab === 'student_grades')
                   ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
               {canPlayGames ? <Gamepad2 className="w-5 h-5 mb-0.5" /> : <BookOpen className="w-5 h-5 mb-0.5" />}
               <span className="text-[11px] truncate max-w-full">
-                {canPlayGames ? (lang === 'th' ? 'เกมส์' : 'Arcade') : (lang === 'th' ? 'การบ้าน' : 'Tasks')}
+                {canPlayGames
+                  ? (lang === 'th' ? 'เกมส์' : 'Arcade')
+                  : canAccessHomework
+                    ? (lang === 'th' ? 'การบ้าน' : 'Tasks')
+                    : canViewGradesStudent
+                      ? (lang === 'th' ? 'เกรด' : 'Grades')
+                      : (lang === 'th' ? 'ผลงาน' : 'Portfolio')}
               </span>
             </button>
           )}
