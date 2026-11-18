@@ -2406,11 +2406,36 @@ export const App: React.FC = () => {
   // -------------------------------------------------------------
   useEffect(() => {
     if (!currentUser || currentUser.role === 'parent') return;
-    const firedAlerts = new Set<string>();
+    const FIRED_STORAGE_PREFIX = 'eduverse_fired_schedule_alerts_v1_';
+    const readFiredForDay = (dayStr: string): Set<string> => {
+      try {
+        const raw = window.localStorage.getItem(`${FIRED_STORAGE_PREFIX}${dayStr}`);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? new Set(parsed) : new Set();
+      } catch {
+        return new Set();
+      }
+    };
+    const markFiredForDay = (dayStr: string, set: Set<string>, key: string) => {
+      set.add(key);
+      try {
+        window.localStorage.setItem(`${FIRED_STORAGE_PREFIX}${dayStr}`, JSON.stringify(Array.from(set)));
+        // Clean up older day keys so storage stays tiny
+        for (let i = window.localStorage.length - 1; i >= 0; i -= 1) {
+          const k = window.localStorage.key(i);
+          if (k && k.startsWith(FIRED_STORAGE_PREFIX) && k !== `${FIRED_STORAGE_PREFIX}${dayStr}`) {
+            window.localStorage.removeItem(k);
+          }
+        }
+      } catch {
+        // ignore quota errors
+      }
+    };
 
     const checkScheduleAndAttendance = () => {
       const now = new Date();
       const todayStr = getLocalDateString();
+      const firedAlerts = readFiredForDay(todayStr);
       const currentHours = now.getHours();
       const currentMins = now.getMinutes();
       const totalMinutes = currentHours * 60 + currentMins;
@@ -2422,13 +2447,14 @@ export const App: React.FC = () => {
       if (todayHoliday) {
         const holidayKey = `${todayStr}-holiday-${todayHoliday.id}-${currentUser.id}`;
         if (!firedAlerts.has(holidayKey)) {
-          firedAlerts.add(holidayKey);
+          markFiredForDay(todayStr, firedAlerts, holidayKey);
           sendEduVerseNotification({
             title: `🗓️ วันหยุด: ${todayHoliday.nameTh}`,
             body: 'ไม่มีการเรียนการสอนในวันนี้ (ระบบหยุดการแจ้งเตือนเข้าคาบเรียนอัตโนมัติ)',
             category: 'announcement',
             priority: 'normal',
             tag: holidayKey,
+            dedupeByTag: true,
             schoolId: activeSchool.id,
             targetUserIds: [currentUser.id],
             targetRoles: [currentUser.role],
@@ -2441,13 +2467,14 @@ export const App: React.FC = () => {
       // 1. Morning School Arrival (07:30 - 08:00: reminder to check-in)
       const morningKey = `${todayStr}-morning-arrival-${currentUser.id}`;
       if (totalMinutes >= 450 && totalMinutes <= 480 && !firedAlerts.has(morningKey)) {
-        firedAlerts.add(morningKey);
+        markFiredForDay(todayStr, firedAlerts, morningKey);
         sendEduVerseNotification({
           title: '☀️ สวัสดีตอนเช้า: อย่าลืมสแกนเข้าโรงเรียน',
           body: 'ยินดีต้อนรับสู่โรงเรียน กรุณาถ่ายรูปหรือสแกนบัตรเช็คอินผ่านพิกัด GPS ประตูโรงเรียนก่อนเวลา 08:00 น.',
           category: 'attendance',
           priority: 'normal',
           tag: morningKey,
+          dedupeByTag: true,
           schoolId: activeSchool.id,
           targetUserIds: [currentUser.id],
           targetRoles: [currentUser.role],
@@ -2457,7 +2484,7 @@ export const App: React.FC = () => {
       // 2. Morning Late Alert (> 08:05: if not checked in yet)
       const lateKey = `${todayStr}-morning-late-alert-${currentUser.id}`;
       if (totalMinutes >= 485 && totalMinutes <= 540 && !firedAlerts.has(lateKey)) {
-        firedAlerts.add(lateKey);
+        markFiredForDay(todayStr, firedAlerts, lateKey);
         const userHasCheckedIn = attendance.some(
           (a) =>
             a.date === todayStr &&
@@ -2474,6 +2501,7 @@ export const App: React.FC = () => {
             category: 'attendance',
             priority: 'urgent',
             tag: lateKey,
+            dedupeByTag: true,
             schoolId: activeSchool.id,
             targetUserIds: [currentUser.id],
             targetRoles: [currentUser.role],
@@ -2484,13 +2512,14 @@ export const App: React.FC = () => {
       // 3. Afternoon Departure Check-out (15:30 - 16:30)
       const departureKey = `${todayStr}-afternoon-departure-${currentUser.id}`;
       if (totalMinutes >= 930 && totalMinutes <= 990 && !firedAlerts.has(departureKey)) {
-        firedAlerts.add(departureKey);
+        markFiredForDay(todayStr, firedAlerts, departureKey);
         sendEduVerseNotification({
           title: '🏫 สิ้นสุดเวลาเรียนประจำวัน: อย่าลืมเช็คเอาท์',
           body: 'หมดเวลาเรียนตามตารางแล้ว กรุณาสแกนหรือถ่ายรูปเช็คเอาท์ (Check-out) ก่อนเดินทางกลับบ้านอย่างปลอดภัย',
           category: 'attendance',
           priority: 'normal',
           tag: departureKey,
+          dedupeByTag: true,
           schoolId: activeSchool.id,
           targetUserIds: [currentUser.id],
           targetRoles: [currentUser.role],
@@ -2529,13 +2558,14 @@ export const App: React.FC = () => {
         // 4.1. Period Start & Check-in Reminder (within 5 minutes before or at start)
         const pStartKey = `${todayStr}-p${p.periodNumber}-start-${currentUser.id}`;
         if (totalMinutes >= startMin - 5 && totalMinutes <= startMin + 3 && !firedAlerts.has(pStartKey)) {
-          firedAlerts.add(pStartKey);
+          markFiredForDay(todayStr, firedAlerts, pStartKey);
           sendEduVerseNotification({
             title: `⏰ คาบที่ ${p.periodNumber}: ${subjectLabel} (${p.startTime} - ${p.endTime})`,
             body: `ใกล้เริ่มวิชา ${subjectLabel} ห้อง ${matchedSlot.room || '-'} แล้ว กรุณาเช็คชื่อเข้าคาบเรียน (Check-in)`,
             category: 'attendance',
             priority: 'urgent',
             tag: pStartKey,
+            dedupeByTag: true,
             schoolId: activeSchool.id,
             targetUserIds: [currentUser.id],
             targetRoles: [currentUser.role],
@@ -2545,13 +2575,14 @@ export const App: React.FC = () => {
         // 4.2. Mid-period Late / Missed Check-in Reminder (10 mins after start)
         const pLateKey = `${todayStr}-p${p.periodNumber}-missed-${currentUser.id}`;
         if (totalMinutes >= startMin + 10 && totalMinutes <= startMin + 15 && !firedAlerts.has(pLateKey)) {
-          firedAlerts.add(pLateKey);
+          markFiredForDay(todayStr, firedAlerts, pLateKey);
           sendEduVerseNotification({
             title: `⚠️ แจ้งเตือนเช็คชื่อคาบที่ ${p.periodNumber}: ${subjectLabel}`,
             body: `วิชา ${subjectLabel} (${p.startTime} - ${p.endTime}) เริ่มไปแล้ว 10 นาที กรุณาตรวจสอบการเช็คชื่อเข้าคาบเรียน`,
             category: 'attendance',
             priority: 'urgent',
             tag: pLateKey,
+            dedupeByTag: true,
             schoolId: activeSchool.id,
             targetUserIds: [currentUser.id],
             targetRoles: [currentUser.role],
@@ -2561,13 +2592,14 @@ export const App: React.FC = () => {
         // 4.3. Period End & Check-out Reminder (within 3 mins of end)
         const pEndKey = `${todayStr}-p${p.periodNumber}-end-${currentUser.id}`;
         if (totalMinutes >= endMin - 2 && totalMinutes <= endMin + 3 && !firedAlerts.has(pEndKey)) {
-          firedAlerts.add(pEndKey);
+          markFiredForDay(todayStr, firedAlerts, pEndKey);
           sendEduVerseNotification({
             title: `🔔 สิ้นสุดคาบที่ ${p.periodNumber}: ${subjectLabel} (${p.endTime} น.)`,
             body: `หมดเวลาวิชา ${subjectLabel} แล้ว สามารถกดเช็คชื่อออกคาบเรียน (Check-out) ได้จากตารางเรียน`,
             category: 'attendance',
             priority: 'normal',
             tag: pEndKey,
+            dedupeByTag: true,
             schoolId: activeSchool.id,
             targetUserIds: [currentUser.id],
             targetRoles: [currentUser.role],

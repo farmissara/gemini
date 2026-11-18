@@ -29,6 +29,7 @@ export interface NotificationSettings {
   enabled: boolean;
   sound: boolean;
   vibrate: boolean;
+  retentionDays: 3 | 7 | 14 | 30;
   categories: {
     attendance: boolean;
     homework: boolean;
@@ -41,11 +42,14 @@ const STORAGE_KEY_NOTIFICATIONS = 'eduverse_notifications_history';
 const STORAGE_KEY_SETTINGS = 'eduverse_notification_settings';
 const STORAGE_KEY_USER_READ_PREFIX = 'eduverse_notif_read_ids_';
 const STORAGE_KEY_USER_DISMISSED_PREFIX = 'eduverse_notif_dismissed_ids_';
+const MAX_STORED_NOTIFICATIONS = 80;
+export const DEFAULT_NOTIFICATION_RETENTION_DAYS: 3 | 7 | 14 | 30 = 7;
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   enabled: false,
   sound: true,
   vibrate: true,
+  retentionDays: DEFAULT_NOTIFICATION_RETENTION_DAYS,
   categories: {
     attendance: true,
     homework: true,
@@ -54,11 +58,26 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   },
 };
 
+function normalizeRetentionDays(value: unknown): 3 | 7 | 14 | 30 {
+  if (value === 3 || value === 7 || value === 14 || value === 30) return value;
+  return DEFAULT_NOTIFICATION_RETENTION_DAYS;
+}
+
 export function getNotificationSettings(): NotificationSettings {
   if (typeof window === 'undefined') return DEFAULT_NOTIFICATION_SETTINGS;
   try {
     const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
-    return saved ? { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(saved) } : DEFAULT_NOTIFICATION_SETTINGS;
+    if (!saved) return DEFAULT_NOTIFICATION_SETTINGS;
+    const parsed = JSON.parse(saved);
+    return {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...parsed,
+      retentionDays: normalizeRetentionDays(parsed?.retentionDays),
+      categories: {
+        ...DEFAULT_NOTIFICATION_SETTINGS.categories,
+        ...(parsed?.categories || {}),
+      },
+    };
   } catch {
     return DEFAULT_NOTIFICATION_SETTINGS;
   }
@@ -68,27 +87,56 @@ export function saveNotificationSettings(settings: NotificationSettings): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+    // Immediately prune notifications if retention window was shortened
+    const current = getStoredNotifications(settings.retentionDays);
+    saveStoredNotifications(current, settings.retentionDays);
   } catch (err) {
     console.warn('Failed to save notification settings:', err);
   }
 }
 
-export function getStoredNotifications(): EduVerseNotification[] {
+export function pruneNotificationsByAge(
+  list: EduVerseNotification[],
+  retentionDays: number = getNotificationSettings().retentionDays
+): EduVerseNotification[] {
+  const days = normalizeRetentionDays(retentionDays);
+  const cutoffMs = Date.now() - days * 86_400_000;
+  return list
+    .filter((item) => {
+      const ts = new Date(item.timestamp).getTime();
+      return Number.isNaN(ts) || ts >= cutoffMs;
+    })
+    .slice(0, MAX_STORED_NOTIFICATIONS);
+}
+
+export function getStoredNotifications(retentionDaysOverride?: number): EduVerseNotification[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    const pruned = pruneNotificationsByAge(parsed, retentionDaysOverride);
+    if (pruned.length !== parsed.length) {
+      try {
+        localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(pruned));
+      } catch {
+        // ignore quota errors
+      }
+    }
+    return pruned;
   } catch {
     return [];
   }
 }
 
-export function saveStoredNotifications(list: EduVerseNotification[]): void {
+export function saveStoredNotifications(
+  list: EduVerseNotification[],
+  retentionDaysOverride?: number
+): void {
   if (typeof window === 'undefined') return;
   try {
-    // Keep last 120 notifications
-    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(list.slice(0, 120)));
+    const pruned = pruneNotificationsByAge(list, retentionDaysOverride);
+    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(pruned));
   } catch (err) {
     console.warn('Failed to save notifications history:', err);
   }
@@ -238,10 +286,19 @@ export function getScopedNotificationsForUser({
       read: item.read || readSet.has(item.id),
     }));
 
-  // Merge school announcements relevant to user's role
+  // Merge school announcements relevant to user's role within retention window
+  const retentionDays = getNotificationSettings().retentionDays;
+  const announcementCutoffMs = Date.now() - retentionDays * 86_400_000;
+  const pinnedCutoffMs = Date.now() - Math.max(retentionDays, 14) * 86_400_000;
   const announcementItems: EduVerseNotification[] = announcements
     .filter((ann) => (!ann.schoolId || !schoolId || ann.schoolId === schoolId))
     .filter((ann) => isAnnouncementAudienceMatch(ann.targetAudience, currentUser.role))
+    .filter((ann) => {
+      if (!/^\d{4}-\d{2}-\d{2}/.test(ann.publishedAt || '')) return true;
+      const publishedMs = new Date(ann.publishedAt).getTime();
+      if (Number.isNaN(publishedMs)) return true;
+      return publishedMs >= (ann.pinned ? pinnedCutoffMs : announcementCutoffMs);
+    })
     .map((ann) => {
       const id = `ann-notif-${ann.id}`;
       return {
@@ -379,6 +436,30 @@ export function clearScopedNotificationsForUser(params: ScopedNotificationsParam
   saveStoredNotifications(remaining);
 }
 
+export function dismissScopedNotificationForUser(
+  notifId: string,
+  params: ScopedNotificationsParams
+): void {
+  const { currentUser, schoolId } = params;
+  if (!currentUser || !notifId) return;
+
+  const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, schoolId);
+  dismissedSet.add(notifId);
+  saveUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, schoolId, dismissedSet);
+
+  const stored = getStoredNotifications();
+  const remaining = stored.filter((item) => {
+    if (item.id !== notifId) return true;
+    const isPersonalOnly =
+      Array.isArray(item.targetUserIds) &&
+      item.targetUserIds.length === 1 &&
+      item.targetUserIds[0] === currentUser.id &&
+      !item.isBroadcast;
+    return !isPersonalOnly;
+  });
+  saveStoredNotifications(remaining);
+}
+
 // Check if browser supports Web Notifications
 export function isPushNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
@@ -444,6 +525,7 @@ export async function sendEduVerseNotification(params: {
   url?: string;
   priority?: 'normal' | 'urgent';
   tag?: string;
+  dedupeByTag?: boolean;
   schoolId?: string;
   targetUserIds?: string[];
   targetStudentIds?: string[];
@@ -455,9 +537,23 @@ export async function sendEduVerseNotification(params: {
 }): Promise<EduVerseNotification> {
   const settings = getNotificationSettings();
   const timeNow = new Date().toISOString();
+  const currentHistory = getStoredNotifications(settings.retentionDays);
+
+  if (params.tag && params.dedupeByTag) {
+    const existing = currentHistory.find(
+      (item) => item.id === params.tag || item.metadata?.dedupeTag === params.tag
+    );
+    if (existing) {
+      return existing;
+    }
+  }
 
   const notifItem: EduVerseNotification = {
-    id: params.tag ? `${params.tag}-${Date.now()}` : `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: params.tag
+      ? params.dedupeByTag
+        ? params.tag
+        : `${params.tag}-${Date.now()}`
+      : `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     title: params.title,
     body: params.body,
     category: params.category,
@@ -472,12 +568,13 @@ export async function sendEduVerseNotification(params: {
     targetRoles: params.targetRoles || params.metadata?.targetRoles,
     isBroadcast: params.isBroadcast ?? params.metadata?.isBroadcast,
     sourceKind: params.sourceKind || 'push',
-    metadata: params.metadata,
+    metadata: params.tag
+      ? { ...(params.metadata || {}), dedupeTag: params.tag }
+      : params.metadata,
   };
 
-  // 1. Record in local notification history
-  const currentHistory = getStoredNotifications();
-  saveStoredNotifications([notifItem, ...currentHistory]);
+  // 1. Record in local notification history (auto-pruned to retentionDays & max count)
+  saveStoredNotifications([notifItem, ...currentHistory], settings.retentionDays);
 
   // Dispatch custom window event so UI badges update instantly
   if (typeof window !== 'undefined') {

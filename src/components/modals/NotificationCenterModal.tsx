@@ -22,6 +22,7 @@ import {
   getScopedNotificationsForUser,
   markScopedNotificationsReadForUser,
   clearScopedNotificationsForUser,
+  dismissScopedNotificationForUser,
   getNotificationSettings,
   saveNotificationSettings,
   requestPushPermission,
@@ -315,6 +316,33 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     onUnreadCountChange?.(0);
   };
 
+  const handleDismissOne = (notifId: string) => {
+    dismissScopedNotificationForUser(notifId, {
+      currentUser,
+      schoolId: effectiveSchoolId,
+      ownStudentIds,
+      announcements,
+      lang,
+    });
+    setNotifications((prev) => {
+      const next = prev.filter((item) => item.id !== notifId);
+      onUnreadCountChange?.(next.filter((item) => !item.read).length);
+      return next;
+    });
+  };
+
+  const handleChangeRetentionDays = (days: 3 | 7 | 14 | 30) => {
+    const next: NotificationSettings = {
+      ...settings,
+      retentionDays: days,
+    };
+    setSettings(next);
+    saveNotificationSettings(next);
+    const updated = loadScopedNotifications();
+    setNotifications(updated);
+    onUnreadCountChange?.(updated.filter((item) => !item.read).length);
+  };
+
   const handleToggleParentPush = async () => {
     setParentBusy(true);
     setParentError('');
@@ -480,10 +508,17 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         {/* TAB 1: NOTIFICATION LIST */}
         {activeTab === 'list' && (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-[var(--color-border)] flex items-center justify-between text-xs shrink-0 bg-[var(--color-card)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-medium tabular-nums">
-                {lang === 'th' ? `รายการแจ้งเตือนทั้งหมด (${notifications.length})` : `Notifications (${notifications.length})`}
-              </span>
+            <div className="px-4 py-2.5 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 bg-[var(--color-card)]">
+              <div className="min-w-0">
+                <span className="text-[11px] text-[var(--color-text-muted)] font-medium tabular-nums block">
+                  {lang === 'th' ? `รายการแจ้งเตือนทั้งหมด (${notifications.length})` : `Notifications (${notifications.length})`}
+                </span>
+                <span className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
+                  {lang === 'th'
+                    ? `เก็บย้อนหลังอัตโนมัติ ${settings.retentionDays} วัน (สูงสุด 80 รายการ)`
+                    : `Auto-cleaned after ${settings.retentionDays} days (max 80)`}
+                </span>
+              </div>
               <div className="flex items-center gap-3">
                 {unreadCount > 0 && (
                   <button
@@ -503,7 +538,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                     className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
-                    <span>{lang === 'th' ? 'ล้างรายการ' : 'Clear'}</span>
+                    <span>{lang === 'th' ? 'ล้างทั้งหมด' : 'Clear all'}</span>
                   </button>
                 )}
               </div>
@@ -626,12 +661,25 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                             <span className="text-[10px] font-bold text-[var(--color-primary-text)]">· ใหม่</span>
                           )}
                         </span>
-                        {timeText && (
-                          <span className="inline-flex items-center gap-1 tabular-nums">
-                            <Clock className="w-3 h-3" />
-                            {timeText}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {timeText && (
+                            <span className="inline-flex items-center gap-1 tabular-nums">
+                              <Clock className="w-3 h-3" />
+                              {timeText}
+                            </span>
+                          )}
+                          {currentUser.role !== 'parent' && (
+                            <button
+                              type="button"
+                              onClick={() => handleDismissOne(notif.id)}
+                              className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition"
+                              title={lang === 'th' ? 'ลบข้อความนี้' : 'Dismiss'}
+                              aria-label={lang === 'th' ? 'ลบข้อความแจ้งเตือนนี้' : 'Dismiss notification'}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <h4 className="text-xs font-bold text-[var(--color-text-title)] mt-1 leading-snug">
                         {notif.title}
@@ -826,6 +874,38 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   </button>
                 </div>
               ))}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-bold text-[var(--color-text-title)] uppercase tracking-wider text-[11px]">
+                  {lang === 'th' ? 'ระยะเวลาเก็บข้อความ (ลบอัตโนมัติ)' : 'Auto-Delete Retention'}
+                </h4>
+                <span className="text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums">
+                  {settings.retentionDays} {lang === 'th' ? 'วัน' : 'days'}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {([3, 7, 14, 30] as const).map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => handleChangeRetentionDays(days)}
+                    className={`min-h-[36px] rounded-xl border text-xs font-bold tabular-nums cursor-pointer transition ${
+                      settings.retentionDays === days
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                        : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                    }`}
+                  >
+                    {days} {lang === 'th' ? 'วัน' : 'd'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                {lang === 'th'
+                  ? 'ข้อความแจ้งเตือนที่เก่ากว่าจำนวนวันที่เลือกจะถูกลบออกจากรายการอัตโนมัติ (ค่าเริ่มต้น 7 วัน)'
+                  : 'Notifications older than the selected days are removed automatically (default 7 days).'}
+              </p>
             </div>
 
             {canSimulateNotifications && (
