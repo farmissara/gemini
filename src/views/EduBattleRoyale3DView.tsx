@@ -35,9 +35,11 @@ import {
   Gamepad2,
   ZoomIn,
   ZoomOut,
-  ArrowLeft
+  ArrowLeft,
+  Smartphone,
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
+import { enterLandscapeGameMode, exitLandscapeGameMode, isMobileViewport } from '../lib/screenOrientation';
 import { playGrandVictoryFanfare, playLootBeamSound } from '../lib/labSoundEffects';
 import { 
   COMPREHENSIVE_QUESTION_BANK, 
@@ -545,14 +547,18 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const playerPosRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
   const playerYawRef = useRef<number>(0);
 
-  // Check device
+  // Check device (supports both portrait and landscape mobile phones)
   useEffect(() => {
     const check = () => {
-      setIsMobileDevice(window.innerWidth < 768 || 'ontouchstart' in window);
+      setIsMobileDevice(isMobileViewport() || 'ontouchstart' in window);
     };
     check();
     window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
   }, []);
 
   // Audio Toggle & Ambient Adventure Music
@@ -774,13 +780,22 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     }, 8000);
   };
 
-  // Fullscreen Toggle
+  // Fullscreen & Landscape Rotation Toggle
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+      enterLandscapeGameMode(containerRef.current)
+        .then((res) => {
+          if (document.fullscreenElement) setIsFullscreen(true);
+          if (!res.ok) {
+            setHudAlert('หมุนโทรศัพท์เป็นแนวนอนได้เลย ระบบรองรับเต็มจอแนวนอนแล้ว');
+          }
+        })
+        .catch(() => {});
     } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      exitLandscapeGameMode()
+        .then(() => setIsFullscreen(false))
+        .catch(() => {});
     }
   };
 
@@ -2140,14 +2155,15 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
             </button>
 
-            {/* Fullscreen Toggle */}
+            {/* Fullscreen / Landscape Rotation Toggle (visible on mobile & desktop) */}
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="hidden sm:flex p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 border border-slate-700/80 shadow-xl cursor-pointer"
-              title={isFullscreen ? 'ย่อหน้าต่าง' : 'เต็มหน้าจอ'}
+              className="flex items-center gap-1 p-1.5 sm:p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-200 border border-slate-700/80 shadow-xl cursor-pointer"
+              title={isFullscreen ? 'ย่อหน้าต่าง' : 'เต็มจอ / หมุนแนวนอน'}
             >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+              <Smartphone className="w-3 h-3 sm:hidden rotate-90 text-amber-300" />
             </button>
 
             {/* MENU BUTTON (On-Demand Drawer) */}
@@ -2169,7 +2185,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       {/* ======================================================== */}
       {/* 3. 3D WEBGL VIEWPORT (OR 2D PLAYABLE FALLBACK) */}
       {/* ======================================================== */}
-      <div className="relative flex-1 w-full h-full min-h-[400px] overflow-hidden bg-gradient-to-b from-amber-950/60 via-slate-900 to-slate-950">
+      <div className="relative flex-1 w-full h-full min-h-0 overflow-hidden bg-gradient-to-b from-amber-950/60 via-slate-900 to-slate-950">
         {/* Three.js canvas container */}
         <div ref={mountRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
 
@@ -2276,7 +2292,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
         {/* Mobile Left: Optional Translucent D-Pad */}
         {useVirtualDpad && (
-          <div className="md:hidden absolute bottom-6 left-3 z-30 flex flex-col items-center gap-1 select-none pointer-events-auto opacity-75 hover:opacity-100 transition-opacity">
+          <div className="absolute bottom-3 left-3 z-30 flex flex-col items-center gap-1 select-none pointer-events-auto opacity-80 hover:opacity-100 transition-opacity">
             {/* D-Pad Up */}
             <button
               type="button"
@@ -2328,7 +2344,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         )}
 
         {/* Mobile Right Action Controls Cluster (Translucent Minimal Buttons) */}
-        <div className="absolute bottom-6 right-3 z-30 flex flex-col items-end gap-2 pointer-events-auto">
+        <div className="absolute bottom-3 right-3 z-30 flex flex-col items-end gap-2 pointer-events-auto">
           {/* Quick Action: Open Chest / Airdrop */}
           {(nearChestId || nearAirdrop) && (
             <button

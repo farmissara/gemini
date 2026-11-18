@@ -540,11 +540,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (!primaryScopedStudent) return null;
     return calculateStudentAcademicSummary({
       student: primaryScopedStudent,
-      courses,
+      courses: scopedCourses,
       grades: scopedGrades,
       gradingSystem: systemConfig.gradingSystem,
     });
-  }, [primaryScopedStudent, courses, scopedGrades, systemConfig.gradingSystem]);
+  }, [primaryScopedStudent, scopedCourses, scopedGrades, systemConfig.gradingSystem]);
 
   const scopedAttendancePresentTotal = scopedAttendance.filter((a) => a.status === 'present').length;
   const scopedAttendanceRate =
@@ -730,7 +730,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={() => setDashboardTab('insights')}
               className="seg-tab-btn"
             >
-              {lang === 'th' ? 'รายงาน/กราฟ' : 'Reports & Charts'}
+              {currentRole === 'student'
+                ? (lang === 'th' ? 'พัฒนาการของฉัน' : 'My Progress')
+                : (lang === 'th' ? 'รายงาน/กราฟ' : 'Reports & Charts')}
             </button>
 
             {canViewExecutiveMonitor && (
@@ -816,7 +818,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
                     <BellRing className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                    <span>{lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors'}</span>
+                    <span>{currentRole === 'student' ? (lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements') : (lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors')}</span>
                   </button>
                   {showOnboardingCard && (
                     <button
@@ -857,17 +859,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Maximize2 className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
                     <span>{lang === 'th' ? 'โหมดโฟกัสเนื้อหา' : 'Focus Mode'}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      window.print();
-                    }}
-                    className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                    <span>{lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF'}</span>
-                  </button>
+                  {isStaffUser && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        window.print();
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF'}</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1697,21 +1701,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-              <GradeLevelAnalyticsChart
-                students={scopedStudents}
-                attendance={scopedAttendance}
-                courses={scopedCourses}
-                grades={scopedGrades}
-                systemConfig={systemConfig}
-                lang={lang}
-              />
-              <D3DailyAttendanceLineChart
-                students={scopedStudents}
-                attendance={scopedAttendance}
-                lang={lang}
-              />
-            </div>
+            {!isRestrictedPersonalRole && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                <GradeLevelAnalyticsChart
+                  students={scopedStudents}
+                  attendance={scopedAttendance}
+                  courses={scopedCourses}
+                  grades={scopedGrades}
+                  systemConfig={systemConfig}
+                  lang={lang}
+                />
+                <D3DailyAttendanceLineChart
+                  students={scopedStudents}
+                  attendance={scopedAttendance}
+                  lang={lang}
+                />
+              </div>
+            )}
 
             <MonthlyAttendanceChart
               attendance={scopedAttendance}
@@ -1859,16 +1865,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
                       className="px-2 py-1 type-meta rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
                     />
-                    <select
-                      aria-label={lang === 'th' ? 'กรองตามบทบาท' : 'Filter by role'}
-                      value={selectedRoleFilter}
-                      onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
-                      className="px-2 py-1 type-meta rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
-                    >
-                      <option value="all">{lang === 'th' ? 'ทุกบทบาท' : 'All Roles'}</option>
-                      <option value="student">{lang === 'th' ? 'นักเรียน' : 'Students'}</option>
-                      <option value="teacher">{lang === 'th' ? 'ครู' : 'Teachers'}</option>
-                    </select>
+                    {!isRestrictedPersonalRole && (
+                      <select
+                        aria-label={lang === 'th' ? 'กรองตามบทบาท' : 'Filter by role'}
+                        value={selectedRoleFilter}
+                        onChange={(e) => setSelectedRoleFilter(e.target.value as 'all' | 'student' | 'teacher')}
+                        className="px-2 py-1 type-meta rounded-md border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] max-w-full min-w-0 focus:outline-hidden"
+                      >
+                        <option value="all">{lang === 'th' ? 'ทุกบทบาท' : 'All Roles'}</option>
+                        <option value="student">{lang === 'th' ? 'นักเรียน' : 'Students'}</option>
+                        <option value="teacher">{lang === 'th' ? 'ครู' : 'Teachers'}</option>
+                      </select>
+                    )}
                     <select
                       aria-label={lang === 'th' ? 'กรองตามประเภท' : 'Filter by check type'}
                       value={selectedTypeFilter}
@@ -1883,24 +1891,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleExportSelectedDateCsv}
-                    className="btn-icon-tool"
-                    title={lang === 'th' ? `ส่งออก CSV วันที่ ${selectedDate}` : `Export CSV for ${selectedDate}`}
-                    aria-label={lang === 'th' ? 'ส่งออก CSV' : 'Export CSV'}
-                  >
-                    <Download className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('mobile_checkin')}
-                    className="btn-action-primary px-3 py-1.5"
-                    title={lang === 'th' ? 'เปิดหน้ากล้องเช็คชื่อมือถือและสแกน NFC' : 'Open Mobile Camera & NFC Check-in'}
-                  >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'เช็คชื่อมือถือ' : 'Check-in'}</span>
-                  </button>
+                  {!isRestrictedPersonalRole && (
+                    <button
+                      type="button"
+                      onClick={handleExportSelectedDateCsv}
+                      className="btn-icon-tool"
+                      title={lang === 'th' ? `ส่งออก CSV วันที่ ${selectedDate}` : `Export CSV for ${selectedDate}`}
+                      aria-label={lang === 'th' ? 'ส่งออก CSV' : 'Export CSV'}
+                    >
+                      <Download className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                    </button>
+                  )}
+                  {(isStaffUser || studentCanSelfCheckin) && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('mobile_checkin')}
+                      className="btn-action-primary px-3 py-1.5"
+                      title={lang === 'th' ? 'เปิดหน้ากล้องเช็คชื่อมือถือและสแกน NFC' : 'Open Mobile Camera & NFC Check-in'}
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>{lang === 'th' ? 'เช็คชื่อมือถือ' : 'Check-in'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1950,14 +1962,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className="type-kpi-sm text-blue-700 dark:text-blue-300 mt-1">{selfieCount}</p>
               <p className="type-meta text-blue-700 dark:text-blue-400 mt-0.5">{lang === 'th' ? 'ยืนยันตัวตน' : 'Verified'}</p>
             </div>
-            <div className="p-3 text-center">
-              <p className="type-meta flex items-center justify-center gap-1">
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'นร. / ครู' : 'Student / Staff'}</span>
-              </p>
-              <p className="type-kpi-sm mt-1">{studentCheckIns}/{teacherCheckIns}</p>
-              <p className="type-meta mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} · ครู ${teacherCheckIns}` : `S: ${studentCheckIns} · T: ${teacherCheckIns}`}</p>
-            </div>
+            {!isRestrictedPersonalRole && (
+              <div className="p-3 text-center">
+                <p className="type-meta flex items-center justify-center gap-1">
+                  <Users className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'th' ? 'นร. / ครู' : 'Student / Staff'}</span>
+                </p>
+                <p className="type-kpi-sm mt-1">{studentCheckIns}/{teacherCheckIns}</p>
+                <p className="type-meta mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} · ครู ${teacherCheckIns}` : `S: ${studentCheckIns} · T: ${teacherCheckIns}`}</p>
+              </div>
+            )}
           </div>
           )}
 
@@ -2065,24 +2079,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* Monthly Trend Analytics */}
+            {/* Monthly Trend Analytics (Scoped) */}
             <MonthlyAttendanceChart
               attendance={scopedAttendance}
-              students={students}
+              students={scopedStudents}
               lang={lang}
               selectedDate={selectedDate}
               onSelectDate={(date) => setSelectedDate(date)}
             />
 
-            {/* Grade-Level Attendance & Academic Comparison */}
-            <GradeLevelAnalyticsChart
-              students={students}
-              attendance={scopedAttendance}
-              courses={courses}
-              grades={grades}
-              systemConfig={systemConfig}
-              lang={lang}
-            />
+            {/* Grade-Level Attendance & Academic Comparison (Staff only) */}
+            {!isRestrictedPersonalRole && (
+              <GradeLevelAnalyticsChart
+                students={scopedStudents}
+                attendance={scopedAttendance}
+                courses={scopedCourses}
+                grades={scopedGrades}
+                systemConfig={systemConfig}
+                lang={lang}
+              />
+            )}
           </div>
           )}
         </div>
@@ -2505,7 +2521,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
 
-              {/* Honor Students Card (1 col) */}
+              {/* Honor Students Card (Staff & Parent only, never student peers/gradebook shortcut) */}
+              {currentRole !== 'student' && (
               <div className="saas-card min-w-0 overflow-hidden">
                 <div className="saas-card-header">
                   <div className="flex items-center gap-2 min-w-0">
@@ -2588,6 +2605,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   )} />
                 </div>
               </div>
+              )}
             </div>
           </div>
         )}

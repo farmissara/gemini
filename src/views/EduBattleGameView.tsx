@@ -34,10 +34,12 @@ import {
   Shield,
   Split,
   Timer,
-  Award
+  Award,
+  Smartphone,
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, AuthUser, AppLanguage } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
+import { enterLandscapeGameMode, exitLandscapeGameMode, isLandscapeViewport, isMobileViewport } from '../lib/screenOrientation';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
 import { MeteorMathBlasterGame } from '../components/games/MeteorMathBlasterGame';
@@ -106,16 +108,36 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onOpenCentralExamHub,
   onExit
 }) => {
-  const [isMobileScreen, setIsMobileScreen] = useState(() => {
-    if (typeof window !== 'undefined') return window.innerWidth < 768;
-    return false;
-  });
+  const [isMobileScreen, setIsMobileScreen] = useState(() => isMobileViewport());
+  const [isLandscape, setIsLandscape] = useState(() => isLandscapeViewport());
+  const [orientationNotice, setOrientationNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleResize = () => setIsMobileScreen(window.innerWidth < 768);
+    const handleResize = () => {
+      setIsMobileScreen(isMobileViewport());
+      setIsLandscape(isLandscapeViewport());
+    };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
   }, []);
+
+  const handleToggleLandscape = async () => {
+    if (isLandscape && document.fullscreenElement) {
+      await exitLandscapeGameMode();
+      setIsLandscape(isLandscapeViewport());
+      return;
+    }
+    const res = await enterLandscapeGameMode();
+    setIsLandscape(isLandscapeViewport());
+    if (!res.ok) {
+      setOrientationNotice('หมุนมือถือเป็นแนวนอนได้เลย เกมจะจัดหน้าจอแนวนอนให้อัตโนมัติ');
+      window.setTimeout(() => setOrientationNotice(null), 3500);
+    }
+  };
 
   const isMobile = isMobileMode || isMobileScreen;
 
@@ -658,17 +680,35 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-black">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => void handleToggleLandscape()}
+              className={`px-2 py-1 rounded-xl border text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                isLandscape
+                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
+                  : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
+              }`}
+              title={isLandscape ? 'แนวนอน (หมุน/เต็มจอ)' : 'สลับแนวนอน'}
+            >
+              <Smartphone className={`w-3.5 h-3.5 transition-transform ${isLandscape ? 'rotate-90 text-emerald-300' : 'text-amber-300'}`} />
+              <span className="hidden xs:inline">{isLandscape ? 'แนวนอน' : 'หมุนจอ'}</span>
+            </button>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-black tabular-nums">
               <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
               <span>{currentPlayerStats.exp.toLocaleString()}</span>
             </div>
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-black">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-black tabular-nums">
               <Coins className="w-3.5 h-3.5 text-cyan-300" />
               <span>{currentPlayerStats.gems}</span>
             </div>
           </div>
         </header>
+      )}
+      {orientationNotice && (
+        <div className="shrink-0 mx-2.5 mt-1.5 px-3 py-1.5 rounded-xl bg-indigo-950/90 border border-indigo-500/40 text-[11px] font-semibold text-indigo-100 text-center">
+          {orientationNotice}
+        </div>
       )}
 
       {/* Keep game modes visible; place supporting tools behind one compact menu. */}

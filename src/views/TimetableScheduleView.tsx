@@ -78,6 +78,7 @@ import {
   slotHasTeacher,
 } from '../lib/timetableTeachers';
 import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
+import { PeriodTimeMissionsCard } from '../components/PeriodTimeMissionsCard';
 import { TimetableImportExportModal } from '../components/modals/TimetableImportExportModal';
 import {
   buildCourseTeacherOptions,
@@ -1775,8 +1776,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
-      {/* Slim Conflict Warning Strip (if any) */}
-      {conflicts.length > 0 && (
+      {/* Slim Conflict Warning Strip (staff only) */}
+      {!isPersonalViewer && conflicts.length > 0 && (
         <details className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
           <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 px-2.5 py-1 text-[11px] font-semibold">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
@@ -2371,7 +2372,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {renderRoomAndTermControls()}
-                {hoursTeacherOptions.length > 0 && (
+                {!isPersonalViewer && hoursTeacherOptions.length > 0 && (
                   <div className="fn-group">
                     <span className="fn-group-label text-[var(--color-text-muted)]">ผู้สอน</span>
                     <select
@@ -2952,12 +2953,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                           });
                           const nextCheckType: 'check_in' | 'check_out' =
                             status.hasCheckIn && !status.hasCheckOut ? 'check_out' : 'check_in';
+                          const canShowDateCheckin =
+                            canUsePeriodCheckin &&
+                            (slotActivity.isActive ||
+                              (selectedCalendarDate === todayBangkokDate &&
+                                slotActivity.isTodayWeekday &&
+                                !slotActivity.isHolidayOff));
                           return (
                             <div
                               key={slot.id}
                               style={slotColor.style}
                               className={`rounded-xl border p-3 space-y-2 ${slotColor.className} ${
-                                slotActivity.isActive ? 'ring-2 ring-emerald-500 shadow-md' : ''
+                                slotActivity.isActive
+                                  ? 'border-rose-500 ring-2 ring-rose-500/45 shadow-md bg-rose-50/75 dark:bg-rose-950/35'
+                                  : ''
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">
@@ -2969,8 +2978,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   <p className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)] flex flex-wrap items-center gap-1.5">
                                     <span>คาบ {slot.periodNumber} · {slotActivity.startTime}–{slotActivity.endTime} · {slot.classRoom}</span>
                                     {slotActivity.isActive && (
-                                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                        กำลังเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
+                                      <span className="inline-flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
+                                        ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
                                       </span>
                                     )}
                                   </p>
@@ -2988,15 +2997,17 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 )}
                               </div>
 
-                              {canUsePeriodCheckin && slotActivity.isActive && (
+                              {canShowDateCheckin && (
                                 <div className="flex items-center gap-2 pt-1.5 border-t border-current/15">
                                   <button
                                     type="button"
                                     onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, nextCheckType)}
                                     className={`flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-bold text-white shadow-sm cursor-pointer transition ${
-                                      nextCheckType === 'check_out'
-                                        ? 'bg-indigo-600 hover:bg-indigo-700'
-                                        : 'bg-emerald-600 hover:bg-emerald-700'
+                                      slotActivity.isActive
+                                        ? 'bg-rose-600 hover:bg-rose-700'
+                                        : nextCheckType === 'check_out'
+                                          ? 'bg-slate-800 hover:bg-slate-900'
+                                          : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
                                     }`}
                                   >
                                     {nextCheckType === 'check_out' ? (
@@ -3016,7 +3027,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, 'check_out')}
-                                      className="min-h-[40px] inline-flex items-center justify-center gap-1 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white/85 dark:bg-slate-900/75 px-3 text-xs font-bold text-indigo-700 dark:text-indigo-200 hover:bg-indigo-50 cursor-pointer transition"
+                                      className={`min-h-[40px] inline-flex items-center justify-center gap-1 rounded-lg border px-3 text-xs font-bold cursor-pointer transition ${
+                                        slotActivity.isActive
+                                          ? 'border-rose-400 dark:border-rose-700 bg-white/90 dark:bg-slate-900/80 text-rose-700 dark:text-rose-200 hover:bg-rose-50'
+                                          : 'border-[var(--color-border)] bg-white/85 dark:bg-slate-900/75 text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
+                                      }`}
                                     >
                                       <LogOut className="w-3.5 h-3.5" />
                                       <span>เช็คเอาท์</span>
@@ -3075,6 +3090,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                             const slotStatus = getSlotCheckStatusForDate(slot, day.date);
                             const nextCheckType: 'check_in' | 'check_out' =
                               slotStatus.hasCheckIn && !slotStatus.hasCheckOut ? 'check_out' : 'check_in';
+                            const canShowWeekSlotCheckin =
+                              canUsePeriodCheckin &&
+                              (slotActivity.isActive ||
+                                (day.date === todayBangkokDate &&
+                                  slotActivity.isTodayWeekday &&
+                                  !slotActivity.isHolidayOff));
                             return (
                               <div
                                 key={slot.id}
@@ -3084,7 +3105,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   hasConflict
                                     ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50'
                                     : slotColor.className
-                                } ${slotActivity.isActive ? 'ring-2 ring-emerald-500 shadow-md' : ''}`}
+                                } ${
+                                  slotActivity.isActive
+                                    ? 'border-rose-500 ring-2 ring-rose-500/45 shadow-md bg-rose-50/75 dark:bg-rose-950/35'
+                                    : ''
+                                }`}
                               >
                                 <span className="flex items-center justify-between gap-1 text-[9px] font-semibold">
                                   <span className="inline-flex items-center gap-1 tabular-nums">
@@ -3096,8 +3121,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   </span>
                                   <span className="flex items-center gap-1">
                                     {slotActivity.isActive && (
-                                      <span className="rounded bg-emerald-600 px-1 py-0.5 text-[8px] font-bold text-white">
-                                        กำลังเรียน
+                                      <span className="rounded bg-rose-600 px-1 py-0.5 text-[8px] font-bold text-white tabular-nums">
+                                        ถึงคาบ
                                       </span>
                                     )}
                                     {hasCoTeacher && (
@@ -3114,7 +3139,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 <span className="block text-[9px] text-[var(--color-text-body)]">
                                   {slot.classRoom} · {formatSlotTeachersDisplay(slot)}
                                 </span>
-                                {canUsePeriodCheckin && slotActivity.isActive && (
+                                {canShowWeekSlotCheckin && (
                                   <div className="pt-1 border-t border-current/15">
                                     <button
                                       type="button"
@@ -3123,9 +3148,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                         triggerSlotCheckin(slot, day.date, nextCheckType);
                                       }}
                                       className={`w-full min-h-[30px] inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-white shadow-xs cursor-pointer ${
-                                        nextCheckType === 'check_out'
-                                          ? 'bg-indigo-600 hover:bg-indigo-700'
-                                          : 'bg-emerald-600 hover:bg-emerald-700'
+                                        slotActivity.isActive
+                                          ? 'bg-rose-600 hover:bg-rose-700'
+                                          : nextCheckType === 'check_out'
+                                            ? 'bg-slate-800 hover:bg-slate-900'
+                                            : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
                                       }`}
                                     >
                                       {nextCheckType === 'check_out' ? (
@@ -3179,6 +3206,47 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </p>
             </div>
             <div className="print:hidden flex flex-wrap items-center justify-end gap-1.5">
+              {canUsePeriodCheckin && onOpenPeriodCheckin && (() => {
+                const todayCandidates = activeSlots
+                  .filter((s) => s.dayOfWeek === todayDayKey)
+                  .slice()
+                  .sort((a, b) => a.periodNumber - b.periodNumber);
+                const activeSlotToday = todayCandidates.find((s) =>
+                  getTimetableSlotActivityStatus({
+                    slot: s,
+                    schoolPeriods,
+                    now: bangkokClock,
+                    schoolId,
+                  }).isActive
+                );
+                const targetSlot = activeSlotToday || todayCandidates[0] || activeSlots[0] || slots[0];
+                if (!targetSlot) return null;
+                const targetStatus = getSlotCheckStatusForDate(targetSlot, todayBangkokDate);
+                const nextType: 'check_in' | 'check_out' =
+                  targetStatus.hasCheckIn && !targetStatus.hasCheckOut ? 'check_out' : 'check_in';
+                return (
+                  <button
+                    type="button"
+                    onClick={() => triggerSlotCheckin(targetSlot, todayBangkokDate, nextType)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white shadow-sm cursor-pointer transition ${
+                      activeSlotToday
+                        ? 'bg-rose-600 hover:bg-rose-700'
+                        : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
+                    }`}
+                  >
+                    {nextType === 'check_out' ? (
+                      <LogOut className="h-3.5 w-3.5" />
+                    ) : (
+                      <LogIn className="h-3.5 w-3.5" />
+                    )}
+                    <span>
+                      {activeSlotToday
+                        ? `เช็คอินคาบ ${activeSlotToday.periodNumber} (ถึงเวลา)`
+                        : 'เช็คอิน/เอาท์รายคาบ'}
+                    </span>
+                  </button>
+                );
+              })()}
               {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
                 <button
                   type="button"
@@ -3452,6 +3520,39 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </div>
           )}
 
+          {/* Time-Based Period Check-in/Out Missions Card (Students & Teachers) */}
+          {canUsePeriodCheckin &&
+            !todayHoliday &&
+            !isWeekendDate(todayBangkokDate) &&
+            (currentRole === 'student' || currentRole === 'teacher') && (() => {
+              const myTodayPeriodSlots = activeSlots
+                .filter((s) => s.dayOfWeek === todayDayKey)
+                .filter((s) =>
+                  currentRole === 'teacher'
+                    ? slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses)
+                    : true
+                );
+              if (myTodayPeriodSlots.length === 0) return null;
+              return (
+                <div className="print:hidden shrink-0 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card)]">
+                  <PeriodTimeMissionsCard
+                    compact={true}
+                    slots={myTodayPeriodSlots}
+                    schoolPeriods={schoolPeriods}
+                    bangkokClock={bangkokClock}
+                    schoolId={schoolId}
+                    targetDateStr={todayBangkokDate}
+                    currentRole={currentRole}
+                    lang={lang}
+                    canSelfCheckin={canUsePeriodCheckin}
+                    getSlotCheckStatus={(s, d) => getSlotCheckStatusForDate(s, d)}
+                    onTriggerCheckin={(s, d, cType) => triggerSlotCheckin(s, d, cType)}
+                    periodAttendance={periodAttendance}
+                  />
+                </div>
+              );
+            })()}
+
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
             <table className={`w-full text-left border-collapse ${
               isAllClassroomsView ? 'min-w-[1120px]' : 'min-w-[880px]'
@@ -3482,7 +3583,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       rowHoliday
                         ? 'bg-rose-50/45 dark:bg-rose-950/20'
                         : isTodayRow
-                          ? 'bg-emerald-50/25 dark:bg-emerald-950/10'
+                          ? 'bg-rose-50/20 dark:bg-rose-950/10'
                           : 'hover:bg-[var(--color-card-subtle)]'
                     }`}
                   >
@@ -3494,7 +3595,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       <div className="mt-1 text-[10px] font-semibold text-[var(--color-text-muted)] tabular-nums">
                         {formatShortThaiDate(day.date)}
                         {isTodayRow && (
-                          <span className="ml-1 text-emerald-700 dark:text-emerald-300 font-bold">· วันนี้</span>
+                          <span className="ml-1 text-rose-700 dark:text-rose-300 font-bold">· วันนี้</span>
                         )}
                       </div>
                       {rowHoliday && (
@@ -3544,10 +3645,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 schoolPeriods,
                                 now: bangkokClock,
                                 schoolId,
+                                targetDateStr: day.date,
                               });
-                              const slotCheckStatus = getSlotCheckStatusForDate(slot, todayBangkokDate);
+                              const slotCheckStatus = getSlotCheckStatusForDate(slot, day.date);
                               const nextCheckType: 'check_in' | 'check_out' =
                                 slotCheckStatus.hasCheckIn && !slotCheckStatus.hasCheckOut ? 'check_out' : 'check_in';
+                              const canShowGridCheckin =
+                                canUsePeriodCheckin &&
+                                (slotActivity.isActive ||
+                                  (isTodayRow && slotActivity.isTodayWeekday && !slotActivity.isHolidayOff));
                               return (
                                 <div
                                   key={slot.id}
@@ -3555,8 +3661,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   style={slotColor.style}
                                   className={`${isAllClassroomsView ? 'min-h-16 p-1.5' : 'min-h-22 p-2'} rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${slotColor.className} ${
                                     slotActivity.isActive
-                                      ? 'ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20'
-                                      : hasConflict
+                                      ? 'border-rose-500 ring-2 ring-rose-500/45 shadow-md shadow-rose-500/20'
+                                      : hasConflict && !isPersonalViewer
                                         ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20'
                                         : ''
                                   }`}
@@ -3569,15 +3675,15 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                       <span title="ชั้น/ห้องเรียน" className="max-w-[55%] truncate rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold text-slate-800 dark:bg-slate-900/70 dark:text-white">
                                         {slot.classRoom}
                                       </span>
-                                      {hasConflict && (
+                                      {hasConflict && !isPersonalViewer && (
                                         <span title="ตรวจพบคาบชนกัน!" className="shrink-0 text-amber-700 dark:text-amber-300">
                                           <AlertTriangle className="w-3.5 h-3.5" />
                                         </span>
                                       )}
                                     </div>
                                     {slotActivity.isActive && (
-                                      <div className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">
-                                        <span>กำลังเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}</span>
+                                      <div className="mt-1 inline-flex items-center gap-1 rounded bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">
+                                        <span>ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}</span>
                                       </div>
                                     )}
                                     <h4 className={`${isAllClassroomsView ? 'text-[10px]' : 'text-[11px]'} font-bold mt-1 line-clamp-1 leading-tight`}>
@@ -3605,18 +3711,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                     </div>
                                   </div>
 
-                                  {canUsePeriodCheckin && slotActivity.isActive && (
+                                  {canShowGridCheckin && (
                                     <div className="pt-1.5 mt-1 border-t border-current/15 print:hidden">
                                       <button
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          triggerSlotCheckin(slot, todayBangkokDate, nextCheckType);
+                                          triggerSlotCheckin(slot, day.date, nextCheckType);
                                         }}
                                         className={`w-full min-h-[32px] inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-white shadow-sm cursor-pointer transition ${
-                                          nextCheckType === 'check_out'
-                                            ? 'bg-indigo-600 hover:bg-indigo-700'
-                                            : 'bg-emerald-600 hover:bg-emerald-700'
+                                          slotActivity.isActive
+                                            ? 'bg-rose-600 hover:bg-rose-700'
+                                            : nextCheckType === 'check_out'
+                                              ? 'bg-slate-800 hover:bg-slate-900'
+                                              : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
                                         }`}
                                       >
                                         {nextCheckType === 'check_out' ? (
@@ -4025,48 +4133,59 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </>
               ) : (
                 <>
-                  {canUsePeriodCheckin &&
-                    getTimetableSlotActivityStatus({
+                  {canUsePeriodCheckin && (() => {
+                    const detailActivity = getTimetableSlotActivityStatus({
                       slot: selectedSlotForDetail,
                       schoolPeriods,
                       now: bangkokClock,
                       schoolId,
-                    }).isActive && (
-                    <div className="w-full flex flex-wrap items-center gap-2 pb-2 mb-1 border-b border-[var(--color-border)]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const target = selectedSlotForDetail;
-                          closeSlotDetails();
-                          triggerSlotCheckin(target, todayBangkokDate, 'check_in');
-                        }}
-                        className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
-                      >
-                        <LogIn className="w-4 h-4" />
-                        <span>
-                          {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckIn
-                            ? 'เช็คอินเข้าคาบ (บันทึกแล้ว)'
-                            : 'เช็คอินเข้าคาบ'}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const target = selectedSlotForDetail;
-                          closeSlotDetails();
-                          triggerSlotCheckin(target, todayBangkokDate, 'check_out');
-                        }}
-                        className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>
-                          {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckOut
-                            ? 'เช็คเอาท์คาบ (บันทึกแล้ว)'
-                            : 'เช็คเอาท์ออกคาบ'}
-                        </span>
-                      </button>
-                    </div>
-                  )}
+                    });
+                    if (!detailActivity.isActive && (!detailActivity.isTodayWeekday || detailActivity.isHolidayOff)) {
+                      return null;
+                    }
+                    return (
+                      <div className="w-full flex flex-wrap items-center gap-2 pb-2 mb-1 border-b border-[var(--color-border)]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const target = selectedSlotForDetail;
+                            closeSlotDetails();
+                            triggerSlotCheckin(target, todayBangkokDate, 'check_in');
+                          }}
+                          className={`flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer ${
+                            detailActivity.isActive
+                              ? 'bg-rose-600 hover:bg-rose-700'
+                              : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
+                          }`}
+                        >
+                          <LogIn className="w-4 h-4" />
+                          <span>
+                            {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckIn
+                              ? 'เช็คอินเข้าคาบ (บันทึกแล้ว)'
+                              : detailActivity.isActive
+                                ? 'เช็คอินเข้าคาบตอนนี้'
+                                : 'เช็คอินเข้าคาบ'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const target = selectedSlotForDetail;
+                            closeSlotDetails();
+                            triggerSlotCheckin(target, todayBangkokDate, 'check_out');
+                          }}
+                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>
+                            {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckOut
+                              ? 'เช็คเอาท์คาบ (บันทึกแล้ว)'
+                              : 'เช็คเอาท์ออกคาบ'}
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })()}
                   {canEditTimetableSlots && (
                     <button
                       type="button"

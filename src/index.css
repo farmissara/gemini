@@ -1108,28 +1108,31 @@ textarea::placeholder {
 @media (orientation: landscape) and (max-height: 600px) {
   .game-immersive-root .max-w-2xl,
   .game-immersive-root .max-w-3xl,
-  .game-immersive-root .max-w-4xl {
+  .game-immersive-root .max-w-4xl,
+  .game-immersive-root .max-w-6xl {
     max-width: 100%;
   }
 
   .game-immersive-root .p-4 {
-    padding: 0.5rem;
+    padding: 0.45rem;
   }
 
   .game-immersive-root .p-5 {
-    padding: 0.625rem;
+    padding: 0.55rem;
   }
 
   .game-immersive-root .p-6 {
-    padding: 0.75rem;
+    padding: 0.65rem;
   }
 
   .game-arena-landscape {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 0.5rem;
-    align-content: start;
+    align-content: stretch;
+    height: 100%;
+    overflow-y: auto;
   }
 
   .game-arena-hud {
@@ -1140,7 +1143,8 @@ textarea::placeholder {
   .game-arena-question {
     grid-column: 1;
     grid-row: 2;
-    align-self: center;
+    align-self: stretch;
+    overflow-y: auto;
   }
 
   .game-arena-tools {
@@ -1151,6 +1155,8 @@ textarea::placeholder {
   .game-arena-answers {
     grid-column: 2;
     grid-row: 2;
-    align-self: center;
+    align-self: stretch;
+    overflow-y: auto;
   }
 }
+

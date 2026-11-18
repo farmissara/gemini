@@ -277,8 +277,12 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
           }}
           placeholder={
             lang === 'th'
-              ? 'ค้นหานักเรียน / ครู / รายวิชา...'
-              : 'Search students, teachers, courses...'
+              ? isStaff
+                ? 'ค้นหานักเรียน / ครู / รายวิชา...'
+                : 'ค้นหารายวิชาและข้อมูลของฉัน...'
+              : isStaff
+                ? 'Search students, teachers, courses...'
+                : 'Search my courses & info...'
           }
           className="w-44 2xl:w-60 pl-8 pr-14 py-1 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:bg-[var(--color-card)] transition-all"
         />
@@ -359,13 +363,17 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                 {
                   id: 'all' as const,
                   label: lang === 'th' ? 'ทั้งหมด' : 'All',
-                  count: matchedStudents.length + matchedTeachers.length + matchedCourses.length,
+                  count: (isStaff || visibleStudents.length > 1 ? matchedStudents.length : 0) + matchedTeachers.length + matchedCourses.length,
                 },
-                {
-                  id: 'students' as const,
-                  label: lang === 'th' ? 'นักเรียน' : 'Students',
-                  count: matchedStudents.length,
-                },
+                ...((isStaff || visibleStudents.length > 1)
+                  ? [
+                      {
+                        id: 'students' as const,
+                        label: lang === 'th' ? 'นักเรียน' : 'Students',
+                        count: matchedStudents.length,
+                      },
+                    ]
+                  : []),
                 ...(isStaff
                   ? [
                       {
@@ -418,7 +426,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
           {/* Secondary Inline Filters */}
           {(showFilters || roomFilter !== 'all' || deptFilter !== 'all' || courseTeacherFilter !== 'all') && (
             <div className="px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center gap-2 text-xs">
-              {(scope === 'all' || scope === 'students') && roomOptions.length > 0 && (
+              {(isStaff || roomOptions.length > 1) && (scope === 'all' || scope === 'students') && roomOptions.length > 0 && (
                 <select
                   aria-label="กรองห้องเรียน"
                   value={roomFilter}
@@ -854,13 +862,15 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
               </div>
 
               <div className="p-4 space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                    <div className="text-[10px] text-[var(--color-text-muted)]">ผู้ลงทะเบียน</div>
-                    <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
-                      {inspectedCourse.enrolledStudentIds?.length || 0} คน
+                <div className={`grid ${isStaff ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
+                  {isStaff && (
+                    <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                      <div className="text-[10px] text-[var(--color-text-muted)]">ผู้ลงทะเบียน</div>
+                      <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
+                        {inspectedCourse.enrolledStudentIds?.length || 0} คน
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                     <div className="text-[10px] text-[var(--color-text-muted)]">ชม./สัปดาห์</div>
                     <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
@@ -878,7 +888,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                 <div className="space-y-1.5 text-[11px] text-[var(--color-text-body)]">
                   <div className="flex items-center gap-1.5">
                     <UserCheck className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                    <strong>ครูผู้สอน:</strong> {inspectedCourse.teacherName} ({inspectedCourse.teacherEmail})
+                    <strong>ครูผู้สอน:</strong> {inspectedCourse.teacherName}{isStaff && inspectedCourse.teacherEmail ? ` (${inspectedCourse.teacherEmail})` : ''}
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
@@ -896,44 +906,46 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                   </p>
                 )}
 
-                {/* Enrolled Students Preview */}
-                <div className="space-y-1.5">
-                  <div className="text-[11px] font-bold text-[var(--color-text-title)]">
-                    รายชื่อนักเรียนในวิชา (ตัวอย่าง)
+                {/* Enrolled Students Preview (Staff only) */}
+                {isStaff && (
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-bold text-[var(--color-text-title)]">
+                      รายชื่อนักเรียนในวิชา (ตัวอย่าง)
+                    </div>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {(inspectedCourse.enrolledStudentIds || []).length === 0 ? (
+                        <p className="text-[11px] text-[var(--color-text-muted)]">ยังไม่มีนักเรียนลงทะเบียน</p>
+                      ) : (
+                        (inspectedCourse.enrolledStudentIds || []).slice(0, 10).map((sid) => {
+                          const stu = students.find((s) => s.id === sid);
+                          if (!stu) return null;
+                          return (
+                            <button
+                              key={sid}
+                              type="button"
+                              onClick={() => {
+                                setInspectedCourse(null);
+                                onOpenStudentProfile?.(stu);
+                              }}
+                              className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-left cursor-pointer"
+                            >
+                              <span className="font-semibold text-[var(--color-text-title)]">
+                                {stu.firstNameTh} {stu.lastNameTh}
+                              </span>
+                              <span className="text-[10px] font-mono text-[var(--color-text-muted)]">
+                                {stu.studentIdNumber} · {stu.room}
+                              </span>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {(inspectedCourse.enrolledStudentIds || []).length === 0 ? (
-                      <p className="text-[11px] text-[var(--color-text-muted)]">ยังไม่มีนักเรียนลงทะเบียน</p>
-                    ) : (
-                      (inspectedCourse.enrolledStudentIds || []).slice(0, 10).map((sid) => {
-                        const stu = students.find((s) => s.id === sid);
-                        if (!stu) return null;
-                        return (
-                          <button
-                            key={sid}
-                            type="button"
-                            onClick={() => {
-                              setInspectedCourse(null);
-                              onOpenStudentProfile?.(stu);
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-left cursor-pointer"
-                          >
-                            <span className="font-semibold text-[var(--color-text-title)]">
-                              {stu.firstNameTh} {stu.lastNameTh}
-                            </span>
-                            <span className="text-[10px] font-mono text-[var(--color-text-muted)]">
-                              {stu.studentIdNumber} · {stu.room}
-                            </span>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
-                {onNavigateTab ? (
+                {onNavigateTab && isStaff ? (
                   <div className="flex items-center gap-3">
                     <button
                       type="button"

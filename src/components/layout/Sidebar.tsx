@@ -284,7 +284,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelEn: 'Courses & Curriculum',
           icon: BookOpen,
           badge: coursesCount > 0 ? `${coursesCount}` : null,
-          roles: ['super_admin', 'admin', 'teacher', 'student'],
+          roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'timetable',
@@ -530,7 +530,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const pinned = useMemo(() => {
     const ids: NavTab[] = currentRole === 'student'
-      ? ['dashboard', 'mobile_checkin', 'homework', 'courses']
+      ? ['dashboard', 'timetable', 'mobile_checkin', 'homework']
       : currentRole === 'parent'
       ? ['dashboard', 'student_id_cards', 'billing', 'announcements']
       : ['dashboard', 'attendance', 'students', 'gradebook'];

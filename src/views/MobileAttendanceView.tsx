@@ -47,6 +47,7 @@ import {
   HeartPulse
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
+import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
 import {
   loadSavedPeriodQrSessions,
   validatePeriodQrTokenState,
@@ -1081,6 +1082,30 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     { period: 6, time: '13:55 - 14:45', label: 'คาบที่ 6 (Period 6)' },
     { period: 7, time: '14:50 - 15:40', label: 'คาบที่ 7 (Period 7)' }
   ];
+  const currentBangkokNow = getBangkokClockSnapshot();
+  const selectedPeriodMeta = periodsList.find((p) => p.period === selectedPeriod);
+  const selectedPeriodTimeActivity = (() => {
+    if (!selectedPeriodMeta || periodDate !== currentBangkokNow.dateStr) {
+      return { isActive: false, remainingMinutes: null as number | null };
+    }
+    const [startStr, endStr] = selectedPeriodMeta.time.split('-').map((s) => s.trim());
+    const toMins = (t?: string) => {
+      if (!t) return null;
+      const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    };
+    const startM = toMins(startStr);
+    const endM = toMins(endStr);
+    if (startM === null || endM === null) {
+      return { isActive: false, remainingMinutes: null as number | null };
+    }
+    const isActive =
+      currentBangkokNow.minutes >= startM && currentBangkokNow.minutes < endM;
+    return {
+      isActive,
+      remainingMinutes: isActive ? Math.max(1, endM - currentBangkokNow.minutes) : null,
+    };
+  })();
 
   // Matched student from mandatory Student ID input for Teacher Proxy Check-in
   const trimmedProxyStudentId = proxyStudentIdInput.trim();
@@ -3760,94 +3785,96 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           </div>
 
-          {/* QR CODE & SHAREABLE CHECK-IN LINK CARD */}
-          <div className="saas-card bg-[var(--color-primary-light)]">
-            <div className="saas-card-body flex flex-col sm:flex-row items-center gap-4">
-              <div className="flex flex-col items-center gap-1.5 shrink-0">
-                <QrCodeMatrix
-                  value={periodCheckinUrl}
-                  size={embeddedMobile ? 132 : 148}
-                  label={`QR Code เช็คชื่อคาบเรียน ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
-                />
-                <span className="type-meta font-mono font-bold text-[var(--color-primary-text)]">
-                  {expectedPeriodCode}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0 w-full space-y-2.5">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h4 className="type-section-title flex items-center gap-1.5">
-                    <Link2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                    <span>QR &amp; ลิงก์เช็คชื่อรายคาบ</span>
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => setShowPeriodQrModal(true)}
-                    className="btn-icon-tool"
-                    title="ขยาย QR เต็มจอสำหรับฉายขึ้นโปรเจกเตอร์"
-                    aria-label="ขยาย QR เต็มจอ"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                  </button>
-                </div>
-
-                <p className="type-meta text-[var(--color-text-body)]">
-                  <strong className="text-[var(--color-text-title)]">{selectedCourse.code} {selectedCourse.titleTh}</strong> · คาบที่ {selectedPeriod} · {periodDate}
-                </p>
-
-                <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
+          {/* QR CODE & SHAREABLE CHECK-IN LINK CARD (Staff / Teachers only) */}
+          {!isRestrictedViewer && (
+            <div className="saas-card bg-[var(--color-primary-light)]">
+              <div className="saas-card-body flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  <QrCodeMatrix
                     value={periodCheckinUrl}
-                    aria-label="ลิงก์เช็คชื่อรายคาบ"
-                    className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-[var(--color-text-title)] focus:outline-hidden truncate"
+                    size={embeddedMobile ? 132 : 148}
+                    label={`QR Code เช็คชื่อคาบเรียน ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
                   />
-                  <button
-                    type="button"
-                    onClick={handleCopyPeriodLink}
-                    className="btn-icon-tool bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white border-transparent"
-                    title={periodQrCopied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์เช็คชื่อ'}
-                    aria-label={periodQrCopied ? 'คัดลอกลิงก์แล้ว' : 'คัดลอกลิงก์เช็คชื่อ'}
-                  >
-                    {periodQrCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
+                  <span className="type-meta font-mono font-bold text-[var(--color-primary-text)]">
+                    {expectedPeriodCode}
+                  </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pt-0.5">
-                  <a
-                    href={periodCheckinUrl}
-                    onClick={(e) => {
-                      if (isRestrictedViewer) {
-                        e.preventDefault();
-                        handleStudentSelfPeriodCheckin(periodCheckinUrl);
-                      }
-                    }}
-                    className="font-bold text-[var(--color-primary-text)] underline underline-offset-4 inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>{isRestrictedViewer ? 'กดลิงก์เช็คชื่อเข้าคาบนี้' : 'เปิดลิงก์เช็คชื่อ'}</span>
-                  </a>
-                  {isStaffUser && (
-                    <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold">
-                      เช็คแล้ว:{' '}
-                      {
-                        periodAttendance.filter(
-                          (p) => p.courseId === selectedCourse.id && p.periodNumber === selectedPeriod && p.date === periodDate && (p.status === 'present' || p.status === 'late')
-                        ).length
-                      }{' '}
-                      / {periodStudentIds.length} คน
-                    </span>
-                  )}
+                <div className="flex-1 min-w-0 w-full space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h4 className="type-section-title flex items-center gap-1.5">
+                      <Link2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                      <span>QR &amp; ลิงก์เช็คชื่อรายคาบ</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowPeriodQrModal(true)}
+                      className="btn-icon-tool"
+                      title="ขยาย QR เต็มจอสำหรับฉายขึ้นโปรเจกเตอร์"
+                      aria-label="ขยาย QR เต็มจอ"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                    </button>
+                  </div>
+
+                  <p className="type-meta text-[var(--color-text-body)]">
+                    <strong className="text-[var(--color-text-title)]">{selectedCourse.code} {selectedCourse.titleTh}</strong> · คาบที่ {selectedPeriod} · {periodDate}
+                  </p>
+
+                  <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={periodCheckinUrl}
+                      aria-label="ลิงก์เช็คชื่อรายคาบ"
+                      className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-[var(--color-text-title)] focus:outline-hidden truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyPeriodLink}
+                      className="btn-icon-tool bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white border-transparent"
+                      title={periodQrCopied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์เช็คชื่อ'}
+                      aria-label={periodQrCopied ? 'คัดลอกลิงก์แล้ว' : 'คัดลอกลิงก์เช็คชื่อ'}
+                    >
+                      {periodQrCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pt-0.5">
+                    <a
+                      href={periodCheckinUrl}
+                      className="font-bold text-[var(--color-primary-text)] underline underline-offset-4 inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>เปิดลิงก์เช็คชื่อ</span>
+                    </a>
+                    {isStaffUser && (
+                      <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold">
+                        เช็คแล้ว:{' '}
+                        {
+                          periodAttendance.filter(
+                            (p) => p.courseId === selectedCourse.id && p.periodNumber === selectedPeriod && p.date === periodDate && (p.status === 'present' || p.status === 'late')
+                          ).length
+                        }{' '}
+                        / {periodStudentIds.length} คน
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* STUDENT VIEW: SELF CHECK-IN VIA QR/CODE + OWN RECORD ONLY */}
+          {/* STUDENT VIEW: 1-TAP PERIOD CHECK-IN/OUT + OPTIONAL QR CODE + OWN RECORD ONLY */}
           {isRestrictedViewer ? (
             <div className="space-y-4">
-              <div className="saas-card">
+              <div
+                className={`saas-card transition ${
+                  selectedPeriodTimeActivity.isActive
+                    ? 'border-rose-500 ring-2 ring-rose-500/35 bg-rose-50/40 dark:bg-rose-950/25'
+                    : ''
+                }`}
+              >
                 <div className="saas-card-header">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
@@ -3887,31 +3914,58 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 <div className="saas-card-body space-y-3">
-                  <div className="space-y-1.5">
+                  {selectedPeriodTimeActivity.isActive && (
+                    <div className="p-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold flex items-center justify-between gap-2 tabular-nums">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 shrink-0" />
+                        <span>
+                          ถึงเวลาคาบเรียนที่ {selectedPeriod} ({selectedPeriodMeta?.time})
+                        </span>
+                      </span>
+                      {selectedPeriodTimeActivity.remainingMinutes !== null && (
+                        <span>เหลือ {selectedPeriodTimeActivity.remainingMinutes} น.</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleStudentSelfPeriodCheckin()}
+                      className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm ${
+                        selectedPeriodTimeActivity.isActive
+                          ? 'bg-rose-600 hover:bg-rose-700'
+                          : periodCheckType === 'check_in'
+                            ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
+                            : 'bg-slate-800 hover:bg-slate-900'
+                      }`}
+                    >
+                      {periodCheckType === 'check_in' ? (
+                        <LogIn className="w-4 h-4" />
+                      ) : (
+                        <LogOut className="w-4 h-4" />
+                      )}
+                      <span>
+                        {periodCheckType === 'check_in'
+                          ? `ยืนยันเข้าคาบ ${selectedCourse.code} (คาบ ${selectedPeriod})`
+                          : `ยืนยันออกคาบ ${selectedCourse.code} (คาบ ${selectedPeriod})`}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1 border-t border-[var(--color-border)]">
                     <label className="type-label block">
-                      ลิงก์เช็คชื่อ หรือรหัสคาบเรียน
+                      หรือกรอกลิงก์/รหัส QR จากครูผู้สอน (ไม่บังคับ)
                     </label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="relative flex-1">
-                        <ScanLine className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-2.5" />
-                        <input
-                          type="text"
-                          value={studentPeriodCodeInput}
-                          onChange={(e) => setStudentPeriodCodeInput(e.target.value)}
-                          placeholder={`วางลิงก์หรือรหัส เช่น ${expectedPeriodCode}`}
-                          className="w-full pl-8 pr-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs font-mono"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleStudentSelfPeriodCheckin()}
-                        className={`px-4 py-2 rounded-lg text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition ${
-                          periodCheckType === 'check_in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
-                        }`}
-                      >
-                        <QrCode className="w-4 h-4" />
-                        <span>{periodCheckType === 'check_in' ? 'ยืนยันเข้าเรียน' : 'ยืนยันออกคาบ'}</span>
-                      </button>
+                    <div className="relative flex-1">
+                      <ScanLine className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={studentPeriodCodeInput}
+                        onChange={(e) => setStudentPeriodCodeInput(e.target.value)}
+                        placeholder={`วางลิงก์หรือรหัสคาบ เช่น ${expectedPeriodCode}`}
+                        className="w-full pl-8 pr-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] text-xs font-mono"
+                      />
                     </div>
                   </div>
 
@@ -4034,8 +4088,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           )}
 
-          {/* Fullscreen QR Code Modal for classroom display */}
-          {showPeriodQrModal && (
+          {/* Fullscreen QR Code Modal for classroom display (staff only) */}
+          {!isRestrictedViewer && showPeriodQrModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
               <div className="bg-[var(--color-card)] rounded-3xl p-6 max-w-sm w-full text-center space-y-4 border border-[var(--color-border)] shadow-2xl">
                 <div className="flex items-center justify-between">

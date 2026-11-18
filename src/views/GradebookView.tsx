@@ -124,13 +124,16 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   canEditGrades,
   lang = 'th',
 }) => {
+  const isPersonalGradeViewer = currentRole === 'student' || currentRole === 'parent';
   const effectiveCanEditGrades =
     typeof canEditGrades === 'boolean'
       ? canEditGrades
       : ['super_admin', 'admin', 'teacher'].includes(currentRole);
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>('gradebook');
+  const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>(
+    isPersonalGradeViewer ? 'pp6' : 'gradebook'
+  );
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [courseTeacherFilter, setCourseTeacherFilter] = useState<string>('all');
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
@@ -166,6 +169,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     new Map()
   );
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isPersonalGradeViewer && activeTab !== 'gradebook' && activeTab !== 'pp6') {
+      setActiveTab('pp6');
+    }
+  }, [isPersonalGradeViewer, activeTab]);
 
   useEffect(() => {
     const timersMap = pendingNotifyRef.current;
@@ -1162,7 +1171,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
           )}
 
-          {/* Consolidated Export, Import & Notification Tools Dropdown */}
+          {/* Consolidated Export, Import & Notification Tools Dropdown (Staff only) */}
+          {!isPersonalGradeViewer && (
           <details className="relative group">
             <summary className="btn-tool-tone list-none px-2.5 py-1.5">
               <FileSpreadsheet className="w-3.5 h-3.5 tone-text" />
@@ -1234,6 +1244,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             </div>
           </details>
+          )}
 
           {effectiveCanEditGrades && activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
             <button
@@ -1257,48 +1268,52 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       <div data-guide-id="gradebook-tabs" className="shrink-0 seg-tab-group w-full sm:w-fit overflow-x-auto no-scrollbar">
         <button
           type="button"
-          data-active={activeTab === 'gradebook'}
-          onClick={() => setActiveTab('gradebook')}
-          className="seg-tab-btn"
-        >
-          สมุดบันทึกคะแนน (Gradebook)
-        </button>
-
-        <button
-          type="button"
-          data-active={activeTab === 'pp5'}
-          onClick={() => setActiveTab('pp5')}
-          className="seg-tab-btn"
-        >
-          ปพ.5 (ประจำวิชา)
-        </button>
-
-        <button
-          type="button"
           data-active={activeTab === 'pp6'}
           onClick={() => setActiveTab('pp6')}
           className="seg-tab-btn"
         >
-          ปพ.6 (รายบุคคล)
+          {isPersonalGradeViewer ? 'ใบรายงานผลการเรียน (ปพ.6)' : 'ปพ.6 (รายบุคคล)'}
         </button>
 
         <button
           type="button"
-          data-active={activeTab === 'pp3_online'}
-          onClick={() => setActiveTab('pp3_online')}
+          data-active={activeTab === 'gradebook'}
+          onClick={() => setActiveTab('gradebook')}
           className="seg-tab-btn"
         >
-          ปพ.3 จบชั้น (ป.6/ม.3/ม.6)
+          {isPersonalGradeViewer ? 'คะแนนแยกแต่ละรายวิชา' : 'สมุดบันทึกคะแนน (Gradebook)'}
         </button>
 
-        <button
-          type="button"
-          data-active={activeTab === 'onet_niets'}
-          onClick={() => setActiveTab('onet_niets')}
-          className="seg-tab-btn"
-        >
-          สทศ. O-NET
-        </button>
+        {!isPersonalGradeViewer && (
+          <>
+            <button
+              type="button"
+              data-active={activeTab === 'pp5'}
+              onClick={() => setActiveTab('pp5')}
+              className="seg-tab-btn"
+            >
+              ปพ.5 (ประจำวิชา)
+            </button>
+
+            <button
+              type="button"
+              data-active={activeTab === 'pp3_online'}
+              onClick={() => setActiveTab('pp3_online')}
+              className="seg-tab-btn"
+            >
+              ปพ.3 จบชั้น (ป.6/ม.3/ม.6)
+            </button>
+
+            <button
+              type="button"
+              data-active={activeTab === 'onet_niets'}
+              onClick={() => setActiveTab('onet_niets')}
+              className="seg-tab-btn"
+            >
+              สทศ. O-NET
+            </button>
+          </>
+        )}
       </div>
 
       {/* Unified Functionally-Grouped Course & Student Search / Filter Toolbar (Gradebook & ปพ.5) */}
@@ -1429,7 +1444,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </select>
           </div>
 
-          {/* Functional Group 2: กรองนักเรียน & เกณฑ์ประเมิน */}
+          {/* Functional Group 2: กรองนักเรียน & เกณฑ์ประเมิน (Staff only) */}
+          {!isPersonalGradeViewer && (
           <div className="fn-group flex-wrap">
             <span className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1 px-0.5 whitespace-nowrap">
               <Filter className="w-3 h-3" />
@@ -1555,13 +1571,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             )}
           </div>
+          )}
         </div>
       )}
 
       {/* Tab Panels Scroll Container */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-2 print:overflow-visible">
-        {/* Visual Grade Distribution Histogram across selected course & all subjects (Collapsed by default) */}
-        {activeTab === 'gradebook' && (
+        {/* Visual Grade Distribution Histogram across selected course & all subjects (Staff only) */}
+        {activeTab === 'gradebook' && !isPersonalGradeViewer && (
           <div data-guide-id="gradebook-histogram">
             <GradeDistributionHistogram
               courses={courses}
@@ -1614,7 +1631,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 print:hidden">
-              {homeworkSyncMap.size > 0 && (
+              {effectiveCanEditGrades && homeworkSyncMap.size > 0 && (
                 <button
                   type="button"
                   onClick={handleSyncHomeworkScores}

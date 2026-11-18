@@ -101,6 +101,7 @@ import {
   getGradeDuplicateReasons,
 } from './lib/duplicateRecords';
 import type { DuplicateRecordReport, DuplicateRecordTarget } from './lib/duplicateRecords';
+import { isMobileViewport } from './lib/screenOrientation';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { AuthLayout } from './components/layout/AuthLayout';
@@ -408,12 +409,7 @@ export const App: React.FC = () => {
   }, [activeSchool.id]);
 
   // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
-  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768;
-    }
-    return false;
-  });
+  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => isMobileViewport());
   const [isPortraitScreen, setIsPortraitScreen] = useState<boolean>(() => (
     typeof window !== 'undefined' && window.innerHeight > window.innerWidth
   ));
@@ -421,11 +417,15 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileScreen(window.innerWidth < 768);
+      setIsMobileScreen(isMobileViewport());
       setIsPortraitScreen(window.innerHeight > window.innerWidth);
     };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
   }, []);
 
   const shouldShowMobileView = deviceViewPreference === 'mobile' || (deviceViewPreference === 'auto' && isMobileScreen);
@@ -4035,7 +4035,7 @@ export const App: React.FC = () => {
                     courses={viewCourses}
                     attendance={viewAttendance}
                     grades={viewGrades}
-                    playerScores={playerScores}
+                    playerScores={isRestrictedViewer ? playerScores.filter((p) => p.userId === currentUser?.id) : playerScores}
                     invoices={viewInvoices}
                     announcements={viewAnnouncements}
                     systemConfig={systemConfig}
@@ -4097,7 +4097,7 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'teachers' && (
+                {currentTab === 'teachers' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <TeachersView
                     teachers={schoolTeachers}
                     lang={lang}
@@ -4117,7 +4117,7 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'courses' && (
+                {currentTab === 'courses' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <CoursesView
                     courses={viewCourses}
                     students={viewStudents}

@@ -48,6 +48,9 @@ import {
   CalendarDays,
   LogIn,
   RefreshCw,
+  Maximize2,
+  Minimize2,
+  Smartphone,
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -120,6 +123,12 @@ import {
   syncPublicHolidaysFromApi,
 } from '../../lib/thaiHolidays';
 import { GoogleCalendarSyncModal } from '../GoogleCalendarSyncModal';
+import { PeriodTimeMissionsCard } from '../PeriodTimeMissionsCard';
+import {
+  enterLandscapeGameMode,
+  exitLandscapeGameMode,
+  isLandscapeViewport,
+} from '../../lib/screenOrientation';
 import { MobileAttendanceView } from '../../views/MobileAttendanceView';
 import { EduBattleGameView } from '../../views/EduBattleGameView';
 import { EduBattleRoyale3DView } from '../../views/EduBattleRoyale3DView';
@@ -399,7 +408,26 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   };
   const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
   const [activeGameView, setActiveGameView] = useState<'hub' | 'arcade_studio' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
+  const [isLandscapeScreen, setIsLandscapeScreen] = useState<boolean>(() => isLandscapeViewport());
+  const [gameOrientationNotice, setGameOrientationNotice] = useState<string | null>(null);
   const [gameHubPage, setGameHubPage] = useState(0);
+
+  useEffect(() => {
+    const syncOrientation = () => setIsLandscapeScreen(isLandscapeViewport());
+    window.addEventListener('resize', syncOrientation);
+    window.addEventListener('orientationchange', syncOrientation);
+    return () => {
+      window.removeEventListener('resize', syncOrientation);
+      window.removeEventListener('orientationchange', syncOrientation);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeGameView === 'hub') {
+      void exitLandscapeGameMode();
+      setGameOrientationNotice(null);
+    }
+  }, [activeGameView]);
   const [profilePage, setProfilePage] = useState(0);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -965,7 +993,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <ChevronRight className="w-5 h-5 shrink-0" />
                 </button>
 
-                {/* Quick Today Active / Next Period Card (Check-in/Check-out appears ONLY during active lesson periods) */}
+                {/* Timed Period Check-in/Out Missions + Active Period Red Highlight */}
                 {(currentRole === 'student' || currentRole === 'teacher') &&
                   !todayHoliday &&
                   !isWeekendDate(todayBangkokStr) &&
@@ -999,81 +1027,110 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     const nextCheckType: 'check_in' | 'check_out' =
                       status.hasCheckIn && !status.hasCheckOut ? 'check_out' : 'check_in';
                     return (
-                      <div
-                        className={`rounded-2xl border bg-[var(--color-card)] p-4 space-y-3 ${
-                          featuredActivity.isActive
-                            ? 'border-emerald-500 ring-2 ring-emerald-500/20'
-                            : 'border-[var(--color-border)]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-[var(--color-primary-text)] tabular-nums flex items-center gap-1.5">
-                            {featuredActivity.isActive && (
-                              <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                กำลังเรียน
-                              </span>
-                            )}
-                            <span>
-                              {lang === 'th'
-                                ? `คาบ ${featuredSlot.periodNumber} (${featuredActivity.startTime}–${featuredActivity.endTime})`
-                                : `Period ${featuredSlot.periodNumber} · ${featuredActivity.startTime}–${featuredActivity.endTime}`}
-                            </span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMobileTimetableMode('day');
-                              setActiveTab('timetable');
-                            }}
-                            className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer tabular-nums"
-                          >
-                            ทั้งหมด {todayMySlots.length} คาบ
-                          </button>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                            {featuredSlot.courseCode} · {featuredSlot.courseTitleTh || featuredSlot.courseTitleEn}
-                          </p>
-                          <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
-                            {featuredSlot.classRoom} {featuredSlot.room ? `· ห้อง ${featuredSlot.room}` : ''} · {featuredSlot.teacherName}
-                          </p>
-                        </div>
-                        {canSelfCheckin && featuredActivity.isActive && (
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => openPeriodCheckinFromSlot(featuredSlot, todayBangkokStr, nextCheckType)}
-                              className={`flex-1 min-h-[44px] rounded-xl px-3 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm ${
-                                nextCheckType === 'check_out'
-                                  ? 'bg-indigo-600 hover:bg-indigo-700'
-                                  : 'bg-emerald-600 hover:bg-emerald-700'
-                              }`}
-                            >
-                              {nextCheckType === 'check_out' ? (
-                                <LogOut className="w-4 h-4" />
-                              ) : (
-                                <LogIn className="w-4 h-4" />
+                      <div className="space-y-3">
+                        <PeriodTimeMissionsCard
+                          compact={true}
+                          slots={todayMySlots}
+                          schoolPeriods={schoolPeriods}
+                          bangkokClock={bangkokClock}
+                          schoolId={activeSchool.id}
+                          targetDateStr={todayBangkokStr}
+                          currentRole={currentRole}
+                          lang={lang}
+                          canSelfCheckin={canSelfCheckin}
+                          getSlotCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
+                          onTriggerCheckin={openPeriodCheckinFromSlot}
+                          onOpenSchedule={() => {
+                            setMobileTimetableMode('day');
+                            setActiveTab('timetable');
+                          }}
+                          periodAttendance={periodAttendance}
+                        />
+
+                        <div
+                          className={`rounded-2xl border p-4 space-y-3 ${
+                            featuredActivity.isActive
+                              ? 'border-rose-500 ring-2 ring-rose-500/35 bg-rose-50/75 dark:bg-rose-950/35'
+                              : 'border-[var(--color-border)] bg-[var(--color-card)]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-[var(--color-primary-text)] tabular-nums flex items-center gap-1.5 flex-wrap">
+                              {featuredActivity.isActive && (
+                                <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
+                                  ถึงคาบเรียน{featuredActivity.remainingMinutes !== null ? ` · เหลือ ${featuredActivity.remainingMinutes} น.` : ''}
+                                </span>
                               )}
                               <span>
-                                {status.hasCheckIn && status.hasCheckOut
-                                  ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
-                                  : nextCheckType === 'check_out'
-                                    ? 'เช็คเอาท์คาบนี้'
-                                    : 'เช็คอินเข้าคาบนี้'}
+                                {lang === 'th'
+                                  ? `คาบ ${featuredSlot.periodNumber} (${featuredActivity.startTime}–${featuredActivity.endTime})`
+                                  : `Period ${featuredSlot.periodNumber} · ${featuredActivity.startTime}–${featuredActivity.endTime}`}
                               </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMobileTimetableMode('day');
+                                setActiveTab('timetable');
+                              }}
+                              className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer tabular-nums"
+                            >
+                              ทั้งหมด {todayMySlots.length} คาบ
                             </button>
-                            {!status.hasCheckIn && (
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                              {featuredSlot.courseCode} · {featuredSlot.courseTitleTh || featuredSlot.courseTitleEn}
+                            </p>
+                            <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
+                              {featuredSlot.classRoom} {featuredSlot.room ? `· ห้อง ${featuredSlot.room}` : ''} · {featuredSlot.teacherName}
+                            </p>
+                          </div>
+                          {canSelfCheckin && (
+                            <div className="flex items-center gap-2 pt-1">
                               <button
                                 type="button"
-                                onClick={() => openPeriodCheckinFromSlot(featuredSlot, todayBangkokStr, 'check_out')}
-                                className="min-h-[44px] px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-200 text-xs font-bold inline-flex items-center justify-center gap-1 cursor-pointer"
+                                onClick={() => openPeriodCheckinFromSlot(featuredSlot, todayBangkokStr, nextCheckType)}
+                                className={`flex-1 min-h-[44px] rounded-xl px-3 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm ${
+                                  featuredActivity.isActive
+                                    ? 'bg-rose-600 hover:bg-rose-700'
+                                    : nextCheckType === 'check_out'
+                                      ? 'bg-slate-800 hover:bg-slate-900'
+                                      : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
+                                }`}
                               >
-                                <LogOut className="w-4 h-4" />
-                                <span>เช็คเอาท์</span>
+                                {nextCheckType === 'check_out' ? (
+                                  <LogOut className="w-4 h-4" />
+                                ) : (
+                                  <LogIn className="w-4 h-4" />
+                                )}
+                                <span>
+                                  {status.hasCheckIn && status.hasCheckOut
+                                    ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
+                                    : nextCheckType === 'check_out'
+                                      ? 'เช็คเอาท์คาบนี้'
+                                      : featuredActivity.isActive
+                                        ? 'เช็คอินเข้าคาบตอนนี้'
+                                        : 'เช็คอิน/เอาท์รายคาบ'}
+                                </span>
                               </button>
-                            )}
-                          </div>
-                        )}
+                              {!status.hasCheckIn && (
+                                <button
+                                  type="button"
+                                  onClick={() => openPeriodCheckinFromSlot(featuredSlot, todayBangkokStr, 'check_out')}
+                                  className={`min-h-[44px] px-3 rounded-xl border text-xs font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
+                                    featuredActivity.isActive
+                                      ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
+                                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
+                                  }`}
+                                >
+                                  <LogOut className="w-4 h-4" />
+                                  <span>เช็คเอาท์</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })()}
@@ -1784,7 +1841,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   <ArrowLeft className="w-4 h-4" />
                   <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
                 </button>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {canSelfCheckin && (currentRole === 'student' || currentRole === 'teacher') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileAttendanceInitialSubTab('period_checkin');
+                        setActiveTab('checkin');
+                      }}
+                      className="min-h-[36px] px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>เช็คอินรายคาบ</span>
+                    </button>
+                  )}
                   {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
                     <button
                       type="button"
@@ -1911,6 +1981,28 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </div>
                   )}
 
+                  {selectedTimetableDay === todayDayKey &&
+                    !todayHoliday &&
+                    !isWeekendDate(todayBangkokStr) &&
+                    canSelfCheckin &&
+                    (currentRole === 'student' || currentRole === 'teacher') &&
+                    todayMySlots.length > 0 && (
+                      <PeriodTimeMissionsCard
+                        compact={true}
+                        slots={todayMySlots}
+                        schoolPeriods={schoolPeriods}
+                        bangkokClock={bangkokClock}
+                        schoolId={activeSchool.id}
+                        targetDateStr={todayBangkokStr}
+                        currentRole={currentRole}
+                        lang={lang}
+                        canSelfCheckin={canSelfCheckin}
+                        getSlotCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
+                        onTriggerCheckin={openPeriodCheckinFromSlot}
+                        periodAttendance={periodAttendance}
+                      />
+                    )}
+
                   {(() => {
                     const daySlots = scopedTimetableSlots
                       .filter((s) => s.dayOfWeek === selectedTimetableDay)
@@ -1945,13 +2037,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                           });
                           const nextCheckType: 'check_in' | 'check_out' =
                             status.hasCheckIn && !status.hasCheckOut ? 'check_out' : 'check_in';
+                          const canShowMobileDayCheckin =
+                            (currentRole === 'teacher' || currentRole === 'student') &&
+                            canSelfCheckin &&
+                            (slotActivity.isActive ||
+                              (selectedTimetableDay === todayDayKey &&
+                                slotActivity.isTodayWeekday &&
+                                !slotActivity.isHolidayOff));
                           return (
                             <div
                               key={slot.id}
-                              className={`p-4 rounded-2xl border bg-[var(--color-card)] space-y-2.5 ${
+                              className={`p-4 rounded-2xl border space-y-2.5 ${
                                 slotActivity.isActive
-                                  ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm'
-                                  : 'border-[var(--color-border)]'
+                                  ? 'border-rose-500 ring-2 ring-rose-500/35 bg-rose-50/75 dark:bg-rose-950/35 shadow-sm'
+                                  : 'border-[var(--color-border)] bg-[var(--color-card)]'
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2">
@@ -1963,8 +2062,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                                       {slotActivity.startTime || '--:--'} - {slotActivity.endTime || '--:--'}
                                     </span>
                                     {slotActivity.isActive && (
-                                      <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                        กำลังเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
+                                      <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
+                                        ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
                                       </span>
                                     )}
                                   </div>
@@ -1987,17 +2086,17 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                                 )}
                               </div>
 
-                              {(currentRole === 'teacher' || currentRole === 'student') &&
-                                canSelfCheckin &&
-                                slotActivity.isActive && (
+                              {canShowMobileDayCheckin && (
                                 <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
                                   <button
                                     type="button"
                                     onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, nextCheckType)}
                                     className={`flex-1 min-h-[44px] px-3 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm ${
-                                      nextCheckType === 'check_out'
-                                        ? 'bg-indigo-600 hover:bg-indigo-700'
-                                        : 'bg-emerald-600 hover:bg-emerald-700'
+                                      slotActivity.isActive
+                                        ? 'bg-rose-600 hover:bg-rose-700'
+                                        : nextCheckType === 'check_out'
+                                          ? 'bg-slate-800 hover:bg-slate-900'
+                                          : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
                                     }`}
                                   >
                                     {nextCheckType === 'check_out' ? (
@@ -2010,14 +2109,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                                         ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
                                         : nextCheckType === 'check_out'
                                           ? 'เช็คเอาท์คาบเรียน'
-                                          : 'เช็คอินเข้าคาบเรียน'}
+                                          : slotActivity.isActive
+                                            ? 'เช็คอินเข้าคาบตอนนี้'
+                                            : 'เช็คอินเข้าคาบเรียน'}
                                     </span>
                                   </button>
                                   {!status.hasCheckIn && (
                                     <button
                                       type="button"
                                       onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, 'check_out')}
-                                      className="min-h-[44px] px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-200 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition"
+                                      className={`min-h-[44px] px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition ${
+                                        slotActivity.isActive
+                                          ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
+                                          : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
+                                      }`}
                                     >
                                       <LogOut className="w-4 h-4" />
                                       <span>เช็คเอาท์</span>
@@ -2141,11 +2246,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       const calStatus = getSlotTodayCheckStatus(slot, mobileSelectedCalendarDate);
                       const nextCheckType: 'check_in' | 'check_out' =
                         calStatus.hasCheckIn && !calStatus.hasCheckOut ? 'check_out' : 'check_in';
+                      const canShowMobileCalCheckin =
+                        (currentRole === 'teacher' || currentRole === 'student') &&
+                        canSelfCheckin &&
+                        (slotActivity.isActive ||
+                          (mobileSelectedCalendarDate === todayBangkokStr &&
+                            slotActivity.isTodayWeekday &&
+                            !slotActivity.isHolidayOff));
                       return (
                         <div
                           key={slot.id}
-                          className={`rounded-xl border bg-[var(--color-card-subtle)] p-3 space-y-2 ${
-                            slotActivity.isActive ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-[var(--color-border)]'
+                          className={`rounded-xl border p-3 space-y-2 ${
+                            slotActivity.isActive
+                              ? 'border-rose-500 ring-2 ring-rose-500/35 bg-rose-50/75 dark:bg-rose-950/35'
+                              : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -2153,8 +2267,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                               <p className="text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums flex flex-wrap items-center gap-1.5">
                                 <span>คาบ {slot.periodNumber} · {slotActivity.startTime}–{slotActivity.endTime}</span>
                                 {slotActivity.isActive && (
-                                  <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                    กำลังเรียน
+                                  <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
+                                    ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
                                   </span>
                                 )}
                               </p>
@@ -2168,17 +2282,17 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                               </span>
                             )}
                           </div>
-                          {(currentRole === 'teacher' || currentRole === 'student') &&
-                            canSelfCheckin &&
-                            slotActivity.isActive && (
+                          {canShowMobileCalCheckin && (
                               <div className="flex items-center gap-2 pt-1 border-t border-[var(--color-border)]">
                                 <button
                                   type="button"
                                   onClick={() => openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, nextCheckType)}
                                   className={`flex-1 min-h-[42px] rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
-                                    nextCheckType === 'check_out'
-                                      ? 'bg-indigo-600 hover:bg-indigo-700'
-                                      : 'bg-emerald-600 hover:bg-emerald-700'
+                                    slotActivity.isActive
+                                      ? 'bg-rose-600 hover:bg-rose-700'
+                                      : nextCheckType === 'check_out'
+                                        ? 'bg-slate-800 hover:bg-slate-900'
+                                        : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
                                   }`}
                                 >
                                   {nextCheckType === 'check_out' ? (
@@ -2191,14 +2305,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                                       ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
                                       : nextCheckType === 'check_out'
                                         ? 'เช็คเอาท์คาบเรียน'
-                                        : 'เช็คอินเข้าคาบเรียน'}
+                                        : slotActivity.isActive
+                                          ? 'เช็คอินเข้าคาบตอนนี้'
+                                          : 'เช็คอินเข้าคาบเรียน'}
                                   </span>
                                 </button>
                                 {!calStatus.hasCheckIn && (
                                   <button
                                     type="button"
                                     onClick={() => openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, 'check_out')}
-                                    className="min-h-[42px] px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-200 text-xs font-bold cursor-pointer"
+                                    className={`min-h-[42px] px-3 rounded-xl border text-xs font-bold cursor-pointer ${
+                                      slotActivity.isActive
+                                        ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
+                                        : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
+                                    }`}
                                   >
                                     เช็คเอาท์
                                   </button>
@@ -2983,7 +3103,46 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* IMMERSIVE FULLSCREEN GAME TAKEOVER (แสดงเต็มจอ ไม่มีเมนูรก) */}
       {/* ======================================================== */}
       {activeGameView !== 'hub' && (
-        <div className="fixed inset-0 z-50 bg-slate-950 w-full h-dvh flex flex-col overflow-hidden animate-in fade-in duration-200">
+        <div className="game-immersive-root fixed inset-0 z-50 bg-slate-950 w-full h-dvh flex flex-col overflow-hidden animate-in fade-in duration-200">
+          {(activeGameView === 'boss_raid' ||
+            activeGameView === 'subject_labs' ||
+            activeGameView === 'hall_of_fame') && (
+            <div className="fixed right-3 top-3 z-[60] flex flex-col items-end gap-1.5">
+              <button
+                type="button"
+                onClick={async () => {
+                  setGameOrientationNotice(null);
+                  if (isLandscapeScreen) {
+                    await exitLandscapeGameMode();
+                    return;
+                  }
+                  const res = await enterLandscapeGameMode();
+                  if (!res.ok && !isLandscapeViewport()) {
+                    setGameOrientationNotice(
+                      lang === 'th'
+                        ? 'เอียงโทรศัพท์เป็นแนวนอนเพื่อเล่นเต็มจอได้เลย'
+                        : 'Rotate phone sideways for landscape view'
+                    );
+                    window.setTimeout(() => setGameOrientationNotice(null), 4000);
+                  }
+                }}
+                className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-slate-700/80 bg-slate-900/90 text-white text-[11px] font-bold inline-flex items-center gap-1.5 shadow-lg backdrop-blur cursor-pointer hover:bg-slate-800"
+                title={isLandscapeScreen ? 'ออกจากเต็มจอแนวนอน' : 'ขยายเต็มจอ / หมุนเป็นแนวนอน'}
+              >
+                {isLandscapeScreen ? (
+                  <Minimize2 className="w-3.5 h-3.5 text-amber-300" />
+                ) : (
+                  <Smartphone className="w-3.5 h-3.5 rotate-90 text-sky-300" />
+                )}
+                <span>{isLandscapeScreen ? 'ออกแนวนอน' : 'หมุนจอ / เต็มจอ'}</span>
+              </button>
+              {gameOrientationNotice && (
+                <div className="rounded-lg bg-slate-900/95 border border-sky-500/40 px-2.5 py-1 text-[10px] text-sky-200 shadow-lg max-w-[210px]">
+                  {gameOrientationNotice}
+                </div>
+              )}
+            </div>
+          )}
           <ViewErrorBoundary
             resetKey={`game:${activeGameView}`}
             lang={lang}

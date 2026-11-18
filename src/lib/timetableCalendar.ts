@@ -125,15 +125,19 @@ export function getBangkokClockSnapshot(date = new Date()): BangkokClockSnapshot
   };
 }
 
+export type TimetableMissionPhase = 'active' | 'upcoming' | 'ended' | 'holiday';
+
 export interface TimetableSlotActivityStatus {
   isActive: boolean;
   isTodayWeekday: boolean;
   isHolidayOff: boolean;
+  missionPhase: TimetableMissionPhase;
   startTime: string;
   endTime: string;
   startMinutes: number | null;
   endMinutes: number | null;
   remainingMinutes: number | null;
+  minutesUntilStart: number | null;
 }
 
 export function getTimetableSlotActivityStatus(params: {
@@ -163,16 +167,31 @@ export function getTimetableSlotActivityStatus(params: {
   const isActive = isTodayWeekday && !isHolidayOff && isInTimeWindow;
   const remainingMinutes =
     isActive && endMinutes !== null ? Math.max(0, endMinutes - now.minutes) : null;
+  const minutesUntilStart =
+    isTodayWeekday && !isHolidayOff && startMinutes !== null && now.minutes < startMinutes
+      ? startMinutes - now.minutes
+      : null;
+
+  let missionPhase: TimetableMissionPhase = 'upcoming';
+  if (isHolidayOff || isWeekendDate(checkDateStr)) {
+    missionPhase = 'holiday';
+  } else if (isActive) {
+    missionPhase = 'active';
+  } else if (isTodayWeekday && endMinutes !== null && now.minutes > endMinutes) {
+    missionPhase = 'ended';
+  }
 
   return {
     isActive,
     isTodayWeekday,
     isHolidayOff,
+    missionPhase,
     startTime,
     endTime,
     startMinutes,
     endMinutes,
     remainingMinutes,
+    minutesUntilStart,
   };
 }
 
