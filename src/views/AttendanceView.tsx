@@ -1871,28 +1871,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 ))}
               </div>
             </div>
-          ) : (
+          ) : activeSchool ? (
             <SchoolGpsSettingsCard
-              activeSchool={activeSchool || {
-                id: 'sch-1',
-                code: 'SCH-BKK01',
-                nameTh: 'โรงเรียนเตรียมอุดมศึกษานวัตกรรม',
-                nameEn: 'Triam Udom Suksa Innovation Academy',
-                slug: 'triam-udom-innovation',
-                type: 'public',
-                province: 'กรุงเทพมหานคร',
-                address: 'ถนนพญาไท เขตปทุมวัน กรุงเทพฯ 10330',
-                phone: '02-218-1234',
-                email: 'info@triamudom.ac.th',
-                primaryColor: '#1e40af',
-                studentsCount: 2450,
-                teachersCount: 142,
-                academicYear: '2569',
-                currentSemester: '1',
-                lineOaId: '@triamudom_sis',
-                createdAt: '2025-01-01',
-                status: 'active'
-              }}
+              activeSchool={activeSchool}
               campusGates={campusGates}
               currentRole={currentRole}
               lang={lang}
@@ -1900,7 +1881,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               onSaveCampusGates={onSaveCampusGates}
               onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
             />
-          )}
+          ) : null}
         </div>
       )}
 
@@ -1942,7 +1923,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 />
                 <div className="absolute bottom-2 left-2 right-2 p-2 rounded-lg bg-black/75 backdrop-blur-md text-white type-meta flex items-center justify-between gap-2">
                   <span className="truncate">{selectedPhotoModal.location?.geofenceZoneName || 'ประตูโรงเรียน'}</span>
-                  <span className="font-mono shrink-0">รัศมี {selectedPhotoModal.location?.distanceMeters || 18} ม.</span>
+                  {typeof selectedPhotoModal.location?.distanceMeters === 'number' && (
+                    <span className="font-mono shrink-0">ระยะห่าง {selectedPhotoModal.location.distanceMeters} ม.</span>
+                  )}
                 </div>
               </div>
 

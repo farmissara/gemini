@@ -689,9 +689,11 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                         <p className="text-[11px] text-[var(--color-text-body)]">
                           จุดบันทึก: {rec.location?.geofenceZoneName || 'ประตูโรงเรียน'}
                         </p>
-                        <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold">
-                          GPS: ในรัศมี ({rec.location?.distanceMeters || 18} เมตร)
-                        </p>
+                        {typeof rec.location?.distanceMeters === 'number' && (
+                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold">
+                            GPS: {rec.location.inGeofence === false ? 'นอกรัศมี' : 'ในรัศมี'} ({rec.location.distanceMeters} เมตร)
+                          </p>
+                        )}
                         <p className="text-[10px] text-[var(--color-primary-text)] font-bold pt-1">
                           🔍 กดเพื่อดูภาพใหญ่พร้อมตราประทับ
                         </p>
@@ -982,7 +984,10 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   <span>{selectedZoomPhoto.time} น.</span>
                 </div>
                 <div className="text-slate-200 text-[9px]">
-                  {selectedZoomPhoto.location?.geofenceZoneName || 'ประตูโรงเรียน'} • ในรัศมี {selectedZoomPhoto.location?.distanceMeters || 18} ม.
+                  {selectedZoomPhoto.location?.geofenceZoneName || 'ประตูโรงเรียน'}
+                  {typeof selectedZoomPhoto.location?.distanceMeters === 'number'
+                    ? ` • ระยะห่าง ${selectedZoomPhoto.location.distanceMeters} ม.`
+                    : ''}
                 </div>
               </div>
             </div>

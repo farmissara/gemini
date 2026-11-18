@@ -119,6 +119,9 @@ interface SchoolRow {
   custom_login_slug?: string | null;
   student_default_password_type?: School['studentDefaultPasswordType'] | null;
   student_default_password_note?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofence_radius_meters?: number | null;
   line_oa_id: string;
   created_at: string;
   status: School['status'];
@@ -169,6 +172,20 @@ function mapSchool(row: SchoolRow): School {
     customLoginSlug: row.custom_login_slug || undefined,
     studentDefaultPasswordType: row.student_default_password_type || 'birthdate',
     studentDefaultPasswordNote: row.student_default_password_note || undefined,
+    latitude:
+      row.latitude !== null && row.latitude !== undefined && Number.isFinite(Number(row.latitude))
+        ? Number(row.latitude)
+        : undefined,
+    longitude:
+      row.longitude !== null && row.longitude !== undefined && Number.isFinite(Number(row.longitude))
+        ? Number(row.longitude)
+        : undefined,
+    geofenceRadiusMeters:
+      row.geofence_radius_meters !== null &&
+      row.geofence_radius_meters !== undefined &&
+      Number.isFinite(Number(row.geofence_radius_meters))
+        ? Number(row.geofence_radius_meters)
+        : undefined,
     lineOaId: row.line_oa_id,
     createdAt: row.created_at,
     status: row.status,

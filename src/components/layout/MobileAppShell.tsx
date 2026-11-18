@@ -943,6 +943,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 todayHoliday={todayHoliday}
                 upcomingHoliday={upcomingHoliday}
                 pendingHomeworkCount={pendingHomeworkCount}
+                totalHomeworkCount={scopedAssignments.length}
                 pendingLeavesCount={pendingLeavesCount}
                 myPortfolioCount={myOwnPortfolioCount}
                 scopedAnnouncements={scopedAnnouncements}

@@ -87,6 +87,11 @@ import {
 import { cleanupStudentCampusData } from './lib/campusDataStore';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import {
+  buildPrimaryGateFromSchool,
+  isValidCoordinatePair,
+  sanitizeSchoolCampusGates,
+} from './lib/schoolGps';
+import {
   calculateGrade,
   DEFAULT_SEMESTER_OPTIONS,
   DEFAULT_STAFF_POSITION_OPTIONS,
@@ -473,29 +478,28 @@ export const App: React.FC = () => {
   const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
-  // Load and synchronize school GPS campus gates per active school
+  // Load and synchronize real school GPS campus gates per active school (never sample/demo gates)
   useEffect(() => {
     try {
-      const savedGates = localStorage.getItem(`eduverse_campus_gates_${activeSchool.id}`);
-      if (savedGates) {
-        setCampusGates(JSON.parse(savedGates));
-      } else if (activeSchool.latitude && activeSchool.longitude) {
-        setCampusGates([
-          {
-            id: `gate_${activeSchool.id}_1`,
-            schoolId: activeSchool.id,
-            nameTh: `ประตูหน้า ${activeSchool.nameTh}`,
-            nameEn: `Main Gate ${activeSchool.nameEn}`,
-            lat: activeSchool.latitude,
-            lng: activeSchool.longitude,
-            latitude: activeSchool.latitude,
-            longitude: activeSchool.longitude,
-            radiusMeters: activeSchool.geofenceRadiusMeters || 120,
-            isPrimary: true,
-            isActive: true,
-            type: 'main_gate',
+      const cacheKey = `eduverse_campus_gates_${activeSchool.id}`;
+      const savedGatesRaw = localStorage.getItem(cacheKey);
+      if (savedGatesRaw) {
+        const parsed = JSON.parse(savedGatesRaw) as CampusGateGeofence[];
+        const cleaned = sanitizeSchoolCampusGates(parsed, activeSchool.id);
+        if (cleaned.length > 0) {
+          if (cleaned.length !== (Array.isArray(parsed) ? parsed.length : 0)) {
+            localStorage.setItem(cacheKey, JSON.stringify(cleaned));
           }
-        ]);
+          setCampusGates(cleaned);
+          return;
+        }
+        // Purge stale legacy sample gates from localStorage
+        localStorage.removeItem(cacheKey);
+      }
+
+      const primaryFromSchool = buildPrimaryGateFromSchool(activeSchool);
+      if (primaryFromSchool) {
+        setCampusGates([primaryFromSchool]);
       } else {
         setCampusGates([]);
       }
@@ -1326,12 +1330,45 @@ export const App: React.FC = () => {
         setAnnouncements(data.announcements);
         setSchoolPeriods(data.schoolPeriods);
         setTimetableSlots(resolvedTimetableSlots);
-        if (data.campusGates.length > 0) {
-          setCampusGates(data.campusGates);
+        const realDbGates = sanitizeSchoolCampusGates(data.campusGates, activeSchool.id);
+        if (realDbGates.length > 0) {
+          setCampusGates(realDbGates);
+          const primaryDbGate = realDbGates.find((g) => g.isPrimary) || realDbGates[0];
+          if (primaryDbGate && isValidCoordinatePair(primaryDbGate.lat, primaryDbGate.lng)) {
+            setActiveSchool((prev) =>
+              prev.id === activeSchool.id
+                ? {
+                    ...prev,
+                    latitude: primaryDbGate.lat,
+                    longitude: primaryDbGate.lng,
+                    geofenceRadiusMeters: primaryDbGate.radiusMeters,
+                  }
+                : prev
+            );
+            setSystemConfig((prev) => ({
+              ...prev,
+              latitude: primaryDbGate.lat,
+              longitude: primaryDbGate.lng,
+              geofenceRadiusMeters: primaryDbGate.radiusMeters,
+            }));
+          }
           try {
-            localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(data.campusGates));
+            localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(realDbGates));
           } catch (error) {
             console.warn('Could not cache school check-in points locally:', error);
+          }
+        } else {
+          const fallbackSchoolGate = buildPrimaryGateFromSchool(activeSchool);
+          const resolvedGates = fallbackSchoolGate ? [fallbackSchoolGate] : [];
+          setCampusGates(resolvedGates);
+          try {
+            if (resolvedGates.length > 0) {
+              localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(resolvedGates));
+            } else {
+              localStorage.removeItem(`eduverse_campus_gates_${activeSchool.id}`);
+            }
+          } catch {
+            // ignore storage errors
           }
         }
         // Real schools keep only their own school-scoped items (no sample data)
@@ -2370,16 +2407,21 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateCampusGates = (gates: CampusGateGeofence[]) => {
-    setCampusGates(gates);
+    const cleaned = sanitizeSchoolCampusGates(gates, activeSchool.id);
+    setCampusGates(cleaned);
     try {
-      localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(gates));
+      if (cleaned.length > 0) {
+        localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(cleaned));
+      } else {
+        localStorage.removeItem(`eduverse_campus_gates_${activeSchool.id}`);
+      }
     } catch (e) {
       console.warn('Failed to save campus gates to localStorage', e);
     }
-    const primaryGate = gates.find((g) => g.isPrimary || g.isActive) || gates[0];
-    if (primaryGate) {
-      const gateLat = primaryGate.lat ?? primaryGate.latitude ?? 13.736717;
-      const gateLng = primaryGate.lng ?? primaryGate.longitude ?? 100.523186;
+    const primaryGate = cleaned.find((g) => g.isPrimary || g.isActive) || cleaned[0];
+    if (primaryGate && isValidCoordinatePair(primaryGate.lat, primaryGate.lng)) {
+      const gateLat = primaryGate.lat;
+      const gateLng = primaryGate.lng;
       setActiveSchool((prev) => ({
         ...prev,
         latitude: gateLat,
@@ -2627,20 +2669,23 @@ export const App: React.FC = () => {
   }, [schoolPeriods, attendance, currentUser, activeSchool.id, schoolTimetableSlots, schoolStudents, schoolCourses]);
 
   const handleSaveCampusGates = async (gates: CampusGateGeofence[]) => {
-    if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
-      throw new Error('ไม่มีสิทธิ์แก้ไขชื่อจุดเช็คชื่อ');
+    if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+      throw new Error('เฉพาะผู้ดูแลระบบโรงเรียนเท่านั้นที่มีสิทธิ์แก้ไขพิกัดและจุดเช็คชื่อ');
     }
-    const savedToDatabase = isDemoMode ? false : await saveSchoolCampusGates(activeSchool.id, gates);
-    handleUpdateCampusGates(gates);
+    const cleaned = sanitizeSchoolCampusGates(gates, activeSchool.id);
+    const savedToDatabase = isDemoMode ? false : await saveSchoolCampusGates(activeSchool.id, cleaned);
+    handleUpdateCampusGates(cleaned);
     return savedToDatabase;
   };
 
   const handleUpdateSchoolCoordinates = (lat: number, lng: number, radiusMeters: number) => {
+    if (!isValidCoordinatePair(lat, lng)) return;
+    const safeRadius = Number.isFinite(radiusMeters) && radiusMeters > 0 ? Math.round(radiusMeters) : 150;
     setActiveSchool((prev) => ({
       ...prev,
       latitude: lat,
       longitude: lng,
-      geofenceRadiusMeters: radiusMeters,
+      geofenceRadiusMeters: safeRadius,
     }));
     setSchools((prev) =>
       prev.map((s) =>
@@ -2649,7 +2694,7 @@ export const App: React.FC = () => {
               ...s,
               latitude: lat,
               longitude: lng,
-              geofenceRadiusMeters: radiusMeters,
+              geofenceRadiusMeters: safeRadius,
             }
           : s
       )
@@ -2658,56 +2703,62 @@ export const App: React.FC = () => {
       ...prev,
       latitude: lat,
       longitude: lng,
-      geofenceRadiusMeters: radiusMeters,
+      geofenceRadiusMeters: safeRadius,
     }));
     try {
-      localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({ lat, lng, radiusMeters }));
+      localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({ lat, lng, radiusMeters: safeRadius }));
     } catch (e) {
       console.warn('Failed to save school gps to localStorage', e);
     }
     if (!isDemoMode && activeSchool.id) {
-      saveSchoolGpsCoordinates(activeSchool.id, lat, lng, radiusMeters).catch(err => {
+      saveSchoolGpsCoordinates(activeSchool.id, lat, lng, safeRadius).catch(err => {
         console.warn('Could not sync school coordinates to Supabase:', err);
       });
     }
     setCampusGates((prevGates) => {
-      if (prevGates.length === 0) {
-        const newGate: CampusGateGeofence = {
-          id: `gate_${activeSchool.id}_1`,
-          schoolId: activeSchool.id,
-          nameTh: `จุดศูนย์กลาง / ประตูหลัก ${activeSchool.nameTh}`,
-          nameEn: `Main Gate ${activeSchool.nameEn}`,
-          lat,
-          lng,
-          latitude: lat,
-          longitude: lng,
-          radiusMeters,
-          isPrimary: true,
-          isActive: true,
-          type: 'main_gate',
-        };
-        try {
-          localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify([newGate]));
-        } catch { /* ignore */ }
-        return [newGate];
-      }
-      const updated = prevGates.map((g, idx) => {
-        if (g.isPrimary || idx === 0) {
-          return {
-            ...g,
+      const cleanedPrev = sanitizeSchoolCampusGates(prevGates, activeSchool.id);
+      let nextGates: CampusGateGeofence[];
+      if (cleanedPrev.length === 0) {
+        nextGates = [
+          {
+            id: `gate_${activeSchool.id}_1`,
+            schoolId: activeSchool.id,
+            nameTh: `ประตูหลัก ${activeSchool.nameTh}`,
+            nameEn: `Main Gate ${activeSchool.nameEn}`,
             lat,
             lng,
             latitude: lat,
             longitude: lng,
-            radiusMeters,
-          };
-        }
-        return g;
-      });
+            radiusMeters: safeRadius,
+            isPrimary: true,
+            isActive: true,
+            type: 'main_gate',
+          },
+        ];
+      } else {
+        nextGates = cleanedPrev.map((g, idx) => {
+          if (g.isPrimary || idx === 0) {
+            return {
+              ...g,
+              lat,
+              lng,
+              latitude: lat,
+              longitude: lng,
+              radiusMeters: safeRadius,
+            };
+          }
+          return g;
+        });
+      }
       try {
-        localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(updated));
+        localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(nextGates));
       } catch { /* ignore */ }
-      return updated;
+      if (!isDemoMode && activeSchool.id) {
+        saveSchoolCampusGates(activeSchool.id, nextGates).catch(err => {
+          console.warn('Could not sync updated primary gate to Supabase:', err);
+        });
+      }
+      return nextGates;
     });
   };
 

@@ -2899,52 +2899,7 @@ export const INITIAL_SUBSCRIPTION_PLANS: SchoolSubscriptionPlan[] = [
   },
 ];
 
-export const DEFAULT_CAMPUS_GATES: CampusGateGeofence[] = [
-  {
-    id: 'gate-1',
-    schoolId: 'sch-1',
-    nameTh: 'ประตูใหญ่ด้านหน้า (Main Gate ถนนวิทยุ)',
-    nameEn: 'Main Gate (Witthayu Road)',
-    lat: 13.736717,
-    lng: 100.523186,
-    radiusMeters: 300,
-    isPrimary: true,
-    type: 'main_gate'
-  },
-  {
-    id: 'gate-2',
-    schoolId: 'sch-1',
-    nameTh: 'ประตูทิศเหนือ & โรงอาหาร (North Canteen Gate)',
-    nameEn: 'North Gate & Canteen',
-    lat: 13.737150,
-    lng: 100.523420,
-    radiusMeters: 250,
-    isPrimary: false,
-    type: 'north_gate'
-  },
-  {
-    id: 'gate-3',
-    schoolId: 'sch-1',
-    nameTh: 'จุดรับ-ส่งนักเรียนรถตู้โรงเรียน (School Bus Drop-off)',
-    nameEn: 'School Bus Drop-off Area',
-    lat: 13.736400,
-    lng: 100.522900,
-    radiusMeters: 200,
-    isPrimary: false,
-    type: 'bus_dropoff'
-  },
-  {
-    id: 'gate-4',
-    schoolId: 'sch-1',
-    nameTh: 'ลานจอดรถครูและบุคลากร (Staff & Faculty Parking)',
-    nameEn: 'Staff & Faculty Parking Lot',
-    lat: 13.736900,
-    lng: 100.522600,
-    radiusMeters: 200,
-    isPrimary: false,
-    type: 'staff_parking'
-  }
-];
+export const DEFAULT_CAMPUS_GATES: CampusGateGeofence[] = [];
 
 export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
   {

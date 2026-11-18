@@ -14,7 +14,6 @@ import {
   LogIn,
   LogOut,
   Megaphone,
-  TrendingUp,
 } from 'lucide-react';
 import heroCampusImg from '../../assets/images/student_hero_campus_1794996856983.jpg';
 import {
@@ -31,6 +30,7 @@ import {
   TimetableSlot,
 } from '../../types';
 import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
+import { calculateGrade } from '../../lib/schoolSettings';
 import {
   getTimetableSlotActivityStatus,
   type BangkokClockSnapshot,
@@ -54,6 +54,7 @@ interface StudentMobileHomeProps {
   todayHoliday: ThaiHoliday | null;
   upcomingHoliday: ThaiHoliday | null;
   pendingHomeworkCount: number;
+  totalHomeworkCount?: number;
   pendingLeavesCount: number;
   myPortfolioCount: number;
   scopedAnnouncements: Announcement[];
@@ -80,41 +81,11 @@ interface StudentMobileHomeProps {
   onOpenGames: () => void;
 }
 
-const ProgressRing: React.FC<{ percent: number; size?: number; stroke?: number }> = ({
-  percent,
-  size = 44,
-  stroke = 4,
-}) => {
-  const clamped = Math.max(0, Math.min(100, percent));
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (clamped / 100) * circumference;
-
-  return (
-    <svg width={size} height={size} className="-rotate-90 shrink-0" aria-hidden="true">
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={stroke}
-        className="text-slate-200 dark:text-slate-700"
-      />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        className="text-emerald-600 dark:text-emerald-400 transition-all duration-500"
-      />
-    </svg>
-  );
+const getBarTone = (percent: number): string => {
+  if (percent >= 80) return 'bg-emerald-600 dark:bg-emerald-500';
+  if (percent >= 65) return 'bg-[var(--color-primary)]';
+  if (percent >= 50) return 'bg-amber-500 dark:bg-amber-400';
+  return 'bg-rose-600 dark:bg-rose-500';
 };
 
 export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
@@ -134,6 +105,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   todayHoliday,
   upcomingHoliday,
   pendingHomeworkCount,
+  totalHomeworkCount = 0,
   pendingLeavesCount,
   myPortfolioCount,
   scopedAnnouncements,
@@ -177,21 +149,51 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   const avatarUrl = currentUser?.avatarUrl || ownStudent?.avatarUrl || '';
   const initials = displayName.trim().slice(0, 2);
 
-  // Real attendance rate
-  const attendancePresentOrLate = scopedAttendance.filter(
-    (r) => r.status === 'present' || r.status === 'late'
-  ).length;
+  // Real attendance rate & breakdown
+  const attendanceOnTime = scopedAttendance.filter((r) => r.status === 'present').length;
+  const attendanceLate = scopedAttendance.filter((r) => r.status === 'late').length;
+  const attendanceAbsent = Math.max(0, scopedAttendance.length - attendanceOnTime - attendanceLate);
+  const attendancePresentOrLate = attendanceOnTime + attendanceLate;
   const attendanceRate =
     scopedAttendance.length > 0
       ? Math.round((attendancePresentOrLate / scopedAttendance.length) * 100)
       : null;
+  const attendanceOnTimePct =
+    scopedAttendance.length > 0 ? Math.round((attendanceOnTime / scopedAttendance.length) * 100) : 0;
+  const attendanceLatePct =
+    scopedAttendance.length > 0
+      ? Math.min(100 - attendanceOnTimePct, Math.round((attendanceLate / scopedAttendance.length) * 100))
+      : 0;
+  const attendanceStatusLabel =
+    attendanceRate === null
+      ? lang === 'th'
+        ? 'ยังไม่มีบันทึก'
+        : 'No logs'
+      : attendanceRate >= 90
+        ? lang === 'th'
+          ? 'ดีเยี่ยม'
+          : 'Excellent'
+        : attendanceRate >= 80
+          ? lang === 'th'
+            ? 'ผ่านเกณฑ์'
+            : 'On track'
+          : lang === 'th'
+            ? 'ต่ำกว่าเกณฑ์ 80%'
+            : 'Below 80%';
+  const attendanceStatusTone =
+    attendanceRate === null
+      ? 'text-[var(--color-text-muted)]'
+      : attendanceRate >= 80
+        ? 'text-emerald-700 dark:text-emerald-400'
+        : 'text-rose-700 dark:text-rose-400';
 
-  // Real GPAX
+  // Real GPAX & per-subject score progress
+  const ownGrades = ownStudent ? grades.filter((g) => g.studentId === ownStudent.id) : [];
   const academicSummary = ownStudent
     ? calculateStudentAcademicSummary({
         student: ownStudent,
         courses: scopedCourses,
-        grades: grades.filter((g) => g.studentId === ownStudent.id),
+        grades: ownGrades,
         gradingSystem,
       })
     : null;
@@ -201,6 +203,31 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
       : ownStudent && ownStudent.gpa > 0
         ? ownStudent.gpa
         : null;
+  const gpaxPercent = realGpax !== null ? Math.max(0, Math.min(100, Math.round((realGpax / 4) * 100))) : 0;
+
+  const subjectBars = ownGrades
+    .filter((g) => typeof g.totalScore === 'number' && !Number.isNaN(g.totalScore))
+    .map((g) => {
+      const course = scopedCourses.find((c) => c.id === g.courseId);
+      const pct = Math.max(0, Math.min(100, Math.round(g.totalScore)));
+      const gradeLabel = g.letterGrade || calculateGrade(g.totalScore, gradingSystem).letter;
+      return {
+        id: g.id,
+        title: course ? (lang === 'th' ? course.titleTh : course.titleEn || course.titleTh) : g.courseId,
+        percent: pct,
+        gradeLabel,
+      };
+    })
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, 3);
+
+  const completedHomeworkCount = Math.max(0, totalHomeworkCount - pendingHomeworkCount);
+  const homeworkProgressPercent =
+    totalHomeworkCount > 0
+      ? Math.round((completedHomeworkCount / totalHomeworkCount) * 100)
+      : pendingHomeworkCount === 0
+        ? 100
+        : 0;
 
   // Determine single focus period (active now or next upcoming today)
   const isWeekend = isWeekendDate(todayBangkokStr);
@@ -354,64 +381,213 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         </div>
       </section>
 
-      {/* 2. COMPACT 3-METRIC PROGRESS STRIP (Real Data Only, Tabular Numerals) */}
+      {/* 2. VISUAL PROGRESS CARDS — Attendance, Grades & Homework (60-30-10 Discipline) */}
       <section
-        aria-label={lang === 'th' ? 'สรุปสถิติการเรียน' : 'Academic summary'}
-        className="grid grid-cols-3 gap-2.5"
+        aria-label={lang === 'th' ? 'ความคืบหน้าการมาเรียนและผลการเรียน' : 'Attendance and academic progress'}
+        className="flex flex-col gap-3"
       >
-        <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 flex flex-col justify-between gap-2">
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
-              {lang === 'th' ? 'มาเรียน' : 'Attend'}
+        {/* Attendance Visual Progress Card */}
+        <article className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'สถิติการมาเรียน' : 'Attendance'}
+              </p>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-[var(--color-text-title)] tabular-nums tracking-tight leading-none">
+                  {attendanceRate !== null ? `${attendanceRate}%` : '—'}
+                </span>
+                <span className={`text-xs font-semibold ${attendanceStatusTone}`}>
+                  {attendanceStatusLabel}
+                </span>
+              </div>
+            </div>
+            <span className="text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums">
+              {lang === 'th' ? `เกณฑ์ขั้นต่ำ 80%` : `80% target`}
             </span>
-            <ProgressRing percent={attendanceRate ?? 0} size={28} stroke={3.5} />
           </div>
-          <div className="text-lg font-extrabold text-[var(--color-text-title)] tabular-nums leading-none">
-            {attendanceRate !== null ? `${attendanceRate}%` : '—'}
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => (canViewGrades ? onOpenGrades() : undefined)}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 text-left flex flex-col justify-between gap-2 hover:border-[var(--color-primary)] transition cursor-pointer"
-        >
-          <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
-            {lang === 'th' ? 'เกรดเฉลี่ย' : 'GPAX'}
-          </span>
-          <div className="flex items-baseline justify-between gap-1">
-            <span className="text-lg font-extrabold text-[var(--color-text-title)] tabular-nums leading-none">
-              {realGpax !== null ? realGpax.toFixed(2) : '—'}
-            </span>
-            <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => (canAccessHomework ? onOpenHomework() : undefined)}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-3.5 text-left flex flex-col justify-between gap-2 hover:border-[var(--color-primary)] transition cursor-pointer"
-        >
-          <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
-            {lang === 'th' ? 'การบ้าน' : 'Tasks'}
-          </span>
-          <div className="flex items-baseline justify-between gap-1">
-            <span
-              className={`text-lg font-extrabold tabular-nums leading-none ${
-                pendingHomeworkCount > 0
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-emerald-600 dark:text-emerald-400'
-              }`}
+          {/* Segmented Horizontal Progress Bar with 80% Benchmark Tick */}
+          <div className="relative">
+            <div
+              className="h-2.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden flex"
+              role="progressbar"
+              aria-valuenow={attendanceRate ?? 0}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={lang === 'th' ? 'ร้อยละการมาเรียน' : 'Attendance percentage'}
             >
-              {pendingHomeworkCount > 0
-                ? pendingHomeworkCount
-                : lang === 'th'
-                  ? 'ครบ'
-                  : 'Done'}
-            </span>
-            <BookOpen className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+              {attendanceOnTimePct > 0 && (
+                <div
+                  className="h-full bg-emerald-600 dark:bg-emerald-500 transition-all duration-500"
+                  style={{ width: `${attendanceOnTimePct}%` }}
+                />
+              )}
+              {attendanceLatePct > 0 && (
+                <div
+                  className="h-full bg-amber-500 dark:bg-amber-400 transition-all duration-500"
+                  style={{ width: `${attendanceLatePct}%` }}
+                />
+              )}
+            </div>
+            <div
+              aria-hidden="true"
+              className="absolute top-[-2px] bottom-[-2px] w-[2px] bg-slate-500/70 dark:bg-slate-400/70 rounded-full"
+              style={{ left: '80%' }}
+            />
           </div>
-        </button>
+
+          <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums pt-0.5">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500" aria-hidden="true" />
+              {lang === 'th' ? `ตรงเวลา ${attendanceOnTime}` : `On time ${attendanceOnTime}`}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true" />
+              {lang === 'th' ? `สาย ${attendanceLate}` : `Late ${attendanceLate}`}
+            </span>
+            <span>
+              {lang === 'th' ? `ลา/ขาด ${attendanceAbsent}` : `Absent ${attendanceAbsent}`}
+            </span>
+          </div>
+        </article>
+
+        {/* Grades & Subject Progress Card */}
+        {canViewGrades && (
+          <button
+            type="button"
+            onClick={onOpenGrades}
+            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] p-4 text-left space-y-3 transition cursor-pointer"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'ผลการเรียนเฉลี่ย (GPAX)' : 'Academic Standing (GPAX)'}
+                </p>
+                <div className="mt-0.5 flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold text-[var(--color-text-title)] tabular-nums tracking-tight leading-none">
+                    {realGpax !== null ? realGpax.toFixed(2) : '—'}
+                  </span>
+                  <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums">
+                    / 4.00
+                  </span>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)]">
+                <span>{lang === 'th' ? 'ดูทั้งหมด' : 'Details'}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+
+            {/* Overall GPAX Progress Bar */}
+            <div
+              className="h-2.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
+              role="progressbar"
+              aria-valuenow={gpaxPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={lang === 'th' ? 'ระดับเกรดเฉลี่ย' : 'GPAX progress'}
+            >
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  realGpax !== null ? getBarTone(gpaxPercent) : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+                style={{ width: `${realGpax !== null ? gpaxPercent : 0}%` }}
+              />
+            </div>
+
+            {/* Per-Subject Mini Progress Bars */}
+            {subjectBars.length > 0 ? (
+              <div className="space-y-2 pt-1 border-t border-[var(--color-border)]">
+                {subjectBars.map((subj) => (
+                  <div key={subj.id} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-medium text-[var(--color-text-body)] truncate">
+                        {subj.title}
+                      </span>
+                      <span className="font-semibold text-[var(--color-text-title)] tabular-nums shrink-0">
+                        {subj.gradeLabel} · {subj.percent}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${getBarTone(subj.percent)}`}
+                        style={{ width: `${subj.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {lang === 'th'
+                  ? 'ยังไม่มีคะแนนรายวิชาที่ประกาศในภาคเรียนนี้'
+                  : 'No subject scores published for this semester yet'}
+              </p>
+            )}
+          </button>
+        )}
+
+        {/* Homework Completion Progress Card */}
+        {canAccessHomework && (
+          <button
+            type="button"
+            onClick={onOpenHomework}
+            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] px-4 py-3.5 text-left space-y-2 transition cursor-pointer"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <BookOpen className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                  {lang === 'th' ? 'ความคืบหน้าการบ้าน' : 'Homework Progress'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span
+                  className={`text-xs font-bold tabular-nums ${
+                    pendingHomeworkCount > 0
+                      ? 'text-amber-700 dark:text-amber-400'
+                      : 'text-emerald-700 dark:text-emerald-400'
+                  }`}
+                >
+                  {pendingHomeworkCount > 0
+                    ? lang === 'th'
+                      ? `ค้างส่ง ${pendingHomeworkCount} ชิ้น`
+                      : `${pendingHomeworkCount} pending`
+                    : lang === 'th'
+                      ? 'ส่งครบทุกชิ้น'
+                      : 'All caught up'}
+                </span>
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <div
+                className="h-2 flex-1 rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
+                role="progressbar"
+                aria-valuenow={homeworkProgressPercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={lang === 'th' ? 'ความคืบหน้าการส่งการบ้าน' : 'Homework completion'}
+              >
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    pendingHomeworkCount === 0
+                      ? 'bg-emerald-600 dark:bg-emerald-500'
+                      : 'bg-[var(--color-primary)]'
+                  }`}
+                  style={{ width: `${homeworkProgressPercent}%` }}
+                />
+              </div>
+              {totalHomeworkCount > 0 && (
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums shrink-0">
+                  {completedHomeworkCount}/{totalHomeworkCount}
+                </span>
+              )}
+            </div>
+          </button>
+        )}
       </section>
 
       {/* 3. SINGLE UNIFIED NOW / NEXT CLASS OR HOLIDAY FOCUS CARD */}

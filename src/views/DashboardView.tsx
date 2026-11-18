@@ -87,6 +87,7 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { SchoolPolicyId } from '../lib/schoolPermissions';
 import { ExecutiveMonitorView } from './ExecutiveMonitorView';
 import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
+import { StudentDesktopDashboard } from '../components/student/StudentDesktopDashboard';
 
 export type DashboardSubTab =
   | 'overview'
@@ -904,8 +905,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Main Tab Panels Container */}
       <div className="dashboard-print-scroll flex-1 dash-scroll-stack pb-12">
-        {/* TAB 1: DAILY OVERVIEW (Cohesive Morning Brief + 3 KPIs + Max 5 Rows per Pane) */}
+        {/* TAB 1: DAILY OVERVIEW (Dedicated 60-30-10 Card Progress Dashboard for Students; Morning Brief for Staff/Parents) */}
         {dashboardTab === 'overview' && (
+          currentUser?.role === 'student' ? (
+            <StudentDesktopDashboard
+              currentUser={currentUser}
+              student={primaryScopedStudent}
+              school={school}
+              systemConfig={systemConfig}
+              lang={lang}
+              timeGreeting={timeGreeting}
+              userDisplayName={userDisplayName}
+              formattedTodayDate={formattedTodayDate}
+              todayStr={todayStr}
+              todayHoliday={todayHoliday}
+              upcomingHoliday={upcomingHoliday}
+              isTodayWeekend={isTodayWeekend}
+              scopedAttendance={scopedAttendance}
+              scopedCourses={scopedCourses}
+              scopedGrades={scopedGrades}
+              scopedAssignments={scopedAssignments}
+              scopedHomework={scopedHomework}
+              todayScheduledSlots={todayScheduledSlots}
+              schoolPeriods={schoolPeriods}
+              scopedAnnouncements={scopedAnnouncements}
+              studentCanSelfCheckin={studentCanSelfCheckin}
+              studentCanViewGrades={studentCanViewGrades}
+              studentCanUploadPortfolio={schoolPermissions?.student_upload_portfolio !== false}
+              onNavigate={onNavigate}
+              onOpenAnnouncementsTab={() => setDashboardTab('announcements')}
+              onOpenPhotoRecord={openPhotoRecord}
+            />
+          ) : (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
             {/* MORNING BRIEF STRIP (Harmonized with AuthLayout Editorial Tone) */}
             <section
@@ -1675,6 +1706,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
             </div>
           </div>
+          )
         )}
 
         {/* TAB 2 (NEW): ANALYTICS & INSIGHTS (Separated from Daily Action Mode) */}

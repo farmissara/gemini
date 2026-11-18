@@ -90,6 +90,11 @@ import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import {
+  buildPrimaryGateFromSchool,
+  calculateHaversineDistanceMeters,
+  sanitizeSchoolCampusGates,
+} from '../lib/schoolGps';
+import {
   formatNfcUidDisplay,
   getNdefReaderConstructor,
   isSecureNfcContext,
@@ -444,67 +449,37 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
   }, [isRestrictedViewer, currentUser?.role, ownStudent, ownTeacher, scopedStudents, selectedStudentId]);
 
-  // Selected or nearest gate (always guaranteed defined via fallback to school/default coordinates)
-  const fallbackDefaultGate: CampusGateGeofence = useMemo(() => {
-    const lat = Number.isFinite(_school?.latitude) ? Number(_school?.latitude) : 13.7563;
-    const lng = Number.isFinite(_school?.longitude) ? Number(_school?.longitude) : 100.5018;
-    const radius =
-      Number.isFinite(_school?.geofenceRadiusMeters) && Number(_school?.geofenceRadiusMeters) > 0
-        ? Number(_school?.geofenceRadiusMeters)
-        : 120;
-    return {
-      id: `gate_${_school?.id || 'default'}_1`,
-      schoolId: _school?.id || 'sch-1',
-      nameTh: _school?.nameTh ? `จุดเช็คชื่อ ${_school.nameTh}` : 'จุดเช็คชื่อหลักของโรงเรียน',
-      nameEn: _school?.nameEn ? `Main Gate ${_school.nameEn}` : 'Main School Gate',
-      lat,
-      lng,
-      latitude: lat,
-      longitude: lng,
-      radiusMeters: radius,
-      isPrimary: true,
-      isActive: true,
-      type: 'main_gate',
-    };
-  }, [_school?.id, _school?.nameTh, _school?.nameEn, _school?.latitude, _school?.longitude, _school?.geofenceRadiusMeters]);
-
+  // Real school-configured GPS gates ONLY (never fallback to sample/hardcoded coordinates)
   const normalizedGates = useMemo<CampusGateGeofence[]>(() => {
-    const valid = (campusGates || []).map((g, idx) => {
-      const lat = Number.isFinite(g?.lat)
-        ? Number(g.lat)
-        : Number.isFinite(g?.latitude)
-          ? Number(g.latitude)
-          : fallbackDefaultGate.lat;
-      const lng = Number.isFinite(g?.lng)
-        ? Number(g.lng)
-        : Number.isFinite(g?.longitude)
-          ? Number(g.longitude)
-          : fallbackDefaultGate.lng;
-      const radiusMeters =
-        Number.isFinite(g?.radiusMeters) && Number(g.radiusMeters) > 0
-          ? Number(g.radiusMeters)
-          : fallbackDefaultGate.radiusMeters;
-      return {
-        ...g,
-        id: g?.id || `gate-${idx + 1}`,
-        nameTh: g?.nameTh || g?.nameEn || `จุดเช็คชื่อ ${idx + 1}`,
-        lat,
-        lng,
-        radiusMeters,
-      };
-    });
-    return valid.length > 0 ? valid : [fallbackDefaultGate];
-  }, [campusGates, fallbackDefaultGate]);
+    const cleaned = sanitizeSchoolCampusGates(campusGates, _school?.id);
+    if (cleaned.length > 0) return cleaned;
+    const primaryFromSchool = buildPrimaryGateFromSchool(_school);
+    return primaryFromSchool ? [primaryFromSchool] : [];
+  }, [campusGates, _school]);
 
-  const [selectedGateId, setSelectedGateId] = useState<string>(normalizedGates[0]?.id || 'gate-1');
-  const selectedGate = normalizedGates.find((g) => g.id === selectedGateId) || normalizedGates[0];
+  const [selectedGateId, setSelectedGateId] = useState<string>(() => {
+    const primary = normalizedGates.find((g) => g.isPrimary) || normalizedGates[0];
+    return primary?.id || '';
+  });
 
-  const [currentGpsDistance, setCurrentGpsDistance] = useState<number>(18); // Default: 18m inside campus
+  useEffect(() => {
+    if (normalizedGates.length === 0) {
+      if (selectedGateId !== '') setSelectedGateId('');
+      return;
+    }
+    if (!normalizedGates.some((g) => g.id === selectedGateId)) {
+      const primary = normalizedGates.find((g) => g.isPrimary) || normalizedGates[0];
+      setSelectedGateId(primary.id);
+    }
+  }, [normalizedGates, selectedGateId]);
+
+  const selectedGate: CampusGateGeofence | null =
+    normalizedGates.find((g) => g.id === selectedGateId) || normalizedGates[0] || null;
+
+  const [currentGpsDistance, setCurrentGpsDistance] = useState<number | null>(null);
   const [isGpsLoading, setIsGpsLoading] = useState(false);
-  const [realGpsCoords, setRealGpsCoords] = useState<{ lat: number; lng: number } | null>(() => ({
-    lat: (selectedGate?.lat ?? 13.7563) + 0.0001,
-    lng: (selectedGate?.lng ?? 100.5018) + 0.0001,
-  }));
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [realGpsCoords, setRealGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Camera Live Feed & Selfie Snapshot
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -708,7 +683,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       ? selectedTeacher?.department
       : selectedStudent?.room);
 
-  const isInGeofence = currentGpsDistance <= selectedGate.radiusMeters;
+  const hasSchoolGpsConfigured = Boolean(selectedGate);
+  const isInGeofence = Boolean(
+    selectedGate && currentGpsDistance !== null && currentGpsDistance <= selectedGate.radiusMeters
+  );
+  const gpsStatusShortLabel = !selectedGate
+    ? (lang === 'th' ? 'ยังไม่ตั้งค่าพิกัดโรงเรียน' : 'School GPS not set')
+    : isGpsLoading
+      ? (lang === 'th' ? 'กำลังระบุพิกัด GPS...' : 'Locating GPS...')
+      : gpsError || currentGpsDistance === null
+        ? (lang === 'th' ? 'รอสัญญาณ GPS' : 'Awaiting GPS')
+        : isInGeofence
+          ? (lang === 'th' ? `ในเขต · ${currentGpsDistance.toLocaleString()} ม.` : `In range · ${currentGpsDistance.toLocaleString()}m`)
+          : (lang === 'th' ? `นอกเขต · ${currentGpsDistance.toLocaleString()} ม.` : `Out of range · ${currentGpsDistance.toLocaleString()}m`);
 
   // Sound chime effect using Web Audio API
   const playChime = () => {
@@ -829,57 +816,107 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setIsCapturing(false);
   };
 
-  // Refresh GPS location and detect nearest gate
+  // Refresh real device GPS location and detect nearest school-configured gate (NO fake/simulated fallback)
   const handleRefreshGps = () => {
-    setIsGpsLoading(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setRealGpsCoords({ lat, lng });
-
-          // Automatically detect nearest gate configured by the school admin
-          const R = 6371e3;
-          const computeDist = (gLat: number, gLng: number) => {
-            const φ1 = (gLat * Math.PI) / 180;
-            const φ2 = (lat * Math.PI) / 180;
-            const Δφ = ((lat - gLat) * Math.PI) / 180;
-            const Δλ = ((lng - gLng) * Math.PI) / 180;
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return Math.round(R * c);
-          };
-
-          let nearestGate = selectedGate;
-          let minDist = computeDist(selectedGate.lat, selectedGate.lng);
-          for (const gate of normalizedGates) {
-            const dGate = computeDist(gate.lat, gate.lng);
-            if (dGate < minDist) {
-              minDist = dGate;
-              nearestGate = gate;
-            }
-          }
-          if (nearestGate.id !== selectedGate.id) {
-            setSelectedGateId(nearestGate.id);
-          }
-
-          setCurrentGpsDistance(minDist > 5000 ? 18 : minDist);
-          setIsGpsLoading(false);
-        },
-        () => {
-          setIsGpsLoading(false);
-          setCurrentGpsDistance(18);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    } else {
+    if (normalizedGates.length === 0) {
       setIsGpsLoading(false);
-      setCurrentGpsDistance(18);
+      setCurrentGpsDistance(null);
+      setGpsError(
+        lang === 'th'
+          ? 'โรงเรียนยังไม่ได้ตั้งค่าพิกัด GPS เช็คชื่อ กรุณาแจ้งผู้ดูแลระบบโรงเรียน'
+          : 'School GPS coordinates have not been configured yet.'
+      );
+      return;
     }
+
+    if (!navigator.geolocation) {
+      setIsGpsLoading(false);
+      setCurrentGpsDistance(null);
+      setRealGpsCoords(null);
+      setGpsError(
+        lang === 'th'
+          ? 'อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการอ่านพิกัด GPS'
+          : 'Geolocation is not supported on this device.'
+      );
+      return;
+    }
+
+    setIsGpsLoading(true);
+    setGpsError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setRealGpsCoords({ lat, lng });
+
+        let nearestGate = selectedGate || normalizedGates[0];
+        let minDist = calculateHaversineDistanceMeters(lat, lng, nearestGate.lat, nearestGate.lng);
+        for (const gate of normalizedGates) {
+          const dGate = calculateHaversineDistanceMeters(lat, lng, gate.lat, gate.lng);
+          if (dGate < minDist) {
+            minDist = dGate;
+            nearestGate = gate;
+          }
+        }
+        if (nearestGate && nearestGate.id !== selectedGate?.id) {
+          setSelectedGateId(nearestGate.id);
+        }
+
+        setCurrentGpsDistance(minDist);
+        setGpsError(null);
+        setIsGpsLoading(false);
+      },
+      (error) => {
+        setIsGpsLoading(false);
+        setCurrentGpsDistance(null);
+        setRealGpsCoords(null);
+        if (error.code === error.PERMISSION_DENIED) {
+          setGpsError(
+            lang === 'th'
+              ? 'กรุณาอนุญาตสิทธิ์เข้าถึงตำแหน่ง GPS (Location) ในเบราว์เซอร์แล้วกดอัปเดตพิกัด'
+              : 'Please allow Location access in your browser and refresh GPS.'
+          );
+        } else if (error.code === error.TIMEOUT) {
+          setGpsError(
+            lang === 'th'
+              ? 'หมดเวลาการค้นหาสัญญาณ GPS กรุณากดอัปเดตพิกัดอีกครั้ง'
+              : 'GPS lookup timed out. Please try again.'
+          );
+        } else {
+          setGpsError(
+            lang === 'th'
+              ? 'ไม่สามารถอ่านตำแหน่ง GPS ปัจจุบันได้ กรุณาตรวจสอบสัญญาณตำแหน่งของเครื่อง'
+              : 'Unable to determine current GPS position.'
+          );
+        }
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
   };
+
+  // Automatically read real device GPS when entering Selfie Check-in or when real school gates finish loading
+  useEffect(() => {
+    if (subTab === 'selfie_mobile' && normalizedGates.length > 0) {
+      handleRefreshGps();
+    } else if (normalizedGates.length === 0) {
+      setCurrentGpsDistance(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab, normalizedGates.length, _school?.id]);
+
+  // Recalculate exact distance whenever the user switches to a different real gate
+  useEffect(() => {
+    if (realGpsCoords && selectedGate) {
+      setCurrentGpsDistance(
+        calculateHaversineDistanceMeters(
+          realGpsCoords.lat,
+          realGpsCoords.lng,
+          selectedGate.lat,
+          selectedGate.lng
+        )
+      );
+    }
+  }, [realGpsCoords, selectedGate]);
 
   // Submit and Save Attendance Record with Selfie Snapshot
   const handleConfirmCheckin = async () => {
@@ -912,11 +949,23 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็คอิน');
       return;
     }
-    if (!isInGeofence) {
+    if (!selectedGate) {
       setSelfieActionError(
         isSchoolAdmin
-          ? `คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี ${selectedGate.radiusMeters} เมตร) กรุณาเข้ามาในบริเวณโรงเรียน หรือกดจำลองระยะห่างเพื่อทดสอบ`
-          : `คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี ${selectedGate.radiusMeters} เมตร ที่โรงเรียนกำหนด) กรุณาเข้ามาในบริเวณโรงเรียนแล้วกดอัปเดตพิกัด GPS`
+          ? 'ยังไม่ได้ตั้งค่าพิกัด GPS ของโรงเรียน กรุณากำหนดพิกัดและจุดประตูเช็คชื่อของโรงเรียนก่อนใช้งาน'
+          : 'โรงเรียนยังไม่ได้ตั้งค่าพิกัด GPS เช็คชื่อ กรุณาแจ้งผู้ดูแลระบบโรงเรียน'
+      );
+      return;
+    }
+    if (currentGpsDistance === null || !realGpsCoords) {
+      setSelfieActionError(
+        gpsError || 'ยังไม่ได้รับพิกัด GPS ปัจจุบัน กรุณาอนุญาตตำแหน่ง (Location) แล้วกดอัปเดตพิกัด GPS'
+      );
+      return;
+    }
+    if (!isInGeofence) {
+      setSelfieActionError(
+        `คุณอยู่นอกพื้นที่โรงเรียน (ระยะห่าง ${currentGpsDistance.toLocaleString()} ม. เกินรัศมี ${selectedGate.radiusMeters} ม. ที่โรงเรียนกำหนด) กรุณาเข้ามาในบริเวณโรงเรียนแล้วกดอัปเดตพิกัด GPS`
       );
       return;
     }
@@ -952,8 +1001,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       checkinMethod: 'selfie_geofence',
       photoUrl: photoToSave,
       location: {
-        lat: realGpsCoords?.lat || selectedGate.lat,
-        lng: realGpsCoords?.lng || selectedGate.lng,
+        lat: realGpsCoords.lat,
+        lng: realGpsCoords.lng,
         distanceMeters: currentGpsDistance,
         inGeofence: true,
         geofenceZoneName: selectedGate.nameTh
@@ -995,8 +1044,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         recordedBy: isSelfCheckin ? undefined : (currentUser?.fullNameTh || 'เจ้าหน้าที่'),
         recordedByRole: isSelfCheckin ? undefined : (currentUser?.role || 'staff'),
         location: {
-          lat: realGpsCoords?.lat || selectedGate.lat,
-          lng: realGpsCoords?.lng || selectedGate.lng,
+          lat: realGpsCoords.lat,
+          lng: realGpsCoords.lng,
           distanceMeters: currentGpsDistance,
           inGeofence: true,
           geofenceZoneName: selectedGate.nameTh
@@ -1470,7 +1519,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     onRecordAttendance(
       targetId,
       resolvedStatus,
-      `แตะบัตร NFC (${uid}) ${actionWord} ที่${selectedGate.nameTh}`,
+      `แตะบัตร NFC (${uid}) ${actionWord}${selectedGate ? ` ที่${selectedGate.nameTh}` : ''}`,
       'nfc',
       {
         recordType: nfcCheckType,
@@ -1483,13 +1532,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         date: todayDateStr,
         recordedBy: isStaffUser ? (currentUser?.fullNameTh || 'เจ้าหน้าที่จุดสแกน NFC') : personName,
         recordedByRole: currentUser?.role || userType,
-        location: {
-          lat: realGpsCoords?.lat || selectedGate.lat,
-          lng: realGpsCoords?.lng || selectedGate.lng,
-          distanceMeters: currentGpsDistance,
-          inGeofence: isInGeofence,
-          geofenceZoneName: selectedGate.nameTh,
-        },
+        ...(selectedGate && currentGpsDistance !== null
+          ? {
+              location: {
+                lat: realGpsCoords?.lat ?? selectedGate.lat,
+                lng: realGpsCoords?.lng ?? selectedGate.lng,
+                distanceMeters: currentGpsDistance,
+                inGeofence: isInGeofence,
+                geofenceZoneName: selectedGate.nameTh,
+              },
+            }
+          : {}),
       }
     );
 
@@ -1504,7 +1557,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         checkType: nfcCheckType,
         status: resolvedStatus,
         time: nowTime,
-        gateName: selectedGate.nameTh,
+        gateName: selectedGate?.nameTh || (_school?.nameTh || 'จุดสแกน NFC'),
       },
       ...prev.slice(0, 14),
     ]);
@@ -2055,11 +2108,29 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             className="px-2.5 py-2 text-left flex items-center justify-between gap-1.5 hover:bg-[var(--color-card-subtle)] cursor-pointer min-w-0"
           >
             <div className="flex items-center gap-1.5 min-w-0">
-              <MapPin className={`w-3.5 h-3.5 shrink-0 ${isInGeofence ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} />
+              <MapPin
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  !hasSchoolGpsConfigured || isGpsLoading
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : isInGeofence
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-rose-600 dark:text-rose-400'
+                }`}
+              />
               <div className="min-w-0">
-                <p className="type-meta truncate">{selectedGate.nameTh}</p>
-                <p className={`type-label tabular-nums truncate ${isInGeofence ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
-                  {isInGeofence ? `ในเขต · ${currentGpsDistance}ม.` : `นอกเขต · ${currentGpsDistance}ม.`}
+                <p className="type-meta truncate">
+                  {selectedGate ? selectedGate.nameTh : (lang === 'th' ? 'พิกัด GPS โรงเรียน' : 'School GPS')}
+                </p>
+                <p
+                  className={`type-label tabular-nums truncate ${
+                    !hasSchoolGpsConfigured || isGpsLoading
+                      ? 'text-amber-700 dark:text-amber-300'
+                      : isInGeofence
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  {gpsStatusShortLabel}
                 </p>
               </div>
             </div>
@@ -2108,7 +2179,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                 <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
                   <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
-                  {normalizedGates.length > 1 ? (
+                  {normalizedGates.length > 1 && selectedGate ? (
                     <select
                       aria-label={lang === 'th' ? 'จุดประตูเช็คชื่อ' : 'Check-in gate'}
                       value={selectedGate.id}
@@ -2121,7 +2192,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </select>
                   ) : (
                     <span className="bg-slate-800/90 text-slate-100 text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-700 truncate min-w-0 max-w-full">
-                      {selectedGate.nameTh}
+                      {selectedGate ? selectedGate.nameTh : (lang === 'th' ? 'ยังไม่ตั้งค่าพิกัดโรงเรียน' : 'School GPS not set')}
                     </span>
                   )}
                 </div>
@@ -2187,13 +2258,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     <span>{new Date().toLocaleTimeString('th-TH')}</span>
                   </div>
 
-                  <div className={`px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border backdrop-blur-md ${
-                    isInGeofence 
-                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' 
-                      : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
+                  <div className={`px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border backdrop-blur-md tabular-nums ${
+                    !hasSchoolGpsConfigured || isGpsLoading || currentGpsDistance === null
+                      ? 'bg-amber-950/80 text-amber-200 border-amber-500/40'
+                      : isInGeofence 
+                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' 
+                        : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
                   }`}>
                     <MapPin className="w-3 h-3" />
-                    <span>{isInGeofence ? `ในเขต (${currentGpsDistance}ม.)` : `นอกเขต (${currentGpsDistance}ม.)`}</span>
+                    <span>{gpsStatusShortLabel}</span>
                   </div>
                 </div>
 
@@ -2241,7 +2314,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       </button>
                     </div>
                     <p className="text-[11px] text-center text-slate-300 flex items-center justify-center gap-1">
-                      {isInGeofence ? (
+                      {!hasSchoolGpsConfigured ? (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>โรงเรียนยังไม่ได้ตั้งค่าพิกัด GPS เช็คชื่อ</span>
+                        </>
+                      ) : isGpsLoading ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 text-sky-400 animate-spin shrink-0" />
+                          <span>กำลังอ่านพิกัด GPS ปัจจุบัน...</span>
+                        </>
+                      ) : currentGpsDistance === null ? (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>{gpsError || 'กรุณาอนุญาต GPS แล้วกดอัปเดตพิกัด'}</span>
+                        </>
+                      ) : isInGeofence ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                           <span>พร้อมส่งหลักฐานและแจ้งเตือนผู้ปกครอง</span>
@@ -2249,7 +2337,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       ) : (
                         <>
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                          <span>อยู่นอกพื้นที่โรงเรียน</span>
+                          <span>อยู่นอกพื้นที่โรงเรียน ({currentGpsDistance.toLocaleString()} ม.)</span>
                         </>
                       )}
                     </p>
@@ -2469,99 +2557,105 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </div>
 
               <div className="saas-card-body space-y-3.5">
-                {campusGates.length === 0 && isSchoolAdmin && (
-                  <p className="type-meta text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-2">
-                    ใช้พิกัดหลักของโรงเรียนชั่วคราว (ยังไม่ได้ตั้งค่าจุดประตูเพิ่มเติม)
-                  </p>
-                )}
-
-                {/* Status Summary */}
-                <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
-                  isInGeofence 
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100' 
-                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100'
-                }`}>
-                  {isInGeofence ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0 mt-0.5" />
-                  )}
-                  <div className="space-y-0.5">
-                    <p className="type-card-title">
-                      {isInGeofence ? `ในเขต · ${selectedGate.nameTh}` : `นอกเขต · ${selectedGate.nameTh}`}
-                    </p>
-                    <p className="type-meta">
-                      ระยะห่าง <strong className="font-mono text-[var(--color-text-title)]">{currentGpsDistance} ม.</strong> (รัศมี {selectedGate.radiusMeters} ม. · กำหนดโดยโรงเรียน)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Multi-gate Selector List (only shown when > 1 gate or School Admin) */}
-                {(normalizedGates.length > 1 || isSchoolAdmin) && (
-                  <div className="space-y-1.5">
-                    <label className="type-label block">
-                      {isSchoolAdmin ? 'จุดเช็คชื่อที่กำหนดไว้' : 'เลือกประตูที่ใช้งาน'}
-                    </label>
-                    <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
-                      <PagedList items={normalizedGates} pageSize={3} renderItem={(gate) => {
-                        const isSelected = gate.id === selectedGate.id;
-                        return (
-                          <button
-                            key={gate.id}
-                            type="button"
-                            onClick={() => setSelectedGateId(gate.id)}
-                            className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 transition cursor-pointer ${
-                              isSelected
-                                ? 'bg-[var(--color-primary-light)] text-[var(--color-text-title)]'
-                                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <MapPin className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
-                              <div className="min-w-0">
-                                <p className="type-card-title truncate">{gate.nameTh}</p>
-                                <p className="type-meta font-mono truncate">
-                                  รัศมี {gate.radiusMeters} ม.{isSchoolAdmin ? ` · ${Number(gate.lat).toFixed(4)}, ${Number(gate.lng).toFixed(4)}` : ''}
-                                </p>
-                              </div>
-                            </div>
-                            {isSelected && (
-                              <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                            )}
-                          </button>
-                        );
-                      }} />
+                {!selectedGate ? (
+                  <div className="p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="type-card-title">ยังไม่ได้ตั้งค่าพิกัด GPS ของโรงเรียน</p>
+                        <p className="type-meta">
+                          {isSchoolAdmin
+                            ? 'กรุณากดตั้งค่าพิกัด GPS จริงและจุดประตูเช็คชื่อของโรงเรียนก่อนใช้งาน'
+                            : 'กรุณาแจ้งผู้ดูแลระบบโรงเรียนให้กำหนดพิกัด GPS จริงของโรงเรียนก่อนเช็คชื่อ'}
+                        </p>
+                      </div>
                     </div>
+                    {isSchoolAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setShowGpsAdminModal(true)}
+                        className="btn-action-primary px-3 py-1.5 text-xs cursor-pointer"
+                      >
+                        ตั้งค่าพิกัด GPS โรงเรียน
+                      </button>
+                    )}
                   </div>
-                )}
-
-                {/* Testing Presets for Location — Strictly School Admin Only */}
-                {isSchoolAdmin && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]">
-                    <span className="type-meta">จำลองระยะ (ทดสอบผู้ดูแล):</span>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                      {[
-                        { dist: 15, label: '15 ม.', inZone: true },
-                        { dist: 35, label: '35 ม.', inZone: true },
-                        { dist: 120, label: '120 ม.', inZone: true },
-                        { dist: 450, label: '450 ม.', inZone: false },
-                      ].map((preset) => (
-                        <button
-                          key={preset.dist}
-                          type="button"
-                          onClick={() => setCurrentGpsDistance(preset.dist)}
-                          title={preset.inZone ? 'จำลองระยะอยู่ในเขตโรงเรียน' : 'จำลองระยะอยู่นอกเขตโรงเรียน'}
-                          className={`font-semibold underline underline-offset-4 cursor-pointer transition tabular-nums ${
-                            currentGpsDistance === preset.dist
-                              ? preset.inZone ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
-                              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
+                ) : (
+                  <>
+                    {/* Status Summary */}
+                    <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                      isGpsLoading || currentGpsDistance === null
+                        ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100'
+                        : isInGeofence 
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100' 
+                          : 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100'
+                    }`}>
+                      {isInGeofence ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-rose-700 dark:text-rose-300 shrink-0 mt-0.5" />
+                      )}
+                      <div className="space-y-0.5">
+                        <p className="type-card-title">
+                          {isGpsLoading
+                            ? `กำลังอ่านพิกัด GPS · ${selectedGate.nameTh}`
+                            : currentGpsDistance === null
+                              ? `รอพิกัด GPS · ${selectedGate.nameTh}`
+                              : isInGeofence
+                                ? `ในเขต · ${selectedGate.nameTh}`
+                                : `นอกเขต · ${selectedGate.nameTh}`}
+                        </p>
+                        <p className="type-meta">
+                          {currentGpsDistance !== null ? (
+                            <>
+                              ระยะห่างจริง <strong className="font-mono text-[var(--color-text-title)] tabular-nums">{currentGpsDistance.toLocaleString()} ม.</strong> (รัศมี {selectedGate.radiusMeters} ม. · กำหนดโดยโรงเรียน)
+                            </>
+                          ) : (
+                            gpsError || `รัศมีเช็คชื่อ ${selectedGate.radiusMeters} ม. · กรุณากดปุ่มรีเฟรชเพื่ออ่านพิกัด GPS จริง`
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Multi-gate Selector List (only shown when > 1 gate or School Admin) */}
+                    {(normalizedGates.length > 1 || isSchoolAdmin) && (
+                      <div className="space-y-1.5">
+                        <label className="type-label block">
+                          {isSchoolAdmin ? 'จุดเช็คชื่อที่กำหนดไว้' : 'เลือกประตูที่ใช้งาน'}
+                        </label>
+                        <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+                          <PagedList items={normalizedGates} pageSize={3} renderItem={(gate) => {
+                            const isSelected = gate.id === selectedGate.id;
+                            return (
+                              <button
+                                key={gate.id}
+                                type="button"
+                                onClick={() => setSelectedGateId(gate.id)}
+                                className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 transition cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[var(--color-primary-light)] text-[var(--color-text-title)]'
+                                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <MapPin className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
+                                  <div className="min-w-0">
+                                    <p className="type-card-title truncate">{gate.nameTh}</p>
+                                    <p className="type-meta font-mono truncate">
+                                      รัศมี {gate.radiusMeters} ม.{isSchoolAdmin ? ` · ${Number(gate.lat).toFixed(5)}, ${Number(gate.lng).toFixed(5)}` : ''}
+                                    </p>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                                )}
+                              </button>
+                            );
+                          }} />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -3123,7 +3217,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                 <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                {normalizedGates.length > 1 ? (
+                {normalizedGates.length > 1 && selectedGate ? (
                   <select
                     aria-label={lang === 'th' ? 'จุดสแกน NFC' : 'NFC Gate'}
                     value={selectedGate.id}
@@ -3138,7 +3232,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </select>
                 ) : (
                   <span className="flex-1 min-w-0 text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {selectedGate.nameTh}
+                    {selectedGate ? selectedGate.nameTh : (lang === 'th' ? 'ยังไม่ตั้งค่าพิกัดโรงเรียน' : 'School GPS not set')}
                   </span>
                 )}
               </div>
@@ -4759,7 +4853,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             ? (lang === 'th' ? `จุดเช็คชื่อ GPS (${normalizedGates.length})` : `GPS Check-in Gates (${normalizedGates.length})`)
             : (lang === 'th' ? 'สถานะพิกัด GPS เช็คชื่อ' : 'GPS Check-in Status')
         }
-        subtitle={isInGeofence ? `ในเขต · ${currentGpsDistance} ม.` : `นอกเขต · ${currentGpsDistance} ม.`}
+        subtitle={gpsStatusShortLabel}
       >
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-2">
@@ -4786,6 +4880,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             )}
           </div>
 
+          {gpsError && (
+            <div className="p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 text-amber-950 dark:text-amber-100 text-xs">
+              {gpsError}
+            </div>
+          )}
+
           {!isSchoolAdmin && (
             <p className="text-xs text-[var(--color-text-muted)]">
               {lang === 'th'
@@ -4794,62 +4894,53 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </p>
           )}
 
-          <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
-            {normalizedGates.map((gate) => {
-              const isSelected = gate.id === selectedGate.id;
-              return normalizedGates.length > 1 || isSchoolAdmin ? (
-                <button
-                  key={gate.id}
-                  type="button"
-                  onClick={() => setSelectedGateId(gate.id)}
-                  className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 cursor-pointer ${
-                    isSelected ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--color-card)]'
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="type-card-title truncate">{gate.nameTh}</p>
-                    <p className="type-meta font-mono truncate">
-                      รัศมี {gate.radiusMeters} ม.{isSchoolAdmin ? ` · ${Number(gate.lat).toFixed(4)}, ${Number(gate.lng).toFixed(4)}` : ''}
-                    </p>
-                  </div>
-                  {isSelected && <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />}
-                </button>
-              ) : (
-                <div
-                  key={gate.id}
-                  className="w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 bg-[var(--color-primary-light)]"
-                >
-                  <div className="min-w-0">
-                    <p className="type-card-title truncate">{gate.nameTh}</p>
-                    <p className="type-meta tabular-nums truncate">
-                      รัศมีเช็คชื่อที่โรงเรียนกำหนด {gate.radiusMeters} ม.
-                    </p>
-                  </div>
-                  <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                </div>
-              );
-            })}
-          </div>
-
-          {isSchoolAdmin && (
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
-              <span className="type-meta">{lang === 'th' ? 'จำลองระยะ (ทดสอบผู้ดูแล):' : 'Simulate distance (Admin test):'}</span>
-              <div className="flex items-center gap-3 text-xs">
-                {[15, 35, 120, 450].map((dist) => (
+          {normalizedGates.length === 0 ? (
+            <div className="p-4 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card-subtle)] text-center space-y-2">
+              <p className="text-xs font-semibold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'โรงเรียนยังไม่ได้ตั้งค่าพิกัด GPS เช็คชื่อ' : 'School GPS coordinates not configured'}
+              </p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                {isSchoolAdmin
+                  ? (lang === 'th' ? 'กดปุ่ม "ตั้งค่าจุดประตู" ด้านบนเพื่อกำหนดพิกัดจริงของโรงเรียน' : 'Tap "Manage Gates" above to configure real school coordinates.')
+                  : (lang === 'th' ? 'กรุณาแจ้งผู้ดูแลระบบโรงเรียนให้กำหนดพิกัดโรงเรียนก่อนเช็คชื่อ' : 'Please ask your school administrator to configure campus GPS coordinates.')}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+              {normalizedGates.map((gate) => {
+                const isSelected = selectedGate?.id === gate.id;
+                return normalizedGates.length > 1 || isSchoolAdmin ? (
                   <button
-                    key={dist}
+                    key={gate.id}
                     type="button"
-                    onClick={() => setCurrentGpsDistance(dist)}
-                    className={`font-semibold underline underline-offset-4 cursor-pointer tabular-nums ${
-                      currentGpsDistance === dist
-                        ? dist <= selectedGate.radiusMeters ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
-                        : 'text-[var(--color-text-muted)]'
+                    onClick={() => setSelectedGateId(gate.id)}
+                    className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 cursor-pointer ${
+                      isSelected ? 'bg-[var(--color-primary-light)]' : 'bg-[var(--color-card)]'
                     }`}
                   >
-                    {dist} ม.
+                    <div className="min-w-0">
+                      <p className="type-card-title truncate">{gate.nameTh}</p>
+                      <p className="type-meta font-mono truncate">
+                        รัศมี {gate.radiusMeters} ม.{isSchoolAdmin ? ` · ${Number(gate.lat).toFixed(5)}, ${Number(gate.lng).toFixed(5)}` : ''}
+                      </p>
+                    </div>
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />}
                   </button>
-                ))}
-              </div>
+                ) : (
+                  <div
+                    key={gate.id}
+                    className="w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 bg-[var(--color-primary-light)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="type-card-title truncate">{gate.nameTh}</p>
+                      <p className="type-meta tabular-nums truncate">
+                        รัศมีเช็คชื่อที่โรงเรียนกำหนด {gate.radiusMeters} ม.
+                      </p>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

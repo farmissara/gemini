@@ -1,25 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { School, CampusGateGeofence, AppLanguage, UserRole } from '../types';
-import { 
-  MapPin, 
-  Navigation, 
-  Plus, 
-  Trash2, 
-  Save, 
-  CheckCircle2, 
-  AlertCircle, 
-  ExternalLink, 
-  Compass, 
-  Radio, 
+import {
+  MapPin,
+  Navigation,
+  Plus,
+  Trash2,
+  Save,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  Compass,
+  Radio,
   RefreshCw,
   LocateFixed,
   Sparkles,
   Layers,
   Activity,
-  Sliders,
-  Copy
+  Copy,
 } from 'lucide-react';
 import { PagedList } from './PagedList';
+import {
+  buildPrimaryGateFromSchool,
+  calculateHaversineDistanceMeters,
+  isValidCoordinatePair,
+  sanitizeSchoolCampusGates,
+} from '../lib/schoolGps';
 
 interface SchoolGpsSettingsCardProps {
   activeSchool: School;
@@ -40,31 +45,35 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   lang = 'th',
   onUpdateCampusGates,
   onSaveCampusGates,
-  onUpdateSchoolCoordinates
+  onUpdateSchoolCoordinates,
 }) => {
   const canManageGeofence = currentRole === 'admin' || currentRole === 'super_admin';
-  const canEditNames = canManageGeofence;
   const [activeTab, setActiveTab] = useState<GpsSubTab>('center_geofence');
 
-  // Find primary gate or first gate for school center coordinates
-  const primaryGate = campusGates.find(g => g.isPrimary) || campusGates[0] || {
-    id: `gate-${activeSchool.id}-main`,
-    schoolId: activeSchool.id,
-    nameTh: `ประตูหลัก ${activeSchool.nameTh}`,
-    nameEn: `Main Gate ${activeSchool.nameEn}`,
-    lat: 13.736717,
-    lng: 100.523186,
-    radiusMeters: 300,
-    isPrimary: true,
-    type: 'main_gate' as const
-  };
+  const initialCleanGates = useMemo(() => {
+    const sanitized = sanitizeSchoolCampusGates(campusGates, activeSchool.id);
+    if (sanitized.length > 0) return sanitized;
+    const fromSchool = buildPrimaryGateFromSchool(activeSchool);
+    return fromSchool ? [fromSchool] : [];
+  }, [campusGates, activeSchool]);
 
-  const [schoolLat, setSchoolLat] = useState<number>(activeSchool.latitude || primaryGate.lat || 13.736717);
-  const [schoolLng, setSchoolLng] = useState<number>(activeSchool.longitude || primaryGate.lng || 100.523186);
-  const [schoolRadius, setSchoolRadius] = useState<number>(activeSchool.geofenceRadiusMeters || primaryGate.radiusMeters || 250);
+  const initialPrimaryGate = initialCleanGates.find((g) => g.isPrimary) || initialCleanGates[0] || null;
+  const initialLat = isValidCoordinatePair(activeSchool.latitude, activeSchool.longitude)
+    ? Number(activeSchool.latitude)
+    : initialPrimaryGate?.lat ?? null;
+  const initialLng = isValidCoordinatePair(activeSchool.latitude, activeSchool.longitude)
+    ? Number(activeSchool.longitude)
+    : initialPrimaryGate?.lng ?? null;
+  const initialRadius =
+    Number.isFinite(Number(activeSchool.geofenceRadiusMeters)) && Number(activeSchool.geofenceRadiusMeters) > 0
+      ? Math.round(Number(activeSchool.geofenceRadiusMeters))
+      : initialPrimaryGate?.radiusMeters || 150;
 
-  // Editable Gates list
-  const [gatesList, setGatesList] = useState<CampusGateGeofence[]>(campusGates);
+  const [schoolLatText, setSchoolLatText] = useState<string>(initialLat !== null ? String(initialLat) : '');
+  const [schoolLngText, setSchoolLngText] = useState<string>(initialLng !== null ? String(initialLng) : '');
+  const [schoolRadius, setSchoolRadius] = useState<number>(initialRadius);
+
+  const [gatesList, setGatesList] = useState<CampusGateGeofence[]>(initialCleanGates);
   const [isLocating, setIsLocating] = useState(false);
   const [locateStatus, setLocateStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -73,48 +82,45 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [copiedCoords, setCopiedCoords] = useState(false);
 
-  // Live test distance state
   const [currentDeviceCoords, setCurrentDeviceCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [testResult, setTestResult] = useState<{ distance: number; isInside: boolean } | null>(null);
   const [isTestingDistance, setIsTestingDistance] = useState(false);
 
-  // Sync state if activeSchool or campusGates prop changes
+  const parsedLat = schoolLatText.trim() !== '' ? Number(schoolLatText) : NaN;
+  const parsedLng = schoolLngText.trim() !== '' ? Number(schoolLngText) : NaN;
+  const hasValidCenterCoords = isValidCoordinatePair(parsedLat, parsedLng);
+
   useEffect(() => {
-    setGatesList(campusGates);
-    if (activeSchool.latitude && activeSchool.longitude) {
-      setSchoolLat(activeSchool.latitude);
-      setSchoolLng(activeSchool.longitude);
-      setSchoolRadius(activeSchool.geofenceRadiusMeters || 250);
-    } else if (campusGates.length > 0) {
-      const prim = campusGates.find(g => g.isPrimary) || campusGates[0];
-      setSchoolLat(prim.lat);
-      setSchoolLng(prim.lng);
+    setGatesList(initialCleanGates);
+    const prim = initialCleanGates.find((g) => g.isPrimary) || initialCleanGates[0] || null;
+    if (isValidCoordinatePair(activeSchool.latitude, activeSchool.longitude)) {
+      setSchoolLatText(String(activeSchool.latitude));
+      setSchoolLngText(String(activeSchool.longitude));
+      setSchoolRadius(
+        Number.isFinite(Number(activeSchool.geofenceRadiusMeters)) && Number(activeSchool.geofenceRadiusMeters) > 0
+          ? Math.round(Number(activeSchool.geofenceRadiusMeters))
+          : prim?.radiusMeters || 150
+      );
+    } else if (prim && isValidCoordinatePair(prim.lat, prim.lng)) {
+      setSchoolLatText(String(prim.lat));
+      setSchoolLngText(String(prim.lng));
       setSchoolRadius(prim.radiusMeters);
+    } else {
+      setSchoolLatText('');
+      setSchoolLngText('');
+      setSchoolRadius(150);
     }
-  }, [activeSchool.id, campusGates]);
+  }, [activeSchool.id, activeSchool.latitude, activeSchool.longitude, activeSchool.geofenceRadiusMeters, initialCleanGates]);
 
-  // Haversine formula to compute distance in meters
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3; // Earth radius in meters
-    const phi1 = (lat1 * Math.PI) / 180;
-    const phi2 = (lat2 * Math.PI) / 180;
-    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
-    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
-
-    const a =
-      Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-      Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return Math.round(R * c);
-  };
-
-  // Get current device GPS coordinates
   const handleDetectCurrentLocation = (targetGateId?: string) => {
+    if (!canManageGeofence) return;
     if (!navigator.geolocation) {
       setLocateStatus({
         type: 'error',
-        message: lang === 'th' ? 'เบราว์เซอร์นี้ไม่รองรับการดึงพิกัด Geolocation' : 'Geolocation is not supported by your browser.'
+        message:
+          lang === 'th'
+            ? 'เบราว์เซอร์นี้ไม่รองรับการดึงพิกัด Geolocation'
+            : 'Geolocation is not supported by your browser.',
       });
       return;
     }
@@ -131,27 +137,56 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
         setCurrentDeviceCoords({ lat: latVal, lng: lngVal });
 
         if (targetGateId) {
-          // Update specific gate
-          setGatesList(prev => prev.map(g => g.id === targetGateId ? { ...g, lat: latVal, lng: lngVal } : g));
+          setGatesList((prev) =>
+            prev.map((g) =>
+              g.id === targetGateId
+                ? { ...g, lat: latVal, lng: lngVal, latitude: latVal, longitude: lngVal }
+                : g
+            )
+          );
           setLocateStatus({
             type: 'success',
-            message: lang === 'th' 
-              ? `อัปเดตพิกัดจุดตรวจสำเร็จ! (ความแม่นยำ ±${Math.round(accuracy)} ม.)` 
-              : `Gate location updated! (Accuracy ±${Math.round(accuracy)}m)`
+            message:
+              lang === 'th'
+                ? `อัปเดตพิกัดจุดเช็คชื่อสำเร็จ (ความแม่นยำ ±${Math.round(accuracy)} ม.)`
+                : `Gate location updated (Accuracy ±${Math.round(accuracy)}m)`,
           });
         } else {
-          // Update main school coordinates
-          setSchoolLat(latVal);
-          setSchoolLng(lngVal);
-          
-          // Also sync to primary gate
-          setGatesList(prev => prev.map(g => g.isPrimary ? { ...g, lat: latVal, lng: lngVal } : g));
+          setSchoolLatText(String(latVal));
+          setSchoolLngText(String(lngVal));
+
+          setGatesList((prev) => {
+            if (prev.length === 0) {
+              return [
+                {
+                  id: `gate_${activeSchool.id}_1`,
+                  schoolId: activeSchool.id,
+                  nameTh: `ประตูหลัก ${activeSchool.nameTh}`,
+                  nameEn: `Main Gate ${activeSchool.nameEn}`,
+                  lat: latVal,
+                  lng: lngVal,
+                  latitude: latVal,
+                  longitude: lngVal,
+                  radiusMeters: schoolRadius,
+                  isPrimary: true,
+                  isActive: true,
+                  type: 'main_gate',
+                },
+              ];
+            }
+            return prev.map((g, idx) =>
+              g.isPrimary || idx === 0
+                ? { ...g, lat: latVal, lng: lngVal, latitude: latVal, longitude: lngVal, radiusMeters: schoolRadius }
+                : g
+            );
+          });
 
           setLocateStatus({
             type: 'success',
-            message: lang === 'th' 
-              ? `ดึงพิกัด GPS สำเร็จ: ${latVal}, ${lngVal} (ความแม่นยำ ±${Math.round(accuracy)} ม.)` 
-              : `GPS detected: ${latVal}, ${lngVal} (Accuracy ±${Math.round(accuracy)}m)`
+            message:
+              lang === 'th'
+                ? `ดึงพิกัด GPS จริงสำเร็จ: ${latVal}, ${lngVal} (ความแม่นยำ ±${Math.round(accuracy)} ม.)`
+                : `Real GPS detected: ${latVal}, ${lngVal} (Accuracy ±${Math.round(accuracy)}m)`,
           });
         }
 
@@ -161,7 +196,10 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
         setIsLocating(false);
         let errorMsg = lang === 'th' ? 'ไม่สามารถดึงพิกัด GPS ได้' : 'Unable to acquire GPS position';
         if (error.code === error.PERMISSION_DENIED) {
-          errorMsg = lang === 'th' ? 'ผู้ใช้ปฏิเสธการเข้าถึงตำแหน่ง GPS (โปรดอนุญาต Location Permission ในเบราว์เซอร์)' : 'GPS access denied by user.';
+          errorMsg =
+            lang === 'th'
+              ? 'ผู้ใช้ปฏิเสธการเข้าถึงตำแหน่ง GPS (โปรดอนุญาต Location Permission ในเบราว์เซอร์)'
+              : 'GPS access denied by user.';
         } else if (error.code === error.POSITION_UNAVAILABLE) {
           errorMsg = lang === 'th' ? 'สัญญาณดาวเทียม GPS ไม่พร้อมใช้งาน' : 'GPS signal unavailable.';
         } else if (error.code === error.TIMEOUT) {
@@ -171,23 +209,23 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        timeout: 12000,
+        maximumAge: 0,
       }
     );
   };
 
-  // Preset Thai Landmark coordinates
-  const presetLocations = [
-    { label: 'กรุงเทพฯ (สยาม/ปทุมวัน)', lat: 13.736717, lng: 100.523186 },
-    { label: 'กรุงเทพฯ (จตุจักร/ลาดพร้าว)', lat: 13.803607, lng: 100.553925 },
-    { label: 'เชียงใหม่ (มช./สุเทพ)', lat: 18.795278, lng: 98.952778 },
-    { label: 'ขอนแก่น (กังสดาล/มข.)', lat: 16.474167, lng: 102.823611 },
-    { label: 'สงขลา (หาดใหญ่)', lat: 7.008333, lng: 100.476667 },
-  ];
-
-  // Test distance from current device to school
   const handleTestDistance = () => {
+    if (!hasValidCenterCoords) {
+      setLocateStatus({
+        type: 'error',
+        message:
+          lang === 'th'
+            ? 'กรุณากำหนดพิกัด GPS จริงของโรงเรียนก่อนทดสอบระยะทาง'
+            : 'Please set real school GPS coordinates before testing distance.',
+      });
+      return;
+    }
     if (!navigator.geolocation) {
       setLocateStatus({
         type: 'error',
@@ -205,109 +243,194 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
         const latVal = Number(latitude.toFixed(6));
         const lngVal = Number(longitude.toFixed(6));
         setCurrentDeviceCoords({ lat: latVal, lng: lngVal });
-        const distance = calculateDistance(latitude, longitude, schoolLat, schoolLng);
+        const distance = calculateHaversineDistanceMeters(latitude, longitude, parsedLat, parsedLng);
         setTestResult({
           distance,
-          isInside: distance <= schoolRadius
+          isInside: distance <= schoolRadius,
         });
       },
       () => {
         setIsTestingDistance(false);
         setLocateStatus({
           type: 'error',
-          message: lang === 'th'
-            ? 'กรุณาอนุญาตสิทธิ์ Location ในเบราว์เซอร์เพื่อทดสอบระยะทาง'
-            : 'Please allow Location permission to test distance',
+          message:
+            lang === 'th'
+              ? 'กรุณาอนุญาตสิทธิ์ Location ในเบราว์เซอร์เพื่อทดสอบระยะทางจริง'
+              : 'Please allow Location permission to test real distance.',
         });
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
-  // Add new gate
   const handleAddNewGate = () => {
-    const newGate: CampusGateGeofence = {
-      id: `gate-${activeSchool.id}-${Date.now()}`,
-      schoolId: activeSchool.id,
-      nameTh: `จุดเช็คชื่อใหม่ ${gatesList.length + 1}`,
-      nameEn: `Gate Zone ${gatesList.length + 1}`,
-      lat: Number((schoolLat + (Math.random() - 0.5) * 0.001).toFixed(6)),
-      lng: Number((schoolLng + (Math.random() - 0.5) * 0.001).toFixed(6)),
-      radiusMeters: 100,
-      isPrimary: gatesList.length === 0,
-      type: 'main_gate'
-    };
-    setGatesList(prev => [...prev, newGate]);
-  };
-
-  // Remove gate
-  const handleRemoveGate = (gateId: string) => {
-    if (gatesList.length <= 1) {
+    if (!canManageGeofence) return;
+    if (!hasValidCenterCoords) {
       setLocateStatus({
         type: 'error',
-        message: lang === 'th'
-          ? 'ต้องมีจุดเช็คชื่อพิกัด Geofence อย่างน้อย 1 จุดในโรงเรียน'
-          : 'At least one campus gate must remain.',
+        message:
+          lang === 'th'
+            ? 'กรุณาดึงพิกัด GPS จริงหรือกรอกละติจูด/ลองจิจูดของโรงเรียนในแท็บที่ 1 ก่อนเพิ่มจุดเช็คชื่อ'
+            : 'Please set valid school coordinates in Tab 1 before adding a new gate.',
       });
       return;
     }
-    setGatesList(prev => prev.filter(g => g.id !== gateId));
+    const newGate: CampusGateGeofence = {
+      id: `gate_${activeSchool.id}_${Date.now()}`,
+      schoolId: activeSchool.id,
+      nameTh:
+        gatesList.length === 0
+          ? `ประตูหลัก ${activeSchool.nameTh}`
+          : `จุดเช็คชื่อ ${gatesList.length + 1}`,
+      nameEn:
+        gatesList.length === 0
+          ? `Main Gate ${activeSchool.nameEn}`
+          : `Gate Zone ${gatesList.length + 1}`,
+      lat: parsedLat,
+      lng: parsedLng,
+      latitude: parsedLat,
+      longitude: parsedLng,
+      radiusMeters: schoolRadius,
+      isPrimary: gatesList.length === 0,
+      isActive: true,
+      type: 'main_gate',
+    };
+    setGatesList((prev) => [...prev, newGate]);
   };
 
-  // Set primary gate
+  const handleRemoveGate = (gateId: string) => {
+    if (!canManageGeofence) return;
+    if (gatesList.length <= 1) {
+      setLocateStatus({
+        type: 'error',
+        message:
+          lang === 'th'
+            ? 'ต้องมีจุดเช็คชื่อพิกัด Geofence อย่างน้อย 1 จุดในโรงเรียน'
+            : 'At least one campus gate must remain.',
+      });
+      return;
+    }
+    setGatesList((prev) => {
+      const remaining = prev.filter((g) => g.id !== gateId);
+      if (remaining.length > 0 && !remaining.some((g) => g.isPrimary)) {
+        remaining[0] = { ...remaining[0], isPrimary: true };
+      }
+      return remaining;
+    });
+  };
+
   const handleSetPrimary = (gateId: string) => {
-    setGatesList(prev => prev.map(g => ({
-      ...g,
-      isPrimary: g.id === gateId
-    })));
-    const target = gatesList.find(g => g.id === gateId);
-    if (target) {
-      setSchoolLat(target.lat);
-      setSchoolLng(target.lng);
+    if (!canManageGeofence) return;
+    setGatesList((prev) =>
+      prev.map((g) => ({
+        ...g,
+        isPrimary: g.id === gateId,
+      }))
+    );
+    const target = gatesList.find((g) => g.id === gateId);
+    if (target && isValidCoordinatePair(target.lat, target.lng)) {
+      setSchoolLatText(String(target.lat));
+      setSchoolLngText(String(target.lng));
       setSchoolRadius(target.radiusMeters);
     }
   };
 
-  // Copy coordinates
   const handleCopyCoords = () => {
-    navigator.clipboard.writeText(`${schoolLat}, ${schoolLng}`);
+    if (!hasValidCenterCoords) return;
+    navigator.clipboard.writeText(`${parsedLat}, ${parsedLng}`);
     setCopiedCoords(true);
     setTimeout(() => setCopiedCoords(false), 2000);
   };
 
-  // Save all GPS configuration
   const handleSaveAll = async () => {
-    if (!canEditNames) return;
-    setIsSaving(true);
+    if (!canManageGeofence) return;
     setSaveError(null);
     setSaveWarning(null);
+
+    let gatesToSave = sanitizeSchoolCampusGates(gatesList, activeSchool.id);
+
+    if (hasValidCenterCoords) {
+      if (gatesToSave.length === 0) {
+        gatesToSave = [
+          {
+            id: `gate_${activeSchool.id}_1`,
+            schoolId: activeSchool.id,
+            nameTh: `ประตูหลัก ${activeSchool.nameTh}`,
+            nameEn: `Main Gate ${activeSchool.nameEn}`,
+            lat: parsedLat,
+            lng: parsedLng,
+            latitude: parsedLat,
+            longitude: parsedLng,
+            radiusMeters: schoolRadius,
+            isPrimary: true,
+            isActive: true,
+            type: 'main_gate',
+          },
+        ];
+      } else {
+        gatesToSave = gatesToSave.map((g, idx) =>
+          g.isPrimary || idx === 0
+            ? {
+                ...g,
+                lat: parsedLat,
+                lng: parsedLng,
+                latitude: parsedLat,
+                longitude: parsedLng,
+                radiusMeters: schoolRadius,
+              }
+            : g
+        );
+      }
+    }
+
+    if (gatesToSave.length === 0) {
+      setSaveError(
+        lang === 'th'
+          ? 'กรุณาดึงพิกัด GPS จริงของโรงเรียน หรือกรอกละติจูดและลองจิจูดให้ถูกต้องก่อนบันทึก'
+          : 'Please detect or enter valid real school GPS coordinates before saving.'
+      );
+      return;
+    }
+
+    const primaryToSync = gatesToSave.find((g) => g.isPrimary) || gatesToSave[0];
+
+    setIsSaving(true);
     try {
+      setGatesList(gatesToSave);
       let savedToDatabase = false;
       if (onSaveCampusGates) {
-        savedToDatabase = await onSaveCampusGates(gatesList);
+        savedToDatabase = await onSaveCampusGates(gatesToSave);
       } else {
-        onUpdateCampusGates(gatesList);
+        onUpdateCampusGates(gatesToSave);
       }
 
-      if (canManageGeofence && onUpdateSchoolCoordinates) {
-        onUpdateSchoolCoordinates(schoolLat, schoolLng, schoolRadius);
+      if (onUpdateSchoolCoordinates && primaryToSync && isValidCoordinatePair(primaryToSync.lat, primaryToSync.lng)) {
+        onUpdateSchoolCoordinates(primaryToSync.lat, primaryToSync.lng, primaryToSync.radiusMeters);
       }
 
-      localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(gatesList));
-      if (canManageGeofence) {
-        localStorage.setItem(`eduverse_school_gps_${activeSchool.id}`, JSON.stringify({
-          latitude: schoolLat,
-          longitude: schoolLng,
-          geofenceRadiusMeters: schoolRadius
-        }));
+      localStorage.setItem(`eduverse_campus_gates_${activeSchool.id}`, JSON.stringify(gatesToSave));
+      if (primaryToSync && isValidCoordinatePair(primaryToSync.lat, primaryToSync.lng)) {
+        localStorage.setItem(
+          `eduverse_school_gps_${activeSchool.id}`,
+          JSON.stringify({
+            latitude: primaryToSync.lat,
+            longitude: primaryToSync.lng,
+            geofenceRadiusMeters: primaryToSync.radiusMeters,
+          })
+        );
       }
+
       setSaveSuccess(true);
       if (!savedToDatabase) {
-        setSaveWarning('บันทึกไว้ในอุปกรณ์นี้เท่านั้น ต้องติดตั้ง migration school_campus_gates เพื่อให้ทุกคนในโรงเรียนเห็นข้อมูลร่วมกัน');
+        setSaveWarning(
+          lang === 'th'
+            ? 'บันทึกไว้ในอุปกรณ์นี้เท่านั้น กรุณาตรวจสอบตาราง school_campus_gates ใน Supabase เพื่อให้ทุกคนในโรงเรียนใช้พิกัดร่วมกัน'
+            : 'Saved locally only. Ensure the school_campus_gates table is installed in Supabase to sync across devices.'
+        );
       }
       setTimeout(() => setSaveSuccess(false), 3500);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'บันทึกจุดเช็คชื่อไม่สำเร็จ');
+      setSaveError(e instanceof Error ? e.message : 'บันทึกพิกัดโรงเรียนไม่สำเร็จ');
     } finally {
       setIsSaving(false);
     }
@@ -322,7 +445,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
             <span className="p-1 rounded-md bg-white/15 text-emerald-200 border border-white/25">
               <MapPin className="w-4 h-4" />
             </span>
-            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2 flex-wrap">
               <span>{lang === 'th' ? 'กำหนดพิกัด GPS ประจำโรงเรียน' : 'School GPS & Geofence Settings'}</span>
               <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/15 text-white border border-white/25">
                 {activeSchool.nameTh}
@@ -331,8 +454,8 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           </div>
           <p className="text-xs text-white/85 leading-relaxed">
             {lang === 'th'
-              ? 'ครูและผู้ดูแลแก้ไขชื่อจุดเช็คชื่อได้ ผู้ดูแลระบบกำหนดพิกัดและรัศมีได้'
-              : 'Teachers and admins can edit check-in point names. Admins can also edit GPS coordinates and radius.'}
+              ? 'เฉพาะผู้ดูแลระบบโรงเรียนกำหนดพิกัด รัศมี และจุดประตูเช็คชื่อจริงสำหรับนักเรียนและครูทุกคน'
+              : 'School administrators configure real GPS coordinates, radius, and check-in gates for all students and staff.'}
           </p>
         </div>
 
@@ -340,21 +463,25 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           <button
             type="button"
             onClick={handleSaveAll}
-            disabled={!canEditNames || isSaving}
+            disabled={!canManageGeofence || isSaving}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-3.5 h-3.5 text-slate-950" />
-            <span>{isSaving ? 'กำลังบันทึก...' : lang === 'th' ? 'บันทึกจุดเช็คชื่อ' : 'Save Check-in Points'}</span>
+            <span>{isSaving ? 'กำลังบันทึก...' : lang === 'th' ? 'บันทึกพิกัดโรงเรียน' : 'Save School GPS'}</span>
           </button>
         </div>
       </div>
 
-      {/* Save Success Banner */}
+      {/* Save Success / Error / Warning Banners */}
       {saveSuccess && (
         <div className="shrink-0 p-2.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center justify-between animate-in fade-in duration-200">
           <span className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-            <span>{lang === 'th' ? `บันทึกชื่อจุดเช็คชื่อ ${gatesList.length} จุดของ ${activeSchool.nameTh} สำเร็จแล้ว!` : `Saved ${gatesList.length} check-in points for ${activeSchool.nameTh}.`}</span>
+            <span>
+              {lang === 'th'
+                ? `บันทึกพิกัดจริง ${gatesList.length} จุดของ ${activeSchool.nameTh} สำเร็จแล้ว`
+                : `Saved ${gatesList.length} real check-in point(s) for ${activeSchool.nameTh}.`}
+            </span>
           </span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-emerald-950 dark:text-emerald-100 border border-emerald-400 dark:border-emerald-700">
             {activeSchool.code}
@@ -363,7 +490,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
       )}
       {saveError && (
         <div role="alert" className="shrink-0 p-2.5 rounded-lg bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-semibold">
-          บันทึกไม่สำเร็จ: {saveError}
+          {saveError}
         </div>
       )}
       {saveWarning && (
@@ -374,11 +501,13 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
 
       {/* Feedback Message */}
       {locateStatus && (
-        <div className={`shrink-0 p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
-          locateStatus.type === 'success' 
-            ? 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700'
-            : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700'
-        }`}>
+        <div
+          className={`shrink-0 p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+            locateStatus.type === 'success'
+              ? 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700'
+              : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700'
+          }`}
+        >
           {locateStatus.type === 'success' ? (
             <Sparkles className="w-4 h-4 text-blue-700 dark:text-blue-300 shrink-0" />
           ) : (
@@ -426,7 +555,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
           }`}
         >
           <Activity className="w-3.5 h-3.5" />
-          <span>3. เรดาร์จำลอง &amp; ทดสอบระยะ</span>
+          <span>3. ทดสอบระยะ GPS จริง</span>
           {testResult && (
             <span className={`px-1.5 py-0.5 rounded text-[10px] ${testResult.isInside ? 'bg-emerald-200 text-emerald-950' : 'bg-amber-200 text-amber-950'}`}>
               {testResult.isInside ? 'อยู่ในเขต' : 'นอกเขต'}
@@ -443,11 +572,11 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
               {/* Coordinates Inputs Card */}
               <div className="lg:col-span-7 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
                   <div className="flex items-center gap-2">
                     <Compass className="w-4 h-4 text-[var(--color-primary-text)]" />
                     <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
-                      ช่องกรอกพิกัด GPS ละติจูด / ลองจิจูด
+                      พิกัด GPS จริงของโรงเรียน (Latitude / Longitude)
                     </h3>
                   </div>
 
@@ -462,43 +591,44 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Latitude */}
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--color-text-body)] mb-1">
-                      ละติจูด (Latitude - N/S) <span className="text-rose-600 dark:text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      disabled={!canManageGeofence}
-                      value={schoolLat}
-                      onChange={(e) => setSchoolLat(parseFloat(e.target.value) || 0)}
-                      placeholder="เช่น 13.736717"
-                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-mono font-bold focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
-                    />
-                    <span className="text-[10px] text-[var(--color-text-muted)] mt-0.5 block">
-                      ตัวเลขทศนิยม เช่น 13.736717
+                {!hasValidCenterCoords && (
+                  <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700 dark:text-amber-300" />
+                    <span>
+                      ยังไม่ได้ตั้งค่าพิกัด GPS ของโรงเรียน กรุณากดปุ่ม &quot;ดึงพิกัดจากตำแหน่งปัจจุบัน&quot; ณ บริเวณโรงเรียน หรือกรอกค่าละติจูด/ลองจิจูดจริงจาก Google Maps แล้วกดบันทึก
                     </span>
                   </div>
+                )}
 
-                  {/* Longitude */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-[var(--color-text-body)] mb-1">
-                      ลองจิจูด (Longitude - E/W) <span className="text-rose-600 dark:text-rose-400">*</span>
+                      ละติจูด (Latitude) <span className="text-rose-600 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="number"
                       step="any"
                       disabled={!canManageGeofence}
-                      value={schoolLng}
-                      onChange={(e) => setSchoolLng(parseFloat(e.target.value) || 0)}
-                      placeholder="เช่น 100.523186"
+                      value={schoolLatText}
+                      onChange={(e) => setSchoolLatText(e.target.value)}
+                      placeholder="กรอกละติจูดจริงของโรงเรียน"
                       className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-mono font-bold focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
                     />
-                    <span className="text-[10px] text-[var(--color-text-muted)] mt-0.5 block">
-                      ตัวเลขทศนิยม เช่น 100.523186
-                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--color-text-body)] mb-1">
+                      ลองจิจูด (Longitude) <span className="text-rose-600 dark:text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      disabled={!canManageGeofence}
+                      value={schoolLngText}
+                      onChange={(e) => setSchoolLngText(e.target.value)}
+                      placeholder="กรอกลองจิจูดจริงของโรงเรียน"
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-mono font-bold focus:ring-2 focus:ring-[var(--color-primary)] focus:outline-hidden"
+                    />
                   </div>
                 </div>
 
@@ -509,7 +639,7 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                       <Radio className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
                       <span>รัศมีขอบเขตที่อนุญาต (Geofence Radius):</span>
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-mono font-bold text-xs">
+                    <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-mono font-bold text-xs tabular-nums">
                       {schoolRadius} เมตร
                     </span>
                   </div>
@@ -526,13 +656,13 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                   />
 
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    {[50, 100, 200, 300, 500].map((preset) => (
+                    {[50, 100, 150, 200, 300, 500].map((preset) => (
                       <button
                         key={preset}
                         type="button"
                         disabled={!canManageGeofence}
                         onClick={() => setSchoolRadius(preset)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer tabular-nums ${
                           schoolRadius === preset
                             ? 'bg-indigo-700 text-white'
                             : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
@@ -541,88 +671,70 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                         {preset} ม.
                       </button>
                     ))}
-                    <span className="text-[10px] text-[var(--color-text-muted)] ml-auto">
-                      {schoolRadius <= 100 ? '🟢 เขตประตูหน้า' : schoolRadius <= 300 ? '🔵 ครอบคลุมรั้วโรงเรียน' : '🟠 รวมสนามกีฬา/อาคารรอบนอก'}
-                    </span>
                   </div>
                 </div>
 
                 {/* Action Links & Copy */}
-                <div className="pt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)]">
-                  <button
-                    type="button"
-                    onClick={handleCopyCoords}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] text-xs font-semibold cursor-pointer"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>{copiedCoords ? 'คัดลอกแล้ว!' : 'คัดลอกพิกัด'}</span>
-                  </button>
+                {hasValidCenterCoords && (
+                  <div className="pt-2 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)]">
+                    <button
+                      type="button"
+                      onClick={handleCopyCoords}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-body)] text-xs font-semibold cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedCoords ? 'คัดลอกแล้ว!' : 'คัดลอกพิกัด'}</span>
+                    </button>
 
-                  <a
-                    href={`https://www.google.com/maps?q=${schoolLat},${schoolLng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold hover:opacity-90"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>เปิดพิกัดบน Google Maps</span>
-                  </a>
-                </div>
+                    <a
+                      href={`https://www.google.com/maps?q=${parsedLat},${parsedLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-primary-text)] text-xs font-semibold hover:opacity-90"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>ตรวจสอบตำแหน่งบน Google Maps</span>
+                    </a>
+                  </div>
+                )}
               </div>
 
-              {/* Thailand Landmark Presets & Map Visual */}
+              {/* School GPS Summary & Setup Guide (No Sample Presets) */}
               <div className="lg:col-span-5 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3 flex flex-col justify-between">
-                <div>
+                <div className="space-y-2.5">
                   <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider pb-2 border-b border-[var(--color-border)]">
-                    พิกัดตัวอย่างโรงเรียน / วิทยาเขตในไทย
+                    สถานะพิกัด GPS ที่ใช้งานจริง
                   </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1 mb-2">
-                    คลิกเพื่อเลือกพิกัดตัวอย่างสำหรับทดลองระบบเช็คชื่อ Geofence
-                  </p>
-
-                  <div className="space-y-1.5">
-                    {presetLocations.map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setSchoolLat(item.lat);
-                          setSchoolLng(item.lng);
-                          setGatesList(prev => prev.map(g => g.isPrimary ? { ...g, lat: item.lat, lng: item.lng } : g));
-                        }}
-                        className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition border cursor-pointer ${
-                          Math.abs(schoolLat - item.lat) < 0.001 && Math.abs(schoolLng - item.lng) < 0.001
-                            ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-primary-text)] font-bold'
-                            : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
-                        }`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                          <span>{item.label}</span>
-                        </span>
-                        <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
-                          {item.lat.toFixed(4)}, {item.lng.toFixed(4)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  <ol className="space-y-2 text-xs text-[var(--color-text-body)] list-decimal list-inside leading-relaxed">
+                    <li>ยืนที่บริเวณประตูหลักของโรงเรียน แล้วกดปุ่ม &quot;ดึงพิกัดจากตำแหน่งปัจจุบัน&quot; หรือนำพิกัดจริงจาก Google Maps มากรอก</li>
+                    <li>กำหนดรัศมีเช็คชื่อที่เหมาะสมกับพื้นที่โรงเรียน (เช่น 100–300 เมตร)</li>
+                    <li>กด &quot;บันทึกพิกัดโรงเรียน&quot; เพื่อส่งพิกัดจริงไปยังเครื่องนักเรียนและครูทุกคนทันที</li>
+                  </ol>
                 </div>
 
-                {/* Mini Visual Radar Box */}
+                {/* Live Coordinates Status Box */}
                 <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-white flex items-center gap-3">
-                  <div className="relative w-12 h-12 rounded-full border border-emerald-500/60 flex items-center justify-center shrink-0 bg-emerald-950">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute" />
-                    <MapPin className="w-5 h-5 text-amber-300 relative z-10" />
+                  <div
+                    className={`relative w-12 h-12 rounded-full border flex items-center justify-center shrink-0 ${
+                      hasValidCenterCoords
+                        ? 'border-emerald-500/60 bg-emerald-950'
+                        : 'border-amber-500/60 bg-amber-950'
+                    }`}
+                  >
+                    {hasValidCenterCoords && <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute" />}
+                    <MapPin className={`w-5 h-5 relative z-10 ${hasValidCenterCoords ? 'text-emerald-300' : 'text-amber-300'}`} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>ศูนย์กลางพิกัด: {activeSchool.nameTh}</span>
+                    <div className="text-xs font-bold text-white truncate">
+                      {activeSchool.nameTh}
                     </div>
-                    <div className="font-mono text-[11px] text-emerald-300 truncate">
-                      Lat: {schoolLat.toFixed(5)} • Lng: {schoolLng.toFixed(5)}
+                    <div className={`font-mono text-[11px] truncate ${hasValidCenterCoords ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      {hasValidCenterCoords
+                        ? `Lat ${parsedLat.toFixed(6)} · Lng ${parsedLng.toFixed(6)}`
+                        : 'ยังไม่ได้กำหนดพิกัด GPS จริง'}
                     </div>
-                    <div className="text-[10px] text-slate-200">
-                      รัศมีตรวจจับ: {schoolRadius} ม. • จุดตรวจย่อย: {gatesList.length} จุด
+                    <div className="text-[10px] text-slate-300 tabular-nums">
+                      รัศมี: {schoolRadius} ม. · จุดเช็คชื่อที่บันทึกไว้: {gatesList.length} จุด
                     </div>
                   </div>
                 </div>
@@ -638,10 +750,10 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
               <div>
                 <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />
-                  <span>จุดตรวจสแกนเข้าเรียนและประตูวิทยาเขต ({gatesList.length} จุด)</span>
+                  <span>จุดตรวจสแกนเข้าเรียนและประตูโรงเรียน ({gatesList.length} จุด)</span>
                 </h3>
                 <p className="text-[11px] text-[var(--color-text-muted)]">
-                  ครูและนักเรียนสามารถสแกนบัตรหรือถ่ายรูปเช็คชื่อผ่านรัศมีของจุดตรวจใดก็ได้ที่ใกล้ที่สุด
+                  นักเรียนและครูจะเช็คชื่อได้เมื่ออยู่ภายในรัศมีของจุดตรวจจริงที่โรงเรียนกำหนดไว้เท่านั้น
                 </p>
               </div>
 
@@ -649,230 +761,246 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
                 type="button"
                 disabled={!canManageGeofence}
                 onClick={handleAddNewGate}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ เพิ่มจุดตรวจใหม่</span>
+                <span>เพิ่มจุดตรวจใหม่</span>
               </button>
             </div>
 
-            {/* Gates Cards Grid - scrollable */}
-            <div className="flex-1 min-h-0 overflow-hidden pr-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <PagedList items={gatesList} pageSize={2} renderItem={(gate, index) => (
-                <div
-                  key={gate.id}
-                  className={`p-3 rounded-xl border transition ${
-                    gate.isPrimary
-                      ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-xs'
-                      : 'border-[var(--color-border)] bg-[var(--color-card)]'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${
-                        gate.isPrimary ? 'bg-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'
-                      }`}>
-                        {index + 1}
-                      </span>
-                      <div>
-                        <input
-                          type="text"
-                          value={gate.nameTh}
-                          disabled={!canEditNames}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, nameTh: val } : g));
-                          }}
-                          className="text-xs font-bold text-[var(--color-text-title)] bg-transparent border-b border-transparent hover:border-[var(--color-border)] focus:border-indigo-600 focus:outline-hidden px-1"
-                          placeholder="ชื่อจุดเช็คชื่อ (ไทย)"
-                        />
+            {gatesList.length === 0 ? (
+              <div className="p-6 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card-subtle)] text-center space-y-2">
+                <MapPin className="w-6 h-6 text-[var(--color-text-muted)] mx-auto" />
+                <p className="text-xs font-semibold text-[var(--color-text-title)]">
+                  ยังไม่มีจุดเช็คชื่อพิกัด GPS ของโรงเรียน
+                </p>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  กรุณาดึงพิกัด GPS จริงในแท็บที่ 1 หรือกด &quot;เพิ่มจุดตรวจใหม่&quot; เพื่อสร้างประตูเช็คชื่อแรกของโรงเรียน
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-hidden pr-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <PagedList
+                  items={gatesList}
+                  pageSize={4}
+                  renderItem={(gate, index) => (
+                    <div
+                      key={gate.id}
+                      className={`p-3 rounded-xl border transition ${
+                        gate.isPrimary
+                          ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-xs'
+                          : 'border-[var(--color-border)] bg-[var(--color-card)]'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span
+                            className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold shrink-0 ${
+                              gate.isPrimary
+                                ? 'bg-indigo-700 text-white'
+                                : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                            }`}
+                          >
+                            {index + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={gate.nameTh}
+                            disabled={!canManageGeofence}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setGatesList((prev) => prev.map((g) => (g.id === gate.id ? { ...g, nameTh: val } : g)));
+                            }}
+                            className="w-full text-xs font-bold text-[var(--color-text-title)] bg-transparent border-b border-transparent hover:border-[var(--color-border)] focus:border-indigo-600 focus:outline-hidden px-1"
+                            placeholder="ชื่อจุดเช็คชื่อ (ไทย)"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            disabled={!canManageGeofence}
+                            onClick={() => handleSetPrimary(gate.id)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                              gate.isPrimary
+                                ? 'bg-indigo-700 text-white'
+                                : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
+                            }`}
+                          >
+                            {gate.isPrimary ? 'จุดหลัก' : 'ตั้งเป็นหลัก'}
+                          </button>
+
+                          {gatesList.length > 1 && (
+                            <button
+                              type="button"
+                              disabled={!canManageGeofence}
+                              onClick={() => handleRemoveGate(gate.id)}
+                              className="p-1 rounded text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950 transition cursor-pointer"
+                              aria-label="ลบจุดเช็คชื่อ"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        disabled={!canManageGeofence}
-                        onClick={() => handleSetPrimary(gate.id)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                          gate.isPrimary
-                            ? 'bg-indigo-700 text-white'
-                            : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
-                        }`}
-                      >
-                        {gate.isPrimary ? '★ จุดหลัก' : 'ตั้งเป็นหลัก'}
-                      </button>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-[var(--color-text-muted)] font-medium">ละติจูด (Lat)</span>
+                          <input
+                            type="number"
+                            step="any"
+                            value={gate.lat}
+                            disabled={!canManageGeofence}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              setGatesList((prev) =>
+                                prev.map((g) =>
+                                  g.id === gate.id
+                                    ? { ...g, lat: Number.isFinite(val) ? val : 0, latitude: Number.isFinite(val) ? val : 0 }
+                                    : g
+                                )
+                              );
+                            }}
+                            className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
+                          />
+                        </div>
 
-                      {gatesList.length > 1 && (
+                        <div>
+                          <span className="text-[10px] text-[var(--color-text-muted)] font-medium">ลองจิจูด (Lng)</span>
+                          <input
+                            type="number"
+                            step="any"
+                            value={gate.lng}
+                            disabled={!canManageGeofence}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              setGatesList((prev) =>
+                                prev.map((g) =>
+                                  g.id === gate.id
+                                    ? { ...g, lng: Number.isFinite(val) ? val : 0, longitude: Number.isFinite(val) ? val : 0 }
+                                    : g
+                                )
+                              );
+                            }}
+                            className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
+                          />
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] text-[var(--color-text-muted)] font-medium">รัศมี (ม.)</span>
+                          <input
+                            type="number"
+                            value={gate.radiusMeters}
+                            disabled={!canManageGeofence}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10) || 50;
+                              setGatesList((prev) =>
+                                prev.map((g) => (g.id === gate.id ? { ...g, radiusMeters: val } : g))
+                              );
+                            }}
+                            className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+                        <span className="text-[10px] text-[var(--color-text-muted)] capitalize">
+                          ประเภท: {gate.type.replace('_', ' ')}
+                        </span>
                         <button
                           type="button"
                           disabled={!canManageGeofence}
-                          onClick={() => handleRemoveGate(gate.id)}
-                          className="p-1 rounded text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950 transition cursor-pointer"
+                          onClick={() => handleDetectCurrentLocation(gate.id)}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <LocateFixed className="w-3 h-3" />
+                          <span>ดึงพิกัดจุดนี้จาก GPS จริง</span>
                         </button>
-                      )}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Lat / Lng / Radius Inputs */}
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <span className="text-[10px] text-[var(--color-text-muted)] font-medium">ละติจูด (Lat)</span>
-                      <input
-                        type="number"
-                        step="any"
-                        value={gate.lat}
-                        disabled={!canManageGeofence}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, lat: val } : g));
-                        }}
-                        className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
-                      />
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-[var(--color-text-muted)] font-medium">ลองจิจูด (Lng)</span>
-                      <input
-                        type="number"
-                        step="any"
-                        value={gate.lng}
-                        disabled={!canManageGeofence}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, lng: val } : g));
-                        }}
-                        className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
-                      />
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-[var(--color-text-muted)] font-medium">รัศมี (ม.)</span>
-                      <input
-                        type="number"
-                        value={gate.radiusMeters}
-                        disabled={!canManageGeofence}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10) || 50;
-                          setGatesList(prev => prev.map(g => g.id === gate.id ? { ...g, radiusMeters: val } : g));
-                        }}
-                        className="w-full px-2 py-1 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-mono text-[11px]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Quick locate button for this gate */}
-                  <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
-                    <span className="text-[10px] text-[var(--color-text-muted)] capitalize">
-                      ประเภท: {gate.type.replace('_', ' ')}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!canManageGeofence}
-                      onClick={() => handleDetectCurrentLocation(gate.id)}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                    >
-                      <LocateFixed className="w-3 h-3" />
-                      <span>ดึงพิกัดจุดนี้จาก GPS</span>
-                    </button>
-                  </div>
-                </div>
-              )} />
-            </div>
+                  )}
+                />
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 3: RADAR SIMULATION & LIVE TEST */}
+        {/* TAB 3: LIVE GPS DISTANCE VERIFICATION */}
         {activeTab === 'radar_test' && (
           <div className="h-full flex flex-col min-h-0 overflow-hidden space-y-3 pr-1">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-              {/* Distance Calibrator */}
-              <div className="lg:col-span-7 p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
-                  <div className="flex items-center gap-2">
-                    <Navigation className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-                    <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
-                      ทดสอบวัดระยะจากตำแหน่งจริงของอุปกรณ์
-                    </h3>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isTestingDistance}
-                    onClick={handleTestDistance}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isTestingDistance ? 'animate-spin' : ''}`} />
-                    <span>{isTestingDistance ? 'กำลังคำนวณ...' : 'คำนวณระยะห่างเดี๋ยวนี้'}</span>
-                  </button>
+            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                  <h3 className="text-xs font-bold text-[var(--color-text-title)] uppercase tracking-wider">
+                    ทดสอบวัดระยะจากตำแหน่ง GPS จริงของอุปกรณ์
+                  </h3>
                 </div>
 
-                <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
-                  ระบบจะอ่านพิกัดดาวเทียมของอุปกรณ์ปัจจุบัน และคำนวณระยะทางถึงศูนย์กลางโรงเรียน ({schoolLat.toFixed(5)}, {schoolLng.toFixed(5)}) โดยใช้สูตร Haversine
-                </p>
+                <button
+                  type="button"
+                  disabled={isTestingDistance || !hasValidCenterCoords}
+                  onClick={handleTestDistance}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isTestingDistance ? 'animate-spin' : ''}`} />
+                  <span>{isTestingDistance ? 'กำลังคำนวณ...' : 'คำนวณระยะห่างจริงเดี๋ยวนี้'}</span>
+                </button>
+              </div>
 
-                {testResult ? (
-                  <div className={`p-4 rounded-xl border ${
+              <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                {hasValidCenterCoords
+                  ? `ระบบจะอ่านพิกัดดาวเทียมจริงจากอุปกรณ์ปัจจุบัน และคำนวณระยะห่างถึงศูนย์กลางโรงเรียน (${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)})`
+                  : 'ยังไม่ได้ตั้งค่าพิกัดโรงเรียน กรุณากำหนดพิกัดจริงในแท็บที่ 1 ก่อนทดสอบระยะห่าง'}
+              </p>
+
+              {testResult ? (
+                <div
+                  className={`p-4 rounded-xl border ${
                     testResult.isInside
                       ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200'
                       : 'bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm flex items-center gap-2">
-                        {testResult.isInside ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
-                        ) : (
-                          <AlertCircle className="w-5 h-5 text-amber-700 dark:text-amber-300" />
-                        )}
-                        <span>{testResult.isInside ? 'อยู่ในขอบเขตรั้วโรงเรียน (สามารถเช็คชื่อได้)' : 'อยู่นอกขอบเขตรั้วโรงเรียน (เช็คชื่อไม่ได้)'}</span>
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm flex items-center gap-2">
+                      {testResult.isInside ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-amber-700 dark:text-amber-300" />
+                      )}
+                      <span>
+                        {testResult.isInside
+                          ? 'อยู่ในขอบเขตรั้วโรงเรียน (สามารถเช็คชื่อได้)'
+                          : 'อยู่นอกขอบเขตรั้วโรงเรียน (เช็คชื่อไม่ได้)'}
                       </span>
-                      <span className="font-mono font-black text-base">
-                        {testResult.distance.toLocaleString()} เมตร
-                      </span>
-                    </div>
-
-                    <div className="text-xs mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
-                      <span>ระยะห่างจริง: <strong>{testResult.distance} ม.</strong></span>
-                      <span>รัศมีที่อนุญาต: <strong>{schoolRadius} ม.</strong></span>
-                    </div>
+                    </span>
+                    <span className="font-mono font-black text-base tabular-nums">
+                      {testResult.distance.toLocaleString()} เมตร
+                    </span>
                   </div>
-                ) : (
-                  <div className="p-4 rounded-xl border border-dashed border-[var(--color-border)] text-center text-xs text-[var(--color-text-muted)]">
-                    กดปุ่ม "คำนวณระยะห่างเดี๋ยวนี้" เพื่อทดสอบตำแหน่งปัจจุบันของคุณเทียบกับพิกัดโรงเรียน
-                  </div>
-                )}
 
-                {currentDeviceCoords && (
-                  <div className="text-xs text-[var(--color-text-body)] font-mono bg-[var(--color-card-subtle)] p-2.5 rounded-lg border border-[var(--color-border)]">
-                    ตำแหน่งอุปกรณ์ปัจจุบัน: Lat {currentDeviceCoords.lat.toFixed(6)}, Lng {currentDeviceCoords.lng.toFixed(6)}
+                  <div className="text-xs mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between tabular-nums">
+                    <span>
+                      ระยะห่างจริง: <strong>{testResult.distance.toLocaleString()} ม.</strong>
+                    </span>
+                    <span>
+                      รัศมีที่อนุญาต: <strong>{schoolRadius} ม.</strong>
+                    </span>
                   </div>
-                )}
-              </div>
-
-              {/* Animated Radar Visual */}
-              <div className="lg:col-span-5 p-4 rounded-xl bg-slate-950 border border-slate-800 text-white flex flex-col items-center justify-center text-center space-y-3">
-                <div className="relative w-36 h-36 rounded-full border-2 border-emerald-500/40 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border border-emerald-500/30 scale-75" />
-                  <div className="absolute inset-0 rounded-full border border-emerald-500/20 scale-50" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 absolute z-10" />
-                  <div className="absolute top-2 text-[9px] text-emerald-300 font-mono">N 0°</div>
-                  <div className="absolute bottom-2 text-[9px] text-emerald-300 font-mono">S 180°</div>
-                  <div className="absolute left-2 text-[9px] text-emerald-300 font-mono">W 270°</div>
-                  <div className="absolute right-2 text-[9px] text-emerald-300 font-mono">E 90°</div>
                 </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-emerald-300">
-                    BaanPakKru Geofence Radar
-                  </span>
-                  <p className="text-[11px] text-slate-200">
-                    ตรวจจับตำแหน่งอัตโนมัติสำหรับการสแกนบัตรนักเรียนผ่านแอปพลิเคชัน
-                  </p>
+              ) : (
+                <div className="p-4 rounded-xl border border-dashed border-[var(--color-border)] text-center text-xs text-[var(--color-text-muted)]">
+                  กดปุ่ม &quot;คำนวณระยะห่างจริงเดี๋ยวนี้&quot; เพื่อตรวจสอบตำแหน่งปัจจุบันของคุณเทียบกับพิกัดโรงเรียน
                 </div>
-              </div>
+              )}
+
+              {currentDeviceCoords && (
+                <div className="text-xs text-[var(--color-text-body)] font-mono bg-[var(--color-card-subtle)] p-2.5 rounded-lg border border-[var(--color-border)]">
+                  ตำแหน่งอุปกรณ์ปัจจุบัน: Lat {currentDeviceCoords.lat.toFixed(6)}, Lng {currentDeviceCoords.lng.toFixed(6)}
+                </div>
+              )}
             </div>
           </div>
         )}

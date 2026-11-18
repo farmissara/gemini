@@ -21,6 +21,7 @@ import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_late
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
 import { parseSlotTeachersFromRaw, serializeSlotTeacherForDb } from './timetableTeachers';
+import { sanitizeSchoolCampusGates } from './schoolGps';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -274,18 +275,23 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   const schoolPeriods: SchoolPeriodTime[] = savedPeriods.size > 0
     ? [...savedPeriods.values()].sort((a, b) => a.startTime.localeCompare(b.startTime))
     : DEFAULT_SCHOOL_PERIODS;
-  const campusGates: CampusGateGeofence[] = (campusGatesResult.data || []).map((row) => ({
-    id: row.id,
-    schoolId: row.school_id,
-    nameTh: row.name_th,
-    nameEn: row.name_en,
-    lat: Number(row.latitude),
-    lng: Number(row.longitude),
-    radiusMeters: Number(row.radius_meters),
-    isPrimary: Boolean(row.is_primary),
-    type: row.type,
-    isActive: Boolean(row.is_active),
-  }));
+  const campusGates: CampusGateGeofence[] = sanitizeSchoolCampusGates(
+    (campusGatesResult.data || []).map((row) => ({
+      id: row.id,
+      schoolId: row.school_id,
+      nameTh: row.name_th,
+      nameEn: row.name_en,
+      lat: Number(row.latitude),
+      lng: Number(row.longitude),
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+      radiusMeters: Number(row.radius_meters),
+      isPrimary: Boolean(row.is_primary),
+      type: row.type,
+      isActive: Boolean(row.is_active),
+    })),
+    schoolId
+  );
   const teachers: Teacher[] = (teacherResult.data || []).map((row) => ({
     id: row.id,
     schoolId: row.school_id,
@@ -617,7 +623,8 @@ export async function saveSchoolCampusGates(
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
 
-  const rows = gates.map((gate) => ({
+  const cleanedGates = sanitizeSchoolCampusGates(gates, schoolId);
+  const rows = cleanedGates.map((gate) => ({
     id: gate.id,
     school_id: schoolId,
     name_th: gate.nameTh,
@@ -629,18 +636,23 @@ export async function saveSchoolCampusGates(
     type: gate.type,
     is_active: gate.isActive ?? true,
   }));
-  const { error } = await client.from('school_campus_gates').upsert(rows);
-  if (error) {
-    if (isMissingTableError(error)) return false;
-    throw new Error(`Could not save check-in points: ${error.message}`);
+  if (rows.length > 0) {
+    const { error } = await client.from('school_campus_gates').upsert(rows);
+    if (error) {
+      if (isMissingTableError(error)) return false;
+      throw new Error(`Could not save check-in points: ${error.message}`);
+    }
   }
 
   const { data: existingGates, error: existingError } = await client
     .from('school_campus_gates')
     .select('id')
     .eq('school_id', schoolId);
-  if (existingError) throw new Error(`Could not verify saved check-in points: ${existingError.message}`);
-  const retainedIds = new Set(gates.map((gate) => gate.id));
+  if (existingError) {
+    if (isMissingTableError(existingError)) return false;
+    throw new Error(`Could not verify saved check-in points: ${existingError.message}`);
+  }
+  const retainedIds = new Set(cleanedGates.map((gate) => gate.id));
   for (const existingGate of existingGates || []) {
     if (retainedIds.has(existingGate.id)) continue;
     const { error: deleteError } = await client
