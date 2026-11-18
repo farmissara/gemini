@@ -40,12 +40,14 @@ import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, C
 import { getModuleTone } from '../lib/moduleTheme';
 import {
   approveStudentAccountInSupabase,
+  createMissingStudentLoginAccounts,
   createStudentLoginAccount,
   deleteStudentAccountRegistrationInSupabase,
   linkStudentAccountToStudent,
   listStudentAccountLinks,
   resetStudentLoginPassword,
   StudentAccountLink,
+  BulkStudentCredentialResult,
   TemporaryStudentCredential,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
@@ -137,6 +139,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [pendingPasswordReset, setPendingPasswordReset] = useState<StudentAccountLink | null>(null);
   const [credentialStudentId, setCredentialStudentId] = useState('');
   const [temporaryCredential, setTemporaryCredential] = useState<TemporaryStudentCredential | null>(null);
+  const [bulkCredentialResult, setBulkCredentialResult] = useState<BulkStudentCredentialResult | null>(null);
+  const [showBulkCreateConfirm, setShowBulkCreateConfirm] = useState(false);
   const [schoolLogoUploading, setSchoolLogoUploading] = useState(false);
   const [schoolLogoError, setSchoolLogoError] = useState<string | null>(null);
   const [schoolLogoSuccess, setSchoolLogoSuccess] = useState<string | null>(null);
@@ -183,6 +187,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
   useEffect(() => {
     setTemporaryCredential(null);
+    setBulkCredentialResult(null);
     setCredentialStudentId('');
   }, [activeSchool.id]);
 
@@ -267,6 +272,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setStudentAccountError(null);
     setStudentAccountSuccess(null);
     setTemporaryCredential(null);
+    setBulkCredentialResult(null);
     try {
       const credential = await createStudentLoginAccount(activeSchool.id, credentialStudentId);
       setTemporaryCredential(credential);
@@ -280,6 +286,50 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     }
   };
 
+  const activeStudentsWithoutAccounts = students.filter(
+    (student) =>
+      (student.status === 'active' || student.status === 'transferred_in') &&
+      !studentAccounts.some((account) => account.student_id === student.id)
+  );
+
+  const handleCreateMissingStudentLoginAccounts = async () => {
+    setStudentAccountSaving(true);
+    setStudentAccountError(null);
+    setStudentAccountSuccess(null);
+    setTemporaryCredential(null);
+    setBulkCredentialResult(null);
+    try {
+      const result = await createMissingStudentLoginAccounts(activeSchool.id);
+      setBulkCredentialResult(result);
+      setStudentAccountSuccess(
+        `สร้างบัญชีสำเร็จ ${result.created.length} คน · ข้าม ${result.skipped.length} คน · ล้มเหลว ${result.failed.length} คน`
+      );
+      await reloadStudentAccounts();
+    } catch (error) {
+      setStudentAccountError(error instanceof Error ? error.message : 'สร้างบัญชีนักเรียนเป็นชุดไม่สำเร็จ');
+    } finally {
+      setStudentAccountSaving(false);
+      setShowBulkCreateConfirm(false);
+    }
+  };
+
+  const handleCopyBulkCredentials = async () => {
+    if (!bulkCredentialResult?.created.length) return;
+    const text = [
+      'รหัสนักเรียน\tรหัสผ่านชั่วคราว\tหมดอายุ',
+      ...bulkCredentialResult.created.map((credential) =>
+        `${credential.studentIdNumber}\t${credential.temporaryPassword}\t${credential.expiresAt}`
+      ),
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField('bulkStudentCredentials');
+      setTimeout(() => setCopiedField(null), 2500);
+    } catch (error) {
+      setStudentAccountError(error instanceof Error ? error.message : 'คัดลอกรหัสชั่วคราวไม่สำเร็จ');
+    }
+  };
+
   const handleConfirmPasswordReset = async () => {
     const studentId = pendingPasswordReset?.student_id;
     if (!pendingPasswordReset || !studentId) return;
@@ -288,6 +338,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setStudentAccountError(null);
     setStudentAccountSuccess(null);
     setTemporaryCredential(null);
+    setBulkCredentialResult(null);
     try {
       const credential = await resetStudentLoginPassword(activeSchool.id, studentId);
       setTemporaryCredential(credential);
@@ -2065,9 +2116,20 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 </p>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              {studentAccountError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                  {studentAccountError}
+                </p>
+              )}
+              {studentAccountSuccess && (
+                <p role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                  {studentAccountSuccess}
+                </p>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
                 <label className="space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
-                  <span>นักเรียนที่ยังไม่มีบัญชี</span>
+                  <span>นักเรียนที่ยังไม่มีบัญชี (เฉพาะสถานะกำลังศึกษา)</span>
                   <select
                     value={credentialStudentId}
                     onChange={(event) => setCredentialStudentId(event.target.value)}
@@ -2075,9 +2137,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
                   >
                     <option value="">เลือกรายชื่อนักเรียน</option>
-                    {students
-                      .filter((student) => !studentAccounts.some((account) => account.student_id === student.id))
-                      .map((student) => (
+                    {activeStudentsWithoutAccounts.map((student) => (
                         <option key={student.id} value={student.id}>
                           {student.firstNameTh} {student.lastNameTh} · {student.studentIdNumber}
                         </option>
@@ -2092,7 +2152,91 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 >
                   {studentAccountSaving ? 'กำลังดำเนินการ...' : 'สร้างบัญชีและออกรหัสชั่วคราว'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkCreateConfirm(true)}
+                  disabled={studentAccountsLoading || studentAccountSaving || activeStudentsWithoutAccounts.length === 0}
+                  className="rounded-xl border border-[var(--color-primary)] px-4 py-2 text-xs font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  สร้างบัญชีที่ยังไม่มีทั้งหมด ({activeStudentsWithoutAccounts.length})
+                </button>
               </div>
+
+              {bulkCredentialResult && (
+                <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold">รหัสผ่านชั่วคราว — แสดงครั้งเดียว</p>
+                      <p className="mt-1 text-xs">
+                        สร้าง {bulkCredentialResult.created.length} · ข้าม {bulkCredentialResult.skipped.length} · ล้มเหลว {bulkCredentialResult.failed.length}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {bulkCredentialResult.created.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyBulkCredentials()}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 px-3 py-1.5 text-xs font-bold hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900"
+                        >
+                          {copiedField === 'bulkStudentCredentials' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copiedField === 'bulkStudentCredentials' ? 'คัดลอกแล้ว' : 'คัดลอกข้อมูลทั้งหมด'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setBulkCredentialResult(null)}
+                        className="rounded-lg border border-amber-400 px-2.5 py-1.5 text-[11px] font-bold hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900"
+                      >
+                        ปิดและล้างรหัส
+                      </button>
+                    </div>
+                  </div>
+
+                  {bulkCredentialResult.created.length > 0 && (
+                    <>
+                      <p className="text-[11px] leading-relaxed">
+                        จดบันทึกหรือส่งรหัสให้นักเรียนอย่างปลอดภัย เมื่อปิดหน้านี้จะไม่สามารถเรียกดูรหัสเดิมได้อีก นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ
+                      </p>
+                      <div className="max-h-80 overflow-auto rounded-lg border border-amber-300 dark:border-amber-800">
+                        <table className="w-full min-w-[620px] text-left text-xs">
+                          <thead className="sticky top-0 bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-100">
+                            <tr>
+                              <th className="px-3 py-2">รหัสนักเรียน</th>
+                              <th className="px-3 py-2">รหัสผ่านชั่วคราว</th>
+                              <th className="px-3 py-2">หมดอายุ</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-amber-200 dark:divide-amber-800">
+                            {bulkCredentialResult.created.map((credential, index) => (
+                              <tr key={`${credential.studentIdNumber}-${index}`}>
+                                <td className="px-3 py-2 font-mono">{credential.studentIdNumber}</td>
+                                <td className="px-3 py-2 font-mono font-bold select-all">{credential.temporaryPassword}</td>
+                                <td className="px-3 py-2">{new Date(credential.expiresAt).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+
+                  {(bulkCredentialResult.skipped.length > 0 || bulkCredentialResult.failed.length > 0) && (
+                    <details className="rounded-lg border border-amber-300 p-3 text-xs dark:border-amber-800">
+                      <summary className="cursor-pointer font-bold">รายละเอียดรายการที่ข้ามหรือล้มเหลว</summary>
+                      <ul className="mt-2 space-y-1">
+                        {bulkCredentialResult.skipped.map((item, index) => (
+                          <li key={`skipped-${item.studentIdNumber}-${index}`}>ข้าม {item.studentIdNumber}: {item.reason}</li>
+                        ))}
+                        {bulkCredentialResult.failed.map((item, index) => (
+                          <li key={`failed-${item.studentIdNumber}-${index}`} className="font-semibold text-rose-700 dark:text-rose-300">
+                            ล้มเหลว {item.studentIdNumber}: {item.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
 
               {temporaryCredential && (
                 <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
@@ -2137,17 +2281,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   ตรวจสอบนักเรียนที่สมัครสมาชิกเข้าโรงเรียน กดอนุมัติเปิดใช้งาน และจับคู่กับระเบียนนักเรียน DMC เพื่อระบุตัวตนและสิทธิ์เช็คอิน
                 </p>
               </div>
-
-              {studentAccountError && (
-                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
-                  {studentAccountError}
-                </p>
-              )}
-              {studentAccountSuccess && (
-                <p role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                  {studentAccountSuccess}
-                </p>
-              )}
 
               <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
                 <label className="space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
@@ -2487,6 +2620,20 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         })()}
       </div>
 
+      <ConfirmActionModal
+        isOpen={showBulkCreateConfirm}
+        title="ยืนยันสร้างบัญชีนักเรียนที่ยังไม่มี"
+        description={`ระบบจะสร้างบัญชีให้กับนักเรียนสถานะกำลังศึกษาที่ยังไม่มีบัญชี จำนวน ${activeStudentsWithoutAccounts.length} คน โดยไม่สร้างซ้ำให้บัญชีที่มีอยู่แล้ว`}
+        detailNote="รหัสผ่านชั่วคราวจะแสดงให้ผู้ดูแลดูได้ครั้งเดียวและหมดอายุใน 24 ชั่วโมง นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ กรุณาบันทึกหรือส่งรหัสอย่างปลอดภัย"
+        confirmLabel="สร้างบัญชีทั้งหมด"
+        cancelLabel="ยกเลิก"
+        tone="primary"
+        isBusy={studentAccountSaving}
+        onCancel={() => {
+          if (!studentAccountSaving) setShowBulkCreateConfirm(false);
+        }}
+        onConfirm={handleCreateMissingStudentLoginAccounts}
+      />
       <ConfirmActionModal
         isOpen={Boolean(pendingStudentAccountConfirm)}
         title="ยืนยันยกเลิก/ลบคำขอลงทะเบียนนักเรียน"

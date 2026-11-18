@@ -58,6 +58,12 @@ export interface TemporaryStudentCredential {
   expiresAt: string;
 }
 
+export interface BulkStudentCredentialResult {
+  created: TemporaryStudentCredential[];
+  skipped: Array<{ studentIdNumber: string; reason: string }>;
+  failed: Array<{ studentIdNumber: string; reason: string }>;
+}
+
 export interface StaffParentAccountLink {
   id: string;
   school_id: string;
@@ -805,6 +811,53 @@ export function createStudentLoginAccount(
   studentId: string
 ): Promise<TemporaryStudentCredential> {
   return manageStudentTemporaryCredential('create', schoolId, studentId);
+}
+
+export async function createMissingStudentLoginAccounts(
+  schoolId: string
+): Promise<BulkStudentCredentialResult> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.functions.invoke('manage-student-credentials', {
+    body: { operation: 'create_all_missing', schoolId },
+  });
+  if (error) throw new Error(`ไม่สามารถสร้างบัญชีนักเรียนเป็นชุดได้: ${error.message}`);
+  if (!Array.isArray(data?.created) || !Array.isArray(data?.skipped) || !Array.isArray(data?.failed)) {
+    throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบสร้างบัญชีนักเรียนตอบกลับไม่ถูกต้อง');
+  }
+
+  const created: TemporaryStudentCredential[] = [];
+  for (const item of data.created) {
+    if (
+      typeof item?.studentIdNumber !== 'string' ||
+      typeof item?.temporaryPassword !== 'string' ||
+      typeof item?.expiresAt !== 'string'
+    ) {
+      throw new Error('ระบบสร้างบัญชีนักเรียนส่งข้อมูลรหัสชั่วคราวไม่ครบถ้วน');
+    }
+    created.push({
+      studentIdNumber: item.studentIdNumber,
+      temporaryPassword: item.temporaryPassword,
+      expiresAt: item.expiresAt,
+    });
+  }
+
+  const parseStatusRows = (items: unknown): Array<{ studentIdNumber: string; reason: string }> => {
+    if (!Array.isArray(items)) throw new Error('ระบบสร้างบัญชีนักเรียนส่งสรุปผลไม่ถูกต้อง');
+    return items.map((item) => {
+      if (typeof item?.studentIdNumber !== 'string' || typeof item?.reason !== 'string') {
+        throw new Error('ระบบสร้างบัญชีนักเรียนส่งรายละเอียดผลลัพธ์ไม่ครบถ้วน');
+      }
+      return { studentIdNumber: item.studentIdNumber, reason: item.reason };
+    });
+  };
+
+  return {
+    created,
+    skipped: parseStatusRows(data.skipped),
+    failed: parseStatusRows(data.failed),
+  };
 }
 
 export function resetStudentLoginPassword(
