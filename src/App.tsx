@@ -176,6 +176,11 @@ import {
   resolveLinkedStudentsForUser,
 } from './lib/attendanceScope';
 import {
+  filterAssignmentsForPersonalRole,
+  filterCoursesForPersonalRole,
+  filterTimetableSlotsForPersonalRole,
+} from './lib/studentDataScope';
+import {
   getBiometricSoftLock,
   getPasskeyForUser,
   setBiometricSoftLock,
@@ -3288,6 +3293,23 @@ export const App: React.FC = () => {
     if (currentUser.studentIdNumber) scopedStudentIdSet.add(currentUser.studentIdNumber);
   }
   const viewStudents = isRestrictedViewer ? linkedStudentsForUser : schoolStudents;
+  const viewCourses = filterCoursesForPersonalRole(schoolCourses, currentUser, schoolStudents);
+  const viewAssignments = filterAssignmentsForPersonalRole(schoolAssignments, viewCourses, currentUser);
+  const viewLessons = isRestrictedViewer
+    ? schoolLessons.filter((lesson) => viewCourses.some((course) => course.id === lesson.courseId))
+    : schoolLessons;
+  const viewTimetableSlots = filterTimetableSlotsForPersonalRole(
+    schoolTimetableSlots,
+    currentUser,
+    schoolStudents,
+    schoolCourses
+  );
+  const viewTimetableSlotsAllTerms = filterTimetableSlotsForPersonalRole(
+    schoolTimetableSlotsAllTerms,
+    currentUser,
+    schoolStudents,
+    schoolCourses
+  );
   const viewAttendance = isRestrictedViewer
     ? filterAttendanceForUser(schoolAttendance, currentUser, schoolStudents)
     : schoolAttendance;
@@ -3342,8 +3364,8 @@ export const App: React.FC = () => {
           unreadCount={unreadNotifCount}
           onOpenNotifications={() => setShowNotificationModal(true)}
           students={viewStudents}
-          teachers={schoolTeachers}
-          courses={schoolCourses}
+          teachers={isRestrictedViewer ? [] : schoolTeachers}
+          courses={viewCourses}
           grades={viewGrades}
           invoices={viewInvoices}
           infirmaryVisits={viewInfirmaryVisits}
@@ -3352,14 +3374,14 @@ export const App: React.FC = () => {
           attendance={viewAttendance}
           periodAttendance={viewPeriodAttendance}
           leaveRequests={viewLeaveRequests}
-          assignments={schoolAssignments}
+          assignments={viewAssignments}
           homeworkSubmissions={viewHomeworkSubmissions}
           announcements={schoolAnnouncements}
           questions={schoolQuestions}
           playerScores={playerScores}
           rewardItems={rewardItems}
           campusGates={campusGates}
-          timetableSlots={schoolTimetableSlots}
+          timetableSlots={viewTimetableSlots}
           schoolPeriods={schoolPeriods}
           gradingSystem={systemConfig.gradingSystem}
           schoolPermissions={schoolPermissions}
@@ -3403,7 +3425,7 @@ export const App: React.FC = () => {
         {selectedStudentForReport && (
           <ReportCardModal
             student={selectedStudentForReport}
-            courses={schoolCourses}
+            courses={viewCourses}
             grades={viewGrades}
             systemConfig={systemConfig}
             onClose={() => setSelectedStudentForReport(null)}
@@ -3486,7 +3508,7 @@ export const App: React.FC = () => {
             activeSchool={activeSchool}
             studentsCount={schoolStudents.length}
             teachersCount={schoolTeachers.length}
-            coursesCount={schoolCourses.length}
+            coursesCount={viewCourses.length}
             lang={lang}
             onNavigateToTab={(tab) => {
               setShowOnboardingTutorModal(false);
@@ -3606,7 +3628,7 @@ export const App: React.FC = () => {
         onOpenExamPaymentSettings={currentRole === 'super_admin' ? handleOpenExamPaymentSettings : undefined}
         students={viewStudents}
         teachers={isRestrictedViewer ? [] : schoolTeachers}
-        courses={schoolCourses}
+        courses={viewCourses}
         grades={viewGrades}
         onOpenStudentProfile={setSelectedStudentForProfile}
         onOpenReportCard={setSelectedStudentForReport}
@@ -3653,7 +3675,7 @@ export const App: React.FC = () => {
                 isSuperAdminSchoolView={isSuperAdminSchoolView}
                 studentsCount={viewStudents.length}
                 teachersCount={schoolTeachers.length}
-                coursesCount={schoolCourses.length}
+                coursesCount={viewCourses.length}
                 coordinationUnreadCount={coordinationUnreadCount}
                 unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                 lang={lang}
@@ -3679,7 +3701,7 @@ export const App: React.FC = () => {
               isSuperAdminSchoolView={isSuperAdminSchoolView}
               studentsCount={viewStudents.length}
               teachersCount={schoolTeachers.length}
-              coursesCount={schoolCourses.length}
+              coursesCount={viewCourses.length}
               coordinationUnreadCount={coordinationUnreadCount}
               unclaimedCentralPacksCount={unclaimedCentralPacks.length}
               lang={lang}
@@ -3808,10 +3830,10 @@ export const App: React.FC = () => {
                     onRecordMilestoneActivity={handleRecordMilestoneActivity}
                     unclaimedCentralPacksCount={unclaimedCentralPacks.length}
                     onOpenCentralExamPopup={() => setShowCentralExamPopup(true)}
-                    timetableSlots={schoolTimetableSlots}
+                    timetableSlots={viewTimetableSlots}
                     leaveRequests={viewLeaveRequests}
                     homeworkSubmissions={viewHomeworkSubmissions}
-                    assignments={schoolAssignments}
+                    assignments={viewAssignments}
                     periodAttendance={viewPeriodAttendance}
                     schoolPeriods={schoolPeriods}
                     behaviorRecords={viewBehaviorRecords}
@@ -3880,10 +3902,10 @@ export const App: React.FC = () => {
 
                 {currentTab === 'courses' && (
                   <CoursesView
-                    courses={schoolCourses}
-                    students={schoolStudents}
-                    teachers={schoolTeachers}
-                    grades={schoolGrades}
+                    courses={viewCourses}
+                    students={viewStudents}
+                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    grades={viewGrades}
                     gradingSystem={systemConfig.gradingSystem}
                     currentRole={currentRole}
                     schoolId={activeSchool.id}
@@ -4031,10 +4053,10 @@ export const App: React.FC = () => {
 
                 {currentTab === 'timetable' && (
                   <TimetableScheduleView
-                    slots={schoolTimetableSlotsAllTerms}
-                    courses={schoolCourses}
-                    assignments={schoolAssignments}
-                    teachers={schoolTeachers}
+                    slots={viewTimetableSlotsAllTerms}
+                    courses={viewCourses}
+                    assignments={viewAssignments}
+                    teachers={isRestrictedViewer ? [] : schoolTeachers}
                     students={viewStudents}
                     onAddSlot={handleAddTimetableSlot}
                     onUpdateSlot={handleUpdateTimetableSlot}
@@ -4068,9 +4090,9 @@ export const App: React.FC = () => {
                   <HomeworkTrackerView
                     submissions={viewHomeworkSubmissions}
                     students={viewStudents}
-                    teachers={schoolTeachers}
-                    courses={schoolCourses}
-                    assignments={schoolAssignments}
+                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    courses={viewCourses}
+                    assignments={viewAssignments}
                     schoolId={activeSchool.id}
                     schoolName={activeSchool.nameTh}
                     onAddSubmission={handleAddHomeworkSubmission}
@@ -4113,7 +4135,7 @@ export const App: React.FC = () => {
                   <MobileAttendanceView
                     students={viewStudents}
                     teachers={schoolTeachers}
-                    courses={schoolCourses}
+                    courses={viewCourses}
                     attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
                     currentUser={currentUser}
@@ -4186,8 +4208,8 @@ export const App: React.FC = () => {
                 {currentTab === 'gradebook' && (
                   <GradebookView
                     students={viewStudents}
-                    teachers={schoolTeachers}
-                    courses={schoolCourses}
+                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    courses={viewCourses}
                     grades={viewGrades}
                     systemConfig={systemConfig}
                     school={activeSchool}
@@ -4198,11 +4220,11 @@ export const App: React.FC = () => {
                     onAddGrade={handleAddGrade}
                     onNotifyGradeChange={handleNotifyGradeChange}
                     onOpenReportCard={setSelectedStudentForReport}
-                    timetableSlots={schoolTimetableSlots}
+                    timetableSlots={viewTimetableSlots}
                     attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
                     homeworkSubmissions={viewHomeworkSubmissions}
-                    assignments={schoolAssignments}
+                    assignments={viewAssignments}
                     onPracticeInAi={(topic) => {
                       setAdaptivePracticeTopic(topic);
                       navigateToAppTab('socratic_tutor');
@@ -4258,11 +4280,11 @@ export const App: React.FC = () => {
             {/* Mode 2: Virtual Classroom / LMS */}
             {programMode === 'lms_classroom' && (
               <LmsClassroomView
-                courses={schoolCourses}
+                courses={viewCourses}
                 students={viewStudents}
-                teachers={schoolTeachers}
-                lessons={schoolLessons}
-                assignments={schoolAssignments}
+                teachers={isRestrictedViewer ? [] : schoolTeachers}
+                lessons={viewLessons}
+                assignments={viewAssignments}
                 lang={lang}
                 currentUser={currentUser}
                 schoolPermissions={schoolPermissions}
@@ -4278,7 +4300,7 @@ export const App: React.FC = () => {
                 attendance={viewAttendance}
                 invoices={viewInvoices}
                 grades={viewGrades}
-                courses={schoolCourses}
+                courses={viewCourses}
                 systemConfig={systemConfig}
                 leaveRequests={viewLeaveRequests}
                 lang={lang}

@@ -70,6 +70,11 @@ import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { filterAttendanceForUser, resolveLinkedStudentsForUser } from '../lib/attendanceScope';
+import {
+  filterAssignmentsForPersonalRole,
+  filterCoursesForPersonalRole,
+  filterTimetableSlotsForPersonalRole,
+} from '../lib/studentDataScope';
 import { PagedList } from '../components/PagedList';
 import { MilestoneAchievementsPanel } from '../components/MilestoneAchievementsPanel';
 import { MonthlyAttendanceChart } from '../components/MonthlyAttendanceChart';
@@ -267,18 +272,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         : homeworkSubmissions,
     [homeworkSubmissions, isRestrictedPersonalRole, scopedStudentIdSet]
   );
+  const scopedCourses = useMemo(
+    () => filterCoursesForPersonalRole(courses, currentUser, students),
+    [courses, currentUser, students]
+  );
+  const scopedAssignments = useMemo(
+    () => filterAssignmentsForPersonalRole(assignments, scopedCourses, currentUser),
+    [assignments, currentUser, scopedCourses]
+  );
+  const scopedTimetableSlots = useMemo(
+    () => filterTimetableSlotsForPersonalRole(timetableSlots, currentUser, students, scopedCourses),
+    [currentUser, scopedCourses, students, timetableSlots]
+  );
 
   // Teacher / Admin Today's Desk computations
   const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
   const todayScheduledSlots = useMemo(() => {
-    const daySlots = timetableSlots.filter((s) => s.dayOfWeek === todayDayKey);
+    const daySlots = scopedTimetableSlots.filter((s) => s.dayOfWeek === todayDayKey);
     if (currentUser?.role === 'teacher') {
       const teacherName = currentUser.fullNameTh || '';
       const mine = daySlots.filter((s) => slotHasTeacher(s, teacherName));
       return (mine.length > 0 ? mine : daySlots).slice().sort((a, b) => a.periodNumber - b.periodNumber);
     }
     return daySlots.slice().sort((a, b) => a.periodNumber - b.periodNumber);
-  }, [timetableSlots, todayDayKey, currentUser]);
+  }, [scopedTimetableSlots, todayDayKey, currentUser]);
   const pendingLeaveCount = scopedLeaves.filter((l) => l.status === 'pending').length;
   const ungradedHomeworkCount = scopedHomework.filter((h) => h.status === 'submitted' || h.status === 'late').length;
   const isStaffUser = !currentUser?.role || currentUser.role === 'teacher' || currentUser.role === 'admin' || currentUser.role === 'super_admin';
@@ -1040,7 +1057,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">{todayScheduledSlots.length}</span>
                         <span className="type-meta tabular-nums">
-                          {courses.length} {lang === 'th' ? 'รายวิชาทั้งหมด' : 'courses'}
+                          {scopedCourses.length} {lang === 'th' ? 'วิชาที่ลงทะเบียน' : 'enrolled courses'}
                         </span>
                       </div>
                     </button>
@@ -1082,7 +1099,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                         </div>
                         <div className="flex items-baseline gap-2.5">
-                          <span className="type-kpi tabular-nums">{assignments.length}</span>
+                          <span className="type-kpi tabular-nums">{scopedAssignments.length}</span>
                           <span className="type-meta">{lang === 'th' ? 'เปิดหน้าส่งงาน' : 'View homework'}</span>
                         </div>
                       </button>
@@ -1462,14 +1479,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         actionRows.push({
                           id: 'student-homework',
                           label: lang === 'th' ? 'การบ้านและแบบฝึกหัด' : 'Homework & Tasks',
-                          value: `${assignments.length} ${lang === 'th' ? 'รายการ' : 'tasks'}`,
+                          value: `${scopedAssignments.length} ${lang === 'th' ? 'รายการ' : 'tasks'}`,
                           onClick: () => onNavigate('homework'),
                         });
                         if (studentCanViewGrades && actionRows.length < 5) {
                           actionRows.push({
                             id: 'student-grades',
                             label: lang === 'th' ? 'สมุดพกและผลการเรียน' : 'My Grades & Report',
-                            value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
+                            value: `${scopedCourses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
                             onClick: () => onNavigate('gradebook'),
                           });
                         }
@@ -1501,7 +1518,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           actionRows.push({
                             id: 'parent-grades',
                             label: lang === 'th' ? 'ตรวจสอบผลการเรียน' : 'Inspect Grades',
-                            value: `${courses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
+                            value: `${scopedCourses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
                             onClick: () => onNavigate('gradebook'),
                           });
                         }
@@ -1639,7 +1656,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <GradeLevelAnalyticsChart
                 students={scopedStudents}
                 attendance={scopedAttendance}
-                courses={courses}
+                courses={scopedCourses}
                 grades={scopedGrades}
                 systemConfig={systemConfig}
                 lang={lang}

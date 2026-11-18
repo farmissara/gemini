@@ -111,9 +111,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
   const canSwitchSchool = currentRole === 'super_admin';
-  const allowedWorkspaceModes = WORKSPACE_MODES.filter((mode) =>
-    isAllowedProgramModeForRole(currentRole, mode.id)
-  );
+  const allowedWorkspaceModes = WORKSPACE_MODES
+    .map((mode) => currentRole === 'student' && mode.id === 'school_erp'
+      ? { ...mode, th: 'หน้าหลักนักเรียน', en: 'Student Home' }
+      : mode)
+    .filter((mode) => isAllowedProgramModeForRole(currentRole, mode.id));
 
   useEffect(() => {
     if (!isAccountMenuOpen) return;
