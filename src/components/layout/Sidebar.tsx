@@ -37,6 +37,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Coffee,
+  Compass,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -59,6 +60,7 @@ export type NavTab =
   | 'timetable'
   | 'homework'
   | 'study_streak'
+  | 'career_quest'
   | 'socratic_tutor'
   | 'realworld_quests'
   | 'ai_diagnostic'
@@ -131,6 +133,7 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'timetable',
   'students',
   'behavior_sdq',
+  'career_quest',
   'announcements',
 ]);
 
@@ -375,6 +378,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Sparkles,
       items: [
         {
+          id: 'career_quest',
+          labelTh: 'เส้นทางอาชีพ (Career Quest AI)',
+          labelEn: 'Career Quest AI',
+          icon: Compass,
+          badge: 'AI',
+          roles: ['super_admin', 'admin', 'teacher', 'student'],
+        },
+        {
           id: 'portfolio',
           labelTh: 'แฟ้มผลงานดิจิทัล',
           labelEn: 'Digital Portfolio',
@@ -530,7 +541,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const pinned = useMemo(() => {
     const ids: NavTab[] = currentRole === 'student'
-      ? ['dashboard', 'timetable', 'mobile_checkin', 'homework']
+      ? ['dashboard', 'career_quest', 'timetable', 'homework']
       : currentRole === 'parent'
       ? ['dashboard', 'student_id_cards', 'billing', 'announcements']
       : ['dashboard', 'attendance', 'students', 'gradebook'];

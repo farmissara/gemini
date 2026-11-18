@@ -37,6 +37,7 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   student_id_cards: 'tone-4',
 
   // tone-5: AI & Learning Innovation
+  career_quest: 'tone-5',
   socratic_tutor: 'tone-5',
   ai_diagnostic: 'tone-5',
   subject_labs: 'tone-5',

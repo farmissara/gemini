@@ -44,6 +44,7 @@ import {
   Gift,
   Palette,
   ClipboardCheck,
+  Compass,
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, RewardRedemptionRequest, AuthUser, AppLanguage } from '../types';
 import { COMPREHENSIVE_QUESTION_BANK } from '../data/examQuestionBanks';
@@ -103,6 +104,7 @@ interface EduBattleGameViewProps {
   onReviewRedemption?: (requestId: string, status: 'approved' | 'rejected', teacherNote?: string) => void;
   onCreateCustomReward?: (item: RewardItem) => void;
   onOpenCentralExamHub?: () => void;
+  onOpenCareerQuest?: () => void;
   onExit?: () => void;
 }
 
@@ -124,6 +126,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
   onCreateCustomReward,
   onGamePlayingChange,
   onOpenCentralExamHub,
+  onOpenCareerQuest,
   onExit
 }) => {
   const effectiveUserId = currentUser?.id || 'temp';
@@ -971,6 +974,40 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </span>
             </button>
+
+            {onOpenCareerQuest && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  onOpenCareerQuest();
+                }}
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-zinc-900 to-violet-500/15 border border-indigo-500/35 hover:border-indigo-400 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
+                    <Compass className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono font-bold text-indigo-300 uppercase tracking-wider">
+                      Career Quest AI · RPG Path
+                    </p>
+                    <h3 className="text-sm sm:text-base font-black text-white tracking-tight">
+                      {lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน & Role-Play AI' : 'Career Quest AI & Role-Play'}
+                    </h3>
+                    <p className="text-xs text-zinc-400 mt-0.5 truncate">
+                      {lang === 'th'
+                        ? 'ทำควิซค้นหาตัวตน เช็กพลังความพร้อมจากเกรดจริง และเล่นภารกิจสะสม EXP'
+                        : 'Discover your dream career, check real-grade readiness, and earn EXP'}
+                    </p>
+                  </div>
+                </div>
+                <span className="min-h-[38px] px-3.5 rounded-xl bg-indigo-500 text-white font-black text-xs inline-flex items-center justify-center gap-1.5 shrink-0">
+                  <span>{lang === 'th' ? 'เปิด Career Quest' : 'Open Career Quest'}</span>
+                  <ChevronRight className="w-4 h-4" />
+                </span>
+              </button>
+            )}
 
             {/* Category Filter Row */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">

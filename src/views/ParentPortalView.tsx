@@ -40,7 +40,8 @@ import {
   ChevronRight,
   LogIn,
   LogOut,
-  AlertCircle
+  AlertCircle,
+  Compass,
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { PagedList } from '../components/PagedList';
@@ -49,6 +50,9 @@ import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moe
 import { getStoredGradeAlerts } from '../lib/gradeNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
+import { getSharedCareerSnapshotForStudent, loadSchoolSharedCareerQuests } from '../lib/careerQuestStore';
+import { POPULAR_CAREERS } from '../data/careerQuestData';
+import type { StudentCareerQuestState } from '../types';
 
 interface ParentPortalViewProps {
   schoolId?: string;
@@ -98,6 +102,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const [slipNote, setSlipNote] = useState<string>('');
   const [slipError, setSlipError] = useState<string | null>(null);
   const [slipToast, setSlipToast] = useState<string | null>(null);
+  const [childCareerSnapshot, setChildCareerSnapshot] = useState<StudentCareerQuestState | null>(null);
   const [consentForms] = useState<ConsentForm[]>(() => getConsentForms(schoolId));
   const [consentResponses, setConsentResponses] = useState<ConsentResponse[]>(() => getConsentResponses(schoolId));
 
@@ -195,6 +200,29 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
   // Filter attendance for the selected date in child's selfie album
   const dateRecords = studentAttendance.filter((a) => a.date === albumSelectedDate);
+
+  React.useEffect(() => {
+    if (!selectedStudentId) {
+      setChildCareerSnapshot(null);
+      return;
+    }
+    const localSnap = getSharedCareerSnapshotForStudent(schoolId, selectedStudentId);
+    if (localSnap) {
+      setChildCareerSnapshot(localSnap);
+      return;
+    }
+    let active = true;
+    loadSchoolSharedCareerQuests(schoolId)
+      .then((rows) => {
+        if (!active) return;
+        const found = rows.find((r) => r.studentId === selectedStudentId || r.userId === selectedStudentId) || null;
+        setChildCareerSnapshot(found);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [schoolId, selectedStudentId]);
 
   // Overall attendance statistics for child
   const totalAttended = studentAttendance.length;
@@ -558,6 +586,43 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               {slipToast}
             </div>
           )}
+
+          {/* Child Career Quest AI Shared Goal */}
+          {childCareerSnapshot && childCareerSnapshot.activeCareerId && (() => {
+            const careerProfile =
+              childCareerSnapshot.pinnedCareers.find((c) => c.id === childCareerSnapshot.activeCareerId) ||
+              POPULAR_CAREERS.find((c) => c.id === childCareerSnapshot.activeCareerId);
+            if (!careerProfile) return null;
+            return (
+              <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-violet-200 dark:border-violet-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-violet-100 dark:bg-violet-950/70 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
+                    <Compass className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-violet-700 dark:text-violet-300">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>อาชีพในฝันของ {student?.firstNameTh} (Career Quest AI)</span>
+                    </div>
+                    <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                      {careerProfile.titleTh} ({careerProfile.titleEn})
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                      ระดับความพร้อม {childCareerSnapshot.lastReadinessLevel || 'Lv.1 นักสำรวจ'} · ภารกิจสำเร็จ {childCareerSnapshot.completedQuestIds.length} ภารกิจ
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right shrink-0 tabular-nums">
+                  <span className="text-xl font-extrabold font-mono text-violet-700 dark:text-violet-300">
+                    {childCareerSnapshot.lastReadinessPercent ?? 0}%
+                  </span>
+                  <span className="block text-[11px] text-[var(--color-text-muted)]">
+                    ความพร้อมสู่อาชีพ
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Daily Pulse Timeline */}
           <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] space-y-3">

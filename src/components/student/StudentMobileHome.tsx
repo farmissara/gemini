@@ -8,12 +8,14 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Compass,
   FileText,
   Gamepad2,
   GraduationCap,
   LogIn,
   LogOut,
   Megaphone,
+  Sparkles,
 } from 'lucide-react';
 import heroCampusImg from '../../assets/images/student_hero_campus_1794996856983.jpg';
 import {
@@ -82,6 +84,7 @@ interface StudentMobileHomeProps {
   onOpenLeave: () => void;
   onOpenAnnouncements: (announcement?: Announcement) => void;
   onOpenGames: () => void;
+  onOpenCareerQuest?: () => void;
 }
 
 const getBarTone = (percent: number): string => {
@@ -127,6 +130,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   onOpenLeave,
   onOpenAnnouncements,
   onOpenGames,
+  onOpenCareerQuest,
 }) => {
   const currentHour = Math.floor(bangkokClock.minutes / 60);
   const greetingText =
@@ -923,6 +927,32 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             </button>
           )}
         </div>
+
+        {onOpenCareerQuest && (
+          <button
+            type="button"
+            onClick={onOpenCareerQuest}
+            className="w-full p-4 rounded-2xl bg-[var(--color-card)] border border-violet-300/70 dark:border-violet-800/80 hover:border-violet-500 text-left flex items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/70 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
+                <Compass className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <span>{lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}</span>
+                  <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                </p>
+                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                  {lang === 'th'
+                    ? 'Quiz 5 ข้อ · พลังความพร้อม · Role-Play AI'
+                    : 'Vibe quiz, real-grade readiness & role-play'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-violet-500 shrink-0" />
+          </button>
+        )}
       </section>
 
       {/* 5. LATEST SCHOOL ANNOUNCEMENT HIGHLIGHT (Single Clean Editorial Card) */}

@@ -21,6 +21,8 @@ import {
   Printer,
   Download,
   Copy,
+  Compass,
+  Sparkles,
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
 import { StudentAcademicTrendChart } from '../StudentAcademicTrendChart';
@@ -35,6 +37,9 @@ import {
   getRawScoreFeedback,
   resolveEffectiveGrade,
 } from '../../lib/moeGrading';
+import { getSharedCareerSnapshotForStudent, loadSchoolSharedCareerQuests } from '../../lib/careerQuestStore';
+import { POPULAR_CAREERS } from '../../data/careerQuestData';
+import type { StudentCareerQuestState } from '../../types';
 
 interface StudentDetailModalProps {
   student: Student;
@@ -69,6 +74,29 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const [editRoom, setEditRoom] = useState(student.room);
   const [editStatus, setEditStatus] = useState<StudentStatus>(student.status || 'active');
   const [editGpa, setEditGpa] = useState<number>(Number(student.gpa) || 0.0);
+  const [sharedCareer, setSharedCareer] = useState<StudentCareerQuestState | null>(() =>
+    getSharedCareerSnapshotForStudent(student.schoolId || 'default-school', student.id)
+  );
+
+  React.useEffect(() => {
+    const sid = student.schoolId || 'default-school';
+    const localSnap = getSharedCareerSnapshotForStudent(sid, student.id);
+    if (localSnap) {
+      setSharedCareer(localSnap);
+      return;
+    }
+    let active = true;
+    loadSchoolSharedCareerQuests(sid)
+      .then((rows) => {
+        if (!active) return;
+        const found = rows.find((r) => r.studentId === student.id || r.userId === student.id) || null;
+        setSharedCareer(found);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [student.id, student.schoolId]);
 
   const uniqueStudentId = (student.studentIdNumber || student.id || '').trim();
   const qrPayload = qrPayloadMode === 'eduverse' ? `EDUVERSE:STU:${uniqueStudentId}` : uniqueStudentId;
@@ -556,6 +584,44 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* Shared Career Quest AI Goal (if student enabled sharing) */}
+            {sharedCareer && sharedCareer.activeCareerId && (() => {
+              const careerProfile =
+                sharedCareer.pinnedCareers.find((c) => c.id === sharedCareer.activeCareerId) ||
+                POPULAR_CAREERS.find((c) => c.id === sharedCareer.activeCareerId);
+              if (!careerProfile) return null;
+              return (
+                <div className="md:col-span-2 p-4 rounded-xl bg-violet-50/70 dark:bg-violet-950/35 border border-violet-200 dark:border-violet-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
+                      <Compass className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-violet-800 dark:text-violet-300">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>เป้าหมายอาชีพในฝัน (Career Quest AI)</span>
+                      </div>
+                      <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                        {careerProfile.titleTh} ({careerProfile.titleEn})
+                      </p>
+                      <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                        ระดับ {sharedCareer.lastReadinessLevel || 'Lv.1 นักสำรวจ'} · Career EXP {sharedCareer.careerExp}
+                        {sharedCareer.equippedCareerTitle ? ` · ฉายา "${sharedCareer.equippedCareerTitle}"` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right shrink-0 tabular-nums">
+                    <span className="text-lg font-extrabold font-mono text-violet-700 dark:text-violet-300">
+                      {sharedCareer.lastReadinessPercent ?? 0}%
+                    </span>
+                    <span className="block text-[10px] font-semibold text-[var(--color-text-muted)]">
+                      ความพร้อมปัจจุบัน
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Multi-Semester Academic Performance Trend Line Chart */}
             <div className="md:col-span-2">

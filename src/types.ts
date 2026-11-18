@@ -1314,3 +1314,144 @@ export interface AdaptivePracticeTopic {
   score?: number;
   targetTab?: 'socratic_tutor' | 'ai_diagnostic';
 }
+
+// 14. Career Quest AI (เส้นทางสู่อาชีพในฝัน)
+export type CareerEducationStage = 'primary' | 'middle' | 'high';
+
+export type CareerSubjectKey =
+  | 'math'
+  | 'science'
+  | 'thai'
+  | 'english'
+  | 'social'
+  | 'computer'
+  | 'arts'
+  | 'health';
+
+export interface CareerKeySubjectReq {
+  subjectKey: CareerSubjectKey;
+  labelTh: string;
+  labelEn: string;
+  targetScore: number; // 0-100
+  importance: 'core' | 'supporting';
+  reasonTh: string;
+}
+
+export interface CareerQuestTask {
+  id: string;
+  tier: 'daily_weekly' | 'portfolio' | 'roleplay';
+  titleTh: string;
+  titleEn: string;
+  descriptionTh: string;
+  targetAppTab?: string;
+  expReward: number;
+  gemsReward: number;
+  skillTag?: string;
+  isAiGenerated?: boolean;
+}
+
+export interface CareerProfile {
+  id: string;
+  titleTh: string;
+  titleEn: string;
+  category: 'medical' | 'tech' | 'education' | 'creative' | 'business' | 'culinary' | 'aviation' | 'science' | 'social';
+  taglineTh: string;
+  taglineEn: string;
+  targetGpax: number;
+  unlockableTitleTh: string;
+  unlockableTitleEn: string;
+  keySubjects: CareerKeySubjectReq[];
+  roadmaps: Record<CareerEducationStage, string>;
+  roadmapsEn?: Record<CareerEducationStage, string>;
+  examFocusHighTh: string;
+  quests: CareerQuestTask[];
+  isCustomAi?: boolean;
+}
+
+export interface CareerVibeQuizQuestion {
+  id: string;
+  questionTh: string;
+  questionEn: string;
+  options: {
+    id: string;
+    labelTh: string;
+    labelEn: string;
+    traitTag: string;
+    recommendedCategories: CareerProfile['category'][];
+  }[];
+}
+
+export interface CareerVibeQuizAnswer {
+  questionId: string;
+  questionTh: string;
+  selectedOptionId: string;
+  selectedLabelTh: string;
+  traitTag: string;
+}
+
+export interface CareerVibeMatch {
+  career: CareerProfile;
+  matchPercent: number;
+  reasonTh: string;
+  reasonEn?: string;
+}
+
+export interface CareerRoleplayChoice {
+  id: string;
+  labelTh: string;
+  skillHint?: string;
+}
+
+export interface CareerRoleplaySkillScores {
+  analytical: number;
+  communication: number;
+  empathy: number;
+  problemSolving: number;
+}
+
+export interface CareerRoleplayTurn {
+  turnNumber: number;
+  sceneTitleTh: string;
+  situationTh: string;
+  npcDialogueTh: string;
+  turnFeedbackTh?: string;
+  chosenLabelTh?: string;
+  choices: CareerRoleplayChoice[];
+  isCompleted: boolean;
+  skillScores?: CareerRoleplaySkillScores;
+  summaryFeedbackTh?: string;
+}
+
+export interface CareerCoachMessage {
+  id: string;
+  sender: 'student' | 'coach';
+  textTh: string;
+  actionStepsTh?: string[];
+  encouragedTab?: string;
+  timestamp: string;
+  isAiGenerated?: boolean;
+}
+
+export interface StudentCareerQuestState {
+  schoolId: string;
+  userId: string;
+  studentId?: string;
+  studentName: string;
+  gradeLevel?: string;
+  activeCareerId: string | null;
+  pinnedCareers: CareerProfile[]; // up to 3 pinned careers for comparison without losing EXP
+  vibeQuizAnswers: CareerVibeQuizAnswer[];
+  vibeMatches: CareerVibeMatch[];
+  completedQuestIds: string[];
+  roleplayRunsCount: number;
+  latestRoleplaySkills?: CareerRoleplaySkillScores;
+  coachMessages: CareerCoachMessage[];
+  careerExp: number;
+  unlockedTitles: string[];
+  equippedCareerTitle?: string;
+  shareWithTeachersAndParents: boolean;
+  lastReadinessPercent?: number;
+  lastReadinessLevel?: string;
+  updatedAt: string;
+}
+

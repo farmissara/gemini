@@ -8,9 +8,11 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Compass,
   CreditCard,
   GraduationCap,
   Megaphone,
+  Sparkles,
 } from 'lucide-react';
 import {
   Announcement,
@@ -32,6 +34,8 @@ import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
 import { calculateGrade, formatSemesterLabel } from '../../lib/schoolSettings';
 import { getBangkokClockSnapshot, getTimetableSlotActivityStatus } from '../../lib/timetableCalendar';
 import { type ThaiHoliday } from '../../lib/thaiHolidays';
+import { readLocalCareerQuestState } from '../../lib/careerQuestStore';
+import { POPULAR_CAREERS } from '../../data/careerQuestData';
 
 interface StudentDesktopDashboardProps {
   currentUser?: AuthUser | null;
@@ -280,6 +284,22 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       tone: 'text-rose-700 dark:text-rose-400',
     };
   }, [attendanceStats.rate, lang]);
+
+  const careerQuestSnapshot = useMemo(() => {
+    const uid = currentUser?.id || student?.id || '';
+    const sid = school?.id || '';
+    if (!uid || !sid) return null;
+    const saved = readLocalCareerQuestState(sid, uid);
+    if (!saved || !saved.activeCareerId) return null;
+    const career =
+      saved.pinnedCareers.find((c) => c.id === saved.activeCareerId) ||
+      POPULAR_CAREERS.find((c) => c.id === saved.activeCareerId) ||
+      null;
+    return {
+      saved,
+      career,
+    };
+  }, [currentUser?.id, student?.id, school?.id]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
@@ -961,6 +981,65 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
           </div>
         </section>
       </div>
+
+      {/* ==================================================================== */}
+      {/* 4. CAREER QUEST AI LAUNCH & READINESS STRIP                          */}
+      {/* ==================================================================== */}
+      <section
+        aria-label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน Career Quest AI' : 'Career Quest AI'}
+        className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+      >
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'Career Quest AI · เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}
+              </h3>
+              {careerQuestSnapshot?.career && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 dark:text-violet-300 tabular-nums">
+                  <span>
+                    {lang === 'th'
+                      ? careerQuestSnapshot.career.titleTh
+                      : careerQuestSnapshot.career.titleEn}
+                  </span>
+                  <span>·</span>
+                  <span>{careerQuestSnapshot.saved.lastReadinessPercent ?? 0}%</span>
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {careerQuestSnapshot?.career
+                ? lang === 'th'
+                  ? `${careerQuestSnapshot.saved.lastReadinessLevel || 'Lv.1 นักสำรวจ'} · สะสม ${careerQuestSnapshot.saved.careerExp} Career EXP · ทำภารกิจ & คุยกับ AI Career Coach`
+                  : `${careerQuestSnapshot.saved.lastReadinessLevel || 'Lv.1'} · ${careerQuestSnapshot.saved.careerExp} Career EXP`
+                : lang === 'th'
+                  ? 'เลือกอาชีพในฝัน หรือทำ Vibe Quiz 5 ข้อ เทียบความพร้อมจากเกรดจริงและฝึก Role-Play กับ AI'
+                  : 'Pick your dream career or take the 5-question Vibe Quiz matched to your real grades'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onNavigate('career_quest')}
+          className="min-h-[42px] px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>
+            {careerQuestSnapshot?.career
+              ? lang === 'th'
+                ? 'เปิดการ์ดอาชีพของฉัน'
+                : 'Open My Career Card'
+              : lang === 'th'
+                ? 'ค้นหาอาชีพในฝัน'
+                : 'Start Career Quest'}
+          </span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </section>
     </div>
   );
 };

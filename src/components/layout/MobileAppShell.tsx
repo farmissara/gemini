@@ -59,6 +59,7 @@ import {
   ShoppingBag,
   Coins,
   Radio,
+  Compass,
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -156,6 +157,7 @@ import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { ViewErrorBoundary } from '../common/ViewErrorBoundary';
 import { MobileAdminQuickHub, MobileSuperAdminHub } from './MobileRoleWorkspace';
 import { AdminDailyDashboardView } from '../../views/AdminDailyDashboardView';
+import { CareerQuestView } from '../../views/CareerQuestView';
 import {
   enrollBiometricPasskey,
   getPasskeyForUser,
@@ -178,6 +180,7 @@ export type MobileTab =
   | 'gradebook'
   | 'student_grades'
   | 'portfolio'
+  | 'career_quest'
   | 'timetable'
   | 'games'
   | 'profile'
@@ -1005,6 +1008,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   setActiveTab('games');
                   setActiveGameView('hub');
                 }}
+                onOpenCareerQuest={() => setActiveTab('career_quest')}
               />
             ) : (
               <>
@@ -1352,6 +1356,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       <ChevronRight className="w-4 h-4" />
                     </span>
                   </button>
+
+                  {currentRole === 'teacher' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('career_quest')}
+                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+                        <Compass className="w-4 h-4 text-violet-600" />
+                        <span>{lang === 'th' ? 'เส้นทางอาชีพ (Career Quest AI)' : 'Career Quest AI'}</span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                    </button>
+                  )}
 
                   {currentRole === 'teacher' && (
                     <button
@@ -2475,6 +2493,64 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           </div>
         )}
 
+        {/* TAB: CAREER QUEST AI */}
+        {activeTab === 'career_quest' && currentRole !== 'parent' && (
+          <div className="space-y-3 pb-4 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setActiveTab('home')}
+                className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
+              </button>
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                Career Quest AI
+              </span>
+            </div>
+            <CareerQuestView
+              currentUser={currentUser}
+              school={activeSchool}
+              students={students}
+              courses={scopedCourses}
+              grades={grades}
+              attendance={attendance}
+              portfolioItems={portfolioItems}
+              playerScores={playerScores}
+              gradingSystem={gradingSystem}
+              lang={lang}
+              onEarnRewards={onEarnRewards}
+              onEquipCosmetic={onEquipCosmetic}
+              onAddPortfolioItem={onAddPortfolioItem}
+              onNavigate={(tab) => {
+                if (tab === 'games') {
+                  setActiveTab('games');
+                  setActiveGameView('hub');
+                } else if (tab === 'subject_labs') {
+                  setActiveTab('games');
+                  setActiveGameView('subject_labs');
+                } else if (tab === 'boss_raid') {
+                  setActiveTab('games');
+                  setActiveGameView('boss_raid');
+                } else if (tab === 'mobile_checkin') {
+                  setActiveTab('checkin');
+                } else if (tab === 'homework') {
+                  setActiveTab('homework');
+                } else if (tab === 'portfolio') {
+                  setActiveTab('portfolio');
+                } else if (tab === 'gradebook') {
+                  setActiveTab(currentRole === 'student' ? 'student_grades' : 'gradebook');
+                } else if (tab === 'timetable') {
+                  setActiveTab('timetable');
+                } else if (onJumpToDesktopTab) {
+                  onJumpToDesktopTab(tab);
+                }
+              }}
+            />
+          </div>
+        )}
+
         {/* TAB: STUDENT GRADES SUMMARY (Real Data, Clean Visual Layout) */}
         {activeTab === 'student_grades' && (() => {
           const myGrades = ownStudent
@@ -2745,6 +2821,34 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </div>
                 <ChevronRight className="w-5 h-5 text-rose-400 shrink-0" />
               </button>
+
+              {currentRole !== 'parent' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('career_quest')}
+                  className="w-full p-3.5 rounded-2xl bg-[#09090B] border border-violet-500/45 hover:border-violet-400 text-left flex items-center justify-between gap-3 transition active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center shrink-0">
+                      <Compass className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-mono font-bold text-violet-300 uppercase tracking-wider">
+                        Career Quest AI
+                      </p>
+                      <h3 className="text-sm font-black text-white truncate">
+                        {lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน & Role-Play' : 'Career Quest AI'}
+                      </h3>
+                      <p className="text-[11px] text-zinc-400 truncate">
+                        {lang === 'th'
+                          ? 'Vibe Quiz 5 ข้อ · เช็กพลังความพร้อมจากเกรดจริง'
+                          : '5-question quiz & real-grade readiness'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-violet-400 shrink-0" />
+                </button>
+              )}
 
               {/* Category Filter Strip */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">

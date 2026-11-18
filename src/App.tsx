@@ -168,6 +168,7 @@ import { NotificationCenterModal } from './components/modals/NotificationCenterM
 import { AdminSuperAdminDeskView } from './views/AdminSuperAdminDeskView';
 import { ConfirmActionModal } from './components/modals/ConfirmActionModal';
 import { CentralExamHubView, CentralExamNotificationPopup } from './views/CentralExamHubView';
+import { CareerQuestView } from './views/CareerQuestView';
 import {
   buildCentralExamSignature,
   CENTRAL_EXAMS_UPDATED_EVENT,
@@ -4482,6 +4483,7 @@ export const App: React.FC = () => {
                     onCreateCustomReward={handleCreateCustomReward}
                     onGamePlayingChange={setIsGamePlaying}
                     onOpenCentralExamHub={() => navigateToAppTab('central_exam_hub')}
+                    onOpenCareerQuest={() => navigateToAppTab('career_quest')}
                     onExit={() => {
                       setEduBattleInitialSubTab(undefined);
                       setCurrentTab('dashboard');
@@ -4592,6 +4594,25 @@ export const App: React.FC = () => {
                     currentUser={currentUser}
                     onOpenPortfolio={() => setCurrentTab('portfolio')}
                     onExit={() => setCurrentTab('dashboard')}
+                  />
+                )}
+
+                {currentTab === 'career_quest' && ['super_admin', 'admin', 'teacher', 'student'].includes(currentRole) && (
+                  <CareerQuestView
+                    currentUser={currentUser}
+                    school={activeSchool}
+                    students={viewStudents}
+                    courses={viewCourses}
+                    grades={viewGrades}
+                    attendance={viewAttendance}
+                    portfolioItems={viewPortfolioItems}
+                    playerScores={playerScores}
+                    gradingSystem={systemConfig.gradingSystem}
+                    lang={lang}
+                    onNavigate={navigateToAppTab}
+                    onEarnRewards={handleEarnRewards}
+                    onEquipCosmetic={handleEquipCosmetic}
+                    onAddPortfolioItem={handleAddPortfolioItem}
                   />
                 )}
 
