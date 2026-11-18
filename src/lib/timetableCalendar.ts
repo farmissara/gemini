@@ -1,6 +1,6 @@
-import { Assignment, Course, DayOfWeek, TimetableSlot } from '../types';
+import { Assignment, Course, DayOfWeek, SchoolPeriodTime, TimetableSlot } from '../types';
 import { parseSlotTeachersFromRaw } from './timetableTeachers';
-import { getHolidaysInRange } from './thaiHolidays';
+import { getHolidayForDate, getHolidaysInRange, isWeekendDate } from './thaiHolidays';
 
 const BANGKOK_OFFSET_MINUTES = 7 * 60;
 const ICAL_DAYS: Record<DayOfWeek, string> = {
@@ -90,6 +90,90 @@ export function getBangkokDateInputValue(date = new Date()): string {
   }).formatToParts(date);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+export interface BangkokClockSnapshot {
+  dateStr: string;
+  dayKey: DayOfWeek | 'sun' | 'sat';
+  minutes: number;
+  timeLabel: string;
+}
+
+export function getBangkokClockSnapshot(date = new Date()): BangkokClockSnapshot {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const dateStr = `${values.year}-${values.month}-${values.day}`;
+  const rawHour = Number(values.hour);
+  const hour = Number.isFinite(rawHour) ? rawHour % 24 : 0;
+  const rawMinute = Number(values.minute);
+  const minute = Number.isFinite(rawMinute) ? rawMinute % 60 : 0;
+  const dow = parseDateInput(dateStr).getUTCDay();
+  const dayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dow] || 'mon') as DayOfWeek | 'sun' | 'sat';
+  return {
+    dateStr,
+    dayKey,
+    minutes: hour * 60 + minute,
+    timeLabel: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+  };
+}
+
+export interface TimetableSlotActivityStatus {
+  isActive: boolean;
+  isTodayWeekday: boolean;
+  isHolidayOff: boolean;
+  startTime: string;
+  endTime: string;
+  startMinutes: number | null;
+  endMinutes: number | null;
+  remainingMinutes: number | null;
+}
+
+export function getTimetableSlotActivityStatus(params: {
+  slot: Pick<TimetableSlot, 'dayOfWeek' | 'periodNumber' | 'startTime' | 'endTime'>;
+  schoolPeriods?: SchoolPeriodTime[];
+  now: BangkokClockSnapshot;
+  schoolId?: string;
+  targetDateStr?: string;
+}): TimetableSlotActivityStatus {
+  const { slot, schoolPeriods = [], now, schoolId, targetDateStr } = params;
+  const periodDef = schoolPeriods.find((p) => !p.isBreak && p.periodNumber === slot.periodNumber);
+  const startTime = (slot.startTime || periodDef?.startTime || '').trim();
+  const endTime = (slot.endTime || periodDef?.endTime || '').trim();
+  const startMinutes = startTime ? parseTime(startTime) : null;
+  const endMinutes = endTime ? parseTime(endTime) : null;
+  const checkDateStr = targetDateStr || now.dateStr;
+  const isTodayWeekday =
+    checkDateStr === now.dateStr &&
+    !isWeekendDate(checkDateStr) &&
+    slot.dayOfWeek === now.dayKey;
+  const isHolidayOff = Boolean(getHolidayForDate(checkDateStr, schoolId)?.isSchoolDayOff);
+  const isInTimeWindow =
+    startMinutes !== null &&
+    endMinutes !== null &&
+    now.minutes >= startMinutes &&
+    now.minutes <= endMinutes;
+  const isActive = isTodayWeekday && !isHolidayOff && isInTimeWindow;
+  const remainingMinutes =
+    isActive && endMinutes !== null ? Math.max(0, endMinutes - now.minutes) : null;
+
+  return {
+    isActive,
+    isTodayWeekday,
+    isHolidayOff,
+    startTime,
+    endTime,
+    startMinutes,
+    endMinutes,
+    remainingMinutes,
+  };
 }
 
 export function getCalendarWeekStart(value: string): string {

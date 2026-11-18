@@ -4267,6 +4267,13 @@ export const App: React.FC = () => {
                     onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
                     leaveRequests={viewLeaveRequests}
                     periodAttendance={viewPeriodAttendance}
+                    canSelfCheckin={
+                      currentRole === 'student'
+                        ? schoolPermissions.student_self_checkin !== false
+                        : currentRole === 'teacher'
+                          ? schoolPermissions.teacher_attendance !== false
+                          : false
+                    }
                     onOpenPeriodCheckin={(params) => {
                       setTimetableCheckinTarget(params);
                       navigateToAppTab('mobile_checkin');

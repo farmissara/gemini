@@ -91,7 +91,22 @@ const LUNAR_THAI_HOLIDAYS_BY_YEAR: Record<number, Array<{ date: string; nameTh: 
 };
 
 const API_CACHE_PREFIX = 'eduverse_thai_holidays_api_v1_';
+const API_META_PREFIX = 'eduverse_thai_holidays_meta_v1_';
 const SCHOOL_CUSTOM_PREFIX = 'eduverse_school_holidays_';
+const SYNC_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+export interface HolidaySyncStatus {
+  year: number;
+  syncedAt: string;
+  provider: string;
+  apiHolidayCount: number;
+  totalHolidayCount: number;
+  usedFallback: boolean;
+}
+
+export interface HolidaySyncResult extends HolidaySyncStatus {
+  holidays: ThaiHoliday[];
+}
 
 function formatIsoDateUtc(date: Date): string {
   const y = String(date.getUTCFullYear()).padStart(4, '0');
@@ -120,6 +135,28 @@ function getApiCachedHolidays(year: number): ThaiHoliday[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+export function getPublicHolidaySyncStatus(year: number): HolidaySyncStatus | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(`${API_META_PREFIX}${year}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as HolidaySyncStatus;
+    if (!parsed || typeof parsed.year !== 'number') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function savePublicHolidaySyncStatus(status: HolidaySyncStatus): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(`${API_META_PREFIX}${status.year}`, JSON.stringify(status));
+  } catch {
+    // ignore storage errors
   }
 }
 
@@ -237,7 +274,7 @@ function buildOfficialThaiHolidaysForYear(year: number): ThaiHoliday[] {
     }
   }
 
-  // Merge API-fetched holidays for additional official announcements if cached
+  // Merge API-fetched holidays for additional official cabinet announcements if cached
   const apiCached = getApiCachedHolidays(year);
   const merged = [...baseList, ...substitutes];
   const existingKeys = new Set(merged.map((item) => item.date));
@@ -251,43 +288,115 @@ function buildOfficialThaiHolidaysForYear(year: number): ThaiHoliday[] {
   return merged.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function syncPublicHolidaysFromApi(year: number): Promise<ThaiHoliday[]> {
+export async function syncPublicHolidaysFromApi(
+  year: number,
+  options: { force?: boolean } = {}
+): Promise<HolidaySyncResult> {
+  const { force = false } = options;
+  const cachedHolidays = buildOfficialThaiHolidaysForYear(year);
+
   if (typeof window === 'undefined' || typeof fetch === 'undefined') {
-    return buildOfficialThaiHolidaysForYear(year);
+    return {
+      year,
+      syncedAt: new Date().toISOString(),
+      provider: 'ปฏิทินวันหยุดราชการไทย (ออฟไลน์)',
+      apiHolidayCount: 0,
+      totalHolidayCount: cachedHolidays.length,
+      usedFallback: true,
+      holidays: cachedHolidays,
+    };
   }
+
+  const existingMeta = getPublicHolidaySyncStatus(year);
+  if (
+    !force &&
+    existingMeta &&
+    !existingMeta.usedFallback &&
+    Date.now() - new Date(existingMeta.syncedAt).getTime() < SYNC_STALE_MS
+  ) {
+    return {
+      ...existingMeta,
+      holidays: cachedHolidays,
+    };
+  }
+
   try {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 4500);
+    const timeoutId = window.setTimeout(() => controller.abort(), 5000);
     const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/TH`, {
       signal: controller.signal,
     });
     window.clearTimeout(timeoutId);
-    if (!response.ok) return buildOfficialThaiHolidaysForYear(year);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
     const json = (await response.json()) as Array<{
       date: string;
       localName: string;
       name: string;
       global?: boolean;
     }>;
-    if (!Array.isArray(json)) return buildOfficialThaiHolidaysForYear(year);
+    if (!Array.isArray(json)) {
+      throw new Error('Invalid holiday payload');
+    }
     const mapped: ThaiHoliday[] = json
       .filter((item) => Boolean(item.date && (item.localName || item.name)))
-      .map((item) => ({
-        id: `th-api-${item.date}`,
-        date: item.date,
-        nameTh: item.localName || item.name,
-        nameEn: item.name || item.localName,
-        type: (item.localName || '').includes('ชดเชย') ? 'substitute' : 'public',
-        isSchoolDayOff: true,
-        isSubstitute: (item.localName || '').includes('ชดเชย'),
-        source: 'api',
-      }));
+      .map((item) => {
+        const label = item.localName || item.name;
+        const isSubstitute = label.includes('ชดเชย') || (item.name || '').toLowerCase().includes('observed');
+        return {
+          id: `th-api-${item.date}`,
+          date: item.date,
+          nameTh: label,
+          nameEn: item.name || item.localName,
+          type: isSubstitute ? 'substitute' : 'public',
+          isSchoolDayOff: true,
+          isSubstitute,
+          source: 'api',
+        };
+      });
     window.localStorage.setItem(`${API_CACHE_PREFIX}${year}`, JSON.stringify(mapped));
-    window.dispatchEvent(new CustomEvent('eduverse:holidays-updated', { detail: { year } }));
-    return buildOfficialThaiHolidaysForYear(year);
+    const mergedHolidays = buildOfficialThaiHolidaysForYear(year);
+    const status: HolidaySyncStatus = {
+      year,
+      syncedAt: new Date().toISOString(),
+      provider: 'Public Holiday API (Thailand)',
+      apiHolidayCount: mapped.length,
+      totalHolidayCount: mergedHolidays.length,
+      usedFallback: false,
+    };
+    savePublicHolidaySyncStatus(status);
+    window.dispatchEvent(new CustomEvent('eduverse:holidays-updated', { detail: { year, status } }));
+    return {
+      ...status,
+      holidays: mergedHolidays,
+    };
   } catch {
-    return buildOfficialThaiHolidaysForYear(year);
+    const fallbackStatus: HolidaySyncStatus = {
+      year,
+      syncedAt: new Date().toISOString(),
+      provider: 'ปฏิทินวันหยุดราชการไทย (ข้อมูลสำรอง)',
+      apiHolidayCount: getApiCachedHolidays(year).length,
+      totalHolidayCount: cachedHolidays.length,
+      usedFallback: true,
+    };
+    savePublicHolidaySyncStatus(fallbackStatus);
+    window.dispatchEvent(new CustomEvent('eduverse:holidays-updated', { detail: { year, status: fallbackStatus } }));
+    return {
+      ...fallbackStatus,
+      holidays: cachedHolidays,
+    };
   }
+}
+
+export function getThaiHolidayCategoryLabel(holiday: ThaiHoliday, lang: 'th' | 'en' = 'th'): string {
+  if (holiday.type === 'school') return lang === 'th' ? 'วันหยุดโรงเรียน' : 'School Holiday';
+  if (holiday.type === 'substitute' || holiday.isSubstitute) {
+    return lang === 'th' ? 'วันหยุดชดเชยราชการ' : 'Substitute Holiday';
+  }
+  if (holiday.type === 'buddhist') return lang === 'th' ? 'วันสำคัญทางพระพุทธศาสนา' : 'Buddhist Holiday';
+  if (holiday.type === 'royal') return lang === 'th' ? 'วันพระราชพิธี/วันสำคัญราชการ' : 'Royal / National Holiday';
+  return lang === 'th' ? 'วันหยุดราชการ' : 'Public Holiday';
 }
 
 export function getHolidaysForYear(year: number, schoolId?: string): ThaiHoliday[] {

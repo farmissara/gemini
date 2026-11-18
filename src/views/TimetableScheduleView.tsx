@@ -40,15 +40,22 @@ import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
   addCalendarDays,
   formatCalendarDate,
+  getBangkokClockSnapshot,
   getBangkokDateInputValue,
   getCalendarWeekStart,
+  getTimetableSlotActivityStatus,
 } from '../lib/timetableCalendar';
 import {
+  HolidaySyncStatus,
   ThaiHoliday,
   addSchoolCustomHoliday,
   getHolidayForDate,
   getHolidaysForDate,
+  getHolidaysForYear,
   getHolidaysInMonth,
+  getHolidaysInRange,
+  getPublicHolidaySyncStatus,
+  getThaiHolidayCategoryLabel,
   getUpcomingHolidays,
   isWeekendDate,
   removeSchoolCustomHoliday,
@@ -119,6 +126,7 @@ interface TimetableScheduleViewProps {
   ) => Promise<void>;
   leaveRequests?: LeaveRequest[];
   periodAttendance?: PeriodAttendanceRecord[];
+  canSelfCheckin?: boolean;
   onOpenPeriodCheckin?: (params: {
     courseId?: string;
     courseCode?: string;
@@ -188,12 +196,17 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   onUpdateAcademicPeriod,
   leaveRequests = [],
   periodAttendance = [],
+  canSelfCheckin = true,
   onOpenPeriodCheckin,
 }) => {
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const roomOptions = savedRoomOptions?.length ? savedRoomOptions : presets.roomOptions;
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
   const isPersonalViewer = currentRole === 'student' || currentRole === 'parent';
+  const canUsePeriodCheckin =
+    Boolean(onOpenPeriodCheckin) &&
+    (currentRole === 'student' || currentRole === 'teacher') &&
+    canSelfCheckin;
   const workloadMinPeriods = Math.min(60, Math.max(0,
     Number.isInteger(teachingLoadMinPeriods)
       ? teachingLoadMinPeriods ?? DEFAULT_TEACHING_LOAD_MIN_PERIODS
@@ -260,7 +273,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     const today = getBangkokDateInputValue();
     return { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) - 1 };
   });
+  const [bangkokClock, setBangkokClock] = useState(() => getBangkokClockSnapshot());
+  const currentBangkokYear = Number(bangkokClock.dateStr.slice(0, 4));
   const [holidayRefreshTick, setHolidayRefreshTick] = useState(0);
+  const [holidaySyncStatus, setHolidaySyncStatus] = useState<HolidaySyncStatus | null>(() =>
+    getPublicHolidaySyncStatus(currentBangkokYear)
+  );
+  const [isSyncingHolidays, setIsSyncingHolidays] = useState(false);
   const [showAddHolidayForm, setShowAddHolidayForm] = useState(false);
   const [newHolidayDate, setNewHolidayDate] = useState(() => getBangkokDateInputValue());
   const [newHolidayNameTh, setNewHolidayNameTh] = useState('');
@@ -272,18 +291,60 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
   const [showImportExportModal, setShowImportExportModal] = useState(false);
 
-  // Sync Thai public holidays in background and refresh on school holiday updates
+  // Live 30-second Bangkok clock tick so active-period Check-in/Check-out buttons appear/disappear on schedule
   useEffect(() => {
-    void syncPublicHolidaysFromApi(calendarMonthCursor.year).then(() => {
+    const timer = window.setInterval(() => {
+      setBangkokClock(getBangkokClockSnapshot());
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Automatically sync Thai government holidays for current year (and upcoming year near year-end) & calendar cursor year
+  useEffect(() => {
+    let cancelled = false;
+    const yearsToSync = Array.from(
+      new Set([
+        calendarMonthCursor.year,
+        currentBangkokYear,
+        ...(Number(bangkokClock.dateStr.slice(5, 7)) >= 10 ? [currentBangkokYear + 1] : []),
+      ])
+    );
+    void Promise.all(yearsToSync.map((yr) => syncPublicHolidaysFromApi(yr))).then((results) => {
+      if (cancelled) return;
+      const primary =
+        results.find((r) => r.year === calendarMonthCursor.year) ||
+        results.find((r) => r.year === currentBangkokYear) ||
+        results[0];
+      if (primary) setHolidaySyncStatus(primary);
       setHolidayRefreshTick((v) => v + 1);
     });
-  }, [calendarMonthCursor.year]);
+    return () => {
+      cancelled = true;
+    };
+  }, [calendarMonthCursor.year, currentBangkokYear, bangkokClock.dateStr]);
 
   useEffect(() => {
-    const onHolidaysUpdated = () => setHolidayRefreshTick((v) => v + 1);
+    const onHolidaysUpdated = () => {
+      setHolidaySyncStatus(getPublicHolidaySyncStatus(calendarMonthCursor.year) || getPublicHolidaySyncStatus(currentBangkokYear));
+      setHolidayRefreshTick((v) => v + 1);
+    };
     window.addEventListener('eduverse:holidays-updated', onHolidaysUpdated);
     return () => window.removeEventListener('eduverse:holidays-updated', onHolidaysUpdated);
-  }, []);
+  }, [calendarMonthCursor.year, currentBangkokYear]);
+
+  const handleManualHolidaySync = async (targetYear = currentBangkokYear) => {
+    setIsSyncingHolidays(true);
+    try {
+      const result = await syncPublicHolidaysFromApi(targetYear, { force: true });
+      if (targetYear !== currentBangkokYear + 1 && Number(bangkokClock.dateStr.slice(5, 7)) >= 10) {
+        await syncPublicHolidaysFromApi(currentBangkokYear + 1, { force: true });
+      }
+      setHolidaySyncStatus(result);
+      setHolidayRefreshTick((v) => v + 1);
+    } finally {
+      setIsSyncingHolidays(false);
+    }
+  };
 
   // Ensure restricted viewers stay out of teacher/staff-only tabs
   useEffect(() => {
@@ -660,12 +721,32 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   }));
   const calendarWeekRangeLabel = `${formatCalendarDate(calendarWeekStart)} – ${formatCalendarDate(addCalendarDays(calendarWeekStart, 4))}`;
 
-  const todayBangkokDate = getBangkokDateInputValue();
-  const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][
-    new Date(`${todayBangkokDate}T00:00:00+07:00`).getDay()
-  ] || 'mon') as DayOfWeek | 'sun' | 'sat';
+  const todayBangkokDate = bangkokClock.dateStr;
+  const todayDayKey = bangkokClock.dayKey;
+  const currentWeekStartDate = getCalendarWeekStart(todayBangkokDate);
+  const currentWeekDaysWithDates = DAYS.map((day, index) => {
+    const date = addCalendarDays(currentWeekStartDate, index);
+    return {
+      ...day,
+      date,
+      holiday: holidayRefreshTick >= 0 ? getHolidayForDate(date, schoolId) : null,
+    };
+  });
+  const currentWeekHolidays =
+    holidayRefreshTick >= 0
+      ? getHolidaysInRange(currentWeekStartDate, addCalendarDays(currentWeekStartDate, 6), schoolId)
+      : [];
   const todayHoliday = holidayRefreshTick >= 0 ? getHolidayForDate(todayBangkokDate, schoolId) : null;
-  const upcomingHolidaysList = holidayRefreshTick >= 0 ? getUpcomingHolidays(todayBangkokDate, 21, schoolId) : [];
+  const upcomingHolidaysList = holidayRefreshTick >= 0 ? getUpcomingHolidays(todayBangkokDate, 45, schoolId) : [];
+  const yearHolidaysCount =
+    holidayRefreshTick >= 0 ? getHolidaysForYear(currentBangkokYear, schoolId).length : 0;
+
+  const formatShortThaiDate = (dateStr: string) =>
+    new Date(`${dateStr}T00:00:00Z`).toLocaleDateString('th-TH', {
+      timeZone: 'UTC',
+      day: 'numeric',
+      month: 'short',
+    });
 
   const getSlotCheckStatusForDate = (slot: TimetableSlot, dateStr: string) => {
     const resolvedCourseId =
@@ -688,7 +769,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     dateStr: string,
     checkType: 'check_in' | 'check_out'
   ) => {
-    if (!onOpenPeriodCheckin) return;
+    if (!canUsePeriodCheckin || !onOpenPeriodCheckin) return;
     const resolvedCourseId =
       slot.courseId || courses.find((c) => c.code === slot.courseCode)?.id;
     onOpenPeriodCheckin({
@@ -2561,6 +2642,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     {!isPersonalViewer && (
                       <button
                         type="button"
+                        disabled={isSyncingHolidays}
+                        onClick={() => void handleManualHolidaySync(calendarMonthCursor.year)}
+                        className="btn-tool-neutral px-2.5 py-1.5 disabled:opacity-60"
+                        title="ดึงวันหยุดราชการไทยล่าสุดจาก Public Holiday API"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
+                        <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุดราชการ'}</span>
+                      </button>
+                    )}
+                    {!isPersonalViewer && (
+                      <button
+                        type="button"
                         onClick={() => setShowAddHolidayForm((v) => !v)}
                         className="btn-tool-neutral px-2.5 py-1.5"
                       >
@@ -2592,16 +2685,28 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {renderRoomAndTermControls()}
-                {todayHoliday ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:text-rose-200">
-                    <CalendarDays className="w-3.5 h-3.5 shrink-0" />
-                    วันนี้หยุด: {todayHoliday.nameTh}
-                  </span>
-                ) : upcomingHolidaysList.length > 0 ? (
-                  <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                    วันหยุดถัดไป: <strong className="text-rose-600 dark:text-rose-400">{upcomingHolidaysList[0].nameTh}</strong> ({upcomingHolidaysList[0].date})
-                  </span>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {!isPersonalViewer && (
+                    <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                      วันหยุดราชการ พ.ศ. {calendarMonthCursor.year + 543} ({getHolidaysForYear(calendarMonthCursor.year, schoolId).length} วัน)
+                      {holidaySyncStatus && holidaySyncStatus.year === calendarMonthCursor.year
+                        ? holidaySyncStatus.usedFallback
+                          ? ' · ปฏิทินมาตรฐานไทย'
+                          : ' · ซิงค์ Public Holiday API แล้ว'
+                        : ''}
+                    </span>
+                  )}
+                  {todayHoliday ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:text-rose-200">
+                      <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                      วันนี้หยุด: {todayHoliday.nameTh}
+                    </span>
+                  ) : upcomingHolidaysList.length > 0 ? (
+                    <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                      วันหยุดถัดไป: <strong className="text-rose-600 dark:text-rose-400">{upcomingHolidaysList[0].nameTh}</strong> ({upcomingHolidaysList[0].date})
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               {/* Admin / Teacher Custom School Holiday Form */}
@@ -2750,7 +2855,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                               <div className="min-w-0">
                                 <p className="font-bold text-rose-700 dark:text-rose-300 truncate">{h.nameTh}</p>
                                 <p className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
-                                  {h.date} · {h.type === 'school' ? 'วันหยุดโรงเรียน' : h.isSubstitute ? 'วันหยุดชดเชย' : 'วันหยุดราชการ'}
+                                  {h.date} · {getThaiHolidayCategoryLabel(h, lang)}
                                 </p>
                               </div>
                               {!isPersonalViewer && h.type === 'school' && (
@@ -2838,11 +2943,22 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         selectedDaySlots.map((slot) => {
                           const slotColor = getTimetableSlotCardStyle(slot.colorTag);
                           const status = getSlotCheckStatusForDate(slot, selectedCalendarDate);
+                          const slotActivity = getTimetableSlotActivityStatus({
+                            slot,
+                            schoolPeriods,
+                            now: bangkokClock,
+                            schoolId,
+                            targetDateStr: selectedCalendarDate,
+                          });
+                          const nextCheckType: 'check_in' | 'check_out' =
+                            status.hasCheckIn && !status.hasCheckOut ? 'check_out' : 'check_in';
                           return (
                             <div
                               key={slot.id}
                               style={slotColor.style}
-                              className={`rounded-xl border p-3 space-y-2 ${slotColor.className}`}
+                              className={`rounded-xl border p-3 space-y-2 ${slotColor.className} ${
+                                slotActivity.isActive ? 'ring-2 ring-emerald-500 shadow-md' : ''
+                              }`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <button
@@ -2850,8 +2966,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   onClick={() => openSlotDetails(slot)}
                                   className="text-left min-w-0 flex-1 cursor-pointer"
                                 >
-                                  <p className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)]">
-                                    คาบ {slot.periodNumber} · {slot.startTime}–{slot.endTime} · {slot.classRoom}
+                                  <p className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)] flex flex-wrap items-center gap-1.5">
+                                    <span>คาบ {slot.periodNumber} · {slotActivity.startTime}–{slotActivity.endTime} · {slot.classRoom}</span>
+                                    {slotActivity.isActive && (
+                                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                        กำลังเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
+                                      </span>
+                                    )}
                                   </p>
                                   <p className="text-xs font-bold text-[var(--color-text-title)] mt-0.5">
                                     {slot.courseCode} · {slot.courseTitleTh}
@@ -2867,24 +2988,40 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 )}
                               </div>
 
-                              {onOpenPeriodCheckin && selectedDateHolidays.length === 0 && (
-                                <div className="flex items-center gap-2 pt-1 border-t border-current/15">
+                              {canUsePeriodCheckin && slotActivity.isActive && (
+                                <div className="flex items-center gap-2 pt-1.5 border-t border-current/15">
                                   <button
                                     type="button"
-                                    onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, 'check_in')}
-                                    className="flex-1 min-h-[36px] inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer transition"
+                                    onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, nextCheckType)}
+                                    className={`flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-bold text-white shadow-sm cursor-pointer transition ${
+                                      nextCheckType === 'check_out'
+                                        ? 'bg-indigo-600 hover:bg-indigo-700'
+                                        : 'bg-emerald-600 hover:bg-emerald-700'
+                                    }`}
                                   >
-                                    <LogIn className="w-3.5 h-3.5" />
-                                    {status.hasCheckIn ? 'เช็คอินซ้ำ/แก้ไข' : 'เช็คอินเข้าคาบ'}
+                                    {nextCheckType === 'check_out' ? (
+                                      <LogOut className="w-4 h-4" />
+                                    ) : (
+                                      <LogIn className="w-4 h-4" />
+                                    )}
+                                    <span>
+                                      {status.hasCheckIn && status.hasCheckOut
+                                        ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
+                                        : nextCheckType === 'check_out'
+                                          ? 'เช็คเอาท์คาบเรียน'
+                                          : 'เช็คอินเข้าคาบเรียน'}
+                                    </span>
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, 'check_out')}
-                                    className="flex-1 min-h-[36px] inline-flex items-center justify-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold cursor-pointer transition"
-                                  >
-                                    <LogOut className="w-3.5 h-3.5" />
-                                    {status.hasCheckOut ? 'เช็คเอาท์ซ้ำ' : 'เช็คเอาท์คาบ'}
-                                  </button>
+                                  {!status.hasCheckIn && (
+                                    <button
+                                      type="button"
+                                      onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, 'check_out')}
+                                      className="min-h-[40px] inline-flex items-center justify-center gap-1 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white/85 dark:bg-slate-900/75 px-3 text-xs font-bold text-indigo-700 dark:text-indigo-200 hover:bg-indigo-50 cursor-pointer transition"
+                                    >
+                                      <LogOut className="w-3.5 h-3.5" />
+                                      <span>เช็คเอาท์</span>
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -2928,6 +3065,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                             const hasCoTeacher = getSlotTeachers(slot).length > 1;
                             const slotColor = getTimetableSlotCardStyle(slot.colorTag);
                             const hasConflict = conflictingSlotIds.has(slot.id);
+                            const slotActivity = getTimetableSlotActivityStatus({
+                              slot,
+                              schoolPeriods,
+                              now: bangkokClock,
+                              schoolId,
+                              targetDateStr: day.date,
+                            });
+                            const slotStatus = getSlotCheckStatusForDate(slot, day.date);
+                            const nextCheckType: 'check_in' | 'check_out' =
+                              slotStatus.hasCheckIn && !slotStatus.hasCheckOut ? 'check_out' : 'check_in';
                             return (
                               <div
                                 key={slot.id}
@@ -2937,7 +3084,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   hasConflict
                                     ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50'
                                     : slotColor.className
-                                }`}
+                                } ${slotActivity.isActive ? 'ring-2 ring-emerald-500 shadow-md' : ''}`}
                               >
                                 <span className="flex items-center justify-between gap-1 text-[9px] font-semibold">
                                   <span className="inline-flex items-center gap-1 tabular-nums">
@@ -2948,6 +3095,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                     <span>{timeRange ? `${formatTimeMinutes(timeRange.start)}–${formatTimeMinutes(timeRange.end)}` : `คาบ ${slot.periodNumber}`}</span>
                                   </span>
                                   <span className="flex items-center gap-1">
+                                    {slotActivity.isActive && (
+                                      <span className="rounded bg-emerald-600 px-1 py-0.5 text-[8px] font-bold text-white">
+                                        กำลังเรียน
+                                      </span>
+                                    )}
                                     {hasCoTeacher && (
                                       <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
                                         สอนคู่
@@ -2962,27 +3114,32 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 <span className="block text-[9px] text-[var(--color-text-body)]">
                                   {slot.classRoom} · {formatSlotTeachersDisplay(slot)}
                                 </span>
-                                {onOpenPeriodCheckin && !dayHoliday && (
-                                  <div className="flex items-center gap-1 pt-1 border-t border-current/15">
+                                {canUsePeriodCheckin && slotActivity.isActive && (
+                                  <div className="pt-1 border-t border-current/15">
                                     <button
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        triggerSlotCheckin(slot, day.date, 'check_in');
+                                        triggerSlotCheckin(slot, day.date, nextCheckType);
                                       }}
-                                      className="flex-1 rounded bg-emerald-600/90 hover:bg-emerald-700 px-1.5 py-1 text-[9px] font-bold text-white cursor-pointer"
+                                      className={`w-full min-h-[30px] inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-white shadow-xs cursor-pointer ${
+                                        nextCheckType === 'check_out'
+                                          ? 'bg-indigo-600 hover:bg-indigo-700'
+                                          : 'bg-emerald-600 hover:bg-emerald-700'
+                                      }`}
                                     >
-                                      เช็คอิน
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        triggerSlotCheckin(slot, day.date, 'check_out');
-                                      }}
-                                      className="flex-1 rounded bg-indigo-600/90 hover:bg-indigo-700 px-1.5 py-1 text-[9px] font-bold text-white cursor-pointer"
-                                    >
-                                      เช็คเอาท์
+                                      {nextCheckType === 'check_out' ? (
+                                        <LogOut className="w-3 h-3 shrink-0" />
+                                      ) : (
+                                        <LogIn className="w-3 h-3 shrink-0" />
+                                      )}
+                                      <span>
+                                        {slotStatus.hasCheckIn && slotStatus.hasCheckOut
+                                          ? 'เข้า+ออกแล้ว'
+                                          : nextCheckType === 'check_out'
+                                            ? 'เช็คเอาท์คาบ'
+                                            : 'เช็คอินเข้าคาบ'}
+                                      </span>
                                     </button>
                                   </div>
                                 )}
@@ -3194,13 +3351,114 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </div>
           </div>
 
+          {/* Thai Government & School Holiday Banner on Classroom Timetable View for Teachers & Administrators */}
+          {!isPersonalViewer && (
+            <div
+              className={`print:hidden shrink-0 px-3 py-2 border-b flex flex-wrap items-center justify-between gap-2 text-xs ${
+                todayHoliday
+                  ? 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40'
+                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <span className="inline-flex items-center gap-1.5 font-bold text-[var(--color-text-title)] shrink-0">
+                  <CalendarDays className={`w-4 h-4 shrink-0 ${todayHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--color-primary-text)]'}`} />
+                  <span>วันหยุดราชการไทย ({currentBangkokYear + 543}):</span>
+                </span>
+                {todayHoliday ? (
+                  <span className="font-bold text-rose-700 dark:text-rose-200">
+                    วันนี้หยุด — {todayHoliday.nameTh} (งดการเรียนการสอน)
+                  </span>
+                ) : currentWeekHolidays.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[var(--color-text-muted)]">สัปดาห์นี้:</span>
+                    {currentWeekHolidays.map((h) => (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCalendarDate(h.date);
+                          setCalendarMonthCursor({
+                            year: Number(h.date.slice(0, 4)),
+                            month: Number(h.date.slice(5, 7)) - 1,
+                          });
+                          setCalendarLayoutMode('month');
+                          setViewMode('calendar');
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 text-[11px] font-bold text-rose-700 dark:text-rose-200 hover:bg-rose-100 cursor-pointer tabular-nums"
+                      >
+                        <span>{formatShortThaiDate(h.date)}</span>
+                        <span>· {h.nameTh}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : upcomingHolidaysList.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[var(--color-text-muted)]">ถัดไป:</span>
+                    {upcomingHolidaysList.slice(0, 2).map((h) => (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCalendarDate(h.date);
+                          setCalendarMonthCursor({
+                            year: Number(h.date.slice(0, 4)),
+                            month: Number(h.date.slice(5, 7)) - 1,
+                          });
+                          setCalendarLayoutMode('month');
+                          setViewMode('calendar');
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-title)] hover:border-rose-300 cursor-pointer tabular-nums"
+                      >
+                        <span className="text-rose-600 dark:text-rose-400 font-bold">{formatShortThaiDate(h.date)}</span>
+                        <span className="truncate max-w-[220px]">{h.nameTh}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[var(--color-text-muted)] tabular-nums">
+                    รวม {yearHolidaysCount} วันหยุดในระบบ
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="hidden xl:inline text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                  {holidaySyncStatus && !holidaySyncStatus.usedFallback
+                    ? `ซิงค์ API แล้ว (${yearHolidaysCount} วัน)`
+                    : `ปฏิทินไทย (${yearHolidaysCount} วัน)`}
+                </span>
+                <button
+                  type="button"
+                  disabled={isSyncingHolidays}
+                  onClick={() => void handleManualHolidaySync(currentBangkokYear)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] disabled:opacity-60 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุดราชการ'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCalendarLayoutMode('month');
+                    setViewMode('calendar');
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] cursor-pointer"
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>ปฏิทินวันหยุด</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
             <table className={`w-full text-left border-collapse ${
               isAllClassroomsView ? 'min-w-[1120px]' : 'min-w-[880px]'
             }`}>
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
-                  <th className="p-3 w-28 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
+                  <th className="p-3 w-32 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
                   {orderedSchoolPeriods.map((period) => (
                       <th key={period.periodNumber} className={`p-2.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
                         <div className={`font-bold ${period.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
@@ -3214,13 +3472,39 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-xs">
-                {DAYS.map((day) => (
-                  <tr key={day.key} className="hover:bg-[var(--color-card-subtle)] transition">
+                {currentWeekDaysWithDates.map((day) => {
+                  const isTodayRow = day.key === todayDayKey;
+                  const rowHoliday = day.holiday;
+                  return (
+                  <tr
+                    key={day.key}
+                    className={`transition ${
+                      rowHoliday
+                        ? 'bg-rose-50/45 dark:bg-rose-950/20'
+                        : isTodayRow
+                          ? 'bg-emerald-50/25 dark:bg-emerald-950/10'
+                          : 'hover:bg-[var(--color-card-subtle)]'
+                    }`}
+                  >
                     {/* Day Column */}
-                    <td className="p-3 text-center border-r border-[var(--color-border)]">
+                    <td className="p-2.5 text-center border-r border-[var(--color-border)] align-middle">
                       <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-bold border ${day.color}`}>
                         {day.th}
                       </span>
+                      <div className="mt-1 text-[10px] font-semibold text-[var(--color-text-muted)] tabular-nums">
+                        {formatShortThaiDate(day.date)}
+                        {isTodayRow && (
+                          <span className="ml-1 text-emerald-700 dark:text-emerald-300 font-bold">· วันนี้</span>
+                        )}
+                      </div>
+                      {rowHoliday && (
+                        <div
+                          className="mt-1 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/70 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:text-rose-200 leading-tight"
+                          title={`${rowHoliday.nameTh} (${getThaiHolidayCategoryLabel(rowHoliday, lang)})`}
+                        >
+                          หยุด: {rowHoliday.nameTh}
+                        </div>
+                      )}
                     </td>
 
                     {/* Periods */}
@@ -3255,12 +3539,27 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                             {periodSlots.map((slot) => {
                               const hasConflict = conflictingSlotIds.has(slot.id);
                               const slotColor = getTimetableSlotCardStyle(slot.colorTag);
+                              const slotActivity = getTimetableSlotActivityStatus({
+                                slot,
+                                schoolPeriods,
+                                now: bangkokClock,
+                                schoolId,
+                              });
+                              const slotCheckStatus = getSlotCheckStatusForDate(slot, todayBangkokDate);
+                              const nextCheckType: 'check_in' | 'check_out' =
+                                slotCheckStatus.hasCheckIn && !slotCheckStatus.hasCheckOut ? 'check_out' : 'check_in';
                               return (
                                 <div
                                   key={slot.id}
                                   onClick={() => openSlotDetails(slot)}
                                   style={slotColor.style}
-                                  className={`${isAllClassroomsView ? 'min-h-16 p-1.5' : 'min-h-22 p-2'} rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${slotColor.className} ${hasConflict ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20' : ''}`}
+                                  className={`${isAllClassroomsView ? 'min-h-16 p-1.5' : 'min-h-22 p-2'} rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${slotColor.className} ${
+                                    slotActivity.isActive
+                                      ? 'ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20'
+                                      : hasConflict
+                                        ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20'
+                                        : ''
+                                  }`}
                                 >
                                   <div className="min-w-0">
                                     <div className="flex items-start justify-between gap-1">
@@ -3276,6 +3575,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                         </span>
                                       )}
                                     </div>
+                                    {slotActivity.isActive && (
+                                      <div className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">
+                                        <span>กำลังเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}</span>
+                                      </div>
+                                    )}
                                     <h4 className={`${isAllClassroomsView ? 'text-[10px]' : 'text-[11px]'} font-bold mt-1 line-clamp-1 leading-tight`}>
                                       {slot.courseTitleTh}
                                     </h4>
@@ -3301,27 +3605,32 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                     </div>
                                   </div>
 
-                                  {onOpenPeriodCheckin && slot.dayOfWeek === todayDayKey && !todayHoliday && (
-                                    <div className="flex items-center gap-1 pt-1 mt-1 border-t border-current/15 print:hidden">
+                                  {canUsePeriodCheckin && slotActivity.isActive && (
+                                    <div className="pt-1.5 mt-1 border-t border-current/15 print:hidden">
                                       <button
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          triggerSlotCheckin(slot, todayBangkokDate, 'check_in');
+                                          triggerSlotCheckin(slot, todayBangkokDate, nextCheckType);
                                         }}
-                                        className="flex-1 rounded bg-emerald-600/90 hover:bg-emerald-700 px-1.5 py-0.5 text-[9px] font-bold text-white cursor-pointer"
+                                        className={`w-full min-h-[32px] inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-white shadow-sm cursor-pointer transition ${
+                                          nextCheckType === 'check_out'
+                                            ? 'bg-indigo-600 hover:bg-indigo-700'
+                                            : 'bg-emerald-600 hover:bg-emerald-700'
+                                        }`}
                                       >
-                                        {getSlotCheckStatusForDate(slot, todayBangkokDate).hasCheckIn ? 'เข้าแล้ว' : 'เช็คอิน'}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          triggerSlotCheckin(slot, todayBangkokDate, 'check_out');
-                                        }}
-                                        className="flex-1 rounded bg-indigo-600/90 hover:bg-indigo-700 px-1.5 py-0.5 text-[9px] font-bold text-white cursor-pointer"
-                                      >
-                                        {getSlotCheckStatusForDate(slot, todayBangkokDate).hasCheckOut ? 'ออกแล้ว' : 'เช็คเอาท์'}
+                                        {nextCheckType === 'check_out' ? (
+                                          <LogOut className="w-3 h-3 shrink-0" />
+                                        ) : (
+                                          <LogIn className="w-3 h-3 shrink-0" />
+                                        )}
+                                        <span>
+                                          {slotCheckStatus.hasCheckIn && slotCheckStatus.hasCheckOut
+                                            ? 'เช็คอิน/เอาท์แล้ว'
+                                            : nextCheckType === 'check_out'
+                                              ? 'เช็คเอาท์คาบ'
+                                              : 'เช็คอินเข้าคาบ'}
+                                        </span>
                                       </button>
                                     </div>
                                   )}
@@ -3355,7 +3664,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       );
                     })}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -3715,7 +4025,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </>
               ) : (
                 <>
-                  {onOpenPeriodCheckin && (
+                  {canUsePeriodCheckin &&
+                    getTimetableSlotActivityStatus({
+                      slot: selectedSlotForDetail,
+                      schoolPeriods,
+                      now: bangkokClock,
+                      schoolId,
+                    }).isActive && (
                     <div className="w-full flex flex-wrap items-center gap-2 pb-2 mb-1 border-b border-[var(--color-border)]">
                       <button
                         type="button"
@@ -3724,9 +4040,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                           closeSlotDetails();
                           triggerSlotCheckin(target, todayBangkokDate, 'check_in');
                         }}
-                        className="flex-1 min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                        className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
                       >
-                        <LogIn className="w-3.5 h-3.5" />
+                        <LogIn className="w-4 h-4" />
                         <span>
                           {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckIn
                             ? 'เช็คอินเข้าคาบ (บันทึกแล้ว)'
@@ -3740,9 +4056,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                           closeSlotDetails();
                           triggerSlotCheckin(target, todayBangkokDate, 'check_out');
                         }}
-                        className="flex-1 min-h-[38px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                        className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
                       >
-                        <LogOut className="w-3.5 h-3.5" />
+                        <LogOut className="w-4 h-4" />
                         <span>
                           {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckOut
                             ? 'เช็คเอาท์คาบ (บันทึกแล้ว)'
