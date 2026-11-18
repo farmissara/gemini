@@ -2735,10 +2735,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
             {profilePage === 0 && (
               <DigitalIdCardView
-                students={isRestrictedViewer ? linkedStudents : students}
+                students={currentRole === 'student' ? (ownStudent ? [ownStudent] : []) : isRestrictedViewer ? linkedStudents : students}
                 school={activeSchool}
                 lang={lang}
                 currentRole={currentRole}
+                currentUser={currentUser}
                 onUpdateStudent={onUpdateStudent}
               />
             )}
