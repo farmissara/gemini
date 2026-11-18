@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BellRing,
   BellOff,
@@ -35,6 +35,7 @@ import {
   DEFAULT_PARENT_NOTIFICATION_PREFERENCES,
   ParentNotificationPreferences,
   clearParentNotifications,
+  deleteParentNotification,
   disableParentPushNotifications,
   enableParentPushNotifications,
   listParentNotifications,
@@ -72,6 +73,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [activeTab, setActiveTab] = useState<'list' | 'settings'>('list');
   const [testSentNotice, setTestSentNotice] = useState(false);
+  const actionSequenceRef = useRef(0);
 
   const effectiveSchoolId = schoolId || currentUser.schoolId;
   const canSimulateNotifications = ['admin', 'super_admin', 'teacher'].includes(currentUser.role);
@@ -90,9 +92,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     if (!isOpen) return;
     setPermission(getPushPermissionState());
     if (currentUser.role === 'parent') {
+      const seqAtStart = actionSequenceRef.current;
       setParentError('');
       void Promise.all([listParentNotifications(), loadParentNotificationPreferences()])
         .then(([items, preferences]) => {
+          if (seqAtStart !== actionSequenceRef.current) return;
           // Merge parent-only announcements and holiday alerts without leaking push from other accounts
           const schoolAndHolidayAlerts = loadScopedNotifications().filter(
             (n) => n.sourceKind === 'announcement' || n.sourceKind === 'holiday'
@@ -105,6 +109,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           onUnreadCountChange?.(merged.filter((item) => !item.read).length);
         })
         .catch((error: unknown) => {
+          if (seqAtStart !== actionSequenceRef.current) return;
           const fallback = loadScopedNotifications();
           setNotifications(fallback);
           onUnreadCountChange?.(fallback.filter((i) => !i.read).length);
@@ -122,9 +127,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     if (!isOpen || currentUser.role !== 'parent') return;
     let active = true;
     const refresh = async () => {
+      const seqAtStart = actionSequenceRef.current;
       try {
         const items = await listParentNotifications();
-        if (!active) return;
+        if (!active || seqAtStart !== actionSequenceRef.current) return;
         const schoolAndHolidayAlerts = loadScopedNotifications().filter(
           (n) => n.sourceKind === 'announcement' || n.sourceKind === 'holiday'
         );
@@ -134,7 +140,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         setNotifications(merged);
         onUnreadCountChange?.(merged.filter((item) => !item.read).length);
       } catch (error) {
-        if (active) setParentError(error instanceof Error ? error.message : 'โหลดการแจ้งเตือนของนักเรียนไม่สำเร็จ');
+        if (active && seqAtStart === actionSequenceRef.current) {
+          setParentError(error instanceof Error ? error.message : 'โหลดการแจ้งเตือนของนักเรียนไม่สำเร็จ');
+        }
       }
     };
     const interval = window.setInterval(() => void refresh(), 15000);
@@ -144,7 +152,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     };
   }, [isOpen, currentUser.role, loadScopedNotifications, onUnreadCountChange]);
 
-  // Listen to new notifications while modal is open
+  // Listen to notification updates while modal is open
   useEffect(() => {
     if (currentUser.role === 'parent') return;
     const handler = () => {
@@ -244,7 +252,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   };
 
   const handleMarkAllRead = () => {
+    actionSequenceRef.current += 1;
     if (currentUser.role === 'parent') {
+      const seq = actionSequenceRef.current;
       setParentBusy(true);
       markScopedNotificationsReadForUser({
         currentUser,
@@ -253,9 +263,13 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         announcements,
         lang,
       });
+      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+      onUnreadCountChange?.(0);
       void markParentNotificationsRead()
         .then(async () => {
+          if (seq !== actionSequenceRef.current) return;
           const items = await listParentNotifications();
+          if (seq !== actionSequenceRef.current) return;
           const schoolAndHolidayAlerts = loadScopedNotifications().filter(
             (n) => n.sourceKind === 'announcement' || n.sourceKind === 'holiday'
           );
@@ -266,7 +280,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           onUnreadCountChange?.(0);
         })
         .catch((error: unknown) => {
-          setParentError(error instanceof Error ? error.message : 'อัปเดตสถานะการอ่านไม่สำเร็จ');
+          if (seq !== actionSequenceRef.current) return;
+          const message = error instanceof Error ? error.message : 'อัปเดตสถานะการอ่านไม่สำเร็จ';
+          if (!message.includes('Supabase is not configured')) {
+            setParentError(message);
+          }
         })
         .finally(() => setParentBusy(false));
       return;
@@ -284,8 +302,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   };
 
   const handleClearAll = () => {
+    actionSequenceRef.current += 1;
     if (currentUser.role === 'parent') {
+      const seq = actionSequenceRef.current;
       setParentBusy(true);
+      setParentError('');
       clearScopedNotificationsForUser({
         currentUser,
         schoolId: effectiveSchoolId,
@@ -293,13 +314,15 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         announcements,
         lang,
       });
+      setNotifications([]);
+      onUnreadCountChange?.(0);
       void clearParentNotifications()
-        .then(() => {
-          setNotifications([]);
-          onUnreadCountChange?.(0);
-        })
         .catch((error: unknown) => {
-          setParentError(error instanceof Error ? error.message : 'ล้างประวัติไม่สำเร็จ');
+          if (seq !== actionSequenceRef.current) return;
+          const message = error instanceof Error ? error.message : 'ล้างประวัติไม่สำเร็จ';
+          if (!message.includes('Supabase is not configured')) {
+            setParentError(message);
+          }
         })
         .finally(() => setParentBusy(false));
       return;
@@ -316,18 +339,34 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     onUnreadCountChange?.(0);
   };
 
-  const handleDismissOne = (notifId: string) => {
-    dismissScopedNotificationForUser(notifId, {
+  const handleDismissOne = (notif: EduVerseNotification) => {
+    actionSequenceRef.current += 1;
+    setNotifications((prev) => {
+      const next = prev.filter((item) => item.id !== notif.id);
+      onUnreadCountChange?.(next.filter((item) => !item.read).length);
+      return next;
+    });
+
+    if (
+      currentUser.role === 'parent' &&
+      notif.sourceKind !== 'announcement' &&
+      notif.sourceKind !== 'holiday'
+    ) {
+      void deleteParentNotification(notif.id).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : 'ลบการแจ้งเตือนไม่สำเร็จ';
+        if (!message.includes('Supabase is not configured')) {
+          setParentError(message);
+        }
+      });
+      return;
+    }
+
+    dismissScopedNotificationForUser(notif.id, {
       currentUser,
       schoolId: effectiveSchoolId,
       ownStudentIds,
       announcements,
       lang,
-    });
-    setNotifications((prev) => {
-      const next = prev.filter((item) => item.id !== notifId);
-      onUnreadCountChange?.(next.filter((item) => !item.read).length);
-      return next;
     });
   };
 
@@ -668,17 +707,15 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                               {timeText}
                             </span>
                           )}
-                          {currentUser.role !== 'parent' && (
-                            <button
-                              type="button"
-                              onClick={() => handleDismissOne(notif.id)}
-                              className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition"
-                              title={lang === 'th' ? 'ลบข้อความนี้' : 'Dismiss'}
-                              aria-label={lang === 'th' ? 'ลบข้อความแจ้งเตือนนี้' : 'Dismiss notification'}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDismissOne(notif)}
+                            className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition"
+                            title={lang === 'th' ? 'ลบข้อความนี้' : 'Dismiss'}
+                            aria-label={lang === 'th' ? 'ลบข้อความแจ้งเตือนนี้' : 'Dismiss notification'}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                       <h4 className="text-xs font-bold text-[var(--color-text-title)] mt-1 leading-snug">

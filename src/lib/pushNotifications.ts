@@ -42,7 +42,9 @@ const STORAGE_KEY_NOTIFICATIONS = 'eduverse_notifications_history';
 const STORAGE_KEY_SETTINGS = 'eduverse_notification_settings';
 const STORAGE_KEY_USER_READ_PREFIX = 'eduverse_notif_read_ids_';
 const STORAGE_KEY_USER_DISMISSED_PREFIX = 'eduverse_notif_dismissed_ids_';
+const STORAGE_KEY_USER_CLEARED_AT_PREFIX = 'eduverse_notif_cleared_at_';
 const MAX_STORED_NOTIFICATIONS = 80;
+const MAX_USER_STATE_IDS = 1000;
 export const DEFAULT_NOTIFICATION_RETENTION_DAYS: 3 | 7 | 14 | 30 = 7;
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -142,6 +144,14 @@ export function saveStoredNotifications(
   }
 }
 
+function resolveScopedSchoolId(
+  currentUser: AuthUser | null | undefined,
+  schoolId?: string
+): string | undefined {
+  const normalized = (schoolId || currentUser?.schoolId || '').trim();
+  return normalized || undefined;
+}
+
 function getUserStateKey(prefix: string, userId: string, schoolId?: string): string {
   return `${prefix}${userId || 'anon'}_${schoolId || 'all'}`;
 }
@@ -162,11 +172,66 @@ function saveUserIdSet(prefix: string, userId: string, schoolId: string | undefi
   try {
     localStorage.setItem(
       getUserStateKey(prefix, userId, schoolId),
-      JSON.stringify(Array.from(ids).slice(-300))
+      JSON.stringify(Array.from(ids).slice(-MAX_USER_STATE_IDS))
     );
   } catch {
     // ignore quota errors
   }
+}
+
+function getUserClearedAt(userId: string, schoolId?: string): number {
+  if (typeof window === 'undefined' || !userId) return 0;
+  try {
+    const raw = localStorage.getItem(getUserStateKey(STORAGE_KEY_USER_CLEARED_AT_PREFIX, userId, schoolId));
+    const parsed = raw ? Number(raw) : 0;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setUserClearedAt(userId: string, schoolId: string | undefined, timestampMs: number): void {
+  if (typeof window === 'undefined' || !userId) return;
+  try {
+    localStorage.setItem(
+      getUserStateKey(STORAGE_KEY_USER_CLEARED_AT_PREFIX, userId, schoolId),
+      String(timestampMs)
+    );
+  } catch {
+    // ignore quota errors
+  }
+}
+
+function emitNotificationStateChanged(detail?: Record<string, unknown>): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('eduverse:notification', { detail }));
+  }
+}
+
+function parseAnnouncementTimestampMs(publishedAt?: string): number | null {
+  if (!publishedAt) return null;
+  const trimmed = publishedAt.trim();
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s](\d{2}:\d{2}(?::\d{2})?))?/);
+  if (match) {
+    const isoCandidate = match[2] ? `${match[1]}T${match[2]}` : `${match[1]}T00:00:00`;
+    const parsed = new Date(isoCandidate).getTime();
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  const direct = new Date(trimmed).getTime();
+  return Number.isNaN(direct) ? null : direct;
+}
+
+function isDismissedItem(item: EduVerseNotification, dismissedSet: Set<string>, clearedAt: number): boolean {
+  if (dismissedSet.has(item.id)) return true;
+  const dedupeTag = item.metadata?.dedupeTag;
+  if (typeof dedupeTag === 'string' && dedupeTag && dismissedSet.has(dedupeTag)) return true;
+  if (clearedAt > 0 && item.sourceKind !== 'holiday' && item.sourceKind !== 'announcement') {
+    const itemMs = new Date(item.timestamp).getTime();
+    if (!Number.isNaN(itemMs) && itemMs <= clearedAt) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isAnnouncementAudienceMatch(
@@ -273,13 +338,15 @@ export function getScopedNotificationsForUser({
 }: ScopedNotificationsParams): EduVerseNotification[] {
   if (!currentUser) return [];
 
-  const readSet = getUserIdSet(STORAGE_KEY_USER_READ_PREFIX, currentUser.id, schoolId);
-  const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, schoolId);
+  const effectiveSchoolId = resolveScopedSchoolId(currentUser, schoolId);
+  const readSet = getUserIdSet(STORAGE_KEY_USER_READ_PREFIX, currentUser.id, effectiveSchoolId);
+  const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, effectiveSchoolId);
+  const clearedAt = getUserClearedAt(currentUser.id, effectiveSchoolId);
 
   const rawStored = getStoredNotifications();
   const visibleStored = rawStored
-    .filter((item) => !dismissedSet.has(item.id))
-    .filter((item) => isNotificationVisibleForUser(item, currentUser, schoolId, ownStudentIds))
+    .filter((item) => !isDismissedItem(item, dismissedSet, clearedAt))
+    .filter((item) => isNotificationVisibleForUser(item, currentUser, effectiveSchoolId, ownStudentIds))
     .map((item) => ({
       ...item,
       sourceKind: item.sourceKind || ('push' as const),
@@ -291,27 +358,25 @@ export function getScopedNotificationsForUser({
   const announcementCutoffMs = Date.now() - retentionDays * 86_400_000;
   const pinnedCutoffMs = Date.now() - Math.max(retentionDays, 14) * 86_400_000;
   const announcementItems: EduVerseNotification[] = announcements
-    .filter((ann) => (!ann.schoolId || !schoolId || ann.schoolId === schoolId))
+    .filter((ann) => (!ann.schoolId || !effectiveSchoolId || ann.schoolId === effectiveSchoolId))
     .filter((ann) => isAnnouncementAudienceMatch(ann.targetAudience, currentUser.role))
     .filter((ann) => {
-      if (!/^\d{4}-\d{2}-\d{2}/.test(ann.publishedAt || '')) return true;
-      const publishedMs = new Date(ann.publishedAt).getTime();
-      if (Number.isNaN(publishedMs)) return true;
+      const publishedMs = parseAnnouncementTimestampMs(ann.publishedAt);
+      if (publishedMs === null) return true;
       return publishedMs >= (ann.pinned ? pinnedCutoffMs : announcementCutoffMs);
     })
     .map((ann) => {
       const id = `ann-notif-${ann.id}`;
+      const parsedMs = parseAnnouncementTimestampMs(ann.publishedAt);
       return {
         id,
         title: `${ann.pinned ? '📌 ' : '📢 '}${ann.title}`,
         body: ann.content,
         category: 'announcement' as const,
-        timestamp: /^\d{4}-\d{2}-\d{2}/.test(ann.publishedAt)
-          ? new Date(ann.publishedAt).toISOString()
-          : new Date().toISOString(),
+        timestamp: parsedMs !== null ? new Date(parsedMs).toISOString() : new Date(0).toISOString(),
         read: readSet.has(id),
         priority: ann.category === 'urgent' ? ('urgent' as const) : ('normal' as const),
-        schoolId: ann.schoolId || schoolId,
+        schoolId: ann.schoolId || effectiveSchoolId,
         isBroadcast: true,
         sourceKind: 'announcement' as const,
         metadata: {
@@ -325,8 +390,8 @@ export function getScopedNotificationsForUser({
 
   // Merge official Thai public holidays & school holidays (today + next 3 days)
   const todayStr = getBangkokDateInputValue();
-  const todayHoliday = getHolidayForDate(todayStr, schoolId);
-  const upcomingHolidays = getUpcomingHolidays(todayStr, 3, schoolId).filter((h) => h.date !== todayStr);
+  const todayHoliday = getHolidayForDate(todayStr, effectiveSchoolId);
+  const upcomingHolidays = getUpcomingHolidays(todayStr, 3, effectiveSchoolId).filter((h) => h.date !== todayStr);
   const holidayList = [
     ...(todayHoliday ? [{ holiday: todayHoliday, isToday: true }] : []),
     ...upcomingHolidays.map((h) => ({ holiday: h, isToday: false })),
@@ -362,7 +427,7 @@ export function getScopedNotificationsForUser({
         timestamp: `${holiday.date}T06:00:00+07:00`,
         read: readSet.has(id),
         priority: isToday ? ('urgent' as const) : ('normal' as const),
-        schoolId,
+        schoolId: effectiveSchoolId,
         isBroadcast: true,
         sourceKind: 'holiday' as const,
         metadata: {
@@ -393,12 +458,13 @@ export function markScopedNotificationsReadForUser(params: ScopedNotificationsPa
   const { currentUser, schoolId } = params;
   if (!currentUser) return [];
 
-  const visible = getScopedNotificationsForUser(params);
+  const effectiveSchoolId = resolveScopedSchoolId(currentUser, schoolId);
+  const visible = getScopedNotificationsForUser({ ...params, schoolId: effectiveSchoolId });
   const visibleIds = new Set(visible.map((v) => v.id));
 
-  const readSet = getUserIdSet(STORAGE_KEY_USER_READ_PREFIX, currentUser.id, schoolId);
+  const readSet = getUserIdSet(STORAGE_KEY_USER_READ_PREFIX, currentUser.id, effectiveSchoolId);
   visibleIds.forEach((id) => readSet.add(id));
-  saveUserIdSet(STORAGE_KEY_USER_READ_PREFIX, currentUser.id, schoolId, readSet);
+  saveUserIdSet(STORAGE_KEY_USER_READ_PREFIX, currentUser.id, effectiveSchoolId, readSet);
 
   // Only mutate personal-targeted items in global storage (never mark shared items read for others)
   const stored = getStoredNotifications();
@@ -408,6 +474,7 @@ export function markScopedNotificationsReadForUser(params: ScopedNotificationsPa
     return isShared ? item : { ...item, read: true };
   });
   saveStoredNotifications(updatedStored);
+  emitNotificationStateChanged({ action: 'mark_read', userId: currentUser.id, schoolId: effectiveSchoolId });
 
   return visible.map((item) => ({ ...item, read: true }));
 }
@@ -416,10 +483,17 @@ export function clearScopedNotificationsForUser(params: ScopedNotificationsParam
   const { currentUser, schoolId } = params;
   if (!currentUser) return;
 
-  const visible = getScopedNotificationsForUser(params);
-  const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, schoolId);
-  visible.forEach((item) => dismissedSet.add(item.id));
-  saveUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, schoolId, dismissedSet);
+  const effectiveSchoolId = resolveScopedSchoolId(currentUser, schoolId);
+  const visible = getScopedNotificationsForUser({ ...params, schoolId: effectiveSchoolId });
+  const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, effectiveSchoolId);
+  visible.forEach((item) => {
+    dismissedSet.add(item.id);
+    if (typeof item.metadata?.dedupeTag === 'string' && item.metadata.dedupeTag) {
+      dismissedSet.add(item.metadata.dedupeTag);
+    }
+  });
+  saveUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, effectiveSchoolId, dismissedSet);
+  setUserClearedAt(currentUser.id, effectiveSchoolId, Date.now());
 
   // Also remove single-owner personal items from stored list
   const visibleIds = new Set(visible.map((v) => v.id));
@@ -434,6 +508,7 @@ export function clearScopedNotificationsForUser(params: ScopedNotificationsParam
     return !isPersonalOnly;
   });
   saveStoredNotifications(remaining);
+  emitNotificationStateChanged({ action: 'clear_all', userId: currentUser.id, schoolId: effectiveSchoolId });
 }
 
 export function dismissScopedNotificationForUser(
@@ -443,11 +518,17 @@ export function dismissScopedNotificationForUser(
   const { currentUser, schoolId } = params;
   if (!currentUser || !notifId) return;
 
-  const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, schoolId);
+  const effectiveSchoolId = resolveScopedSchoolId(currentUser, schoolId);
+  const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, effectiveSchoolId);
   dismissedSet.add(notifId);
-  saveUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, schoolId, dismissedSet);
 
   const stored = getStoredNotifications();
+  const targetItem = stored.find((item) => item.id === notifId);
+  if (typeof targetItem?.metadata?.dedupeTag === 'string' && targetItem.metadata.dedupeTag) {
+    dismissedSet.add(targetItem.metadata.dedupeTag);
+  }
+  saveUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, currentUser.id, effectiveSchoolId, dismissedSet);
+
   const remaining = stored.filter((item) => {
     if (item.id !== notifId) return true;
     const isPersonalOnly =
@@ -458,6 +539,7 @@ export function dismissScopedNotificationForUser(
     return !isPersonalOnly;
   });
   saveStoredNotifications(remaining);
+  emitNotificationStateChanged({ action: 'dismiss_one', notifId, userId: currentUser.id, schoolId: effectiveSchoolId });
 }
 
 // Check if browser supports Web Notifications
@@ -538,6 +620,7 @@ export async function sendEduVerseNotification(params: {
   const settings = getNotificationSettings();
   const timeNow = new Date().toISOString();
   const currentHistory = getStoredNotifications(settings.retentionDays);
+  const resolvedSchoolId = params.schoolId || params.metadata?.schoolId;
 
   if (params.tag && params.dedupeByTag) {
     const existing = currentHistory.find(
@@ -545,6 +628,27 @@ export async function sendEduVerseNotification(params: {
     );
     if (existing) {
       return existing;
+    }
+
+    if (params.targetUserIds?.length === 1 && !params.isBroadcast) {
+      const targetUserId = params.targetUserIds[0];
+      const dismissedSet = getUserIdSet(STORAGE_KEY_USER_DISMISSED_PREFIX, targetUserId, resolvedSchoolId);
+      if (dismissedSet.has(params.tag)) {
+        return {
+          id: params.tag,
+          title: params.title,
+          body: params.body,
+          category: params.category,
+          timestamp: timeNow,
+          read: true,
+          priority: params.priority || 'normal',
+          schoolId: resolvedSchoolId,
+          targetUserIds: params.targetUserIds,
+          targetRoles: params.targetRoles,
+          sourceKind: params.sourceKind || 'push',
+          metadata: { ...(params.metadata || {}), dedupeTag: params.tag },
+        };
+      }
     }
   }
 
@@ -562,7 +666,7 @@ export async function sendEduVerseNotification(params: {
     url: params.url || '/',
     read: false,
     priority: params.priority || 'normal',
-    schoolId: params.schoolId || params.metadata?.schoolId,
+    schoolId: resolvedSchoolId,
     targetUserIds: params.targetUserIds || params.metadata?.targetUserIds,
     targetStudentIds: params.targetStudentIds || params.metadata?.targetStudentIds,
     targetRoles: params.targetRoles || params.metadata?.targetRoles,
@@ -577,9 +681,7 @@ export async function sendEduVerseNotification(params: {
   saveStoredNotifications([notifItem, ...currentHistory], settings.retentionDays);
 
   // Dispatch custom window event so UI badges update instantly
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('eduverse:notification', { detail: notifItem }));
-  }
+  emitNotificationStateChanged(notifItem as unknown as Record<string, unknown>);
 
   // 2. Play sound if configured
   if (settings.sound) {

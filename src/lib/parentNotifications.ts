@@ -195,6 +195,15 @@ export async function clearParentNotifications(): Promise<void> {
   if (error) throw new Error(`Could not clear child notifications: ${error.message}`);
 }
 
+export async function deleteParentNotification(notificationId: string): Promise<void> {
+  const client = getClient();
+  const { error } = await client
+    .from('parent_notifications')
+    .delete()
+    .eq('id', notificationId);
+  if (error) throw new Error(`Could not delete child notification: ${error.message}`);
+}
+
 export async function sendPrivateParentNotification(params: {
   schoolId: string;
   studentId: string;

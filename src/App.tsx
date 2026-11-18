@@ -685,6 +685,7 @@ export const App: React.FC = () => {
       setUnreadNotifCount(0);
       return;
     }
+    const resolvedSchoolId = activeSchool.id || currentUser.schoolId;
     if (currentUser.role === 'parent') {
       let active = true;
       const updateUnread = async () => {
@@ -692,7 +693,7 @@ export const App: React.FC = () => {
           const count = await getParentUnreadNotificationCount();
           const extraUnread = getScopedNotificationsForUser({
             currentUser,
-            schoolId: activeSchool.id,
+            schoolId: resolvedSchoolId,
             ownStudentIds,
             announcements: viewAnnouncements,
             lang,
@@ -718,7 +719,7 @@ export const App: React.FC = () => {
       setUnreadNotifCount(
         getScopedUnreadCountForUser({
           currentUser,
-          schoolId: activeSchool.id,
+          schoolId: resolvedSchoolId,
           ownStudentIds,
           announcements: viewAnnouncements,
           lang,
@@ -2446,6 +2447,7 @@ export const App: React.FC = () => {
       const todayHoliday = getHolidayForDate(todayStr, activeSchool.id);
       if (todayHoliday) {
         const holidayKey = `${todayStr}-holiday-${todayHoliday.id}-${currentUser.id}`;
+        const unifiedHolidayTag = `hol-notif-${todayHoliday.date}-${todayHoliday.id}`;
         if (!firedAlerts.has(holidayKey)) {
           markFiredForDay(todayStr, firedAlerts, holidayKey);
           sendEduVerseNotification({
@@ -2453,9 +2455,9 @@ export const App: React.FC = () => {
             body: 'ไม่มีการเรียนการสอนในวันนี้ (ระบบหยุดการแจ้งเตือนเข้าคาบเรียนอัตโนมัติ)',
             category: 'announcement',
             priority: 'normal',
-            tag: holidayKey,
+            tag: unifiedHolidayTag,
             dedupeByTag: true,
-            schoolId: activeSchool.id,
+            schoolId: activeSchool.id || currentUser.schoolId,
             targetUserIds: [currentUser.id],
             targetRoles: [currentUser.role],
             sourceKind: 'holiday',
