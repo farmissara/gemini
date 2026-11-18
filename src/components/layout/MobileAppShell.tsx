@@ -10,8 +10,9 @@ import {
   GraduationCap, 
   Building2, 
   CheckCircle2, 
-  AlertCircle, 
-  Sparkles, 
+  AlertCircle,
+  Award,
+  Sparkles,
   ChevronRight, 
   BookOpen, 
   ArrowLeft, 
@@ -83,8 +84,11 @@ import {
   SchoolFeatureFlags,
   TimetableSlot,
   SchoolPeriodTime,
-  GradingSystem
+  GradingSystem,
+  PortfolioItem
 } from '../../types';
+import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
+import arcadeBannerImg from '../../assets/images/student_arcade_banner_1794996857506.jpg';
 import { getLocalDateString } from '../../lib/date';
 import { calculateGrade } from '../../lib/schoolSettings';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
@@ -136,6 +140,8 @@ import { CoopBossRaidView } from '../../views/CoopBossRaidView';
 import { SubjectLabSimulationView } from '../../views/SubjectLabSimulationView';
 import { HallOfFame3DView } from '../../views/HallOfFame3DView';
 import { DigitalIdCardView } from '../../views/DigitalIdCardView';
+import { PortfolioView } from '../../views/PortfolioView';
+import { StudentMobileHome } from '../student/StudentMobileHome';
 import { PagedList } from '../PagedList';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
@@ -162,6 +168,8 @@ export type MobileTab =
   | 'checkin'
   | 'leave'
   | 'gradebook'
+  | 'student_grades'
+  | 'portfolio'
   | 'timetable'
   | 'games'
   | 'profile'
@@ -272,6 +280,9 @@ interface MobileAppShellProps {
   initialPeriodCode?: string;
   initialPeriodCheckType?: 'check_in' | 'check_out';
   onBiometricLock?: () => void;
+  portfolioItems?: PortfolioItem[];
+  onAddPortfolioItem?: (item: PortfolioItem) => void;
+  onDeletePortfolioItem?: (itemId: string) => void;
 }
 
 export const MobileAppShell: React.FC<MobileAppShellProps> = ({
@@ -341,6 +352,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   initialPeriodCode,
   initialPeriodCheckType,
   onBiometricLock,
+  portfolioItems = [],
+  onAddPortfolioItem,
+  onDeletePortfolioItem,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
     getPasskeyForUser(currentUser?.id)
@@ -410,7 +424,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const [activeGameView, setActiveGameView] = useState<'hub' | 'arcade_studio' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
   const [isLandscapeScreen, setIsLandscapeScreen] = useState<boolean>(() => isLandscapeViewport());
   const [gameOrientationNotice, setGameOrientationNotice] = useState<string | null>(null);
-  const [gameHubPage, setGameHubPage] = useState(0);
 
   useEffect(() => {
     const syncOrientation = () => setIsLandscapeScreen(isLandscapeViewport());
@@ -695,12 +708,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   ).length;
 
   const currentScore = playerScores.find(p => p.userId === currentUser?.id) || {
-    exp: 1450,
-    gems: 45,
-    rankTitle: 'Silver Scholar',
-    battleWins: 12,
-    streak: 3
+    exp: 0,
+    gems: 0,
+    rankTitle: lang === 'th' ? 'ผู้เริ่มต้น' : 'Beginner',
+    battleWins: 0,
+    streak: 0
   };
+
+  const myOwnPortfolioCount = useMemo(() => {
+    if (!currentUser) return 0;
+    return portfolioItems.filter(
+      (item) =>
+        item.ownerId === currentUser.id ||
+        (ownStudent && item.ownerId === ownStudent.id)
+    ).length;
+  }, [portfolioItems, currentUser, ownStudent]);
+
+  const canViewGradesStudent =
+    currentRole === 'student' ? schoolPermissions?.student_view_grades !== false : true;
 
   // Executive Dashboard Metrics (Mobile Optimized)
   const execMetrics = useMemo(() => {
@@ -894,6 +919,54 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 onOpenExecutive={() => setActiveTab('executive')}
                 onJumpToDesktopTab={onJumpToDesktopTab}
               />
+            ) : currentRole === 'student' ? (
+              <StudentMobileHome
+                currentUser={currentUser}
+                activeSchool={activeSchool}
+                ownStudent={ownStudent}
+                lang={lang}
+                todayCheckin={todayCheckin}
+                scopedAttendance={scopedAttendance}
+                scopedCourses={scopedCourses}
+                grades={grades}
+                gradingSystem={gradingSystem}
+                todayMySlots={todayMySlots}
+                schoolPeriods={schoolPeriods}
+                bangkokClock={bangkokClock}
+                todayBangkokStr={todayBangkokStr}
+                todayHoliday={todayHoliday}
+                upcomingHoliday={upcomingHoliday}
+                pendingHomeworkCount={pendingHomeworkCount}
+                pendingLeavesCount={pendingLeavesCount}
+                myPortfolioCount={myOwnPortfolioCount}
+                scopedAnnouncements={scopedAnnouncements}
+                canSelfCheckin={canSelfCheckin}
+                canAccessHomework={canAccessHomework}
+                canPlayGames={canPlayGames}
+                canViewGrades={canViewGradesStudent}
+                getSlotTodayCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
+                onOpenCheckin={() => {
+                  setMobileAttendanceInitialSubTab('selfie_mobile');
+                  setActiveTab('checkin');
+                }}
+                onTriggerPeriodCheckin={openPeriodCheckinFromSlot}
+                onOpenTimetable={(mode) => {
+                  setMobileTimetableMode(mode);
+                  setActiveTab('timetable');
+                }}
+                onOpenHomework={() => setActiveTab('homework')}
+                onOpenGrades={() => setActiveTab('student_grades')}
+                onOpenPortfolio={() => setActiveTab('portfolio')}
+                onOpenLeave={() => setActiveTab('leave')}
+                onOpenAnnouncements={(ann) => {
+                  if (ann) setSelectedAnnouncement(ann);
+                  setActiveTab('announcements');
+                }}
+                onOpenGames={() => {
+                  setActiveTab('games');
+                  setActiveGameView('hub');
+                }}
+              />
             ) : (
               <>
                 {/* Crisp Personal Greeting + Class/Department Context */}
@@ -902,15 +975,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
                   </h1>
                   <p className="text-xs font-medium text-[var(--color-text-muted)] truncate tabular-nums">
-                    {currentRole === 'student' && ownStudent
-                      ? `${ownStudent.gradeLevel} ${ownStudent.room} · รหัส ${ownStudent.studentIdNumber}`
-                      : currentRole === 'parent' && linkedStudents.length > 0
-                        ? `${lang === 'th' ? 'ผู้ปกครองของ' : 'Parent of'} ${linkedStudents[0].firstNameTh} (${linkedStudents[0].gradeLevel} ${linkedStudents[0].room})`
-                        : currentRole === 'teacher'
-                          ? `${currentUser?.department || (lang === 'th' ? 'ครูผู้สอน' : 'Teacher')} · ${lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}`
-                          : lang === 'th'
-                            ? activeSchool.nameTh
-                            : activeSchool.nameEn}
+                    {currentRole === 'parent' && linkedStudents.length > 0
+                      ? `${lang === 'th' ? 'ผู้ปกครองของ' : 'Parent of'} ${linkedStudents[0].firstNameTh} (${linkedStudents[0].gradeLevel} ${linkedStudents[0].room})`
+                      : currentRole === 'teacher'
+                        ? `${currentUser?.department || (lang === 'th' ? 'ครูผู้สอน' : 'Teacher')} · ${lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}`
+                        : lang === 'th'
+                          ? activeSchool.nameTh
+                          : activeSchool.nameEn}
                   </p>
                 </div>
 
@@ -994,7 +1065,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </button>
 
                 {/* Timed Period Check-in/Out Missions + Active Period Red Highlight */}
-                {(currentRole === 'student' || currentRole === 'teacher') &&
+                {currentRole === 'teacher' &&
                   !todayHoliday &&
                   !isWeekendDate(todayBangkokStr) &&
                   todayMySlots.length > 0 && (() => {
@@ -1137,7 +1208,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
                 {/* Single-line Clean List Rows */}
                 <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                  {(currentRole === 'teacher' || currentRole === 'student') && (
+                  {currentRole === 'teacher' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1149,13 +1220,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
                         <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
                         <span>
-                          {currentRole === 'teacher'
-                            ? lang === 'th'
-                              ? 'ตารางสอนวันนี้'
-                              : 'Today Teaching Schedule'
-                            : lang === 'th'
-                              ? 'ตารางเรียนวันนี้'
-                              : 'Today Timetable'}
+                          {lang === 'th' ? 'ตารางสอนวันนี้' : 'Today Teaching Schedule'}
                         </span>
                       </span>
                       <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
@@ -1169,7 +1234,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </button>
                   )}
 
-                  {(currentRole === 'teacher' || currentRole === 'student' || currentRole === 'parent') && (
+                  {(currentRole === 'teacher' || currentRole === 'parent') && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1249,30 +1314,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     </span>
                   </button>
 
-                  {currentRole === 'student' && canAccessHomework && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('homework')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <BookOpen className="w-4 h-4 text-blue-600" />
-                        <span>{lang === 'th' ? 'การบ้านและงานค้าง' : 'Homework'}</span>
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {pendingHomeworkCount > 0 ? `${pendingHomeworkCount} งาน` : 'ครบแล้ว'}
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
-
-                  {(currentRole === 'teacher' || (currentRole === 'student' && canPlayGames)) && (
+                  {currentRole === 'teacher' && (
                     <button
                       type="button"
                       onClick={() => {
                         setActiveTab('games');
                         setActiveGameView('hub');
-                        setGameHubPage(0);
                       }}
                       className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                     >
@@ -2347,188 +2394,331 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         })()}
 
         {/* TAB D: GAMES HUB (เมนูรวมเกมส์) */}
-        {activeTab === 'games' && (
-          <div className="animate-in fade-in duration-200 space-y-4">
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold text-[var(--color-primary-text)] tabular-nums">
-                <span>ศูนย์รวมเกมส์ & สนามประลอง</span>
-                <span>EXP: {currentScore.exp}</span>
+        {/* TAB: STUDENT PORTFOLIO (100% Real Data) */}
+        {activeTab === 'portfolio' && (
+          <div className="space-y-3 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setActiveTab('home')}
+                className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
+              </button>
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'แฟ้มผลงานของฉัน' : 'My Portfolio'}
+              </span>
+            </div>
+            <PortfolioView
+              portfolioItems={portfolioItems}
+              students={linkedStudents}
+              teachers={teachers}
+              courses={scopedCourses}
+              grades={grades}
+              playerScores={playerScores}
+              school={activeSchool}
+              gradingSystem={gradingSystem}
+              currentUser={currentUser}
+              lang={lang}
+              onAddPortfolioItem={(item) => onAddPortfolioItem?.(item)}
+              onDeletePortfolioItem={onDeletePortfolioItem}
+              onOpenProfile={onOpenProfileModal}
+              academicYear={activeSchool.academicYear}
+            />
+          </div>
+        )}
+
+        {/* TAB: STUDENT GRADES SUMMARY (Real Data, Clean Visual Layout) */}
+        {activeTab === 'student_grades' && (() => {
+          const myGrades = ownStudent
+            ? grades.filter((g) => g.studentId === ownStudent.id)
+            : [];
+          const summary = ownStudent
+            ? calculateStudentAcademicSummary({
+                student: ownStudent,
+                courses: scopedCourses,
+                grades: myGrades,
+                gradingSystem,
+              })
+            : null;
+          const gpaxVal: number =
+            summary?.gpax != null && summary.gpax > 0
+              ? summary.gpax
+              : ownStudent?.gpa ?? 0;
+
+          return (
+            <div className="space-y-4 pb-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('home')}
+                  className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
+                </button>
+                <span className="text-xs font-semibold text-[var(--color-text-muted)] tabular-nums">
+                  {lang === 'th'
+                    ? `ปีการศึกษา ${activeSchool.academicYear || '2569'}`
+                    : `AY ${activeSchool.academicYear || '2569'}`}
+                </span>
               </div>
-              <h2 className="text-base font-bold text-[var(--color-text-title)]">เลือกเกมเพื่อเริ่มเล่น (โหมดอาร์เคดเต็มจอ)</h2>
-              <p className="text-[11px] text-[var(--color-text-muted)]">สนามประลองปัญญาและแล็บจำลอง โหมดเกมตอบสด หน้าจออาร์เคดกระชับ</p>
+
+              {/* Real GPAX Summary Card */}
+              <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white p-5 shadow-md flex items-center justify-between gap-4">
+                <div className="space-y-1 min-w-0">
+                  <p className="text-xs font-medium text-sky-200">
+                    {lang === 'th' ? 'ผลการเรียนเฉลี่ยสะสม (GPAX)' : 'Cumulative GPAX'}
+                  </p>
+                  <div className="text-3xl font-extrabold tracking-tight tabular-nums">
+                    {gpaxVal > 0 ? gpaxVal.toFixed(2) : '—'}
+                  </div>
+                  <p className="text-xs text-slate-300 truncate tabular-nums">
+                    {ownStudent
+                      ? `${ownStudent.gradeLevel} ${ownStudent.room} · ${myGrades.length} รายวิชาที่มีผลคะแนน`
+                      : `${myGrades.length} รายวิชา`}
+                  </p>
+                </div>
+                <div className="w-14 h-14 rounded-2xl bg-white/12 border border-white/20 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-7 h-7 text-amber-300" />
+                </div>
+              </div>
+
+              {/* Course-by-course grades */}
+              {myGrades.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-8 text-center space-y-2">
+                  <GraduationCap className="w-8 h-8 text-[var(--color-text-muted)] mx-auto opacity-50" />
+                  <p className="text-sm font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ยังไม่มีข้อมูลผลการเรียนในภาคเรียนนี้' : 'No grade records yet'}
+                  </p>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? 'เมื่อคุณครูบันทึกคะแนนรายวิชาแล้ว ระบบจะแสดงผลการเรียนที่นี่อัตโนมัติ'
+                      : 'Grades will appear here automatically once recorded by your teachers.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                  {myGrades.map((g) => {
+                    const course = scopedCourses.find((c) => c.id === g.courseId);
+                    const gradeDisplay = g.letterGrade || calculateGrade(g.totalScore, gradingSystem).letter;
+                    return (
+                      <div key={g.id} className="px-4 py-3.5 flex items-center justify-between gap-3">
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                            {course?.titleTh || course?.titleEn || g.courseId}
+                          </p>
+                          <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
+                            {course?.code || 'รายวิชา'} · คะแนนรวม {g.totalScore}/100
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-lg font-extrabold text-[var(--color-primary-text)] tabular-nums">
+                            {gradeDisplay}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {activeTab === 'games' && (
+          <div className="animate-in fade-in duration-200 space-y-5 pb-4">
+            {/* Illustrated Arcade & Labs Hero Card */}
+            <section className="relative rounded-3xl overflow-hidden bg-slate-950 shadow-md min-h-[168px] flex flex-col justify-end">
+              <img
+                src={arcadeBannerImg}
+                alt={lang === 'th' ? 'ศูนย์เกมความรู้และแล็บจำลอง' : 'Learning Games and Labs'}
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 w-full h-full object-cover object-center"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-gradient-to-t from-slate-950/92 via-slate-950/55 to-slate-950/20"
+              />
+              <div className="relative z-10 p-5 space-y-1">
+                <div className="flex items-center justify-between gap-2 text-xs font-semibold text-amber-300 tabular-nums">
+                  <span>{lang === 'th' ? 'ศูนย์เกมความรู้และแล็บจำลอง' : 'Games & Interactive Labs'}</span>
+                  <span>
+                    {currentScore.exp.toLocaleString()} EXP · {currentScore.gems} 💎
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
+                  {lang === 'th' ? 'เลือกโหมดการเรียนรู้ที่อยากเล่น' : 'Choose Your Learning Mode'}
+                </h2>
+                <p className="text-xs text-slate-200/90">
+                  {lang === 'th'
+                    ? 'เล่นสนุกพร้อมเก็บคะแนนฝึกทักษะทุกกลุ่มสาระในโหมดเต็มจอ'
+                    : 'Practice every subject through interactive arcade and lab challenges.'}
+                </p>
+              </div>
+            </section>
+
+            {/* Featured Primary Game Mode */}
+            <button
+              type="button"
+              onClick={() => setActiveGameView('arcade_studio')}
+              className="w-full p-4 rounded-2xl border border-blue-400/50 bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-[var(--color-primary)] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-[var(--color-primary-text)]">
+                    {lang === 'th' ? 'แนะนำ · ครบ 8 กลุ่มสาระ' : 'Featured · All Subjects'}
+                  </p>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)] truncate">
+                    EduArcade ศูนย์เกม 7 สไตล์
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)] line-clamp-1 mt-0.5">
+                    ยิงอุกกาบาตสมการ จับคู่ ต่อคำศัพท์ ChronoSort
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
+            </button>
+
+            {/* Clean 2-Column Visual Grid — No Clunky 1/3 Pagination */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveGameView('battle_royale_3d')}
+                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-amber-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
+                    3D Battle Royale
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
+                    วิ่งล่าหีบสมบัติ ตอบคำถาม 3 มิติ
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveGameView('1v1_arena')}
+                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-rose-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
+              >
+                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <Swords className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
+                    1v1 ดวลความเร็ว
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
+                    แข่งตอบโจทย์ไวกับบอทหรือเพื่อน
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveGameView('boss_raid')}
+                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-orange-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
+              >
+                <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                  <Flame className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
+                    Co-op Boss Raid
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
+                    รวมพลังตีบอสประจำวิชา
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveGameView('subject_labs')}
+                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-sky-400 text-left flex flex-col justify-between gap-3 transition active:scale-[0.98] cursor-pointer min-h-[124px]"
+              >
+                <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                  <FlaskConical className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)] leading-snug">
+                    แล็บจำลอง 6 สาระ
+                  </h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
+                    เคมี ฟิสิกส์ ไวยากรณ์ โค้ดดิ้ง
+                  </p>
+                </div>
+              </button>
             </div>
 
-            <div className="space-y-2.5">
-              {gameHubPage === 0 && (
-                <>
-                  {/* Game 0: EduArcade 7-Genre Studio */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('arcade_studio')}
-                    className="w-full p-4 rounded-2xl border-2 border-[var(--color-primary)] bg-[var(--color-primary-light)] text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center font-bold shrink-0">
-                        <Sparkles className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-bold text-sm text-[var(--color-text-title)]">EduArcade ศูนย์เกม 7 สไตล์</h3>
-                          <span className="text-[11px] font-bold text-[var(--color-primary-text)]">· 8 สาระ</span>
-                        </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">ยิงอุกกาบาตสมการ จับคู่ 8 สาระ ต่อคำศัพท์ ChronoSort &amp; ภารกิจรายวัน</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-                  </button>
-
-                  {/* Game 1: 3D EduArena Battle Royale */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('battle_royale_3d')}
-                    className="w-full p-4 rounded-2xl border border-amber-400/60 bg-[var(--color-card)] hover:border-amber-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold shrink-0">
-                        <Gamepad2 className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-[var(--color-text-title)]">3D EduArena Battle Royale</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-black">3D</span>
-                        </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">วิ่งล่าหีบสมบัติ ตอบคำถามชิงคะแนน มีปุ่มซูม 3D</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-
-                  {/* Game 2: 1v1 Battle Arena */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('1v1_arena')}
-                    className="w-full p-4 rounded-2xl border border-rose-400/60 bg-[var(--color-card)] hover:border-rose-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center font-bold shrink-0">
-                        <Swords className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-[var(--color-text-title)]">1v1 แบทเทิลดวลความเร็ว</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-700 text-white font-bold">1v1</span>
-                        </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">สู้กับบอทหรือเพื่อน ตอบโจทย์ไว ชิง HP หน้าเดียวกระชับ</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-                </>
-              )}
-
-              {gameHubPage === 1 && (
-                <>
-                  {/* Game 3: Co-op Boss Raid */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('boss_raid')}
-                    className="w-full p-4 rounded-2xl border border-red-400/60 bg-[var(--color-card)] hover:border-red-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 flex items-center justify-center font-bold shrink-0">
-                        <Flame className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-[var(--color-text-title)]">Co-op Boss Raid (ตีบอส)</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-700 text-white font-bold">CO-OP</span>
-                        </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">รวมพลังตีบอสประจำวิชา มีปุ่มซูมตัวบอส ไม่ต้องเลื่อนหน้า</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-
-                  {/* Game 4: Subject Labs & Chemistry */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('subject_labs')}
-                    className="w-full p-4 rounded-2xl border border-blue-400/60 bg-[var(--color-card)] hover:border-blue-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
-                        <FlaskConical className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-[var(--color-text-title)]">เวิร์กช็อปจำลอง 6 สาระ</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-700 text-white font-bold">SIM</span>
-                        </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">จำลองการทดลองเคมี จรวดฟิสิกส์ ครัวไวยากรณ์ โค้ดดิ้ง และแผนที่โลก</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-                </>
-              )}
-
-              {gameHubPage === 2 && (
-                <>
-                  <div className="pt-2 border-t border-[var(--color-border)]">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-                      รางวัลและผลงาน • ไม่ใช่โหมดเกม
-                    </h3>
+            {/* Separate Real Achievements Showcase Row */}
+            <div className="pt-1 space-y-2">
+              <h3 className="text-xs font-semibold text-[var(--color-text-muted)] px-1">
+                {lang === 'th' ? 'เกียรติยศและผลงานจริง' : 'Achievements & Awards'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActiveGameView('hall_of_fame')}
+                className="w-full p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-amber-400 text-left flex items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <Trophy className="w-5 h-5" />
                   </div>
-
-                  {/* Achievement gallery is kept separate from playable modes. */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('hall_of_fame')}
-                    className="w-full p-4 rounded-2xl border border-indigo-400/60 bg-[var(--color-card)] hover:border-indigo-500 text-left flex items-center justify-between gap-3 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold shrink-0">
-                        <Trophy className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-black text-sm text-[var(--color-text-title)]">ถ้วยรางวัลและเกียรติบัตร</h3>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-700 text-white font-bold">รางวัล</span>
-                        </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">ดูถ้วยรางวัล 3 มิติและเกียรติบัตรที่ได้รับ</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-                    </>
-                  )}
-                    </div>
-
-                <nav aria-label="เลือกหมวดเกม" className="flex items-center justify-between gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setGameHubPage((page) => Math.max(0, page - 1))}
-                    disabled={gameHubPage === 0}
-                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
-                  >
-                    ก่อนหน้า
-                  </button>
-                  <span aria-live="polite" className="text-[11px] font-semibold text-[var(--color-text-muted)]">{gameHubPage + 1} / 3</span>
-                  <button
-                    type="button"
-                    onClick={() => setGameHubPage((page) => Math.min(2, page + 1))}
-                    disabled={gameHubPage === 2}
-                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
-                  >
-                    ถัดไป
-                  </button>
-                </nav>
-              </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-sm text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ถ้วยรางวัลและเกียรติบัตรของฉัน' : 'My Trophies & Certificates'}
+                    </h4>
+                    <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
+                      {lang === 'th'
+                        ? 'แสดงผลจากแฟ้มผลงานจริงและคะแนนสะสม'
+                        : 'Generated from real portfolio items and honors'}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+              </button>
+            </div>
+          </div>
         )}
 
         {/* TAB E: PROFILE & DIGITAL VIRTUAL ID CARD */}
         {activeTab === 'profile' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="space-y-4 animate-in fade-in duration-200 pb-4">
+            {/* Clean Top Segmented Toggle */}
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+              <button
+                type="button"
+                onClick={() => setProfilePage(0)}
+                className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
+                  profilePage === 0
+                    ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                {lang === 'th' ? 'บัตรดิจิทัล' : 'Digital ID'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfilePage(1)}
+                className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
+                  profilePage === 1
+                    ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                {lang === 'th' ? 'ตั้งค่าบัญชี' : 'Account Settings'}
+              </button>
+            </div>
+
             {profilePage === 0 && (
               <DigitalIdCardView
                 students={isRestrictedViewer ? linkedStudents : students}
@@ -2541,9 +2731,27 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
             {/* Quick Profile Actions & Settings */}
             {profilePage === 1 && <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">การตั้งค่าและบัญชีผู้ใช้</h3>
-              
+              <h3 className="text-xs font-semibold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'บัญชีและการตั้งค่า' : 'Account & Preferences'}
+              </h3>
+
               <div className="space-y-2 text-xs">
+                {currentRole === 'student' && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('portfolio')}
+                    className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span className="font-bold">
+                        {lang === 'th' ? `แฟ้มผลงานของฉัน (${myOwnPortfolioCount})` : `My Portfolio (${myOwnPortfolioCount})`}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
+                  </button>
+                )}
+
                 {/* Full Profile & Portfolio Modal trigger */}
                 <button
                   type="button"
@@ -2599,8 +2807,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   </div>
                 </div>
 
-                {/* Onboarding Tutor & Thai Systems Guide */}
-                {onOpenOnboardingTutor && (
+                {/* Onboarding Tutor & Thai Systems Guide (Staff/Admin only — hidden for students to reduce clutter) */}
+                {onOpenOnboardingTutor && currentRole !== 'student' && (
                   <button
                     type="button"
                     onClick={onOpenOnboardingTutor}
@@ -2772,26 +2980,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 </button>
               </div>
             </div>}
-
-            <nav aria-label="โปรไฟล์" className="flex items-center justify-between gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setProfilePage(0)}
-                disabled={profilePage === 0}
-                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
-              >
-                บัตรดิจิทัล
-              </button>
-              <span aria-live="polite" className="text-[11px] font-semibold text-[var(--color-text-muted)]">{profilePage + 1} / 2</span>
-              <button
-                type="button"
-                onClick={() => setProfilePage(1)}
-                disabled={profilePage === 1}
-                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-45 cursor-pointer"
-              >
-                ตั้งค่า
-              </button>
-            </nav>
           </div>
         )}
 
@@ -2957,8 +3145,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             type="button"
             onClick={() => setActiveTab('home')}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'home'
-                ? 'text-[var(--color-primary-text)] font-bold'
+              activeTab === 'home' || activeTab === 'portfolio' || activeTab === 'student_grades' || (canSelfCheckin && activeTab === 'timetable') || (canPlayGames && activeTab === 'homework')
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -2987,7 +3175,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             }}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'checkin' || activeTab === 'leave' || (!canSelfCheckin && activeTab === 'timetable')
-                ? 'text-[var(--color-primary-text)] font-bold'
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -3070,7 +3258,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               }}
               className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
                 (canPlayGames ? activeTab === 'games' : activeTab === 'homework')
-                  ? 'text-[var(--color-primary-text)] font-bold'
+                  ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
               }`}
             >
@@ -3087,7 +3275,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onClick={() => setActiveTab('profile')}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'profile'
-                ? 'text-[var(--color-primary-text)] font-bold'
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -3225,10 +3413,18 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
 
           {activeGameView === 'hall_of_fame' && (
-            <div className="h-full w-full overflow-y-auto flex flex-col bg-slate-950 p-1 sm:p-3">
+            <div className="h-full w-full overflow-y-auto flex flex-col bg-slate-950 p-2 sm:p-4">
               <HallOfFame3DView
                 lang={lang}
                 school={activeSchool}
+                students={linkedStudents}
+                portfolioItems={portfolioItems}
+                playerScores={playerScores}
+                currentUser={currentUser}
+                onOpenPortfolio={() => {
+                  setActiveGameView('hub');
+                  setActiveTab('portfolio');
+                }}
                 onExit={() => setActiveGameView('hub')}
               />
             </div>

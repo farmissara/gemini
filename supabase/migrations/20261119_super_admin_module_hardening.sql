@@ -361,7 +361,6 @@ CREATE POLICY "Students can record their own selfie attendance" ON public.attend
     FOR INSERT WITH CHECK (
         public.current_user_role() = 'student'
         AND school_id = public.current_user_school_id()
-        AND public.has_role_permission(school_id, 'recordAttendance')
         AND public.can_access_student(student_id)
         AND record_type IN ('check_in', 'check_out')
         AND checkin_method = 'selfie_geofence'
@@ -441,7 +440,6 @@ CREATE POLICY "Students can upload own attendance selfies" ON storage.objects
         AND (storage.foldername(name))[1] = public.current_user_school_id()
         AND (storage.foldername(name))[2] = auth.uid()::TEXT
         AND public.current_user_role() = 'student'
-        AND public.has_role_permission((storage.foldername(name))[1], 'recordAttendance')
         AND EXISTS (
             SELECT 1 FROM public.user_profiles profile
             WHERE profile.id = auth.uid()
@@ -456,8 +454,9 @@ DROP POLICY IF EXISTS "Students can remove unattached attendance selfies" ON sto
 CREATE POLICY "Students can remove unattached attendance selfies" ON storage.objects
     FOR DELETE TO authenticated USING (
         bucket_id = 'attendance-selfies'
+        AND (storage.foldername(name))[1] = public.current_user_school_id()
         AND (storage.foldername(name))[2] = auth.uid()::TEXT
-        AND public.has_role_permission((storage.foldername(name))[1], 'recordAttendance')
+        AND public.current_user_role() = 'student'
         AND NOT EXISTS (
             SELECT 1 FROM public.attendance record
             WHERE record.photo_url = name
@@ -494,7 +493,6 @@ BEGIN
             FOR INSERT WITH CHECK (
                 public.current_user_role() = ''student''
                 AND public.has_school_role(school_id, ARRAY[''student''])
-                AND public.has_role_permission(school_id, ''recordAttendance'')
                 AND public.can_access_student(student_id)
             )';
         EXECUTE 'DROP POLICY IF EXISTS "Students update own QR period attendance" ON public.period_attendance';
@@ -502,13 +500,11 @@ BEGIN
             FOR UPDATE USING (
                 public.current_user_role() = ''student''
                 AND public.has_school_role(school_id, ARRAY[''student''])
-                AND public.has_role_permission(school_id, ''recordAttendance'')
                 AND public.can_access_student(student_id)
             )
             WITH CHECK (
                 public.current_user_role() = ''student''
                 AND public.has_school_role(school_id, ARRAY[''student''])
-                AND public.has_role_permission(school_id, ''recordAttendance'')
                 AND public.can_access_student(student_id)
             )';
     END IF;

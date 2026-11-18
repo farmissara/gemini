@@ -1,546 +1,789 @@
-import React, { useState } from 'react';
-import { 
-  FolderGit2, 
-  Award, 
-  GraduationCap, 
-  Briefcase, 
-  Plus, 
-  Printer, 
-  Download, 
-  Sparkles, 
-  CheckCircle2, 
-  ExternalLink, 
-  Tag, 
-  Calendar,
-  User,
-  ShieldCheck,
+import React, { useMemo, useState } from 'react';
+import {
+  Award,
   BookOpen,
-  FileText
+  Briefcase,
+  CheckCircle2,
+  FolderGit2,
+  GraduationCap,
+  Image as ImageIcon,
+  Plus,
+  Printer,
+  Trash2,
+  User,
+  X,
 } from 'lucide-react';
-import { PortfolioItem, Student, AuthUser, AppLanguage } from '../types';
-import { PagedList } from '../components/PagedList';
+import portfolioBannerImg from '../assets/images/student_portfolio_banner_1794996857956.jpg';
+import {
+  AppLanguage,
+  AuthUser,
+  Course,
+  GradeRecord,
+  GradingSystem,
+  PlayerScore,
+  PortfolioItem,
+  School,
+  Student,
+  Teacher,
+} from '../types';
+import { resolveOwnStudent, resolveOwnTeacher } from '../lib/attendanceScope';
+import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
+import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 
 interface PortfolioViewProps {
   portfolioItems: PortfolioItem[];
   students: Student[];
+  teachers?: Teacher[];
+  courses?: Course[];
+  grades?: GradeRecord[];
+  playerScores?: PlayerScore[];
+  school?: School;
+  gradingSystem?: GradingSystem;
   currentUser: AuthUser | null;
   lang: AppLanguage;
   onAddPortfolioItem: (item: PortfolioItem) => void;
+  onDeletePortfolioItem?: (itemId: string) => void;
   onOpenProfile?: () => void;
   academicYear?: string;
 }
 
+const CATEGORY_LABELS_TH: Record<PortfolioItem['category'], string> = {
+  competition: 'การแข่งขันและรางวัล',
+  academic: 'วิชาการและโครงงาน',
+  activity: 'กิจกรรมและจิตอาสา',
+  pa_research: 'วิจัยในชั้นเรียน (ว.PA)',
+  teaching_media: 'สื่อนวัตกรรมการสอน',
+  certificate: 'เกียรติบัตรและการอบรม',
+};
+
+const CATEGORY_LABELS_EN: Record<PortfolioItem['category'], string> = {
+  competition: 'Competition & Awards',
+  academic: 'Academic & Projects',
+  activity: 'Activities & Service',
+  pa_research: 'Classroom Research (PA)',
+  teaching_media: 'Teaching Innovation',
+  certificate: 'Certificates & Training',
+};
+
 export const PortfolioView: React.FC<PortfolioViewProps> = ({
   portfolioItems,
   students,
+  teachers = [],
+  courses = [],
+  grades = [],
+  playerScores = [],
+  school,
+  gradingSystem = 'thai',
   currentUser,
   lang,
   onAddPortfolioItem,
+  onDeletePortfolioItem,
   onOpenProfile,
-  academicYear = '2569 (2026)',
+  academicYear = '2569',
 }) => {
-  const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'teacher'>('student');
-  const [portfolioStep, setPortfolioStep] = useState<0 | 1>(0);
+  const isStudentUser = currentUser?.role === 'student';
+  const isTeacherOrStaff =
+    currentUser?.role === 'teacher' ||
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'super_admin';
+
+  const [activeRoleTab, setActiveRoleTab] = useState<'student' | 'teacher'>(
+    currentUser?.role === 'teacher' ? 'teacher' : 'student'
+  );
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addFormStep, setAddFormStep] = useState<0 | 1 | 2>(0);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
-  // New Item Form State
+  // Clean, empty New Item Form State (zero mock defaults)
   const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState<PortfolioItem['category']>('competition');
-  const [newYear, setNewYear] = useState(academicYear);
+  const [newCategory, setNewCategory] = useState<PortfolioItem['category']>(
+    currentUser?.role === 'teacher' ? 'pa_research' : 'competition'
+  );
+  const [newYear, setNewYear] = useState(school?.academicYear || academicYear);
   const [newDescription, setNewDescription] = useState('');
-  const [newSkills, setNewSkills] = useState('Python, Computer Vision, AI');
-  const [newImageUrl, setNewImageUrl] = useState('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600');
+  const [newSkills, setNewSkills] = useState('');
+  const [newImageUrl, setNewImageUrl] = useState('');
 
-  // Filter items
-  const filteredItems = portfolioItems.filter(item => {
-    const matchesRole = item.ownerRole === activeRoleTab;
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    return matchesRole && matchesCategory;
-  });
+  const effectiveRoleTab: 'student' | 'teacher' = isStudentUser ? 'student' : activeRoleTab;
+
+  // Resolve real student profile
+  const ownStudent = useMemo(
+    () => resolveOwnStudent(currentUser, students),
+    [currentUser, students]
+  );
+
+  const activeStudent = useMemo(() => {
+    if (isStudentUser) return ownStudent;
+    if (selectedStudentId) {
+      return students.find((s) => s.id === selectedStudentId) || students[0];
+    }
+    return ownStudent || students[0];
+  }, [isStudentUser, ownStudent, selectedStudentId, students]);
+
+  // Resolve real teacher profile
+  const ownTeacher = useMemo(
+    () => resolveOwnTeacher(currentUser, teachers),
+    [currentUser, teachers]
+  );
+
+  // Real student GPAX
+  const studentGpax = useMemo(() => {
+    if (!activeStudent) return null;
+    const summary = calculateStudentAcademicSummary({
+      student: activeStudent,
+      courses,
+      grades: grades.filter((g) => g.studentId === activeStudent.id),
+      gradingSystem,
+    });
+    if (summary.gpax != null && summary.gpax > 0) return summary.gpax;
+    return activeStudent.gpa > 0 ? activeStudent.gpa : null;
+  }, [activeStudent, courses, grades, gradingSystem]);
+
+  // Real player score
+  const realScore = useMemo(() => {
+    if (!currentUser) return null;
+    return playerScores.find((p) => p.userId === currentUser.id) || null;
+  }, [playerScores, currentUser]);
+
+  // Filter real portfolio items (scoped properly)
+  const filteredItems = useMemo(() => {
+    return portfolioItems.filter((item) => {
+      if (item.ownerRole !== effectiveRoleTab) return false;
+      if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+      if (isStudentUser && currentUser) {
+        const matchesUserId = item.ownerId === currentUser.id;
+        const matchesStudentId = ownStudent && item.ownerId === ownStudent.id;
+        if (!matchesUserId && !matchesStudentId) return false;
+      } else if (effectiveRoleTab === 'student' && selectedStudentId && activeStudent) {
+        if (item.ownerId !== activeStudent.id && item.ownerName !== `${activeStudent.firstNameTh} ${activeStudent.lastNameTh}`) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [portfolioItems, effectiveRoleTab, selectedCategory, isStudentUser, currentUser, ownStudent, selectedStudentId, activeStudent]);
+
+  const studentDisplayName = isStudentUser
+    ? currentUser?.fullNameTh ||
+      (ownStudent ? `${ownStudent.firstNameTh} ${ownStudent.lastNameTh}`.trim() : currentUser?.email || '')
+    : activeStudent
+      ? `${activeStudent.firstNameTh} ${activeStudent.lastNameTh}`.trim()
+      : '';
+
+  const teacherDisplayName =
+    ownTeacher?.fullNameTh ||
+    (currentUser?.role !== 'student' ? currentUser?.fullNameTh || currentUser?.fullNameEn : '') ||
+    '';
+
+  const schoolDisplayName =
+    (lang === 'th' ? school?.nameTh : school?.nameEn) || school?.nameTh || '';
+
+  const handleOpenAddModal = () => {
+    setNewCategory(effectiveRoleTab === 'teacher' ? 'pa_research' : 'competition');
+    setNewYear(school?.academicYear || academicYear);
+    setNewTitle('');
+    setNewDescription('');
+    setNewSkills('');
+    setNewImageUrl('');
+    setShowAddModal(true);
+  };
 
   const handleSaveItem = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || !currentUser) return;
+
+    const ownerId =
+      effectiveRoleTab === 'student' && activeStudent && !isStudentUser
+        ? activeStudent.id
+        : currentUser.id;
+    const ownerName =
+      effectiveRoleTab === 'student'
+        ? studentDisplayName || currentUser.fullNameTh || currentUser.email
+        : teacherDisplayName || currentUser.fullNameTh || currentUser.email;
 
     const newItem: PortfolioItem = {
       id: `port-${Date.now()}`,
-      schoolId: currentUser?.schoolId,
-      ownerId: currentUser?.id || 'usr-1',
-      ownerRole: activeRoleTab,
-      ownerName: currentUser?.fullNameTh || currentUser?.fullNameEn || (activeRoleTab === 'student' ? 'นายธนาธร สมชาย' : 'อ.ดร.ประเสริฐ ถาวร'),
-      title: newTitle,
+      schoolId: school?.id || currentUser.schoolId,
+      ownerId,
+      ownerRole: effectiveRoleTab,
+      ownerName,
+      title: newTitle.trim(),
       category: newCategory,
-      year: newYear,
-      description: newDescription,
-      imageUrl: newImageUrl,
-      skills: newSkills.split(',').map(s => s.trim()).filter(Boolean),
-      certifiedBySchool: true,
-      scoreBonus: 100
+      year: newYear.trim() || school?.academicYear || academicYear,
+      description: newDescription.trim(),
+      imageUrl: newImageUrl.trim() || undefined,
+      skills: newSkills
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      certifiedBySchool: isTeacherOrStaff,
+      scoreBonus: 100,
     };
 
     onAddPortfolioItem(newItem);
     setShowAddModal(false);
-    setAddFormStep(0);
-    setNewTitle('');
-    setNewDescription('');
   };
 
-  const handlePrintPortfolio = () => {
-    window.print();
-  };
+  const categoryOptions =
+    effectiveRoleTab === 'student'
+      ? [
+          { id: 'all', label: lang === 'th' ? 'ทั้งหมด' : 'All' },
+          { id: 'competition', label: lang === 'th' ? 'การแข่งขันและรางวัล' : 'Awards' },
+          { id: 'academic', label: lang === 'th' ? 'วิชาการและโครงงาน' : 'Academic' },
+          { id: 'activity', label: lang === 'th' ? 'กิจกรรมและจิตอาสา' : 'Activities' },
+        ]
+      : [
+          { id: 'all', label: lang === 'th' ? 'ทั้งหมด' : 'All' },
+          { id: 'pa_research', label: lang === 'th' ? 'วิจัยในชั้นเรียน' : 'PA Research' },
+          { id: 'teaching_media', label: lang === 'th' ? 'สื่อนวัตกรรม' : 'Teaching Media' },
+          { id: 'certificate', label: lang === 'th' ? 'การอบรมและเกียรติบัตร' : 'Certificates' },
+        ];
+
+  const getCategoryLabel = (cat: PortfolioItem['category']) =>
+    lang === 'th' ? CATEGORY_LABELS_TH[cat] || cat : CATEGORY_LABELS_EN[cat] || cat;
+
+  const activeAvatar =
+    effectiveRoleTab === 'student'
+      ? (isStudentUser ? currentUser?.avatarUrl : activeStudent?.avatarUrl) || activeStudent?.avatarUrl || ''
+      : currentUser?.avatarUrl || '';
+
+  const activeNameForAvatar =
+    effectiveRoleTab === 'student' ? studentDisplayName : teacherDisplayName;
 
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('portfolio')}`}>
-      {/* Top Banner */}
-      <div className="shrink-0 app-page-header p-3.5 sm:p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-              <FolderGit2 className="w-5 h-5" />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Digital Portfolio Platform • มาตรฐาน TCAS รอบที่ 1 &amp; ว.PA ครู</span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-black text-[var(--color-text-title)]">
-                {lang === 'th' ? 'แฟ้มสะสมผลงานดิจิทัล (Digital Portfolio)' : 'Digital Portfolio Showcase'}
-              </h1>
-              <p className="text-[var(--color-text-body)] text-xs max-w-2xl leading-relaxed">
-                {lang === 'th'
-                  ? 'รวบรวมชิ้นงาน เกียรติบัตร โครงงาน และเหรียญรางวัลจากเกม EduVerse เพื่อใช้ยื่นศึกษาต่อระดับมหาวิทยาลัย (TCAS 1 Portfolio) และแฟ้ม ว.PA พัฒนาวิทยฐานะของครูอาจารย์'
-                  : 'Centralized repository of academic projects, certificates, and gamification credentials for TCAS University applications and teacher performance evaluation.'}
-              </p>
-            </div>
-          </div>
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden gap-4 ${getModuleTone('portfolio')}`}>
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pr-0.5 pb-6">
+        {/* 1. EDITORIAL HERO HEADER WITH REAL PROFILE DATA */}
+        <section className="relative rounded-3xl overflow-hidden bg-slate-900 shadow-sm">
+          <img
+            src={portfolioBannerImg}
+            alt={lang === 'th' ? 'แฟ้มสะสมผลงานดิจิทัล' : 'Digital Portfolio'}
+            referrerPolicy="no-referrer"
+            className="absolute inset-0 w-full h-full object-cover object-center"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/78 to-slate-950/45"
+          />
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {onOpenProfile && (
+          <div className="relative z-10 p-5 sm:p-6 flex flex-col md:flex-row md:items-end justify-between gap-5">
+            <div className="flex items-start gap-4 min-w-0">
+              {activeAvatar ? (
+                <img
+                  src={activeAvatar}
+                  alt={activeNameForAvatar || 'Profile'}
+                  referrerPolicy="no-referrer"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-2 ring-white/40 shadow-md shrink-0 bg-slate-800"
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/15 backdrop-blur-md ring-1 ring-white/25 text-white font-extrabold text-xl flex items-center justify-center shrink-0">
+                  {(activeNameForAvatar || 'P').slice(0, 2)}
+                </div>
+              )}
+
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-xs font-medium text-sky-200/95">
+                  {effectiveRoleTab === 'student'
+                    ? lang === 'th'
+                      ? 'แฟ้มสะสมผลงานนักเรียน'
+                      : 'Student Digital Portfolio'
+                    : lang === 'th'
+                      ? 'แฟ้มผลงานและวิทยฐานะครู (ว.PA)'
+                      : 'Teacher Portfolio (PA)'}
+                </p>
+
+                <h1 className="text-lg sm:text-2xl font-extrabold text-white tracking-tight truncate">
+                  {effectiveRoleTab === 'student'
+                    ? studentDisplayName || (lang === 'th' ? 'ยังไม่มีข้อมูลนักเรียน' : 'No student selected')
+                    : teacherDisplayName || (lang === 'th' ? 'ข้อมูลบุคลากร' : 'Staff Portfolio')}
+                </h1>
+
+                {/* Clean unboxed real metadata with dot separators */}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-200/90 tabular-nums">
+                  {schoolDisplayName && <span>{schoolDisplayName}</span>}
+
+                  {effectiveRoleTab === 'student' && activeStudent && (
+                    <>
+                      {schoolDisplayName && <span aria-hidden="true">·</span>}
+                      <span>
+                        {activeStudent.gradeLevel} {activeStudent.room}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span>รหัส {activeStudent.studentIdNumber}</span>
+                      {studentGpax !== null && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="text-emerald-300 font-semibold">
+                            GPAX {studentGpax.toFixed(2)}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {effectiveRoleTab === 'teacher' && (ownTeacher || currentUser) && (
+                    <>
+                      {schoolDisplayName && <span aria-hidden="true">·</span>}
+                      <span>
+                        {ownTeacher?.academicStanding ||
+                          currentUser?.academicStanding ||
+                          (lang === 'th' ? 'ครูผู้สอน' : 'Teacher')}
+                      </span>
+                      {(ownTeacher?.department || currentUser?.department) && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span>{ownTeacher?.department || currentUser?.department}</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Real Target Goal or PA Focus if user entered one */}
+                {effectiveRoleTab === 'student' &&
+                  (currentUser?.targetUniversity || currentUser?.targetFaculty) && (
+                    <p className="text-xs text-amber-200/95 pt-0.5 truncate">
+                      {lang === 'th' ? 'เป้าหมายศึกษาต่อ: ' : 'Target: '}
+                      {[currentUser.targetFaculty, currentUser.targetUniversity]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  )}
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300 pt-1 tabular-nums">
+                  <span>
+                    {lang === 'th'
+                      ? `ผลงานที่บันทึก ${filteredItems.length} รายการ`
+                      : `${filteredItems.length} recorded items`}
+                  </span>
+                  {effectiveRoleTab === 'student' && realScore && realScore.exp > 0 && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span className="text-amber-300 font-semibold">
+                        {realScore.exp.toLocaleString()} EXP ({realScore.rankTitle})
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Clean Primary & Utility Actions */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={onOpenProfile}
-                className="btn-tool-tone"
+                onClick={handleOpenAddModal}
+                className="min-h-[42px] px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition cursor-pointer whitespace-nowrap"
               >
-                <User className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'โปรไฟล์ของฉัน' : 'My Profile'}</span>
+                <Plus className="w-4 h-4" />
+                <span>{lang === 'th' ? 'เพิ่มผลงานใหม่' : 'Add Work'}</span>
               </button>
+
+              {onOpenProfile && (
+                <button
+                  type="button"
+                  onClick={onOpenProfile}
+                  className="min-h-[42px] px-3.5 rounded-xl bg-white/12 hover:bg-white/20 text-white border border-white/20 font-semibold text-xs inline-flex items-center gap-1.5 backdrop-blur-sm transition cursor-pointer whitespace-nowrap"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'แก้ไขโปรไฟล์' : 'Edit Profile'}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="min-h-[42px] px-3.5 rounded-xl bg-white/12 hover:bg-white/20 text-white border border-white/20 font-semibold text-xs inline-flex items-center gap-1.5 backdrop-blur-sm transition cursor-pointer whitespace-nowrap"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'พิมพ์ PDF' : 'Print'}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* 2. ROLE & CATEGORY FILTER BAR */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Only show Student/Teacher role switch to staff/teachers */}
+            {!isStudentUser && (
+              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveRoleTab('student');
+                    setSelectedCategory('all');
+                  }}
+                  className={`min-h-[36px] px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
+                    effectiveRoleTab === 'student'
+                      ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'ผลงานนักเรียน' : 'Students'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveRoleTab('teacher');
+                    setSelectedCategory('all');
+                  }}
+                  className={`min-h-[36px] px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap ${
+                    effectiveRoleTab === 'teacher'
+                      ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'ผลงานครู (ว.PA)' : 'Teachers'}</span>
+                </button>
+              </div>
             )}
 
+            {/* Staff can filter by real student */}
+            {!isStudentUser && effectiveRoleTab === 'student' && students.length > 0 && (
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                aria-label={lang === 'th' ? 'เลือกนักเรียน' : 'Select student'}
+                className="min-h-[40px] px-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-title)]"
+              >
+                <option value="">{lang === 'th' ? `นักเรียนทุกคน (${students.length})` : `All students (${students.length})`}</option>
+                {students.map((stu) => (
+                  <option key={stu.id} value={stu.id}>
+                    {stu.firstNameTh} {stu.lastNameTh} ({stu.gradeLevel} {stu.room})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Interactive Category Segmented Filter */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {categoryOptions.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`min-h-[36px] px-3 rounded-xl text-xs font-semibold transition whitespace-nowrap shrink-0 cursor-pointer ${
+                  selectedCategory === cat.id
+                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. REAL PORTFOLIO ITEMS GRID OR CLEAN EMPTY STATE */}
+        {filteredItems.length === 0 ? (
+          <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-8 sm:p-10 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center mx-auto">
+              <FolderGit2 className="w-7 h-7" />
+            </div>
+            <div className="space-y-1 max-w-md mx-auto">
+              <h2 className="text-base font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'ยังไม่มีผลงานที่บันทึกในแฟ้ม' : 'No portfolio items recorded yet'}
+              </h2>
+              <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                {lang === 'th'
+                  ? 'เริ่มบันทึกเกียรติบัตร รางวัลการแข่งขัน โครงงาน หรือกิจกรรมจิตอาสาของคุณ เพื่อสะสมเป็นแฟ้มผลงานจริงที่พร้อมพิมพ์เป็น PDF ได้ทุกเมื่อ'
+                  : 'Start recording your real certificates, competition awards, academic projects, or activities to build your printable portfolio.'}
+              </p>
+            </div>
             <button
               type="button"
-              onClick={handlePrintPortfolio}
-              className="btn-tool-neutral"
+              onClick={handleOpenAddModal}
+              className="min-h-[44px] px-5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs inline-flex items-center gap-2 transition cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'พิมพ์ PDF' : 'Print PDF'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAddFormStep(0);
-                setShowAddModal(true);
-              }}
-              className="btn-action-primary"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เพิ่มผลงานใหม่' : 'Add Work'}</span>
+              <Plus className="w-4 h-4" />
+              <span>{lang === 'th' ? 'เพิ่มผลงานแรกของคุณ' : 'Add Your First Item'}</span>
             </button>
           </div>
-        </div>
-      </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredItems.map((item) => {
+              const canDelete =
+                Boolean(onDeletePortfolioItem) &&
+                (isTeacherOrStaff ||
+                  item.ownerId === currentUser?.id ||
+                  (ownStudent && item.ownerId === ownStudent.id));
 
-      {/* Target Selector: Student TCAS vs Teacher ว.PA */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
-        <div className="seg-tab-group">
-          <button
-            type="button"
-            data-active={activeRoleTab === 'student'}
-            onClick={() => {
-              setActiveRoleTab('student');
-              setSelectedCategory('all');
-            }}
-            className="seg-tab-btn"
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'แฟ้มผลงานนักเรียน (TCAS Portfolio ม.6)' : 'Student Portfolio (TCAS)'}</span>
-          </button>
-
-          <button
-            type="button"
-            data-active={activeRoleTab === 'teacher'}
-            onClick={() => {
-              setActiveRoleTab('teacher');
-              setSelectedCategory('all');
-            }}
-            className="seg-tab-btn"
-          >
-            <Briefcase className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'แฟ้มผลงานครู (ว.PA วิทยฐานะชำนาญการ)' : 'Teacher Portfolio (ว.PA)'}</span>
-          </button>
-        </div>
-
-        {/* Category Filters */}
-        <div className="flex items-center gap-2">
-          {activeRoleTab === 'student' ? (
-            <div className="flex flex-wrap gap-1.5 text-xs">
-              {[
-                { id: 'all', label: 'ทั้งหมด' },
-                { id: 'competition', label: 'การแข่งขัน & รางวัล' },
-                { id: 'academic', label: 'วิชาการ & โอลิมปิก' },
-                { id: 'activity', label: 'กิจกรรม & จิตอาสา' }
-              ].map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
-                    selectedCategory === cat.id
-                      ? 'bg-indigo-700 text-white border-indigo-700 shadow-xs'
-                      : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
-                  }`}
+              return (
+                <article
+                  key={item.id}
+                  className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden flex flex-col justify-between transition hover:border-[var(--color-primary)]"
                 >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1.5 text-xs">
-              {[
-                { id: 'all', label: 'ทั้งหมด' },
-                { id: 'pa_research', label: 'วิจัยในชั้นเรียน (Action Research)' },
-                { id: 'teaching_media', label: 'สื่อนวัตกรรม & เกม EduVerse' },
-                { id: 'certificate', label: 'การอบรมและพัฒนาตนเอง' }
-              ].map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
-                    selectedCategory === cat.id
-                      ? 'bg-purple-700 text-white border-purple-700 shadow-xs'
-                      : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+                  {item.imageUrl ? (
+                    <div className="relative aspect-[16/9] w-full bg-slate-900 overflow-hidden">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-24 w-full bg-gradient-to-br from-slate-100 to-slate-200/70 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center text-[var(--color-text-muted)]">
+                      <Award className="w-8 h-8 opacity-40" />
+                    </div>
+                  )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={() => setPortfolioStep(0)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer ${portfolioStep === 0 ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'}`}>{lang === 'th' ? 'โปรไฟล์' : 'Profile'}</button>
-        <button type="button" onClick={() => setPortfolioStep(1)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer ${portfolioStep === 1 ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'}`}>{lang === 'th' ? `ผลงาน (${filteredItems.length})` : `Portfolio Items (${filteredItems.length})`}</button>
-      </div>
-      {/* Role Profile Header Preview Card */}
-      {portfolioStep === 0 && (
-      activeRoleTab === 'student' ? (
-        <div className="p-6 rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] grid grid-cols-1 md:grid-cols-3 gap-6 items-center shadow-xs">
-          <div className="flex items-center gap-4 md:col-span-2">
-            <img 
-              src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80" 
-              alt="Student"
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-[var(--color-primary)] shadow-md shrink-0"
-            />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold text-[var(--color-text-title)]">นายธนาธร สมชาย (STU-6901)</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-semibold border border-emerald-300 dark:border-emerald-700">
-                  เกรดเฉลี่ยสะสม GPAX: 3.94
-                </span>
-              </div>
-              <p className="text-xs text-[var(--color-text-body)]">
-                โรงเรียนเอ็ดดูเวิร์สวิทยานุสรณ์ • แผนการเรียนวิทยาศาสตร์-คณิตศาสตร์-คอมพิวเตอร์
-              </p>
-              <div className="text-xs text-[var(--color-primary-text)] font-semibold flex items-center gap-1.5 pt-1">
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>เป้าหมาย TCAS: คณะวิศวกรรมศาสตร์ (คอมพิวเตอร์และปัญญาประดิษฐ์)</span>
-              </div>
-            </div>
-          </div>
+                  <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      {/* Clean unboxed metadata row */}
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                        <div className="flex items-center gap-1.5 min-w-0 truncate">
+                          <span className="font-semibold text-[var(--color-primary-text)]">
+                            {getCategoryLabel(item.category)}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span>ปี {item.year}</span>
+                          {item.certifiedBySchool && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span className="text-emerald-700 dark:text-emerald-400 font-semibold inline-flex items-center gap-0.5">
+                                <CheckCircle2 className="w-3 h-3" />
+                                รับรองแล้ว
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onDeletePortfolioItem?.(item.id)}
+                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer shrink-0"
+                            aria-label={lang === 'th' ? 'ลบผลงาน' : 'Delete item'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
 
-          <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2 text-xs">
-            <div className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-600 dark:text-amber-300" />
-              <span>EduVerse Gamification Credentials</span>
-            </div>
-            <div className="flex items-center justify-between text-[var(--color-text-body)] text-[11px]">
-              <span>Academic Top Scorer Badge</span>
-              <span className="text-emerald-800 dark:text-emerald-300 font-bold">ผ่านการรับรอง ✓</span>
-            </div>
-            <div className="flex items-center justify-between text-[var(--color-text-body)] text-[11px]">
-              <span>Grandmaster Battle Rank</span>
-              <span className="text-amber-800 dark:text-amber-300 font-bold">4,850 EXP</span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="p-6 rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] grid grid-cols-1 md:grid-cols-3 gap-6 items-center shadow-xs">
-          <div className="flex items-center gap-4 md:col-span-2">
-            <img 
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80" 
-              alt="Teacher"
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-purple-600 shadow-md shrink-0"
-            />
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold text-[var(--color-text-title)]">อ.ดร.ประเสริฐ ถาวร</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 font-semibold border border-purple-300 dark:border-purple-700">
-                  วิทยฐานะ: ครูชำนาญการพิเศษ
-                </span>
-              </div>
-              <p className="text-xs text-[var(--color-text-body)]">
-                กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี • หัวหน้ากลุ่มงานนวัตกรรมการเรียนรู้
-              </p>
-              <div className="text-xs text-purple-800 dark:text-purple-300 font-semibold flex items-center gap-1.5 pt-1">
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>ประเด็นท้าทาย ว.PA: การใช้ Gamification และ AI เพื่อยกระดับผลสัมฤทธิ์ทางการเรียนรู้</span>
-              </div>
-            </div>
-          </div>
+                      <h3 className="text-base font-bold text-[var(--color-text-title)] leading-snug">
+                        {item.title}
+                      </h3>
 
-          <div className="p-4 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2 text-xs">
-            <div className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-              <span>ความก้าวหน้าข้อตกลง PA ({academicYear})</span>
-            </div>
-            <div className="flex items-center justify-between text-[var(--color-text-body)] text-[11px]">
-              <span>ด้านการจัดการเรียนรู้</span>
-              <span className="text-emerald-800 dark:text-emerald-300 font-bold">100% ผ่านเกณฑ์</span>
-            </div>
-            <div className="flex items-center justify-between text-[var(--color-text-body)] text-[11px]">
-              <span>สื่อนวัตกรรมในระบบ</span>
-              <span className="text-amber-800 dark:text-amber-300 font-bold">5 สื่อการสอน</span>
-            </div>
-          </div>
-        </div>
-      )
-      )}
+                      {item.description && (
+                        <p className="text-xs text-[var(--color-text-body)] leading-relaxed line-clamp-3">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
 
-      {/* Portfolio Items Grid */}
-      {portfolioStep === 1 && <div>
-        <PagedList
-          items={filteredItems}
-          pageSize={1}
-          emptyState={<p className="text-sm text-[var(--color-text-muted)] font-medium">{lang === 'th' ? 'ยังไม่มีผลงานในหมวดนี้' : 'No portfolio items in this category.'}</p>}
-          renderItem={(item) => (
-          <div 
-            key={item.id}
-            className="rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden flex flex-col justify-between hover:border-[var(--color-primary)] transition-all group shadow-xs"
-          >
-            {item.imageUrl && (
-              <div className="relative h-48 w-full overflow-hidden bg-slate-900">
-                <img 
-                  src={item.imageUrl} 
-                  alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-[10px] font-bold text-white border border-white/25">
-                  {item.year}
-                </div>
-                {item.certifiedBySchool && (
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-emerald-700 text-[10px] font-bold text-white flex items-center gap-1 shadow-md">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>โรงเรียนรับรองผลงาน</span>
+                    <div className="pt-3 border-t border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)]">
+                      <span className="truncate">
+                        {item.skills.length > 0
+                          ? item.skills.join(' · ')
+                          : item.ownerName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+                      >
+                        {lang === 'th' ? 'พิมพ์เอกสาร' : 'Print'}
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
-
-            <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-                    {item.category}
-                  </span>
-                  <span className="text-xs text-[var(--color-text-muted)]">เจ้าของ: {item.ownerName}</span>
-                </div>
-
-                <h4 className="text-base font-bold text-[var(--color-text-title)] leading-snug group-hover:text-[var(--color-primary-text)] transition-colors">
-                  {item.title}
-                </h4>
-
-                <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-3 border-t border-[var(--color-border)]">
-                {/* Skills Chips */}
-                <div className="flex flex-wrap gap-1.5">
-                  {item.skills.map((skill, sIdx) => (
-                    <span 
-                      key={sIdx}
-                      className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)] flex items-center gap-1"
-                    >
-                      <Tag className="w-2.5 h-2.5 text-[var(--color-primary-text)]" />
-                      <span>{skill}</span>
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
-                    <Award className="w-4 h-4 text-amber-600 dark:text-amber-300" />
-                    <span>โบนัสคะแนน: +{item.scoreBonus || 100} แต้ม</span>
-                  </span>
-
-                  <button 
-                    onClick={handlePrintPortfolio}
-                    className="text-[var(--color-primary-text)] hover:underline font-bold flex items-center gap-1 text-xs cursor-pointer"
-                  >
-                    <span>ดูเอกสาร / ใบประกาศ</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
+                </article>
+              );
+            })}
           </div>
         )}
-        />
-      </div>}
       </div>
 
-      {/* Add New Portfolio Modal */}
+      {/* ADD NEW REAL PORTFOLIO ITEM MODAL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-4 sm:p-6 max-w-xl w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-5 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <h3 className="text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Plus className="w-5 h-5 text-[var(--color-primary-text)]" />
+              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-[var(--color-primary-text)]" />
                 <span>
-                  {activeRoleTab === 'student' ? 'เพิ่มผลงาน TCAS Portfolio' : 'เพิ่มผลงานแฟ้ม ว.PA ครู'}
+                  {effectiveRoleTab === 'student'
+                    ? lang === 'th'
+                      ? 'เพิ่มผลงานลงแฟ้มสะสมผลงาน'
+                      : 'Add Student Portfolio Item'
+                    : lang === 'th'
+                      ? 'เพิ่มผลงานแฟ้ม ว.PA'
+                      : 'Add Teacher Portfolio Item'}
                 </span>
               </h3>
               <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setAddFormStep(0);
-                }}
-                className="w-8 h-8 rounded-lg bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer"
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="w-9 h-9 rounded-xl bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer"
+                aria-label="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSaveItem} className="space-y-4">
-              <p className="text-[11px] text-[var(--color-text-muted)] font-semibold">{addFormStep + 1} / 3</p>
-              {addFormStep === 0 && <>
               <div>
-                <label className="text-xs font-bold text-[var(--color-text-title)] block mb-1">ชื่อผลงาน / โครงงาน / รางวัล</label>
+                <label className="text-xs font-semibold text-[var(--color-text-title)] block mb-1.5">
+                  {lang === 'th' ? 'ชื่อผลงาน / เกียรติบัตร / โครงงาน *' : 'Title *'}
+                </label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="เช่น ชนะเลิศการแข่งขันหุ่นยนต์กู้ภัยระดับประเทศ"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                  placeholder={lang === 'th' ? 'ระบุชื่อผลงานหรือรางวัลที่ได้รับจริง' : 'Enter your achievement title'}
+                  className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-sm text-[var(--color-text-title)]"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-[var(--color-text-title)] block mb-1">หมวดหมู่</label>
+                  <label className="text-xs font-semibold text-[var(--color-text-title)] block mb-1.5">
+                    {lang === 'th' ? 'หมวดหมู่' : 'Category'}
+                  </label>
                   <select
                     value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                    onChange={(e) => setNewCategory(e.target.value as PortfolioItem['category'])}
+                    className="w-full min-h-[44px] px-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-sm text-[var(--color-text-title)]"
                   >
-                    {activeRoleTab === 'student' ? (
+                    {effectiveRoleTab === 'student' ? (
                       <>
-                        <option value="competition">การแข่งขัน & รางวัล</option>
-                        <option value="academic">วิชาการ & โครงงาน</option>
-                        <option value="activity">กิจกรรมจิตอาสา</option>
+                        <option value="competition">การแข่งขันและรางวัล</option>
+                        <option value="academic">วิชาการและโครงงาน</option>
+                        <option value="activity">กิจกรรมและจิตอาสา</option>
                       </>
                     ) : (
                       <>
-                        <option value="pa_research">งานวิจัยในชั้นเรียน (PA)</option>
-                        <option value="teaching_media">สื่อนวัตกรรม & เกม</option>
-                        <option value="certificate">การอบรมพัฒนาวิชาชีพ</option>
+                        <option value="pa_research">งานวิจัยในชั้นเรียน (ว.PA)</option>
+                        <option value="teaching_media">สื่อนวัตกรรมการสอน</option>
+                        <option value="certificate">เกียรติบัตรและการอบรม</option>
                       </>
                     )}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[var(--color-text-title)] block mb-1">ปีการศึกษาที่ได้รับ</label>
+                  <label className="text-xs font-semibold text-[var(--color-text-title)] block mb-1.5">
+                    {lang === 'th' ? 'ปีการศึกษา' : 'Academic Year'}
+                  </label>
                   <input
                     type="text"
                     value={newYear}
                     onChange={(e) => setNewYear(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                    className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-sm text-[var(--color-text-title)] tabular-nums"
                     required
                   />
                 </div>
               </div>
-              </>}
-              {addFormStep === 1 && <>
+
               <div>
-                <label className="text-xs font-bold text-[var(--color-text-title)] block mb-1">รายละเอียดและบทเรียนที่ได้รับ</label>
+                <label className="text-xs font-semibold text-[var(--color-text-title)] block mb-1.5">
+                  {lang === 'th' ? 'รายละเอียดผลงานและบทบาทของคุณ' : 'Description'}
+                </label>
                 <textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   rows={3}
-                  placeholder="อธิบายการนำไปใช้ ความสำคัญ และผลลัพธ์ของผลงานนี้..."
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                  placeholder={lang === 'th' ? 'อธิบายรายละเอียดผลงาน บทบาทหน้าที่ และสิ่งที่ได้เรียนรู้' : 'Describe your work and key takeaways'}
+                  className="w-full p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-sm text-[var(--color-text-title)]"
                   required
                 />
               </div>
+
               <div>
-                <label className="text-xs font-bold text-[var(--color-text-title)] block mb-1">ทักษะที่เกี่ยวข้อง (คั่นด้วยจุลภาค)</label>
+                <label className="text-xs font-semibold text-[var(--color-text-title)] block mb-1.5">
+                  {lang === 'th' ? 'ทักษะที่เกี่ยวข้อง (คั่นด้วยจุลภาค ไม่บังคับ)' : 'Skills (comma-separated, optional)'}
+                </label>
                 <input
                   type="text"
                   value={newSkills}
                   onChange={(e) => setNewSkills(e.target.value)}
-                  placeholder="เช่น Python, Machine Learning, Leadership"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                  placeholder={lang === 'th' ? 'เช่น การนำเสนอ, โครงงานวิทยาศาสตร์, ภาษาอังกฤษ' : 'e.g. Research, Teamwork, Design'}
+                  className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-sm text-[var(--color-text-title)]"
                 />
               </div>
-              </>}
-              {addFormStep === 2 && <>
-              <div>
-                <label className="text-xs font-bold text-[var(--color-text-title)] block mb-1">ลิงก์รูปภาพประกอบผลงาน (Image URL)</label>
-                <input
-                  type="url"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
-                />
-              </div>
-              </>}
-              <div className="pt-4 flex items-center justify-between gap-3 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => addFormStep > 0 ? setAddFormStep((step) => (step - 1) as 0 | 1 | 2) : setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer"
-                >
-                  {addFormStep > 0 ? 'ย้อนกลับ' : 'ยกเลิก'}
-                </button>
-                {addFormStep < 2 ? (
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--color-text-title)] block">
+                  {lang === 'th' ? 'รูปภาพผลงาน / เกียรติบัตร (ไม่บังคับ)' : 'Photo / Certificate Image (Optional)'}
+                </label>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setAddFormStep((step) => (step + 1) as 0 | 1 | 2)}
-                    className="px-6 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white shadow-sm cursor-pointer"
+                    onClick={() => setShowImagePicker(true)}
+                    className="min-h-[42px] px-3.5 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] inline-flex items-center gap-1.5 cursor-pointer shrink-0"
                   >
-                    ถัดไป
+                    <ImageIcon className="w-4 h-4 text-[var(--color-primary-text)]" />
+                    <span>{lang === 'th' ? 'อัปโหลด / ถ่ายรูป' : 'Upload / Camera'}</span>
                   </button>
-                ) : (
-                  <button
-                    type="submit"
-                    className="px-6 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white shadow-sm cursor-pointer"
-                  >
-                    บันทึกผลงานลง Portfolio
-                  </button>
+                  <input
+                    type="url"
+                    value={newImageUrl.startsWith('data:') ? '' : newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    placeholder={
+                      newImageUrl.startsWith('data:')
+                        ? lang === 'th'
+                          ? 'แนบรูปภาพเรียบร้อยแล้ว'
+                          : 'Image attached'
+                        : lang === 'th'
+                          ? 'หรือวางลิงก์รูปภาพ'
+                          : 'Or paste image URL'
+                    }
+                    className="flex-1 min-h-[42px] px-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
+                  />
+                </div>
+                {newImageUrl && (
+                  <div className="relative rounded-xl overflow-hidden border border-[var(--color-border)] h-32 bg-slate-900">
+                    <img
+                      src={newImageUrl}
+                      alt="Preview"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewImageUrl('')}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/70 text-white flex items-center justify-center cursor-pointer"
+                      aria-label="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 )}
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="min-h-[44px] px-4 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer"
+                >
+                  {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="min-h-[44px] px-5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  {lang === 'th' ? 'บันทึกผลงาน' : 'Save Item'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ImageCaptureUploadModal
+        isOpen={showImagePicker}
+        currentImageUrl={newImageUrl}
+        title={lang === 'th' ? 'ถ่ายรูปหรือเลือกรูปผลงาน / เกียรติบัตร' : 'Capture or Upload Portfolio Photo'}
+        onSelectImage={(url) => setNewImageUrl(url)}
+        onClose={() => setShowImagePicker(false)}
+      />
     </div>
   );
 };

@@ -210,7 +210,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-200 font-mono mt-0.5">
-                {formData.email} • {currentUser.role === 'student' ? formData.studentIdNumber || 'STU-6901' : currentUser.role === 'teacher' ? formData.teacherIdNumber || 'TCH-2026' : 'ADMIN-REF'}
+                {[
+                  formData.email,
+                  currentUser.role === 'student'
+                    ? formData.studentIdNumber
+                    : currentUser.role === 'teacher'
+                      ? formData.teacherIdNumber
+                      : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </p>
             </div>
           </div>
@@ -536,8 +545,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">รหัสประจำตัวนักเรียน</label>
                       <input
                         type="text"
-                        value={formData.studentIdNumber || 'ED-6901'}
+                        value={formData.studentIdNumber || ''}
                         onChange={e => handleChange('studentIdNumber', e.target.value)}
+                        placeholder="ระบุรหัสนักเรียน"
                         className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)] font-mono"
                       />
                     </div>
@@ -548,8 +558,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ระดับชั้น</label>
                         <input
                           type="text"
-                          value={formData.gradeLevel || 'มัธยมศึกษาปีที่ 4 (M.4)'}
+                          value={formData.gradeLevel || ''}
                           onChange={e => handleChange('gradeLevel', e.target.value)}
+                          placeholder="เช่น ม.4"
                           className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         />
                       </div>
@@ -557,8 +568,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ห้องเรียน</label>
                         <input
                           type="text"
-                          value={formData.room || 'ห้อง 401'}
+                          value={formData.room || ''}
                           onChange={e => handleChange('room', e.target.value)}
+                          placeholder="เช่น ห้อง 1"
                           className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         />
                       </div>
@@ -569,7 +581,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">แผนการเรียน (Academic Track)</label>
                       <input
                         type="text"
-                        value={formData.academicTrack || 'วิทยาศาสตร์ - คณิตศาสตร์ (Gifted STEM)'}
+                        value={formData.academicTrack || ''}
                         onChange={e => handleChange('academicTrack', e.target.value)}
                         className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                         placeholder="เช่น วิทย์-คณิต, ศิลป์-คำนวณ, ศิลป์-ภาษา"
@@ -581,8 +593,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       <label className="text-xs font-bold text-[var(--color-text-body)] block mb-1">ครูที่ปรึกษาประจำห้อง</label>
                       <input
                         type="text"
-                        value={formData.advisorName || 'อ.ดร.ประเสริฐ ถาวร'}
+                        value={formData.advisorName || ''}
                         onChange={e => handleChange('advisorName', e.target.value)}
+                        placeholder="ระบุชื่อครูที่ปรึกษา"
                         className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] focus:ring-2 focus:ring-[var(--color-primary)]"
                       />
                     </div>
@@ -595,8 +608,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         step="0.01"
                         min="0"
                         max="4.00"
-                        value={formData.gpax ?? 3.92}
-                        onChange={e => handleChange('gpax', parseFloat(e.target.value))}
+                        value={formData.gpax ?? ''}
+                        onChange={e => handleChange('gpax', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                        placeholder="0.00"
                         className="w-full px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] focus:ring-2 focus:ring-[var(--color-primary)] font-mono font-bold text-[var(--color-primary-text)]"
                       />
                     </div>
@@ -1156,11 +1170,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       {formData.fullNameEn} {formData.nickname && `(${formData.nickname})`}
                     </p>
                     <p className="text-xs text-cyan-200 font-mono">
-                      {currentUser.role === 'student' ? `${formData.gradeLevel || 'ม.4'} • ${formData.room || 'ห้อง 401'} • ${formData.academicTrack || 'วิทย์-คณิต'}` : `${formData.academicStanding || 'ครูชำนาญการพิเศษ'} • ${formData.department || 'กลุ่มสาระวิทยาศาสตร์'}`}
+                      {currentUser.role === 'student'
+                        ? [formData.gradeLevel, formData.room, formData.academicTrack].filter(Boolean).join(' · ')
+                        : [formData.academicStanding, formData.department].filter(Boolean).join(' · ')}
                     </p>
                   </div>
 
-                  {currentUser.role === 'student' && formData.gpax && (
+                  {currentUser.role === 'student' && typeof formData.gpax === 'number' && formData.gpax > 0 && (
                     <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/25 text-center shrink-0">
                       <div className="text-[10px] uppercase font-bold text-slate-200">GPAX รวม</div>
                       <div className="text-2xl font-black text-amber-300 font-mono">{formData.gpax.toFixed(2)}</div>
@@ -1172,14 +1188,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {/* Goals & Aspirations Banner */}
                 {currentUser.role === 'student' && (formData.targetUniversity || formData.targetFaculty) && (
                   <div className="mt-6 p-4 rounded-2xl bg-slate-900/60 border border-white/15 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-amber-300 block mb-0.5">มหาวิทยาลัยเป้าหมาย</span>
-                      <p className="font-bold text-white text-sm">{formData.targetUniversity || 'จุฬาลงกรณ์มหาวิทยาลัย'}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-cyan-300 block mb-0.5">คณะ / สาขาวิชา</span>
-                      <p className="font-bold text-white text-sm">{formData.targetFaculty || 'คณะวิศวกรรมศาสตร์ สาขาวิศวกรรมคอมพิวเตอร์'}</p>
-                    </div>
+                    {formData.targetUniversity && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-amber-300 block mb-0.5">มหาวิทยาลัยเป้าหมาย</span>
+                        <p className="font-bold text-white text-sm">{formData.targetUniversity}</p>
+                      </div>
+                    )}
+                    {formData.targetFaculty && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-cyan-300 block mb-0.5">คณะ / สาขาวิชา</span>
+                        <p className="font-bold text-white text-sm">{formData.targetFaculty}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 

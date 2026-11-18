@@ -1,41 +1,174 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { 
-  Trophy, 
-  Award, 
-  Sparkles, 
-  Share2, 
-  Printer, 
-  CheckCircle2, 
-  QrCode, 
-  Download, 
-  Eye, 
-  X, 
+import {
+  Trophy,
+  Award,
+  Sparkles,
+  Share2,
+  Printer,
+  CheckCircle2,
+  QrCode,
+  Eye,
+  X,
   RotateCw,
   Medal,
   Calendar,
-  Search,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Plus,
 } from 'lucide-react';
-import { HallOfFameTrophy, AppLanguage, School } from '../types';
-import { INITIAL_HALL_OF_FAME_TROPHIES } from '../data/innovativeFeaturesData';
+import {
+  HallOfFameTrophy,
+  AppLanguage,
+  School,
+  Student,
+  PortfolioItem,
+  PlayerScore,
+  AuthUser,
+} from '../types';
 import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
+import { resolveOwnStudent } from '../lib/attendanceScope';
 
 interface HallOfFame3DViewProps {
   lang?: AppLanguage;
   school?: School;
+  students?: Student[];
+  portfolioItems?: PortfolioItem[];
+  playerScores?: PlayerScore[];
+  currentUser?: AuthUser | null;
+  onOpenPortfolio?: () => void;
   onExit?: () => void;
 }
 
 export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
   lang = 'th',
   school,
-  onExit
+  students = [],
+  portfolioItems = [],
+  playerScores = [],
+  currentUser,
+  onOpenPortfolio,
+  onExit,
 }) => {
-  const [trophies, setTrophies] = useState<HallOfFameTrophy[]>(INITIAL_HALL_OF_FAME_TROPHIES);
-  const [selectedTrophy, setSelectedTrophy] = useState<HallOfFameTrophy>(INITIAL_HALL_OF_FAME_TROPHIES[0]);
+  const isStudentUser = currentUser?.role === 'student';
+  const ownStudent = useMemo(
+    () => resolveOwnStudent(currentUser, students),
+    [currentUser, students]
+  );
+
+  // Build 100% real trophies strictly from actual portfolio items, real student honors, and real game scores
+  const trophies = useMemo<HallOfFameTrophy[]>(() => {
+    const result: HallOfFameTrophy[] = [];
+
+    // 1. Real Portfolio items
+    const relevantPortfolio = portfolioItems.filter((item) => {
+      if (isStudentUser && currentUser) {
+        return item.ownerId === currentUser.id || (ownStudent && item.ownerId === ownStudent.id);
+      }
+      return item.ownerRole === 'student';
+    });
+
+    relevantPortfolio.forEach((item, idx) => {
+      const matchedStudent =
+        students.find(
+          (s) =>
+            s.id === item.ownerId ||
+            `${s.firstNameTh} ${s.lastNameTh}`.trim() === item.ownerName.trim()
+        ) || (isStudentUser ? ownStudent : undefined);
+
+      const trophyType: HallOfFameTrophy['trophyType'] =
+        item.category === 'competition'
+          ? 'grand_champion'
+          : item.category === 'academic'
+            ? 'master_chemist'
+            : 'eduarena_mvp';
+
+      result.push({
+        id: `real-port-${item.id}`,
+        trophyType,
+        titleTh: item.title,
+        titleEn: item.title,
+        recipientStudentId: matchedStudent?.id || item.ownerId,
+        recipientName: item.ownerName,
+        studentRoom: matchedStudent
+          ? `${matchedStudent.gradeLevel} ${matchedStudent.room}`.trim()
+          : currentUser?.gradeLevel
+            ? `${currentUser.gradeLevel} ${currentUser.room || ''}`.trim()
+            : '-',
+        avatarUrl: item.imageUrl || matchedStudent?.avatarUrl || currentUser?.avatarUrl || '',
+        achievedDate: `ปีการศึกษา ${item.year}`,
+        certificateCode: `CERT-${item.year}-${String(idx + 1).padStart(4, '0')}`,
+        descriptionTh: item.description || 'ผลงานที่บันทึกในแฟ้มสะสมผลงานดิจิทัลของสถานศึกษา',
+        primaryColor: trophyType === 'grand_champion' ? '#f59e0b' : trophyType === 'master_chemist' ? '#10b981' : '#f43f5e',
+        materialName:
+          trophyType === 'grand_champion'
+            ? 'ถ้วยทองเกียรติยศ'
+            : trophyType === 'master_chemist'
+              ? 'คริสตัลวิชาการ'
+              : 'เหรียญเกียรติคุณ',
+        pointsEarned: item.scoreBonus || 100,
+      });
+    });
+
+    // 2. Real honor students (GPAX >= 3.50)
+    const honorSource = isStudentUser ? (ownStudent ? [ownStudent] : []) : students;
+    honorSource
+      .filter((stu) => stu.gpa >= 3.5)
+      .slice(0, 10)
+      .forEach((stu) => {
+        result.push({
+          id: `real-honor-${stu.id}`,
+          trophyType: 'grand_champion',
+          titleTh: `นักเรียนเรียนดีเด่น (GPAX ${stu.gpa.toFixed(2)})`,
+          titleEn: `Academic Honor Roll (GPAX ${stu.gpa.toFixed(2)})`,
+          recipientStudentId: stu.id,
+          recipientName: `${stu.firstNameTh} ${stu.lastNameTh}`.trim(),
+          studentRoom: `${stu.gradeLevel} ${stu.room}`.trim(),
+          avatarUrl: stu.avatarUrl || '',
+          achievedDate: `ปีการศึกษา ${school?.academicYear || '2569'}`,
+          certificateCode: `HONOR-${stu.studentIdNumber || stu.id.slice(-4)}`,
+          descriptionTh: `มีผลการเรียนเฉลี่ยสะสม ${stu.gpa.toFixed(2)} จากข้อมูลผลการเรียนจริงในระบบ`,
+          primaryColor: '#f59e0b',
+          materialName: 'ถ้วยเกียรติยศเรียนดีเด่น',
+          pointsEarned: Math.round(stu.gpa * 100),
+        });
+      });
+
+    // 3. Real earned EduArena scores (EXP > 0)
+    const relevantScores = playerScores.filter((ps) => {
+      if (ps.exp <= 0) return false;
+      if (isStudentUser && currentUser) return ps.userId === currentUser.id;
+      return ps.role === 'student';
+    });
+
+    relevantScores.slice(0, 8).forEach((ps) => {
+      result.push({
+        id: `real-score-${ps.userId}`,
+        trophyType: 'eduarena_mvp',
+        titleTh: `รางวัลความสำเร็จ ${ps.rankTitle || 'ผู้เรียนยอดเยี่ยม'}`,
+        titleEn: `${ps.rankTitle || 'Top Learner'} Achievement`,
+        recipientStudentId: ps.userId,
+        recipientName: ps.name || currentUser?.fullNameTh || 'นักเรียน',
+        studentRoom: ownStudent ? `${ownStudent.gradeLevel} ${ownStudent.room}`.trim() : '-',
+        avatarUrl: ps.avatarUrl || currentUser?.avatarUrl || '',
+        achievedDate: `ปีการศึกษา ${school?.academicYear || '2569'}`,
+        certificateCode: `EXP-${ps.userId.slice(0, 6).toUpperCase()}`,
+        descriptionTh: `สะสมคะแนนการเรียนรู้และเกมฝึกทักษะรวม ${ps.exp.toLocaleString()} EXP (ชนะ ${ps.battleWins} ครั้ง)`,
+        primaryColor: '#f43f5e',
+        materialName: 'ถ้วยเกียรติคุณ EduArena',
+        pointsEarned: ps.exp,
+      });
+    });
+
+    return result;
+  }, [portfolioItems, students, playerScores, isStudentUser, currentUser, ownStudent, school?.academicYear]);
+
+  const [selectedTrophyId, setSelectedTrophyId] = useState<string | null>(null);
+  const selectedTrophy = useMemo<HallOfFameTrophy | null>(
+    () => trophies.find((t) => t.id === selectedTrophyId) || trophies[0] || null,
+    [trophies, selectedTrophyId]
+  );
   const [selectedCertForModal, setSelectedCertForModal] = useState<HallOfFameTrophy | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,7 +184,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
   // Setup Three.js scene
   useEffect(() => {
     const container = mountRef.current;
-    if (!container) return;
+    if (!container || !selectedTrophy) return;
 
     const width = container.clientWidth || 400;
     const height = container.clientHeight || 340;
@@ -294,11 +427,11 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
       }
       renderer.dispose();
     };
-  }, []);
+  }, [Boolean(selectedTrophy)]);
 
   // Update 3D Trophy Material when selected trophy changes
   useEffect(() => {
-    if (!materialsRef.current.trophyGold || !materialsRef.current.gem) return;
+    if (!selectedTrophy || !materialsRef.current.trophyGold || !materialsRef.current.gem) return;
 
     if (selectedTrophy.trophyType === 'grand_champion') {
       materialsRef.current.trophyGold.color.setHex(0xf59e0b); // Gold
@@ -414,7 +547,46 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
         </div>
       </div>
 
-      {/* Main Grid: Left 3D Trophy Showcase, Right Trophy Directory */}
+      {/* Empty state when no real trophies/achievements exist yet */}
+      {!selectedTrophy ? (
+        <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-8 sm:p-12 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <Trophy className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h2 className="text-lg font-bold text-[var(--color-text-title)]">
+              {lang === 'th' ? 'ยังไม่มีถ้วยรางวัลหรือเกียรติบัตรที่บันทึกไว้' : 'No Trophies or Certificates Yet'}
+            </h2>
+            <p className="text-xs sm:text-sm text-[var(--color-text-muted)] leading-relaxed">
+              {lang === 'th'
+                ? 'ถ้วยเกียรติยศและเกียรติบัตรจะแสดงจากผลงานจริงที่คุณบันทึกในแฟ้มสะสมผลงาน ผลการเรียนดีเด่น หรือคะแนนสะสมจากเกมฝึกทักษะ'
+                : 'Trophies and certificates appear automatically from your real portfolio items, academic honors, and earned learning game milestones.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            {onOpenPortfolio && (
+              <button
+                type="button"
+                onClick={onOpenPortfolio}
+                className="min-h-[44px] px-5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{lang === 'th' ? 'ไปบันทึกผลงานในแฟ้มของฉัน' : 'Add to My Portfolio'}</span>
+              </button>
+            )}
+            {onExit && (
+              <button
+                type="button"
+                onClick={onExit}
+                className="min-h-[44px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold cursor-pointer"
+              >
+                {lang === 'th' ? 'กลับหน้าก่อนหน้า' : 'Go Back'}
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+      /* Main Grid: Left 3D Trophy Showcase, Right Trophy Directory */
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: 3D Trophy Showcase */}
         <div className="lg:col-span-5 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-6 shadow-xs flex flex-col justify-between">
@@ -558,11 +730,11 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
             {/* Honoree Cards List */}
             <div className="mt-4">
               <PagedList items={filteredTrophies} pageSize={2} renderItem={(trophy) => {
-                const isSelected = selectedTrophy.id === trophy.id;
+                const isSelected = selectedTrophy?.id === trophy.id;
                 return (
                   <div
                     key={trophy.id}
-                    onClick={() => setSelectedTrophy(trophy)}
+                    onClick={() => setSelectedTrophyId(trophy.id)}
                     className={`p-4 rounded-xl border transition-all cursor-pointer text-left ${
                       isSelected
                         ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 shadow-sm ring-2 ring-amber-400/20'
@@ -570,19 +742,24 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <img
-                        src={trophy.avatarUrl}
-                        alt={trophy.recipientName}
-                        className="w-12 h-12 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
-                      />
+                      {trophy.avatarUrl ? (
+                        <img
+                          src={trophy.avatarUrl}
+                          alt={trophy.recipientName}
+                          referrerPolicy="no-referrer"
+                          className="w-12 h-12 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold text-sm flex items-center justify-center border border-[var(--color-border)] shrink-0">
+                          {trophy.recipientName.slice(0, 2)}
+                        </div>
+                      )}
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] truncate">
-                            {trophy.studentRoom}
-                          </span>
-                          <span className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1 shrink-0">
+                        <div className="flex items-center justify-between gap-1 text-[11px] text-[var(--color-text-muted)]">
+                          <span className="font-medium truncate">{trophy.studentRoom}</span>
+                          <span className="flex items-center gap-1 shrink-0 tabular-nums">
                             <Calendar className="w-3 h-3" />
-                            {trophy.achievedDate.slice(0, 11)}
+                            {trophy.achievedDate}
                           </span>
                         </div>
 
@@ -618,6 +795,7 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* Verifiable Digital Certificate Modal */}
       {selectedCertForModal && (

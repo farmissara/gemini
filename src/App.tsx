@@ -1341,7 +1341,18 @@ export const App: React.FC = () => {
         setPlayerScores(prev => prev);
         setRewardItems(prev => prev);
         setPeriodAttendance(data.periodAttendance || []);
-        setPortfolioItems(prev => prev.length > 0 ? prev.filter(p => p.schoolId === activeSchool.id) : []);
+        setPortfolioItems((prev) => {
+          try {
+            const raw = localStorage.getItem(`eduverse_portfolio_items_${activeSchool.id}`);
+            if (raw) {
+              const parsed = JSON.parse(raw) as PortfolioItem[];
+              if (Array.isArray(parsed)) return parsed;
+            }
+          } catch {
+            // ignore storage errors
+          }
+          return prev.length > 0 ? prev.filter((p) => p.schoolId === activeSchool.id) : [];
+        });
         setBehaviorRecords(prev => prev.length > 0 ? prev.filter(b => b.schoolId === activeSchool.id) : []);
         setSdqAssessments(prev => prev.length > 0 ? prev.filter(s => s.schoolId === activeSchool.id) : []);
         setInfirmaryVisits(prev => prev.length > 0 ? prev.filter(i => i.schoolId === activeSchool.id) : []);
@@ -3049,11 +3060,37 @@ export const App: React.FC = () => {
   };
 
   const handleAddPortfolioItem = (item: PortfolioItem) => {
-    setPortfolioItems((prev) => [{ ...item, schoolId: activeSchool.id }, ...prev]);
+    setPortfolioItems((prev) => {
+      const next = [{ ...item, schoolId: activeSchool.id }, ...prev];
+      try {
+        if (activeSchool.id) {
+          localStorage.setItem(
+            `eduverse_portfolio_items_${activeSchool.id}`,
+            JSON.stringify(next.filter((p) => !p.schoolId || p.schoolId === activeSchool.id))
+          );
+        }
+      } catch {
+        // ignore storage quota errors
+      }
+      return next;
+    });
   };
 
   const handleDeletePortfolioItem = (itemId: string) => {
-    setPortfolioItems((prev) => prev.filter((p) => p.id !== itemId));
+    setPortfolioItems((prev) => {
+      const next = prev.filter((p) => p.id !== itemId);
+      try {
+        if (activeSchool.id) {
+          localStorage.setItem(
+            `eduverse_portfolio_items_${activeSchool.id}`,
+            JSON.stringify(next.filter((p) => !p.schoolId || p.schoolId === activeSchool.id))
+          );
+        }
+      } catch {
+        // ignore storage quota errors
+      }
+      return next;
+    });
   };
 
   const handleUpdateUserProfile = async (updatedUser: AuthUser) => {
@@ -3625,6 +3662,9 @@ export const App: React.FC = () => {
           initialPeriodCode={timetableCheckinTarget?.courseCode ?? deepLinkParams?.code}
           initialPeriodCheckType={timetableCheckinTarget?.checkType ?? deepLinkParams?.checkType}
           onBiometricLock={handleLockWithBiometrics}
+          portfolioItems={viewPortfolioItems}
+          onAddPortfolioItem={handleAddPortfolioItem}
+          onDeletePortfolioItem={handleDeletePortfolioItem}
         />
 
         {/* Modals for Mobile View */}
@@ -4264,6 +4304,11 @@ export const App: React.FC = () => {
                   <HallOfFame3DView
                     lang={lang}
                     school={activeSchool}
+                    students={viewStudents}
+                    portfolioItems={viewPortfolioItems}
+                    playerScores={playerScores}
+                    currentUser={currentUser}
+                    onOpenPortfolio={() => setCurrentTab('portfolio')}
                     onExit={() => setCurrentTab('dashboard')}
                   />
                 )}
@@ -4427,9 +4472,16 @@ export const App: React.FC = () => {
                   <PortfolioView
                     portfolioItems={viewPortfolioItems}
                     students={viewStudents}
+                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    courses={viewCourses}
+                    grades={viewGrades}
+                    playerScores={playerScores}
+                    school={activeSchool}
+                    gradingSystem={systemConfig.gradingSystem}
                     currentUser={currentUser}
                     lang={lang}
                     onAddPortfolioItem={handleAddPortfolioItem}
+                    onDeletePortfolioItem={handleDeletePortfolioItem}
                     onOpenProfile={() => setShowProfileModal(true)}
                     academicYear={systemConfig.academicYear}
                   />
