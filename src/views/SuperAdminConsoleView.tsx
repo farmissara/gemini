@@ -31,6 +31,7 @@ import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView
 import {
   approvePendingSchoolRegistration,
   cancelPendingSchoolRegistrationInSupabase,
+  deleteSchoolPermanentlyInSupabase,
   listPendingSchoolRegistrations,
   PendingSchoolRegistration,
 } from '../lib/authDb';
@@ -118,6 +119,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   const [registrationRefreshKey, setRegistrationRefreshKey] = useState(0);
   const [schoolStatusError, setSchoolStatusError] = useState<string | null>(null);
   const [updatingSchoolId, setUpdatingSchoolId] = useState<string | null>(null);
+  const [pendingSchoolDeletion, setPendingSchoolDeletion] = useState<School | null>(null);
+  const [deletingSchoolId, setDeletingSchoolId] = useState<string | null>(null);
   const [approvalPage, setApprovalPage] = useState(0);
   const [permissionPage, setPermissionPage] = useState(0);
   const [accountPage, setAccountPage] = useState(0);
@@ -394,6 +397,33 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       setSchoolStatusError(error instanceof Error ? error.message : 'อัปเดตสถานะโรงเรียนไม่สำเร็จ');
     } finally {
       setUpdatingSchoolId(null);
+    }
+  };
+
+  const handleConfirmSchoolDeletion = async () => {
+    if (!pendingSchoolDeletion) return;
+
+    const school = pendingSchoolDeletion;
+    setDeletingSchoolId(school.id);
+    setSchoolStatusError(null);
+    try {
+      await deleteSchoolPermanentlyInSupabase(school.id);
+      onUpdateSchools((current) => current.filter((item) => item.id !== school.id));
+      setSelectedSchoolForPromo((current) =>
+        current === school.id ? schools.find((item) => item.id !== school.id)?.id || '' : current
+      );
+      setSchoolPage((current) => Math.min(
+        current,
+        Math.max(0, Math.ceil((schools.length - 1) / 4) - 1)
+      ));
+      setPendingSchoolDeletion(null);
+      setRegistrationRefreshKey((current) => current + 1);
+      showToast(`ลบโรงเรียน "${school.nameTh}" และข้อมูลที่เกี่ยวข้องถาวรแล้ว`);
+    } catch (error) {
+      setSchoolStatusError(error instanceof Error ? error.message : 'ลบโรงเรียนไม่สำเร็จ');
+      setPendingSchoolDeletion(null);
+    } finally {
+      setDeletingSchoolId(null);
     }
   };
 
@@ -1142,6 +1172,19 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                                 },
                               ]
                             : []),
+                          ...(!isDemoMode
+                            ? [
+                                {
+                                  id: 'delete_school',
+                                  label: 'ลบโรงเรียนและข้อมูลทั้งหมดถาวร',
+                                  icon: <Trash2 className="w-3.5 h-3.5" />,
+                                  variant: 'danger' as const,
+                                  dividerBefore: true,
+                                  disabled: deletingSchoolId !== null || updatingSchoolId !== null,
+                                  onClick: () => setPendingSchoolDeletion(s),
+                                },
+                              ]
+                            : []),
                         ];
                         return (
                           <TableActionMenu
@@ -1491,6 +1534,18 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           }
         }}
         onConfirm={handleConfirmRegistrationAction}
+      />
+      <ConfirmActionModal
+        isOpen={Boolean(pendingSchoolDeletion)}
+        title="ยืนยันลบโรงเรียนถาวร"
+        description={`ต้องการลบโรงเรียน "${pendingSchoolDeletion?.nameTh || ''}" (${pendingSchoolDeletion?.code || ''}) อย่างถาวรหรือไม่?`}
+        detailNote="การดำเนินการนี้ย้อนกลับไม่ได้ ระบบจะลบข้อมูลโรงเรียน ข้อมูลที่เกี่ยวข้อง และบัญชีผู้ใช้ในโรงเรียนออกจากฐานข้อมูลทั้งหมด"
+        confirmLabel="ลบโรงเรียนถาวร"
+        isBusy={deletingSchoolId !== null}
+        onCancel={() => {
+          if (deletingSchoolId === null) setPendingSchoolDeletion(null);
+        }}
+        onConfirm={handleConfirmSchoolDeletion}
       />
     </div>
   );

@@ -265,6 +265,17 @@ export async function updateSchoolStatusInSupabase(
   if (!data) throw new Error('The school status was not updated.');
 }
 
+export async function deleteSchoolPermanentlyInSupabase(schoolId: string): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  if (!schoolId.trim()) throw new Error('A school must be selected before it can be deleted.');
+
+  const { error } = await client.rpc('delete_school_permanently', {
+    target_school_id: schoolId,
+  });
+  if (error) throw new Error(`ไม่สามารถลบโรงเรียนได้: ${error.message}`);
+}
+
 export async function fetchSchoolLoginPortalInfo(params: {
   schoolId?: string | null;
   schoolCode?: string | null;
