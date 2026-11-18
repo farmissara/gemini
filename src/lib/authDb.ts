@@ -615,6 +615,22 @@ export async function requestPasswordReset(email: string): Promise<void> {
   }
 }
 
+export function isPasswordRecoveryRedirect(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const searchParams = new URLSearchParams(window.location.search);
+  return hashParams.get('type') === 'recovery' || searchParams.get('type') === 'recovery';
+}
+
+export async function updatePassword(password: string): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+
+  const { error } = await client.auth.updateUser({ password });
+  if (error) throw new Error(`ไม่สามารถเปลี่ยนรหัสผ่านได้: ${error.message}`);
+}
+
 export async function restoreSupabaseSession(): Promise<AuthContext | null> {
   const client = getSupabaseClient();
   if (!client) return null;

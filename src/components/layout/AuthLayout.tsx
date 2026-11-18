@@ -32,6 +32,8 @@ import {
   requestPasswordReset,
   resendSignupConfirmation,
   restoreSupabaseSession,
+  signOutFromSupabase,
+  updatePassword,
   type AuthContext,
   type SchoolLoginPortalInfo,
 } from '../../lib/authDb';
@@ -50,6 +52,8 @@ import heroImage from '../../assets/images/hero_classroom_teacher_students_17939
 interface AuthLayoutProps {
   onLogin: (context: AuthContext) => void;
   initialError?: string | null;
+  isPasswordRecovery: boolean;
+  onPasswordResetComplete: () => void;
   activeSchools?: School[];
   lang: AppLanguage;
   setLang: (lang: AppLanguage) => void;
@@ -69,6 +73,8 @@ function getAuthErrorMessage(message: string, lang: AppLanguage): string {
 export const AuthLayout: React.FC<AuthLayoutProps> = ({
   onLogin,
   initialError,
+  isPasswordRecovery,
+  onPasswordResetComplete,
   activeSchools,
   lang,
   setLang,
@@ -104,6 +110,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordResetComplete, setPasswordResetComplete] = useState(false);
 
   // WebAuthn / FaceID / TouchID Quick Auth
   const [primaryPasskey, setPrimaryPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
@@ -443,6 +454,37 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       setError(msg);
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordResetError(null);
+    if (newPassword !== confirmNewPassword) {
+      setPasswordResetError(lang === 'th' ? 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' : 'The passwords do not match.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await updatePassword(newPassword);
+      setPasswordResetComplete(true);
+      try {
+        await signOutFromSupabase();
+      } catch (signOutError: unknown) {
+        const detail = signOutError instanceof Error ? ` (${signOutError.message})` : '';
+        setPasswordResetError(
+          lang === 'th'
+            ? `เปลี่ยนรหัสผ่านแล้ว แต่ระบบออกจาก session รีเซ็ตไม่สำเร็จ กรุณากลับเข้าสู่ระบบด้วยรหัสผ่านใหม่${detail}`
+            : `Your password was changed, but the recovery session could not be cleared. Please sign in with your new password.${detail}`
+        );
+      }
+    } catch (requestError: unknown) {
+      setPasswordResetError(
+        requestError instanceof Error ? requestError.message : String(requestError)
+      );
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -1181,6 +1223,87 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isPasswordRecovery && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-2xl">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-bold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'ตั้งรหัสผ่านใหม่' : 'Set a new password'}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'กรอกรหัสผ่านใหม่สำหรับบัญชีของคุณ' : 'Choose a new password for your account.'}
+                </p>
+              </div>
+            </div>
+
+            {passwordResetComplete ? (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                  {lang === 'th' ? 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' : 'Your password has been changed.'}
+                </div>
+                {passwordResetError && (
+                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                    {passwordResetError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={onPasswordResetComplete}
+                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)]"
+                >
+                  {lang === 'th' ? 'กลับเข้าสู่ระบบ' : 'Return to sign in'}
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleUpdatePassword} className="space-y-3">
+                {passwordResetError && (
+                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                    {passwordResetError}
+                  </div>
+                )}
+                <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                  {lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                  />
+                </label>
+                <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                  {lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                    value={confirmNewPassword}
+                    onChange={(event) => setConfirmNewPassword(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={isUpdatingPassword}
+                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+                >
+                  {isUpdatingPassword
+                    ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
+                    : (lang === 'th' ? 'บันทึกรหัสผ่านใหม่' : 'Save new password')}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

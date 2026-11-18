@@ -49,6 +49,7 @@ import {
   INITIAL_SUBSCRIPTION_PLANS,
 } from './data/mockData';
 import {
+  isPasswordRecoveryRedirect,
   restoreSupabaseSession,
   signOutFromSupabase,
   updateSchoolSettingsInSupabase,
@@ -204,6 +205,7 @@ export const App: React.FC = () => {
   const [schools, setSchools] = useState<School[]>([]);
   const [activeSchool, setActiveSchool] = useState<School>(EMPTY_SCHOOL);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => isPasswordRecoveryRedirect());
   const isDemoMode = false;
   const [isSuperAdminSchoolView, setIsSuperAdminSchoolView] = useState(false);
   const skipNextSuperAdminSyncRef = useRef(false);
@@ -1019,6 +1021,8 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (isPasswordRecovery) return;
+
     let active = true;
     restoreSupabaseSession()
       .then((context) => {
@@ -3118,6 +3122,8 @@ export const App: React.FC = () => {
       <AuthLayout
         onLogin={handleLogin}
         initialError={dataLoadError}
+        isPasswordRecovery={isPasswordRecovery}
+        onPasswordResetComplete={() => setIsPasswordRecovery(false)}
         lang={lang}
         setLang={setLang}
         themePalette={themePalette}
