@@ -52,6 +52,12 @@ export interface StudentAccountLink {
   created_at?: string;
 }
 
+export interface TemporaryStudentCredential {
+  studentIdNumber: string;
+  temporaryPassword: string;
+  expiresAt: string;
+}
+
 export interface StaffParentAccountLink {
   id: string;
   school_id: string;
@@ -123,6 +129,9 @@ interface UserProfileRow {
   full_name_en: string;
   avatar_url: string;
   phone: string | null;
+  must_change_password?: boolean;
+  temporary_password_issued_at?: string | null;
+  temporary_password_expires_at?: string | null;
 }
 
 function mapSchool(row: SchoolRow): School {
@@ -164,7 +173,7 @@ function isUserRole(role: string): role is UserRole {
   return ['super_admin', 'admin', 'teacher', 'student', 'parent'].includes(role);
 }
 
-async function loadAuthContext(userId: string, email: string): Promise<AuthContext> {
+async function loadAuthContext(userId: string, email: string, emailConfirmed: boolean): Promise<AuthContext> {
   const client = getSupabaseClient();
   if (!client) {
     throw new Error('ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล กรุณาติดต่อผู้ดูแลระบบ (Database is not configured).');
@@ -172,7 +181,7 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
 
   const { data: profile, error: profileError } = await client
     .from('user_profiles')
-    .select('id, school_id, student_id, role, status, full_name_th, full_name_en, avatar_url, phone')
+    .select('id, school_id, student_id, role, status, full_name_th, full_name_en, avatar_url, phone, must_change_password, temporary_password_issued_at, temporary_password_expires_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -189,12 +198,43 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
   if (!isUserRole(profile.role)) {
     throw new Error('Your account has an invalid application role. Contact your school administrator.');
   }
+  if (profile.role === 'teacher' && !emailConfirmed) {
+    throw new Error('ครูต้องยืนยันอีเมลก่อนเข้าสู่ระบบ กรุณาตรวจสอบอีเมลคำเชิญจากโรงเรียน');
+  }
   if (profile.status !== 'active') {
     throw new Error(profile.status === 'pending'
       ? profile.role === 'admin'
         ? 'Your school registration is waiting for approval from a Super Admin.'
         : 'Your account is waiting for approval from your school administrator.'
       : 'Your account is suspended. Contact your school administrator.');
+  }
+
+  const profileRow = profile as UserProfileRow;
+  if (profileRow.role === 'student' && profileRow.must_change_password) {
+    const expiresAt = profileRow.temporary_password_expires_at
+      ? new Date(profileRow.temporary_password_expires_at)
+      : null;
+    if (expiresAt && expiresAt.getTime() <= Date.now()) {
+      throw new Error('รหัสผ่านชั่วคราวหมดอายุแล้ว กรุณาติดต่อผู้ดูแลโรงเรียนเพื่อออกรหัสใหม่');
+    }
+
+    return {
+      user: {
+        id: profileRow.id,
+        email: email.endsWith('@accounts.eduverse.invalid') ? '' : email,
+        fullNameTh: profileRow.full_name_th,
+        fullNameEn: profileRow.full_name_en,
+        role: profileRow.role,
+        schoolId: profileRow.school_id || '',
+        avatarUrl: profileRow.avatar_url,
+        lineConnected: false,
+        phone: profileRow.phone || undefined,
+        studentRecordId: profileRow.student_id || undefined,
+        mustChangePassword: true,
+      },
+      school: null,
+      schools: [],
+    };
   }
 
   const schoolQuery = client.from('schools').select('*').order('name_th');
@@ -221,7 +261,6 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
       ? [school]
       : [];
 
-  const profileRow = profile as UserProfileRow;
   const user: AuthUser = {
     id: profileRow.id,
     email,
@@ -233,6 +272,7 @@ async function loadAuthContext(userId: string, email: string): Promise<AuthConte
     lineConnected: false,
     phone: profileRow.phone || undefined,
     studentRecordId: profileRow.student_id || undefined,
+    mustChangePassword: false,
   };
 
   return {
@@ -495,7 +535,7 @@ export async function authenticateWithSupabase(
   if (!data.user) throw new Error('Supabase did not return an authenticated user.');
 
   try {
-    return await loadAuthContext(data.user.id, data.user.email || '');
+    return await loadAuthContext(data.user.id, data.user.email || '', Boolean(data.user.email_confirmed_at));
   } catch (error) {
     await client.auth.signOut();
     throw error;
@@ -717,6 +757,63 @@ export async function updatePassword(password: string): Promise<void> {
   if (error) throw new Error(`ไม่สามารถเปลี่ยนรหัสผ่านได้: ${error.message}`);
 }
 
+export async function completeFirstStudentPasswordChange(password: string): Promise<AuthContext> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error: passwordError } = await client.auth.updateUser({ password });
+  if (passwordError) throw new Error(`ไม่สามารถเปลี่ยนรหัสผ่านได้: ${passwordError.message}`);
+
+  const { error: completionError } = await client.rpc('complete_student_password_change');
+  if (completionError) {
+    throw new Error(`เปลี่ยนรหัสผ่านแล้ว แต่ยังยืนยันการตั้งรหัสผ่านใหม่ไม่สำเร็จ: ${completionError.message}`);
+  }
+
+  const context = await restoreSupabaseSession();
+  if (!context) throw new Error('เปลี่ยนรหัสผ่านแล้ว แต่ไม่พบ session กรุณาเข้าสู่ระบบอีกครั้ง');
+  return context;
+}
+
+async function manageStudentTemporaryCredential(
+  operation: 'create' | 'reset',
+  schoolId: string,
+  studentId: string
+): Promise<TemporaryStudentCredential> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.functions.invoke('manage-student-credentials', {
+    body: { operation, schoolId, studentId },
+  });
+  if (error) throw new Error(`ไม่สามารถจัดการรหัสผ่านนักเรียนได้: ${error.message}`);
+  if (
+    typeof data?.studentIdNumber !== 'string' ||
+    typeof data?.temporaryPassword !== 'string' ||
+    typeof data?.expiresAt !== 'string'
+  ) {
+    throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบออกรหัสผ่านชั่วคราวตอบกลับไม่ถูกต้อง');
+  }
+  return {
+    studentIdNumber: data.studentIdNumber,
+    temporaryPassword: data.temporaryPassword,
+    expiresAt: data.expiresAt,
+  };
+}
+
+export function createStudentLoginAccount(
+  schoolId: string,
+  studentId: string
+): Promise<TemporaryStudentCredential> {
+  return manageStudentTemporaryCredential('create', schoolId, studentId);
+}
+
+export function resetStudentLoginPassword(
+  schoolId: string,
+  studentId: string
+): Promise<TemporaryStudentCredential> {
+  return manageStudentTemporaryCredential('reset', schoolId, studentId);
+}
+
 export async function restoreSupabaseSession(): Promise<AuthContext | null> {
   const client = getSupabaseClient();
   if (!client) return null;
@@ -726,7 +823,11 @@ export async function restoreSupabaseSession(): Promise<AuthContext | null> {
   if (!data.session?.user) return null;
 
   try {
-    return await loadAuthContext(data.session.user.id, data.session.user.email || '');
+    return await loadAuthContext(
+      data.session.user.id,
+      data.session.user.email || '',
+      Boolean(data.session.user.email_confirmed_at)
+    );
   } catch (error) {
     await client.auth.signOut();
     throw error;

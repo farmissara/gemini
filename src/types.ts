@@ -143,6 +143,7 @@ export interface AuthUser {
   phone?: string;
   studentRecordId?: string;
   teacherRecordId?: string;
+  mustChangePassword?: boolean;
 
   // General & Personal Information
   nickname?: string;

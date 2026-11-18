@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import {
   authenticateWithSupabase,
+  completeFirstStudentPasswordChange,
   fetchSchoolLoginPortalInfo,
   registerSchoolWithSupabase,
   requestPasswordReset,
@@ -115,6 +116,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordResetComplete, setPasswordResetComplete] = useState(false);
+  const [mustChangePasswordContext, setMustChangePasswordContext] = useState<AuthContext | null>(null);
+  const [temporaryPasswordUsed, setTemporaryPasswordUsed] = useState('');
+  const [firstPasswordError, setFirstPasswordError] = useState<string | null>(null);
+  const [isSettingFirstPassword, setIsSettingFirstPassword] = useState(false);
 
   // WebAuthn / FaceID / TouchID Quick Auth
   const [primaryPasskey, setPrimaryPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
@@ -310,6 +315,50 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     setRegisterStep(2);
   };
 
+  const continueWithAuthenticatedContext = (context: AuthContext) => {
+    if (context.user.mustChangePassword) {
+      setMustChangePasswordContext(context);
+      setTemporaryPasswordUsed(password);
+      setPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setFirstPasswordError(null);
+      return;
+    }
+    onLogin(context);
+  };
+
+  const handleSetFirstStudentPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFirstPasswordError(null);
+    if (newPassword.length < 8) {
+      setFirstPasswordError(lang === 'th' ? 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร' : 'Use at least 8 characters.');
+      return;
+    }
+    if (newPassword === temporaryPasswordUsed) {
+      setFirstPasswordError(lang === 'th' ? 'กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสชั่วคราว' : 'Choose a password different from the temporary password.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setFirstPasswordError(lang === 'th' ? 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' : 'The passwords do not match.');
+      return;
+    }
+
+    setIsSettingFirstPassword(true);
+    try {
+      const context = await completeFirstStudentPasswordChange(newPassword);
+      setMustChangePasswordContext(null);
+      setTemporaryPasswordUsed('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      onLogin(context);
+    } catch (requestError) {
+      setFirstPasswordError(requestError instanceof Error ? requestError.message : String(requestError));
+    } finally {
+      setIsSettingFirstPassword(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (mode === 'register' && registerStep === 1) {
@@ -334,7 +383,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 : 'Please enter your email'
           );
         }
-        onLogin(await authenticateWithSupabase(email, password, portalSchool?.id));
+        continueWithAuthenticatedContext(await authenticateWithSupabase(email, password, portalSchool?.id));
         return;
       }
 
@@ -391,7 +440,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       setPrimaryPasskey(passkey);
       const restored = await restoreSupabaseSession().catch(() => null);
       if (restored) {
-        onLogin(restored);
+        continueWithAuthenticatedContext(restored);
         return;
       }
       setEmail(passkey.email);
@@ -526,6 +575,82 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
         </div>
       </header>
+
+      {mustChangePasswordContext && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="student-first-password-title"
+        >
+          <form
+            onSubmit={handleSetFirstStudentPassword}
+            className="w-full max-w-md space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-2xl"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                <Lock className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 id="student-first-password-title" className="font-bold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'ตั้งรหัสผ่านส่วนตัวก่อนใช้งาน' : 'Set a personal password to continue'}
+                </h2>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'ต้องเปลี่ยนรหัสผ่านชั่วคราวก่อนเข้าระบบ' : 'Change your temporary password before continuing.'}
+                </p>
+              </div>
+            </div>
+
+            <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+              {lang === 'th'
+                ? 'ตั้งรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร และอย่าใช้รหัสนักเรียนเป็นรหัสผ่าน รหัสชั่วคราวหมดอายุภายใน 24 ชั่วโมง'
+                : 'Use at least 8 characters. Do not use your student ID as your password. This temporary password expires in 24 hours.'}
+            </p>
+
+            {firstPasswordError && (
+              <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                {firstPasswordError}
+              </p>
+            )}
+
+            <label className="block space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
+              <span>{lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+              />
+            </label>
+
+            <label className="block space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
+              <span>{lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                value={confirmNewPassword}
+                onChange={(event) => setConfirmNewPassword(event.target.value)}
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={isSettingFirstPassword}
+              className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+            >
+              {isSettingFirstPassword
+                ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
+                : (lang === 'th' ? 'บันทึกรหัสผ่านและเข้าสู่ระบบ' : 'Save password and continue')}
+            </button>
+          </form>
+        </div>
+      )}
 
       <main className="flex-1 flex flex-col">
         {/* ===================================================================== */}
@@ -1048,7 +1173,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 ref={passwordInputRef}
                                 type={showPassword ? 'text' : 'password'}
                                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                                minLength={8}
+                                minLength={mode === 'register' ? 8 : undefined}
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
