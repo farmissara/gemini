@@ -3665,6 +3665,9 @@ export const App: React.FC = () => {
           portfolioItems={viewPortfolioItems}
           onAddPortfolioItem={handleAddPortfolioItem}
           onDeletePortfolioItem={handleDeletePortfolioItem}
+          onUpdateCampusGates={['admin', 'super_admin'].includes(currentRole) ? handleUpdateCampusGates : undefined}
+          onSaveCampusGates={['admin', 'super_admin'].includes(currentRole) ? handleSaveCampusGates : undefined}
+          onUpdateSchoolCoordinates={['admin', 'super_admin'].includes(currentRole) ? handleUpdateSchoolCoordinates : undefined}
         />
 
         {/* Modals for Mobile View */}
@@ -4048,8 +4051,8 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {/* School Admin & Teachers: Unified Settings & Access Hub */}
-                {currentTab === 'system_settings' && ['admin', 'super_admin', 'teacher'].includes(currentRole) && (
+                {/* School Admin Only: Unified Settings, GPS & Access Hub */}
+                {currentTab === 'system_settings' && ['admin', 'super_admin'].includes(currentRole) && (
                   <SystemSettingsView
                     systemConfig={systemConfig}
                     activeSchool={activeSchool}
@@ -4413,8 +4416,10 @@ export const App: React.FC = () => {
                     attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
                     currentUser={currentUser}
+                    currentRole={currentRole}
                     school={activeSchool}
                     campusGates={campusGates}
+                    schoolPeriods={schoolPeriods}
                     leaveRequests={viewLeaveRequests}
                     lang={lang}
                     initialSubTab={timetableCheckinTarget ? 'period_checkin' : (deepLinkParams?.subTab || 'selfie_mobile')}
@@ -4429,6 +4434,9 @@ export const App: React.FC = () => {
                     onRecordPeriodAttendance={handleRecordPeriodAttendance}
                     onAddLeaveRequest={handleAddLeaveRequest}
                     onUpdateLeaveStatus={handleUpdateLeaveStatus}
+                    onUpdateCampusGates={['admin', 'super_admin'].includes(currentRole) ? handleUpdateCampusGates : undefined}
+                    onSaveCampusGates={['admin', 'super_admin'].includes(currentRole) ? handleSaveCampusGates : undefined}
+                    onUpdateSchoolCoordinates={['admin', 'super_admin'].includes(currentRole) ? handleUpdateSchoolCoordinates : undefined}
                   />
                 )}
 

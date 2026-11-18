@@ -42,8 +42,8 @@ export const SchoolGpsSettingsCard: React.FC<SchoolGpsSettingsCardProps> = ({
   onSaveCampusGates,
   onUpdateSchoolCoordinates
 }) => {
-  const canEditNames = currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher';
   const canManageGeofence = currentRole === 'admin' || currentRole === 'super_admin';
+  const canEditNames = canManageGeofence;
   const [activeTab, setActiveTab] = useState<GpsSubTab>('center_geofence');
 
   // Find primary gate or first gate for school center coordinates

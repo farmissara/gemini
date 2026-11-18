@@ -3314,7 +3314,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     <SlidersHorizontal className="h-3.5 w-3.5 tone-text" />
                     <span>กรองหลายเงื่อนไข / ตั้งค่าการแสดง</span>
                   </button>
-                  {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
+                  {isViewingCurrentTerm && isAdmin && (
                     <button
                       type="button"
                       onClick={(event) => {
@@ -3780,7 +3780,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
-      {showPeriodSettings && (
+      {isAdmin && showPeriodSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs">
           <div className="w-full max-w-xl max-h-[92vh] overflow-hidden rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] shadow-2xl flex flex-col">
             <div className="p-4 border-b border-[var(--color-border)] shrink-0">
@@ -3789,7 +3789,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 ตั้งเวลาเรียนมาตรฐานของโรงเรียน
               </h3>
               <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-                ครูและผู้ดูแลที่มีสิทธิ์แก้ไขได้ การเปลี่ยนแปลงจะมีผลกับตารางเรียนของทุกคนในโรงเรียนนี้
+                เฉพาะผู้ดูแลระบบโรงเรียนเท่านั้นที่กำหนดได้ การเปลี่ยนแปลงจะมีผลกับตารางเรียนและการเช็คชื่อรายคาบของทุกคนในโรงเรียนนี้
               </p>
             </div>
             <form onSubmit={handleSavePeriodSettings} className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">

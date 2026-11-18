@@ -773,13 +773,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 <span>{lang === 'th' ? 'QR รายคาบ' : 'Period QR'}</span>
               </button>
             )}
-            {!isRestrictedViewer && (
+            {isAdminUser && (
               <button
                 type="button"
                 data-active={activeTab === 'school_gps'}
                 onClick={() => setActiveTab('school_gps')}
                 className="seg-tab-btn flex items-center gap-1.5"
-                title="ตั้งค่าพิกัด GPS และรัศมีประตูโรงเรียน"
+                title="ตั้งค่าพิกัด GPS และรัศมีประตูโรงเรียน (เฉพาะผู้ดูแลระบบโรงเรียน)"
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
                 <span>GPS</span>
@@ -1828,7 +1828,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* ========================================================================= */}
       {/* TAB 5: SCHOOL GPS & GEOFENCE SUMMARY + HUB LINK */}
       {/* ========================================================================= */}
-      {activeTab === 'school_gps' && (
+      {isAdminUser && activeTab === 'school_gps' && (
         <div className="space-y-3">
           {onOpenGpsSettings ? (
             <div className="saas-card p-5 space-y-4">

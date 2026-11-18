@@ -78,6 +78,7 @@ import {
   LeaveRequest,
   LeaveType,
   LeaveStatus,
+  SchoolPeriodTime,
   UserRole
 } from '../types';
 import { PagedList } from '../components/PagedList';
@@ -159,6 +160,7 @@ interface MobileAttendanceViewProps {
   initialPeriodExpiresAt?: number;
   initialPeriodToken?: string;
   currentRole?: UserRole;
+  schoolPeriods?: SchoolPeriodTime[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
@@ -188,13 +190,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   initialPeriodCheckType,
   initialPeriodExpiresAt,
   initialPeriodToken,
-  currentRole = 'admin',
+  currentRole,
+  schoolPeriods = [],
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
 }) => {
+  const effectiveRole: UserRole = currentUser?.role || currentRole || 'student';
+  const isSchoolAdmin = effectiveRole === 'admin' || effectiveRole === 'super_admin';
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
-  const isStudentOnly = currentUser?.role === 'student';
+  const isStudentOnly = effectiveRole === 'student';
   const isStaffUser = !isRestrictedViewer;
   const studentScope = getAllowedStudentScope(currentUser, students);
   const ownStudent = resolveOwnStudent(currentUser, students);
@@ -834,19 +839,34 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           const lng = pos.coords.longitude;
           setRealGpsCoords({ lat, lng });
 
-          // Calculate distance to selected gate
+          // Automatically detect nearest gate configured by the school admin
           const R = 6371e3;
-          const φ1 = (selectedGate.lat * Math.PI) / 180;
-          const φ2 = (lat * Math.PI) / 180;
-          const Δφ = ((lat - selectedGate.lat) * Math.PI) / 180;
-          const Δλ = ((lng - selectedGate.lng) * Math.PI) / 180;
-          const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                    Math.cos(φ1) * Math.cos(φ2) *
-                    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          const d = Math.round(R * c);
+          const computeDist = (gLat: number, gLng: number) => {
+            const φ1 = (gLat * Math.PI) / 180;
+            const φ2 = (lat * Math.PI) / 180;
+            const Δφ = ((lat - gLat) * Math.PI) / 180;
+            const Δλ = ((lng - gLng) * Math.PI) / 180;
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return Math.round(R * c);
+          };
 
-          setCurrentGpsDistance(d > 5000 ? 18 : d);
+          let nearestGate = selectedGate;
+          let minDist = computeDist(selectedGate.lat, selectedGate.lng);
+          for (const gate of normalizedGates) {
+            const dGate = computeDist(gate.lat, gate.lng);
+            if (dGate < minDist) {
+              minDist = dGate;
+              nearestGate = gate;
+            }
+          }
+          if (nearestGate.id !== selectedGate.id) {
+            setSelectedGateId(nearestGate.id);
+          }
+
+          setCurrentGpsDistance(minDist > 5000 ? 18 : minDist);
           setIsGpsLoading(false);
         },
         () => {
@@ -893,7 +913,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       return;
     }
     if (!isInGeofence) {
-      setSelfieActionError(`คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี ${selectedGate.radiusMeters} เมตร) กรุณาเข้ามาในบริเวณโรงเรียน หรือกดจำลองระยะห่างให้อยู่ในพื้นที่`);
+      setSelfieActionError(
+        isSchoolAdmin
+          ? `คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี ${selectedGate.radiusMeters} เมตร) กรุณาเข้ามาในบริเวณโรงเรียน หรือกดจำลองระยะห่างเพื่อทดสอบ`
+          : `คุณอยู่นอกพื้นที่โรงเรียน (เกินรัศมี ${selectedGate.radiusMeters} เมตร ที่โรงเรียนกำหนด) กรุณาเข้ามาในบริเวณโรงเรียนแล้วกดอัปเดตพิกัด GPS`
+      );
       return;
     }
 
@@ -1072,16 +1096,28 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setTimeout(() => setLeaveSuccessNotice(null), 5000);
   };
 
-  // Periods list
-  const periodsList = [
-    { period: 1, time: '08:30 - 09:20', label: 'คาบที่ 1 (Period 1)' },
-    { period: 2, time: '09:25 - 10:15', label: 'คาบที่ 2 (Period 2)' },
-    { period: 3, time: '10:20 - 11:10', label: 'คาบที่ 3 (Period 3)' },
-    { period: 4, time: '11:15 - 12:05', label: 'คาบที่ 4 (Period 4 - พักเที่ยง)' },
-    { period: 5, time: '13:00 - 13:50', label: 'คาบที่ 5 (Period 5)' },
-    { period: 6, time: '13:55 - 14:45', label: 'คาบที่ 6 (Period 6)' },
-    { period: 7, time: '14:50 - 15:40', label: 'คาบที่ 7 (Period 7)' }
-  ];
+  // Periods list (driven by school admin period configuration)
+  const periodsList = useMemo(() => {
+    const lessonPeriods = (schoolPeriods || [])
+      .filter((p) => !p.isBreak && p.periodNumber > 0)
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+    if (lessonPeriods.length > 0) {
+      return lessonPeriods.map((p) => ({
+        period: p.periodNumber,
+        time: `${p.startTime} - ${p.endTime}`,
+        label: p.labelTh || `คาบที่ ${p.periodNumber}`,
+      }));
+    }
+    return [
+      { period: 1, time: '08:30 - 09:20', label: 'คาบที่ 1' },
+      { period: 2, time: '09:25 - 10:15', label: 'คาบที่ 2' },
+      { period: 3, time: '10:20 - 11:10', label: 'คาบที่ 3' },
+      { period: 4, time: '11:15 - 12:05', label: 'คาบที่ 4' },
+      { period: 5, time: '13:00 - 13:50', label: 'คาบที่ 5' },
+      { period: 6, time: '13:55 - 14:45', label: 'คาบที่ 6' },
+      { period: 7, time: '14:50 - 15:40', label: 'คาบที่ 7' },
+    ];
+  }, [schoolPeriods]);
   const currentBangkokNow = getBangkokClockSnapshot();
   const selectedPeriodMeta = periodsList.find((p) => p.period === selectedPeriod);
   const selectedPeriodTimeActivity = (() => {
@@ -2072,15 +2108,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                 <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
                   <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
-                  <select
-                    value={selectedGate.id}
-                    onChange={(e) => setSelectedGateId(e.target.value)}
-                    className="bg-slate-800 text-white text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-600 truncate min-w-0 max-w-full"
-                  >
-                    {normalizedGates.map(gate => (
-                      <option key={gate.id} value={gate.id} className="bg-slate-800 text-white">{gate.nameTh}</option>
-                    ))}
-                  </select>
+                  {normalizedGates.length > 1 ? (
+                    <select
+                      aria-label={lang === 'th' ? 'จุดประตูเช็คชื่อ' : 'Check-in gate'}
+                      value={selectedGate.id}
+                      onChange={(e) => setSelectedGateId(e.target.value)}
+                      className="bg-slate-800 text-white text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-600 truncate min-w-0 max-w-full"
+                    >
+                      {normalizedGates.map(gate => (
+                        <option key={gate.id} value={gate.id} className="bg-slate-800 text-white">{gate.nameTh}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="bg-slate-800/90 text-slate-100 text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-700 truncate min-w-0 max-w-full">
+                      {selectedGate.nameTh}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2402,7 +2445,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <h3 className="type-section-title truncate">จุดเช็คชื่อ GPS ({normalizedGates.length})</h3>
                 </div>
                 <div className="saas-control-group shrink-0">
-                  {(currentRole === 'admin' || currentRole === 'super_admin') && (
+                  {isSchoolAdmin && (
                     <button
                       type="button"
                       onClick={() => setShowGpsAdminModal(true)}
@@ -2426,46 +2469,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </div>
 
               <div className="saas-card-body space-y-3.5">
-                {campusGates.length === 0 && (
+                {campusGates.length === 0 && isSchoolAdmin && (
                   <p className="type-meta text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-2">
                     ใช้พิกัดหลักของโรงเรียนชั่วคราว (ยังไม่ได้ตั้งค่าจุดประตูเพิ่มเติม)
                   </p>
                 )}
-
-                {/* Multi-gate Selector List (Single-elevation hairline rows) */}
-                <div className="space-y-1.5">
-                  <label className="type-label block">เลือกจุดเช็คชื่อ</label>
-                  <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
-                    <PagedList items={normalizedGates} pageSize={3} renderItem={(gate) => {
-                      const isSelected = gate.id === selectedGate.id;
-                      return (
-                        <button
-                          key={gate.id}
-                          type="button"
-                          onClick={() => setSelectedGateId(gate.id)}
-                          className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 transition cursor-pointer ${
-                            isSelected
-                              ? 'bg-[var(--color-primary-light)] text-[var(--color-text-title)]'
-                              : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <MapPin className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
-                            <div className="min-w-0">
-                              <p className="type-card-title truncate">{gate.nameTh}</p>
-                              <p className="type-meta font-mono truncate">
-                                รัศมี {gate.radiusMeters} ม. · {Number(gate.lat).toFixed(4)}, {Number(gate.lng).toFixed(4)}
-                              </p>
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                          )}
-                        </button>
-                      );
-                    }} />
-                  </div>
-                </div>
 
                 {/* Status Summary */}
                 <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${
@@ -2483,37 +2491,78 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       {isInGeofence ? `ในเขต · ${selectedGate.nameTh}` : `นอกเขต · ${selectedGate.nameTh}`}
                     </p>
                     <p className="type-meta">
-                      ระยะห่าง <strong className="font-mono text-[var(--color-text-title)]">{currentGpsDistance} ม.</strong> (รัศมี {selectedGate.radiusMeters} ม.)
+                      ระยะห่าง <strong className="font-mono text-[var(--color-text-title)]">{currentGpsDistance} ม.</strong> (รัศมี {selectedGate.radiusMeters} ม. · กำหนดโดยโรงเรียน)
                     </p>
                   </div>
                 </div>
 
-                {/* Testing Presets for Location */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]">
-                  <span className="type-meta">จำลองระยะ:</span>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    {[
-                      { dist: 15, label: '15 ม.', inZone: true },
-                      { dist: 35, label: '35 ม.', inZone: true },
-                      { dist: 120, label: '120 ม.', inZone: true },
-                      { dist: 450, label: '450 ม.', inZone: false },
-                    ].map((preset) => (
-                      <button
-                        key={preset.dist}
-                        type="button"
-                        onClick={() => setCurrentGpsDistance(preset.dist)}
-                        title={preset.inZone ? 'จำลองระยะอยู่ในเขตโรงเรียน' : 'จำลองระยะอยู่นอกเขตโรงเรียน'}
-                        className={`font-semibold underline underline-offset-4 cursor-pointer transition tabular-nums ${
-                          currentGpsDistance === preset.dist
-                            ? preset.inZone ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
-                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
+                {/* Multi-gate Selector List (only shown when > 1 gate or School Admin) */}
+                {(normalizedGates.length > 1 || isSchoolAdmin) && (
+                  <div className="space-y-1.5">
+                    <label className="type-label block">
+                      {isSchoolAdmin ? 'จุดเช็คชื่อที่กำหนดไว้' : 'เลือกประตูที่ใช้งาน'}
+                    </label>
+                    <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+                      <PagedList items={normalizedGates} pageSize={3} renderItem={(gate) => {
+                        const isSelected = gate.id === selectedGate.id;
+                        return (
+                          <button
+                            key={gate.id}
+                            type="button"
+                            onClick={() => setSelectedGateId(gate.id)}
+                            className={`w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-[var(--color-primary-light)] text-[var(--color-text-title)]'
+                                : 'bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <MapPin className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
+                              <div className="min-w-0">
+                                <p className="type-card-title truncate">{gate.nameTh}</p>
+                                <p className="type-meta font-mono truncate">
+                                  รัศมี {gate.radiusMeters} ม.{isSchoolAdmin ? ` · ${Number(gate.lat).toFixed(4)}, ${Number(gate.lng).toFixed(4)}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                            )}
+                          </button>
+                        );
+                      }} />
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Testing Presets for Location — Strictly School Admin Only */}
+                {isSchoolAdmin && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]">
+                    <span className="type-meta">จำลองระยะ (ทดสอบผู้ดูแล):</span>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                      {[
+                        { dist: 15, label: '15 ม.', inZone: true },
+                        { dist: 35, label: '35 ม.', inZone: true },
+                        { dist: 120, label: '120 ม.', inZone: true },
+                        { dist: 450, label: '450 ม.', inZone: false },
+                      ].map((preset) => (
+                        <button
+                          key={preset.dist}
+                          type="button"
+                          onClick={() => setCurrentGpsDistance(preset.dist)}
+                          title={preset.inZone ? 'จำลองระยะอยู่ในเขตโรงเรียน' : 'จำลองระยะอยู่นอกเขตโรงเรียน'}
+                          className={`font-semibold underline underline-offset-4 cursor-pointer transition tabular-nums ${
+                            currentGpsDistance === preset.dist
+                              ? preset.inZone ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
+                              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>}
@@ -3074,18 +3123,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                 <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                <select
-                  aria-label={lang === 'th' ? 'จุดสแกน NFC' : 'NFC Gate'}
-                  value={selectedGate.id}
-                  onChange={(e) => setSelectedGateId(e.target.value)}
-                  className="flex-1 min-w-0 bg-transparent text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden"
-                >
-                  {normalizedGates.map((gate) => (
-                    <option key={gate.id} value={gate.id}>
-                      {gate.nameTh}
-                    </option>
-                  ))}
-                </select>
+                {normalizedGates.length > 1 ? (
+                  <select
+                    aria-label={lang === 'th' ? 'จุดสแกน NFC' : 'NFC Gate'}
+                    value={selectedGate.id}
+                    onChange={(e) => setSelectedGateId(e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden"
+                  >
+                    {normalizedGates.map((gate) => (
+                      <option key={gate.id} value={gate.id}>
+                        {gate.nameTh}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="flex-1 min-w-0 text-xs font-semibold text-[var(--color-text-title)] truncate">
+                    {selectedGate.nameTh}
+                  </span>
+                )}
               </div>
 
               {isStaffUser && (
@@ -3711,7 +3766,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
             <div className="saas-card-body space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                {courseTeacherOptions.length > 0 && (
+                {!isRestrictedViewer && courseTeacherOptions.length > 0 && (
                   <div>
                     <label className="type-meta font-semibold">ครูผู้สอน</label>
                     <select
@@ -3739,7 +3794,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
                 )}
 
-                <div className={courseTeacherOptions.length > 0 ? '' : 'sm:col-span-2 lg:col-span-2'}>
+                <div className={!isRestrictedViewer && courseTeacherOptions.length > 0 ? '' : 'sm:col-span-2 lg:col-span-2'}>
                   <label className="type-meta font-semibold">รายวิชา</label>
                   <select
                     value={selectedCourse.id}
@@ -3753,7 +3808,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="type-meta font-semibold">คาบเรียน</label>
+                  <label className="type-meta font-semibold">คาบเรียน (ตามตารางโรงเรียน)</label>
                   <select
                     value={selectedPeriod}
                     onChange={(e) => setSelectedPeriod(Number(e.target.value))}
@@ -3767,12 +3822,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
                 <div>
                   <label className="type-meta font-semibold">วันที่</label>
-                  <input
-                    type="date"
-                    value={periodDate}
-                    onChange={(e) => setPeriodDate(e.target.value)}
-                    className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums"
-                  />
+                  {isRestrictedViewer ? (
+                    <div className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums font-medium">
+                      {periodDate} (วันนี้)
+                    </div>
+                  ) : (
+                    <input
+                      type="date"
+                      value={periodDate}
+                      onChange={(e) => setPeriodDate(e.target.value)}
+                      className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -4268,8 +4329,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         lang={lang}
       />
 
-      {/* Admin GPS & Gates Management Modal */}
-      {showGpsAdminModal && _school && (
+      {/* Admin GPS & Gates Management Modal — Strictly School Admin Only */}
+      {isSchoolAdmin && showGpsAdminModal && _school && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="bg-[var(--color-card)] rounded-3xl p-4 sm:p-6 max-w-4xl w-full border border-[var(--color-border)] shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
@@ -4292,7 +4353,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <SchoolGpsSettingsCard
               activeSchool={_school}
               campusGates={campusGates}
-              currentRole={currentRole}
+              currentRole={effectiveRole}
               lang={lang}
               onUpdateCampusGates={onUpdateCampusGates || (() => {})}
               onSaveCampusGates={onSaveCampusGates}
@@ -4689,11 +4750,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       </MobileBottomSheet>
 
-      {/* BOTTOM SHEET: MOBILE GEOFENCE & GPS RADAR */}
+      {/* BOTTOM SHEET: MOBILE GEOFENCE & GPS STATUS */}
       <MobileBottomSheet
         isOpen={showGeofenceSheet}
         onClose={() => setShowGeofenceSheet(false)}
-        title={lang === 'th' ? `จุดเช็คชื่อ GPS (${normalizedGates.length})` : `GPS Check-in Gates (${normalizedGates.length})`}
+        title={
+          isSchoolAdmin
+            ? (lang === 'th' ? `จุดเช็คชื่อ GPS (${normalizedGates.length})` : `GPS Check-in Gates (${normalizedGates.length})`)
+            : (lang === 'th' ? 'สถานะพิกัด GPS เช็คชื่อ' : 'GPS Check-in Status')
+        }
         subtitle={isInGeofence ? `ในเขต · ${currentGpsDistance} ม.` : `นอกเขต · ${currentGpsDistance} ม.`}
       >
         <div className="space-y-4">
@@ -4706,7 +4771,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <RefreshCw className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
               <span>{lang === 'th' ? 'อัปเดตพิกัด GPS' : 'Refresh GPS'}</span>
             </button>
-            {(currentRole === 'admin' || currentRole === 'super_admin') && (
+            {isSchoolAdmin && (
               <button
                 type="button"
                 onClick={() => {
@@ -4721,10 +4786,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             )}
           </div>
 
+          {!isSchoolAdmin && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {lang === 'th'
+                ? 'พิกัด GPS รัศมี และจุดประตูเช็คชื่อทั้งหมดกำหนดโดยผู้ดูแลระบบของโรงเรียน'
+                : 'GPS coordinates, radius, and check-in gates are managed by your school administrator.'}
+            </p>
+          )}
+
           <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
             {normalizedGates.map((gate) => {
               const isSelected = gate.id === selectedGate.id;
-              return (
+              return normalizedGates.length > 1 || isSchoolAdmin ? (
                 <button
                   key={gate.id}
                   type="button"
@@ -4736,34 +4809,49 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <div className="min-w-0">
                     <p className="type-card-title truncate">{gate.nameTh}</p>
                     <p className="type-meta font-mono truncate">
-                      รัศมี {gate.radiusMeters} ม. · {Number(gate.lat).toFixed(4)}, {Number(gate.lng).toFixed(4)}
+                      รัศมี {gate.radiusMeters} ม.{isSchoolAdmin ? ` · ${Number(gate.lat).toFixed(4)}, ${Number(gate.lng).toFixed(4)}` : ''}
                     </p>
                   </div>
                   {isSelected && <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />}
                 </button>
+              ) : (
+                <div
+                  key={gate.id}
+                  className="w-full px-3 py-2.5 text-left flex items-center justify-between gap-2 bg-[var(--color-primary-light)]"
+                >
+                  <div className="min-w-0">
+                    <p className="type-card-title truncate">{gate.nameTh}</p>
+                    <p className="type-meta tabular-nums truncate">
+                      รัศมีเช็คชื่อที่โรงเรียนกำหนด {gate.radiusMeters} ม.
+                    </p>
+                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                </div>
               );
             })}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
-            <span className="type-meta">{lang === 'th' ? 'จำลองระยะ:' : 'Simulate distance:'}</span>
-            <div className="flex items-center gap-3 text-xs">
-              {[15, 35, 120, 450].map((dist) => (
-                <button
-                  key={dist}
-                  type="button"
-                  onClick={() => setCurrentGpsDistance(dist)}
-                  className={`font-semibold underline underline-offset-4 cursor-pointer tabular-nums ${
-                    currentGpsDistance === dist
-                      ? dist <= selectedGate.radiusMeters ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
-                      : 'text-[var(--color-text-muted)]'
-                  }`}
-                >
-                  {dist} ม.
-                </button>
-              ))}
+          {isSchoolAdmin && (
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
+              <span className="type-meta">{lang === 'th' ? 'จำลองระยะ (ทดสอบผู้ดูแล):' : 'Simulate distance (Admin test):'}</span>
+              <div className="flex items-center gap-3 text-xs">
+                {[15, 35, 120, 450].map((dist) => (
+                  <button
+                    key={dist}
+                    type="button"
+                    onClick={() => setCurrentGpsDistance(dist)}
+                    className={`font-semibold underline underline-offset-4 cursor-pointer tabular-nums ${
+                      currentGpsDistance === dist
+                        ? dist <= selectedGate.radiusMeters ? 'text-emerald-700 dark:text-emerald-300 font-bold' : 'text-rose-700 dark:text-rose-300 font-bold'
+                        : 'text-[var(--color-text-muted)]'
+                    }`}
+                  >
+                    {dist} ม.
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </MobileBottomSheet>
 

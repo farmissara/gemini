@@ -283,6 +283,9 @@ interface MobileAppShellProps {
   portfolioItems?: PortfolioItem[];
   onAddPortfolioItem?: (item: PortfolioItem) => void;
   onDeletePortfolioItem?: (itemId: string) => void;
+  onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
+  onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
+  onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
 }
 
 export const MobileAppShell: React.FC<MobileAppShellProps> = ({
@@ -355,6 +358,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   portfolioItems = [],
   onAddPortfolioItem,
   onDeletePortfolioItem,
+  onUpdateCampusGates,
+  onSaveCampusGates,
+  onUpdateSchoolCoordinates,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
     getPasskeyForUser(currentUser?.id)
@@ -1585,14 +1591,19 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               attendance={attendance}
               periodAttendance={periodAttendance}
               currentUser={currentUser}
+              currentRole={currentRole}
               school={activeSchool}
               campusGates={campusGates}
+              schoolPeriods={schoolPeriods}
               leaveRequests={leaveRequests}
               lang={lang}
               onRecordAttendance={onRecordAttendance}
               onRecordPeriodAttendance={onRecordPeriodAttendance}
               onAddLeaveRequest={onAddLeaveRequest}
               onUpdateLeaveStatus={onUpdateLeaveStatus}
+              onUpdateCampusGates={currentRole === 'admin' || currentRole === 'super_admin' ? onUpdateCampusGates : undefined}
+              onSaveCampusGates={currentRole === 'admin' || currentRole === 'super_admin' ? onSaveCampusGates : undefined}
+              onUpdateSchoolCoordinates={currentRole === 'admin' || currentRole === 'super_admin' ? onUpdateSchoolCoordinates : undefined}
             />
           </div>
         )}
@@ -1609,8 +1620,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               attendance={attendance}
               periodAttendance={periodAttendance}
               currentUser={currentUser}
+              currentRole={currentRole}
               school={activeSchool}
               campusGates={campusGates}
+              schoolPeriods={schoolPeriods}
               leaveRequests={leaveRequests}
               lang={lang}
               onRecordAttendance={onRecordAttendance}
