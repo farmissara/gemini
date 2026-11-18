@@ -2112,7 +2112,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-[var(--color-text-title)]">บัญชีเข้าสู่ระบบสำหรับนักเรียน</h3>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว หรือรีเซ็ตรหัสผ่านบัญชีเดิม ระบบจะแสดงรหัสชั่วคราวเพียงครั้งเดียวและหมดอายุใน 24 ชั่วโมง
+                  สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว หรือรีเซ็ตรหัสผ่านบัญชีเดิม รหัสชั่วคราวมี 8 ตัว ใช้ตัวพิมพ์ใหญ่และตัวเลขที่ไม่สับสน ระบบแสดงครั้งเดียวและหมดอายุใน 24 ชั่วโมง
                 </p>
               </div>
 
@@ -2195,7 +2195,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   {bulkCredentialResult.created.length > 0 && (
                     <>
                       <p className="text-[11px] leading-relaxed">
-                        จดบันทึกหรือส่งรหัสให้นักเรียนอย่างปลอดภัย เมื่อปิดหน้านี้จะไม่สามารถเรียกดูรหัสเดิมได้อีก นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ
+                        รหัสแต่ละรายการมี 8 ตัว ใช้ตัวพิมพ์ใหญ่และตัวเลขที่ไม่สับสน จดบันทึกหรือส่งรหัสให้นักเรียนอย่างปลอดภัย เมื่อปิดหน้านี้จะไม่สามารถเรียกดูรหัสเดิมได้อีก นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ
                       </p>
                       <div className="max-h-80 overflow-auto rounded-lg border border-amber-300 dark:border-amber-800">
                         <table className="w-full min-w-[620px] text-left text-xs">
@@ -2243,7 +2243,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold">รหัสชั่วคราว — แสดงครั้งเดียว</p>
-                      <p className="mt-1 text-xs">รหัสนักเรียน: <span className="font-mono font-bold">{temporaryCredential.studentIdNumber}</span></p>
+                      <p className="mt-1 text-xs">รหัสนักเรียน: <span className="font-mono font-bold">{temporaryCredential.studentIdNumber}</span> · รหัสชั่วคราว 8 ตัว</p>
                     </div>
                     <button
                       type="button"
@@ -2624,7 +2624,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         isOpen={showBulkCreateConfirm}
         title="ยืนยันสร้างบัญชีนักเรียนที่ยังไม่มี"
         description={`ระบบจะสร้างบัญชีให้กับนักเรียนสถานะกำลังศึกษาที่ยังไม่มีบัญชี จำนวน ${activeStudentsWithoutAccounts.length} คน โดยไม่สร้างซ้ำให้บัญชีที่มีอยู่แล้ว`}
-        detailNote="รหัสผ่านชั่วคราวจะแสดงให้ผู้ดูแลดูได้ครั้งเดียวและหมดอายุใน 24 ชั่วโมง นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ กรุณาบันทึกหรือส่งรหัสอย่างปลอดภัย"
+        detailNote="รหัสผ่านชั่วคราว 8 ตัวจะแสดงให้ผู้ดูแลดูได้ครั้งเดียวและหมดอายุใน 24 ชั่วโมง นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ กรุณาบันทึกหรือส่งรหัสอย่างปลอดภัย"
         confirmLabel="สร้างบัญชีทั้งหมด"
         cancelLabel="ยกเลิก"
         tone="primary"
@@ -2650,7 +2650,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         isOpen={Boolean(pendingPasswordReset)}
         title="ยืนยันรีเซ็ตรหัสผ่านนักเรียน"
         description={`ต้องการออกรหัสผ่านชั่วคราวใหม่ให้ "${pendingPasswordReset?.full_name_th || pendingPasswordReset?.full_name_en || pendingPasswordReset?.email || ''}" หรือไม่? รหัสผ่านปัจจุบันจะใช้เข้าสู่ระบบไม่ได้อีก`}
-        detailNote="รหัสชั่วคราวจะแสดงให้ดูและคัดลอกได้ครั้งเดียว หมดอายุภายใน 24 ชั่วโมง และนักเรียนต้องตั้งรหัสผ่านส่วนตัวก่อนใช้งานระบบ"
+        detailNote="รหัสชั่วคราว 8 ตัวจะแสดงให้ดูและคัดลอกได้ครั้งเดียว หมดอายุภายใน 24 ชั่วโมง และนักเรียนต้องตั้งรหัสผ่านส่วนตัวก่อนใช้งานระบบ"
         confirmLabel="ยืนยันรีเซ็ตรหัสผ่าน"
         cancelLabel="ยกเลิก"
         tone="primary"

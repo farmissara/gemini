@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TEMP_PASSWORD_LIFETIME_MS = 24 * 60 * 60 * 1000;
 const BULK_CREATE_CONCURRENCY = 5;
 
@@ -34,7 +34,7 @@ function respond(status: number, body: Record<string, unknown>): Response {
 }
 
 function generateTemporaryPassword(): string {
-  const passwordLength = 16;
+  const passwordLength = 8;
   const maxByte = 256 - (256 % PASSWORD_ALPHABET.length);
   let password = '';
   while (password.length < passwordLength) {
