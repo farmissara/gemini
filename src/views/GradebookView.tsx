@@ -45,6 +45,8 @@ import {
   FileDown,
   X,
   ChevronDown,
+  Calculator,
+  RotateCcw,
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -87,6 +89,28 @@ import {
 import { GradeLevelQualitativeSummaryView } from '../components/GradeLevelQualitativeSummaryView';
 import { CoreSubjectsReportCardView } from '../components/CoreSubjectsReportCardView';
 import { Pp5CoreRoomSummaryView } from '../components/Pp5CoreRoomSummaryView';
+import { ThreeSemesterAchievementTrendChart } from '../components/ThreeSemesterAchievementTrendChart';
+
+interface CourseScoreWeights {
+  midterm: number;
+  final: number;
+  assignment: number;
+  quiz: number;
+}
+
+const DEFAULT_SCORE_WEIGHTS: CourseScoreWeights = {
+  midterm: 30,
+  final: 40,
+  assignment: 20,
+  quiz: 10,
+};
+
+const OBEC_WEIGHT_PRESETS: Array<{ id: string; label: string; weights: CourseScoreWeights }> = [
+  { id: '60_40', label: 'มาตรฐานระบบ 60:40', weights: { midterm: 30, final: 40, assignment: 20, quiz: 10 } },
+  { id: '70_30', label: 'เกณฑ์ สพฐ. 70:30', weights: { midterm: 25, final: 30, assignment: 30, quiz: 15 } },
+  { id: '80_20', label: 'เน้นชิ้นงาน/ปฏิบัติ 80:20', weights: { midterm: 20, final: 20, assignment: 45, quiz: 15 } },
+  { id: '50_50', label: 'เน้นสอบวัดผล 50:50', weights: { midterm: 25, final: 50, assignment: 15, quiz: 10 } },
+];
 
 interface GradebookViewProps {
   students: Student[];
@@ -209,6 +233,26 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [histogramScope, setHistogramScope] = useState<HistogramScope>('course');
   const [histogramChartMode, setHistogramChartMode] = useState<ChartViewMode>('score_bins');
   const [histogramDeptFilter, setHistogramDeptFilter] = useState<string>('all');
+  const [showWeightConfigPanel, setShowWeightConfigPanel] = useState<boolean>(true);
+  const weightStorageKey = `eduverse_obec_weights_v1_${school?.id || 'default'}`;
+  const [courseWeightsMap, setCourseWeightsMap] = useState<Record<string, CourseScoreWeights>>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(weightStorageKey) : null;
+      return raw ? (JSON.parse(raw) as Record<string, CourseScoreWeights>) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(weightStorageKey, JSON.stringify(courseWeightsMap));
+      }
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [courseWeightsMap, weightStorageKey]);
 
   const pendingNotifyRef = useRef<Map<string, { timer: ReturnType<typeof setTimeout>; latestGrade: GradeRecord }>>(
     new Map()
@@ -495,6 +539,192 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     );
   };
 
+  const activeCourseWeights: CourseScoreWeights =
+    (selectedCourseId && courseWeightsMap[selectedCourseId]) || DEFAULT_SCORE_WEIGHTS;
+
+  const isDefaultCourseWeights =
+    activeCourseWeights.midterm === DEFAULT_SCORE_WEIGHTS.midterm &&
+    activeCourseWeights.final === DEFAULT_SCORE_WEIGHTS.final &&
+    activeCourseWeights.assignment === DEFAULT_SCORE_WEIGHTS.assignment &&
+    activeCourseWeights.quiz === DEFAULT_SCORE_WEIGHTS.quiz;
+
+  const weightSum =
+    activeCourseWeights.midterm +
+    activeCourseWeights.final +
+    activeCourseWeights.assignment +
+    activeCourseWeights.quiz;
+
+  const normalizedWeightPercents = (() => {
+    const safeSum = Math.max(1, weightSum);
+    return {
+      midterm: Math.round((activeCourseWeights.midterm / safeSum) * 100),
+      final: Math.round((activeCourseWeights.final / safeSum) * 100),
+      assignment: Math.round((activeCourseWeights.assignment / safeSum) * 100),
+      quiz: Math.round((activeCourseWeights.quiz / safeSum) * 100),
+      duringTerm: Math.round(
+        ((activeCourseWeights.midterm + activeCourseWeights.assignment + activeCourseWeights.quiz) /
+          safeSum) *
+          100
+      ),
+    };
+  })();
+
+  const updateActiveCourseWeights = (next: CourseScoreWeights) => {
+    if (!selectedCourseId) return;
+    setCourseWeightsMap((prev) => ({
+      ...prev,
+      [selectedCourseId]: {
+        midterm: Math.max(0, Math.min(100, Math.round(next.midterm))),
+        final: Math.max(0, Math.min(100, Math.round(next.final))),
+        assignment: Math.max(0, Math.min(100, Math.round(next.assignment))),
+        quiz: Math.max(0, Math.min(100, Math.round(next.quiz))),
+      },
+    }));
+  };
+
+  const computeWeightedTotal = (
+    mid: number,
+    fin: number,
+    assign: number,
+    quiz: number,
+    weights: CourseScoreWeights = activeCourseWeights
+  ): number => {
+    if (
+      weights.midterm === 30 &&
+      weights.final === 40 &&
+      weights.assignment === 20 &&
+      weights.quiz === 10
+    ) {
+      return clampScore(mid + fin + assign + quiz, 100);
+    }
+    const safeTotal = Math.max(1, weights.midterm + weights.final + weights.assignment + weights.quiz);
+    const weighted =
+      ((mid / 30) * weights.midterm +
+        (fin / 40) * weights.final +
+        (assign / 20) * weights.assignment +
+        (quiz / 10) * weights.quiz) *
+      (100 / safeTotal);
+    return clampScore(Math.round(weighted), 100);
+  };
+
+  const computeLiveObecGrade = (grade: GradeRecord) => {
+    const liveTotal = computeWeightedTotal(
+      grade.midtermScore,
+      grade.finalScore,
+      grade.assignmentScore,
+      grade.quizScore,
+      activeCourseWeights
+    );
+    const simulatedRecord: GradeRecord = { ...grade, totalScore: liveTotal };
+    const resolved = resolveEffectiveGrade(
+      simulatedRecord,
+      selectedCourse,
+      systemConfig.gradingSystem,
+      false
+    );
+    const savedResolved = resolveEffectiveGrade(
+      grade,
+      selectedCourse,
+      systemConfig.gradingSystem,
+      false
+    );
+    const hasDiff =
+      liveTotal !== grade.totalScore ||
+      resolved.letter !== grade.letterGrade ||
+      resolved.point !== grade.gradePoint;
+
+    return {
+      totalScore: liveTotal,
+      letter: resolved.letter,
+      point: resolved.point,
+      isSpecial: resolved.isSpecial,
+      isActivity: resolved.isActivity,
+      savedLetter: savedResolved.letter,
+      hasDiff,
+    };
+  };
+
+  const weightSimulationSummary = (() => {
+    const rows = filteredGradebookRows;
+    let savedGpaSum = 0;
+    let liveGpaSum = 0;
+    let gpaCount = 0;
+    let livePassCount = 0;
+    let evalCount = 0;
+    let changedCount = 0;
+
+    rows.forEach(({ grade }) => {
+      const live = computeLiveObecGrade(grade);
+      if (live.hasDiff) changedCount += 1;
+
+      if (live.letter !== 'ร' && live.letter !== 'มส.') {
+        evalCount += 1;
+        if (live.letter === 'ผ' || live.point >= 1.0) {
+          livePassCount += 1;
+        }
+      }
+
+      if (!live.isSpecial && !live.isActivity) {
+        const savedResolved = resolveEffectiveGrade(
+          grade,
+          selectedCourse,
+          systemConfig.gradingSystem,
+          false
+        );
+        savedGpaSum += savedResolved.point;
+        liveGpaSum += live.point;
+        gpaCount += 1;
+      }
+    });
+
+    const savedAvgGpa = gpaCount > 0 ? Math.round((savedGpaSum / gpaCount) * 100) / 100 : 0;
+    const liveAvgGpa = gpaCount > 0 ? Math.round((liveGpaSum / gpaCount) * 100) / 100 : 0;
+    const gpaDelta = Math.round((liveAvgGpa - savedAvgGpa) * 100) / 100;
+    const passRate = evalCount > 0 ? Math.round((livePassCount / evalCount) * 1000) / 10 : 100;
+
+    return {
+      savedAvgGpa,
+      liveAvgGpa,
+      gpaDelta,
+      passRate,
+      changedCount,
+      totalRows: rows.length,
+    };
+  })();
+
+  const handleApplyWeightsToCourseGrades = () => {
+    if (!effectiveCanEditGrades || !selectedCourse) return;
+    let updatedCount = 0;
+    courseGrades.forEach((grade) => {
+      const live = computeLiveObecGrade(grade);
+      if (live.hasDiff) {
+        onUpdateGrade(grade.id, {
+          totalScore: live.totalScore,
+          letterGrade: live.letter,
+          gradePoint: live.point,
+        });
+        updatedCount += 1;
+      }
+    });
+    if (updatedCount > 0) {
+      showAlertToast(
+        `อัปเดตผลตัดเกรดตามค่าน้ำหนักใหม่ในวิชา ${selectedCourse.code} สำเร็จ ${updatedCount} คน`,
+        `สัดส่วน ${activeCourseWeights.midterm}:${activeCourseWeights.final}:${activeCourseWeights.assignment}:${activeCourseWeights.quiz}`
+      );
+    } else {
+      showAlertToast('ผลตัดเกรดทุกรายการตรงกับค่าน้ำหนักปัจจุบันแล้ว');
+    }
+  };
+
+  const handleNormalizeWeightsTo100 = () => {
+    const safeSum = Math.max(1, weightSum);
+    const m = Math.round((activeCourseWeights.midterm / safeSum) * 100);
+    const f = Math.round((activeCourseWeights.final / safeSum) * 100);
+    const a = Math.round((activeCourseWeights.assignment / safeSum) * 100);
+    const q = Math.max(0, 100 - m - f - a);
+    updateActiveCourseWeights({ midterm: m, final: f, assignment: a, quiz: q });
+  };
+
   const getGradeDisplay = (grade: GradeRecord) =>
     resolveEffectiveGrade(grade, selectedCourse, systemConfig.gradingSystem, false);
 
@@ -602,12 +832,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     } as const;
     const clampedVal = clampScore(rawVal, maxMap[field]);
     const updated = { ...grade, [field]: clampedVal };
-    const total = clampScore(
-      (field === 'midtermScore' ? clampedVal : updated.midtermScore) +
-        (field === 'finalScore' ? clampedVal : updated.finalScore) +
-        (field === 'assignmentScore' ? clampedVal : updated.assignmentScore) +
-        (field === 'quizScore' ? clampedVal : updated.quizScore),
-      100
+    const total = computeWeightedTotal(
+      field === 'midtermScore' ? clampedVal : updated.midtermScore,
+      field === 'finalScore' ? clampedVal : updated.finalScore,
+      field === 'assignmentScore' ? clampedVal : updated.assignmentScore,
+      field === 'quizScore' ? clampedVal : updated.quizScore,
+      activeCourseWeights
     );
 
     if (courseIsActivity || grade.letterGrade === 'ผ' || grade.letterGrade === 'มผ') {
@@ -788,15 +1018,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       pendingNotifyRef.current.delete(grade.id);
     }
 
+    const liveTotal = computeWeightedTotal(
+      grade.midtermScore,
+      grade.finalScore,
+      grade.assignmentScore,
+      grade.quizScore,
+      activeCourseWeights
+    );
     let nextLetter = grade.letterGrade;
     let nextPoint = grade.gradePoint;
 
     if (status === 'auto') {
       if (courseIsActivity) {
-        nextLetter = grade.totalScore >= 50 ? 'ผ' : 'มผ';
+        nextLetter = liveTotal >= 50 ? 'ผ' : 'มผ';
         nextPoint = 0;
       } else {
-        const { letter, point } = calculateGrade(grade.totalScore, systemConfig.gradingSystem);
+        const { letter, point } = calculateGrade(liveTotal, systemConfig.gradingSystem);
         nextLetter = letter;
         nextPoint = point;
       }
@@ -805,8 +1042,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       nextPoint = 0;
     }
 
-    onUpdateGrade(grade.id, { letterGrade: nextLetter, gradePoint: nextPoint });
-    const nextGrade: GradeRecord = { ...grade, letterGrade: nextLetter, gradePoint: nextPoint };
+    onUpdateGrade(grade.id, { totalScore: liveTotal, letterGrade: nextLetter, gradePoint: nextPoint });
+    const nextGrade: GradeRecord = { ...grade, totalScore: liveTotal, letterGrade: nextLetter, gradePoint: nextPoint };
     void triggerGradeAlertNow(nextGrade, false);
   };
 
@@ -817,7 +1054,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     const final = clampScore(newFinalScore, 40);
     const assignment = clampScore(newAssignmentScore, 20);
     const quiz = clampScore(newQuizScore, 10);
-    const total = clampScore(midterm + final + assignment + quiz, 100);
+    const total = computeWeightedTotal(midterm, final, assignment, quiz, activeCourseWeights);
     const graded = courseIsActivity
       ? { letter: total >= 50 ? 'ผ' : 'มผ', point: 0 }
       : calculateGrade(total, systemConfig.gradingSystem);
@@ -1720,7 +1957,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               courses={courses}
               teachers={teachers}
               grades={grades}
-              filteredCourseGrades={filteredGradebookRows.map((row) => row.grade)}
+              filteredCourseGrades={filteredGradebookRows.map((row) => {
+                const live = computeLiveObecGrade(row.grade);
+                return {
+                  ...row.grade,
+                  totalScore: live.totalScore,
+                  letterGrade: live.letter,
+                  gradePoint: live.point,
+                };
+              })}
               students={students}
               selectedCourse={selectedCourse}
               gradingSystem={systemConfig.gradingSystem}
@@ -1786,8 +2031,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               {effectiveCanEditGrades && (
               <button
                 type="button"
+                onClick={() => setShowWeightConfigPanel((prev) => !prev)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition whitespace-nowrap ${
+                  showWeightConfigPanel
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
+                }`}
+              >
+                <Calculator className="w-3 h-3" />
+                <span>ตั้งค่าน้ำหนักคะแนน สพฐ. ({normalizedWeightPercents.duringTerm}:{normalizedWeightPercents.final})</span>
+              </button>
+              )}
+              {effectiveCanEditGrades && (
+              <button
+                type="button"
                 onClick={() => setShowBatchPastePanel((prev) => !prev)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition ${
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition whitespace-nowrap ${
                   showBatchPastePanel
                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
                     : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
@@ -1806,6 +2065,182 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           </div>
 
           <div className="p-2.5 space-y-2.5">
+          {/* Real-time OBEC Score Weighting & Auto-Grading Panel */}
+          {showWeightConfigPanel && effectiveCanEditGrades && (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2.5 text-xs print:hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Calculator className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  <h3 className="font-bold text-[var(--color-text-title)]">
+                    คำนวณเกรดอัตโนมัติตามเกณฑ์ สพฐ. (ปรับค่าน้ำหนักแบบ Real-time)
+                  </h3>
+                  <span className="text-[11px] font-mono font-semibold text-[var(--color-primary-text)] tabular-nums">
+                    สัดส่วน ระหว่างภาค {normalizedWeightPercents.duringTerm}% : ปลายภาค {normalizedWeightPercents.final}%
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {OBEC_WEIGHT_PRESETS.map((preset) => {
+                    const isPresetActive =
+                      activeCourseWeights.midterm === preset.weights.midterm &&
+                      activeCourseWeights.final === preset.weights.final &&
+                      activeCourseWeights.assignment === preset.weights.assignment &&
+                      activeCourseWeights.quiz === preset.weights.quiz;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => updateActiveCourseWeights(preset.weights)}
+                        className={`px-2 py-1 rounded-md border text-[11px] font-semibold transition cursor-pointer whitespace-nowrap ${
+                          isPresetActive
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                            : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                  {!isDefaultCourseWeights && (
+                    <button
+                      type="button"
+                      onClick={() => updateActiveCourseWeights(DEFAULT_SCORE_WEIGHTS)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer whitespace-nowrap"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>ค่าเริ่มต้น</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 4 Component Weight Sliders */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {[
+                  { key: 'midterm' as const, label: 'สอบกลางภาค (Midterm)', maxRaw: 30 },
+                  { key: 'final' as const, label: 'สอบปลายภาค (Final)', maxRaw: 40 },
+                  { key: 'assignment' as const, label: 'งาน/ชิ้นงาน (Assignment)', maxRaw: 20 },
+                  { key: 'quiz' as const, label: 'ทดสอบย่อย (Quiz)', maxRaw: 10 },
+                ].map((item) => {
+                  const rawW = activeCourseWeights[item.key];
+                  const normPct = normalizedWeightPercents[item.key];
+                  return (
+                    <div
+                      key={item.key}
+                      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-semibold text-[var(--color-text-title)] truncate">
+                          {item.label}
+                        </span>
+                        <span className="font-mono text-[11px] font-bold text-[var(--color-primary-text)] tabular-nums shrink-0">
+                          {normPct}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="range"
+                          min={0}
+                          max={80}
+                          step={5}
+                          aria-label={`น้ำหนักคะแนน${item.label}`}
+                          value={rawW}
+                          onChange={(e) =>
+                            updateActiveCourseWeights({
+                              ...activeCourseWeights,
+                              [item.key]: Number(e.target.value),
+                            })
+                          }
+                          className="w-full accent-[var(--color-primary)] cursor-pointer"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          aria-label={`กรอกน้ำหนักคะแนน${item.label}`}
+                          value={rawW}
+                          onChange={(e) =>
+                            updateActiveCourseWeights({
+                              ...activeCourseWeights,
+                              [item.key]: Number(e.target.value),
+                            })
+                          }
+                          className="w-12 px-1 py-0.5 text-center rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-mono text-xs font-bold text-[var(--color-text-title)] tabular-nums"
+                        />
+                      </div>
+                      <div className="text-[10px] text-[var(--color-text-muted)]">
+                        คะแนนดิบเต็ม {item.maxRaw} · คิดเป็น {normPct}% ของเกรดรวม
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Real-time Impact & Commit Action Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]">
+                <div className="flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
+                  {weightSum !== 100 && (
+                    <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold">
+                      ผลรวมน้ำหนัก = {weightSum} (ระบบปรับสัดส่วนเป็น 100% อัตโนมัติ)
+                      <button
+                        type="button"
+                        onClick={handleNormalizeWeightsTo100}
+                        className="underline font-bold cursor-pointer"
+                      >
+                        ปรับรวมเป็น 100
+                      </button>
+                    </span>
+                  )}
+                  <span className="text-[var(--color-text-muted)]">
+                    GPA เฉลี่ย Real-time:{' '}
+                    <strong className="font-mono text-[var(--color-text-title)]">
+                      {weightSimulationSummary.liveAvgGpa.toFixed(2)}
+                    </strong>
+                    {weightSimulationSummary.gpaDelta !== 0 && (
+                      <span
+                        className={`ml-1 font-mono font-bold ${
+                          weightSimulationSummary.gpaDelta > 0
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : 'text-rose-700 dark:text-rose-300'
+                        }`}
+                      >
+                        ({weightSimulationSummary.gpaDelta > 0 ? '+' : ''}
+                        {weightSimulationSummary.gpaDelta.toFixed(2)})
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[var(--color-text-muted)]">
+                    อัตราผ่านเกณฑ์:{' '}
+                    <strong className="font-mono text-emerald-700 dark:text-emerald-300">
+                      {weightSimulationSummary.passRate}%
+                    </strong>
+                  </span>
+                  <span className="text-[var(--color-text-muted)]">
+                    เปลี่ยนแปลง:{' '}
+                    <strong className="font-mono text-[var(--color-primary-text)]">
+                      {weightSimulationSummary.changedCount}/{weightSimulationSummary.totalRows} คน
+                    </strong>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={weightSimulationSummary.changedCount === 0}
+                    onClick={handleApplyWeightsToCourseGrades}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-45 text-white text-[11px] font-bold cursor-pointer transition whitespace-nowrap"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>
+                      {weightSimulationSummary.changedCount > 0
+                        ? `บันทึกผลตัดเกรด Real-time (${weightSimulationSummary.changedCount} คน)`
+                        : 'ผลเกรดตรงตามน้ำหนักแล้ว'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Batch Excel / Sheets Score Paste Panel */}
           {showBatchPastePanel && (
             <div className="rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/30 p-3 space-y-2.5 text-xs print:hidden">
@@ -2023,10 +2458,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   <th className="py-3 px-3">Student</th>
                   <th className="py-3 px-3">Room</th>
                   <th className="py-3 px-3 text-center">เวลาเรียน (80%)</th>
-                  <th className="py-3 px-3 text-center">Midterm (30)</th>
-                  <th className="py-3 px-3 text-center">Final (40)</th>
-                  <th className="py-3 px-3 text-center">Homework (20)</th>
-                  <th className="py-3 px-3 text-center">Quiz (10)</th>
+                  <th className="py-3 px-3 text-center">Midterm (30 · {normalizedWeightPercents.midterm}%)</th>
+                  <th className="py-3 px-3 text-center">Final (40 · {normalizedWeightPercents.final}%)</th>
+                  <th className="py-3 px-3 text-center">Homework (20 · {normalizedWeightPercents.assignment}%)</th>
+                  <th className="py-3 px-3 text-center">Quiz (10 · {normalizedWeightPercents.quiz}%)</th>
                   <th className={`py-3 px-3 text-center font-bold ${isPrimaryCourse ? 'text-sky-700 dark:text-sky-300 bg-sky-50/70 dark:bg-sky-950/30' : 'text-[var(--color-text-title)]'}`}>
                     {isPrimaryCourse ? 'Raw Score / 100 (%)' : 'Total (100)'}
                   </th>
@@ -2148,24 +2583,36 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           />
                         </td>
 
-                        <td className={`py-3 px-3 text-center font-mono font-bold ${isPrimaryCourse ? 'bg-sky-50/40 dark:bg-sky-950/20' : ''}`}>
-                          {isPrimaryCourse ? (
-                            <div className="inline-flex flex-col items-center">
-                              <span className="text-base font-extrabold text-sky-700 dark:text-sky-300">{grade.totalScore}%</span>
-                              <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">({grade.totalScore} / 100)</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="text-sm text-[var(--color-text-title)]">{grade.totalScore}</div>
-                              <div className="text-[10px] font-normal text-[var(--color-text-muted)]">{grade.totalScore}%</div>
-                            </>
-                          )}
+                        <td className={`py-3 px-3 text-center font-mono font-bold tabular-nums ${isPrimaryCourse ? 'bg-sky-50/40 dark:bg-sky-950/20' : ''}`}>
+                          {(() => {
+                            const live = computeLiveObecGrade(grade);
+                            return (
+                              <>
+                                {isPrimaryCourse ? (
+                                  <div className="inline-flex flex-col items-center">
+                                    <span className="text-base font-extrabold text-sky-700 dark:text-sky-300">{live.totalScore}%</span>
+                                    <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">({live.totalScore} / 100)</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="text-sm text-[var(--color-text-title)]">{live.totalScore}</div>
+                                    <div className="text-[10px] font-normal text-[var(--color-text-muted)]">{live.totalScore}%</div>
+                                  </>
+                                )}
+                                {live.totalScore !== grade.totalScore && (
+                                  <div className="text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                                    เดิม {grade.totalScore}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
 
                         <td className="py-3 px-3 text-center">
                           {(() => {
-                            const disp = getGradeDisplay(grade);
-                            const feedback = getRawScoreFeedback(grade.totalScore);
+                            const disp = computeLiveObecGrade(grade);
+                            const feedback = getRawScoreFeedback(disp.totalScore);
                             const currentSpecialValue =
                               grade.letterGrade === 'ร' ||
                               grade.letterGrade === 'มส.' ||
@@ -2209,6 +2656,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                                     }`}
                                   >
                                     {disp.isSpecial ? disp.letter : `${disp.letter} (${disp.point.toFixed(1)})`}
+                                  </span>
+                                )}
+                                {disp.letter !== disp.savedLetter && (
+                                  <span className="text-[10px] font-mono font-semibold text-amber-700 dark:text-amber-300">
+                                    เดิม {disp.savedLetter} → {disp.letter}
                                   </span>
                                 )}
                                 <select
@@ -2328,41 +2780,42 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Total Score & Feedback/Grade Badge */}
-                      <div className="text-right shrink-0">
-                        {isPrimaryCourse ? (
-                          <div className="text-base font-extrabold font-mono text-sky-700 dark:text-sky-300">
-                            {grade.totalScore}% <span className="text-[10px] font-normal text-[var(--color-text-muted)]">({grade.totalScore}/100)</span>
-                          </div>
-                        ) : (
-                          <div className="text-base font-bold font-mono text-[var(--color-text-title)]">
-                            {grade.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100 ({grade.totalScore}%)</span>
-                          </div>
-                        )}
+                      {/* Total Score & Feedback/Grade Badge (Real-time Weighted) */}
+                      <div className="text-right shrink-0 tabular-nums">
                         {(() => {
-                          const disp = getGradeDisplay(grade);
-                          const feedback = getRawScoreFeedback(grade.totalScore);
-                          if (isPrimaryCourse && !disp.isSpecial) {
-                            return (
-                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${feedback.badgeClass}`}>
-                                {feedback.labelTh} (ผลรายปี {disp.letter})
-                              </span>
-                            );
-                          }
+                          const disp = computeLiveObecGrade(grade);
+                          const feedback = getRawScoreFeedback(disp.totalScore);
                           return (
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                                disp.letter === 'ร' || disp.letter === 'มส.' || disp.letter === 'มผ'
-                                  ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                                  : disp.point >= 3.5 || disp.letter === 'ผ'
-                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                                  : disp.point >= 2.5
-                                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                                  : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                              }`}
-                            >
-                              {disp.isSpecial ? disp.letter : `เกรด ${disp.letter}`}
-                            </span>
+                            <>
+                              {isPrimaryCourse ? (
+                                <div className="text-base font-extrabold font-mono text-sky-700 dark:text-sky-300">
+                                  {disp.totalScore}% <span className="text-[10px] font-normal text-[var(--color-text-muted)]">({disp.totalScore}/100)</span>
+                                </div>
+                              ) : (
+                                <div className="text-base font-bold font-mono text-[var(--color-text-title)]">
+                                  {disp.totalScore} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">/ 100 ({disp.totalScore}%)</span>
+                                </div>
+                              )}
+                              {isPrimaryCourse && !disp.isSpecial ? (
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${feedback.badgeClass}`}>
+                                  {feedback.labelTh} (ผลรายปี {disp.letter})
+                                </span>
+                              ) : (
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                                    disp.letter === 'ร' || disp.letter === 'มส.' || disp.letter === 'มผ' || disp.letter === '0' || disp.letter === 'F'
+                                      ? 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                                      : disp.point >= 3.5 || disp.letter === 'ผ'
+                                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                      : disp.point >= 2.5
+                                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
+                                      : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                  }`}
+                                >
+                                  {disp.isSpecial ? disp.letter : `เกรด ${disp.letter}`}
+                                </span>
+                              )}
+                            </>
                           );
                         })()}
                       </div>
@@ -2489,6 +2942,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           {renderPageControls(currentGradePage, filteredGradebookRows.length, gradePageSize, setGradePage, 'Gradebook pages')}
           </div>
         </div>
+      )}
+
+      {/* 3-Semester Achievement Trend Comparison Chart inside GradebookView */}
+      {activeTab === 'gradebook' && !isPersonalGradeViewer && (
+        <ThreeSemesterAchievementTrendChart
+          grades={grades}
+          courses={courses}
+          students={students}
+          selectedCourse={selectedCourse}
+          filteredCourseGrades={filteredGradebookRows.map((row) => row.grade)}
+          systemConfig={systemConfig}
+          lang={lang}
+          selectedStudentId={selectedStudentIdForPp6}
+          onSelectStudent={setSelectedStudentIdForPp6}
+          onOpenStudentDevBook={onOpenStudentDevBook}
+        />
       )}
 
       {/* ========================================================
