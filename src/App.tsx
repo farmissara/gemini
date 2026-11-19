@@ -996,6 +996,48 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleCopyCoursesToSchool = (newCourses: Course[]) => {
+    if (newCourses.length === 0) return;
+    setCourses((prev) => [...newCourses.map((c) => ({ ...c, schoolId: activeSchool.id })), ...prev]);
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'academic_period_update',
+        targetLabel: activeSchool.nameTh || activeSchool.id,
+        details: `คัดลอกรายวิชาจากคลังย้อนหลังมาใช้งาน ${newCourses.length} วิชา`,
+      });
+    }
+  };
+
+  const handleApplyAcademicRollover = async (payload: {
+    academicYear: string;
+    currentSemester: string;
+    newCourses: Course[];
+    newTimetableSlots: TimetableSlot[];
+    promotedStudents?: Student[];
+  }) => {
+    await handleUpdateSchool({
+      academicYear: payload.academicYear,
+      currentSemester: payload.currentSemester,
+    });
+    if (payload.newCourses.length > 0) {
+      setCourses((prev) => [...payload.newCourses, ...prev]);
+    }
+    if (payload.newTimetableSlots.length > 0) {
+      setTimetableSlots((prev) => [...payload.newTimetableSlots, ...prev]);
+      if (!isDemoMode) {
+        await saveTimetableSlotsToDb(activeSchool.id, payload.newTimetableSlots).catch(() => {
+          // non-blocking fallback; local state already updated
+        });
+      }
+    }
+    if (payload.promotedStudents && payload.promotedStudents.length > 0) {
+      const promotedMap = new Map(payload.promotedStudents.map((s) => [s.id, s]));
+      setStudents((prev) => prev.map((s) => promotedMap.get(s.id) || s));
+    }
+  };
+
   const handleUpdateSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFlags) => {
     setFeatureFlagsBySchool((prev) => ({ ...prev, [schoolId]: flags }));
     setSchools((prev) =>
@@ -4620,6 +4662,11 @@ export const App: React.FC = () => {
                     systemConfig={systemConfig}
                     activeSchool={activeSchool}
                     students={schoolStudents}
+                    teachers={schoolTeachers}
+                    courses={schoolCourses}
+                    grades={schoolGrades}
+                    attendance={schoolAttendance}
+                    timetableSlots={schoolTimetableSlots}
                     currentRole={currentRole}
                     currentUser={currentUser}
                     promotions={promotions}
@@ -4629,6 +4676,8 @@ export const App: React.FC = () => {
                     onSaveCampusGates={handleSaveCampusGates}
                     onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
                     onUpdateSchool={handleUpdateSchool}
+                    onApplyAcademicRollover={handleApplyAcademicRollover}
+                    onCopyCoursesToSchool={handleCopyCoursesToSchool}
                     onUpdateConfig={setSystemConfig}
                     featureFlags={activeFeatureFlags}
                     onUpdateFeatureFlags={(flags) => handleUpdateSchoolFeatureFlags(activeSchool.id, flags)}

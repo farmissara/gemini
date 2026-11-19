@@ -3064,6 +3064,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             systemConfig={systemConfig}
             currentRole={currentRole}
             currentUserName={currentUser?.fullNameTh}
+            grades={grades}
+            gradingSystem={systemConfig.gradingSystem}
+            onUpdateGrade={effectiveCanEditGrades ? onUpdateGrade : undefined}
+            onAddGrade={effectiveCanEditGrades ? onAddGrade : undefined}
           />
         </div>
       )}

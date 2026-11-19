@@ -115,6 +115,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTeacherFilter, setSelectedTeacherFilter] = useState<string>('all');
+  const [selectedTermFilter, setSelectedTermFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeptPresetModal, setShowDeptPresetModal] = useState(false);
   const [newDeptInput, setNewDeptInput] = useState('');
@@ -190,7 +191,15 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     ])
   ).sort((a, b) => a.localeCompare(b, 'th'));
 
-  // Filter courses by search, teacher, and category
+  const availableTermKeys = Array.from(
+    new Set(
+      courses
+        .filter((c) => c.academicYear && c.semester)
+        .map((c) => `${c.academicYear}::${c.semester}`)
+    )
+  ).sort((a, b) => b.localeCompare(a));
+
+  // Filter courses by search, teacher, term, and category
   const filteredCourses = courses.filter((c) => {
     const matchesSearch =
       c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -199,7 +208,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       c.teacherName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCat = selectedCategory === 'all' || c.category === selectedCategory;
     const matchesTeacher = courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions);
-    return matchesSearch && matchesCat && matchesTeacher;
+    const matchesTerm =
+      selectedTermFilter === 'all' || `${c.academicYear}::${c.semester}` === selectedTermFilter;
+    return matchesSearch && matchesCat && matchesTeacher && matchesTerm;
   });
 
   // Helper to get category Thai label
@@ -646,6 +657,26 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               </button>
             )}
           </div>
+
+          {availableTermKeys.length > 1 && (
+            <select
+              aria-label="กรองตามปีการศึกษาและภาคเรียน"
+              value={selectedTermFilter}
+              onChange={(e) => setSelectedTermFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+            >
+              <option value="all">ทุกปี/เทอม ({courses.length})</option>
+              {availableTermKeys.map((key) => {
+                const [yr, sem] = key.split('::');
+                const cnt = courses.filter((c) => `${c.academicYear}::${c.semester}` === key).length;
+                return (
+                  <option key={key} value={key}>
+                    ปี {yr} · {formatSemesterLabel(sem)} ({cnt})
+                  </option>
+                );
+              })}
+            </select>
+          )}
         </div>
 
         <div className="fn-divider" />

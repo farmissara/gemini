@@ -41,7 +41,7 @@ import {
   Lock,
   Activity,
 } from 'lucide-react';
-import { SystemConfig, LineNotificationSettings, Student, Teacher, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
+import { AttendanceRecord, Course, GradeRecord, SystemConfig, LineNotificationSettings, Student, Teacher, TimetableSlot, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
 import type { NavTab } from '../components/layout/Sidebar';
 import {
@@ -62,6 +62,7 @@ import { SchoolGpsSettingsCard } from '../components/SchoolGpsSettingsCard';
 import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLoginSettingsCard';
 import { SchoolPermissionSettingsView } from './SchoolPermissionSettingsView';
 import { SchoolPackagesAndAiPanel } from '../components/admin/SchoolPackagesAndAiPanel';
+import { AcademicTermRolloverPanel } from '../components/admin/AcademicTermRolloverPanel';
 import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { appendAuditLog, getAuditLogs } from '../lib/auditLog';
@@ -88,6 +89,10 @@ interface SystemSettingsViewProps {
   activeSchool: School;
   students: Student[];
   teachers?: Teacher[];
+  courses?: Course[];
+  grades?: GradeRecord[];
+  attendance?: AttendanceRecord[];
+  timetableSlots?: TimetableSlot[];
   currentRole: UserRole;
   currentUser?: AuthUser | null;
   promotions?: PromotionCampaign[];
@@ -97,6 +102,14 @@ interface SystemSettingsViewProps {
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
   onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
+  onApplyAcademicRollover?: (payload: {
+    academicYear: string;
+    currentSemester: string;
+    newCourses: Course[];
+    newTimetableSlots: TimetableSlot[];
+    promotedStudents?: Student[];
+  }) => Promise<void>;
+  onCopyCoursesToSchool?: (newCourses: Course[]) => void;
   onUpdateConfig: (updated: SystemConfig) => void;
   featureFlags?: SchoolFeatureFlags;
   onUpdateFeatureFlags?: (flags: SchoolFeatureFlags) => void;
@@ -112,6 +125,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   activeSchool,
   students,
   teachers = [],
+  courses = [],
+  grades = [],
+  attendance = [],
+  timetableSlots = [],
   currentRole,
   currentUser,
   promotions = [],
@@ -121,6 +138,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
   onUpdateSchool,
+  onApplyAcademicRollover,
+  onCopyCoursesToSchool,
   onUpdateConfig,
   featureFlags: externalFeatureFlags,
   onUpdateFeatureFlags,
@@ -2262,6 +2281,29 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               </div>
             </section>
           )}
+
+          <AcademicTermRolloverPanel
+            activeSchool={activeSchool}
+            systemConfig={systemConfig}
+            currentRole={currentRole}
+            actorName={currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email || 'ผู้ดูแลระบบ'}
+            students={students}
+            courses={courses}
+            grades={grades}
+            attendance={attendance}
+            timetableSlots={timetableSlots}
+            onApplyRollover={async (payload) => {
+              if (onApplyAcademicRollover) {
+                await onApplyAcademicRollover(payload);
+              } else {
+                await onUpdateSchool?.({
+                  academicYear: payload.academicYear,
+                  currentSemester: payload.currentSemester,
+                });
+              }
+            }}
+            onCopyCoursesFromArchive={onCopyCoursesToSchool}
+          />
 
           <div className="bg-[var(--color-card)] rounded-2xl p-6 border border-[var(--color-border)] shadow-xs space-y-5">
             <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">

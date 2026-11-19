@@ -1,17 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
+  BookOpen,
   CheckCircle2,
   Download,
+  Edit3,
   FileSpreadsheet,
   Layers,
   Plus,
   Printer,
+  RefreshCw,
   Save,
+  Search,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
+  X,
 } from 'lucide-react';
 import type {
+  GradeRecord,
+  GradingSystem,
   Course,
   LearningIndicator,
   LearningIndicatorScore,
@@ -23,18 +31,30 @@ import type {
   UserRole,
 } from '../types';
 import {
+  deleteLearningIndicatorSet,
+  extractPassingPercent,
+  inferIndicatorNature,
   loadLearningIndicatorScores,
   loadLearningIndicatorSets,
   saveLearningIndicatorScores,
   saveLearningIndicatorSet,
 } from '../lib/learningIndicatorStore';
-import { loadMoeStandardCatalog } from '../lib/moeStandardCatalogStore';
+import {
+  deleteSchoolEditableStandardItem,
+  loadMoeStandardCatalog,
+  loadSchoolEditableStandardCatalog,
+  resetSchoolEditableStandardCatalog,
+  SchoolStandardIndicatorItem,
+  upsertSchoolEditableStandardItem,
+} from '../lib/moeStandardCatalogStore';
 import { createMoeScienceM3IndicatorSets } from '../data/moeScienceM3Indicators';
 import {
   createObcUnitSetsForCourse,
+  MOE_LEARNING_AREAS,
   resolveMoeLearningArea,
 } from '../data/moeCurriculumStandards';
-import { getRawScoreFeedback, getStudentShortPrefixTh } from '../lib/moeGrading';
+import { calculateGrade } from '../lib/schoolSettings';
+import { getRawScoreFeedback, getStudentShortPrefixTh, isSpecialMoeGrade } from '../lib/moeGrading';
 import { printHtmlElementInIsolatedFrame } from '../lib/moeReportPdf';
 
 interface Props {
@@ -44,6 +64,19 @@ interface Props {
   systemConfig: SystemConfig;
   currentRole: UserRole;
   currentUserName?: string;
+  grades?: GradeRecord[];
+  gradingSystem?: GradingSystem;
+  onUpdateGrade?: (gradeId: string, updates: Partial<GradeRecord>) => void;
+  onAddGrade?: (newGrade: GradeRecord, options?: { notify?: boolean }) => void;
+}
+
+interface IndicatorDraftRow {
+  id?: string;
+  code: string;
+  title: string;
+  nature: 'formative' | 'summative';
+  maxScore: number;
+  passingPercent: number;
 }
 
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -55,6 +88,10 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
   systemConfig,
   currentRole,
   currentUserName,
+  grades = [],
+  gradingSystem = 'thai',
+  onUpdateGrade,
+  onAddGrade,
 }) => {
   const schoolId = school?.id || course.schoolId || '';
   const learningArea = useMemo(() => resolveMoeLearningArea(course), [course]);
@@ -73,18 +110,60 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
   const [error, setError] = useState('');
+
+  // Create or Edit Unit & Indicator Set Form
   const [showSetForm, setShowSetForm] = useState(false);
+  const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [setTitle, setSetTitle] = useState('');
   const [standardCode, setStandardCode] = useState('');
   const [subjectArea, setSubjectArea] = useState(learningArea.nameTh);
   const [gradeLevel, setGradeLevel] = useState('');
   const [unitTitle, setUnitTitle] = useState('');
   const [isTemplate, setIsTemplate] = useState(false);
-  const [indicatorDrafts, setIndicatorDrafts] = useState<Array<{ code: string; title: string; maxScore: number }>>([
-    { code: '', title: '', maxScore: 5 },
+  const [indicatorDrafts, setIndicatorDrafts] = useState<IndicatorDraftRow[]>([
+    { code: '', title: '', nature: 'formative', maxScore: 5, passingPercent: 50 },
   ]);
+
+  // Inline Delete Confirmation for Set
+  const [pendingDeleteSetId, setPendingDeleteSetId] = useState<string | null>(null);
+
+  // OBEC Catalog & School Editable Standard Library Modal
   const [catalogItems, setCatalogItems] = useState<MoeStandardCatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [showCatalogManager, setShowCatalogManager] = useState(false);
+  const [schoolCatalog, setSchoolCatalog] = useState<SchoolStandardIndicatorItem[]>([]);
+  const [catalogAreaFilter, setCatalogAreaFilter] = useState<string>('all');
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [editingCatalogItem, setEditingCatalogItem] = useState<SchoolStandardIndicatorItem | null>(null);
+  const [showCatalogForm, setShowCatalogForm] = useState(false);
+  const [catalogForm, setCatalogForm] = useState<{
+    subjectArea: string;
+    gradeLevel: string;
+    standardCode: string;
+    standardTitle: string;
+    unitTitle: string;
+    indicatorCode: string;
+    indicatorTitle: string;
+    nature: 'formative' | 'summative';
+    maxScore: number;
+    passingPercent: number;
+  }>({
+    subjectArea: learningArea.nameTh,
+    gradeLevel: course.room || 'ทุกระดับชั้น (ป.1–ม.6)',
+    standardCode: '',
+    standardTitle: '',
+    unitTitle: '',
+    indicatorCode: '',
+    indicatorTitle: '',
+    nature: 'formative',
+    maxScore: 5,
+    passingPercent: 50,
+  });
+
+  // Gradebook Ratio Sync (OBEC Formative : Summative -> GradeRecord)
+  const [showRatioSyncBox, setShowRatioSyncBox] = useState(false);
+  const [obecRatioPreset, setObecRatioPreset] = useState<'70_30' | '80_20' | '60_40'>('70_30');
+
   const printAreaRef = useRef<HTMLDivElement>(null);
 
   const canEdit = ['super_admin', 'admin', 'teacher'].includes(currentRole);
@@ -92,6 +171,10 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
   useEffect(() => {
     setSubjectArea(learningArea.nameTh);
   }, [learningArea.nameTh]);
+
+  useEffect(() => {
+    setSchoolCatalog(loadSchoolEditableStandardCatalog(schoolId));
+  }, [schoolId]);
 
   useEffect(() => {
     let mounted = true;
@@ -156,13 +239,55 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     return students.filter((student) => enrolled.has(student.id));
   }, [students, course.enrolledStudentIds]);
 
-  const createSet = async () => {
+  const resetSetForm = () => {
+    setEditingSetId(null);
+    setSetTitle('');
+    setStandardCode('');
+    setSubjectArea(learningArea.nameTh);
+    setGradeLevel(course.room || '');
+    setUnitTitle('');
+    setIsTemplate(false);
+    setIndicatorDrafts([{ code: '', title: '', nature: 'formative', maxScore: 5, passingPercent: 50 }]);
+  };
+
+  const openCreateSetForm = () => {
+    resetSetForm();
+    setShowSetForm(true);
+  };
+
+  const openEditSetForm = (targetSet: LearningIndicatorSet) => {
+    setEditingSetId(targetSet.id);
+    setSetTitle(targetSet.title);
+    setStandardCode(targetSet.standardCode || '');
+    setSubjectArea(targetSet.subjectArea || learningArea.nameTh);
+    setGradeLevel(targetSet.gradeLevel || '');
+    setUnitTitle(targetSet.unitTitle || '');
+    setIsTemplate(Boolean(targetSet.isTemplate));
+    setIndicatorDrafts(
+      targetSet.indicators.length > 0
+        ? targetSet.indicators.map((ind) => ({
+            id: ind.id,
+            code: ind.code,
+            title: ind.title,
+            nature: inferIndicatorNature(ind),
+            maxScore: ind.maxScore,
+            passingPercent: extractPassingPercent(ind),
+          }))
+        : [{ code: '', title: '', nature: 'formative', maxScore: 5, passingPercent: 50 }]
+    );
+    setShowSetForm(true);
+  };
+
+  const saveSetForm = async () => {
     const cleanTitle = setTitle.trim();
     const cleanIndicators = indicatorDrafts
       .map((item, index) => ({
+        id: item.id,
         code: item.code.trim(),
         title: item.title.trim(),
+        nature: item.nature,
         maxScore: Number(item.maxScore),
+        passingPercent: Math.max(0, Math.min(100, Number(item.passingPercent) || 50)),
         sortOrder: index + 1,
       }))
       .filter((item) => item.title);
@@ -172,21 +297,32 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     }
     setSaving(true);
     setError('');
+    setSaveSuccess('');
     try {
       const now = new Date().toISOString();
-      const setId = makeId('set');
+      const existing = editingSetId ? sets.find((s) => s.id === editingSetId) : undefined;
+      const setId = existing?.id || makeId('set');
+      const year = existing?.academicYear || course.academicYear || systemConfig.academicYear;
+      const semester = existing?.semester || course.semester || systemConfig.currentSemester;
+
       const indicators: LearningIndicator[] = cleanIndicators.map((item) => ({
-        id: makeId('indicator'),
+        id: item.id || makeId('indicator'),
         schoolId,
         courseId: course.id,
         setId,
         code: item.code,
         title: item.title,
+        description: `${unitTitle.trim() || cleanTitle} · ${standardCode.trim() || 'สพฐ.'} (${
+          item.nature === 'formative' ? 'ตัวชี้วัดระหว่างทาง' : 'ตัวชี้วัดปลายทาง'
+        })`,
+        nature: item.nature,
+        passingPercent: item.passingPercent,
         maxScore: item.maxScore > 0 ? item.maxScore : 1,
         sortOrder: item.sortOrder,
-        academicYear: course.academicYear || systemConfig.academicYear,
-        semester: course.semester || systemConfig.currentSemester,
+        academicYear: year,
+        semester,
       }));
+
       const nextSet: LearningIndicatorSet = {
         id: setId,
         schoolId,
@@ -197,26 +333,65 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         gradeLevel: gradeLevel.trim() || undefined,
         unitTitle: unitTitle.trim() || undefined,
         isTemplate,
-        source: 'manual',
-        academicYear: course.academicYear || systemConfig.academicYear,
-        semester: course.semester || systemConfig.currentSemester,
+        source: existing?.source || 'manual',
+        academicYear: year,
+        semester,
         indicators,
-        createdAt: now,
+        createdAt: existing?.createdAt || now,
         updatedAt: now,
       };
       await saveLearningIndicatorSet(nextSet);
-      setSets((current) => [...current, nextSet]);
+
+      // Clean orphan scores if an indicator was removed during editing
+      if (existing) {
+        const validIndIds = new Set(indicators.map((i) => i.id));
+        setScoresBySet((prev) => ({
+          ...prev,
+          [setId]: (prev[setId] || []).filter((sc) => validIndIds.has(sc.indicatorId)),
+        }));
+      }
+
+      setSets((current) =>
+        existing
+          ? current.map((item) => (item.id === setId ? nextSet : item))
+          : [...current, nextSet]
+      );
       setSelectedSetId(setId);
-      setSetTitle('');
-      setStandardCode('');
-      setGradeLevel('');
-      setUnitTitle('');
-      setIsTemplate(false);
-      setIndicatorDrafts([{ code: '', title: '', maxScore: 5 }]);
+      resetSetForm();
       setShowSetForm(false);
-      setSaveSuccess('สร้างหน่วยการเรียนรู้และชุดตัวชี้วัดเรียบร้อยแล้ว');
+      setSaveSuccess(
+        existing
+          ? `บันทึกการแก้ไขหน่วย "${nextSet.title}" และตัวชี้วัด (${indicators.length} ข้อ) เรียบร้อยแล้ว`
+          : `สร้างหน่วยการเรียนรู้ "${nextSet.title}" (${indicators.length} ตัวชี้วัด) เรียบร้อยแล้ว`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถบันทึกชุดตัวชี้วัดได้');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDeleteSet = async () => {
+    if (!pendingDeleteSetId) return;
+    const target = sets.find((s) => s.id === pendingDeleteSetId);
+    setSaving(true);
+    setError('');
+    try {
+      await deleteLearningIndicatorSet(schoolId, course.id, pendingDeleteSetId);
+      const remaining = sets.filter((s) => s.id !== pendingDeleteSetId);
+      setSets(remaining);
+      setScoresBySet((prev) => {
+        const next = { ...prev };
+        delete next[pendingDeleteSetId];
+        return next;
+      });
+      if (selectedSetId === pendingDeleteSetId) {
+        setSelectedSetId(remaining[0]?.id || '');
+      }
+      setPendingDeleteSetId(null);
+      setSaveSuccess(`ลบหน่วย "${target?.title || ''}" ออกจากรายวิชาแล้ว`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถลบชุดตัวชี้วัดได้');
     } finally {
       setSaving(false);
     }
@@ -306,6 +481,8 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
           code: item.indicatorCode,
           title: item.indicatorTitle,
           description: item.unitTitle || item.standardTitle,
+          nature: 'formative',
+          passingPercent: 50,
           maxScore: item.maxScore,
           sortOrder: index + 1,
           academicYear: year,
@@ -346,6 +523,176 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     }
   };
 
+  // School Editable Standard Catalog Handlers
+  const filteredSchoolCatalog = useMemo(() => {
+    const q = catalogSearch.trim().toLowerCase();
+    return schoolCatalog.filter((item) => {
+      const matchArea = catalogAreaFilter === 'all' || item.subjectArea === catalogAreaFilter;
+      const matchSearch =
+        !q ||
+        item.indicatorCode.toLowerCase().includes(q) ||
+        item.indicatorTitle.toLowerCase().includes(q) ||
+        item.standardCode.toLowerCase().includes(q) ||
+        (item.unitTitle || '').toLowerCase().includes(q);
+      return matchArea && matchSearch;
+    });
+  }, [schoolCatalog, catalogAreaFilter, catalogSearch]);
+
+  const handleOpenAddCatalogItem = () => {
+    setEditingCatalogItem(null);
+    setCatalogForm({
+      subjectArea: catalogAreaFilter === 'all' ? learningArea.nameTh : catalogAreaFilter,
+      gradeLevel: course.room || 'ทุกระดับชั้น (ป.1–ม.6)',
+      standardCode: '',
+      standardTitle: '',
+      unitTitle: '',
+      indicatorCode: '',
+      indicatorTitle: '',
+      nature: 'formative',
+      maxScore: 5,
+      passingPercent: 50,
+    });
+    setShowCatalogForm(true);
+  };
+
+  const handleOpenEditCatalogItem = (item: SchoolStandardIndicatorItem) => {
+    setEditingCatalogItem(item);
+    setCatalogForm({
+      subjectArea: item.subjectArea,
+      gradeLevel: item.gradeLevel,
+      standardCode: item.standardCode,
+      standardTitle: item.standardTitle,
+      unitTitle: item.unitTitle || '',
+      indicatorCode: item.indicatorCode,
+      indicatorTitle: item.indicatorTitle,
+      nature: item.nature,
+      maxScore: item.maxScore,
+      passingPercent: item.passingPercent,
+    });
+    setShowCatalogForm(true);
+  };
+
+  const handleSaveCatalogItem = () => {
+    if (!catalogForm.indicatorTitle.trim() || !catalogForm.standardCode.trim()) {
+      setError('กรุณากรอกรหัสมาตรฐานและคำอธิบายตัวชี้วัดในคลัง');
+      return;
+    }
+    const item: SchoolStandardIndicatorItem = {
+      id: editingCatalogItem?.id || makeId('std-item'),
+      curriculumVersion: 'หลักสูตรสถานศึกษา / สพฐ.',
+      subjectArea: catalogForm.subjectArea.trim() || learningArea.nameTh,
+      gradeLevel: catalogForm.gradeLevel.trim() || 'ทุกระดับชั้น',
+      standardCode: catalogForm.standardCode.trim(),
+      standardTitle: catalogForm.standardTitle.trim() || catalogForm.standardCode.trim(),
+      unitTitle: catalogForm.unitTitle.trim() || undefined,
+      indicatorCode: catalogForm.indicatorCode.trim() || catalogForm.standardCode.trim(),
+      indicatorTitle: catalogForm.indicatorTitle.trim(),
+      maxScore: Math.max(1, Number(catalogForm.maxScore) || 5),
+      passingPercent: Math.max(0, Math.min(100, Number(catalogForm.passingPercent) || 50)),
+      nature: catalogForm.nature,
+      sourceName: editingCatalogItem?.isCustom === false ? 'สพฐ. (ปรับแก้โดยสถานศึกษา)' : 'กำหนดโดยครู/ผู้ดูแลระบบ',
+      active: true,
+      isCustom: true,
+    };
+    const next = upsertSchoolEditableStandardItem(schoolId, item);
+    setSchoolCatalog(next);
+    setShowCatalogForm(false);
+    setEditingCatalogItem(null);
+    setError('');
+    setSaveSuccess(`บันทึกตัวชี้วัด "${item.indicatorCode}" เข้าคลังมาตรฐานโรงเรียนแล้ว`);
+  };
+
+  const handleDeleteCatalogItem = (itemId: string) => {
+    const next = deleteSchoolEditableStandardItem(schoolId, itemId);
+    setSchoolCatalog(next);
+  };
+
+  const handleResetCatalogDefaults = () => {
+    const next = resetSchoolEditableStandardCatalog(schoolId);
+    setSchoolCatalog(next);
+    setSaveSuccess('คืนค่าคลังมาตรฐาน สพฐ. ต้นฉบับเรียบร้อยแล้ว');
+  };
+
+  const handleAddCatalogItemToCourse = async (item: SchoolStandardIndicatorItem) => {
+    setSaving(true);
+    setError('');
+    try {
+      const now = new Date().toISOString();
+      const year = course.academicYear || systemConfig.academicYear;
+      const semester = course.semester || systemConfig.currentSemester;
+
+      if (selectedSet) {
+        const newIndicator: LearningIndicator = {
+          id: makeId('indicator'),
+          schoolId,
+          courseId: course.id,
+          setId: selectedSet.id,
+          code: item.indicatorCode,
+          title: item.indicatorTitle,
+          description: `${item.unitTitle || selectedSet.title} · ${item.standardCode} (${
+            item.nature === 'formative' ? 'ตัวชี้วัดระหว่างทาง' : 'ตัวชี้วัดปลายทาง'
+          })`,
+          nature: item.nature,
+          passingPercent: item.passingPercent,
+          maxScore: item.maxScore,
+          sortOrder: selectedSet.indicators.length + 1,
+          academicYear: year,
+          semester,
+        };
+        const updatedSet: LearningIndicatorSet = {
+          ...selectedSet,
+          indicators: [...selectedSet.indicators, newIndicator],
+          updatedAt: now,
+        };
+        await saveLearningIndicatorSet(updatedSet);
+        setSets((prev) => prev.map((s) => (s.id === selectedSet.id ? updatedSet : s)));
+        setSaveSuccess(`เพิ่มตัวชี้วัด "${item.indicatorCode}" ลงใน "${selectedSet.title}" แล้ว`);
+      } else {
+        const setId = makeId('set');
+        const newIndicator: LearningIndicator = {
+          id: makeId('indicator'),
+          schoolId,
+          courseId: course.id,
+          setId,
+          code: item.indicatorCode,
+          title: item.indicatorTitle,
+          description: `${item.unitTitle || item.standardTitle} · ${item.standardCode}`,
+          nature: item.nature,
+          passingPercent: item.passingPercent,
+          maxScore: item.maxScore,
+          sortOrder: 1,
+          academicYear: year,
+          semester,
+        };
+        const createdSet: LearningIndicatorSet = {
+          id: setId,
+          schoolId,
+          courseId: course.id,
+          title: item.unitTitle || `${item.standardCode} · ${item.subjectArea}`,
+          standardCode: item.standardCode,
+          subjectArea: item.subjectArea,
+          gradeLevel: item.gradeLevel,
+          unitTitle: item.unitTitle,
+          isTemplate: false,
+          source: 'school',
+          academicYear: year,
+          semester,
+          indicators: [newIndicator],
+          createdAt: now,
+          updatedAt: now,
+        };
+        await saveLearningIndicatorSet(createdSet);
+        setSets((prev) => [...prev, createdSet]);
+        setSelectedSetId(setId);
+        setSaveSuccess(`สร้างหน่วยใหม่พร้อมตัวชี้วัด "${item.indicatorCode}" เรียบร้อยแล้ว`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถเพิ่มตัวชี้วัดจากคลังได้');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const importIndicatorTemplateFromFile = async (file: File) => {
     setSaving(true);
     setError('');
@@ -366,6 +713,8 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
           code: String(row[0] ?? '').trim(),
           title: String(row[2] ?? row[1] ?? '').trim(),
           maxScore: Number(row[3] ?? 5),
+          nature: String(row[4] ?? '').includes('ปลายทาง') ? ('summative' as const) : ('formative' as const),
+          passingPercent: Number(row[5] ?? 50),
         }))
         .filter((item) => item.title);
 
@@ -384,6 +733,8 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         setId,
         code: item.code,
         title: item.title,
+        nature: item.nature,
+        passingPercent: Number.isFinite(item.passingPercent) && item.passingPercent > 0 ? item.passingPercent : 50,
         maxScore: Number.isFinite(item.maxScore) && item.maxScore > 0 ? item.maxScore : 5,
         sortOrder: index + 1,
         academicYear: year,
@@ -410,11 +761,8 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
       await saveLearningIndicatorSet(nextSet);
       setSets((current) => [...current, nextSet]);
       setSelectedSetId(setId);
-      setSetTitle('');
-      setStandardCode('');
-      setGradeLevel('');
-      setUnitTitle('');
-      setIsTemplate(false);
+      resetSetForm();
+      setShowSetForm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถนำเข้าตัวชี้วัดจากไฟล์ได้');
     } finally {
@@ -424,8 +772,9 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
 
   const downloadIndicatorTemplate = () => {
     const rows = [
-      ['รหัสตัวชี้วัด', 'รหัสมาตรฐาน', 'ชื่อตัวชี้วัด', 'คะแนนเต็ม'],
-      ['ว 1.1 (1)', standardCode || 'ว 1.1', 'ตัวอย่างตัวชี้วัดมาตรฐาน สพฐ.', 5],
+      ['รหัสตัวชี้วัด', 'รหัสมาตรฐาน', 'ชื่อตัวชี้วัด', 'คะแนนเต็ม', 'ประเภท (ระหว่างทาง/ปลายทาง)', 'เกณฑ์ผ่าน (%)'],
+      ['ว 1.1 (1)', standardCode || 'ว 1.1', 'ตัวอย่างตัวชี้วัดมาตรฐาน สพฐ.', 5, 'ระหว่างทาง', 50],
+      ['ว 1.1 (2)', standardCode || 'ว 1.1', 'ตัวอย่างตัวชี้วัดปลายทาง สพฐ.', 10, 'ปลายทาง', 50],
     ];
     const worksheet = XLSX.utils.aoa_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
@@ -441,6 +790,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     if (rawValue === '') return;
     const score = Math.max(0, Math.min(indicator.maxScore, Number(rawValue)));
     if (!Number.isFinite(score)) return;
+    const passPct = extractPassingPercent(indicator);
     setSaveSuccess('');
     setScoresBySet((prev) => {
       const current = prev[selectedSet.id] || [];
@@ -453,7 +803,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         indicatorId: indicator.id,
         studentId,
         score,
-        result: score >= indicator.maxScore * 0.5 ? 'pass' : 'not_pass',
+        result: score >= indicator.maxScore * (passPct / 100) ? 'pass' : 'not_pass',
         evidence: existing?.evidence,
         assessedBy: currentUserName,
         assessedAt: existing?.assessedAt || now,
@@ -475,14 +825,16 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     roster.forEach((student) => {
       selectedSet.indicators.forEach((ind) => {
         const existing = getScore(student.id, ind.id, selectedSet.id);
+        const finalScore = existing ? existing.score : ind.maxScore;
+        const passPct = extractPassingPercent(ind);
         nextList.push({
           id: existing?.id || makeId('score'),
           schoolId,
           setId: selectedSet.id,
           indicatorId: ind.id,
           studentId: student.id,
-          score: existing ? existing.score : ind.maxScore,
-          result: (existing ? existing.score : ind.maxScore) >= ind.maxScore * 0.5 ? 'pass' : 'not_pass',
+          score: finalScore,
+          result: finalScore >= ind.maxScore * (passPct / 100) ? 'pass' : 'not_pass',
           evidence: existing?.evidence,
           assessedBy: currentUserName,
           assessedAt: existing?.assessedAt || now,
@@ -508,13 +860,19 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     }
   };
 
-  // Consolidated unit summary across all sets of this course
+  // OBEC standard calculation: separate formative (ระหว่างทาง) and summative (ปลายทาง)
   const unitSummaryRows = useMemo(() => {
     return roster.map((student) => {
       let grandEarned = 0;
       let grandMax = 0;
+      let formativeEarned = 0;
+      let formativeMax = 0;
+      let summativeEarned = 0;
+      let summativeMax = 0;
       let passedIndicators = 0;
       let totalIndicators = 0;
+      let failedSummativeCount = 0;
+      let missingSummativeCount = 0;
 
       const perUnit = sets.map((set) => {
         const unitMax = set.indicators.reduce((sum, ind) => sum + ind.maxScore, 0);
@@ -524,14 +882,26 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
 
         set.indicators.forEach((ind) => {
           totalIndicators += 1;
+          const nature = inferIndicatorNature(ind);
+          const passPct = extractPassingPercent(ind);
+          if (nature === 'formative') formativeMax += ind.maxScore;
+          else summativeMax += ind.maxScore;
+
           const sc = getScore(student.id, ind.id, set.id);
           if (sc) {
             hasAnyScore = true;
             unitEarned += sc.score;
-            if (sc.score >= ind.maxScore * 0.5) {
+            if (nature === 'formative') formativeEarned += sc.score;
+            else summativeEarned += sc.score;
+
+            if (sc.score >= ind.maxScore * (passPct / 100)) {
               unitPassed += 1;
               passedIndicators += 1;
+            } else if (nature === 'summative') {
+              failedSummativeCount += 1;
             }
+          } else if (nature === 'summative') {
+            missingSummativeCount += 1;
           }
         });
 
@@ -552,6 +922,9 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
       });
 
       const grandPct = grandMax > 0 ? Math.round((grandEarned / grandMax) * 100) : 0;
+      const formativePct = formativeMax > 0 ? formativeEarned / formativeMax : grandMax > 0 ? grandEarned / grandMax : 0;
+      const summativePct = summativeMax > 0 ? summativeEarned / summativeMax : formativePct;
+      const meetsObecSummativeRule = failedSummativeCount === 0 && missingSummativeCount === 0 && grandPct >= 50;
       const feedback = getRawScoreFeedback(grandMax > 0 ? grandPct : null);
 
       return {
@@ -560,12 +933,93 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         grandEarned,
         grandMax,
         grandPct,
+        formativeEarned,
+        formativeMax,
+        formativePct,
+        summativeEarned,
+        summativeMax,
+        summativePct,
         passedIndicators,
         totalIndicators,
+        failedSummativeCount,
+        missingSummativeCount,
+        meetsObecSummativeRule,
         feedback,
       };
     });
   }, [roster, sets, scoresBySet]);
+
+  const handleSyncIndicatorsToGradebook = () => {
+    if (!onUpdateGrade && !onAddGrade) return;
+    if (sets.length === 0 || unitSummaryRows.length === 0) return;
+
+    const formativeWeight = obecRatioPreset === '80_20' ? 80 : obecRatioPreset === '60_40' ? 60 : 70;
+    const summativeWeight = 100 - formativeWeight;
+
+    let updatedCount = 0;
+    const year = course.academicYear || systemConfig.academicYear || '2569';
+    const semester = course.semester || systemConfig.currentSemester || '1';
+
+    unitSummaryRows.forEach((row) => {
+      if (row.grandMax === 0) return;
+      const hasAnyScored = row.perUnit.some((u) => u.hasAnyScore);
+      if (!hasAnyScored) return;
+
+      const courseworkScaled = Math.round(row.formativePct * formativeWeight);
+      const finalScaled = Math.round(row.summativePct * summativeWeight);
+      const totalScore = Math.max(0, Math.min(100, courseworkScaled + finalScaled));
+
+      // Distribute coursework into assignment (20 max), quiz (10 max), midterm (rest) cleanly
+      const assignmentScore = Math.min(20, Math.round(courseworkScaled * 0.3));
+      const quizScore = Math.min(10, Math.round(courseworkScaled * 0.15));
+      const midtermScore = Math.max(0, courseworkScaled - assignmentScore - quizScore);
+      const finalScore = Math.max(0, Math.min(100 - courseworkScaled, finalScaled));
+
+      const existing = grades.find(
+        (g) => g.studentId === row.student.id && g.courseId === course.id
+      );
+      const preserveSpecial = existing && isSpecialMoeGrade(existing.letterGrade);
+      const graded = calculateGrade(totalScore, gradingSystem);
+
+      if (existing && onUpdateGrade) {
+        onUpdateGrade(existing.id, {
+          assignmentScore,
+          quizScore,
+          midtermScore,
+          finalScore,
+          totalScore,
+          letterGrade: preserveSpecial ? existing.letterGrade : graded.letter,
+          gradePoint: preserveSpecial ? 0 : graded.point,
+        });
+        updatedCount += 1;
+      } else if (!existing && onAddGrade) {
+        onAddGrade(
+          {
+            id: `grd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            schoolId,
+            studentId: row.student.id,
+            courseId: course.id,
+            academicYear: year,
+            semester,
+            assignmentScore,
+            quizScore,
+            midtermScore,
+            finalScore,
+            totalScore,
+            letterGrade: graded.letter,
+            gradePoint: graded.point,
+          },
+          { notify: false }
+        );
+        updatedCount += 1;
+      }
+    });
+
+    setShowRatioSyncBox(false);
+    setSaveSuccess(
+      `ซิงค์คะแนนตัวชี้วัด (สัดส่วน ${formativeWeight}:${summativeWeight}) เข้าสมุดพกคะแนน ปพ.5 สำเร็จ ${updatedCount} คน`
+    );
+  };
 
   const exportUnitIndicatorsExcel = () => {
     if (sets.length === 0) return;
@@ -574,22 +1028,26 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
       'ชื่อ-นามสกุล',
       'ห้องเรียน',
       ...sets.map((s) => `${s.unitTitle || s.title} (เต็ม ${s.indicators.reduce((a, b) => a + b.maxScore, 0)})`),
+      'ระหว่างทาง',
+      'ปลายทาง',
       'คะแนนรวมตัวชี้วัด',
       'คะแนนเต็มรวม',
       'ร้อยละ (%)',
       'ตัวชี้วัดที่ผ่าน',
-      'ผลการประเมินหน่วย',
+      'สถานะเกณฑ์ สพฐ.',
     ];
     const rows = unitSummaryRows.map((row) => [
       row.student.studentIdNumber,
       `${getStudentShortPrefixTh(row.student)} ${row.student.firstNameTh} ${row.student.lastNameTh}`,
       row.student.room,
       ...row.perUnit.map((u) => (u.hasAnyScore ? u.earned : '-')),
+      `${row.formativeEarned}/${row.formativeMax}`,
+      `${row.summativeEarned}/${row.summativeMax}`,
       row.grandEarned,
       row.grandMax,
       `${row.grandPct}%`,
       `${row.passedIndicators}/${row.totalIndicators}`,
-      row.feedback.labelTh,
+      row.meetsObecSummativeRule ? `ผ่านเกณฑ์ (${row.feedback.labelTh})` : 'รอซ่อมเสริม/ปลายทางไม่ครบ',
     ]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
@@ -605,6 +1063,21 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     );
   };
 
+  const selectedSetStats = useMemo(() => {
+    if (!selectedSet) return null;
+    const formativeList = selectedSet.indicators.filter((i) => inferIndicatorNature(i) === 'formative');
+    const summativeList = selectedSet.indicators.filter((i) => inferIndicatorNature(i) === 'summative');
+    const formativeMax = formativeList.reduce((sum, i) => sum + i.maxScore, 0);
+    const summativeMax = summativeList.reduce((sum, i) => sum + i.maxScore, 0);
+    return {
+      formativeCount: formativeList.length,
+      summativeCount: summativeList.length,
+      formativeMax,
+      summativeMax,
+      totalMax: formativeMax + summativeMax,
+    };
+  }, [selectedSet]);
+
   if (loading) return <div className="p-6 text-sm text-[var(--color-text-muted)]">กำลังโหลดตัวชี้วัดและหน่วยการเรียนรู้...</div>;
 
   return (
@@ -616,7 +1089,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
             {learningArea.nameTh} · {courseTypeLabel} · รหัสวิชา <span className="font-mono font-semibold">{course.code}</span>
           </div>
           <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-            มาตรฐานตัวชี้วัด หน่วยการเรียนรู้ 1–3 และการประเมินหน่วยการเรียนรู้ ({course.titleTh})
+            คะแนนตัวชี้วัดรายวิชามาตรฐาน สพฐ./ศธ. (ระหว่างทาง–ปลายทาง) · {course.titleTh}
           </h3>
         </div>
 
@@ -636,24 +1109,85 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
               onClick={() => setViewMode('unit_summary')}
               className="seg-tab-btn px-3 py-1 text-xs"
             >
-              ประเมินหน่วยการเรียนรู้ (หน่วย 1–{Math.max(3, sets.length)})
+              ประเมินผล &amp; เกณฑ์ สพฐ. ({Math.max(1, sets.length)} หน่วย)
             </button>
           </div>
 
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setShowCatalogManager(true)}
+              className="btn-tool-tone px-2.5 py-1.5 text-xs whitespace-nowrap"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>จัดการคลังมาตรฐาน สพฐ./โรงเรียน</span>
+            </button>
+          )}
+
           {sets.length > 0 && (
             <>
+              {canEdit && (onUpdateGrade || onAddGrade) && (
+                <button
+                  type="button"
+                  onClick={() => setShowRatioSyncBox((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold whitespace-nowrap cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>ส่งคะแนนเข้า ปพ.5</span>
+                </button>
+              )}
               <button type="button" onClick={exportUnitIndicatorsExcel} className="btn-tool-tone px-2.5 py-1.5 text-xs">
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>ส่งออก Excel</span>
               </button>
               <button type="button" onClick={handlePrintPanel} className="btn-tool-tone px-2.5 py-1.5 text-xs">
                 <Printer className="w-3.5 h-3.5" />
-                <span>พิมพ์รายงาน A4</span>
+                <span>พิมพ์ A4</span>
               </button>
             </>
           )}
         </div>
       </div>
+
+      {/* Sync to Course Gradebook Drawer */}
+      {showRatioSyncBox && canEdit && (
+        <div className="rounded-xl border border-indigo-300 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/30 p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="space-y-0.5">
+            <div className="font-bold text-indigo-950 dark:text-indigo-100">
+              คำนวณคะแนนตัวชี้วัดเข้าสมุดพกคะแนน / ปพ.5 ตามสัดส่วน สพฐ.
+            </div>
+            <div className="text-[11px] text-indigo-800 dark:text-indigo-300">
+              ระบบจะคิดร้อยละจากตัวชี้วัด<strong>ระหว่างทาง</strong>เป็นคะแนนเก็บ/กลางภาค และตัวชี้วัด<strong>ปลายทาง</strong>เป็นคะแนนสอบปลายภาคให้อัตโนมัติ
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={obecRatioPreset}
+              onChange={(e) => setObecRatioPreset(e.target.value as '70_30' | '80_20' | '60_40')}
+              className="rounded-lg border border-indigo-300 dark:border-indigo-700 bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold"
+            >
+              <option value="70_30">สัดส่วน 70 : 30 (ระหว่างทาง 70 / ปลายทาง 30)</option>
+              <option value="80_20">สัดส่วน 80 : 20 (ระหว่างทาง 80 / ปลายทาง 20)</option>
+              <option value="60_40">สัดส่วน 60 : 40 (ระหว่างทาง 60 / ปลายทาง 40)</option>
+            </select>
+            <button
+              type="button"
+              onClick={handleSyncIndicatorsToGradebook}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white font-semibold cursor-pointer"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>ยืนยันส่งเข้าเกรดรายวิชา</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRatioSyncBox(false)}
+              className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card)] cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar: Unit Tabs, Quick OBEC Import & Actions */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -688,20 +1222,29 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer transition disabled:opacity-60"
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>นำเข้ามาตรฐานตัวชี้วัด หน่วย 1–3 ({learningArea.shortTh})</span>
+                <span>นำเข้ามาตรฐาน หน่วย 1–3 ({learningArea.shortTh})</span>
               </button>
               <button
                 type="button"
-                onClick={() => setShowSetForm((prev) => !prev)}
+                onClick={openCreateSetForm}
                 className="seg-tab-btn px-3 text-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>สร้างหน่วย/ตัวชี้วัดเอง</span>
+                <span>เพิ่มหน่วย/ตัวชี้วัดใหม่</span>
               </button>
             </>
           )}
           {selectedSet && viewMode === 'score_entry' && canEdit && (
             <>
+              <button
+                type="button"
+                onClick={() => openEditSetForm(selectedSet)}
+                className="seg-tab-btn px-2.5 text-xs"
+                title="แก้ไข ลบ หรือเพิ่มตัวชี้วัดในหน่วยนี้"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>แก้ไข/ลบตัวชี้วัดหน่วยนี้</span>
+              </button>
               <button
                 type="button"
                 onClick={fillFullScoresForSet}
@@ -725,6 +1268,32 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* Inline Delete Unit Confirmation */}
+      {pendingDeleteSetId && (
+        <div className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="font-semibold text-rose-900 dark:text-rose-100">
+            ยืนยันการลบหน่วย &quot;{sets.find((s) => s.id === pendingDeleteSetId)?.title}&quot; และคะแนนตัวชี้วัดภายในหน่วยนี้ทั้งหมด?
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingDeleteSetId(null)}
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-semibold cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteSet}
+              disabled={saving}
+              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold cursor-pointer"
+            >
+              ยืนยันลบหน่วยนี้
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-800 px-3 py-2 text-xs font-semibold text-rose-800 dark:text-rose-200">
           {error}
@@ -737,8 +1306,30 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         </div>
       )}
 
+      {/* Create / Edit Unit & Standard Indicators Form */}
       {showSetForm && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-3">
+        <div className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-card-subtle)] p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+              <SlidersHorizontal className="w-4 h-4 text-[var(--color-primary)]" />
+              <span>
+                {editingSetId
+                  ? 'แก้ไขหน่วยการเรียนรู้และตัวชี้วัดมาตรฐาน (เพิ่ม / แก้ไข / ลบ / ตั้งเกณฑ์ผ่าน สพฐ.)'
+                  : 'สร้างหน่วยการเรียนรู้และตัวชี้วัดมาตรฐานใหม่'}
+              </span>
+            </h4>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSetForm(false);
+                resetSetForm();
+              }}
+              className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
             <input
               value={setTitle}
@@ -779,78 +1370,143 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
               บันทึกเป็นชุดมาตรฐานที่ใช้ซ้ำได้
             </label>
           </div>
-          {indicatorDrafts.map((draft, index) => (
-            <div key={index} className="grid grid-cols-[100px_1fr_90px_36px] gap-2 text-xs">
-              <input
-                value={draft.code}
-                onChange={(event) =>
-                  setIndicatorDrafts((current) =>
-                    current.map((item, i) => (i === index ? { ...item, code: event.target.value } : item))
-                  )
-                }
-                placeholder="รหัสตัวชี้วัด"
-                className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
-              />
-              <input
-                value={draft.title}
-                onChange={(event) =>
-                  setIndicatorDrafts((current) =>
-                    current.map((item, i) => (i === index ? { ...item, title: event.target.value } : item))
-                  )
-                }
-                placeholder="คำอธิบายตัวชี้วัดตามหลักสูตรแกนกลางฯ"
-                className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
-              />
-              <input
-                type="number"
-                min={1}
-                value={draft.maxScore}
-                onChange={(event) =>
-                  setIndicatorDrafts((current) =>
-                    current.map((item, i) =>
-                      i === index ? { ...item, maxScore: Number(event.target.value) } : item
+
+          <div className="space-y-2">
+            <div className="hidden md:grid md:grid-cols-[110px_1fr_135px_85px_95px_36px] gap-2 px-1 text-[11px] font-bold text-[var(--color-text-muted)]">
+              <span>รหัสตัวชี้วัด</span>
+              <span>คำอธิบายตัวชี้วัด (ตามมาตรฐาน สพฐ. / สถานศึกษา)</span>
+              <span>ประเภทตามเกณฑ์ สพฐ.</span>
+              <span>คะแนนเต็ม</span>
+              <span>เกณฑ์ผ่าน (%)</span>
+              <span />
+            </div>
+            {indicatorDrafts.map((draft, index) => (
+              <div
+                key={draft.id || index}
+                className="grid grid-cols-1 md:grid-cols-[110px_1fr_135px_85px_95px_36px] gap-2 text-xs items-center"
+              >
+                <input
+                  value={draft.code}
+                  onChange={(event) =>
+                    setIndicatorDrafts((current) =>
+                      current.map((item, i) => (i === index ? { ...item, code: event.target.value } : item))
                     )
-                  )
-                }
-                className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
-              />
+                  }
+                  placeholder="เช่น ว 1.1 (1)"
+                  className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-mono"
+                />
+                <input
+                  value={draft.title}
+                  onChange={(event) =>
+                    setIndicatorDrafts((current) =>
+                      current.map((item, i) => (i === index ? { ...item, title: event.target.value } : item))
+                    )
+                  }
+                  placeholder="คำอธิบายตัวชี้วัดตามหลักสูตรแกนกลางฯ"
+                  className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+                />
+                <select
+                  value={draft.nature}
+                  onChange={(event) =>
+                    setIndicatorDrafts((current) =>
+                      current.map((item, i) =>
+                        i === index ? { ...item, nature: event.target.value as 'formative' | 'summative' } : item
+                      )
+                    )
+                  }
+                  className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-semibold"
+                >
+                  <option value="formative">ระหว่างทาง</option>
+                  <option value="summative">ปลายทาง</option>
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={draft.maxScore}
+                  onChange={(event) =>
+                    setIndicatorDrafts((current) =>
+                      current.map((item, i) =>
+                        i === index ? { ...item, maxScore: Number(event.target.value) } : item
+                      )
+                    )
+                  }
+                  title="คะแนนเต็ม"
+                  className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-mono"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={draft.passingPercent}
+                  onChange={(event) =>
+                    setIndicatorDrafts((current) =>
+                      current.map((item, i) =>
+                        i === index ? { ...item, passingPercent: Number(event.target.value) } : item
+                      )
+                    )
+                  }
+                  title="เกณฑ์ผ่านขั้นต่ำ (%)"
+                  className="px-2 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-mono"
+                />
+                <button
+                  type="button"
+                  aria-label="ลบตัวชี้วัด"
+                  disabled={indicatorDrafts.length <= 1}
+                  onClick={() => setIndicatorDrafts((current) => current.filter((_, i) => i !== index))}
+                  className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg cursor-pointer disabled:opacity-40"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                aria-label="ลบตัวชี้วัด"
-                onClick={() => setIndicatorDrafts((current) => current.filter((_, i) => i !== index))}
-                className="p-2 text-rose-500 cursor-pointer"
+                onClick={() =>
+                  setIndicatorDrafts((current) => [
+                    ...current,
+                    { code: '', title: '', nature: 'formative', maxScore: 5, passingPercent: 50 },
+                  ])
+                }
+                className="seg-tab-btn px-3 text-xs"
               >
-                <Trash2 className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" /> เพิ่มตัวชี้วัด
               </button>
+              <button type="button" onClick={saveSetForm} disabled={saving} className="btn-action-primary px-3 text-xs">
+                <Save className="w-3.5 h-3.5" /> {editingSetId ? 'บันทึกการแก้ไขหน่วย' : 'บันทึกชุดตัวชี้วัด'}
+              </button>
+              <button type="button" onClick={downloadIndicatorTemplate} className="seg-tab-btn px-3 text-xs">
+                <Download className="w-3.5 h-3.5" /> แม่แบบ Excel
+              </button>
+              <label className="seg-tab-btn px-3 text-xs cursor-pointer">
+                <Download className="w-3.5 h-3.5" /> นำเข้า Excel
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void importIndicatorTemplateFromFile(file);
+                    event.target.value = '';
+                  }}
+                />
+              </label>
             </div>
-          ))}
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setIndicatorDrafts((current) => [...current, { code: '', title: '', maxScore: 5 }])}
-              className="seg-tab-btn px-3 text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" /> เพิ่มตัวชี้วัด
-            </button>
-            <button type="button" onClick={createSet} disabled={saving} className="btn-action-primary px-3 text-xs">
-              <Save className="w-3.5 h-3.5" /> บันทึกชุดตัวชี้วัด
-            </button>
-            <button type="button" onClick={downloadIndicatorTemplate} className="seg-tab-btn px-3 text-xs">
-              <Download className="w-3.5 h-3.5" /> แม่แบบ Excel
-            </button>
-            <label className="seg-tab-btn px-3 text-xs cursor-pointer">
-              <Download className="w-3.5 h-3.5" /> นำเข้า Excel
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) void importIndicatorTemplateFromFile(file);
-                  event.target.value = '';
+            {editingSetId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingDeleteSetId(editingSetId);
+                  setShowSetForm(false);
                 }}
-              />
-            </label>
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-semibold cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> ลบหน่วยนี้
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -867,7 +1523,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                 ? 'กำลังตรวจสอบคลังตัวชี้วัดกลาง...'
                 : catalogItems.length > 0
                 ? `พบตัวชี้วัดกลางในระบบ ${catalogItems.length} รายการ`
-                : 'สามารถกด "นำเข้ามาตรฐานตัวชี้วัด หน่วย 1–3" ด้านบน หรือนำเข้าชุด ว 1.3 / ว 2.3 / ว 3.1 สำหรับวิทยาศาสตร์ ม.3'}
+                : 'สามารถกด "นำเข้ามาตรฐาน หน่วย 1–3" หรือจัดการ/เพิ่มมาตรฐานเองใน "คลังมาตรฐาน สพฐ./โรงเรียน"'}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -881,6 +1537,220 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                 <Plus className="w-3.5 h-3.5" /> ชุด ว 1.3 / ว 2.3 / ว 3.1 (ม.3)
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* School / OBEC Standard Catalog Manager Modal */}
+      {showCatalogManager && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+          <div className="w-full max-w-4xl max-h-[90vh] bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-2xl flex flex-col overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                  คลังมาตรฐานตัวชี้วัด สพฐ. / หลักสูตรสถานศึกษา (ครู &amp; Admin เพิ่ม ลบ แก้ไข ได้)
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  กำหนดตัวชี้วัดระหว่างทาง–ปลายทาง คะแนนเต็ม และเกณฑ์ผ่านขั้นต่ำ (%) แล้วดึงใช้กับรายวิชาได้ทันที
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCatalogManager(false)}
+                className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card)] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    placeholder="ค้นหารหัสมาตรฐาน / ตัวชี้วัด..."
+                    className="pl-8 pr-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] w-52"
+                  />
+                </div>
+                <select
+                  value={catalogAreaFilter}
+                  onChange={(e) => setCatalogAreaFilter(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-semibold"
+                >
+                  <option value="all">ทุกกลุ่มสาระการเรียนรู้ ({schoolCatalog.length})</option>
+                  {MOE_LEARNING_AREAS.filter((a) => a.id !== 'activities').map((area) => (
+                    <option key={area.id} value={area.nameTh}>
+                      {area.nameTh}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetCatalogDefaults}
+                  className="seg-tab-btn px-2.5 py-1.5 text-xs"
+                >
+                  คืนค่ามาตรฐาน สพฐ. เดิม
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenAddCatalogItem}
+                  className="btn-action-primary px-3 py-1.5 text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" /> เพิ่มมาตรฐานตัวชี้วัดใหม่
+                </button>
+              </div>
+            </div>
+
+            {showCatalogForm && (
+              <div className="p-4 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-2.5 text-xs">
+                <div className="font-bold text-[var(--color-text-title)]">
+                  {editingCatalogItem ? 'แก้ไขมาตรฐานตัวชี้วัดในคลัง' : 'เพิ่มมาตรฐานตัวชี้วัดใหม่เข้าคลังโรงเรียน'}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <select
+                    value={catalogForm.subjectArea}
+                    onChange={(e) => setCatalogForm((p) => ({ ...p, subjectArea: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+                  >
+                    {MOE_LEARNING_AREAS.filter((a) => a.id !== 'activities').map((area) => (
+                      <option key={area.id} value={area.nameTh}>
+                        {area.nameTh}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={catalogForm.gradeLevel}
+                    onChange={(e) => setCatalogForm((p) => ({ ...p, gradeLevel: e.target.value }))}
+                    placeholder="ระดับชั้น เช่น ม.3 / ป.6"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+                  />
+                  <input
+                    value={catalogForm.standardCode}
+                    onChange={(e) => setCatalogForm((p) => ({ ...p, standardCode: e.target.value }))}
+                    placeholder="รหัสมาตรฐาน เช่น ว 1.1"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+                  />
+                  <input
+                    value={catalogForm.indicatorCode}
+                    onChange={(e) => setCatalogForm((p) => ({ ...p, indicatorCode: e.target.value }))}
+                    placeholder="รหัสตัวชี้วัด เช่น ว 1.1 ม.3/1"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_100px_100px] gap-2">
+                  <input
+                    value={catalogForm.indicatorTitle}
+                    onChange={(e) => setCatalogForm((p) => ({ ...p, indicatorTitle: e.target.value }))}
+                    placeholder="คำอธิบายตัวชี้วัดมาตรฐาน สพฐ. / สถานศึกษา"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+                  />
+                  <select
+                    value={catalogForm.nature}
+                    onChange={(e) =>
+                      setCatalogForm((p) => ({ ...p, nature: e.target.value as 'formative' | 'summative' }))
+                    }
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-semibold"
+                  >
+                    <option value="formative">ระหว่างทาง</option>
+                    <option value="summative">ปลายทาง</option>
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    value={catalogForm.maxScore}
+                    onChange={(e) => setCatalogForm((p) => ({ ...p, maxScore: Number(e.target.value) }))}
+                    placeholder="คะแนนเต็ม"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-mono"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={catalogForm.passingPercent}
+                    onChange={(e) => setCatalogForm((p) => ({ ...p, passingPercent: Number(e.target.value) }))}
+                    placeholder="ผ่าน %"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-mono"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCatalogForm(false)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-semibold cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveCatalogItem}
+                    className="btn-action-primary px-3 py-1.5 text-xs"
+                  >
+                    <Save className="w-3.5 h-3.5" /> บันทึกลงคลัง
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 divide-y divide-[var(--color-border)]">
+              {filteredSchoolCatalog.map((item) => (
+                <div key={item.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono font-bold text-[var(--color-primary-text)]">
+                        {item.indicatorCode}
+                      </span>
+                      <span className="text-[var(--color-text-muted)]">·</span>
+                      <span className="font-semibold text-[var(--color-text-title)]">
+                        {item.nature === 'summative' ? 'ตัวชี้วัดปลายทาง' : 'ตัวชี้วัดระหว่างทาง'}
+                      </span>
+                      <span className="text-[var(--color-text-muted)]">·</span>
+                      <span className="font-mono text-[var(--color-text-muted)] tabular-nums">
+                        เต็ม {item.maxScore} · ผ่าน ≥ {item.passingPercent}%
+                      </span>
+                      <span className="text-[var(--color-text-muted)]">·</span>
+                      <span className="text-[var(--color-text-muted)] truncate">{item.subjectArea}</span>
+                    </div>
+                    <div className="text-[var(--color-text-body)]">{item.indicatorTitle}</div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleAddCatalogItemToCourse(item)}
+                      disabled={saving}
+                      className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer whitespace-nowrap"
+                    >
+                      + ดึงเข้าหน่วย{selectedSet ? 'นี้' : 'ใหม่'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditCatalogItem(item)}
+                      className="p-1.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                      title="แก้ไขตัวชี้วัดในคลัง"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCatalogItem(item.id)}
+                      className="p-1.5 rounded-lg border border-[var(--color-border)] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                      title="ลบตัวชี้วัดออกจากคลัง"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filteredSchoolCatalog.length === 0 && (
+                <div className="py-8 text-center text-xs text-[var(--color-text-muted)]">
+                  ไม่พบตัวชี้วัดตามคำค้นหา ลองกด &quot;เพิ่มมาตรฐานตัวชี้วัดใหม่&quot; ด้านบน
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -899,7 +1769,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         {viewMode === 'unit_summary' ? (
           sets.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-text-muted)]">
-              ยังไม่มีหน่วยการเรียนรู้ กรุณากดปุ่ม &quot;นำเข้ามาตรฐานตัวชี้วัด หน่วย 1–3&quot; ด้านบนเพื่อเริ่มต้น
+              ยังไม่มีหน่วยการเรียนรู้ กรุณากดปุ่ม &quot;นำเข้ามาตรฐาน หน่วย 1–3&quot; ด้านบนเพื่อเริ่มต้น
             </div>
           ) : (
             <div className="space-y-3">
@@ -907,7 +1777,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                 {sets.map((s, idx) => {
                   const maxUnitScore = s.indicators.reduce((sum, ind) => sum + ind.maxScore, 0);
-                  const formativeCount = s.indicators.filter((i) => (i.description || '').includes('ระหว่างทาง')).length;
+                  const formativeCount = s.indicators.filter((i) => inferIndicatorNature(i) === 'formative').length;
                   const summativeCount = s.indicators.length - formativeCount;
                   return (
                     <div
@@ -942,7 +1812,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                       {sets.map((s, idx) => {
                         const unitMax = s.indicators.reduce((sum, i) => sum + i.maxScore, 0);
                         return (
-                          <th key={s.id} className="px-2.5 py-2 text-center min-w-[120px]">
+                          <th key={s.id} className="px-2.5 py-2 text-center min-w-[115px]">
                             <div>หน่วยที่ {idx + 1}</div>
                             <div className="text-[10px] font-normal text-[var(--color-text-muted)]">
                               {s.standardCode || ''} (เต็ม {unitMax})
@@ -950,16 +1820,17 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                           </th>
                         );
                       })}
-                      <th className="px-2.5 py-2.5 text-center bg-amber-50/70 dark:bg-amber-950/30">รวมตัวชี้วัด</th>
-                      <th className="px-2.5 py-2.5 text-center">ร้อยละ</th>
+                      <th className="px-2.5 py-2.5 text-center">ระหว่างทาง</th>
+                      <th className="px-2.5 py-2.5 text-center">ปลายทาง</th>
+                      <th className="px-2.5 py-2.5 text-center bg-amber-50/70 dark:bg-amber-950/30">รวมทั้งหมด</th>
                       <th className="px-2.5 py-2.5 text-center">ผ่านตัวชี้วัด</th>
-                      <th className="px-2.5 py-2.5 text-center">ผลการประเมินหน่วย</th>
+                      <th className="px-2.5 py-2.5 text-center">เกณฑ์ สพฐ.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
                     {unitSummaryRows.length === 0 ? (
                       <tr>
-                        <td colSpan={sets.length + 7} className="py-6 text-center text-[var(--color-text-muted)]">
+                        <td colSpan={sets.length + 8} className="py-6 text-center text-[var(--color-text-muted)]">
                           ไม่พบรายชื่อนักเรียนที่ลงทะเบียนในรายวิชานี้
                         </td>
                       </tr>
@@ -988,7 +1859,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                                       unit.passed ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300'
                                     }`}
                                   >
-                                    {unit.passed ? 'ผ่านหน่วย' : 'ซ่อมเสริม'} ({unit.passedCount}/{unit.totalCount})
+                                    {unit.passed ? 'ผ่าน' : 'ซ่อม'} ({unit.passedCount}/{unit.totalCount})
                                   </span>
                                 </div>
                               ) : (
@@ -996,23 +1867,28 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                               )}
                             </td>
                           ))}
-                          <td className="px-2.5 py-2 text-center font-mono font-bold bg-amber-50/50 dark:bg-amber-950/20">
-                            {row.grandEarned}/{row.grandMax}
+                          <td className="px-2.5 py-2 text-center font-mono">
+                            {row.formativeMax > 0 ? `${row.formativeEarned}/${row.formativeMax}` : '—'}
                           </td>
-                          <td className="px-2.5 py-2 text-center font-mono font-bold">{row.grandPct}%</td>
+                          <td className="px-2.5 py-2 text-center font-mono">
+                            {row.summativeMax > 0 ? `${row.summativeEarned}/${row.summativeMax}` : '—'}
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-mono font-bold bg-amber-50/50 dark:bg-amber-950/20">
+                            {row.grandEarned}/{row.grandMax} ({row.grandPct}%)
+                          </td>
                           <td className="px-2.5 py-2 text-center font-mono">
                             {row.passedIndicators}/{row.totalIndicators}
                           </td>
                           <td className="px-2.5 py-2 text-center font-semibold">
-                            <span
-                              className={
-                                row.grandPct >= 50
-                                  ? 'text-emerald-700 dark:text-emerald-300'
-                                  : 'text-rose-700 dark:text-rose-300'
-                              }
-                            >
-                              {row.feedback.labelTh}
-                            </span>
+                            {row.meetsObecSummativeRule ? (
+                              <span className="text-emerald-700 dark:text-emerald-300">
+                                ผ่าน ({row.feedback.labelTh})
+                              </span>
+                            ) : (
+                              <span className="text-amber-700 dark:text-amber-300">
+                                {row.missingSummativeCount > 0 ? 'รอผลปลายทาง' : 'ซ่อมเสริม'}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -1024,7 +1900,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
           )
         ) : selectedSet ? (
           <div className="space-y-2">
-            {/* Unit standard header */}
+            {/* Unit standard header with OBEC rules summary */}
             <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div>
                 <span className="font-bold text-[var(--color-text-title)]">
@@ -1036,10 +1912,13 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                   </span>
                 )}
               </div>
-              <div className="font-mono text-[var(--color-text-muted)] tabular-nums">
-                {selectedSet.indicators.length} ตัวชี้วัด · คะแนนเต็มหน่วย{' '}
-                {selectedSet.indicators.reduce((sum, item) => sum + item.maxScore, 0)} คะแนน
-              </div>
+              {selectedSetStats && (
+                <div className="font-mono text-[var(--color-text-muted)] tabular-nums">
+                  ระหว่างทาง {selectedSetStats.formativeCount} ข้อ ({selectedSetStats.formativeMax} คะแนน) · ปลายทาง{' '}
+                  {selectedSetStats.summativeCount} ข้อ ({selectedSetStats.summativeMax} คะแนน) · รวมเต็ม{' '}
+                  <strong className="text-[var(--color-text-title)]">{selectedSetStats.totalMax}</strong>
+                </div>
+              )}
             </div>
 
             <div className="overflow-auto rounded-xl border border-[var(--color-border)]">
@@ -1050,20 +1929,27 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                       นักเรียน
                     </th>
                     {selectedSet.indicators.map((indicator) => {
-                      const isFormative = (indicator.description || '').includes('ระหว่างทาง');
+                      const nature = inferIndicatorNature(indicator);
+                      const passPct = extractPassingPercent(indicator);
                       return (
-                        <th key={indicator.id} className="px-2.5 py-2 text-center min-w-[160px] align-top">
+                        <th key={indicator.id} className="px-2.5 py-2 text-center min-w-[165px] align-top">
                           <div className="font-bold text-[var(--color-text-title)]">
-                            {indicator.code || 'ตัวชี้วัด'}
-                            <span className="ml-1 text-[10px] font-medium text-[var(--color-text-muted)]">
-                              ({isFormative ? 'ระหว่างทาง' : 'ปลายทาง'})
+                            {indicator.code || 'ตัวชี้วัด'}{' '}
+                            <span
+                              className={`text-[10px] font-semibold ${
+                                nature === 'summative'
+                                  ? 'text-indigo-700 dark:text-indigo-300'
+                                  : 'text-emerald-700 dark:text-emerald-300'
+                              }`}
+                            >
+                              ({nature === 'summative' ? 'ปลายทาง' : 'ระหว่างทาง'})
                             </span>
                           </div>
                           <div className="text-[11px] font-normal text-[var(--color-text-body)] line-clamp-2 mt-0.5">
                             {indicator.title}
                           </div>
                           <div className="text-[10px] font-mono text-[var(--color-primary-text)] mt-0.5">
-                            เต็ม {indicator.maxScore}
+                            เต็ม {indicator.maxScore} · ผ่าน ≥ {passPct}%
                           </div>
                         </th>
                       );
@@ -1071,7 +1957,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                     <th className="px-3 py-2 text-center min-w-[90px] bg-amber-50/70 dark:bg-amber-950/30">
                       รวมหน่วย
                     </th>
-                    <th className="px-3 py-2 text-center min-w-[90px]">ผลประเมิน</th>
+                    <th className="px-3 py-2 text-center min-w-[100px]">ผลเกณฑ์ สพฐ.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
@@ -1083,6 +1969,12 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                     );
                     const hasAny = selectedSet.indicators.some((i) => getScore(student.id, i.id) !== undefined);
                     const pct = unitMax > 0 ? Math.round((unitSum / unitMax) * 100) : 0;
+                    const failedAnySummative = selectedSet.indicators.some((ind) => {
+                      if (inferIndicatorNature(ind) !== 'summative') return false;
+                      const sc = getScore(student.id, ind.id);
+                      if (!sc) return true;
+                      return sc.score < ind.maxScore * (extractPassingPercent(ind) / 100);
+                    });
 
                     return (
                       <tr key={student.id} className="hover:bg-[var(--color-card-subtle)]">
@@ -1091,18 +1983,26 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                         </td>
                         {selectedSet.indicators.map((indicator) => {
                           const entry = getScore(student.id, indicator.id);
+                          const passPct = extractPassingPercent(indicator);
+                          const isPassing = entry ? entry.score >= indicator.maxScore * (passPct / 100) : null;
                           return (
                             <td key={indicator.id} className="px-2 py-2 text-center">
                               {canEdit ? (
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={indicator.maxScore}
-                                  step={0.5}
-                                  value={entry?.score ?? ''}
-                                  onChange={(event) => updateScore(student.id, indicator, event.target.value)}
-                                  className="w-16 px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-center font-mono print:border-none"
-                                />
+                                <div className="inline-flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={indicator.maxScore}
+                                    step={0.5}
+                                    value={entry?.score ?? ''}
+                                    onChange={(event) => updateScore(student.id, indicator, event.target.value)}
+                                    className={`w-16 px-2 py-1 rounded-md border text-center font-mono print:border-none ${
+                                      isPassing === false
+                                        ? 'border-rose-400 bg-rose-50/50 dark:bg-rose-950/20'
+                                        : 'border-[var(--color-border)] bg-[var(--color-card)]'
+                                    }`}
+                                  />
+                                </div>
                               ) : (
                                 <span className="font-mono">{entry?.score ?? '-'}</span>
                               )}
@@ -1115,10 +2015,12 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                         <td className="px-3 py-2 text-center font-semibold">
                           {!hasAny ? (
                             <span className="text-[var(--color-text-muted)]">รอประเมิน</span>
-                          ) : pct >= 50 ? (
+                          ) : !failedAnySummative && pct >= 50 ? (
                             <span className="text-emerald-700 dark:text-emerald-300">ผ่าน ({pct}%)</span>
                           ) : (
-                            <span className="text-rose-700 dark:text-rose-300">ไม่ผ่าน ({pct}%)</span>
+                            <span className="text-amber-700 dark:text-amber-300">
+                              {failedAnySummative ? `ซ่อมปลายทาง (${pct}%)` : `ไม่ผ่าน (${pct}%)`}
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -1133,7 +2035,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-text-muted)]">
-            ยังไม่มีชุดตัวชี้วัดสำหรับรายวิชาและภาคเรียนนี้ กดปุ่ม &quot;นำเข้ามาตรฐานตัวชี้วัด หน่วย 1–3&quot; เพื่อสร้างชุดตัวชี้วัดมาตรฐาน สพฐ. ได้ทันที
+            ยังไม่มีชุดตัวชี้วัดสำหรับรายวิชาและภาคเรียนนี้ กดปุ่ม &quot;นำเข้ามาตรฐาน หน่วย 1–3&quot; หรือ &quot;เพิ่มหน่วย/ตัวชี้วัดใหม่&quot; เพื่อเริ่มต้น
           </div>
         )}
       </div>

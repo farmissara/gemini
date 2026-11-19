@@ -504,6 +504,9 @@ export interface LearningIndicator {
   code: string;
   title: string;
   description?: string;
+  nature?: 'formative' | 'summative';
+  passingPercent?: number;
+  weight?: number;
   maxScore: number;
   sortOrder: number;
   academicYear: string;
