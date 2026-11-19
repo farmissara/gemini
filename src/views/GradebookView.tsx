@@ -1466,9 +1466,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
-      {/* Compact title, navigation, and actions in separate rows */}
-      <div className="shrink-0 px-3 py-2 app-page-header flex flex-col items-stretch gap-2 print:hidden">
-        <div className="w-full flex items-center gap-2 flex-wrap min-w-0">
+      {/* Compact title and navigation with actions aligned alongside */}
+      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-end justify-between gap-x-3 gap-y-1 print:hidden">
+        <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
           <span className="tone-chip w-6 h-6 rounded-lg shrink-0">
             <Award className="w-3.5 h-3.5" />
           </span>
@@ -1572,7 +1572,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           )}
         </div>
 
-        <div className="w-full flex items-center justify-end gap-1.5 flex-wrap">
+        <div className="shrink-0 flex items-center justify-end gap-1.5 flex-wrap">
           <ModuleTourTrigger moduleId="gradebook" lang={lang} />
 
           {activeTab === 'pp3_online' && (

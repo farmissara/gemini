@@ -644,9 +644,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const teachersGroup = getModuleGroupMeta('teachers');
 
   return (
-    <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
+    <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
       {/* Compact Header and Controls */}
-      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
+      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-1.5">
         <div className="flex items-center gap-2.5 flex-wrap min-w-0">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <GraduationCap className="w-4 h-4" />
