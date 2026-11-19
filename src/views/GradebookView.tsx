@@ -105,6 +105,8 @@ interface GradebookViewProps {
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
   onOpenImportExport?: () => void;
   canEditGrades?: boolean;
+  initialCourseId?: string;
+  initialTab?: 'gradebook' | 'indicators' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets';
   lang?: AppLanguage;
 }
 
@@ -130,6 +132,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   onPracticeInAi,
   onOpenImportExport,
   canEditGrades,
+  initialCourseId,
+  initialTab,
   lang = 'th',
 }) => {
   const isPersonalGradeViewer = currentRole === 'student' || currentRole === 'parent';
@@ -137,10 +141,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     typeof canEditGrades === 'boolean'
       ? canEditGrades
       : ['super_admin', 'admin', 'teacher'].includes(currentRole);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(() => {
+    if (initialCourseId && courses.some((c) => c.id === initialCourseId)) return initialCourseId;
+    return courses[0]?.id || '';
+  });
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'gradebook' | 'indicators' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>(
-    isPersonalGradeViewer ? 'pp6' : 'gradebook'
+    isPersonalGradeViewer ? 'pp6' : (initialTab || 'gradebook')
   );
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [courseTeacherFilter, setCourseTeacherFilter] = useState<string>('all');
@@ -177,6 +184,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     new Map()
   );
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (initialCourseId && courses.some((c) => c.id === initialCourseId)) {
+      setSelectedCourseId(initialCourseId);
+    }
+  }, [initialCourseId, courses]);
+
+  useEffect(() => {
+    if (initialTab && !isPersonalGradeViewer) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, isPersonalGradeViewer]);
 
   useEffect(() => {
     if (isPersonalGradeViewer && activeTab !== 'gradebook' && activeTab !== 'pp6') {

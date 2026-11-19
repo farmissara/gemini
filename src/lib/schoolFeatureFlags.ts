@@ -87,8 +87,8 @@ export const FEATURE_FLAG_LABELS: FeatureFlagDescriptor[] = [
     minLevel: 'level_1',
     labelTh: 'บันทึกคะแนน ปพ.5 & ตัดเกรด ปพ.1',
     labelEn: 'Gradebook & Transcripts',
-    descTh: 'กรอกคะแนน เกรดเฉลี่ย GPA/GPAX และเอกสาร ปพ.',
-    tabIds: ['gradebook'],
+    descTh: 'กรอกคะแนน เกรดเฉลี่ย GPA/GPAX เอกสาร ปพ. และสมุดบันทึกพัฒนาคุณภาพผู้เรียน',
+    tabIds: ['gradebook', 'student_development_book'],
   },
   {
     key: 'homework',
@@ -552,6 +552,7 @@ const PROTECTED_SYSTEM_TABS = new Set<string>([
   'school_gps',
   'school_permissions',
   'executive_monitor',
+  'obec_executive_dashboard',
 ]);
 
 export const isTabEnabledByFeatureFlags = (

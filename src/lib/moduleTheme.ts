@@ -15,6 +15,7 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   // tone-1: Core Directory & Academics
   dashboard: 'tone-1',
   executive_monitor: 'tone-1',
+  obec_executive_dashboard: 'tone-1',
   students: 'tone-1',
   teachers: 'tone-1',
   courses: 'tone-1',
@@ -22,6 +23,7 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
 
   // tone-2: Assessment, Attendance & Tasks
   gradebook: 'tone-2',
+  student_development_book: 'tone-2',
   attendance: 'tone-2',
   mobile_checkin: 'tone-2',
   homework: 'tone-2',

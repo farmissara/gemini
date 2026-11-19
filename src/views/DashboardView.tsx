@@ -91,12 +91,14 @@ import { isTabEnabledByFeatureFlags } from '../lib/schoolFeatureFlags';
 import { ExecutiveMonitorView } from './ExecutiveMonitorView';
 import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
 import { StudentDesktopDashboard } from '../components/student/StudentDesktopDashboard';
+import { ObecLearningAreaExecutiveDashboard } from '../components/ObecLearningAreaExecutiveDashboard';
 
 export type DashboardSubTab =
   | 'overview'
   | 'insights'
   | 'live_attendance'
   | 'executive_monitor'
+  | 'obec_learning_areas'
   | 'early_warning'
   | 'innovative_hub'
   | 'announcements';
@@ -136,6 +138,7 @@ interface DashboardViewProps {
   featureFlags?: SchoolFeatureFlags;
   initialSubTab?: DashboardSubTab;
   onSelectStudent?: (student: Student) => void;
+  onOpenGradebookCourse?: (courseId?: string) => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
 }
@@ -170,6 +173,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   featureFlags,
   initialSubTab,
   onSelectStudent,
+  onOpenGradebookCourse,
   focusMode: controlledFocusMode,
   onToggleFocusMode,
 }) => {
@@ -200,6 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const resolveAllowedSubTab = (candidate?: DashboardSubTab): DashboardSubTab => {
     if (!candidate) return 'overview';
     if (candidate === 'executive_monitor' && !canViewExecutiveMonitor) return 'overview';
+    if (candidate === 'obec_learning_areas' && !canViewExecutiveMonitor) return 'overview';
     if (candidate === 'early_warning' && !canViewEarlyWarning) return 'overview';
     return candidate;
   };
@@ -729,7 +734,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h1 className="type-page-title truncate">
             {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
           </h1>
-          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'early_warning' && (
+          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'early_warning' && (
             <button
               type="button"
               onClick={() => setDashboardTab('overview')}
@@ -768,9 +773,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 data-active={dashboardTab === 'executive_monitor'}
                 onClick={() => setDashboardTab('executive_monitor')}
-                className="seg-tab-btn"
+                className="seg-tab-btn whitespace-nowrap shrink-0"
               >
                 {lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร' : 'Executive Monitor'}
+              </button>
+            )}
+
+            {canViewExecutiveMonitor && (
+              <button
+                type="button"
+                data-active={dashboardTab === 'obec_learning_areas'}
+                onClick={() => setDashboardTab('obec_learning_areas')}
+                className="seg-tab-btn whitespace-nowrap shrink-0"
+              >
+                {lang === 'th' ? 'กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}
               </button>
             )}
 
@@ -779,7 +795,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 data-active={dashboardTab === 'early_warning'}
                 onClick={() => setDashboardTab('early_warning')}
-                className="seg-tab-btn"
+                className="seg-tab-btn whitespace-nowrap shrink-0"
               >
                 {lang === 'th' ? 'เตือนภัยผู้เรียน' : 'Early Warning'}
               </button>
@@ -1815,18 +1831,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {lang === 'th' ? 'วิเคราะห์สถิติการมาเรียน ผลการเรียน และความก้าวหน้า' : 'Attendance Trends, Grade Analytics & Milestones'}
                 </span>
               </div>
-              {canViewFinancials && (
-                <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
+                {canViewExecutiveMonitor && (
+                  <button
+                    type="button"
+                    onClick={() => setDashboardTab('obec_learning_areas')}
+                    className="btn-tool-tone px-2.5 py-1 whitespace-nowrap"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ประเมิน 8 กลุ่มสาระฯ สพฐ.' : 'OBEC 8-Area Eval'}</span>
+                  </button>
+                )}
+                {canViewFinancials && (
                   <button
                     type="button"
                     onClick={() => setDrawerMode('guardian_line')}
-                    className="btn-tool-neutral px-2.5 py-1"
+                    className="btn-tool-neutral px-2.5 py-1 whitespace-nowrap"
                   >
                     <Receipt className="w-3.5 h-3.5" />
                     <span>{lang === 'th' ? `ค่าเทอม & LINE (${linePercent}%)` : `Tuition & LINE (${linePercent}%)`}</span>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {!isRestrictedPersonalRole && (
@@ -1897,6 +1923,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   setDashboardTab('early_warning');
                 } else {
                   onNavigate(tab);
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* UNIFIED LENS: OBEC 8 LEARNING AREAS EXECUTIVE EVALUATION */}
+        {dashboardTab === 'obec_learning_areas' && canViewExecutiveMonitor && (
+          <div className="animate-in fade-in duration-150">
+            <ObecLearningAreaExecutiveDashboard
+              students={students}
+              teachers={teachers}
+              courses={courses}
+              grades={grades}
+              attendance={attendance}
+              periodAttendance={periodAttendance}
+              timetableSlots={timetableSlots}
+              systemConfig={systemConfig}
+              school={school}
+              lang={lang}
+              onNavigateToGradebook={(courseId) => {
+                if (onOpenGradebookCourse) {
+                  onOpenGradebookCourse(courseId);
+                } else {
+                  onNavigate('gradebook');
                 }
               }}
             />

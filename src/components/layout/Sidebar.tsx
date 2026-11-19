@@ -38,6 +38,8 @@ import {
   PanelLeftOpen,
   Coffee,
   Compass,
+  BarChart3,
+  BookMarked,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -52,6 +54,7 @@ export type NavTab =
   | 'school_gps'
   | 'executive_warning'
   | 'executive_monitor'
+  | 'obec_executive_dashboard'
   | 'admin_superadmin_desk'
   | 'dashboard' 
   | 'students' 
@@ -75,6 +78,7 @@ export type NavTab =
   | 'hall_of_fame'
   | 'portfolio'
   | 'gradebook' 
+  | 'student_development_book'
   | 'central_exam_hub'
   | 'billing' 
   | 'announcements';
@@ -130,6 +134,7 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'mobile_checkin',
   'homework',
   'gradebook',
+  'student_development_book',
   'timetable',
   'students',
   'behavior_sdq',
@@ -266,6 +271,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
+          id: 'obec_executive_dashboard',
+          labelTh: 'ประเมินผล 8 กลุ่มสาระฯ (สพฐ.)',
+          labelEn: 'OBEC 8-Area Analytics',
+          icon: BarChart3,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
           id: 'students',
           labelTh: 'ทะเบียนนักเรียน',
           labelEn: 'Student Directory',
@@ -301,6 +313,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'บันทึกคะแนน & ทะเบียนผลการเรียน',
           labelEn: 'Grading & Academic Records',
           icon: Award,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'student_development_book',
+          labelTh: 'สมุดบันทึกพัฒนาคุณภาพผู้เรียน',
+          labelEn: 'Student Development Book',
+          icon: BookMarked,
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {

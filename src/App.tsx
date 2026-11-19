@@ -135,6 +135,7 @@ import { MobileAttendanceView } from './views/MobileAttendanceView';
 import { EduBattleGameView } from './views/EduBattleGameView';
 import { PortfolioView } from './views/PortfolioView';
 import { GradebookView } from './views/GradebookView';
+import { StudentQualityDevelopmentBookView } from './views/StudentQualityDevelopmentBookView';
 import { BillingView } from './views/BillingView';
 import { AnnouncementsView } from './views/AnnouncementsView';
 import { LmsClassroomView } from './views/LmsClassroomView';
@@ -432,6 +433,11 @@ export const App: React.FC = () => {
   const [dismissedDuplicateWarning, setDismissedDuplicateWarning] = useState(false);
   const [showDuplicateDetails, setShowDuplicateDetails] = useState(false);
   const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
+  const [devBookTargetStudentId, setDevBookTargetStudentId] = useState<string | undefined>(undefined);
+  const [gradebookJumpTarget, setGradebookJumpTarget] = useState<{
+    courseId?: string;
+    tab?: 'gradebook' | 'indicators' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets';
+  } | null>(null);
   const [featureFlagsBySchool, setFeatureFlagsBySchool] = useState<Record<string, SchoolFeatureFlags>>({});
 
   useEffect(() => {
@@ -1115,6 +1121,15 @@ export const App: React.FC = () => {
       return;
     }
 
+    if (tab === 'obec_executive_dashboard') {
+      if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+        setDashboardInitialSubTab('obec_learning_areas');
+        setProgramMode('school_erp');
+        setCurrentTab('dashboard');
+      }
+      return;
+    }
+
     if (tab === 'executive_warning') {
       if (!isTabEnabledByFeatureFlags('executive_warning', activeFeatureFlags, currentRole)) {
         setDataSyncError(
@@ -1161,6 +1176,8 @@ export const App: React.FC = () => {
       'announcements',
       'central_exam_hub',
       'attendance',
+      'obec_executive_dashboard',
+      'student_development_book',
       'system_settings',
       'admin_superadmin_desk',
       'super_admin_console',
@@ -1228,6 +1245,12 @@ export const App: React.FC = () => {
     }
     if (tab === 'dashboard') {
       setDashboardInitialSubTab('overview');
+    }
+    if (tab === 'gradebook') {
+      setGradebookJumpTarget(null);
+    }
+    if (tab === 'student_development_book') {
+      setDevBookTargetStudentId(undefined);
     }
     setCurrentTab(tab);
   };
@@ -4496,6 +4519,12 @@ export const App: React.FC = () => {
                     featureFlags={activeFeatureFlags}
                     initialSubTab={dashboardInitialSubTab}
                     onSelectStudent={setSelectedStudentForProfile}
+                    onOpenGradebookCourse={(courseId) => {
+                      setIsGamePlaying(false);
+                      setGradebookJumpTarget({ courseId, tab: 'pp5' });
+                      setProgramMode('school_erp');
+                      setCurrentTab('gradebook');
+                    }}
                     focusMode={focusMode}
                     onToggleFocusMode={() => setFocusMode((prev) => !prev)}
                   />
@@ -4947,11 +4976,43 @@ export const App: React.FC = () => {
                         : undefined
                     }
                     canEditGrades={canEditGradesInSchool}
+                    initialCourseId={gradebookJumpTarget?.courseId}
+                    initialTab={gradebookJumpTarget?.tab}
                     lang={lang}
                     onOpenImportExport={['super_admin', 'admin', 'teacher'].includes(currentRole) ? () => {
                       setImportExportInitialTab('grades');
                       setShowImportExportModal(true);
                     } : undefined}
+                  />
+                )}
+
+                {currentTab === 'student_development_book' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+                  <StudentQualityDevelopmentBookView
+                    students={viewStudents}
+                    courses={viewCourses}
+                    grades={viewGrades}
+                    attendance={viewAttendance}
+                    periodAttendance={viewPeriodAttendance}
+                    timetableSlots={viewTimetableSlots}
+                    behaviorRecords={viewBehaviorRecords}
+                    sdqAssessments={viewSdqAssessments}
+                    infirmaryVisits={viewInfirmaryVisits}
+                    homeworkSubmissions={viewHomeworkSubmissions}
+                    systemConfig={systemConfig}
+                    school={activeSchool}
+                    currentRole={currentRole}
+                    currentUser={currentUser}
+                    initialStudentId={devBookTargetStudentId}
+                    onAddBehaviorRecord={handleAddBehaviorRecord}
+                    onOpenReportCard={setSelectedStudentForReport}
+                    onOpenCourseIndicators={(courseId) => {
+                      setIsGamePlaying(false);
+                      setGradebookJumpTarget({ courseId, tab: 'indicators' });
+                      setProgramMode('school_erp');
+                      setCurrentTab('gradebook');
+                    }}
+                    onOpenBehaviorSdq={() => navigateToAppTab('behavior_sdq')}
+                    lang={lang}
                   />
                 )}
 
