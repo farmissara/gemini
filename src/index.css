@@ -387,30 +387,29 @@
     display: inline-flex;
     align-items: center;
     gap: 0.125rem;
-    padding: 0.125rem;
-    border-radius: 0.625rem;
-    border: 1px solid var(--color-border);
+    padding: 0.25rem;
+    border-radius: 0.75rem;
     background-color: var(--color-card-subtle);
   }
   .seg-tab-btn {
-    padding: 0.25rem 0.625rem;
+    padding: 0.375rem 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.75rem;
-    line-height: 1rem;
-    font-weight: 600;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
     transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
-    color: var(--color-text-body);
+    color: var(--color-text-muted);
   }
   .seg-tab-btn:hover {
-    background-color: var(--color-card);
     color: var(--color-text-title);
   }
   .seg-tab-btn[data-active="true"] {
-    background-color: var(--tone-solid);
-    color: #ffffff;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+    background-color: var(--color-card);
+    color: var(--color-text-title);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08), 0 0 0 1px var(--color-border);
   }
 
   /* ── Standardized SaaS Typography Hierarchy Scale ── */
