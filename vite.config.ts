@@ -92,7 +92,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: true,
+          enabled: process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true',
           type: 'module',
         },
       }),
@@ -106,8 +106,8 @@ export default defineConfig(() => {
       host: '0.0.0.0',
       port: 3000,
       allowedHosts: true as const,
-      hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      hmr: process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true',
+      watch: process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true' ? {} : null,
     },
     preview: {
       host: '0.0.0.0',

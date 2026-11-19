@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { GoogleGenAI, Type } from '@google/genai';
 
@@ -475,6 +476,7 @@ async function createApp() {
     }
   });
 
+  const httpServer = http.createServer(app);
   const distDir = path.resolve(import.meta.dirname || process.cwd(), 'dist');
   const isProd =
     process.env.NODE_ENV === 'production' ||
@@ -487,19 +489,52 @@ async function createApp() {
       res.sendFile(path.join(distDir, 'index.html'));
     });
   } else {
+    const hmrEnabled = process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true';
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: process.env.DISABLE_HMR !== 'true',
-        watch: process.env.DISABLE_HMR === 'true' ? null : undefined,
+        hmr: hmrEnabled ? { server: httpServer } : false,
+        ws: hmrEnabled ? { server: httpServer } : false,
+        watch: hmrEnabled ? undefined : null,
       },
       appType: 'spa',
     });
+
+    if (!hmrEnabled) {
+      app.get('/@vite/client', async (_req: Request, res: Response, next) => {
+        try {
+          const result = await vite.transformRequest('/@vite/client');
+          if (result?.code) {
+            const patched = result.code
+              .replace(
+                /transport\.connect\(createHMRHandler\([^)]*\)\);?/g,
+                '/* HMR WebSocket disabled */'
+              )
+              .replace(
+                /throw new SendBeforeConnectError\("send was called before connect"\);?/g,
+                'return;'
+              )
+              .replace(
+                /throw new SendBeforeConnectError\("invoke was called before connect"\);?/g,
+                'return;'
+              );
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store');
+            res.send(patched);
+            return;
+          }
+        } catch {
+          // Fall through to default Vite middleware if transform fails
+        }
+        next();
+      });
+    }
+
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, HOST, () => {
+  httpServer.listen(PORT, HOST, () => {
     console.log(`[BaanPakKru Server] Listening on http://${HOST}:${PORT}`);
   });
 }
