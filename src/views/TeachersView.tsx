@@ -1125,14 +1125,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
                   {/* Other skills badge preview */}
                   {teacher.otherSkills && teacher.otherSkills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-1">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       {teacher.otherSkills.slice(0, 3).map((skill, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-medium">
-                          ⚡ {skill}
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border border-[var(--color-border)] font-medium">
+                          {skill}
                         </span>
                       ))}
                       {teacher.otherSkills.length > 3 && (
-                        <span className="text-[10px] text-[var(--color-text-muted)] font-semibold">+{teacher.otherSkills.length - 3}</span>
+                        <span className="text-[10px] text-[var(--color-text-muted)] font-semibold tabular-nums">+{teacher.otherSkills.length - 3}</span>
                       )}
                     </div>
                   )}

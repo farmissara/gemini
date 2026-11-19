@@ -178,32 +178,32 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
   const currentDailyQuest = dailyQuests[activeQuestIndex];
 
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('study_streak')}`}>
+    <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-3 ${getModuleTone('study_streak')}`}>
       {/* Toast Alert */}
       {redeemedPerkToast && (
-        <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-slate-900 text-white shadow-xl border border-emerald-500/50 flex items-center gap-2">
+        <div className="fixed top-16 right-6 z-50 px-3.5 py-2.5 rounded-xl bg-slate-900 text-white shadow-lg border border-emerald-500/40 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <p className="text-xs font-semibold">{redeemedPerkToast}</p>
+          <p className="text-xs font-medium">{redeemedPerkToast}</p>
         </div>
       )}
 
       {/* Top Banner with Flame Streak & Knowledge Token HUD */}
-      <div className="shrink-0 app-page-header p-3.5 sm:p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 max-w-xl">
-            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
+      <div className="shrink-0 app-page-header p-4 sm:p-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0 max-w-xl">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
               <Flame className="w-5 h-5" />
             </div>
             <div className="space-y-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-indigo-600 dark:text-indigo-400">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
                 <span>{lang === 'th' ? 'ระบบสตรีคความต่อเนื่อง & ร้านค้าสิทธิพิเศษในห้องเรียน' : 'Daily Study Streak & Season Battle Pass'}</span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--color-text-title)]">
+              </p>
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text-title)]">
                 <span>{lang === 'th' ? 'Daily Streak & Classroom Quest Pass' : 'Daily Study Streak Pass'}</span>
               </h1>
-              <p className="text-[var(--color-text-body)] text-xs leading-relaxed">
-                {lang === 'th' 
+              <p className="text-[var(--color-text-muted)] text-xs leading-relaxed">
+                {lang === 'th'
                   ? 'กระตุ้นพฤติกรรมรักการเรียนรู้ทุกวันด้วยภารกิจสั้น 3 นาที รักษาไฟสตรีค และนำเหรียญมาแลกสิทธิพิเศษจริง'
                   : 'Turn consistent learning into a habit with daily 3-minute micro-quests, flame streaks, and classroom perks.'}
               </p>
@@ -211,31 +211,31 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
           </div>
 
           {/* Player Stats Strip */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             {/* Streak Counter */}
-            <div className="bg-[var(--color-card)] border border-[var(--color-border)] p-2.5 rounded-xl flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold">
-                <Flame className="w-4 h-4 fill-current" />
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] px-3 py-2 rounded-xl flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <Flame className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">{lang === 'th' ? 'สตรีคสะสม' : 'Streak'}</p>
+                <p className="text-[10px] font-medium text-[var(--color-text-muted)]">{lang === 'th' ? 'สตรีคสะสม' : 'Streak'}</p>
                 <div className="flex items-baseline gap-1 tabular-nums">
-                  <span className="text-lg font-black text-orange-600 dark:text-orange-400">{streakCount}</span>
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)]">วัน</span>
+                  <span className="text-base font-bold text-[var(--color-text-title)]">{streakCount}</span>
+                  <span className="text-[10px] font-medium text-[var(--color-text-muted)]">วัน</span>
                 </div>
               </div>
             </div>
 
             {/* Tokens Balance */}
-            <div className="bg-[var(--color-card)] border border-[var(--color-border)] p-2.5 rounded-xl flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold">
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] px-3 py-2 rounded-xl flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <Coins className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">{lang === 'th' ? 'เหรียญความรู้' : 'Tokens'}</p>
+                <p className="text-[10px] font-medium text-[var(--color-text-muted)]">{lang === 'th' ? 'เหรียญความรู้' : 'Tokens'}</p>
                 <div className="flex items-baseline gap-1 tabular-nums">
-                  <span className="text-lg font-black text-amber-700 dark:text-amber-300">{tokens}</span>
-                  <span className="text-[10px] text-[var(--color-text-muted)]">Coins</span>
+                  <span className="text-base font-bold text-[var(--color-text-title)]">{tokens}</span>
+                  <span className="text-[10px] font-medium text-[var(--color-text-muted)]">Coins</span>
                 </div>
               </div>
             </div>
@@ -269,45 +269,67 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       {/* Tab Panels Body */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
       {activeTab === 'quest_pass' && (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-3">
         <div className="lg:col-span-12 flex items-center gap-2">
-          <button type="button" onClick={() => setQuestPassStep('quest')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${questPassStep === 'quest' ? 'bg-orange-700 border-orange-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
+          <button
+            type="button"
+            onClick={() => setQuestPassStep('quest')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+              questPassStep === 'quest'
+                ? 'bg-indigo-600 border-indigo-600 text-white'
+                : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] hover:border-indigo-400/50'
+            }`}
+          >
             {lang === 'th' ? 'ภารกิจรายวัน' : 'Daily Quest'}
           </button>
-          <button type="button" onClick={() => setQuestPassStep('pass')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${questPassStep === 'pass' ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
+          <button
+            type="button"
+            onClick={() => setQuestPassStep('pass')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+              questPassStep === 'pass'
+                ? 'bg-indigo-600 border-indigo-600 text-white'
+                : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] hover:border-indigo-400/50'
+            }`}
+          >
             {lang === 'th' ? 'ซีซันพาส' : 'Season Pass'}
           </button>
         </div>
+
         {/* Left Column: Daily 3-Minute Micro-Quest */}
-        {questPassStep === 'quest' && <div className="lg:col-span-12 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 shadow-xs flex flex-col justify-between">
+        {questPassStep === 'quest' && <div className="lg:col-span-12 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-5 sm:p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                <div>
-                  <h3 className="text-base font-bold text-[var(--color-text-title)]">
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'เควสต์ทบทวนประจำวัน 3 นาที (Daily Micro-Quest)' : 'Daily 3-Min Micro Quest'}
                   </h3>
-                  <p className="text-xs text-[var(--color-text-muted)]">
+                  <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
                     {lang === 'th' ? `ข้อที่ ${activeQuestIndex + 1} จาก ${dailyQuests.length} ข้อ • วิชา: ${currentDailyQuest.subject}` : `Question ${activeQuestIndex + 1} of ${dailyQuests.length}`}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
-                <span>+{currentDailyQuest.rewardTokens} 🪙</span>
-                <span>+{currentDailyQuest.rewardXp} XP</span>
+              <div className="flex items-center gap-3 text-xs font-semibold tabular-nums shrink-0">
+                <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                  <Coins className="w-3.5 h-3.5" />
+                  +{currentDailyQuest.rewardTokens}
+                </span>
+                <span className="text-indigo-600 dark:text-indigo-400">+{currentDailyQuest.rewardXp} XP</span>
               </div>
             </div>
 
             {/* Question Card */}
-            <div className="mt-5 space-y-4">
-              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-[var(--color-text-title)] font-bold text-sm leading-relaxed">
+            <div className="mt-5 space-y-4 max-w-3xl">
+              <div className="p-4 sm:p-5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] ring-1 ring-indigo-500/10 text-[var(--color-text-title)] font-semibold text-sm sm:text-base leading-relaxed">
                 {currentDailyQuest.questionTh}
               </div>
 
               {/* Options */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {currentDailyQuest.options.map((opt, optIdx) => {
                   const isSelected = selectedOption === optIdx;
                   return (
@@ -316,18 +338,18 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                       type="button"
                       disabled={selectedOption !== null}
                       onClick={() => handleAnswerQuest(optIdx)}
-                      className={`w-full text-left p-3.5 rounded-xl border transition flex items-center justify-between text-xs sm:text-sm font-semibold cursor-pointer ${
-                        isSelected 
+                      className={`w-full text-left p-3.5 sm:px-4 rounded-xl border transition-all flex items-center justify-between text-xs sm:text-sm font-medium cursor-pointer ${
+                        isSelected
                           ? optIdx === currentDailyQuest.correctIndex
-                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
-                            : 'bg-rose-700 text-white border-rose-800 shadow-sm'
+                            ? 'bg-emerald-600 text-white border-emerald-600 font-semibold'
+                            : 'bg-rose-600 text-white border-rose-600 font-semibold'
                           : selectedOption !== null && optIdx === currentDailyQuest.correctIndex
-                          ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-400 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 font-bold'
-                          : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] hover:border-[var(--color-primary)] text-[var(--color-text-title)]'
+                          ? 'bg-emerald-500/10 dark:bg-emerald-950/60 border-emerald-500/50 text-emerald-800 dark:text-emerald-200 font-semibold'
+                          : 'bg-[var(--color-card)] border-[var(--color-border)] hover:border-indigo-500/60 hover:bg-indigo-500/[0.04] text-[var(--color-text-title)]'
                       }`}
                     >
                       <span>{opt}</span>
-                      <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-[var(--color-text-muted)]'}`} />
+                      <ChevronRight className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--color-text-muted)]'}`} />
                     </button>
                   );
                 })}
@@ -336,30 +358,43 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
               {/* Feedback Alert */}
               {questResult && (
                 <div className={`p-4 rounded-xl border text-xs leading-relaxed ${
-                  questResult.isCorrect 
-                    ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100'
-                    : 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-100'
+                  questResult.isCorrect
+                    ? 'bg-emerald-500/10 dark:bg-emerald-950/50 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                    : 'bg-rose-500/10 dark:bg-rose-950/50 border-rose-500/30 text-rose-900 dark:text-rose-200'
                 }`}>
-                  <p className="font-bold mb-1">
-                    {questResult.isCorrect ? '🎉 ถูกต้อง!' : '💡 คำอธิบาย:'}
+                  <p className="font-semibold mb-1 inline-flex items-center gap-1.5">
+                    {questResult.isCorrect ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>ถูกต้อง!</span>
+                      </>
+                    ) : (
+                      <>
+                        <HelpCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                        <span>คำอธิบาย:</span>
+                      </>
+                    )}
                   </p>
-                  <p>{questResult.feedback}</p>
+                  <p className="text-[var(--color-text-body)]">{questResult.feedback}</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Quest Navigation Button */}
-          <div className="mt-6 pt-4 border-t border-[var(--color-border)] flex items-center justify-between">
-            <span className="text-[11px] text-[var(--color-text-muted)] font-medium">
-              {hasCompletedDaily ? (lang === 'th' ? '🔥 รักษาสตรีคของวันนี้สำเร็จแล้ว!' : '🔥 Today\'s streak secured!') : (lang === 'th' ? 'ทำถูก 1 ข้อเพื่อรักษาไฟสตรีค' : 'Answer correctly to keep streak alive')}
+          <div className="mt-6 pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-3">
+            <span className="text-xs text-[var(--color-text-muted)] font-medium inline-flex items-center gap-1.5">
+              <Flame className={`w-3.5 h-3.5 shrink-0 ${hasCompletedDaily ? 'text-emerald-500' : 'text-indigo-500'}`} />
+              <span>
+                {hasCompletedDaily ? (lang === 'th' ? 'รักษาสตรีคของวันนี้สำเร็จแล้ว' : 'Today\'s streak secured') : (lang === 'th' ? 'ทำถูก 1 ข้อเพื่อรักษาไฟสตรีค' : 'Answer correctly to keep streak alive')}
+              </span>
             </span>
 
             {selectedOption !== null && (
               <button
                 type="button"
                 onClick={handleNextQuest}
-                className="px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-800 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
               >
                 <span>{activeQuestIndex < dailyQuests.length - 1 ? (lang === 'th' ? 'ข้อถัดไป' : 'Next Question') : (lang === 'th' ? 'เริ่มใหม่' : 'Restart')}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -369,13 +404,15 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
         </div>}
 
         {/* Right Column: Season Battle Pass Progression */}
-        {questPassStep === 'pass' && <div className="lg:col-span-12 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 shadow-xs flex flex-col justify-between">
+        {questPassStep === 'pass' && <div className="lg:col-span-12 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-5 sm:p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-indigo-700 dark:text-indigo-400" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <Award className="w-4 h-4" />
+                </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                  <h3 className="text-sm sm:text-base font-bold text-[var(--color-text-title)]">
                     {lang === 'th' ? 'ซีซันพาสความรู้ (Season Quest Pass)' : 'Knowledge Season Pass'}
                   </h3>
                   <p className="text-xs text-[var(--color-text-muted)]">
@@ -384,9 +421,17 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 </div>
               </div>
 
-              <span className="text-xs font-black text-indigo-800 dark:text-indigo-300">
-                XP: {currentXp} / 1,000
-              </span>
+              <div className="flex items-center gap-3 sm:min-w-[200px]">
+                <div className="flex-1 h-1.5 bg-[var(--color-card-subtle)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.round((currentXp / 1000) * 100))}%` }}
+                  />
+                </div>
+                <span className="text-xs font-semibold font-mono text-indigo-600 dark:text-indigo-400 tabular-nums shrink-0">
+                  {currentXp} / 1,000 XP
+                </span>
+              </div>
             </div>
 
             {/* Pass Tiers List */}
@@ -398,29 +443,29 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 return (
                   <div
                     key={tier.level}
-                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition ${
+                    className={`p-4 rounded-xl border flex items-center justify-between gap-3 transition ${
                       tier.isClaimed
                         ? 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
                         : canClaim
-                        ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-xs'
+                        ? 'bg-indigo-500/[0.06] dark:bg-indigo-500/10 border-indigo-500/40'
                         : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${
-                        isPassed 
-                          ? 'bg-indigo-700 text-white' 
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs tabular-nums shrink-0 ${
+                        isPassed
+                          ? 'bg-indigo-600 text-white'
                           : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]'
                       }`}>
                         Lv.{tier.level}
                       </div>
 
-                      <div className="space-y-0.5">
-                        <div className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                          <Gift className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                          <span>{tier.freeRewardTh}</span>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="text-xs font-semibold text-[var(--color-text-title)] flex items-center gap-1.5">
+                          <Gift className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <span className="truncate">{tier.freeRewardTh}</span>
                         </div>
-                        <p className="text-[10px] text-[var(--color-text-muted)]">
+                        <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
                           {lang === 'th' ? `ต้องการ ${tier.requiredXp} XP` : `Requires ${tier.requiredXp} XP`}
                         </p>
                       </div>
@@ -429,7 +474,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                     {/* Claim Button */}
                     <div className="shrink-0">
                       {tier.isClaimed ? (
-                        <span className="text-[11px] text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-1">
+                        <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {lang === 'th' ? 'รับแล้ว' : 'Claimed'}
                         </span>
@@ -437,12 +482,12 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                         <button
                           type="button"
                           onClick={() => handleClaimTier(tier.level)}
-                          className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                          className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition cursor-pointer"
                         >
                           {lang === 'th' ? 'กดรับรางวัล' : 'Claim'}
                         </button>
                       ) : (
-                        <span className="text-[11px] text-[var(--color-text-muted)] font-medium">
+                        <span className="text-xs text-[var(--color-text-muted)] font-medium">
                           {lang === 'th' ? 'ยังไม่ปลดล็อก' : 'Locked'}
                         </span>
                       )}
@@ -453,9 +498,9 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] flex items-center justify-between">
+          <div className="mt-4 pt-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)] flex items-center justify-between">
             <span>{lang === 'th' ? 'ฤดูกาลปัจจุบัน: Season 1 วิทยาการคำนวณ' : 'Current: Season 1 Tech & Sci'}</span>
-            <span className="font-semibold text-[var(--color-text-body)]">{lang === 'th' ? 'เหลือเวลาอีก 18 วัน' : '18 days left'}</span>
+            <span className="font-medium text-[var(--color-text-body)] tabular-nums">{lang === 'th' ? 'เหลือเวลาอีก 18 วัน' : '18 days left'}</span>
           </div>
         </div>}
       </div>
@@ -463,9 +508,9 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
       {/* Classroom Perks Store Section */}
       {activeTab === 'perks_store' && (
-      <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-5 sm:p-6 space-y-5">
         {redeemErrorToast && (
-          <div role="alert" className="p-3 rounded-xl bg-rose-100 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs font-bold flex items-center justify-between gap-2">
+          <div role="alert" className="p-3 rounded-xl bg-rose-500/10 dark:bg-rose-950/60 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center justify-between gap-2">
             <span>{redeemErrorToast}</span>
             <button type="button" onClick={() => setRedeemErrorToast(null)} className="text-[11px] underline cursor-pointer">
               {lang === 'th' ? 'ปิด' : 'Close'}
@@ -474,13 +519,13 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
         )}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
           <div>
-            <h2 className="text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              {lang === 'th' ? 'ร้านค้าสิทธิพิเศษในห้องเรียน (Classroom Perks Store)' : 'Classroom Perks Exchange'}
+            <h2 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <span>{lang === 'th' ? 'ร้านค้าสิทธิพิเศษในห้องเรียน (Classroom Perks Store)' : 'Classroom Perks Exchange'}</span>
             </h2>
             <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-              {lang === 'th' 
-                ? 'นำเหรียญความรู้ที่ได้จากการทำภารกิจรายวันมาแลกสิทธิพิเศษจริงที่คุณครูอนุมัติ' 
+              {lang === 'th'
+                ? 'นำเหรียญความรู้ที่ได้จากการทำภารกิจรายวันมาแลกสิทธิพิเศษจริงที่คุณครูอนุมัติ'
                 : 'Exchange Knowledge Tokens for real tangible classroom privileges'}
             </p>
           </div>
@@ -490,10 +535,10 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
             <button
               type="button"
               onClick={() => setShowAddPerkModal(true)}
-              className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>{lang === 'th' ? '+ ครูเพิ่มสิทธิ์ใหม่ในห้อง' : '+ Add Classroom Perk'}</span>
+              <span>{lang === 'th' ? 'ครูเพิ่มสิทธิ์ใหม่ในห้อง' : 'Add Classroom Perk'}</span>
             </button>
           )}
         </div>
@@ -503,17 +548,18 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
           <PagedList items={perks} pageSize={2} renderItem={(perk) => {
             const canAfford = tokens >= perk.costTokens;
             return (
-              <div 
+              <div
                 key={perk.id}
-                className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-amber-500 transition-all flex flex-col justify-between"
+                className="p-4 sm:p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-indigo-500/50 transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="p-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
                       {getPerkIcon(perk.iconName)}
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-black text-xs">
-                      {perk.costTokens} 🪙
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-emerald-700 dark:text-emerald-400 font-semibold text-xs tabular-nums">
+                      <Coins className="w-3.5 h-3.5" />
+                      <span>{perk.costTokens}</span>
                     </span>
                   </div>
 
@@ -526,7 +572,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-[var(--color-text-muted)] font-medium">
+                  <span className="text-xs text-[var(--color-text-muted)] font-medium tabular-nums">
                     {lang === 'th' ? `เหลือ ${perk.stock} สิทธิ์` : `${perk.stock} left`}
                   </span>
 
@@ -534,9 +580,9 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                     type="button"
                     disabled={!canAfford || perk.stock <= 0}
                     onClick={() => handleRedeemPerk(perk)}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 ${
+                    className={`px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-1 ${
                       canAfford && perk.stock > 0
-                        ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs cursor-pointer'
+                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
                         : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed'
                     }`}
                   >
@@ -570,7 +616,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
             <form onSubmit={handleCreatePerk} className="mt-4 space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-[var(--color-text-title)] mb-1">
+                <label className="block font-semibold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'ชื่อสิทธิพิเศษ' : 'Perk Title'}
                 </label>
                 <input
@@ -584,7 +630,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
               </div>
 
               <div>
-                <label className="block font-bold text-[var(--color-text-title)] mb-1">
+                <label className="block font-semibold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'จำนวนเหรียญความรู้ที่ต้องใช้' : 'Cost Tokens'}
                 </label>
                 <input
@@ -594,12 +640,12 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                   step="10"
                   value={newPerkCost}
                   onChange={(e) => setNewPerkCost(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
+                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] tabular-nums"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-[var(--color-text-title)] mb-1">
+                <label className="block font-semibold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'รายละเอียดและเงื่อนไขการใช้' : 'Description & Rules'}
                 </label>
                 <textarea
@@ -615,13 +661,13 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 <button
                   type="button"
                   onClick={() => setShowAddPerkModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-semibold cursor-pointer"
                 >
                   {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold cursor-pointer"
                 >
                   {lang === 'th' ? 'สร้างสิทธิ์ทันที' : 'Save Perk'}
                 </button>

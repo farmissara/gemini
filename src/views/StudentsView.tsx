@@ -1415,7 +1415,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   const isQrSelected = selectedQrStudentSet.has(student.id);
                   return (
                     <tr key={student.id} className={`hover:bg-[var(--color-card-subtle)] transition-colors group ${isQrSelected ? 'bg-[var(--color-primary-light)]/40' : ''}`}>
-                      <td className="py-3.5 pl-4 pr-2 align-middle">
+                      <td className="py-2.5 pl-4 pr-2 align-middle">
                         <input
                           type="checkbox"
                           checked={isQrSelected}
@@ -1424,41 +1424,41 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] cursor-pointer accent-[var(--color-primary)]"
                         />
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-2.5 px-4">
                         <div className="flex items-center gap-3">
                           <img
                             src={student.avatarUrl}
                             alt={student.firstNameEn}
-                            className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                            className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                           />
                           <div>
                             <div className="font-semibold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition-colors">
                               {student.firstNameEn} {student.lastNameEn}
                             </div>
-                            <div className="text-[11px] font-mono text-[var(--color-primary-text)]">
+                            <div className="text-[11px] font-mono text-[var(--color-primary-text)] tabular-nums">
                               {student.studentIdNumber}
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="py-2.5 px-4">
                         <div className="text-[var(--color-text-title)] font-medium">
                           {student.firstNameTh} {student.lastNameTh}
                         </div>
-                        <div className="text-[10px] text-[var(--color-text-muted)]">
+                        <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
                           ID: {student.nationalId || 'N/A'}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="py-2.5 px-4">
                         <div className="text-[var(--color-text-title)] font-semibold">{student.gradeLevel}</div>
                         <div className="text-[11px] text-[var(--color-text-muted)] font-medium">{student.room}</div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <span 
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusCfg.badgeClasses}`}
+                      <td className="py-2.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${statusCfg.badgeClasses}`}
                           title={statusCfg.descriptionTh}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
@@ -1512,15 +1512,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="py-2.5 px-4">
                         <div className="text-[var(--color-text-body)] font-medium">{student.guardianName} ({student.guardianRelation})</div>
                         <div className="flex items-center gap-2 mt-1">
                           <button
                             type="button"
                             onClick={() => onToggleLineSync(student.id)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors border cursor-pointer ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors border cursor-pointer ${
                               student.lineLinked
-                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                ? 'bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-500/30'
                                 : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
                             }`}
                             title={student.lineLinked ? 'LINE Connected (Click to toggle)' : 'Not Connected to LINE (Click to link)'}
@@ -1528,7 +1528,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             <MessageSquare className="w-2.5 h-2.5 fill-current" />
                             {student.lineLinked ? 'LINE Linked' : 'Connect LINE'}
                           </button>
-                          <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-0.5">
+                          <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-0.5 tabular-nums">
                             <Phone className="w-2.5 h-2.5" /> {student.guardianPhone}
                           </span>
                         </div>

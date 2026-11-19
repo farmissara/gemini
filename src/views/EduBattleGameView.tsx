@@ -613,9 +613,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       tagEn: 'SPACE SHOOTER',
       descriptionTh: 'ยิงอุกกาบาตสมการคณิตและสูตรฟิสิกส์กลางอวกาศ พร้อมสกิล Freeze & Nova',
       strandsTh: 'คณิต · ฟิสิกส์',
-      accentBg: 'bg-cyan-500/15',
+      accentBg: 'bg-cyan-500/12 border border-cyan-400/20',
       accentText: 'text-cyan-400',
-      accentBorder: 'hover:border-cyan-400/70',
+      accentBorder: 'hover:border-cyan-400/50 hover:shadow-[0_12px_32px_-12px_rgba(34,211,238,0.3)]',
       icon: Rocket,
     },
     {
@@ -625,9 +625,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       tagEn: 'SPEED & MEMORY',
       descriptionTh: 'จับคู่ความรู้ความเร็วสูงและพลิกการ์ดความจำ 12 ใบ ครบทุกกลุ่มสาระ',
       strandsTh: '8 กลุ่มสาระ',
-      accentBg: 'bg-violet-500/15',
-      accentText: 'text-violet-400',
-      accentBorder: 'hover:border-violet-400/70',
+      accentBg: 'bg-indigo-500/12 border border-indigo-400/20',
+      accentText: 'text-indigo-400',
+      accentBorder: 'hover:border-indigo-400/50 hover:shadow-[0_12px_32px_-12px_rgba(99,102,241,0.3)]',
       icon: Grid2x2,
     },
     {
@@ -637,9 +637,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       tagEn: 'VOCAB TILES',
       descriptionTh: 'ต่อคำศัพท์สองภาษาจากคำใบ้ สะสมสตรีคและใช้ตัวช่วยเปิดตัวอักษร',
       strandsTh: 'อังกฤษ · วิทย์',
-      accentBg: 'bg-amber-500/15',
-      accentText: 'text-amber-400',
-      accentBorder: 'hover:border-amber-400/70',
+      accentBg: 'bg-amber-500/12 border border-amber-400/20',
+      accentText: 'text-amber-300',
+      accentBorder: 'hover:border-amber-400/50 hover:shadow-[0_12px_32px_-12px_rgba(251,191,36,0.25)]',
       icon: SpellCheck2,
     },
     {
@@ -649,9 +649,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       tagEn: 'LOGIC & TIMELINE',
       descriptionTh: 'แยกหมวดสายพานซ้าย-ขวาสุดไว และเรียงลำดับไทม์ไลน์-อัลกอริทึม',
       strandsTh: 'ไทย · สังคม · โค้ด',
-      accentBg: 'bg-emerald-500/15',
+      accentBg: 'bg-emerald-500/12 border border-emerald-400/20',
       accentText: 'text-emerald-400',
-      accentBorder: 'hover:border-emerald-400/70',
+      accentBorder: 'hover:border-emerald-400/50 hover:shadow-[0_12px_32px_-12px_rgba(16,185,129,0.3)]',
       icon: GitBranch,
     },
     {
@@ -661,9 +661,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       tagEn: 'LIVE HP DUEL',
       descriptionTh: 'ดวลตอบคำถามจับเวลา 15 วิ พร้อมตัวช่วย 50/50, +7s และโล่กันพลาด',
       strandsTh: `${combinedQuestionPool.length} ข้อสอบ`,
-      accentBg: 'bg-rose-500/15',
+      accentBg: 'bg-rose-500/12 border border-rose-400/20',
       accentText: 'text-rose-400',
-      accentBorder: 'hover:border-rose-400/70',
+      accentBorder: 'hover:border-rose-400/50 hover:shadow-[0_12px_32px_-12px_rgba(244,63,94,0.28)]',
       icon: Swords,
     },
     {
@@ -673,9 +673,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       tagEn: '3D EXPLORE',
       descriptionTh: 'วิ่งสำรวจเกาะ 3 มิติ ล่าหีบความรู้และแอร์ดรอปคูณคะแนน 2 เท่า',
       strandsTh: '8 กลุ่มสาระ',
-      accentBg: 'bg-indigo-500/15',
-      accentText: 'text-indigo-400',
-      accentBorder: 'hover:border-indigo-400/70',
+      accentBg: 'bg-violet-500/12 border border-violet-400/20',
+      accentText: 'text-violet-400',
+      accentBorder: 'hover:border-violet-400/50 hover:shadow-[0_12px_32px_-12px_rgba(139,92,246,0.3)]',
       icon: Gamepad2,
     },
     {
@@ -685,9 +685,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       tagEn: '6D SIMULATION',
       descriptionTh: 'ทดลองผสมสารเคมี ยิงจรวดฟิสิกส์ ครัวไวยากรณ์ บล็อกโค้ด และแผนที่โลก',
       strandsTh: 'STEM · ภาษา · สังคม',
-      accentBg: 'bg-sky-500/15',
+      accentBg: 'bg-sky-500/12 border border-sky-400/20',
       accentText: 'text-sky-400',
-      accentBorder: 'hover:border-sky-400/70',
+      accentBorder: 'hover:border-sky-400/50 hover:shadow-[0_12px_32px_-12px_rgba(56,189,248,0.3)]',
       icon: FlaskConical,
     },
   ];
@@ -722,23 +722,23 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
     (activeSubTab === 'arena' && battleState === 'playing');
 
   return (
-    <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-[#09090B] text-white select-none font-sans">
-      {/* SINGLE CRISP GEN Z TOP BAR (Only shown on Hub / 1v1 Lobby / Leaderboard / Shop / Bank) */}
+    <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-[#070B14] bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.12),transparent_60%)] text-slate-100 select-none font-sans">
+      {/* SINGLE CRISP SPATIAL TOP BAR (Only shown on Hub / 1v1 Lobby / Leaderboard / Shop / Bank) */}
       {!isInActiveGame && (
-        <header className="shrink-0 h-14 px-3 sm:px-5 bg-[#09090B] border-b border-zinc-800/80 flex items-center justify-between gap-2 z-20">
+        <header className="shrink-0 h-14 px-3 sm:px-6 bg-[#070B14]/85 backdrop-blur-md border-b border-white/[0.08] flex items-center justify-between gap-2 z-20">
           <div className="flex items-center gap-2.5 min-w-0">
             {onExit && (
               <button
                 type="button"
                 onClick={onExit}
-                className="min-h-[40px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 hover:text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                className="min-h-[38px] px-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-white/[0.08] text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">ออก</span>
               </button>
             )}
 
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900/80 border border-white/[0.08] overflow-x-auto no-scrollbar">
               {[
                 { id: 'hub' as const, label: 'เกม', icon: LayoutGrid },
                 { id: 'leaderboard' as const, label: 'อันดับ', icon: Trophy },
@@ -756,10 +756,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       setBattleState('idle');
                       setActiveSubTab(id);
                     }}
-                    className={`min-h-[34px] px-2.5 sm:px-3 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
+                    className={`min-h-[32px] px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
                       isActive
-                        ? 'bg-zinc-100 text-zinc-950'
-                        : 'text-zinc-400 hover:text-white'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-100'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -772,17 +772,17 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
           <div className="flex items-center gap-2 shrink-0 tabular-nums">
             {(currentPlayerStats.dailyStreak || 0) > 0 && (
-              <div className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-orange-500/40 text-orange-400 text-xs font-black font-mono">
-                <Flame className="w-3.5 h-3.5 fill-orange-400" />
+              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-white/[0.08] text-orange-400 text-xs font-semibold font-mono">
+                <Flame className="w-3.5 h-3.5" />
                 <span>{currentPlayerStats.dailyStreak} วัน</span>
               </div>
             )}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-amber-400 text-xs font-black font-mono">
-              <Zap className="w-3.5 h-3.5 fill-amber-400" />
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-white/[0.08] text-indigo-300 text-xs font-semibold font-mono">
+              <Zap className="w-3.5 h-3.5 text-indigo-400" />
               <span>{currentPlayerStats.exp.toLocaleString()}</span>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-cyan-400 text-xs font-black font-mono">
-              <Coins className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-white/[0.08] text-cyan-300 text-xs font-semibold font-mono">
+              <Coins className="w-3.5 h-3.5 text-cyan-400" />
               <span>{currentPlayerStats.gems}</span>
             </div>
           </div>
@@ -790,7 +790,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       )}
 
       {importNotification && !isInActiveGame && (
-        <div className="shrink-0 mx-4 mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">
+        <div className="shrink-0 mx-4 mt-2 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/12 text-emerald-300 border border-emerald-500/25 text-xs font-medium">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{importNotification}</span>
         </div>
@@ -798,11 +798,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
       {/* TAB: ARCADE STUDIO HUB */}
       {activeSubTab === 'hub' && (
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-5 sm:py-7">
           <div className="max-w-5xl mx-auto space-y-5">
-            {/* Compact Gen Z Player Strip with Equipped Frame, Title & Daily Streak */}
-            <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
+            {/* Compact Spatial Player Strip with Equipped Frame, Title & Daily Streak */}
+            <div className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
                 {currentPlayerStats.avatarUrl ? (
                   <img
                     src={currentPlayerStats.avatarUrl}
@@ -811,31 +811,32 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   />
                 ) : (
                   <div
-                    className={`w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-zinc-950 font-black text-sm flex items-center justify-center shrink-0 ${currentFrame.ringClass}`}
+                    className={`w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-white font-bold text-sm flex items-center justify-center shrink-0 ${currentFrame.ringClass}`}
                   >
                     Lv.{playerLevel}
                   </div>
                 )}
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
-                    <h1 className="text-sm sm:text-base font-black text-white truncate">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center flex-wrap gap-x-2.5 gap-y-0.5">
+                    <h1 className="text-sm sm:text-base font-bold tracking-tight text-white truncate">
                       {currentPlayerStats.name}
                     </h1>
-                    <span className="text-[11px] font-mono font-bold text-amber-400 shrink-0 tabular-nums">
+                    <span className="text-xs font-mono font-semibold text-indigo-300 shrink-0 tabular-nums">
                       Lv.{playerLevel} · {currentPlayerStats.exp.toLocaleString()} XP
                     </span>
-                    <span className="text-[11px] font-mono font-bold text-orange-400 shrink-0 tabular-nums">
-                      🔥 {currentPlayerStats.dailyStreak || 0} วันติด
+                    <span className="inline-flex items-center gap-1 text-xs font-mono font-semibold text-orange-400 shrink-0 tabular-nums">
+                      <Flame className="w-3.5 h-3.5 shrink-0" />
+                      <span>{currentPlayerStats.dailyStreak || 0} วันติด</span>
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 max-w-xs">
-                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="flex items-center gap-2.5 max-w-xs">
+                    <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-500"
                         style={{ width: `${Math.max(4, levelProgressPct)}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-400 shrink-0 tabular-nums">
+                    <span className="text-[11px] font-mono text-slate-400 shrink-0 tabular-nums">
                       {currentPlayerStats.equippedTitle || currentPlayerStats.rankTitle}
                     </span>
                   </div>
@@ -846,14 +847,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowMissionsDrawer((v) => !v)}
-                  className={`min-h-[40px] px-3.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition ${
+                  className={`min-h-[38px] px-3.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition ${
                     readyMissionCount > 0
-                      ? 'bg-amber-400 text-zinc-950 border-amber-300'
-                      : 'bg-zinc-950 hover:bg-zinc-800 text-zinc-200 border-zinc-800'
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-400/50'
+                      : 'bg-slate-950/70 hover:bg-slate-800 text-slate-200 border-white/[0.08]'
                   }`}
                 >
                   <Award className="w-4 h-4" />
-                  <span>
+                  <span className="tabular-nums">
                     ภารกิจ ({completedMissionCount}/{DAILY_ARCADE_MISSIONS.length})
                   </span>
                   {showMissionsDrawer ? (
@@ -867,7 +868,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   <button
                     type="button"
                     onClick={onOpenCentralExamHub}
-                    className="min-h-[40px] px-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    className="min-h-[38px] px-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-white/[0.08] text-indigo-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">ข้อสอบกลาง</span>
@@ -878,7 +879,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
             {/* Collapsible Daily Missions Drawer */}
             {showMissionsDrawer && (
-              <section className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <section className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {DAILY_ARCADE_MISSIONS.map((mission) => {
                   const currentCount = missionProgress.counts[mission.id] || 0;
                   const clamped = Math.min(currentCount, mission.target);
@@ -889,21 +890,21 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   return (
                     <div
                       key={mission.id}
-                      className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between gap-2.5"
+                      className="p-3.5 rounded-xl bg-slate-950/70 border border-white/[0.06] flex flex-col justify-between gap-3"
                     >
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-bold text-zinc-100 leading-snug">
+                          <span className="text-xs font-semibold text-slate-100 leading-snug">
                             {mission.titleTh}
                           </span>
-                          <span className="text-[11px] font-mono font-black text-amber-400 shrink-0 tabular-nums">
+                          <span className="text-[11px] font-mono font-semibold text-indigo-300 shrink-0 tabular-nums">
                             {clamped}/{mission.target}
                           </span>
                         </div>
-                        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${
-                              isClaimed ? 'bg-emerald-400' : isReady ? 'bg-amber-400' : 'bg-cyan-400'
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              isClaimed ? 'bg-emerald-400' : isReady ? 'bg-indigo-400' : 'bg-cyan-400'
                             }`}
                             style={{ width: `${pct}%` }}
                           />
@@ -911,18 +912,18 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-mono font-bold text-zinc-400">
+                        <span className="text-[11px] font-mono font-medium text-slate-400 tabular-nums">
                           +{mission.rewardExp} XP · +{mission.rewardGems}
                         </span>
                         {isClaimed ? (
-                          <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                          <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
                             <Check className="w-3 h-3" /> รับแล้ว
                           </span>
                         ) : isReady ? (
                           <button
                             type="button"
                             onClick={() => handleClaimMission(mission)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-zinc-950 text-[11px] font-black cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold cursor-pointer transition"
                           >
                             รับรางวัล
                           </button>
@@ -930,7 +931,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                           <button
                             type="button"
                             onClick={() => setActiveSubTab(missionTargetTabMap[mission.id])}
-                            className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer"
+                            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 cursor-pointer"
                           >
                             เล่นเลย
                           </button>
@@ -949,27 +950,27 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 triggerHaptic('light');
                 setActiveSubTab('live_room');
               }}
-              className="w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-600/20 via-zinc-900 to-cyan-500/20 border border-rose-500/40 hover:border-rose-400 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+              className="w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900/85 to-cyan-950/50 backdrop-blur-md border border-indigo-500/25 hover:border-cyan-400/50 hover:shadow-[0_12px_36px_-14px_rgba(34,211,238,0.28)] text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
-                  <Radio className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/12 border border-cyan-400/25 text-cyan-400 flex items-center justify-center shrink-0">
+                  <Radio className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-mono font-bold text-rose-300 uppercase tracking-wider">
+                  <p className="text-[11px] font-mono font-semibold text-cyan-400 uppercase tracking-wider">
                     Live Classroom · 6-Digit PIN
                   </p>
-                  <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+                  <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5">
                     ห้องแข่งสดทั้งห้อง (Quiz Race & Live Boss Raid)
                   </h2>
-                  <p className="text-xs text-zinc-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     {canManageBank
                       ? 'เปิดห้องสร้างรหัส PIN 6 หลักขึ้นจอโปรเจกเตอร์ ให้นักเรียนแข่งตอบสดพร้อมกันทั้งห้อง'
                       : 'กรอกรหัส PIN 6 หลักจากหน้าจอคุณครู เพื่อแข่งความเร็วและร่วมตีบอสกับเพื่อนแบบเรียลไทม์'}
                   </p>
                 </div>
               </div>
-              <span className="min-h-[42px] px-4 rounded-xl bg-rose-500 text-white font-black text-xs inline-flex items-center justify-center gap-1.5 shrink-0">
+              <span className="min-h-[40px] px-4 rounded-xl bg-indigo-600 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 shrink-0">
                 <span>{canManageBank ? 'เปิดห้อง / กรอก PIN' : 'กรอก PIN เข้าร่วม'}</span>
                 <ChevronRight className="w-4 h-4" />
               </span>
@@ -982,27 +983,27 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   triggerHaptic('light');
                   onOpenCareerQuest();
                 }}
-                className="w-full p-4 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-zinc-900 to-violet-500/15 border border-indigo-500/35 hover:border-indigo-400 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition active:scale-[0.99] cursor-pointer"
+                className="w-full p-4 rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] hover:border-indigo-400/50 hover:shadow-[0_12px_32px_-12px_rgba(99,102,241,0.3)] text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all active:scale-[0.99] cursor-pointer"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-indigo-500/12 border border-indigo-400/25 text-indigo-300 flex items-center justify-center shrink-0">
                     <Compass className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-mono font-bold text-indigo-300 uppercase tracking-wider">
+                    <p className="text-[11px] font-mono font-semibold text-indigo-300 uppercase tracking-wider">
                       Career Quest AI · RPG Path
                     </p>
-                    <h3 className="text-sm sm:text-base font-black text-white tracking-tight">
+                    <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
                       {lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน & Role-Play AI' : 'Career Quest AI & Role-Play'}
                     </h3>
-                    <p className="text-xs text-zinc-400 mt-0.5 truncate">
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">
                       {lang === 'th'
                         ? 'ทำควิซค้นหาตัวตน เช็กพลังความพร้อมจากเกรดจริง และเล่นภารกิจสะสม EXP'
                         : 'Discover your dream career, check real-grade readiness, and earn EXP'}
                     </p>
                   </div>
                 </div>
-                <span className="min-h-[38px] px-3.5 rounded-xl bg-indigo-500 text-white font-black text-xs inline-flex items-center justify-center gap-1.5 shrink-0">
+                <span className="min-h-[38px] px-3.5 rounded-xl bg-slate-800 border border-white/[0.1] text-slate-100 font-semibold text-xs inline-flex items-center justify-center gap-1.5 shrink-0">
                   <span>{lang === 'th' ? 'เปิด Career Quest' : 'Open Career Quest'}</span>
                   <ChevronRight className="w-4 h-4" />
                 </span>
@@ -1021,10 +1022,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   key={cat.id}
                   type="button"
                   onClick={() => setHubCategory(cat.id)}
-                  className={`min-h-[38px] px-3.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
+                  className={`min-h-[36px] px-3.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer ${
                     hubCategory === cat.id
-                      ? 'bg-amber-400 text-zinc-950'
-                      : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-900/75 border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20'
                   }`}
                 >
                   {cat.label}
@@ -1032,8 +1033,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               ))}
             </div>
 
-            {/* Clean Gen Z Game Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
+            {/* Clean Spatial Game Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pb-4">
               {visibleGameCards.map((card) => {
                 const Icon = card.icon;
                 return (
@@ -1041,33 +1042,33 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     key={card.id}
                     type="button"
                     onClick={() => setActiveSubTab(card.id)}
-                    className={`group text-left rounded-2xl p-4 sm:p-5 bg-zinc-900 border border-zinc-800 ${card.accentBorder} transition-all active:scale-[0.98] flex flex-col justify-between gap-4 cursor-pointer`}
+                    className={`group text-left rounded-2xl p-5 bg-slate-900/75 backdrop-blur-md border border-white/[0.08] ${card.accentBorder} transition-all active:scale-[0.98] flex flex-col justify-between gap-4 cursor-pointer`}
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                       <div className="flex items-center justify-between gap-3">
                         <div
                           className={`w-11 h-11 rounded-2xl ${card.accentBg} ${card.accentText} flex items-center justify-center shrink-0`}
                         >
                           <Icon className="w-5 h-5" />
                         </div>
-                        <span className="text-[10px] font-mono font-bold tracking-wider text-zinc-400 uppercase">
+                        <span className="text-[10px] font-mono font-semibold tracking-wider text-slate-400 uppercase">
                           {card.tagEn}
                         </span>
                       </div>
 
                       <div className="space-y-1">
-                        <h3 className="text-base font-black text-white tracking-tight">
+                        <h3 className="text-base font-bold text-white tracking-tight">
                           {card.titleTh}
                         </h3>
-                        <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                        <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
                           {card.descriptionTh}
                         </p>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-semibold text-zinc-400">{card.strandsTh}</span>
-                      <span className="inline-flex items-center gap-1 text-xs font-black text-white group-hover:text-amber-400 transition-colors">
+                    <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium text-slate-400">{card.strandsTh}</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors">
                         <span>เล่นเลย</span>
                         <ChevronRight className="w-4 h-4" />
                       </span>
@@ -1172,60 +1173,60 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
       {/* TAB 1: 1v1 Speed Duel Arena */}
       {activeSubTab === 'arena' && (
-        <div className="w-full flex-1 min-h-0 flex flex-col overflow-y-auto bg-[#09090B]">
+        <div className="w-full flex-1 min-h-0 flex flex-col overflow-y-auto bg-transparent">
           {/* PRE-BATTLE LOBBY */}
           {battleState === 'idle' && (
             <div className="w-full flex-1 min-h-0 flex flex-col p-3 sm:p-6 max-w-2xl mx-auto justify-start space-y-4">
-              <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 sm:p-6 space-y-5">
+              <div className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] p-5 sm:p-6 space-y-5">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-rose-400">
+                    <p className="text-[11px] font-mono font-semibold uppercase tracking-wider text-cyan-400">
                       1v1 SPEED DUEL
                     </p>
-                    <h2 className="text-xl font-black text-white tracking-tight">
+                    <h2 className="text-xl font-bold text-white tracking-tight mt-0.5">
                       {lang === 'th' ? 'ดวลตอบสด 1v1 ความเร็ว' : '1v1 Live Knowledge Duel'}
                     </h2>
                   </div>
-                  <span className="text-xs font-mono font-bold text-zinc-400 tabular-nums">
+                  <span className="text-xs font-mono font-semibold text-slate-400 tabular-nums">
                     {battleQuestions.length} ข้อพร้อมดวล
                   </span>
                 </div>
 
                 {/* Clean VS Matchup Card */}
-                <div className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-2">
+                <div className="p-4 rounded-2xl bg-slate-950/75 border border-white/[0.07] flex items-center justify-between gap-2">
                   <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-black text-sm flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/12 border border-emerald-400/30 text-emerald-400 font-bold text-sm flex items-center justify-center">
                       YOU
                     </div>
-                    <p className="text-xs font-black text-white truncate w-full">
+                    <p className="text-xs font-semibold text-white truncate w-full">
                       {currentPlayerStats.name}
                     </p>
-                    <span className="text-[11px] font-mono font-bold text-emerald-400">100 HP</span>
+                    <span className="text-[11px] font-mono font-semibold text-emerald-400 tabular-nums">100 HP</span>
                   </div>
 
                   <div className="flex flex-col items-center shrink-0 px-2">
-                    <div className="w-10 h-10 rounded-full bg-rose-500 text-white font-black text-xs flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-indigo-600/25 border border-indigo-400/40 text-indigo-300 font-bold text-xs flex items-center justify-center">
                       VS
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-500 mt-1">15s / ข้อ</span>
+                    <span className="text-[10px] font-mono text-slate-400 mt-1 tabular-nums">15s / ข้อ</span>
                   </div>
 
                   <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-500/12 border border-rose-400/30 text-rose-400 flex items-center justify-center">
                       <Bot className="w-6 h-6" />
                     </div>
-                    <p className="text-xs font-black text-white truncate w-full">AI Speed Bot</p>
-                    <span className="text-[11px] font-mono font-bold text-rose-400">100 HP</span>
+                    <p className="text-xs font-semibold text-white truncate w-full">AI Speed Bot</p>
+                    <span className="text-[11px] font-mono font-semibold text-rose-400 tabular-nums">100 HP</span>
                   </div>
                 </div>
 
                 {/* Exam Source (Only show toggle if school has custom questions) */}
                 {questions.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                       ชุดข้อสอบ
                     </p>
-                    <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-zinc-950 border border-zinc-800">
+                    <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-950/75 border border-white/[0.08]">
                       {[
                         { id: 'all' as const, label: `ทั้งหมด (${combinedQuestionPool.length})` },
                         {
@@ -1241,10 +1242,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                             setExamSource(src.id);
                             setCurrentQuestionIndex(0);
                           }}
-                          className={`min-h-[38px] px-2 rounded-lg text-xs font-bold transition cursor-pointer truncate ${
+                          className={`min-h-[36px] px-2 rounded-lg text-xs font-semibold transition cursor-pointer truncate ${
                             examSource === src.id
-                              ? 'bg-amber-400 text-zinc-950'
-                              : 'text-zinc-400 hover:text-white'
+                              ? 'bg-indigo-600 text-white'
+                              : 'text-slate-400 hover:text-white'
                           }`}
                         >
                           {src.label}
@@ -1256,7 +1257,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
                 {/* Subject Filter */}
                 <div className="space-y-1.5">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                     หมวดวิชา
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -1278,10 +1279,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                           setSelectedSubject(subj.id);
                           setCurrentQuestionIndex(0);
                         }}
-                        className={`min-h-[36px] px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`min-h-[34px] px-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
                           selectedSubject === subj.id
-                            ? 'bg-rose-500 text-white'
-                            : 'bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white'
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-950/75 border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20'
                         }`}
                       >
                         {subj.label}
@@ -1295,7 +1296,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   type="button"
                   onClick={handleStartBattle}
                   disabled={battleQuestions.length === 0}
-                  className="w-full min-h-[52px] rounded-2xl bg-rose-500 hover:bg-rose-400 disabled:opacity-50 text-white font-black text-sm active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full min-h-[48px] rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-sm active:scale-[0.99] transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>เริ่มดวล 1v1 ทันที</span>
@@ -1306,33 +1307,33 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
           {/* ACTIVE BATTLE PLAYING SCREEN (Full viewport, zero stacked headers) */}
           {battleState === 'playing' && currentQ && (
-            <div className="flex-1 min-h-0 flex flex-col max-w-3xl mx-auto w-full px-3 sm:px-5 py-3 space-y-3 overflow-y-auto">
+            <div className="flex-1 min-h-0 flex flex-col max-w-3xl mx-auto w-full px-3 sm:px-5 py-4 space-y-3.5 overflow-y-auto">
               {/* Single Compact Match HUD */}
               <div className="flex items-center justify-between gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setBattleState('idle')}
-                  className="min-h-[38px] px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  className="min-h-[38px] px-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-white/[0.08] text-slate-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>ออก</span>
                 </button>
 
                 <div
-                  className={`min-h-[38px] px-3.5 rounded-xl border font-mono font-black text-sm flex items-center gap-1.5 tabular-nums ${
+                  className={`min-h-[38px] px-3.5 rounded-xl border font-mono font-bold text-sm flex items-center gap-1.5 tabular-nums ${
                     timer <= 5
-                      ? 'bg-rose-500/20 border-rose-500 text-rose-300'
-                      : 'bg-zinc-900 border-zinc-800 text-cyan-400'
+                      ? 'bg-rose-500/20 border-rose-500/60 text-rose-300'
+                      : 'bg-slate-900/80 border-white/[0.08] text-cyan-400'
                   }`}
                 >
                   <Clock className="w-4 h-4" />
                   <span>00:{timer < 10 ? `0${timer}` : timer}</span>
                 </div>
 
-                <div className="min-h-[38px] px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono font-black text-amber-400 flex items-center gap-2 tabular-nums">
+                <div className="min-h-[38px] px-3.5 rounded-xl bg-slate-900/80 border border-white/[0.08] text-xs font-mono font-bold text-indigo-300 flex items-center gap-2 tabular-nums">
                   {streak > 1 && (
-                    <span className="flex items-center gap-0.5 text-rose-400">
-                      <Flame className="w-3.5 h-3.5 fill-current" />
+                    <span className="flex items-center gap-0.5 text-orange-400">
+                      <Flame className="w-3.5 h-3.5" />
                       {streak}x
                     </span>
                   )}
@@ -1341,13 +1342,13 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* Dual HP Gauges */}
-              <div className="grid grid-cols-2 gap-2.5 shrink-0">
-                <div className="p-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1.5">
+              <div className="grid grid-cols-2 gap-3 shrink-0">
+                <div className="p-3 rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] space-y-2">
                   <div className="flex items-center justify-between text-xs tabular-nums">
-                    <span className="font-bold text-white truncate">{currentPlayerStats.name}</span>
-                    <span className="font-mono font-black text-emerald-400 shrink-0">{playerHp} HP</span>
+                    <span className="font-semibold text-white truncate">{currentPlayerStats.name}</span>
+                    <span className="font-mono font-bold text-emerald-400 shrink-0">{playerHp} HP</span>
                   </div>
-                  <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                       style={{ width: `${Math.max(0, playerHp)}%` }}
@@ -1355,12 +1356,12 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1.5">
+                <div className="p-3 rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] space-y-2">
                   <div className="flex items-center justify-between text-xs tabular-nums">
-                    <span className="font-mono font-black text-rose-400 shrink-0">{opponentHp} HP</span>
-                    <span className="font-bold text-white truncate">AI Speed Bot</span>
+                    <span className="font-mono font-bold text-rose-400 shrink-0">{opponentHp} HP</span>
+                    <span className="font-semibold text-white truncate">AI Speed Bot</span>
                   </div>
-                  <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-rose-500 rounded-full transition-all duration-300"
                       style={{ width: `${Math.max(0, opponentHp)}%` }}
@@ -1370,18 +1371,18 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {/* Question Card */}
-              <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 sm:p-6 space-y-2 text-center shrink-0">
-                <p className="text-[11px] font-bold text-zinc-400">
+              <div className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] p-5 sm:p-6 space-y-2.5 text-center shrink-0">
+                <p className="text-[11px] font-mono font-medium text-indigo-300 tabular-nums">
                   ข้อ {currentQuestionIndex + 1}/{battleQuestions.length} · {currentQ.subject}
                 </p>
-                <h3 className="text-base sm:text-lg font-black text-white leading-relaxed break-words">
+                <h3 className="text-base sm:text-lg font-bold text-white leading-relaxed break-words">
                   {currentQ.questionTh}
                 </h3>
                 {battleFeedback && (
-                  <div className="pt-2 border-t border-zinc-800 space-y-1">
-                    <p className="font-black text-xs text-amber-400">{battleFeedback}</p>
+                  <div className="pt-2.5 border-t border-white/[0.08] space-y-1">
+                    <p className="font-semibold text-xs text-cyan-300">{battleFeedback}</p>
                     {currentQ.explanationTh && (
-                      <p className="text-[11px] text-zinc-400 leading-snug">{currentQ.explanationTh}</p>
+                      <p className="text-[11px] text-slate-400 leading-snug">{currentQ.explanationTh}</p>
                     )}
                   </div>
                 )}
@@ -1393,44 +1394,44 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   type="button"
                   disabled={fiftyFiftyLeft <= 0 || selectedAnswer !== null}
                   onClick={handleUseFiftyFifty}
-                  className={`min-h-[42px] px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  className={`min-h-[40px] px-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                     fiftyFiftyLeft > 0 && selectedAnswer === null
-                      ? 'bg-zinc-900 hover:bg-zinc-800 border-cyan-500/40 text-cyan-300'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                      ? 'bg-slate-900/80 hover:bg-slate-800 border-cyan-500/30 text-cyan-300'
+                      : 'bg-slate-950/60 border-white/[0.04] text-slate-600 cursor-not-allowed'
                   }`}
                 >
                   <Split className="w-3.5 h-3.5" />
-                  <span>50/50 ({fiftyFiftyLeft})</span>
+                  <span className="tabular-nums">50/50 ({fiftyFiftyLeft})</span>
                 </button>
 
                 <button
                   type="button"
                   disabled={timeBoostLeft <= 0 || selectedAnswer !== null}
                   onClick={handleUseTimeBoost}
-                  className={`min-h-[42px] px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  className={`min-h-[40px] px-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                     timeBoostLeft > 0 && selectedAnswer === null
-                      ? 'bg-zinc-900 hover:bg-zinc-800 border-amber-500/40 text-amber-300'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                      ? 'bg-slate-900/80 hover:bg-slate-800 border-indigo-500/30 text-indigo-300'
+                      : 'bg-slate-950/60 border-white/[0.04] text-slate-600 cursor-not-allowed'
                   }`}
                 >
                   <Timer className="w-3.5 h-3.5" />
-                  <span>+7 วิ ({timeBoostLeft})</span>
+                  <span className="tabular-nums">+7 วิ ({timeBoostLeft})</span>
                 </button>
 
                 <button
                   type="button"
                   disabled={shieldCharges <= 0 || shieldActive || selectedAnswer !== null}
                   onClick={handleUseShield}
-                  className={`min-h-[42px] px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  className={`min-h-[40px] px-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                     shieldActive
-                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                      ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
                       : shieldCharges > 0 && selectedAnswer === null
-                      ? 'bg-zinc-900 hover:bg-zinc-800 border-emerald-500/40 text-emerald-300'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                      ? 'bg-slate-900/80 hover:bg-slate-800 border-emerald-500/30 text-emerald-300'
+                      : 'bg-slate-950/60 border-white/[0.04] text-slate-600 cursor-not-allowed'
                   }`}
                 >
                   <Shield className="w-3.5 h-3.5" />
-                  <span>{shieldActive ? 'โล่ทำงาน' : `โล่ (${shieldCharges})`}</span>
+                  <span className="tabular-nums">{shieldActive ? 'โล่ทำงาน' : `โล่ (${shieldCharges})`}</span>
                 </button>
               </div>
 
@@ -1441,17 +1442,17 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   const isEliminated = eliminatedIndices.includes(idx);
 
                   let btnStyle =
-                    'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 hover:border-zinc-600 text-zinc-100';
+                    'bg-slate-900/75 hover:bg-slate-800/90 border-white/[0.08] hover:border-indigo-400/50 text-slate-100';
                   if (isEliminated && selectedAnswer === null) {
                     btnStyle =
-                      'bg-zinc-950 border-zinc-900 text-zinc-700 line-through opacity-40 cursor-not-allowed';
+                      'bg-slate-950/60 border-white/[0.04] text-slate-600 line-through opacity-40 cursor-not-allowed';
                   } else if (selectedAnswer !== null) {
                     if (idx === currentQ.correctIndex) {
-                      btnStyle = 'bg-emerald-600/25 border-emerald-400 text-emerald-200 font-black';
+                      btnStyle = 'bg-emerald-600/20 border-emerald-400/70 text-emerald-200 font-bold';
                     } else if (idx === selectedAnswer) {
-                      btnStyle = 'bg-rose-600/25 border-rose-500 text-rose-200 font-bold';
+                      btnStyle = 'bg-rose-600/20 border-rose-500/70 text-rose-200 font-semibold';
                     } else {
-                      btnStyle = 'bg-zinc-950/60 border-zinc-800 text-zinc-500';
+                      btnStyle = 'bg-slate-950/60 border-white/[0.05] text-slate-500';
                     }
                   }
 
@@ -1461,9 +1462,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       type="button"
                       disabled={selectedAnswer !== null || isEliminated}
                       onClick={() => handleAnswer(idx)}
-                      className={`min-h-[54px] px-3.5 py-3 rounded-2xl border text-left text-sm font-bold transition active:scale-[0.98] flex items-center gap-3 cursor-pointer ${btnStyle}`}
+                      className={`min-h-[54px] px-3.5 py-3 rounded-xl border text-left text-sm font-semibold transition active:scale-[0.98] flex items-center gap-3 cursor-pointer ${btnStyle}`}
                     >
-                      <span className="w-7 h-7 rounded-lg bg-zinc-950 border border-zinc-700 flex items-center justify-center shrink-0 text-xs font-black font-mono text-zinc-300">
+                      <span className="w-7 h-7 rounded-lg bg-slate-950/80 border border-white/[0.1] flex items-center justify-center shrink-0 text-xs font-bold font-mono text-indigo-300">
                         {letters[idx] || idx + 1}
                       </span>
                       <span className="flex-1 leading-snug break-words">{opt}</span>
@@ -1478,10 +1479,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           {battleState === 'finished' && (
             <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-4 max-w-sm mx-auto text-center space-y-5">
               <div
-                className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center ${
+                className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center border ${
                   playerHp > opponentHp
-                    ? 'bg-amber-400 text-zinc-950'
-                    : 'bg-zinc-800 text-zinc-300'
+                    ? 'bg-indigo-600/20 border-indigo-400/50 text-indigo-300'
+                    : 'bg-slate-800 border-white/[0.08] text-slate-300'
                 }`}
               >
                 {playerHp > opponentHp ? (
@@ -1492,24 +1493,24 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-xl font-black text-white">
+                <h3 className="text-xl font-bold text-white">
                   {playerHp > opponentHp ? 'ชนะการดวล 1v1!' : 'จบการดวลรอบนี้'}
                 </h3>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-slate-400 tabular-nums">
                   คะแนนรอบนี้ {roundScore.toLocaleString()} pts
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-zinc-900 border border-zinc-800 w-full tabular-nums">
+              <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-900/80 border border-white/[0.08] w-full tabular-nums">
                 <div>
-                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">EXP</span>
-                  <div className="text-lg font-black font-mono text-amber-400">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">EXP</span>
+                  <div className="text-lg font-bold font-mono text-indigo-300">
                     +{playerHp > opponentHp ? 250 : 80}
                   </div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">GEMS</span>
-                  <div className="text-lg font-black font-mono text-cyan-400">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">GEMS</span>
+                  <div className="text-lg font-bold font-mono text-cyan-400">
                     +{playerHp > opponentHp ? 30 : 10}
                   </div>
                 </div>
@@ -1519,7 +1520,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <button
                   type="button"
                   onClick={handleStartBattle}
-                  className="w-full min-h-[48px] rounded-2xl bg-rose-500 hover:bg-rose-400 text-white font-black text-sm transition cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full min-h-[46px] rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition cursor-pointer active:scale-95 flex items-center justify-center gap-2"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>ดวลใหม่อีกรอบ</span>
@@ -1527,7 +1528,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <button
                   type="button"
                   onClick={handleBackFromGame}
-                  className="w-full min-h-[44px] rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-bold text-xs transition cursor-pointer"
+                  className="w-full min-h-[42px] rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-white/[0.08] text-slate-300 font-semibold text-xs transition cursor-pointer"
                 >
                   กลับหน้าเกม
                 </button>
@@ -1540,26 +1541,26 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       {/* TAB 2: Question Bank Management (คลังข้อสอบ & Import/Export) */}
       {activeSubTab === 'bank' && (
         <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto space-y-5">
           {/* Controls Bar: Import / Export / Add */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 border border-slate-800">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08]">
             {/* Search and Subject Filter */}
             <div className="flex flex-wrap items-center gap-2 flex-1">
               <div className="relative min-w-[200px] flex-1">
-                <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder={lang === 'th' ? 'ค้นหาโจทย์ หรือวิชา...' : 'Search questions or subject...'}
                   value={searchBankQuery}
                   onChange={(e) => setSearchBankQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950/70 border border-white/[0.08] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="px-3 py-2 rounded-xl bg-slate-950/70 border border-white/[0.08] text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="all">ทุกกลุ่มสาระฯ (ทั้ง 8 สาระ)</option>
                 <option value="ภาษาไทย">1. ภาษาไทย</option>
@@ -1579,14 +1580,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 <button
                   type="button"
                   onClick={onOpenCentralExamHub}
-                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{lang === 'th' ? 'คลังข้อสอบกลาง 8 สาระ' : 'Central Exam Hub'}</span>
                 </button>
               )}
               {/* Import Button */}
-              <label className="cursor-pointer px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-all">
+              <label className="cursor-pointer px-3.5 py-2 rounded-xl bg-slate-950/70 hover:bg-slate-800 border border-white/[0.08] text-xs font-medium text-slate-200 flex items-center gap-1.5 transition-all">
                 <Upload className="w-3.5 h-3.5 text-indigo-400" />
                 <span>{lang === 'th' ? 'นำเข้า (JSON/CSV)' : 'Import'}</span>
                 <input
@@ -1600,7 +1601,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               {/* Export JSON */}
               <button
                 onClick={handleExportQuestionsJSON}
-                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-all"
+                className="px-3.5 py-2 rounded-xl bg-slate-950/70 hover:bg-slate-800 border border-white/[0.08] text-xs font-medium text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer"
                 title="Export Question Bank as JSON"
               >
                 <Download className="w-3.5 h-3.5 text-cyan-400" />
@@ -1610,7 +1611,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               {/* Export CSV */}
               <button
                 onClick={handleExportQuestionsCSV}
-                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-all"
+                className="px-3.5 py-2 rounded-xl bg-slate-950/70 hover:bg-slate-800 border border-white/[0.08] text-xs font-medium text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer"
                 title="Export Question Bank as CSV (Excel)"
               >
                 <Download className="w-3.5 h-3.5 text-emerald-400" />
@@ -1623,7 +1624,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   setQuestionFormStep(0);
                   setShowAddModal(true);
                 }}
-                className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-indigo-900/40 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>{lang === 'th' ? 'เพิ่มข้อสอบใหม่' : 'Add Question'}</span>
@@ -1634,43 +1635,43 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           {/* Question List Cards */}
           <div>
             <PagedList items={filteredBank} pageSize={6} renderItem={(q, idx) => (
-              <div 
+              <div
                 key={q.id}
-                className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all space-y-3 text-white"
+                className="p-5 rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] hover:border-indigo-400/35 transition-all space-y-3 text-white"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-400/25">
                       {q.subject}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-950/70 border border-white/[0.06] text-slate-300">
                       {q.gradeLevel}
                     </span>
-                    <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                    <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-cyan-500/12 text-cyan-300 border border-cyan-400/20 font-semibold">
                       {q.category}
                     </span>
                   </div>
 
-                  <div className="text-xs text-amber-300 font-bold">
+                  <div className="text-xs text-emerald-400 font-semibold font-mono tabular-nums shrink-0">
                     +{q.points} แต้ม
                   </div>
                 </div>
 
-                <h4 className="text-sm sm:text-base font-bold text-white">
+                <h4 className="text-sm sm:text-base font-semibold text-white">
                   {idx + 1}. {q.questionTh}
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {q.options.map((opt, oIdx) => (
-                    <div 
+                    <div
                       key={oIdx}
                       className={`p-2.5 rounded-xl border flex items-center gap-2 ${
                         oIdx === q.correctIndex
-                          ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-200 font-bold'
-                          : 'bg-slate-800 border-slate-700 text-slate-200'
+                          ? 'bg-emerald-500/12 border-emerald-400/40 text-emerald-200 font-semibold'
+                          : 'bg-slate-950/60 border-white/[0.06] text-slate-300'
                       }`}
                     >
-                      <span className="w-5 h-5 rounded bg-slate-950/70 flex items-center justify-center text-[10px] font-bold text-slate-200">
+                      <span className="w-5 h-5 rounded bg-slate-900 border border-white/[0.08] flex items-center justify-center text-[10px] font-mono font-bold text-slate-200 shrink-0">
                         {String.fromCharCode(65 + oIdx)}
                       </span>
                       <span>{opt}</span>
@@ -1681,9 +1682,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   ))}
                 </div>
 
-                <div className="text-[11px] text-slate-300 pt-1 border-t border-slate-800 flex items-start gap-1.5">
+                <div className="text-[11px] text-slate-300 pt-2 border-t border-white/[0.06] flex items-start gap-1.5">
                   <HelpCircle className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                  <span><strong className="text-white">เฉลยและเหตุผล:</strong> {q.explanationTh}</span>
+                  <span><strong className="text-white font-semibold">เฉลยและเหตุผล:</strong> {q.explanationTh}</span>
                 </div>
               </div>
             )} />
@@ -1694,35 +1695,35 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
       {/* TAB 3: Real School Leaderboard with Frames, Titles & Daily Streaks */}
       {activeSubTab === 'leaderboard' && (
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-5 sm:py-7">
           <div className="max-w-4xl mx-auto space-y-4">
             {playerScores.length === 0 ? (
-              <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-8 text-center space-y-2">
-                <Trophy className="w-8 h-8 text-amber-400 mx-auto" />
-                <h3 className="text-sm font-black text-white">ยังไม่มีคะแนนในตารางอันดับโรงเรียน</h3>
-                <p className="text-xs text-zinc-400">
+              <div className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] p-8 text-center space-y-2">
+                <Trophy className="w-8 h-8 text-indigo-400 mx-auto" />
+                <h3 className="text-sm font-bold text-white">ยังไม่มีคะแนนในตารางอันดับโรงเรียน</h3>
+                <p className="text-xs text-slate-400">
                   เริ่มเล่นเกมหรือเข้าร่วมห้องแข่งสด 6 หลักเพื่อสะสม EXP และบันทึกสถิติจริงลงระบบ
                 </p>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {playerScores.slice(0, 3).map((player, idx) => {
                     const pFrame = getProfileFrame(player.equippedFrameId);
                     return (
                       <div
                         key={player.userId}
-                        className={`rounded-2xl p-4 border text-center space-y-2.5 ${
+                        className={`rounded-2xl p-4 border text-center space-y-2.5 bg-slate-900/75 backdrop-blur-md ${
                           idx === 0
-                            ? 'bg-zinc-900 border-amber-400/60'
-                            : 'bg-zinc-900 border-zinc-800'
+                            ? 'border-indigo-400/50 shadow-[0_8px_28px_-10px_rgba(99,102,241,0.35)]'
+                            : 'border-white/[0.08]'
                         }`}
                       >
-                        <div className="flex items-center justify-between text-xs font-mono font-black">
-                          <span className={idx === 0 ? 'text-amber-400' : 'text-zinc-400'}>
+                        <div className="flex items-center justify-between text-xs font-mono font-bold">
+                          <span className={idx === 0 ? 'text-cyan-400' : 'text-slate-400'}>
                             #{idx + 1}
                           </span>
-                          <span className="text-amber-400 tabular-nums">
+                          <span className="text-indigo-300 tabular-nums">
                             {player.exp.toLocaleString()} XP
                           </span>
                         </div>
@@ -1734,19 +1735,20 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                           />
                         ) : (
                           <div
-                            className={`w-14 h-14 rounded-2xl bg-zinc-800 text-sm font-black text-white flex items-center justify-center mx-auto ${pFrame.ringClass}`}
+                            className={`w-14 h-14 rounded-2xl bg-slate-800 text-sm font-bold text-white flex items-center justify-center mx-auto ${pFrame.ringClass}`}
                           >
                             {player.name.slice(0, 2)}
                           </div>
                         )}
                         <div>
-                          <h4 className="text-sm font-bold text-white truncate">{player.name}</h4>
-                          <p className={`text-[11px] font-semibold truncate ${pFrame.badgeTextClass}`}>
+                          <h4 className="text-sm font-semibold text-white truncate">{player.name}</h4>
+                          <p className={`text-[11px] font-medium truncate ${pFrame.badgeTextClass}`}>
                             {player.equippedTitle || player.rankTitle}
                           </p>
                           {(player.dailyStreak || 0) > 0 && (
-                            <p className="text-[10px] font-mono text-orange-400 mt-0.5 tabular-nums">
-                              🔥 สตรีค {player.dailyStreak} วันติด
+                            <p className="text-[11px] font-mono text-orange-400 mt-1 tabular-nums inline-flex items-center justify-center gap-1">
+                              <Flame className="w-3 h-3 shrink-0" />
+                              <span>สตรีค {player.dailyStreak} วันติด</span>
                             </p>
                           )}
                         </div>
@@ -1755,14 +1757,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   })}
                 </div>
 
-                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between font-bold text-xs text-zinc-400 uppercase tracking-wider">
+                <div className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between font-semibold text-xs text-slate-400 uppercase tracking-wider">
                     <span>ตารางอันดับจริงของโรงเรียน</span>
-                    <span className="font-mono text-zinc-300 tabular-nums">
+                    <span className="font-mono text-slate-300 tabular-nums">
                       {playerScores.length} คน
                     </span>
                   </div>
-                  <div className="divide-y divide-zinc-800/80">
+                  <div className="divide-y divide-white/[0.06]">
                     {playerScores.map((p, rank) => {
                       const pFrame = getProfileFrame(p.equippedFrameId);
                       const isMe = p.userId === currentUser?.id;
@@ -1770,11 +1772,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                         <div
                           key={p.userId}
                           className={`px-4 py-3 flex items-center justify-between gap-3 transition-colors ${
-                            isMe ? 'bg-amber-400/5' : 'hover:bg-zinc-800/40'
+                            isMe ? 'bg-indigo-500/10' : 'hover:bg-slate-800/40'
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <span className="w-6 font-mono font-black text-xs text-zinc-400 shrink-0 tabular-nums">
+                            <span className="w-6 font-mono font-bold text-xs text-slate-400 shrink-0 tabular-nums">
                               #{rank + 1}
                             </span>
                             {p.avatarUrl ? (
@@ -1785,24 +1787,24 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                               />
                             ) : (
                               <div
-                                className={`w-9 h-9 rounded-xl bg-zinc-800 text-xs font-black text-white flex items-center justify-center shrink-0 ${pFrame.ringClass}`}
+                                className={`w-9 h-9 rounded-xl bg-slate-800 text-xs font-bold text-white flex items-center justify-center shrink-0 ${pFrame.ringClass}`}
                               >
                                 {p.name.slice(0, 2)}
                               </div>
                             )}
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-white truncate">
+                              <p className="text-xs font-semibold text-white truncate">
                                 {p.name} {isMe ? '(คุณ)' : ''}
                               </p>
-                              <p className="text-[11px] text-zinc-400 truncate">
+                              <p className="text-[11px] text-slate-400 truncate">
                                 {p.equippedTitle || p.rankTitle}
-                                {(p.dailyStreak || 0) > 0 ? ` · 🔥 ${p.dailyStreak} วัน` : ''}
+                                {(p.dailyStreak || 0) > 0 ? ` · สตรีค ${p.dailyStreak} วัน` : ''}
                               </p>
                             </div>
                           </div>
 
                           <div className="text-right shrink-0 tabular-nums">
-                            <span className="font-mono font-black text-xs text-amber-400 block">
+                            <span className="font-mono font-bold text-xs text-indigo-300 block">
                               {p.exp.toLocaleString()} XP
                             </span>
                             <span className="text-[10px] font-mono text-cyan-400">{p.gems} Gems</span>
@@ -1852,30 +1854,30 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
         };
 
         return (
-          <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
-            <div className="max-w-5xl mx-auto space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-5 sm:py-7">
+            <div className="max-w-5xl mx-auto space-y-5">
               {/* Wallet Header */}
-              <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/12 border border-cyan-400/25 text-cyan-400 flex items-center justify-center shrink-0">
                     <Coins className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-sm font-black text-white">ร้านค้าสิทธิพิเศษ & แต่งโปรไฟล์</h4>
-                    <p className="text-xs text-zinc-400 truncate">
+                    <h4 className="text-sm font-bold text-white">ร้านค้าสิทธิพิเศษ & แต่งโปรไฟล์</h4>
+                    <p className="text-xs text-slate-400 truncate">
                       นำ Gems จากการเล่นเกมมาแลกสิทธิ์จริงในโรงเรียน หรือกรอบโปรไฟล์และฉายา
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-cyan-400 font-mono font-black text-base tabular-nums">
+                  <div className="px-3.5 py-2 rounded-xl bg-slate-950/75 border border-white/[0.08] text-cyan-300 font-mono font-bold text-base tabular-nums">
                     {currentPlayerStats.gems} Gems
                   </div>
                   {canManageBank && onCreateCustomReward && (
                     <button
                       type="button"
                       onClick={() => setShowCreateRewardForm((v) => !v)}
-                      className="min-h-[42px] px-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-black flex items-center gap-1.5 cursor-pointer"
+                      className="min-h-[40px] px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition"
                     >
                       <Plus className="w-4 h-4" />
                       <span>เพิ่มรางวัล</span>
@@ -1885,7 +1887,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               {shopNotice && (
-                <div className="px-3.5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2">
+                <div className="px-3.5 py-2.5 rounded-xl bg-emerald-500/12 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{shopNotice}</span>
                 </div>
@@ -1895,14 +1897,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               {showCreateRewardForm && canManageBank && (
                 <form
                   onSubmit={handleSubmitNewReward}
-                  className="p-4 rounded-2xl bg-zinc-900 border border-amber-400/40 space-y-3"
+                  className="p-4 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-indigo-400/35 space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <h5 className="text-xs font-black text-amber-300">สร้างรางวัลสิทธิพิเศษของโรงเรียน</h5>
+                    <h5 className="text-xs font-semibold text-indigo-300">สร้างรางวัลสิทธิพิเศษของโรงเรียน</h5>
                     <button
                       type="button"
                       onClick={() => setShowCreateRewardForm(false)}
-                      className="text-xs text-zinc-400 hover:text-white cursor-pointer"
+                      className="text-xs text-slate-400 hover:text-white cursor-pointer"
                     >
                       ปิด
                     </button>
@@ -1914,7 +1916,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       placeholder="ชื่อรางวัล เช่น คูปองน้ำฟรี 1 แก้ว"
                       value={newRewardTitle}
                       onChange={(e) => setNewRewardTitle(e.target.value)}
-                      className="sm:col-span-2 min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white placeholder-zinc-500"
+                      className="sm:col-span-2 min-h-[40px] px-3 rounded-xl bg-slate-950/75 border border-white/[0.08] text-xs text-white placeholder-slate-500"
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <input
@@ -1923,7 +1925,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                         value={newRewardCost}
                         onChange={(e) => setNewRewardCost(Number(e.target.value))}
                         placeholder="Gems"
-                        className="min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white font-mono"
+                        className="min-h-[40px] px-3 rounded-xl bg-slate-950/75 border border-white/[0.08] text-xs text-white font-mono tabular-nums"
                       />
                       <input
                         type="number"
@@ -1931,7 +1933,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                         value={newRewardStock}
                         onChange={(e) => setNewRewardStock(Number(e.target.value))}
                         placeholder="จำนวน"
-                        className="min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white font-mono"
+                        className="min-h-[40px] px-3 rounded-xl bg-slate-950/75 border border-white/[0.08] text-xs text-white font-mono tabular-nums"
                       />
                     </div>
                   </div>
@@ -1941,11 +1943,11 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       placeholder="เงื่อนไขการใช้สิทธิ์..."
                       value={newRewardDesc}
                       onChange={(e) => setNewRewardDesc(e.target.value)}
-                      className="flex-1 min-h-[42px] px-3 rounded-xl bg-[#09090B] border border-zinc-800 text-xs text-white placeholder-zinc-500"
+                      className="flex-1 min-h-[40px] px-3 rounded-xl bg-slate-950/75 border border-white/[0.08] text-xs text-white placeholder-slate-500"
                     />
                     <button
                       type="submit"
-                      className="min-h-[42px] px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs cursor-pointer"
+                      className="min-h-[40px] px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs cursor-pointer transition"
                     >
                       บันทึกรางวัล
                     </button>
@@ -1973,10 +1975,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     key={id}
                     type="button"
                     onClick={() => setShopSection(id)}
-                    className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
+                    className={`min-h-[38px] px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition cursor-pointer ${
                       shopSection === id
-                        ? 'bg-zinc-100 text-zinc-950'
-                        : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-900/75 border border-white/[0.08] text-slate-400 hover:text-white'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -1987,35 +1989,35 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
               {/* SECTION 1: REAL SCHOOL PERKS (Teacher Approval) */}
               {shopSection === 'perks' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {perkItems.map((item) => {
                     const canAfford = currentPlayerStats.gems >= item.costGems && item.stock > 0;
                     return (
                       <div
                         key={item.id}
-                        className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 flex flex-col justify-between gap-4"
+                        className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] hover:border-indigo-400/40 transition-all p-5 flex flex-col justify-between gap-4"
                       >
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="w-10 h-10 rounded-xl bg-amber-400/15 text-amber-400 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/12 border border-indigo-400/20 text-indigo-300 flex items-center justify-center">
                               <Gift className="w-5 h-5" />
                             </div>
-                            <span className="text-xs font-mono font-black text-cyan-400 tabular-nums">
+                            <span className="text-xs font-mono font-bold text-cyan-300 tabular-nums">
                               {item.costGems} Gems
                             </span>
                           </div>
                           <div>
-                            <h4 className="text-sm font-black text-white">{item.titleTh}</h4>
-                            <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                            <h4 className="text-sm font-semibold text-white">{item.titleTh}</h4>
+                            <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                               {item.descriptionTh}
                             </p>
                           </div>
                         </div>
 
-                        <div className="pt-3 border-t border-zinc-800 space-y-2">
-                          <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono tabular-nums">
+                        <div className="pt-3 border-t border-white/[0.06] space-y-2.5">
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono tabular-nums">
                             <span>คงเหลือ {item.stock} สิทธิ์</span>
-                            <span className="text-amber-300">ครูอนุมัติ</span>
+                            <span className="text-indigo-300">ครูอนุมัติ</span>
                           </div>
                           <button
                             type="button"
@@ -2025,10 +2027,10 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                               setShopNotice(`ส่งคำขอแลก "${item.titleTh}" ให้คุณครูตรวจสอบแล้ว`);
                               setTimeout(() => setShopNotice(null), 3500);
                             }}
-                            className={`w-full min-h-[44px] rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 ${
+                            className={`w-full min-h-[42px] rounded-xl font-semibold text-xs transition flex items-center justify-center gap-1.5 ${
                               canAfford
-                                ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 cursor-pointer'
-                                : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
+                                : 'bg-slate-800/80 text-slate-500 cursor-not-allowed'
                             }`}
                           >
                             <ShoppingBag className="w-3.5 h-3.5" />
@@ -2049,7 +2051,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
               {/* SECTION 2: INSTANT-EQUIP PROFILE FRAMES & TITLES */}
               {shopSection === 'cosmetics' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {cosmeticItems.map((item) => {
                     const isOwned = unlockedSet.has(item.id);
                     const isEquipped =
@@ -2061,8 +2063,8 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className={`rounded-2xl bg-zinc-900 border p-4 flex flex-col justify-between gap-4 ${
-                          isEquipped ? 'border-cyan-400' : 'border-zinc-800'
+                        className={`rounded-2xl bg-slate-900/75 backdrop-blur-md border p-5 flex flex-col justify-between gap-4 transition-all ${
+                          isEquipped ? 'border-cyan-400/60 shadow-[0_8px_24px_-10px_rgba(34,211,238,0.28)]' : 'border-white/[0.08]'
                         }`}
                       >
                         <div className="space-y-3">
@@ -2071,22 +2073,22 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                               <div
                                 className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${previewFrame.previewGradient} p-0.5`}
                               >
-                                <div className="w-full h-full rounded-[14px] bg-zinc-950 flex items-center justify-center text-xs font-black text-white">
+                                <div className="w-full h-full rounded-[14px] bg-slate-950 flex items-center justify-center text-xs font-bold text-white">
                                   VIP
                                 </div>
                               </div>
                             ) : (
-                              <div className="w-11 h-11 rounded-2xl bg-violet-500/15 text-violet-300 flex items-center justify-center">
+                              <div className="w-11 h-11 rounded-2xl bg-indigo-500/12 border border-indigo-400/20 text-indigo-300 flex items-center justify-center">
                                 <Award className="w-5 h-5" />
                               </div>
                             )}
-                            <span className="text-xs font-mono font-black text-cyan-400 tabular-nums">
+                            <span className="text-xs font-mono font-bold text-cyan-300 tabular-nums">
                               {isOwned ? 'เป็นเจ้าของแล้ว' : `${item.costGems} Gems`}
                             </span>
                           </div>
                           <div>
-                            <h4 className="text-sm font-black text-white">{item.titleTh}</h4>
-                            <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                            <h4 className="text-sm font-semibold text-white">{item.titleTh}</h4>
+                            <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                               {item.descriptionTh}
                             </p>
                           </div>
@@ -2109,14 +2111,14 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                               setTimeout(() => setShopNotice(null), 3000);
                             }
                           }}
-                          className={`w-full min-h-[44px] rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 ${
+                          className={`w-full min-h-[42px] rounded-xl font-semibold text-xs transition flex items-center justify-center gap-1.5 ${
                             isEquipped
-                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 cursor-default'
+                              ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-400/40 cursor-default'
                               : isOwned
-                                ? 'bg-zinc-100 hover:bg-white text-zinc-950 cursor-pointer'
+                                ? 'bg-slate-100 hover:bg-white text-slate-950 cursor-pointer'
                                 : canAfford
-                                  ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 cursor-pointer'
-                                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
+                                  : 'bg-slate-800/80 text-slate-500 cursor-not-allowed'
                           }`}
                         >
                           <span>
@@ -2137,9 +2139,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
               {/* SECTION 3: MY REDEMPTION REQUESTS HISTORY */}
               {shopSection === 'history' && (
-                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 divide-y divide-zinc-800">
+                <div className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] divide-y divide-white/[0.06]">
                   {myRedemptions.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-zinc-400">
+                    <div className="p-8 text-center text-xs text-slate-400">
                       ยังไม่มีประวัติการส่งคำขอแลกสิทธิพิเศษในโรงเรียน
                     </div>
                   ) : (
@@ -2149,19 +2151,19 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                         className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{req.itemTitleTh}</p>
-                          <p className="text-[11px] text-zinc-400 font-mono tabular-nums">
+                          <p className="text-sm font-semibold text-white truncate">{req.itemTitleTh}</p>
+                          <p className="text-[11px] text-slate-400 font-mono tabular-nums">
                             ใช้ {req.costGems} Gems · {new Date(req.requestedAt).toLocaleDateString('th-TH')}
                             {req.reviewedBy ? ` · ตรวจโดย ${req.reviewedBy}` : ''}
                           </p>
                         </div>
                         <span
-                          className={`text-xs font-black shrink-0 ${
+                          className={`text-xs font-semibold shrink-0 ${
                             req.status === 'approved'
                               ? 'text-emerald-400'
                               : req.status === 'rejected'
                                 ? 'text-rose-400'
-                                : 'text-amber-400'
+                                : 'text-amber-300'
                           }`}
                         >
                           {req.status === 'approved'
@@ -2178,9 +2180,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
 
               {/* SECTION 4: TEACHER / ADMIN APPROVAL QUEUE */}
               {shopSection === 'approvals' && canManageBank && (
-                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 divide-y divide-zinc-800">
+                <div className="rounded-2xl bg-slate-900/75 backdrop-blur-md border border-white/[0.08] divide-y divide-white/[0.06]">
                   {rewardRedemptions.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-zinc-400">
+                    <div className="p-8 text-center text-xs text-slate-400">
                       ยังไม่มีคำขอแลกสิทธิพิเศษจากนักเรียนในโรงเรียน
                     </div>
                   ) : (
@@ -2190,18 +2192,18 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                         className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div className="min-w-0 space-y-0.5">
-                          <p className="text-sm font-black text-white truncate">
+                          <p className="text-sm font-semibold text-white truncate">
                             {req.studentName}{' '}
                             {req.gradeRoom ? (
-                              <span className="text-xs font-normal text-zinc-400">
+                              <span className="text-xs font-normal text-slate-400">
                                 ({req.gradeRoom})
                               </span>
                             ) : null}
                           </p>
-                          <p className="text-xs font-bold text-amber-300 truncate">
+                          <p className="text-xs font-medium text-indigo-300 truncate tabular-nums">
                             ขอแลก: {req.itemTitleTh} ({req.costGems} Gems)
                           </p>
-                          <p className="text-[11px] text-zinc-400 font-mono tabular-nums">
+                          <p className="text-[11px] text-slate-400 font-mono tabular-nums">
                             {new Date(req.requestedAt).toLocaleString('th-TH')}
                             {req.reviewedBy ? ` · โดย ${req.reviewedBy}` : ''}
                           </p>
@@ -2212,21 +2214,21 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onReviewRedemption(req.id, 'approved')}
-                              className="min-h-[42px] px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs cursor-pointer"
+                              className="min-h-[40px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs cursor-pointer transition"
                             >
                               อนุมัติสิทธิ์
                             </button>
                             <button
                               type="button"
                               onClick={() => onReviewRedemption(req.id, 'rejected')}
-                              className="min-h-[42px] px-4 rounded-xl bg-zinc-800 hover:bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold text-xs cursor-pointer"
+                              className="min-h-[40px] px-4 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-rose-300 border border-rose-500/35 font-semibold text-xs cursor-pointer transition"
                             >
                               ปฏิเสธ & คืน Gems
                             </button>
                           </div>
                         ) : (
                           <span
-                            className={`text-xs font-black shrink-0 ${
+                            className={`text-xs font-semibold shrink-0 ${
                               req.status === 'approved' ? 'text-emerald-400' : 'text-rose-400'
                             }`}
                           >
@@ -2246,9 +2248,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       {/* Add New Question Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-4 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <div className="bg-[#0C1220] border border-white/[0.12] rounded-2xl p-5 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-400" />
                 <span>เพิ่มข้อสอบใหม่เข้าคลังข้อสอบโรงเรียน</span>
               </h3>
@@ -2257,44 +2259,44 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   setShowAddModal(false);
                   setQuestionFormStep(0);
                 }}
-                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center"
+                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleSaveNewQuestion} className="space-y-4">
-              <p className="text-[11px] text-slate-300">{questionFormStep + 1} / 2</p>
+              <p className="text-[11px] font-mono text-slate-400 tabular-nums">{questionFormStep + 1} / 2</p>
               {questionFormStep === 0 && <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">กลุ่มสาระวิชา</label>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">กลุ่มสาระวิชา</label>
                   <input
                     type="text"
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900/90 border border-white/[0.1] text-xs text-white focus:outline-none focus:border-indigo-500"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">ระดับชั้น</label>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">ระดับชั้น</label>
                   <input
                     type="text"
                     value={newGradeLevel}
                     onChange={(e) => setNewGradeLevel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900/90 border border-white/[0.1] text-xs text-white focus:outline-none focus:border-indigo-500"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">ประเภท</label>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">ประเภท</label>
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900/90 border border-white/[0.1] text-xs text-white focus:outline-none focus:border-indigo-500"
                   >
                     <option value="standard_exam">โจทย์ฝึกหัดตัวอย่าง</option>
                     <option value="review">ทบทวนบทเรียน</option>
@@ -2305,13 +2307,13 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">โจทย์คำถาม (ภาษาไทย)</label>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">โจทย์คำถาม (ภาษาไทย)</label>
                 <textarea
                   value={newQuestionTh}
                   onChange={(e) => setNewQuestionTh(e.target.value)}
                   rows={3}
                   placeholder="พิมพ์โจทย์ข้อสอบ..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-400"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900/90 border border-white/[0.1] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   required
                 />
               </div>
@@ -2319,7 +2321,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               {questionFormStep === 1 && <>
               {/* 4 Choices */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300 block">
+                <label className="text-xs font-semibold text-slate-300 block">
                   ตัวเลือกคำตอบ 4 ตัวเลือก (เลือกข้อที่ถูก):
                 </label>
                 {newOptions.map((opt, idx) => (
@@ -2331,7 +2333,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                       onChange={() => setNewCorrectIndex(idx)}
                       className="text-emerald-500 focus:ring-emerald-500 h-4 w-4"
                     />
-                    <span className="w-6 text-xs font-bold text-slate-300 text-center">
+                    <span className="w-6 text-xs font-mono font-bold text-slate-300 text-center">
                       {String.fromCharCode(65 + idx)}.
                     </span>
                     <input
@@ -2343,7 +2345,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                         copy[idx] = e.target.value;
                         setNewOptions(copy);
                       }}
-                      className="flex-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-900/90 border border-white/[0.1] text-xs text-white focus:outline-none focus:border-indigo-500"
                       required
                     />
                   </div>
@@ -2351,19 +2353,19 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">คำอธิบายเฉลยและวิธีคิด</label>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">คำอธิบายเฉลยและวิธีคิด</label>
                 <textarea
                   value={newExplanationTh}
                   onChange={(e) => setNewExplanationTh(e.target.value)}
                   rows={2}
                   placeholder="เขียนอธิบายเหตุผลและวิธีคิดให้ผู้เรียนเข้าใจ..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-400"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900/90 border border-white/[0.1] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   required
                 />
               </div>
               </>}
 
-              <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-800">
+              <div className="pt-4 flex items-center justify-between gap-3 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => {
@@ -2378,12 +2380,12 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                   {questionFormStep === 1 ? 'ย้อนกลับ' : 'ยกเลิก'}
                 </button>
                 {questionFormStep === 0 ? (
-                  <button type="button" onClick={() => setQuestionFormStep(1)} className="px-6 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white shadow-md shadow-indigo-900/40 cursor-pointer">
+                  <button type="button" onClick={() => setQuestionFormStep(1)} className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white cursor-pointer">
                     ถัดไป
                   </button>
                 ) : <button
                   type="submit"
-                  className="px-6 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-xs font-bold text-white shadow-md shadow-indigo-900/40 cursor-pointer"
+                  className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white cursor-pointer"
                 >
                   บันทึกข้อสอบเข้าคลัง
                 </button>}

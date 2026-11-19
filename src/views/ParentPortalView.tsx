@@ -287,31 +287,31 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   }
 
   return (
-    <div className={`${getModuleTone('students')} space-y-3 max-w-5xl mx-auto w-full`}>
+    <div className={`${getModuleTone('students')} space-y-4 max-w-5xl mx-auto w-full`}>
       {/* Student Switcher & Guardian Profile Card */}
-      <div className="app-page-header shrink-0 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="app-page-header shrink-0 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
           <img
             src={student?.avatarUrl}
             alt={student?.firstNameEn}
-            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-[var(--tone)] shadow-sm shrink-0"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-[var(--color-border)] ring-1 ring-indigo-500/15 shrink-0"
           />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] truncate">
+              <h2 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
                 {lang === 'th'
                   ? `${student?.firstNameTh} ${student?.lastNameTh}`
                   : `${student?.firstNameEn} ${student?.lastNameEn}`}
               </h2>
-              <span className="tone-chip font-mono text-xs px-2 py-0.5 rounded-md font-bold shrink-0">
+              <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-indigo-700 dark:text-indigo-300 font-semibold tabular-nums shrink-0">
                 {student?.studentIdNumber}
               </span>
             </div>
-            <p className="text-xs text-[var(--color-text-body)] mt-0.5">
-              {student?.gradeLevel} • {student?.room}
+            <p className="text-xs font-medium text-[var(--color-text-body)] mt-0.5">
+              {student?.gradeLevel} · {student?.room}
             </p>
-            <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 truncate">
-              {lang === 'th' ? 'ผู้ปกครอง:' : 'Guardian:'} {student?.guardianName} ({student?.guardianRelation}) • {student?.guardianPhone}
+            <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate tabular-nums">
+              {lang === 'th' ? 'ผู้ปกครอง:' : 'Guardian:'} {student?.guardianName} ({student?.guardianRelation}) · {student?.guardianPhone}
             </p>
           </div>
         </div>
@@ -324,7 +324,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           <select
             value={selectedStudentId}
             onChange={(e) => setSelectedStudentId(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold outline-none focus:ring-2 focus:ring-[var(--tone)]"
+            className="px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
           >
             {students.map((s) => (
               <option key={s.id} value={s.id}>
@@ -387,29 +387,32 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       {/* ========================================================================= */}
       {activePortalTab === 'overview' && (
         <div className="space-y-4">
-          {/* Today's Gate Status Banner (LINE Connected) */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-900/60 border border-emerald-500/50 flex items-center justify-center text-emerald-300 shrink-0">
-                <MessageSquare className="w-5 h-5 fill-current" />
+          {/* Today's Gate Status Banner (LINE Connected - Executive Bento Strip) */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 dark:bg-teal-500/15 border border-teal-500/20 flex items-center justify-center text-teal-700 dark:text-teal-400 shrink-0">
+                <MessageSquare className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-[var(--color-text-title)] tabular-nums">
                     สถานะการเดินทางถึงโรงเรียนวันนี้ ({todayStr})
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-200 border border-emerald-600 font-semibold">
-                    {todayRecord ? 'เช็คชื่อแล้ว' : 'รอการเช็คชื่อ'}
+                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${
+                    todayRecord ? 'text-teal-700 dark:text-teal-400' : 'text-[var(--color-text-muted)]'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${todayRecord ? 'bg-teal-500' : 'bg-slate-400'}`} />
+                    <span>{todayRecord ? 'เช็คชื่อแล้ว' : 'รอการเช็คชื่อ'}</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-200 mt-0.5">
+                <p className="text-xs text-[var(--color-text-body)] mt-1 tabular-nums">
                   {!canSeeRealtimeAttendance ? (
                     'โรงเรียนปิดการแจ้งเตือนเวลาเข้า-ออกประตูแบบเรียลไทม์ชั่วคราว'
                   ) : todayRecord ? (
                     <>
-                      เข้าประตูเวลา <strong className="text-white font-mono">{todayRecord.time} น.</strong> • สถานะ:{' '}
-                      <span className="text-emerald-300 font-semibold uppercase">{todayRecord.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}</span>
-                      {todayRecord.location?.distanceMeters && ` • ในเขต ${todayRecord.location.distanceMeters} ม.`}
+                      เข้าประตูเวลา <strong className="text-[var(--color-text-title)] font-mono font-semibold">{todayRecord.time} น.</strong> · สถานะ:{' '}
+                      <span className="text-teal-700 dark:text-teal-400 font-semibold">{todayRecord.status === 'present' ? 'ตรงเวลา' : 'มาสาย'}</span>
+                      {todayRecord.location?.distanceMeters && ` · ในเขต ${todayRecord.location.distanceMeters} ม.`}
                     </>
                   ) : (
                     'ยังไม่มีข้อมูลการสแกนผ่านประตูหรือถ่ายรูปเช็คชื่อในเช้าวันนี้'
@@ -422,28 +425,28 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               href={systemConfig.lineOaAddFriendUrl}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 border border-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors shrink-0"
             >
-              <MessageSquare className="w-3.5 h-3.5 fill-current" />
+              <MessageSquare className="w-3.5 h-3.5" />
               <span>เปิดแชท LINE OA โรงเรียน</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
 
           {/* Grid: Digital Student ID & Tuition / Academic Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Digital Student Card */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 border border-indigo-500/40 shadow-xl space-y-4 text-white relative overflow-hidden">
-              <div className="flex items-center justify-between border-b border-indigo-500/30 pb-3">
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/25 space-y-4 text-white relative overflow-hidden">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
                     {systemConfig.schoolNameEn}
                   </p>
-                  <h3 className="text-xs font-semibold text-slate-300 font-thai">
+                  <h3 className="text-xs font-semibold text-slate-200 font-thai">
                     {systemConfig.schoolNameTh}
                   </h3>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                <span className="text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-md bg-white/10 text-indigo-200 border border-white/15">
                   STUDENT PASS
                 </span>
               </div>
@@ -452,7 +455,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 <img
                   src={student?.avatarUrl}
                   alt={student?.firstNameEn}
-                  className="w-20 h-24 rounded-xl object-cover border-2 border-indigo-400 shadow-md"
+                  className="w-20 h-24 rounded-xl object-cover border border-white/20"
                 />
                 <div className="space-y-1">
                   <h4 className="font-bold text-base text-white">
@@ -461,7 +464,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   <p className="text-xs text-indigo-200">
                     {student?.firstNameEn} {student?.lastNameEn}
                   </p>
-                  <p className="text-[11px] font-mono text-slate-300">
+                  <p className="text-[11px] font-mono text-slate-300 tabular-nums">
                     ID: {student?.studentIdNumber}
                   </p>
                   <p className="text-[11px] text-slate-300">
@@ -470,38 +473,40 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-indigo-500/30 flex items-center justify-between text-[11px] text-slate-200 font-mono">
+              <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-300 font-mono tabular-nums">
                 <span>อัตราการมาเรียน: {attRate}%</span>
                 <span>ปีการศึกษา {systemConfig.academicYear}</span>
               </div>
             </div>
 
             {/* Tuition & GPA Card */}
-            <div className="p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-4 flex flex-col justify-between text-[var(--color-text-title)]">
+            <div className="p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] space-y-4 flex flex-col justify-between text-[var(--color-text-title)]">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                    <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
+                  <h3 className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     <span>ค่าธรรมเนียมการศึกษา</span>
                   </h3>
                   {pendingInvoice ? (
-                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[11px] font-bold">
-                      มียอดค้างชำระ
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      <span>มียอดค้างชำระ</span>
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold">
-                      ชำระครบถ้วนแล้ว
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                      <span>ชำระครบถ้วนแล้ว</span>
                     </span>
                   )}
                 </div>
 
                 {pendingInvoice ? (
-                  <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[var(--color-text-body)]">
+                  <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5">
+                    <div className="flex items-center justify-between text-xs gap-2">
+                      <span className="text-[var(--color-text-body)] truncate">
                         {pendingInvoice.items[0]?.title || `ใบแจ้งหนี้ ${pendingInvoice.invoiceNumber}`}
                       </span>
-                      <span className="font-mono font-bold text-base text-[var(--color-text-title)]">
+                      <span className="font-mono font-bold text-base text-[var(--color-text-title)] tabular-nums shrink-0">
                         ฿{pendingInvoice.totalAmount.toLocaleString()}
                       </span>
                     </div>
@@ -515,13 +520,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                         <span>ชำระผ่าน PromptPay QR Code</span>
                       </button>
                     ) : (
-                      <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                      <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
                         การชำระเงินออนไลน์ถูกปิดชั่วคราวโดยผู้ดูแลโรงเรียน
                       </p>
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-[var(--color-text-body)]">
+                  <p className="text-xs text-[var(--color-text-muted)]">
                     ไม่มีรายการค้างชำระในภาคเรียนปัจจุบัน
                   </p>
                 )}
@@ -541,18 +546,18 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   : null;
                 const primaryFeedback = getRawScoreFeedback(summary?.averageRawScore);
                 return (
-                  <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                  <div className="pt-3.5 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
                     {summary?.hideGpaCalculations ? (
                       <div>
                         <span className="text-[11px] text-[var(--color-text-muted)] block">
                           คะแนนดิบเฉลี่ยรายปี (เต็ม 100)
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl font-bold font-mono text-[var(--color-primary-text)]">
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-2xl font-bold font-mono text-indigo-700 dark:text-indigo-400 tabular-nums">
                             {summary.averageRawScore !== null ? `${summary.averageRawScore}%` : 'รอประเมิน'}
                           </span>
                           {summary.averageRawScore !== null && (
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${primaryFeedback.badgeClass}`}>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${primaryFeedback.badgeClass}`}>
                               {primaryFeedback.labelTh}
                             </span>
                           )}
@@ -561,7 +566,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     ) : (
                       <div>
                         <span className="text-[11px] text-[var(--color-text-muted)] block">เกรดเฉลี่ยสะสม (GPAX)</span>
-                        <span className="text-xl font-bold font-mono text-[var(--color-primary-text)] tabular-nums">
+                        <span className="text-2xl font-bold font-mono text-indigo-700 dark:text-indigo-400 tabular-nums">
                           {summary?.hasRecordedGrades && summary?.gpax !== null ? summary.gpax.toFixed(2) : '—'}
                         </span>
                       </div>
@@ -570,9 +575,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenReportCard(student)}
-                      className="btn-tool-tone px-3.5 py-2 text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0"
+                      className="px-3.5 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-indigo-500/10 border border-[var(--color-border)] hover:border-indigo-500/40 text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 transition"
                     >
-                      <Award className="w-4 h-4" />
+                      <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                       <span>{summary?.hideGpaCalculations ? 'ดูผลประเมินรายปี' : 'ดูใบเกรด ปพ.1'}</span>
                     </button>
                   </div>
@@ -582,7 +587,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           </div>
 
           {slipToast && (
-            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold">
+            <div className="p-3 rounded-xl bg-teal-500/10 dark:bg-teal-950/60 border border-teal-500/30 text-teal-900 dark:text-teal-200 text-xs font-medium">
               {slipToast}
             </div>
           )}
@@ -594,13 +599,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               POPULAR_CAREERS.find((c) => c.id === childCareerSnapshot.activeCareerId);
             if (!careerProfile) return null;
             return (
-              <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-violet-200 dark:border-violet-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-violet-100 dark:bg-violet-950/70 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
+              <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                     <Compass className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-violet-700 dark:text-violet-300">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>อาชีพในฝันของ {student?.firstNameTh} (Career Quest AI)</span>
                     </div>
@@ -613,7 +618,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   </div>
                 </div>
                 <div className="text-left sm:text-right shrink-0 tabular-nums">
-                  <span className="text-xl font-extrabold font-mono text-violet-700 dark:text-violet-300">
+                  <span className="text-2xl font-bold font-mono text-indigo-600 dark:text-indigo-400">
                     {childCareerSnapshot.lastReadinessPercent ?? 0}%
                   </span>
                   <span className="block text-[11px] text-[var(--color-text-muted)]">
@@ -625,27 +630,27 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
           })()}
 
           {/* Daily Pulse Timeline */}
-          <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
+          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
+              <h3 className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 <span>ไทม์ไลน์ชีวิตประจำวันของ {student?.firstNameTh} (Daily Pulse)</span>
               </h3>
               <span className="text-[11px] text-[var(--color-text-muted)]">อัปเดตล่าสุดจากประตู คาบเรียน การบ้าน และห้องพยาบาล</span>
             </div>
             {dailyPulseEvents.length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)] py-4 text-center">ยังไม่มีความเคลื่อนไหวล่าสุดสำหรับนักเรียนคนนี้</p>
+              <p className="text-xs text-[var(--color-text-muted)] py-5 text-center">ยังไม่มีความเคลื่อนไหวล่าสุดสำหรับนักเรียนคนนี้</p>
             ) : (
               <div className="divide-y divide-[var(--color-border)] text-xs">
                 {dailyPulseEvents.map((ev) => (
                   <div
                     key={ev.id}
                     onClick={ev.onClick}
-                    className={`py-2.5 flex items-center justify-between gap-3 ${ev.onClick ? 'cursor-pointer hover:bg-[var(--color-card-subtle)] rounded px-2 -mx-2' : ''}`}
+                    className={`py-2.5 flex items-center justify-between gap-3 ${ev.onClick ? 'cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 transition' : ''}`}
                   >
                     <div className="min-w-0">
                       <div className="font-semibold text-[var(--color-text-title)]">{ev.title}</div>
-                      <div className="text-[11px] text-[var(--color-text-muted)] truncate">{ev.detail}</div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] truncate mt-0.5">{ev.detail}</div>
                     </div>
                     <span className="text-[11px] font-mono text-[var(--color-text-muted)] shrink-0 tabular-nums">{ev.timeLabel}</span>
                   </div>
@@ -759,8 +764,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                             GPS: {rec.location.inGeofence === false ? 'นอกรัศมี' : 'ในรัศมี'} ({rec.location.distanceMeters} เมตร)
                           </p>
                         )}
-                        <p className="text-[10px] text-[var(--color-primary-text)] font-bold pt-1">
-                          🔍 กดเพื่อดูภาพใหญ่พร้อมตราประทับ
+                        <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold pt-1 inline-flex items-center gap-1">
+                          <Eye className="w-3 h-3 shrink-0" />
+                          <span>กดเพื่อดูภาพใหญ่พร้อมตราประทับ</span>
                         </p>
                       </div>
                     </div>
@@ -816,20 +822,20 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setLeaveType('sick')}
-                    className={`p-2.5 rounded-xl border text-center font-bold transition cursor-pointer ${
-                      leaveType === 'sick' ? 'bg-rose-100 dark:bg-rose-950 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-200' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)]'
+                    className={`p-2.5 rounded-xl border text-center font-semibold transition cursor-pointer ${
+                      leaveType === 'sick' ? 'bg-rose-500/10 dark:bg-rose-950/60 border-rose-500/50 text-rose-800 dark:text-rose-200' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)] hover:border-indigo-400/50'
                     }`}
                   >
-                    🤒 ลาป่วย (Sick Leave)
+                    ลาป่วย (Sick Leave)
                   </button>
                   <button
                     type="button"
                     onClick={() => setLeaveType('personal')}
-                    className={`p-2.5 rounded-xl border text-center font-bold transition cursor-pointer ${
-                      leaveType === 'personal' ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)]'
+                    className={`p-2.5 rounded-xl border text-center font-semibold transition cursor-pointer ${
+                      leaveType === 'personal' ? 'bg-indigo-500/10 dark:bg-indigo-950/60 border-indigo-500/50 text-indigo-800 dark:text-indigo-200' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)] hover:border-indigo-400/50'
                     }`}
                   >
-                    🚗 ลากิจ (Personal Leave)
+                    ลากิจ (Personal Leave)
                   </button>
                 </div>
               </div>
@@ -913,12 +919,12 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 {studentLeaveRequests.map((req) => (
                   <div key={req.id} className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-[var(--color-text-title)]">
-                        {req.leaveType === 'sick' ? '🤒 ลาป่วย' : '🚗 ลากิจ'}
+                      <span className="font-semibold text-[var(--color-text-title)]">
+                        {req.leaveType === 'sick' ? 'ลาป่วย (Sick Leave)' : 'ลากิจ (Personal Leave)'}
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        req.status === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' :
-                        req.status === 'pending' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
+                        req.status === 'approved' ? 'bg-teal-500/10 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 border-teal-500/30' :
+                        req.status === 'pending' ? 'bg-amber-500/10 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border-amber-500/30' : 'bg-rose-500/10 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-rose-500/30'
                       }`}>
                         {req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รอครูอนุมัติ' : 'ไม่อนุมัติ'}
                       </span>
