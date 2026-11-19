@@ -20,7 +20,6 @@ import {
   MonitorPlay,
   Users,
   Check,
-  Wrench,
   Sparkles,
   Mail,
   CreditCard,
@@ -152,7 +151,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const [isToolsGroupOpen, setIsToolsGroupOpen] = useState(false);
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
@@ -394,7 +392,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] shadow-xs text-white text-[13px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2"
           >
             <Minimize2 className="w-4 h-4 shrink-0" />
-            <span>{lang === 'th' ? 'ปิดโฟกัส' : 'Exit Focus'}</span>
+            <span>{lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar'}</span>
           </button>
         )}
 
@@ -572,155 +570,131 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setIsAccountMenuOpen(false);
                     onToggleFocusMode();
                   }}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                 >
                   <span className="flex items-center gap-3">
-                    {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4 text-[var(--color-text-muted)]" />}
-                    <span>{lang === 'th' ? 'โหมดโฟกัสเนื้อหา' : 'Focus Mode'}</span>
+                    {focusMode ? <Minimize2 className="h-4 w-4 text-[var(--color-primary-text)]" /> : <Maximize2 className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                    <span>{lang === 'th' ? 'ซ่อนแถบเมนู (เต็มจอ)' : 'Fullscreen Workspace'}</span>
                   </span>
-                  <span className="rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[var(--color-text-muted)]">
-                    {focusMode ? 'ON' : 'OFF'}
-                  </span>
+                  {focusMode && <Check className="h-4 w-4 text-[var(--color-primary-text)] shrink-0" />}
                 </button>
               )}
 
-              {/* Collapsible Secondary Tools, Guides & Support Group */}
+              {/* Flat Secondary Tools & Guides Section */}
               {hasMoreToolsItems && (
-                <div className="pt-1.5 mt-1 border-t border-[var(--color-border)]">
-                  <button
-                    type="button"
-                    aria-expanded={isToolsGroupOpen}
-                    onClick={() => setIsToolsGroupOpen((prev) => !prev)}
-                    className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                  >
-                    <span className="flex items-center gap-3">
-                      <Wrench className="h-4 w-4" />
-                      <span>{lang === 'th' ? 'เครื่องมือและคู่มือเพิ่มเติม' : 'Tools & Guides'}</span>
+                <div className="pt-1.5 mt-1 border-t border-[var(--color-border)] space-y-0.5">
+                  <div className="px-3 py-1 text-[11px] font-semibold text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'เครื่องมือและคู่มือ' : 'Tools & Guides'}
+                  </div>
+
+                  {onSwitchToMobileMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onSwitchToMobileMode();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <Smartphone className="h-4 w-4 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'สลับเป็นมุมมองมือถือ' : 'Mobile View'}</span>
+                    </button>
+                  )}
+
+                  {showImportExportAction && onOpenImportExport && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onOpenImportExport();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'นำเข้า / ส่งออก Excel' : 'Import / Export'}</span>
+                    </button>
+                  )}
+
+                  {canAccessSchoolOperations && onOpenCoordinationDesk && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onOpenCoordinationDesk();
+                      }}
+                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <span className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
+                        <span>{lang === 'th' ? 'ประสานงานส่วนกลาง' : 'Coordination Desk'}</span>
+                      </span>
                       {coordinationUnreadCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold leading-none">
+                        <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">
                           {coordinationUnreadCount}
                         </span>
                       )}
-                    </span>
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform duration-150 ${
-                        isToolsGroupOpen ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
+                    </button>
+                  )}
 
-                  {isToolsGroupOpen && (
-                    <div className="mt-1 ml-3 pl-2 border-l border-[var(--color-border)] space-y-0.5">
-                      {onSwitchToMobileMode && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountMenuOpen(false);
-                            onSwitchToMobileMode();
-                          }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                        >
-                          <Smartphone className="h-4 w-4 text-[var(--color-text-muted)]" />
-                          <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
-                        </button>
-                      )}
+                  {onOpenExamPaymentSettings && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onOpenExamPaymentSettings();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <CreditCard className="h-4 w-4 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'ตั้งค่าชำระเงินคลังข้อสอบ' : 'Exam Payment Settings'}</span>
+                    </button>
+                  )}
 
-                      {showImportExportAction && onOpenImportExport && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountMenuOpen(false);
-                            onOpenImportExport();
-                          }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                        >
-                          <FileSpreadsheet className="h-4 w-4 text-[var(--color-text-muted)]" />
-                          <span>{lang === 'th' ? 'นำเข้า / ส่งออก' : 'Import / Export'}</span>
-                        </button>
-                      )}
+                  {canAccessSchoolOperations && onOpenGuide && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onOpenGuide(currentRole === 'student' || currentRole === 'parent' ? 'student' : 'teacher');
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <HelpCircle className="h-4 w-4 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'คู่มือการใช้งาน' : 'User Guide'}</span>
+                    </button>
+                  )}
 
-                      {canAccessSchoolOperations && onOpenCoordinationDesk && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountMenuOpen(false);
-                            onOpenCoordinationDesk();
-                          }}
-                          className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                        >
-                          <span className="flex items-center gap-3">
-                            <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
-                            <span>{lang === 'th' ? 'ประสานงานส่วนกลาง' : 'Coordination Desk'}</span>
-                          </span>
-                          {coordinationUnreadCount > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold leading-none">
-                              {coordinationUnreadCount}
-                            </span>
-                          )}
-                        </button>
-                      )}
+                  {onOpenOnboardingTutor && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onOpenOnboardingTutor();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <Sparkles className="h-4 w-4 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'ติวเตอร์แนะนำระบบ' : 'System Tutor'}</span>
+                    </button>
+                  )}
 
-                      {onOpenExamPaymentSettings && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountMenuOpen(false);
-                            onOpenExamPaymentSettings();
-                          }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                        >
-                          <CreditCard className="h-4 w-4 text-[var(--color-text-muted)]" />
-                          <span>{lang === 'th' ? 'ตั้งค่าชำระเงินคลังข้อสอบ' : 'Exam Payment Settings'}</span>
-                        </button>
-                      )}
+                  {onOpenLoginGuide && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onOpenLoginGuide();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <BookOpen className="h-4 w-4 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'คู่มือการเข้าสู่ระบบ' : 'Login Guide'}</span>
+                    </button>
+                  )}
 
-                      {canAccessSchoolOperations && onOpenGuide && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountMenuOpen(false);
-                            onOpenGuide(currentRole === 'student' || currentRole === 'parent' ? 'student' : 'teacher');
-                          }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                        >
-                          <HelpCircle className="h-4 w-4 text-[var(--color-text-muted)]" />
-                          <span>{lang === 'th' ? 'คู่มือการใช้งาน' : 'User Guide'}</span>
-                        </button>
-                      )}
-
-                      {onOpenOnboardingTutor && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountMenuOpen(false);
-                            onOpenOnboardingTutor();
-                          }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                        >
-                          <Sparkles className="h-4 w-4 text-[var(--color-text-muted)]" />
-                          <span>{lang === 'th' ? 'ติวเตอร์แนะนำระบบ' : 'System Tutor'}</span>
-                        </button>
-                      )}
-
-                      {onOpenLoginGuide && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountMenuOpen(false);
-                            onOpenLoginGuide();
-                          }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                        >
-                          <BookOpen className="h-4 w-4 text-[var(--color-text-muted)]" />
-                          <span>{lang === 'th' ? 'คู่มือการเข้าสู่ระบบ' : 'Login Guide'}</span>
-                        </button>
-                      )}
-
-                      {!focusMode && (
-                        <div className="pt-1.5 px-1">
-                          <PWAInstallButton lang={lang} variant="nav" className="w-full justify-center py-2 text-xs" />
-                        </div>
-                      )}
+                  {!focusMode && (
+                    <div className="pt-1.5 px-1">
+                      <PWAInstallButton lang={lang} variant="nav" className="w-full justify-center py-2 text-xs" />
                     </div>
                   )}
                 </div>

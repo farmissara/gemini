@@ -247,8 +247,11 @@ export function isAllowedProgramModeForRole(
   role: AuthUser['role'] | undefined,
   mode: 'school_erp' | 'lms_classroom' | 'parent_portal'
 ): boolean {
-  if (!role || role === 'super_admin' || role === 'admin' || role === 'teacher') {
+  if (!role || role === 'super_admin') {
     return true;
+  }
+  if (role === 'admin' || role === 'teacher') {
+    return mode === 'school_erp' || mode === 'lms_classroom';
   }
   if (role === 'student') {
     // Students can only stay in their student dashboard/tabs or virtual LMS (never parent_portal)

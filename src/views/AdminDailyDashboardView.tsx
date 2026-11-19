@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
-  ArrowLeftRight,
   ArrowRight,
   Award,
   BellRing,
@@ -360,16 +359,6 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
           </h1>
 
           <div className="flex items-center gap-2 shrink-0">
-            {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-              <button
-                type="button"
-                onClick={() => onSwitchOperationalRole('teacher')}
-                className="min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-primary-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'สลับโหมดครู' : 'Teacher Mode'}</span>
-              </button>
-            )}
             {onOpenQuickHub && (
               <button
                 type="button"

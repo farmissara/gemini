@@ -27,7 +27,6 @@ import {
   ShieldAlert,
   Flame,
   Swords,
-  ArrowLeftRight,
   BarChart3,
   BellRing,
   Monitor,
@@ -40,7 +39,6 @@ import {
   TrendingUp,
   Activity,
   LayoutGrid,
-  MoreHorizontal,
   AlertTriangle,
   Compass,
   SlidersHorizontal,
@@ -248,8 +246,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [attendanceStep, setAttendanceStep] = useState<'summary' | 'analytics' | 'records' | 'live_feed'>('summary');
   const [drawerMode, setDrawerMode] = useState<null | 'onboarding' | 'guardian_line'>(null);
   const [exportFeedback, setExportFeedback] = useState<{ type: 'success' | 'warning'; message: string } | null>(null);
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(`eduverse_onboarding_dismissed_${school?.id || 'default'}`) === '1';
@@ -260,26 +256,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       setDashboardTab(resolveAllowedSubTab(initialSubTab));
     }
   }, [initialSubTab, canViewExecutiveMonitor, canViewEarlyWarning]);
-
-  useEffect(() => {
-    if (!isMoreMenuOpen) return;
-    const handlePointerDown = (event: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
-        setIsMoreMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsMoreMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isMoreMenuOpen]);
 
   // Slide-over Drawer for viewing captured selfie photo & GPS metadata
   const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<AttendanceRecord | null>(null);
@@ -761,26 +737,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Clean Role-Aware Top Bar: Title + Unified Sub-Lenses + Controlled Overflow Menu */}
-      <div className="no-print shrink-0 saas-card px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Clean Role-Aware Top Bar: View Title + Unified Sub-Lenses + Direct Print/Fullscreen Actions */}
+      <div className="no-print shrink-0 saas-card px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <h1 className="type-page-title truncate">
-            {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
+          <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+            {currentRole === 'teacher'
+              ? (lang === 'th' ? 'โต๊ะทำงานครูวันนี้' : "Teacher's Desk")
+              : (currentRole === 'admin' || currentRole === 'super_admin')
+                ? (lang === 'th' ? 'ศูนย์รวมการจัดการโรงเรียน' : 'School Operations Hub')
+                : (lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn)}
           </h1>
           {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
             <button
               type="button"
               onClick={() => setDashboardTab('overview')}
-              className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+              className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0 whitespace-nowrap"
             >
               ← {(currentRole === 'admin' || currentRole === 'super_admin')
-                ? (lang === 'th' ? 'ศูนย์รวมการจัดการ' : 'Admin Hub')
-                : (lang === 'th' ? 'ภาพรวมวันนี้' : 'Today')}
+                ? (lang === 'th' ? 'กลับหน้าหลัก' : 'Back to Hub')
+                : (lang === 'th' ? 'กลับภาพรวมวันนี้' : 'Back to Today')}
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto min-w-0 justify-between sm:justify-end">
+        <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 justify-between sm:justify-end">
           <div data-guide-id="dashboard-subtabs" className="seg-tab-group inline-flex gap-0.5 overflow-x-auto max-w-full">
             <button
               type="button"
@@ -789,7 +769,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               {(currentRole === 'admin' || currentRole === 'super_admin')
-                ? (lang === 'th' ? 'ศูนย์รวมการจัดการ' : 'Admin Hub')
+                ? (lang === 'th' ? 'ภาพรวมวันนี้' : 'Overview')
                 : (lang === 'th' ? 'ภาพรวมวันนี้' : 'Today')}
             </button>
 
@@ -838,142 +818,62 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {lang === 'th' ? 'เตือนภัยผู้เรียน' : 'Early Warning'}
               </button>
             )}
+
+            {!isStaffUser && isModuleEnabled('announcements') && (
+              <button
+                type="button"
+                data-active={dashboardTab === 'announcements'}
+                onClick={() => setDashboardTab('announcements')}
+                className="seg-tab-btn whitespace-nowrap shrink-0"
+              >
+                {lang === 'th' ? 'ประกาศ' : 'Announcements'}
+              </button>
+            )}
           </div>
 
-          {isFocusMode ? (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isStaffUser && (
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="btn-icon-tool cursor-pointer"
+                title={lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF Report'}
+                aria-label={lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF Report'}
+              >
+                <Printer className="w-4 h-4" />
+              </button>
+            )}
             <button
               type="button"
               data-guide-id="dashboard-focus-toggle"
               aria-pressed={isFocusMode}
               onClick={handleToggleFocus}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0"
+              title={
+                isFocusMode
+                  ? (lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar')
+                  : (lang === 'th' ? 'ซ่อนแถบเมนู (เต็มจอ)' : 'Fullscreen Workspace')
+              }
+              aria-label={
+                isFocusMode
+                  ? (lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar')
+                  : (lang === 'th' ? 'ซ่อนแถบเมนู (เต็มจอ)' : 'Fullscreen Workspace')
+              }
+              className={
+                isFocusMode
+                  ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0'
+                  : 'btn-icon-tool cursor-pointer'
+              }
             >
-              <Minimize2 className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>
-            </button>
-          ) : (
-            <div ref={moreMenuRef} className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsMoreMenuOpen((prev) => !prev)}
-                aria-expanded={isMoreMenuOpen}
-                className="btn-icon-tool cursor-pointer"
-                aria-label={lang === 'th' ? 'เมนูเพิ่มเติม' : 'More views & tools'}
-                title={lang === 'th' ? 'เมนูเพิ่มเติม' : 'More'}
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-              {isMoreMenuOpen && (
-                <div className="absolute right-0 top-10 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
-                  {((isStaffUser && isModuleEnabled('attendance')) || currentRole === 'parent') && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
-                        setDashboardTab('live_attendance');
-                      }}
-                      className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2"><Camera className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? (currentRole === 'parent' ? 'ประวัติเข้า-ออก' : 'เช็คชื่อสด') : (currentRole === 'parent' ? 'Attendance Log' : 'Live GPS')}</span>
-                      <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{displayRecords.length}</span>
-                    </button>
-                  )}
-                  {!(currentRole === 'student' && schoolPermissions?.student_treasure_game === false) &&
-                    ((['games', 'socratic_tutor', 'study_streak', 'boss_raid', 'realworld_quests', 'subject_labs', 'ai_diagnostic', 'hall_of_fame'] as NavTab[]).some((tab) => isModuleEnabled(tab)) || canViewEarlyWarning) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
-                        setDashboardTab('innovative_hub');
-                      }}
-                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
-                    </button>
-                  )}
-                  {isStaffUser && isModuleEnabled('student_development_book') && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
-                        onNavigate('student_development_book');
-                      }}
-                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <BookOpen className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      <span>{lang === 'th' ? 'สมุดบันทึกพัฒนาคุณภาพผู้เรียน' : 'Development Book'}</span>
-                    </button>
-                  )}
-                  {isModuleEnabled('announcements') && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
-                        setDashboardTab('announcements');
-                      }}
-                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <BellRing className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      <span>{currentRole === 'student' ? (lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements') : (lang === 'th' ? 'ประกาศและคนเก่ง' : 'News & Honors')}</span>
-                    </button>
-                  )}
-                  {showOnboardingCard && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
-                        setDrawerMode('onboarding');
-                      }}
-                      className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2"><ListChecks className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ตั้งค่าโรงเรียน' : 'School Setup'}</span>
-                      <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{completedOnboardingCount}/3</span>
-                    </button>
-                  )}
-                  {unclaimedCentralPacksCount > 0 && currentRole === 'admin' && onOpenCentralExamPopup && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
-                        onOpenCentralExamPopup();
-                      }}
-                      className="w-full px-3 py-2 rounded-lg text-left flex items-center justify-between text-amber-700 dark:text-amber-300 hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" />{lang === 'th' ? 'รับข้อสอบกลาง' : 'Exam Packs'}</span>
-                      <span className="font-mono text-xs tabular-nums">{unclaimedCentralPacksCount}</span>
-                    </button>
-                  )}
-                  <div className="my-1 border-t border-[var(--color-border)]" />
-                  <button
-                    type="button"
-                    data-guide-id="dashboard-focus-toggle"
-                    onClick={() => {
-                      setIsMoreMenuOpen(false);
-                      handleToggleFocus();
-                    }}
-                    className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                    <span>{lang === 'th' ? 'โหมดโฟกัสเนื้อหา' : 'Focus Mode'}</span>
-                  </button>
-                  {isStaffUser && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMoreMenuOpen(false);
-                        window.print();
-                      }}
-                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      <span>{lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF'}</span>
-                    </button>
-                  )}
-                </div>
+              {isFocusMode ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar'}</span>
+                </>
+              ) : (
+                <Maximize2 className="w-4 h-4" />
               )}
-            </div>
-          )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1109,10 +1009,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[var(--color-primary-text)]">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-sm bg-[var(--color-primary)]" aria-hidden="true" />
-                    <span>{roleBadgeLabel}</span>
-                  </span>
+                  <span>{roleBadgeLabel}</span>
                   <span className="text-[var(--color-text-muted)]" aria-hidden="true">·</span>
                   <span className="text-[var(--color-text-muted)] font-semibold tabular-nums">
                     {formattedTodayDate}
@@ -1179,16 +1076,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                {currentRole === 'teacher' && canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-                  <button
-                    type="button"
-                    onClick={() => onSwitchOperationalRole('admin')}
-                    className="btn-tool-neutral px-3 py-2 whitespace-nowrap"
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                    <span>{lang === 'th' ? 'สลับโหมด Admin' : 'Admin Mode'}</span>
-                  </button>
-                )}
                 {morningQuickActions.slice(0, 2).map((act) => (
                   <button
                     key={act.id}
@@ -2101,60 +1988,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             dashboardTab === 'obec_learning_areas' ||
             dashboardTab === 'pp6_quality_overview') && (
             <div className="no-print saas-card px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'มุมมองผู้บริหาร & มาตรฐาน สพฐ.' : 'Executive & OBEC Analytics'}
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'มุมมองรายงานผู้บริหาร & สพฐ.' : 'Executive & OBEC Analytics'}
               </span>
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="seg-tab-group inline-flex flex-wrap gap-0.5">
                 <button
                   type="button"
+                  data-active={dashboardTab === 'executive_monitor'}
                   onClick={() => setDashboardTab('executive_monitor')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
-                    dashboardTab === 'executive_monitor'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
-                  }`}
+                  className="seg-tab-btn whitespace-nowrap shrink-0"
                 >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      dashboardTab === 'executive_monitor' ? 'bg-white' : 'bg-blue-600 dark:bg-blue-400'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span>{lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร (MIS)' : 'Executive Monitor'}</span>
+                  {lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร (MIS)' : 'Executive Monitor'}
                 </button>
                 <button
                   type="button"
+                  data-active={dashboardTab === 'obec_learning_areas'}
                   onClick={() => setDashboardTab('obec_learning_areas')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
-                    dashboardTab === 'obec_learning_areas'
-                      ? 'bg-emerald-600 text-white border-emerald-600'
-                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
-                  }`}
+                  className="seg-tab-btn whitespace-nowrap shrink-0"
                 >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      dashboardTab === 'obec_learning_areas' ? 'bg-white' : 'bg-emerald-600 dark:bg-emerald-400'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span>{lang === 'th' ? '8 กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}</span>
+                  {lang === 'th' ? '8 กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}
                 </button>
                 <button
                   type="button"
+                  data-active={dashboardTab === 'pp6_quality_overview'}
                   onClick={() => setDashboardTab('pp6_quality_overview')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
-                    dashboardTab === 'pp6_quality_overview'
-                      ? 'bg-violet-600 text-white border-violet-600'
-                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
-                  }`}
+                  className="seg-tab-btn whitespace-nowrap shrink-0"
                 >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      dashboardTab === 'pp6_quality_overview' ? 'bg-white' : 'bg-violet-600 dark:bg-violet-400'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span>{lang === 'th' ? 'ภาพรวมคุณภาพ ปพ.6' : 'OBEC Pp.6 Overview'}</span>
+                  {lang === 'th' ? 'ภาพรวมคุณภาพ ปพ.6' : 'OBEC Pp.6 Overview'}
                 </button>
               </div>
             </div>

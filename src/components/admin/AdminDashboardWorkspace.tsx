@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import {
   AlertTriangle,
-  ArrowLeftRight,
   ArrowUpRight,
   Award,
   BellRing,
@@ -465,16 +464,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-            <button
-              type="button"
-              onClick={() => onSwitchOperationalRole('teacher')}
-              className="btn-tool-neutral px-3 py-2 whitespace-nowrap"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              <span>{lang === 'th' ? 'สลับโหมดครู' : 'Teacher Mode'}</span>
-            </button>
-          )}
           <button
             type="button"
             onClick={onExportCsv}
