@@ -917,9 +917,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
       if (result.requestedUnavailable) {
         setCameraNotice(
-          targetFacingMode === 'environment'
+          result.devices.length <= 1
             ? 'อุปกรณ์นี้มีกล้องเพียง 1 ตัว จึงแสดงภาพจากกล้องที่มีอยู่'
-            : 'แสดงภาพจากกล้องที่มีอยู่บนอุปกรณ์นี้'
+            : targetFacingMode === 'environment'
+              ? 'ไม่สามารถเปิดกล้องหลังได้ จึงแสดงภาพจากกล้องที่พร้อมใช้งาน'
+              : 'ไม่สามารถเปิดกล้องหน้าได้ จึงแสดงภาพจากกล้องที่พร้อมใช้งาน'
         );
       }
     } catch (err) {
@@ -2588,18 +2590,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   />
                 )}
 
-                {/* Refresh Camera Button (ย้ายสลับตำแหน่งมากับปุ่มสลับกล้องหน้า/หลัง) */}
+                {/* Camera Switch Button (มุมขวาบน แยกตำแหน่งจากปุ่มรีเฟรชอย่างชัดเจน) */}
                 {!capturedPhotoUrl && (
                   <button
                     type="button"
                     disabled={isCameraSwitching}
-                    onClick={() => { void startCamera(facingModeRef.current, activeCameraId); }}
-                    className="absolute top-2 right-2 z-30 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 shadow-lg flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto disabled:opacity-60"
-                    title="เปิด / รีเฟรชกล้อง (Refresh Camera)"
-                    aria-label="เปิดหรือรีเฟรชกล้อง"
+                    onClick={handleToggleFacingMode}
+                    className="absolute top-2 right-2 z-30 px-2.5 py-1.5 rounded-full bg-slate-950/85 hover:bg-slate-900 backdrop-blur-md text-white text-[11px] font-bold border border-amber-400/50 shadow-lg flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto disabled:opacity-60"
+                    title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง (Switch to Back Camera)' : 'สลับเป็นกล้องหน้า (Switch to Front Camera)'}
+                    aria-label="สลับกล้องหน้าหรือกล้องหลัง"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-cyan-300 ${isCameraSwitching ? 'animate-spin' : ''}`} />
-                    <span>{isCameraSwitching ? 'กำลังสลับ...' : 'รีเฟรชกล้อง'}</span>
+                    <SwitchCamera className={`w-3.5 h-3.5 text-amber-300 shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
+                    <span>{isCameraSwitching ? 'กำลังสลับ...' : facingMode === 'user' ? 'กล้องหน้า • สลับ' : 'กล้องหลัง • สลับ'}</span>
                   </button>
                 )}
 
@@ -2616,7 +2618,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                           {facingMode === 'user' ? 'วางใบหน้าในกรอบ' : 'ถ่ายภาพเช็คชื่อ (กล้องหลัง)'}
                         </p>
                         <p className="text-[8px] text-cyan-200">
-                          {facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'} (กดปุ่มสลับกล้องด้านล่างได้)
+                          {facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'} (กดสลับกล้องมุมขวาบนได้)
                         </p>
                       </div>
                     </div>
@@ -2671,8 +2673,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 )}
               </div>
 
-              {/* Bottom Camera Controls & Shutter - Compact */}
-              <div className="p-2 bg-slate-950 border-t border-slate-800 shrink-0">
+              {/* Bottom Camera Controls & Shutter - Refresh placed cleanly at bottom-left, separated from top-right camera switch */}
+              <div className="p-2.5 bg-slate-950 border-t border-slate-800 shrink-0">
                 {capturedPhotoUrl ? (
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
@@ -2739,24 +2741,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-1.5 py-0.5">
-                    <div className="flex items-center justify-center gap-4">
+                    <div className="flex items-center justify-between px-2 gap-3">
                       <button
                         type="button"
                         disabled={isCameraSwitching}
-                        onClick={handleToggleFacingMode}
+                        onClick={() => { void startCamera(facingModeRef.current); }}
                         className="px-2.5 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 text-[11px] font-bold disabled:opacity-50"
-                        title="สลับกล้องหน้า / กล้องหลัง (Switch Front / Back Camera)"
-                        aria-label="สลับกล้องหน้าหรือกล้องหลัง"
+                        title="เปิด / รีเฟรชกล้อง (Refresh Camera)"
+                        aria-label="เปิดหรือรีเฟรชกล้อง"
                       >
-                        <SwitchCamera className="w-4 h-4 text-amber-300 shrink-0" />
-                        <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
+                        <RefreshCw className={`w-3.5 h-3.5 text-cyan-300 shrink-0 ${isCameraSwitching ? 'animate-spin' : ''}`} />
+                        <span>รีเฟรชกล้อง</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={handleCaptureSnapshot}
                         disabled={isCapturing || isCameraSwitching}
-                        className="w-12 h-12 rounded-full bg-white p-0.5 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer disabled:opacity-60"
+                        className="w-12 h-12 rounded-full bg-white p-0.5 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer disabled:opacity-60 shrink-0"
                         title="ถ่ายรูปเช็คชื่อ"
                         aria-label="ถ่ายรูปเช็คชื่อ"
                       >
@@ -2768,11 +2770,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       <button
                         type="button"
                         onClick={handleRefreshGps}
-                        className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
+                        className="px-2.5 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 text-[11px] font-bold"
                         title="รีเฟรชสัญญาณ GPS"
                         aria-label="รีเฟรชสัญญาณ GPS"
                       >
-                        <Navigation className={`w-4 h-4 ${isGpsLoading ? 'animate-spin text-blue-400' : ''}`} />
+                        <Navigation className={`w-3.5 h-3.5 text-sky-300 shrink-0 ${isGpsLoading ? 'animate-spin' : ''}`} />
+                        <span>พิกัด GPS</span>
                       </button>
                     </div>
                     {availableCameras.length > 2 && (

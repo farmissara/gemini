@@ -56,9 +56,12 @@ export function stopCameraStream(
   }
 }
 
-const REAR_CAMERA_RE = /back|rear|environment|world|facing\s*back|camera\s*0\b|camera2\s*0\b|กล้องหลัง|ด้านหลัง/i;
-const FRONT_CAMERA_RE = /front|user|selfie|facetime|integrated|webcam|facing\s*front|camera\s*1\b|camera2\s*1\b|กล้องหน้า|ด้านหน้า/i;
-const SECONDARY_LENS_RE = /ultra|macro|depth|telephoto|\btele\b|\btof\b|\bir\b|0\.5x|0\.6x/i;
+const EXPLICIT_REAR_RE = /back|rear|environment|world|facing\s*back|กล้องหลัง|ด้านหลัง/i;
+const EXPLICIT_FRONT_RE = /front|user|selfie|facetime|integrated|webcam|facing\s*front|กล้องหน้า|ด้านหน้า/i;
+const INDEX_REAR_HINT_RE = /camera\s*0\b|camera2\s*0\b/i;
+const INDEX_FRONT_HINT_RE = /camera\s*1\b|camera2\s*1\b/i;
+const UNSUITABLE_SENSOR_RE = /depth|\bir\b|infrared|\btof\b|virtual|obs\b|snap\s*camera/i;
+const SECONDARY_LENS_RE = /ultra|macro|telephoto|\btele\b|0\.5x|0\.6x/i;
 const MAIN_REAR_HINT_RE = /main|wide|standard|normal|\b1x\b|camera\s*0\b|camera2\s*0\b/i;
 
 function scoreVideoDevice(
@@ -69,30 +72,45 @@ function scoreVideoDevice(
   const label = (device.label || '').trim();
   let score = 0;
 
+  if (UNSUITABLE_SENSOR_RE.test(label)) {
+    score -= 150;
+  }
+
+  const hasExplicitRear = EXPLICIT_REAR_RE.test(label);
+  const hasExplicitFront = EXPLICIT_FRONT_RE.test(label);
+
   if (targetFacingMode === 'environment') {
-    if (REAR_CAMERA_RE.test(label)) score += 100;
-    if (FRONT_CAMERA_RE.test(label)) score -= 120;
+    if (hasExplicitRear) score += 200;
+    if (hasExplicitFront) score -= 200;
+    if (!hasExplicitRear && !hasExplicitFront) {
+      if (INDEX_REAR_HINT_RE.test(label)) score += 30;
+      if (INDEX_FRONT_HINT_RE.test(label)) score -= 30;
+    }
     if (MAIN_REAR_HINT_RE.test(label)) score += 20;
     if (SECONDARY_LENS_RE.test(label)) score -= 25;
   } else {
-    if (FRONT_CAMERA_RE.test(label)) score += 100;
-    if (REAR_CAMERA_RE.test(label)) score -= 120;
+    if (hasExplicitFront) score += 200;
+    if (hasExplicitRear) score -= 200;
+    if (!hasExplicitRear && !hasExplicitFront) {
+      if (INDEX_FRONT_HINT_RE.test(label)) score += 30;
+      if (INDEX_REAR_HINT_RE.test(label)) score -= 30;
+    }
   }
 
   if (previousDeviceId && device.deviceId === previousDeviceId) {
-    score -= 40;
+    score -= 60;
   }
 
   return score;
 }
 
-export function pickBestDeviceForFacingMode(
+export function rankDevicesForFacingMode(
   devices: MediaDeviceInfo[],
   targetFacingMode: CameraFacingMode,
   previousDeviceId?: string | null
-): MediaDeviceInfo | null {
+): MediaDeviceInfo[] {
   const videoDevices = devices.filter((d) => d.kind === 'videoinput' && d.deviceId);
-  if (videoDevices.length === 0) return null;
+  if (videoDevices.length === 0) return [];
 
   const scored = videoDevices
     .map((device, index) => ({
@@ -102,23 +120,27 @@ export function pickBestDeviceForFacingMode(
     }))
     .sort((a, b) => b.score - a.score || a.index - b.index);
 
-  // If label-based match succeeded positively, return highest scored match
-  if (scored[0].score > 0) {
-    return scored[0].device;
+  // When labels lack facing metadata on dual-camera devices, try unused deviceIds before the current one
+  if (scored[0].score <= 0 && videoDevices.length > 1) {
+    const alternateFirst = videoDevices.filter((d) => d.deviceId !== previousDeviceId);
+    const ordering =
+      targetFacingMode === 'environment'
+        ? [...alternateFirst].reverse()
+        : alternateFirst;
+    return previousDeviceId
+      ? [...ordering, ...videoDevices.filter((d) => d.deviceId === previousDeviceId)]
+      : ordering;
   }
 
-  // If browser omits labels (or generic labels) and multiple cameras exist, pick an unused deviceId
-  if (previousDeviceId && videoDevices.length > 1) {
-    const alternate = videoDevices.find((d) => d.deviceId !== previousDeviceId);
-    if (alternate) return alternate;
-  }
+  return scored.map((item) => item.device);
+}
 
-  // Fallback heuristic by common mobile order (index 1 often rear when index 0 is front, or index 0)
-  if (videoDevices.length > 1 && targetFacingMode === 'environment') {
-    return videoDevices[videoDevices.length - 1];
-  }
-
-  return videoDevices[0];
+export function pickBestDeviceForFacingMode(
+  devices: MediaDeviceInfo[],
+  targetFacingMode: CameraFacingMode,
+  previousDeviceId?: string | null
+): MediaDeviceInfo | null {
+  return rankDevicesForFacingMode(devices, targetFacingMode, previousDeviceId)[0] || null;
 }
 
 export function detectTrackFacingMode(
@@ -137,8 +159,8 @@ export function detectTrackFacingMode(
     : undefined;
   const combinedLabel = `${track.label || ''} ${matchedDevice?.label || ''}`.trim();
 
-  if (REAR_CAMERA_RE.test(combinedLabel)) return 'environment';
-  if (FRONT_CAMERA_RE.test(combinedLabel)) return 'user';
+  if (EXPLICIT_REAR_RE.test(combinedLabel)) return 'environment';
+  if (EXPLICIT_FRONT_RE.test(combinedLabel)) return 'user';
   return requestedFacingMode;
 }
 
@@ -209,7 +231,7 @@ export async function openCameraStream(
 
   // Allow mobile camera hardware (Android/iOS HAL) enough time to release before reopening
   if (hadActiveStream) {
-    await sleep(140);
+    await sleep(160);
   }
 
   if (isCancelled?.()) {
@@ -231,35 +253,33 @@ export async function openCameraStream(
     } catch (err) {
       lastError = err;
       if (isFatalPermissionError(err)) throw err;
+      try {
+        stream = await requestStreamWithRetry({
+          deviceId: { exact: preferredDeviceId },
+        });
+      } catch (errNoRes) {
+        lastError = errNoRes;
+        if (isFatalPermissionError(errNoRes)) throw errNoRes;
+      }
     }
   }
 
-  // 2. Try strict facingMode ({ exact }) first so browsers don't silently reuse the wrong camera
+  // 2. Try strict facingMode ({ exact }) with ideal resolution, then without resolution constraints
   if (!stream) {
-    try {
-      stream = await requestStreamWithRetry({
+    const exactAttempts: MediaTrackConstraints[] = [
+      {
         facingMode: { exact: facingMode },
         width: { ideal: idealWidth },
         height: { ideal: idealHeight },
-      });
-    } catch (err) {
-      lastError = err;
-      if (isFatalPermissionError(err)) throw err;
-    }
-  }
-
-  // 3. Enumerate video devices and match rear/front by label or alternate deviceId
-  let devices = await listVideoInputDevices();
-  if (!stream && devices.length > 0) {
-    const matched = pickBestDeviceForFacingMode(devices, facingMode, previousDeviceId);
-    if (matched?.deviceId) {
+      },
+      {
+        facingMode: { exact: facingMode },
+      },
+    ];
+    for (const constraints of exactAttempts) {
       try {
-        stream = await requestStreamWithRetry({
-          deviceId: { exact: matched.deviceId },
-          width: { ideal: idealWidth },
-          height: { ideal: idealHeight },
-        });
-        usedFallback = true;
+        stream = await requestStreamWithRetry(constraints);
+        break;
       } catch (err) {
         lastError = err;
         if (isFatalPermissionError(err)) throw err;
@@ -267,58 +287,80 @@ export async function openCameraStream(
     }
   }
 
-  // 4. Try soft facingMode ({ ideal })
+  // 3. Try plain facingMode string ({ facingMode }) & soft ({ ideal: facingMode })
+  let devices = await listVideoInputDevices();
   if (!stream) {
-    try {
-      const candidate = await requestStreamWithRetry({
+    const softAttempts: MediaTrackConstraints[] = [
+      { facingMode },
+      {
         facingMode: { ideal: facingMode },
         width: { ideal: idealWidth },
         height: { ideal: idealHeight },
-      });
+      },
+      { facingMode: { ideal: facingMode } },
+    ];
 
-      const candidateTrack = candidate.getVideoTracks()[0];
-      const candidateDeviceId =
-        candidateTrack && typeof candidateTrack.getSettings === 'function'
-          ? candidateTrack.getSettings().deviceId || null
-          : null;
+    for (const constraints of softAttempts) {
+      try {
+        const candidate = await requestStreamWithRetry(constraints);
+        const candidateTrack = candidate.getVideoTracks()[0];
+        const candidateDeviceId =
+          candidateTrack && typeof candidateTrack.getSettings === 'function'
+            ? candidateTrack.getSettings().deviceId || null
+            : null;
+        const candidateSettingsFacing =
+          candidateTrack && typeof candidateTrack.getSettings === 'function'
+            ? candidateTrack.getSettings().facingMode
+            : undefined;
 
-      // Refresh devices after permission is active; if browser silently stuck to previous camera when >1 exist, swap explicitly
-      devices = await listVideoInputDevices();
-      if (
-        previousDeviceId &&
-        candidateDeviceId === previousDeviceId &&
-        devices.length > 1
-      ) {
-        const alternate = pickBestDeviceForFacingMode(devices, facingMode, previousDeviceId);
-        if (alternate?.deviceId && alternate.deviceId !== candidateDeviceId) {
+        devices = await listVideoInputDevices();
+
+        // Reject silent reuse of the previous camera (or wrong facingMode) when another camera exists
+        const stuckOnPrevious =
+          Boolean(previousDeviceId) &&
+          candidateDeviceId === previousDeviceId &&
+          devices.length > 1;
+        const wrongFacingWhenMoreAvailable =
+          Boolean(candidateSettingsFacing) &&
+          candidateSettingsFacing !== facingMode &&
+          devices.length > 1;
+
+        if (stuckOnPrevious || wrongFacingWhenMoreAvailable) {
           stopCameraStream(candidate, null);
           await sleep(140);
-          try {
-            stream = await requestStreamWithRetry({
-              deviceId: { exact: alternate.deviceId },
-              width: { ideal: idealWidth },
-              height: { ideal: idealHeight },
-            });
-            usedFallback = true;
-          } catch {
-            // Alternate device failed; reopen ideal stream or allow fallback below
-            stream = await requestStreamWithRetry({
-              facingMode: { ideal: facingMode },
-              width: { ideal: idealWidth },
-              height: { ideal: idealHeight },
-            });
-            usedFallback = true;
-          }
-        } else {
-          stream = candidate;
+          break;
         }
-      } else {
+
         stream = candidate;
         usedFallback = true;
+        break;
+      } catch (err) {
+        lastError = err;
+        if (isFatalPermissionError(err)) throw err;
       }
-    } catch (err) {
-      lastError = err;
-      if (isFatalPermissionError(err)) throw err;
+    }
+  }
+
+  // 4. Enumerate video devices and try ranked candidates by label / alternate deviceId
+  if (!stream) {
+    devices = await listVideoInputDevices();
+    const ranked = rankDevicesForFacingMode(devices, facingMode, previousDeviceId);
+    for (const device of ranked) {
+      if (!device.deviceId) continue;
+      // Avoid retrying the same previous device unless it's the only camera available
+      if (previousDeviceId && device.deviceId === previousDeviceId && devices.length > 1) {
+        continue;
+      }
+      try {
+        stream = await requestStreamWithRetry({
+          deviceId: { exact: device.deviceId },
+        });
+        usedFallback = true;
+        break;
+      } catch (err) {
+        lastError = err;
+        if (isFatalPermissionError(err)) throw err;
+      }
     }
   }
 
@@ -348,8 +390,7 @@ export async function openCameraStream(
       ? track.getSettings().deviceId || null
       : null;
   const resolvedFacingMode = detectTrackFacingMode(track, devices, facingMode);
-  const requestedUnavailable =
-    resolvedFacingMode !== facingMode && devices.length <= 1;
+  const requestedUnavailable = resolvedFacingMode !== facingMode;
 
   return {
     stream,
