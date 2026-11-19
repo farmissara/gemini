@@ -959,9 +959,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-72 max-w-[85vw] border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+    <aside className="w-72 max-w-[85vw] border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200 shadow-[1px_0_0_var(--color-border)]">
       {/* Search + Collapse Header */}
-      <div className="shrink-0 p-3 border-b border-[var(--color-border)] flex items-center gap-2" data-guide-id="sidebar-search">
+      <div className="shrink-0 p-3 border-b border-[var(--color-border)]/70 bg-[var(--color-card)] flex items-center gap-2" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
           <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -1074,7 +1074,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
         {searchFilter.trim() ? (
           <div className="space-y-1">
             <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
@@ -1182,10 +1182,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           [cat.id]: !(previous[cat.id] ?? cat.id !== activeCatId),
                         }));
                       }}
-                      className={`w-full flex min-h-11 sm:min-h-10 items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left transition cursor-pointer border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
+                      className={`w-full flex min-h-10 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                         isActiveCategory || !isCollapsed
-                          ? 'bg-[color-mix(in_srgb,var(--tone-soft)_68%,var(--color-card))] border-[color-mix(in_srgb,var(--tone)_28%,var(--color-border))] text-[var(--color-text-title)]'
-                          : 'bg-[var(--color-card)] border-transparent hover:bg-[color-mix(in_srgb,var(--tone-soft)_42%,var(--color-card))] hover:border-[color-mix(in_srgb,var(--tone)_20%,var(--color-border))] text-[var(--color-text-body)]'
+                          ? 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
+                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                       }`}
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
@@ -1216,7 +1216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {!isCollapsed && (
                       <div
                         id={`sidebar-category-${cat.id}`}
-                        className="space-y-0.5 ml-5 pl-2.5 pr-0.5 pt-1 pb-1.5 border-l border-[var(--color-border)]"
+                        className="space-y-0.5 ml-5 pl-2.5 pr-0.5 pt-1 pb-1.5 border-l border-[var(--color-border)]/80"
                       >
                         {cat.items.map((item) => renderItem(item))}
                       </div>
