@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { Download, Plus, Save, Trash2 } from 'lucide-react';
 import type {
   Course,
   LearningIndicator,
@@ -16,7 +17,9 @@ import {
   saveLearningIndicatorScores,
   saveLearningIndicatorSet,
 } from '../lib/learningIndicatorStore';
+import { loadMoeStandardCatalog } from '../lib/moeStandardCatalogStore';
 import { createMoeScienceM3IndicatorSets } from '../data/moeScienceM3Indicators';
+import type { MoeStandardCatalogItem } from '../types';
 
 interface Props {
   course: Course;
@@ -47,9 +50,15 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
   const [showSetForm, setShowSetForm] = useState(false);
   const [setTitle, setSetTitle] = useState('');
   const [standardCode, setStandardCode] = useState('');
+  const [subjectArea, setSubjectArea] = useState(course.titleTh);
+  const [gradeLevel, setGradeLevel] = useState('');
+  const [unitTitle, setUnitTitle] = useState('');
+  const [isTemplate, setIsTemplate] = useState(false);
   const [indicatorDrafts, setIndicatorDrafts] = useState<Array<{ code: string; title: string; maxScore: number }>>([
     { code: '', title: '', maxScore: 3 },
   ]);
+  const [catalogItems, setCatalogItems] = useState<MoeStandardCatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   const canEdit = ['super_admin', 'admin', 'teacher'].includes(currentRole);
 
@@ -69,6 +78,22 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     });
     return () => { mounted = false; };
   }, [schoolId, course.id, course.academicYear, course.semester, systemConfig.academicYear, systemConfig.currentSemester]);
+
+  useEffect(() => {
+    let mounted = true;
+    setCatalogLoading(true);
+    const combined = `${course.titleTh} ${course.description} ${course.room} ${course.academicYear}`;
+    const gradeMatch = combined.match(/(ป\.?([1-6]|[๑-๖])|ม\.?([1-6]|[๑-๖]))/);
+    const gradeLevel = gradeMatch ? gradeMatch[0].replace('.', '.') : undefined;
+    void loadMoeStandardCatalog({
+      subjectArea: course.titleTh,
+      gradeLevel,
+    }).then((items) => {
+      if (mounted) setCatalogItems(items);
+      setCatalogLoading(false);
+    });
+    return () => { mounted = false; };
+  }, [course.titleTh, course.description, course.room, course.academicYear]);
 
   useEffect(() => {
     if (!selectedSetId) {
@@ -129,6 +154,11 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
         courseId: course.id,
         title: cleanTitle,
         standardCode: standardCode.trim() || undefined,
+        subjectArea: subjectArea.trim() || course.titleTh,
+        gradeLevel: gradeLevel.trim() || undefined,
+        unitTitle: unitTitle.trim() || undefined,
+        isTemplate,
+        source: 'manual',
         academicYear: course.academicYear || systemConfig.academicYear,
         semester: course.semester || systemConfig.currentSemester,
         indicators,
@@ -140,6 +170,9 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
       setSelectedSetId(setId);
       setSetTitle('');
       setStandardCode('');
+      setGradeLevel('');
+      setUnitTitle('');
+      setIsTemplate(false);
       setIndicatorDrafts([{ code: '', title: '', maxScore: 3 }]);
       setShowSetForm(false);
     } catch (err) {
@@ -176,6 +209,156 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const applyMoeCatalogSet = async () => {
+    if (catalogItems.length === 0) return;
+    setSaving(true);
+    setError('');
+    try {
+      const now = new Date().toISOString();
+      const year = course.academicYear || systemConfig.academicYear;
+      const semester = course.semester || systemConfig.currentSemester;
+      const grouped = new Map<string, MoeStandardCatalogItem[]>();
+      catalogItems.forEach((item) => {
+        const key = item.standardCode;
+        grouped.set(key, [...(grouped.get(key) || []), item]);
+      });
+
+      const nextSets: LearningIndicatorSet[] = Array.from(grouped.entries()).map(([standardCode, items], groupIndex) => {
+        const setId = `moe-${year}-${semester}-${standardCode.replace(/[^a-zA-Z0-9ก-๙]+/g, '-')}-${groupIndex + 1}`;
+        const indicators: LearningIndicator[] = items.map((item, index) => ({
+          id: `${setId}-${index + 1}`,
+          schoolId,
+          courseId: course.id,
+          setId,
+          code: item.indicatorCode,
+          title: item.indicatorTitle,
+          description: item.unitTitle || item.standardTitle,
+          maxScore: item.maxScore,
+          sortOrder: index + 1,
+          academicYear: year,
+          semester,
+        }));
+        return {
+          id: setId,
+          schoolId,
+          courseId: course.id,
+          title: `${items[0].standardTitle || items[0].subjectArea} (${standardCode})`,
+          standardCode,
+          subjectArea: items[0].subjectArea,
+          gradeLevel: items[0].gradeLevel,
+          unitTitle: items[0].unitTitle,
+          isTemplate: true,
+          source: 'moe',
+          academicYear: year,
+          semester,
+          indicators,
+          createdAt: now,
+          updatedAt: now,
+        };
+      });
+
+      for (const nextSet of nextSets) {
+        await saveLearningIndicatorSet(nextSet);
+      }
+      setSets((current) => {
+        const ids = new Set(current.map((set) => set.id));
+        return [...current, ...nextSets.filter((set) => !ids.has(set.id))];
+      });
+      setSelectedSetId(nextSets[0]?.id || '');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถใช้คลังตัวชี้วัด สพฐ. ได้');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const importIndicatorTemplateFromFile = async (file: File) => {
+    setSaving(true);
+    setError('');
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+      const rows: unknown[][] = workbook.SheetNames.length
+        ? (XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
+            header: 1,
+            defval: '',
+            raw: false,
+          }) as unknown[][])
+        : [];
+
+      const parsed = rows
+        .slice(1)
+        .map((row) => ({
+          code: String(row[0] ?? '').trim(),
+          title: String(row[2] ?? row[1] ?? '').trim(),
+          maxScore: Number(row[3] ?? 3),
+        }))
+        .filter((item) => item.title);
+
+      if (parsed.length === 0) {
+        throw new Error('ไม่พบตัวชี้วัดในไฟล์ ต้องมีคอลัมน์ รหัสตัวชี้วัด / ตัวชี้วัด / คะแนนเต็ม');
+      }
+
+      const now = new Date().toISOString();
+      const setId = makeId('set');
+      const year = course.academicYear || systemConfig.academicYear;
+      const semester = course.semester || systemConfig.currentSemester;
+      const indicators: LearningIndicator[] = parsed.map((item, index) => ({
+        id: `${setId}-indicator-${index + 1}`,
+        schoolId,
+        courseId: course.id,
+        setId,
+        code: item.code,
+        title: item.title,
+        maxScore: Number.isFinite(item.maxScore) && item.maxScore > 0 ? item.maxScore : 3,
+        sortOrder: index + 1,
+        academicYear: year,
+        semester,
+      }));
+      const nextSet: LearningIndicatorSet = {
+        id: setId,
+        schoolId,
+        courseId: course.id,
+        title: setTitle.trim() || `ชุดตัวชี้วัด ${course.titleTh}`,
+        standardCode: standardCode.trim() || undefined,
+        subjectArea: subjectArea.trim() || course.titleTh,
+        gradeLevel: gradeLevel.trim() || undefined,
+        unitTitle: unitTitle.trim() || undefined,
+        isTemplate,
+        source: 'manual',
+        academicYear: year,
+        semester,
+        indicators,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await saveLearningIndicatorSet(nextSet);
+      setSets((current) => [...current, nextSet]);
+      setSelectedSetId(setId);
+      setSetTitle('');
+      setStandardCode('');
+      setGradeLevel('');
+      setUnitTitle('');
+      setIsTemplate(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถนำเข้าตัวชี้วัดจากไฟล์ได้');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const downloadIndicatorTemplate = () => {
+    const rows = [
+      ['รหัสตัวชี้วัด', 'รหัสมาตรฐาน', 'ชื่อตัวชี้วัด', 'คะแนนเต็ม'],
+      ['ม.3/1', standardCode || 'ว 1.3', 'ตัวอย่างตัวชี้วัดมาตรฐาน', 3],
+    ];
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'ตัวชี้วัด');
+    XLSX.writeFile(workbook, 'indicator_template.xlsx');
   };
 
   const getScore = (studentId: string, indicatorId: string) =>
@@ -252,7 +435,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
 
       {showSetForm && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             <input
               value={setTitle}
               onChange={(event) => setSetTitle(event.target.value)}
@@ -265,6 +448,32 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
               placeholder="รหัสมาตรฐาน เช่น ว 1.3"
               className="px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
             />
+            <input
+              value={subjectArea}
+              onChange={(event) => setSubjectArea(event.target.value)}
+              placeholder="วิชา / กลุ่มสาระ"
+              className="px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+            />
+            <input
+              value={gradeLevel}
+              onChange={(event) => setGradeLevel(event.target.value)}
+              placeholder="ระดับชั้น เช่น ม.3"
+              className="px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+            />
+            <input
+              value={unitTitle}
+              onChange={(event) => setUnitTitle(event.target.value)}
+              placeholder="หน่วยการเรียนรู้"
+              className="px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
+            />
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-sm">
+              <input
+                type="checkbox"
+                checked={isTemplate}
+                onChange={(event) => setIsTemplate(event.target.checked)}
+              />
+              บันทึกเป็นชุดมาตรฐานที่ใช้ซ้ำได้
+            </label>
           </div>
           {indicatorDrafts.map((draft, index) => (
             <div key={index} className="grid grid-cols-[90px_1fr_90px_36px] gap-2">
@@ -299,6 +508,22 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
             <button type="button" onClick={createSet} disabled={saving} className="seg-tab-btn px-3">
               <Save className="w-4 h-4" /> บันทึกชุด
             </button>
+            <button type="button" onClick={downloadIndicatorTemplate} className="seg-tab-btn px-3">
+              <Download className="w-4 h-4" /> ดาวน์โหลดแม่แบบ Excel
+            </button>
+            <label className="seg-tab-btn px-3 cursor-pointer">
+              <Download className="w-4 h-4" /> นำเข้า Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void importIndicatorTemplateFromFile(file);
+                  event.target.value = '';
+                }}
+              />
+            </label>
           </div>
         </div>
       )}
@@ -314,6 +539,26 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
           <button type="button" onClick={importMoeScienceM3Sets} disabled={saving} className="seg-tab-btn px-3">
             <Plus className="w-4 h-4" /> นำเข้าตัวชี้วัดมาตรฐาน สพฐ.
           </button>
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold text-sm">คลังตัวชี้วัดมาตรฐาน สพฐ.</div>
+            <div className="text-xs text-[var(--color-text-muted)]">
+              {catalogLoading
+                ? 'กำลังค้นหาตามวิชาและระดับชั้น'
+                : catalogItems.length > 0
+                  ? `พบตัวชี้วัด ${catalogItems.length} รายการ`
+                  : 'ยังไม่มีข้อมูลมาตรฐานสำหรับวิชาและระดับชั้นนี้ในคลังระบบ'}
+            </div>
+          </div>
+          {catalogItems.length > 0 && (
+            <button type="button" onClick={applyMoeCatalogSet} disabled={saving} className="seg-tab-btn px-3">
+              <Plus className="w-4 h-4" /> ใช้ตัวชี้วัดจากคลัง สพฐ.
+            </button>
+          )}
         </div>
       )}
 

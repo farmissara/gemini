@@ -78,6 +78,11 @@ export async function loadLearningIndicatorSets(params: {
       courseId: row.course_id,
       title: row.title,
       standardCode: row.standard_code || undefined,
+      subjectArea: row.subject_area || undefined,
+      gradeLevel: row.grade_level || undefined,
+      unitTitle: row.unit_title || undefined,
+      isTemplate: row.is_template === true,
+      source: row.source === 'moe' || row.source === 'school' ? row.source : 'manual',
       academicYear: row.academic_year,
       semester: row.semester,
       createdAt: row.created_at,
@@ -125,6 +130,11 @@ export async function saveLearningIndicatorSet(set: LearningIndicatorSet): Promi
     semester: set.semester,
     created_at: set.createdAt,
     updated_at: set.updatedAt,
+    subject_area: set.subjectArea || null,
+    grade_level: set.gradeLevel || null,
+    unit_title: set.unitTitle || null,
+    is_template: set.isTemplate || false,
+    source: set.source || 'manual',
   });
   if (setError) throw setError;
 

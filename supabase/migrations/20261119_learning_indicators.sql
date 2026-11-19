@@ -12,6 +12,36 @@ CREATE TABLE IF NOT EXISTS public.learning_indicator_sets (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.moe_standard_catalog (
+  id TEXT PRIMARY KEY,
+  curriculum_version TEXT NOT NULL DEFAULT '2560',
+  subject_area TEXT NOT NULL,
+  grade_level TEXT NOT NULL,
+  standard_code TEXT NOT NULL,
+  standard_title TEXT NOT NULL DEFAULT '',
+  unit_title TEXT,
+  indicator_code TEXT NOT NULL,
+  indicator_title TEXT NOT NULL,
+  max_score NUMERIC(8,2) NOT NULL DEFAULT 3 CHECK (max_score > 0),
+  source_name TEXT NOT NULL,
+  source_url TEXT,
+  source_document TEXT,
+  source_page INTEGER,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_moe_standard_catalog_lookup
+  ON public.moe_standard_catalog(subject_area, grade_level, standard_code, active);
+
+ALTER TABLE public.learning_indicator_sets
+  ADD COLUMN IF NOT EXISTS subject_area TEXT,
+  ADD COLUMN IF NOT EXISTS grade_level TEXT,
+  ADD COLUMN IF NOT EXISTS unit_title TEXT,
+  ADD COLUMN IF NOT EXISTS is_template BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual';
+
 CREATE TABLE IF NOT EXISTS public.learning_indicators (
   id TEXT PRIMARY KEY,
   school_id TEXT NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
@@ -53,6 +83,27 @@ CREATE INDEX IF NOT EXISTS idx_indicator_scores_set_student
 ALTER TABLE public.learning_indicator_sets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.learning_indicators ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_learning_indicator_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.moe_standard_catalog ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "moe catalog read" ON public.moe_standard_catalog;
+CREATE POLICY "moe catalog read" ON public.moe_standard_catalog
+  FOR SELECT TO authenticated USING (active = TRUE);
+
+DROP POLICY IF EXISTS "moe catalog super admin manage" ON public.moe_standard_catalog;
+CREATE POLICY "moe catalog super admin manage" ON public.moe_standard_catalog
+  FOR ALL TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles p
+      WHERE p.id = auth.uid() AND p.status = 'active' AND p.role = 'super_admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles p
+      WHERE p.id = auth.uid() AND p.status = 'active' AND p.role = 'super_admin'
+    )
+  );
 
 CREATE POLICY "indicator sets read for school" ON public.learning_indicator_sets FOR SELECT TO authenticated
 USING (EXISTS (
@@ -114,6 +165,7 @@ WITH CHECK (EXISTS (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.learning_indicator_sets TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.learning_indicators TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_learning_indicator_scores TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.moe_standard_catalog TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;

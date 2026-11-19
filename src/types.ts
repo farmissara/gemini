@@ -467,6 +467,11 @@ export interface LearningIndicatorSet {
   courseId: string;
   title: string;
   standardCode?: string;
+  subjectArea?: string;
+  gradeLevel?: string;
+  unitTitle?: string;
+  isTemplate?: boolean;
+  source?: 'manual' | 'moe' | 'school';
   academicYear: string;
   semester: string;
   indicators: LearningIndicator[];
@@ -486,6 +491,24 @@ export interface LearningIndicatorScore {
   assessedBy?: string;
   assessedAt: string;
   updatedAt: string;
+}
+
+export interface MoeStandardCatalogItem {
+  id: string;
+  curriculumVersion: string;
+  subjectArea: string;
+  gradeLevel: string;
+  standardCode: string;
+  standardTitle: string;
+  unitTitle?: string;
+  indicatorCode: string;
+  indicatorTitle: string;
+  maxScore: number;
+  sourceName: string;
+  sourceUrl?: string;
+  sourceDocument?: string;
+  sourcePage?: number;
+  active: boolean;
 }
 
 export interface InvoiceItem {
