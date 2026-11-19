@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
+  Award,
+  BellRing,
   Calendar,
   Check,
   CheckCircle2,
@@ -10,13 +12,19 @@ import {
   ExternalLink,
   FileCheck2,
   FileText,
+  GraduationCap,
+  HeartHandshake,
   Laptop,
   MessageSquare,
+  Monitor,
   Phone,
   QrCode,
   Receipt,
   RefreshCw,
   Search,
+  ShieldAlert,
+  SlidersHorizontal,
+  Smartphone,
   UserCheck,
   UserPlus,
   Users,
@@ -386,10 +394,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             onClick={() => setSection('attendance')}
             className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
-            <span className={`text-[11px] font-semibold truncate ${section === 'attendance' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
-              {lang === 'th' ? 'เช็คชื่อ' : 'Attendance'}
+            <span className={`text-[11px] font-semibold truncate inline-flex items-center gap-1.5 ${section === 'attendance' ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
+              <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" aria-hidden="true" />
+              <span>{lang === 'th' ? 'เช็คชื่อ' : 'Attendance'}</span>
             </span>
-            <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)] mt-1">
+            <span className="text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300 mt-1">
               {attendanceMetrics.rate}%
             </span>
           </button>
@@ -402,10 +411,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             onClick={() => setSection('leaves')}
             className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
-            <span className={`text-[11px] font-semibold truncate ${section === 'leaves' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
-              {lang === 'th' ? 'ลาวันนี้' : 'Leaves'}
+            <span className={`text-[11px] font-semibold truncate inline-flex items-center gap-1.5 ${section === 'leaves' ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>
+              <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 shrink-0" aria-hidden="true" />
+              <span>{lang === 'th' ? 'ลาวันนี้' : 'Leaves'}</span>
             </span>
-            <span className={`text-lg font-bold tabular-nums mt-1 ${pendingLeaves.length > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-[var(--color-text-title)]'}`}>
+            <span className={`text-lg font-bold tabular-nums mt-1 ${pendingLeaves.length > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--color-text-title)]'}`}>
               {activeLeavesToday.length + pendingLeaves.length}
             </span>
           </button>
@@ -418,10 +428,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             onClick={() => setSection('approvals')}
             className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between"
           >
-            <span className={`text-[11px] font-semibold truncate ${section === 'approvals' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`}>
-              {lang === 'th' ? 'อนุมัติ' : 'Approvals'}
+            <span className={`text-[11px] font-semibold truncate inline-flex items-center gap-1.5 ${section === 'approvals' ? 'text-blue-700 dark:text-blue-300' : 'text-[var(--color-text-muted)]'}`}>
+              <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" aria-hidden="true" />
+              <span>{lang === 'th' ? 'อนุมัติ' : 'Approvals'}</span>
             </span>
-            <span className="text-lg font-bold tabular-nums text-[var(--color-text-title)] mt-1">
+            <span className={`text-lg font-bold tabular-nums mt-1 ${totalPendingApprovals > 0 ? 'text-blue-700 dark:text-blue-300' : 'text-[var(--color-text-title)]'}`}>
               {totalPendingApprovals}
             </span>
           </button>
@@ -981,6 +992,245 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             </div>
           </section>
         </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 4 CATEGORIZED COLOR-CODED ADMIN GROUPS (ALWAYS ACCESSIBLE ON MOBILE) */}
+      {/* ===================================================================== */}
+      {(onJumpToDesktopTab || onOpenExecutive || onOpenCheckin) && (
+        <section
+          aria-label={lang === 'th' ? 'หมวดงานบริหารสถานศึกษา' : 'Categorized Admin Tools'}
+          className="space-y-3"
+        >
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xs font-extrabold uppercase tracking-wide text-[var(--color-text-muted)]">
+              {lang === 'th' ? 'หมวดงานบริหารสถานศึกษา (แยกตามสี)' : 'Categorized Admin Workspace'}
+            </h2>
+            {coordinationUnreadCount > 0 && (
+              <span className="text-[11px] font-bold tabular-nums text-amber-700 dark:text-amber-300">
+                {lang === 'th' ? `จดหมายใหม่ ${coordinationUnreadCount}` : `${coordinationUnreadCount} unread`}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Group 1: Blue - Academics & Directory */}
+            {onJumpToDesktopTab && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+                <div className="h-1 bg-blue-600 dark:bg-blue-500" aria-hidden="true" />
+                <div className="px-3.5 py-2.5 bg-blue-50/75 dark:bg-blue-950/35 border-b border-blue-200/70 dark:border-blue-900/50 flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-blue-700 dark:text-blue-300 shrink-0" />
+                  <span className="text-xs font-bold text-blue-950 dark:text-blue-100">
+                    {lang === 'th' ? '1. วิชาการ & ทะเบียน' : '1. Academics & Roster'}
+                  </span>
+                </div>
+                <div className="p-2 grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('students')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'นักเรียน' : 'Students'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('teachers')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'บุคลากร/ครู' : 'Teachers'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('timetable')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ตารางสอน' : 'Timetable'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('gradebook')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <Award className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'เกรด ปพ.5' : 'Gradebook'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Group 2: Emerald - Student Care & Attendance */}
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              <div className="h-1 bg-emerald-600 dark:bg-emerald-500" aria-hidden="true" />
+              <div className="px-3.5 py-2.5 bg-emerald-50/75 dark:bg-emerald-950/35 border-b border-emerald-200/70 dark:border-emerald-900/50 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                <span className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
+                  {lang === 'th' ? '2. กิจการ & เช็คชื่อ' : '2. Attendance & Care'}
+                </span>
+              </div>
+              <div className="p-2 grid grid-cols-2 gap-1.5">
+                {onJumpToDesktopTab && (
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('attendance')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'สแกนประตู' : 'Gate Scan'}
+                    </span>
+                  </button>
+                )}
+                {(onOpenCheckin || onJumpToDesktopTab) && (
+                  <button
+                    type="button"
+                    onClick={() => (onOpenCheckin ? onOpenCheckin() : onJumpToDesktopTab?.('mobile_checkin'))}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'เช็คชื่อ/ใบลา' : 'Mobile/Leaves'}
+                    </span>
+                  </button>
+                )}
+                {onJumpToDesktopTab && (
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('homework')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <FileCheck2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'การบ้าน' : 'Homework'}
+                    </span>
+                  </button>
+                )}
+                {onJumpToDesktopTab && (
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('behavior_sdq')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <HeartHandshake className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ดูแล/SDQ' : 'Behavior'}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Group 3: Amber - Finance & Communication */}
+            {onJumpToDesktopTab && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+                <div className="h-1 bg-amber-500 dark:bg-amber-400" aria-hidden="true" />
+                <div className="px-3.5 py-2.5 bg-amber-50/75 dark:bg-amber-950/35 border-b border-amber-200/70 dark:border-amber-900/50 flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                  <span className="text-xs font-bold text-amber-950 dark:text-amber-100">
+                    {lang === 'th' ? '3. การเงิน & สื่อสาร' : '3. Finance & Comms'}
+                  </span>
+                </div>
+                <div className="p-2 grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('billing')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <Receipt className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ค่าเทอม/สลิป' : 'Billing'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('announcements')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <BellRing className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ข่าวประกาศ' : 'News'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('admin_superadmin_desk')}
+                    className="col-span-2 min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <MessageSquare className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                        {lang === 'th' ? 'ประสานงาน Super Admin' : 'Super Admin Desk'}
+                      </span>
+                    </span>
+                    <Laptop className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Group 4: Violet - Executive & System Settings */}
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              <div className="h-1 bg-violet-600 dark:bg-violet-500" aria-hidden="true" />
+              <div className="px-3.5 py-2.5 bg-violet-50/75 dark:bg-violet-950/35 border-b border-violet-200/70 dark:border-violet-900/50 flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-violet-700 dark:text-violet-300 shrink-0" />
+                <span className="text-xs font-bold text-violet-950 dark:text-violet-100">
+                  {lang === 'th' ? '4. ผู้บริหาร & ตั้งค่า' : '4. Executive & Config'}
+                </span>
+              </div>
+              <div className="p-2 grid grid-cols-2 gap-1.5">
+                {onOpenExecutive && (
+                  <button
+                    type="button"
+                    onClick={onOpenExecutive}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <Monitor className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'มอนิเตอร์ MIS' : 'MIS Monitor'}
+                    </span>
+                  </button>
+                )}
+                {onJumpToDesktopTab && (
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('executive_warning')}
+                    className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'เตือนภัยเด็ก' : 'Early Warning'}
+                    </span>
+                  </button>
+                )}
+                {onJumpToDesktopTab && (
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDesktopTab('system_settings')}
+                    className="col-span-2 min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                      <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                        {lang === 'th' ? 'ตั้งค่าระบบ สิทธิ์ และ GPS' : 'Settings & GPS'}
+                      </span>
+                    </span>
+                    <Laptop className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* ===================================================================== */}

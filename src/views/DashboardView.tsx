@@ -91,6 +91,7 @@ import { isTabEnabledByFeatureFlags } from '../lib/schoolFeatureFlags';
 import { ExecutiveMonitorView } from './ExecutiveMonitorView';
 import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
 import { StudentDesktopDashboard } from '../components/student/StudentDesktopDashboard';
+import { AdminDashboardWorkspace } from '../components/admin/AdminDashboardWorkspace';
 import { ObecLearningAreaExecutiveDashboard } from '../components/ObecLearningAreaExecutiveDashboard';
 import { Pp6ExecutiveQualityDashboard } from '../components/Pp6ExecutiveQualityDashboard';
 
@@ -579,6 +580,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const pendingInvoices = canViewFinancials
     ? scopedInvoices.filter((inv) => inv.status !== 'paid')
     : [];
+  const pendingSlipCount = canViewFinancials
+    ? scopedInvoices.filter((inv) => inv.slipStatus === 'pending_review').length
+    : 0;
 
   const currentHour = new Date().getHours();
   const timeGreeting =
@@ -749,7 +753,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={() => setDashboardTab('overview')}
               className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
             >
-              ← {lang === 'th' ? 'ภาพรวมวันนี้' : 'Today'}
+              ← {(currentRole === 'admin' || currentRole === 'super_admin')
+                ? (lang === 'th' ? 'ศูนย์รวมการจัดการ' : 'Admin Hub')
+                : (lang === 'th' ? 'ภาพรวมวันนี้' : 'Today')}
             </button>
           )}
         </div>
@@ -760,9 +766,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               data-active={dashboardTab === 'overview'}
               onClick={() => setDashboardTab('overview')}
-              className="seg-tab-btn"
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
-              {lang === 'th' ? 'ภาพรวมวันนี้' : 'Today'}
+              {(currentRole === 'admin' || currentRole === 'super_admin')
+                ? (lang === 'th' ? 'ศูนย์รวมการจัดการ' : 'Admin Hub')
+                : (lang === 'th' ? 'ภาพรวมวันนี้' : 'Today')}
             </button>
 
             <button
@@ -770,44 +778,69 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               data-guide-id={dashboardTab !== 'insights' ? 'dashboard-charts' : undefined}
               data-active={dashboardTab === 'insights'}
               onClick={() => setDashboardTab('insights')}
-              className="seg-tab-btn"
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               {currentRole === 'student'
                 ? (lang === 'th' ? 'พัฒนาการของฉัน' : 'My Progress')
                 : (lang === 'th' ? 'รายงาน/กราฟ' : 'Reports & Charts')}
             </button>
 
-            {canViewExecutiveMonitor && (
+            {canViewExecutiveMonitor && (currentRole === 'admin' || currentRole === 'super_admin') ? (
               <button
                 type="button"
-                data-active={dashboardTab === 'executive_monitor'}
-                onClick={() => setDashboardTab('executive_monitor')}
+                data-active={
+                  dashboardTab === 'executive_monitor' ||
+                  dashboardTab === 'obec_learning_areas' ||
+                  dashboardTab === 'pp6_quality_overview'
+                }
+                onClick={() => {
+                  if (
+                    dashboardTab !== 'executive_monitor' &&
+                    dashboardTab !== 'obec_learning_areas' &&
+                    dashboardTab !== 'pp6_quality_overview'
+                  ) {
+                    setDashboardTab('executive_monitor');
+                  }
+                }}
                 className="seg-tab-btn whitespace-nowrap shrink-0"
               >
-                {lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร' : 'Executive Monitor'}
+                {lang === 'th' ? 'มอนิเตอร์ & สพฐ.' : 'OBEC & Executive'}
               </button>
-            )}
+            ) : (
+              <>
+                {canViewExecutiveMonitor && (
+                  <button
+                    type="button"
+                    data-active={dashboardTab === 'executive_monitor'}
+                    onClick={() => setDashboardTab('executive_monitor')}
+                    className="seg-tab-btn whitespace-nowrap shrink-0"
+                  >
+                    {lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร' : 'Executive Monitor'}
+                  </button>
+                )}
 
-            {canViewExecutiveMonitor && (
-              <button
-                type="button"
-                data-active={dashboardTab === 'obec_learning_areas'}
-                onClick={() => setDashboardTab('obec_learning_areas')}
-                className="seg-tab-btn whitespace-nowrap shrink-0"
-              >
-                {lang === 'th' ? 'กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}
-              </button>
-            )}
+                {canViewExecutiveMonitor && (
+                  <button
+                    type="button"
+                    data-active={dashboardTab === 'obec_learning_areas'}
+                    onClick={() => setDashboardTab('obec_learning_areas')}
+                    className="seg-tab-btn whitespace-nowrap shrink-0"
+                  >
+                    {lang === 'th' ? 'กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}
+                  </button>
+                )}
 
-            {canViewExecutiveMonitor && (
-              <button
-                type="button"
-                data-active={dashboardTab === 'pp6_quality_overview'}
-                onClick={() => setDashboardTab('pp6_quality_overview')}
-                className="seg-tab-btn whitespace-nowrap shrink-0"
-              >
-                {lang === 'th' ? 'ภาพรวม ปพ.6 (ผู้บริหาร)' : 'OBEC Pp.6 Overview'}
-              </button>
+                {canViewExecutiveMonitor && (
+                  <button
+                    type="button"
+                    data-active={dashboardTab === 'pp6_quality_overview'}
+                    onClick={() => setDashboardTab('pp6_quality_overview')}
+                    className="seg-tab-btn whitespace-nowrap shrink-0"
+                  >
+                    {lang === 'th' ? 'ภาพรวม ปพ.6 (ผู้บริหาร)' : 'OBEC Pp.6 Overview'}
+                  </button>
+                )}
+              </>
             )}
 
             {canViewEarlyWarning && (
@@ -1018,6 +1051,62 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onNavigate={onNavigate}
               onOpenAnnouncementsTab={() => setDashboardTab('announcements')}
               onOpenPhotoRecord={openPhotoRecord}
+            />
+          ) : (currentRole === 'admin' || currentRole === 'super_admin') ? (
+            <AdminDashboardWorkspace
+              lang={lang}
+              systemConfig={systemConfig}
+              school={school}
+              currentUser={currentUser}
+              timeGreeting={timeGreeting}
+              userDisplayName={userDisplayName}
+              formattedTodayDate={formattedTodayDate}
+              todayStr={todayStr}
+              yesterdayStr={yesterdayStr}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              todayHoliday={todayHoliday}
+              upcomingHoliday={upcomingHoliday}
+              isTodayWeekend={isTodayWeekend}
+              totalStudents={totalStudents}
+              activeStudents={activeStudents}
+              teachersCount={teachers.length}
+              coursesCount={courses.length}
+              gradesCount={grades.length}
+              todayScheduledSlots={todayScheduledSlots}
+              teacherLeavesTodayCount={teacherLeavesTodayCount}
+              totalForDate={totalForDate}
+              presentCount={presentCount}
+              lateCount={lateCount}
+              onTimePercent={onTimePercent}
+              uncheckedTodayCount={uncheckedTodayCount}
+              selfieCount={selfieCount}
+              pendingLeaveCount={pendingLeaveCount}
+              ungradedHomeworkCount={ungradedHomeworkCount}
+              pendingSlipCount={pendingSlipCount}
+              pendingInvoicesCount={pendingInvoices.length}
+              collectionRate={collectionRate}
+              lineConnectedCount={lineConnectedCount}
+              linePercent={linePercent}
+              sdqCount={sdqAssessments.length}
+              behaviorCount={behaviorRecords.length}
+              infirmaryCount={infirmaryVisits.length}
+              announcementsCount={scopedAnnouncements.length}
+              unclaimedCentralPacksCount={unclaimedCentralPacksCount}
+              completedOnboardingCount={completedOnboardingCount}
+              showOnboardingCard={showOnboardingCard}
+              canViewFinancials={canViewFinancials}
+              canViewExecutiveMonitor={canViewExecutiveMonitor}
+              canViewEarlyWarning={canViewEarlyWarning}
+              isModuleEnabled={isModuleEnabled}
+              displayRecords={displayRecords}
+              fallbackAvatarSvg={fallbackAvatarSvg}
+              onNavigate={onNavigate}
+              onSelectSubTab={setDashboardTab}
+              onOpenPhotoRecord={openPhotoRecord}
+              onOpenDrawer={setDrawerMode}
+              onExportCsv={handleExportSelectedDateCsv}
+              onOpenCentralExamPopup={onOpenCentralExamPopup}
             />
           ) : (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
@@ -1755,14 +1844,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick: () => onNavigate('attendance'),
                           });
                         }
-                        if (teacherLeavesTodayCount > 0 && (currentRole === 'admin' || currentRole === 'super_admin') && isModuleEnabled('timetable')) {
-                          actionRows.push({
-                            id: 'staff-leave',
-                            label: lang === 'th' ? 'ครูลาวันนี้ (หาครูสอนแทน)' : 'Staff on Leave Today',
-                            value: `${teacherLeavesTodayCount} ${lang === 'th' ? 'คน' : 'staff'}`,
-                            onClick: () => onNavigate('timetable'),
-                          });
-                        }
                         if ((currentRole !== 'teacher' || todayScheduledSlots.length === 0) && isModuleEnabled('timetable')) {
                           actionRows.push({
                             id: 'timetable',
@@ -1809,7 +1890,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </section>
             </div>
 
-            {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && isModuleEnabled('career_quest') && (
+            {currentRole === 'teacher' && isModuleEnabled('career_quest') && (
               <section
                 aria-label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน Career Quest AI' : 'Career Quest AI'}
                 className="no-print saas-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -1932,6 +2013,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
         )}
+
+        {/* EXECUTIVE ANALYTICS SUB-LENS SWITCHER (MIS / OBEC 8 Areas / Pp.6) */}
+        {canViewExecutiveMonitor &&
+          (dashboardTab === 'executive_monitor' ||
+            dashboardTab === 'obec_learning_areas' ||
+            dashboardTab === 'pp6_quality_overview') && (
+            <div className="no-print saas-card px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'มุมมองผู้บริหาร & มาตรฐาน สพฐ.' : 'Executive & OBEC Analytics'}
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('executive_monitor')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
+                    dashboardTab === 'executive_monitor'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      dashboardTab === 'executive_monitor' ? 'bg-white' : 'bg-blue-600 dark:bg-blue-400'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>{lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร (MIS)' : 'Executive Monitor'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('obec_learning_areas')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
+                    dashboardTab === 'obec_learning_areas'
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      dashboardTab === 'obec_learning_areas' ? 'bg-white' : 'bg-emerald-600 dark:bg-emerald-400'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>{lang === 'th' ? '8 กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('pp6_quality_overview')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
+                    dashboardTab === 'pp6_quality_overview'
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      dashboardTab === 'pp6_quality_overview' ? 'bg-white' : 'bg-violet-600 dark:bg-violet-400'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>{lang === 'th' ? 'ภาพรวมคุณภาพ ปพ.6' : 'OBEC Pp.6 Overview'}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
         {/* UNIFIED LENS: EXECUTIVE MONITOR */}
         {dashboardTab === 'executive_monitor' && canViewExecutiveMonitor && school && (

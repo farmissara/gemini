@@ -45,8 +45,7 @@ import {
   Building2,
   Briefcase,
   HeartPulse,
-  LocateFixed,
-  SmartphoneOff
+  LocateFixed
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
@@ -639,20 +638,28 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         const lng = Number(pos.coords.longitude.toFixed(6));
         setRoomLatInput(lat.toFixed(6));
         setRoomLngInput(lng.toFixed(6));
-        const saved = saveClassroomGpsConfig(activeSchoolId, {
+        const roomLabel = selectedCourse.room || selectedCourse.code || 'ห้องเรียน';
+        const savedList = saveClassroomGpsConfig(activeSchoolId, {
           courseId: selectedCourse.id,
-          courseCode: selectedCourse.code,
-          room: selectedCourse.room || selectedCourse.code || 'ห้องเรียน',
+          roomKey: roomLabel,
+          roomLabel,
           lat,
           lng,
           radiusMeters: roomRadiusInput || 40,
           updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
         });
+        const saved =
+          findClassroomGpsConfig(activeSchoolId, {
+            courseId: selectedCourse.id,
+            room: selectedCourse.room,
+          }) ||
+          savedList[0] ||
+          null;
         setClassroomGps(saved);
         setIsLocatingRoom(false);
         setRoomGpsNotice({
           type: 'ok',
-          text: `บันทึกพิกัดห้อง ${saved.room} สำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)} · รัศมี ${saved.radiusMeters} ม.)`,
+          text: `บันทึกพิกัดห้อง ${saved?.roomLabel || roomLabel} สำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)} · รัศมี ${saved?.radiusMeters ?? (roomRadiusInput || 40)} ม.)`,
         });
       },
       () => {
@@ -673,19 +680,28 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       setRoomGpsNotice({ type: 'err', text: 'พิกัด Lat / Lng ไม่ถูกต้อง กรุณากรอกค่าละติจูด/ลองจิจูดให้ครบถ้วน' });
       return;
     }
-    const saved = saveClassroomGpsConfig(activeSchoolId, {
+    const roomLabel = selectedCourse.room || selectedCourse.code || 'ห้องเรียน';
+    const nextRadius = Math.max(15, Math.min(300, Number(roomRadiusInput) || 40));
+    const savedList = saveClassroomGpsConfig(activeSchoolId, {
       courseId: selectedCourse.id,
-      courseCode: selectedCourse.code,
-      room: selectedCourse.room || selectedCourse.code || 'ห้องเรียน',
+      roomKey: roomLabel,
+      roomLabel,
       lat,
       lng,
-      radiusMeters: Math.max(15, Math.min(300, Number(roomRadiusInput) || 40)),
+      radiusMeters: nextRadius,
       updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
     });
+    const saved =
+      findClassroomGpsConfig(activeSchoolId, {
+        courseId: selectedCourse.id,
+        room: selectedCourse.room,
+      }) ||
+      savedList[0] ||
+      null;
     setClassroomGps(saved);
     setRoomGpsNotice({
       type: 'ok',
-      text: `บันทึกพิกัดห้อง ${saved.room} แล้ว (รัศมี ${saved.radiusMeters} ม.)`,
+      text: `บันทึกพิกัดห้อง ${saved?.roomLabel || roomLabel} แล้ว (รัศมี ${saved?.radiusMeters ?? nextRadius} ม.)`,
     });
   };
 
@@ -1388,7 +1404,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   // Period Check-in Code + Shareable Link (QR Code & URL with Classroom GPS)
   const expectedPeriodCode = `${selectedCourse.code || 'GEN-101'}-P${selectedPeriod}-${periodDate.replace(/-/g, '')}`;
   const periodClassroomGpsParams = classroomGps
-    ? `&clat=${classroomGps.lat.toFixed(6)}&clng=${classroomGps.lng.toFixed(6)}&crad=${classroomGps.radiusMeters}&croom=${encodeURIComponent(classroomGps.room)}`
+    ? `&clat=${classroomGps.lat.toFixed(6)}&clng=${classroomGps.lng.toFixed(6)}&crad=${classroomGps.radiusMeters}&croom=${encodeURIComponent(classroomGps.roomLabel)}`
     : '';
   const periodCheckinUrl =
     typeof window !== 'undefined'
@@ -1583,11 +1599,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     const effectiveRoomGps: ClassroomGpsConfig | null =
       urlRoomLat !== null && urlRoomLng !== null
         ? {
-            id: storedRoomGps?.id || `url-room-${targetCourse.id}`,
-            schoolId: activeSchoolId,
+            roomKey: storedRoomGps?.roomKey || `url-room-${targetCourse.id}`,
+            roomLabel: urlRoomName || targetCourse.room || targetCourse.code || 'ห้องเรียน',
             courseId: targetCourse.id,
-            courseCode: targetCourse.code,
-            room: urlRoomName || targetCourse.room || targetCourse.code || 'ห้องเรียน',
             lat: urlRoomLat,
             lng: urlRoomLng,
             radiusMeters: urlRoomRadius || 40,
@@ -1623,7 +1637,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     const roomGpsCheck = checkDistanceToClassroomGps(realGpsCoords, effectiveRoomGps);
     if (!roomGpsCheck.inRange) {
       setStudentPeriodCheckinError(
-        `อยู่นอกพิกัดห้องเรียน ${effectiveRoomGps.room} (ห่าง ${roomGpsCheck.distanceMeters.toLocaleString()} ม. เกินรัศมีที่กำหนด ${roomGpsCheck.radiusMeters} ม.) กรุณาเข้าห้องเรียนแล้วลองใหม่ หรือแจ้งครูผู้สอนหากไม่มีสัญญาณ`
+        `อยู่นอกพิกัดห้องเรียน ${effectiveRoomGps.roomLabel} (ห่าง ${(roomGpsCheck.distanceMeters ?? 0).toLocaleString()} ม. เกินรัศมีที่กำหนด ${roomGpsCheck.radiusMeters} ม.) กรุณาเข้าห้องเรียนแล้วลองใหม่ หรือแจ้งครูผู้สอนหากไม่มีสัญญาณ`
       );
       return;
     }
@@ -1662,7 +1676,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       verifiedByTeacherId: 'qr-self-checkin',
       verifiedByTeacherName: targetCourse.teacherName || 'ระบบ Barcode/QR รายคาบ',
       checkMethod: 'qr_code',
-      remarks: `นักเรียนสแกน Barcode/QR ${actionLabel} (${resolvedCode}) · พิกัดห้อง ${effectiveRoomGps.room} (ห่าง ${roomGpsCheck.distanceMeters} ม.)`,
+      remarks: `นักเรียนสแกน Barcode/QR ${actionLabel} (${resolvedCode}) · พิกัดห้อง ${effectiveRoomGps.roomLabel} (ห่าง ${roomGpsCheck.distanceMeters ?? 0} ม.)`,
     };
 
     onRecordPeriodAttendance([record]);
@@ -1672,7 +1686,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setPeriodCheckType(resolvedCheckType);
     playChime();
     setStudentPeriodCheckinMsg(
-      `${resolvedCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} ห้อง ${effectiveRoomGps.room} (ระยะ ${roomGpsCheck.distanceMeters} ม.) สำเร็จแล้ว!`
+      `${resolvedCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} ห้อง ${effectiveRoomGps.roomLabel} (ระยะ ${roomGpsCheck.distanceMeters ?? 0} ม.) สำเร็จแล้ว!`
     );
     setTimeout(() => setStudentPeriodCheckinMsg(null), 5000);
   };
@@ -3385,8 +3399,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <div className="saas-card-body">
               <div className="divide-y divide-[var(--color-border)]">
                 <PagedList items={scopedLeaveRequests} pageSize={3} emptyState={<p className="type-meta py-4 text-center">ยังไม่มีประวัติใบลา</p>} renderItem={(rawReq) => {
-                  const req = enrichLeaveRequestForDualApproval(rawReq, {
+                  const req = enrichLeaveRequestForDualApproval({
                     schoolId: activeSchoolId,
+                    req: rawReq,
                     students,
                     teachers,
                     courses,
@@ -3394,7 +3409,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   const isStudentLeave = req.userRole === 'student';
                   const subjectList = req.subjectApprovals || [];
                   const approvedSubjects = subjectList.filter((s) => s.status === 'approved').length;
-                  const teacherRoleInfo = detectTeacherApprovalRoleForLeave(req, currentUser, teachers, courses);
+                  const teacherRoleInfo = detectTeacherApprovalRoleForLeave(req, currentUser, teachers);
                   return (
                   <div key={req.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
@@ -3514,7 +3529,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                                 <span>อนุมัติ (ครูวิชา)</span>
                               </button>
                             )}
-                            {(isSchoolAdmin || (teacherRoleInfo.isHomeroom && teacherRoleInfo.isSubject)) && (
+                            {(isSchoolAdmin || (teacherRoleInfo.isHomeroomApprover && teacherRoleInfo.isSubjectApprover)) && (
                               <button
                                 type="button"
                                 onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติครบทั้ง 2 ฝ่าย', 'both')}
@@ -4620,10 +4635,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                             {!classroomGps
                               ? `ยังไม่ได้ตั้งพิกัดห้องเรียน (${selectedCourse.room || selectedCourse.code}) กรุณาแจ้งครูผู้สอน`
                               : !realGpsCoords
-                                ? `ห้อง ${classroomGps.room} (รัศมี ${classroomGps.radiusMeters} ม.) · รออ่านพิกัด GPS ของคุณ`
+                                ? `ห้อง ${classroomGps.roomLabel} (รัศมี ${classroomGps.radiusMeters} ม.) · รออ่านพิกัด GPS ของคุณ`
                                 : roomCheck?.inRange
-                                  ? `อยู่ในพิกัดห้อง ${classroomGps.room} (ห่าง ${roomCheck.distanceMeters} ม. / รัศมี ${roomCheck.radiusMeters} ม.)`
-                                  : `อยู่นอกพิกัดห้อง ${classroomGps.room} (ห่าง ${roomCheck?.distanceMeters.toLocaleString()} ม. / รัศมี ${roomCheck?.radiusMeters} ม.)`}
+                                  ? `อยู่ในพิกัดห้อง ${classroomGps.roomLabel} (ห่าง ${roomCheck.distanceMeters ?? 0} ม. / รัศมี ${roomCheck.radiusMeters} ม.)`
+                                  : `อยู่นอกพิกัดห้อง ${classroomGps.roomLabel} (ห่าง ${(roomCheck?.distanceMeters ?? 0).toLocaleString()} ม. / รัศมี ${roomCheck?.radiusMeters} ม.)`}
                           </span>
                         </div>
                         <button
@@ -4789,7 +4804,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                          <SmartphoneOff className="w-3.5 h-3.5 text-amber-600" />
+                          <Smartphone className="w-3.5 h-3.5 text-amber-600" />
                           <span>ตรวจเช็คชื่อรายคาบ · กรณีนักเรียนไม่มีมือถือ กดรับแทนได้ทันที</span>
                         </p>
                         <div className="flex flex-wrap items-center gap-1">
