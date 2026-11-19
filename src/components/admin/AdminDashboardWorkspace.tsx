@@ -1012,16 +1012,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               {lang === 'th' ? 'ประสานงาน Super Admin' : 'Super Admin Desk'}
             </button>
           </div>
-          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-            <button
-              type="button"
-              onClick={() => onSwitchOperationalRole('teacher')}
-              className="font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer inline-flex items-center gap-1"
-            >
-              <ArrowLeftRight className="w-3 h-3 shrink-0" />
-              <span>{lang === 'th' ? 'สลับทำงานในมุมมองครูผู้สอน' : 'Switch to Teacher Workspace'}</span>
-            </button>
-          )}
         </div>
       </section>
 

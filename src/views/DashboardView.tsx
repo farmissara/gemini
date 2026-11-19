@@ -1213,7 +1213,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                {currentRole === 'teacher' && canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+                {currentRole === 'teacher' && dashboardTab !== 'overview' && canSwitchAdminTeacherMode && onSwitchOperationalRole && (
                   <button
                     type="button"
                     onClick={() => onSwitchOperationalRole('admin')}

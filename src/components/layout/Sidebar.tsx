@@ -166,6 +166,28 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
 const ARCADE_TABS = new Set<NavTab>(['games', 'boss_raid', 'study_streak', 'hall_of_fame']);
 
 const SIDEBAR_FOCUS_STORAGE_KEY = 'baanpakkru_sidebar_focus_mode';
+const ADMIN_FOCUS_TABS = new Set<NavTab>([
+  'dashboard',
+  'students',
+  'teachers',
+  'courses',
+  'timetable',
+  'gradebook',
+  'homework',
+  'central_exam_hub',
+  'executive_monitor',
+  'executive_warning',
+  'report_insights',
+  'attendance',
+  'mobile_checkin',
+  'behavior_sdq',
+  'infirmary',
+  'billing',
+  'announcements',
+  'system_settings',
+  'school_permissions',
+  'school_gps',
+]);
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
@@ -189,15 +211,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const supportsFocusMode = currentRole === 'teacher';
+  const supportsFocusMode = currentRole === 'teacher' || currentRole === 'admin';
+  const focusStorageKey = currentRole === 'teacher'
+    ? SIDEBAR_FOCUS_STORAGE_KEY
+    : `${SIDEBAR_FOCUS_STORAGE_KEY}_${currentRole}`;
+  const focusTabs = currentRole === 'admin' ? ADMIN_FOCUS_TABS : FOCUS_TEACHER_TABS;
+  const focusModeStyle = {
+    '--role-focus-accent': `var(--role-${currentRole === 'admin' ? 'admin' : 'teacher'}-accent)`,
+  } as React.CSSProperties;
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (!supportsFocusMode) return false;
     if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem(SIDEBAR_FOCUS_STORAGE_KEY);
+      const saved = window.localStorage.getItem(focusStorageKey);
       if (saved === '1') return true;
       if (saved === '0') return false;
     }
-    return currentRole === 'teacher';
+    return true;
   });
 
   useEffect(() => {
@@ -206,18 +235,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return;
     }
     if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem(SIDEBAR_FOCUS_STORAGE_KEY);
+      const saved = window.localStorage.getItem(focusStorageKey);
       if (saved === '1') setFocusMode(true);
       else if (saved === '0') setFocusMode(false);
-      else setFocusMode(currentRole === 'teacher');
+      else setFocusMode(true);
     }
-  }, [currentRole, supportsFocusMode]);
+  }, [focusStorageKey, supportsFocusMode]);
 
   const setFocusModeState = (next: boolean) => {
     setFocusMode(next);
     if (typeof window !== 'undefined') {
       try {
-        window.localStorage.setItem(SIDEBAR_FOCUS_STORAGE_KEY, next ? '1' : '0');
+        window.localStorage.setItem(focusStorageKey, next ? '1' : '0');
       } catch {
         // ignore storage failure
       }
@@ -731,12 +760,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             i.roles.includes(currentRole) &&
             isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
             isAllowedBySchoolPolicy(i.id) &&
-            (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === resolvedSidebarActiveTab)
+            (!focusMode || !supportsFocusMode || focusTabs.has(i.id) || i.id === resolvedSidebarActiveTab)
         );
         return { ...cat, items };
       })
       .filter((cat) => cat.items.length > 0);
-  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, resolvedSidebarActiveTab]);
+  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, focusTabs, resolvedSidebarActiveTab]);
 
   // Search filtered items across dashboard + all categories
   const searchResults = useMemo(() => {
@@ -794,13 +823,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (seen.has(item.id)) return;
         if (!item.roles.includes(currentRole) || !isTabEnabledByFeatureFlags(item.id, featureFlags, currentRole) || !isAllowedBySchoolPolicy(item.id)) return;
         seen.add(item.id);
-        if (!FOCUS_TEACHER_TABS.has(item.id) && item.id !== resolvedSidebarActiveTab) {
+        if (!focusTabs.has(item.id) && item.id !== resolvedSidebarActiveTab) {
           hidden += 1;
         }
       });
     });
     return hidden;
-  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, resolvedSidebarActiveTab]);
+  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, focusTabs, resolvedSidebarActiveTab]);
 
   const renderItem = (item: NavItemDef, onClick?: () => void) => {
     const Icon = item.icon;
@@ -890,15 +919,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 title={
                   focusMode
                     ? lang === 'th'
-                      ? 'โหมดลดภาระครู (ซ่อนเมนูรอง) — คลิกเพื่อแสดงทั้งหมด'
-                      : 'Teacher Focus Mode ON — click to show all'
+                      ? (currentRole === 'admin'
+                        ? 'กำลังแสดงเมนูหลัก — คลิกเพื่อแสดงทุกเมนู'
+                        : 'โหมดลดภาระครู (ซ่อนเมนูรอง) — คลิกเพื่อแสดงทั้งหมด')
+                      : (currentRole === 'admin'
+                        ? 'Core menus shown — click to show all'
+                        : 'Teacher Focus Mode ON — click to show all')
                     : lang === 'th'
-                      ? 'กำลังแสดงทุกเมนู — คลิกเพื่อเปิดโหมดลดภาระครู'
-                      : 'All menus shown — click for Teacher Focus Mode'
+                      ? (currentRole === 'admin'
+                        ? 'กำลังแสดงทุกเมนู — คลิกเพื่อแสดงเฉพาะเมนูหลัก'
+                        : 'กำลังแสดงทุกเมนู — คลิกเพื่อเปิดโหมดลดภาระครู')
+                      : (currentRole === 'admin'
+                        ? 'All menus shown — click to show core menus'
+                        : 'All menus shown — click for Teacher Focus Mode')
                 }
+                style={focusModeStyle}
                 className={`w-10 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition ${
                   focusMode
-                    ? 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                    ? 'border-[color-mix(in_srgb,var(--role-focus-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--role-focus-accent)_12%,var(--color-card))] text-[var(--role-focus-accent)]'
                     : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
@@ -1037,7 +1075,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* Teacher Focus vs All Menus Segmented Bar */}
+      {/* Role-specific core navigation vs all modules */}
       {supportsFocusMode && (
         <div className="shrink-0 px-3 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/60">
           <div className="grid grid-cols-2 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
@@ -1045,15 +1083,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               onClick={() => setFocusModeState(true)}
               aria-pressed={focusMode}
+              style={focusModeStyle}
               className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 font-semibold transition cursor-pointer whitespace-nowrap ${
                 focusMode
-                  ? 'bg-sky-600 text-white shadow-xs'
+                  ? 'bg-[var(--role-focus-accent)] text-white shadow-xs'
                   : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
               }`}
-              title={lang === 'th' ? 'แสดงเฉพาะงานสอนและงานประจำของครู' : 'Daily teaching focus'}
+              title={currentRole === 'admin'
+                ? (lang === 'th' ? 'แสดงเมนูจัดการที่ใช้บ่อย ซ่อนโมดูลเสริม' : 'Show core admin modules; hide secondary tools')
+                : (lang === 'th' ? 'แสดงเฉพาะงานสอนและงานประจำของครู' : 'Daily teaching focus')}
             >
               <Coffee className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{lang === 'th' ? 'ลดภาระครู' : 'Focus'}</span>
+              <span className="truncate">{currentRole === 'admin'
+                ? (lang === 'th' ? 'เมนูหลัก' : 'Core')
+                : (lang === 'th' ? 'ลดภาระครู' : 'Focus')}</span>
               {focusMode && hiddenByFocusCount > 0 && (
                 <span className="opacity-85 tabular-nums">(-{hiddenByFocusCount})</span>
               )}

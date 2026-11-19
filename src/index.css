@@ -38,6 +38,8 @@
   --color-primary-hover: #1d4ed8;
   --color-primary-light: #eff6ff;
   --color-primary-text: #1d4ed8;
+  --role-admin-accent: #0f766e;
+  --role-teacher-accent: #2563eb;
 }
 
 /* Light Eye-Care Neutral Paper (สะอาด เรียบ คมชัดแบบ Apple / Linear) */
@@ -89,6 +91,8 @@
   --color-primary-hover: #2563eb;
   --color-primary-light: #1e293b;
   --color-primary-text: #93c5fd;
+  --role-admin-accent: #5eead4;
+  --role-teacher-accent: #93c5fd;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
