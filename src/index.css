@@ -1,3 +1,691 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html, body {
+    max-width: 100vw;
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    font-family: 'Plus Jakarta Sans', 'Sarabun', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    max-width: 100vw;
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ========================================================
+   BALANCED EYE-CARE COLOR THEMES (ถนอมสายตา ไม่แสบตา ไม่สะท้อนแสง)
+   ======================================================== */
+
+:root {
+  --color-canvas: #f8fafc;
+  --color-card: #ffffff;
+  --color-card-subtle: #f8fafc;
+  --color-border: #e5e7eb;
+  --color-text-title: #0f172a;
+  --color-text-body: #334155;
+  --color-text-muted: #64748b;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #eff6ff;
+  --color-primary-text: #1d4ed8;
+}
+
+/* Light Eye-Care Neutral Paper (สะอาด เรียบ คมชัดแบบ Apple / Linear) */
+.theme-light_warm,
+.theme-light {
+  --color-canvas: #f8fafc;
+  --color-card: #ffffff;
+  --color-card-subtle: #f8fafc;
+  --color-border: #e5e7eb;
+  --color-text-title: #0f172a;
+  --color-text-body: #334155;
+  --color-text-muted: #64748b;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #eff6ff;
+  --color-primary-text: #1d4ed8;
+  background-color: var(--color-canvas);
+  color: var(--color-text-body);
+}
+
+/* Light Soft Sky */
+.theme-light_sky {
+  --color-canvas: #f8fafc;
+  --color-card: #ffffff;
+  --color-card-subtle: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-text-title: #0f172a;
+  --color-text-body: #334155;
+  --color-text-muted: #64748b;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #eff6ff;
+  --color-primary-text: #1d4ed8;
+  background-color: var(--color-canvas);
+  color: var(--color-text-body);
+}
+
+/* Soft Dark Slate (Linear Dark Mode) */
+.theme-sapphire,
+.theme-dark {
+  --color-canvas: #0b0f17;
+  --color-card: #111827;
+  --color-card-subtle: #182234;
+  --color-border: #1f2937;
+  --color-text-title: #f8fafc;
+  --color-text-body: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-light: #1e293b;
+  --color-primary-text: #93c5fd;
+  background-color: var(--color-canvas);
+  color: var(--color-text-body);
+}
+
+@layer components {
+  .app-workspace {
+    background-color: var(--color-canvas);
+  }
+
+  .app-page-header {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+  }
+
+  .table-comfortable tbody > tr > td {
+    padding-block: 0.575rem !important;
+  }
+
+  .table-comfortable thead > tr > th {
+    padding-block: 0.55rem !important;
+  }
+
+  .table-comfortable tbody > tr > td button {
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+  }
+}
+
+
+/* ========================================================
+   COLOR TONES (สีประจำหมวด & กลุ่มฟังก์ชันมาตรฐาน Light/Dark)
+   ======================================================== */
+:root {
+  --tone: var(--color-primary);
+  --tone-soft: var(--color-primary-light);
+  --tone-solid: var(--color-primary);
+  --tone-solid-hover: var(--color-primary-hover);
+
+  --tone-1: #2f5bea; --tone-1-soft: #e9efff; --tone-1-solid: #1d4ed8; --tone-1-solid-hover: #1e40af;
+  --tone-2: #047857; --tone-2-soft: #e3f7ee; --tone-2-solid: #047857; --tone-2-solid-hover: #065f46;
+  --tone-3: #b45309; --tone-3-soft: #fdf2df; --tone-3-solid: #b45309; --tone-3-solid-hover: #92400e;
+  --tone-4: #be123c; --tone-4-soft: #fde9ee; --tone-4-solid: #be123c; --tone-4-solid-hover: #9f1239;
+  --tone-5: #6d28d9; --tone-5-soft: #f1eafd; --tone-5-solid: #6d28d9; --tone-5-solid-hover: #5b21b6;
+  --tone-6: #0e7490; --tone-6-soft: #e0f5fa; --tone-6-solid: #0e7490; --tone-6-solid-hover: #155e75;
+  --tone-7: #334155; --tone-7-soft: #eef2f6; --tone-7-solid: #334155; --tone-7-solid-hover: #1e293b;
+}
+.dark {
+  --tone-1: #8aa8ff; --tone-1-soft: rgb(47 91 234 / 0.22); --tone-1-solid: #2563eb; --tone-1-solid-hover: #1d4ed8;
+  --tone-2: #4ade9f; --tone-2-soft: rgb(14 159 110 / 0.22); --tone-2-solid: #059669; --tone-2-solid-hover: #047857;
+  --tone-3: #fbbf4d; --tone-3-soft: rgb(217 119 6 / 0.22); --tone-3-solid: #b45309; --tone-3-solid-hover: #92400e;
+  --tone-4: #fb7f9c; --tone-4-soft: rgb(224 51 95 / 0.22); --tone-4-solid: #be123c; --tone-4-solid-hover: #9f1239;
+  --tone-5: #b69bff; --tone-5-soft: rgb(124 77 219 / 0.24); --tone-5-solid: #6d28d9; --tone-5-solid-hover: #5b21b6;
+  --tone-6: #4fd3ef; --tone-6-soft: rgb(8 145 178 / 0.22); --tone-6-solid: #0e7490; --tone-6-solid-hover: #155e75;
+  --tone-7: #cbd5e1; --tone-7-soft: rgb(148 163 184 / 0.18); --tone-7-solid: #475569; --tone-7-solid-hover: #334155;
+}
+.tone-1 { --tone: var(--tone-1); --tone-soft: var(--tone-1-soft); --tone-solid: var(--tone-1-solid); --tone-solid-hover: var(--tone-1-solid-hover); }
+.tone-2 { --tone: var(--tone-2); --tone-2-soft: var(--tone-2-soft); --tone-soft: var(--tone-2-soft); --tone-solid: var(--tone-2-solid); --tone-solid-hover: var(--tone-2-solid-hover); }
+.tone-3 { --tone: var(--tone-3); --tone-soft: var(--tone-3-soft); --tone-solid: var(--tone-3-solid); --tone-solid-hover: var(--tone-3-solid-hover); }
+.tone-4 { --tone: var(--tone-4); --tone-soft: var(--tone-4-soft); --tone-solid: var(--tone-4-solid); --tone-solid-hover: var(--tone-4-solid-hover); }
+.tone-5 { --tone: var(--tone-5); --tone-soft: var(--tone-5-soft); --tone-solid: var(--tone-5-solid); --tone-solid-hover: var(--tone-5-solid-hover); }
+.tone-6 { --tone: var(--tone-6); --tone-soft: var(--tone-6-soft); --tone-solid: var(--tone-6-solid); --tone-solid-hover: var(--tone-6-solid-hover); }
+.tone-7 { --tone: var(--tone-7); --tone-soft: var(--tone-7-soft); --tone-solid: var(--tone-7-solid); --tone-solid-hover: var(--tone-7-solid-hover); }
+
+@layer components {
+  .tone-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--tone-soft);
+    color: var(--tone);
+    border: 1px solid color-mix(in srgb, var(--tone) 24%, transparent);
+  }
+  .tone-text { color: var(--tone); }
+  .tone-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .tone-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: color-mix(in srgb, var(--tone) 70%, transparent);
+  }
+  .tone-active {
+    background: var(--tone-soft) !important;
+    color: var(--tone) !important;
+  }
+  .app-hero {
+    background:
+      radial-gradient(circle at 100% 0%, var(--tone-5-soft), transparent 45%),
+      radial-gradient(circle at 0% 100%, var(--tone-6-soft), transparent 50%),
+      linear-gradient(120deg, var(--tone-1-soft), var(--color-card) 60%);
+  }
+
+  /* ── Shared Editorial Architectural Surfaces (Pre-Login + Dashboard Cohesion) ── */
+  .editorial-grid-surface {
+    background-color: var(--color-canvas);
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--color-border) 42%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-border) 42%, transparent) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  .morning-brief-strip {
+    background:
+      linear-gradient(
+        118deg,
+        color-mix(in srgb, var(--color-primary-light) 78%, var(--color-card)) 0%,
+        var(--color-card) 56%,
+        color-mix(in srgb, var(--tone-6-soft) 45%, var(--color-card)) 100%
+      );
+    border: 1px solid var(--color-border);
+    border-radius: var(--dash-card-radius);
+  }
+
+  /* ── Standardized Toolbar Function Groups (60-30-10 Discipline) ── */
+  .toolbar-filter-zone {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.625rem;
+  }
+  .fn-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-card-subtle);
+  }
+  .fn-group-tone {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.625rem;
+    border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-border));
+    background-color: color-mix(in srgb, var(--tone-soft) 50%, var(--color-card));
+  }
+  .fn-group-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 700;
+    color: var(--tone);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .fn-divider {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .fn-divider {
+      display: block;
+      width: 1px;
+      height: 1.375rem;
+      background-color: var(--color-border);
+      flex-shrink: 0;
+    }
+  }
+  .module-category-kicker {
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+    font-weight: 700;
+    color: var(--tone);
+    white-space: nowrap;
+  }
+  .btn-tool-neutral {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-card);
+    color: var(--color-text-body);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+  .btn-tool-neutral:hover {
+    background-color: var(--color-card-subtle);
+    color: var(--color-text-title);
+  }
+  .btn-tool-neutral[data-active="true"] {
+    background-color: var(--tone-soft);
+    border-color: color-mix(in srgb, var(--tone) 45%, var(--color-border));
+    color: var(--tone);
+  }
+
+  .btn-tool-tone {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-border));
+    background-color: var(--color-card-subtle);
+    color: var(--color-text-title);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .btn-tool-tone:hover {
+    background-color: var(--tone-soft);
+    border-color: color-mix(in srgb, var(--tone) 48%, var(--color-border));
+  }
+
+  .btn-action-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    background-color: var(--tone-solid);
+    color: #ffffff;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+    transition: background-color 150ms ease, transform 120ms ease;
+  }
+  .btn-action-primary:hover {
+    background-color: var(--tone-solid-hover);
+  }
+  .btn-action-primary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-action-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    background-color: #047857;
+    color: #ffffff;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+    transition: background-color 150ms ease;
+  }
+  .btn-action-success:hover {
+    background-color: #065f46;
+  }
+
+  .btn-action-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    border: 1px solid #fda4af;
+    background-color: #fff1f2;
+    color: #9f1239;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+  .btn-action-danger:hover {
+    background-color: #ffe4e6;
+  }
+  .dark .btn-action-danger {
+    border-color: #9f1239;
+    background-color: rgb(76 5 25 / 0.6);
+    color: #fecdd3;
+  }
+  .dark .btn-action-danger:hover {
+    background-color: rgb(136 19 55 / 0.75);
+  }
+
+  .seg-tab-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-card-subtle);
+  }
+  .seg-tab-btn {
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+    color: var(--color-text-body);
+  }
+  .seg-tab-btn:hover {
+    background-color: var(--color-card);
+    color: var(--color-text-title);
+  }
+  .seg-tab-btn[data-active="true"] {
+    background-color: var(--tone-solid);
+    color: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+  }
+
+  /* ── Standardized SaaS Typography Hierarchy Scale ── */
+  .type-page-title {
+    font-size: var(--type-page-title);
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--color-text-title);
+  }
+  .type-section-title {
+    font-size: var(--type-section-title);
+    line-height: 1.35;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-text-title);
+  }
+  .type-card-title {
+    font-size: var(--type-card-title);
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--color-text-title);
+  }
+  .type-kpi {
+    font-size: var(--type-kpi);
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-title);
+  }
+  .type-kpi-sm {
+    font-size: var(--type-kpi-sm);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-title);
+  }
+  .type-body {
+    font-size: var(--type-body);
+    line-height: 1.5;
+    font-weight: 400;
+    color: var(--color-text-body);
+  }
+  .type-label {
+    font-size: var(--type-label);
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--color-text-body);
+  }
+  .type-meta {
+    font-size: var(--type-meta);
+    line-height: 1.4;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-muted);
+  }
+
+  /* ── Cohesive Single-Elevation SaaS Card & Control Group System ── */
+  .saas-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--dash-card-radius);
+  }
+  .saas-card-header {
+    padding: var(--dash-card-pad);
+    padding-bottom: var(--dash-divider-space);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--dash-card-gap);
+  }
+  .saas-card-body {
+    padding: var(--dash-card-pad);
+  }
+  .saas-control-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-card-subtle);
+  }
+  .btn-icon-tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-card);
+    color: var(--color-text-body);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+  .btn-icon-tool:hover {
+    background-color: var(--color-card-subtle);
+    color: var(--color-text-title);
+  }
+  .btn-icon-tool:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-icon-tool-touch {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  /* ── Executive 1-Row KPI Strip & Slide-Over Drawer (Apple / Linear Neutral) ── */
+  .saas-kpi-strip {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--dash-card-radius);
+    overflow: hidden;
+  }
+  .saas-kpi-cell {
+    padding: 1.25rem 1.5rem;
+    text-align: left;
+    transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 0;
+  }
+  .saas-kpi-cell-interactive {
+    cursor: pointer;
+  }
+  .saas-kpi-cell-interactive:hover {
+    background-color: var(--color-card-subtle);
+  }
+  .saas-kpi-cell-interactive[data-active="true"] {
+    background-color: var(--color-card-subtle);
+    box-shadow: inset 0 -2px 0 0 var(--color-primary);
+  }
+  .saas-alert-bar {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .saas-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background-color: rgb(15 23 42 / 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    justify-content: flex-end;
+  }
+  .saas-drawer-panel {
+    width: 100%;
+    max-width: 28rem;
+    height: 100%;
+    background-color: var(--color-card);
+    border-left: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: -8px 0 32px rgb(15 23 42 / 0.14);
+  }
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
+/* Utility to hide scrollbars on mobile swipe rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.theme-dark ::-webkit-scrollbar-thumb,
+.theme-sapphire ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ========================================================
+   MILESTONE ACHIEVEMENT BADGE ANIMATIONS (Compositor-only)
+   ======================================================== */
+@keyframes milestone-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes milestone-sweep {
+  0% {
+    transform: translateX(-140%) skewX(-20deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.45;
+  }
+  55% {
+    transform: translateX(240%) skewX(-20deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(240%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes milestone-ring {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.48;
+  }
+  75% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+.milestone-badge-float {
+  animation: milestone-float 3.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.milestone-badge-sweep {
+  animation: milestone-sweep 4.2s ease-in-out infinite;
+}
+
+.milestone-badge-ring {
+  animation: milestone-ring 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .milestone-badge-float,
+  .milestone-badge-sweep,
+  .milestone-badge-ring {
+    animation: none !important;
+  }
+}
+
 /* ========================================================
    DASHBOARD CLEAN CARD ARCHITECTURE SPACING SYSTEM (CSS Variables)
    ======================================================== */
@@ -40,5 +728,437 @@
     --dash-grid-gap: 1.75rem;         /* 28px */
     --dash-subgrid-gap: 1.5rem;       /* 24px */
     --dash-card-pad: 1.5rem;          /* 24px */
+  }
+}
+
+.dash-shell {
+  padding: var(--dash-shell-pad);
+  gap: var(--dash-shell-gap);
+}
+
+.dash-scroll-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-shell-gap);
+}
+
+.dash-grid {
+  display: grid;
+  gap: var(--dash-grid-gap);
+}
+
+.dash-col-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-grid-gap);
+}
+
+.dash-subgrid {
+  display: grid;
+  gap: var(--dash-subgrid-gap);
+}
+
+.dash-substack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-subgrid-gap);
+}
+
+.dash-card {
+  padding: var(--dash-card-pad);
+  border-radius: var(--dash-card-radius);
+}
+
+.dash-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-card-gap);
+}
+
+.dash-header-divider {
+  padding-bottom: var(--dash-divider-space);
+}
+
+.dash-footer-divider {
+  padding-top: var(--dash-divider-space);
+}
+
+.dash-kpi-strip {
+  padding: var(--dash-strip-py) var(--dash-strip-px);
+}
+
+.dash-row {
+  padding-block: var(--dash-row-py);
+}
+
+/* ========================================================
+   CLEAN MONOCHROME FLAT SURFACES (Apple / Linear Style)
+   ======================================================== */
+.dashboard-frosted-backdrop {
+  background: transparent;
+}
+
+.dark .dashboard-frosted-backdrop {
+  background: transparent;
+}
+
+.frosted-card,
+.frosted-blue,
+.frosted-green,
+.frosted-purple,
+.frosted-orange,
+.frosted-amber {
+  background: var(--color-card);
+  color: var(--color-text-body);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.dark .frosted-card,
+.dark .frosted-blue,
+.dark .frosted-green,
+.dark .frosted-purple,
+.dark .frosted-orange,
+.dark .frosted-amber {
+  background: var(--color-card);
+  color: var(--color-text-body);
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+/* ========================================================
+   OFFICIAL PRINT STYLESHEET (สำหรับใบ ปพ.1, ปพ.5 และใบเสร็จรับเงิน)
+   ======================================================== */
+@media print {
+  @page {
+    margin: 10mm;
+    size: A4 portrait;
+  }
+
+  @page timetable {
+    margin: 8mm;
+    size: A4 landscape;
+  }
+
+  @page dashboard {
+    margin: 10mm 12mm;
+    size: A4 landscape;
+  }
+
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+  }
+
+  /* ซ่อนส่วนที่ไม่ต้องการพิมพ์ เช่น navbar, sidebar, ปุ่มกด, backdrop */
+  header, nav, aside, .no-print, button, [role="dialog"] > div > div:first-child:has(button) {
+    display: none !important;
+  }
+
+  /* พื้นที่ที่พิมพ์ต้องเป็นพื้นขาว กรอบคมชัด ไม่มีเงา */
+  .print-area, [data-printable="true"] {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    color: #000000 !important;
+  }
+
+  body:has(.timetable-print-area) #root,
+  body:has(.timetable-print-area) #root :has(.timetable-print-area) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  body:has(.timetable-print-area) #root * {
+    visibility: hidden !important;
+  }
+
+  body:has(.timetable-print-area) #root .timetable-print-area,
+  body:has(.timetable-print-area) #root .timetable-print-area * {
+    visibility: visible !important;
+  }
+
+  body:has(.timetable-print-area) #root .timetable-print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    page: timetable;
+  }
+
+  .timetable-print-area > div.overflow-x-auto {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .timetable-print-area table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  .timetable-print-area tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .timetable-print-area * {
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .timetable-print-area th,
+  .timetable-print-area td,
+  .timetable-print-area td > div {
+    background: #ffffff !important;
+    border-color: #94a3b8 !important;
+  }
+
+  /* Printable Student Attendance QR Pass Isolation */
+  body:has(.student-qr-print-area) #root,
+  body:has(.student-qr-print-area) #root :has(.student-qr-print-area) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  body:has(.student-qr-print-area) #root * {
+    visibility: hidden !important;
+  }
+
+  body:has(.student-qr-print-area) #root .student-qr-print-area,
+  body:has(.student-qr-print-area) #root .student-qr-print-area * {
+    visibility: visible !important;
+  }
+
+  body:has(.student-qr-print-area) #root .student-qr-print-area {
+    position: absolute !important;
+    top: 12mm !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    display: flex !important;
+    width: 110mm !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Printable Batch Student QR Grid Isolation */
+  body:has(.batch-qr-print-area) #root,
+  body:has(.batch-qr-print-area) #root :has(.batch-qr-print-area) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  body:has(.batch-qr-print-area) #root * {
+    visibility: hidden !important;
+  }
+
+  body:has(.batch-qr-print-area) #root .batch-qr-print-area,
+  body:has(.batch-qr-print-area) #root .batch-qr-print-area * {
+    visibility: visible !important;
+  }
+
+  body:has(.batch-qr-print-area) #root .batch-qr-print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Printable Administrative Dashboard Export (A4 Landscape, Paginated Cards & Charts) */
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 9.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) #root,
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) #root :has(.dashboard-print-area),
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area,
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-scroll {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area {
+    --dash-grid-gap: 10px;
+    --dash-subgrid-gap: 8px;
+    --dash-card-pad: 11px;
+    --dash-card-gap: 8px;
+    --dash-divider-space: 8px;
+    --dash-row-py: 5px;
+    page: dashboard;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area button.print-keep {
+    display: flex !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: var(--dash-grid-gap) !important;
+    align-items: start !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    padding: var(--dash-card-pad) !important;
+  }
+
+  :where(html.dark) body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area :is(h1, h2, h3, h4, p, span, div) {
+    color: #1e293b !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-blue {
+    border-color: #93c5fd !important;
+    background: #f8fbff !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-green {
+    border-color: #6ee7b7 !important;
+    background: #f6fef9 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-purple {
+    border-color: #c4b5fd !important;
+    background: #faf8ff !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-orange {
+    border-color: #fdba74 !important;
+    background: #fffaf5 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-amber {
+    border-color: #fcd34d !important;
+    background: #fffdf5 !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area svg {
+    max-width: 100% !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .game-immersive-root .max-w-2xl,
+  .game-immersive-root .max-w-3xl,
+  .game-immersive-root .max-w-4xl,
+  .game-immersive-root .max-w-6xl {
+    max-width: 100%;
+  }
+
+  .game-immersive-root .p-4 {
+    padding: 0.45rem;
+  }
+
+  .game-immersive-root .p-5 {
+    padding: 0.55rem;
+  }
+
+  .game-immersive-root .p-6 {
+    padding: 0.65rem;
+  }
+
+  .game-arena-landscape {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.5rem;
+    align-content: stretch;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .game-arena-hud {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .game-arena-question {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: stretch;
+    overflow-y: auto;
+  }
+
+  .game-arena-tools {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .game-arena-answers {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: stretch;
+    overflow-y: auto;
   }
 }
