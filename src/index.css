@@ -474,11 +474,12 @@
     background-color: var(--color-card);
     border: 1px solid var(--color-border);
     border-radius: var(--dash-card-radius);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
   }
   .saas-card-header {
     padding: var(--dash-card-pad);
     padding-bottom: var(--dash-divider-space);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -494,8 +495,7 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem;
-    border-radius: 0.625rem;
-    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
     background-color: var(--color-card-subtle);
   }
   .btn-icon-tool {
@@ -505,9 +505,9 @@
     width: 2rem;
     height: 2rem;
     border-radius: 0.5rem;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-card);
-    color: var(--color-text-body);
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--color-text-muted);
     cursor: pointer;
     flex-shrink: 0;
     transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
