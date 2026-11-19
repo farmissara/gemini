@@ -24,6 +24,12 @@ import { Student, AttendanceRecord, AttendanceStatus, AttendanceCheckType, AppLa
 import { getLocalDateString } from '../../lib/date';
 import { sendEduVerseNotification } from '../../lib/pushNotifications';
 import { enqueueOfflineAction, isOnlineNow } from '../../lib/offlineSync';
+import {
+  openCameraStream,
+  stopCameraStream,
+  formatCameraErrorTh,
+  type CameraFacingMode,
+} from '../../lib/cameraStream';
 
 interface ContinuousRapidScannerModalProps {
   isOpen: boolean;
@@ -67,8 +73,9 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   const [editingGateNotice, setEditingGateNotice] = useState(false);
   const [offlineSavedBanner, setOfflineSavedBanner] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [facingMode, setFacingMode] = useState<CameraFacingMode>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraNotice, setCameraNotice] = useState<string | null>(null);
   const [isCameraStarting, setIsCameraStarting] = useState(false);
   const [cameraRetry, setCameraRetry] = useState(0);
   const [manualIdInput, setManualIdInput] = useState('');
@@ -143,79 +150,70 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
     const requestId = ++cameraRequestRef.current;
     async function startCamera() {
       setCameraError(null);
+      setCameraNotice(null);
       setIsCameraStarting(true);
       try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error('CAMERA_UNAVAILABLE');
-        }
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(t => t.stop());
-          streamRef.current = null;
-        }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { exact: facingMode },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
+        const result = await openCameraStream({
+          facingMode,
+          currentStream: streamRef.current,
+          videoEl: videoRef.current,
+          idealWidth: 1280,
+          idealHeight: 720,
+          allowAnyFallback: true,
+          isCancelled: () => !active || cameraRequestRef.current !== requestId,
         });
 
         if (!active || cameraRequestRef.current !== requestId) {
-          stream.getTracks().forEach(track => track.stop());
+          stopCameraStream(result.stream, null);
           return;
         }
 
         const video = videoRef.current;
         if (!video) {
-          stream.getTracks().forEach(track => track.stop());
+          stopCameraStream(result.stream, null);
           throw new Error('CAMERA_VIEW_UNAVAILABLE');
         }
-        streamRef.current = stream;
-        video.srcObject = stream;
-        await video.play();
+
+        streamRef.current = result.stream;
+        video.srcObject = result.stream;
+        try {
+          await video.play();
+        } catch {
+          // Ignore strict autoplay promise interruptions
+        }
 
         if (!active || cameraRequestRef.current !== requestId) {
-          stream.getTracks().forEach(track => track.stop());
-          if (video.srcObject === stream) video.srcObject = null;
+          stopCameraStream(result.stream, video);
           return;
+        }
+
+        if (result.requestedUnavailable) {
+          setCameraNotice(
+            facingMode === 'environment'
+              ? 'อุปกรณ์นี้มีกล้องเพียง 1 ตัว จึงแสดงภาพจากกล้องที่มีอยู่'
+              : 'แสดงภาพจากกล้องที่มีอยู่บนอุปกรณ์นี้'
+          );
         }
         setIsCameraStarting(false);
       } catch (err) {
-        if (!active || cameraRequestRef.current !== requestId) return;
-        const errorName = err instanceof Error ? err.name : '';
-        const errorMessage = err instanceof Error ? err.message : '';
-        const message = errorMessage === 'CAMERA_UNAVAILABLE'
-          ? 'เบราว์เซอร์นี้ไม่รองรับการเปิดกล้อง'
-          : errorMessage === 'CAMERA_VIEW_UNAVAILABLE'
-          ? 'ไม่พบหน้าต่างแสดงภาพกล้อง กรุณาปิดแล้วเปิดสแกนเนอร์ใหม่'
-          : errorName === 'NotAllowedError' || errorName === 'SecurityError'
-          ? 'ไม่ได้รับอนุญาตให้ใช้กล้อง กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์'
-          : errorName === 'NotFoundError' || errorName === 'OverconstrainedError'
-          ? `ไม่พบ${facingMode === 'environment' ? 'กล้องหลัง' : 'กล้องหน้า'} กรุณาสลับกล้องหรือเชื่อมต่อกล้อง`
-          : errorName === 'NotReadableError'
-          ? 'กล้องกำลังถูกใช้งานโดยแอปหรือแท็บอื่น กรุณาปิดแอปที่ใช้กล้องแล้วลองอีกครั้ง'
-          : 'เปิดกล้องไม่สำเร็จ กรุณาตรวจสอบสิทธิ์และลองใหม่';
-        setCameraError(message);
-        setIsCameraStarting(false);
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
+        if (err instanceof Error && err.message === 'CAMERA_CANCELLED') {
+          return;
         }
-        if (videoRef.current) videoRef.current.srcObject = null;
+        if (!active || cameraRequestRef.current !== requestId) return;
+        setCameraError(formatCameraErrorTh(err, facingMode));
+        setIsCameraStarting(false);
+        stopCameraStream(streamRef.current, videoRef.current);
+        streamRef.current = null;
       }
     }
 
-    startCamera();
+    void startCamera();
 
     return () => {
       active = false;
       cameraRequestRef.current++;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
-      }
-      if (videoRef.current) videoRef.current.srcObject = null;
+      stopCameraStream(streamRef.current, videoRef.current);
+      streamRef.current = null;
     };
   }, [isOpen, facingMode, cameraRetry]);
 
@@ -385,10 +383,11 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
               type="button"
               onClick={() => setFacingMode(facingMode === 'environment' ? 'user' : 'environment')}
               disabled={isCameraStarting}
-              className="p-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+              className="px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] transition cursor-pointer disabled:opacity-50 disabled:cursor-wait flex items-center gap-1.5 text-[11px] font-bold"
               title="สลับกล้องหน้า/หลัง"
             >
-              <SwitchCamera className="w-4 h-4" />
+              <SwitchCamera className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">{facingMode === 'environment' ? 'กล้องหลัง' : 'กล้องหน้า'}</span>
             </button>
             <button
               type="button"
@@ -475,16 +474,32 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
             muted
             className="w-full h-full object-cover"
           />
+          {cameraNotice && !cameraError && !isCameraStarting && (
+            <div className="absolute inset-x-4 bottom-3 z-20 rounded-xl bg-slate-900/85 border border-slate-700 px-3 py-1.5 text-center text-[11px] text-slate-200 backdrop-blur-md">
+              {cameraNotice}
+            </div>
+          )}
           {cameraError && (
-            <div role="alert" className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-slate-900/95 p-3 text-center text-xs text-white shadow-xl">
+            <div role="alert" className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-slate-900/95 p-3 text-center text-xs text-white shadow-xl border border-slate-700">
               <p className="font-bold">{cameraError}</p>
-              <button
-                type="button"
-                onClick={() => setCameraRetry(retry => retry + 1)}
-                className="mt-2 rounded-lg bg-white px-3 py-1.5 font-bold text-slate-900 hover:bg-slate-100"
-              >
-                {lang === 'th' ? 'ลองเปิดกล้องอีกครั้ง' : 'Retry camera'}
-              </button>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCameraRetry(retry => retry + 1)}
+                  className="rounded-lg bg-white px-3 py-1.5 font-bold text-slate-900 hover:bg-slate-100 cursor-pointer"
+                >
+                  {lang === 'th' ? 'ลองเปิดกล้องอีกครั้ง' : 'Retry camera'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFacingMode(facingMode === 'environment' ? 'user' : 'environment')}
+                  className="rounded-lg bg-slate-700 px-3 py-1.5 font-bold text-white hover:bg-slate-600 cursor-pointer"
+                >
+                  {lang === 'th'
+                    ? `สลับใช้${facingMode === 'environment' ? 'กล้องหน้า' : 'กล้องหลัง'}`
+                    : 'Switch camera'}
+                </button>
+              </div>
             </div>
           )}
           {isCameraStarting && (

@@ -7,10 +7,16 @@ import {
   RefreshCw, 
   Sparkles, 
   Image as ImageIcon, 
-  FlipHorizontal,
+  SwitchCamera,
   Link as LinkIcon,
   AlertCircle
 } from 'lucide-react';
+import {
+  openCameraStream,
+  stopCameraStream,
+  formatCameraErrorTh,
+  type CameraFacingMode,
+} from '../../lib/cameraStream';
 
 interface ImageCaptureUploadModalProps {
   isOpen: boolean;
@@ -32,10 +38,13 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
   const [urlInput, setUrlInput] = useState<string>(currentImageUrl || '');
   
   // Camera state
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraRequestRef = useRef(0);
+  const facingModeRef = useRef<CameraFacingMode>('user');
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraNotice, setCameraNotice] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [facingMode, setFacingMode] = useState<CameraFacingMode>('user');
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [presetPage, setPresetPage] = useState(0);
@@ -106,6 +115,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
       setPresetPage(0);
       setCapturedPhotoUrl(null);
       setCameraError(null);
+      setCameraNotice(null);
       setUploadError(null);
     } else {
       stopCamera();
@@ -115,59 +125,98 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     };
   }, [isOpen, currentImageUrl]);
 
-  // Handle switching to camera tab
+  // Handle switching to camera tab or changing front/rear camera
   useEffect(() => {
-    if (isOpen && activeTab === 'camera') {
-      startCamera();
+    if (isOpen && activeTab === 'camera' && !capturedPhotoUrl) {
+      void startCamera(facingMode);
     } else {
       stopCamera();
     }
-  }, [activeTab, isOpen, facingMode]);
+    return () => {
+      stopCamera();
+    };
+  }, [activeTab, isOpen, facingMode, capturedPhotoUrl]);
 
-  const startCamera = async () => {
-    stopCamera();
+  const startCamera = async (targetFacingMode: CameraFacingMode = facingModeRef.current) => {
+    const requestId = ++cameraRequestRef.current;
+    facingModeRef.current = targetFacingMode;
     setCameraError(null);
+    setCameraNotice(null);
     setIsCapturing(true);
 
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('อุปกรณ์นี้ไม่รองรับการเข้าถึงกล้อง (Webcam API)');
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 640 },
-          height: { ideal: 640 },
-        },
-        audio: false,
+      const result = await openCameraStream({
+        facingMode: targetFacingMode,
+        currentStream: cameraStreamRef.current,
+        videoEl: videoRef.current,
+        idealWidth: 960,
+        idealHeight: 960,
+        allowAnyFallback: true,
+        isCancelled: () => cameraRequestRef.current !== requestId,
       });
 
-      setCameraStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(() => {});
+      if (cameraRequestRef.current !== requestId) {
+        stopCameraStream(result.stream, null);
+        return;
       }
-    } catch (err: any) {
+
+      const video = videoRef.current;
+      if (!video) {
+        stopCameraStream(result.stream, null);
+        return;
+      }
+
+      cameraStreamRef.current = result.stream;
+      video.srcObject = result.stream;
+      try {
+        await video.play();
+      } catch {
+        // Autoplay attribute handles playback
+      }
+
+      if (cameraRequestRef.current !== requestId) {
+        stopCameraStream(result.stream, video);
+        return;
+      }
+
+      facingModeRef.current = result.resolvedFacingMode;
+      if (result.resolvedFacingMode !== facingMode) {
+        setFacingMode(result.resolvedFacingMode);
+      }
+
+      if (result.requestedUnavailable) {
+        setCameraNotice(
+          targetFacingMode === 'environment'
+            ? 'อุปกรณ์นี้มีกล้องเพียง 1 ตัว จึงแสดงภาพจากกล้องที่มีอยู่'
+            : 'แสดงภาพจากกล้องที่มีอยู่บนอุปกรณ์นี้'
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message === 'CAMERA_CANCELLED') {
+        return;
+      }
+      if (cameraRequestRef.current !== requestId) return;
       console.warn('Camera error:', err);
-      setCameraError(err.message || 'ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการเข้าถึงกล้องหรือใช้วิธีอัปโหลดไฟล์แทน');
+      setCameraError(formatCameraErrorTh(err, targetFacingMode));
     } finally {
-      setIsCapturing(false);
+      if (cameraRequestRef.current === requestId) {
+        setIsCapturing(false);
+      }
     }
   };
 
   const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop());
-      setCameraStream(null);
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    cameraRequestRef.current++;
+    stopCameraStream(cameraStreamRef.current, videoRef.current);
+    cameraStreamRef.current = null;
+    setIsCapturing(false);
   };
 
   const flipCamera = () => {
-    setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'));
+    if (isCapturing) return;
+    const nextMode: CameraFacingMode = facingModeRef.current === 'user' ? 'environment' : 'user';
+    facingModeRef.current = nextMode;
+    setFacingMode(nextMode);
   };
 
   // Capture snapshot from live video
@@ -200,7 +249,6 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
 
   const retakeSnapshot = () => {
     setCapturedPhotoUrl(null);
-    startCamera();
   };
 
   // File Upload Handler (Base64 conversion)
@@ -319,7 +367,6 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="user"
                 onChange={handleFileUpload}
                 className="hidden"
               />
@@ -359,10 +406,28 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
               {cameraError ? (
                 <div className="w-full p-4 rounded-2xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 text-xs flex items-start gap-2.5">
                   <AlertCircle className="w-5 h-5 shrink-0 text-rose-700 dark:text-rose-300 mt-0.5" />
-                  <div>
-                    <p className="font-bold">ไม่สามารถเปิดกล้องได้</p>
-                    <p className="mt-0.5">{cameraError}</p>
-                    <p className="mt-2 text-[var(--color-text-title)] font-medium">
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <p className="font-bold">ไม่สามารถเปิดกล้องได้</p>
+                      <p className="mt-0.5">{cameraError}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { void startCamera(facingModeRef.current); }}
+                        className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs cursor-pointer"
+                      >
+                        ลองเปิดกล้องอีกครั้ง
+                      </button>
+                      <button
+                        type="button"
+                        onClick={flipCamera}
+                        className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-rose-300 dark:border-rose-700 text-[var(--color-text-title)] font-bold text-xs cursor-pointer"
+                      >
+                        สลับใช้{facingMode === 'user' ? 'กล้องหลัง' : 'กล้องหน้า'}
+                      </button>
+                    </div>
+                    <p className="text-[var(--color-text-title)] font-medium">
                       💡 แนะนำ: สลับไปแท็บ <strong>"อัปโหลดไฟล์"</strong> เพื่อถ่ายรูปผ่านกล้องมือถือโดยตรงได้เช่นกัน
                     </p>
                   </div>
@@ -402,7 +467,12 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                     />
                     {isCapturing && (
                       <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-white text-xs font-semibold">
-                        กำลังเชื่อมต่อกล้อง...
+                        กำลังเปิด{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}...
+                      </div>
+                    )}
+                    {cameraNotice && !isCapturing && (
+                      <div className="absolute inset-x-2 bottom-2 px-2.5 py-1 rounded-xl bg-slate-900/85 text-slate-100 text-[10px] text-center">
+                        {cameraNotice}
                       </div>
                     )}
                   </div>
@@ -411,17 +481,20 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
+                      disabled={isCapturing}
                       onClick={flipCamera}
-                      className="p-3 rounded-2xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] transition cursor-pointer shadow-sm"
+                      className="px-3 py-2.5 rounded-2xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] transition cursor-pointer shadow-sm flex items-center gap-1.5 text-xs font-bold disabled:opacity-50"
                       title="สลับกล้องหน้า/หลัง"
                     >
-                      <FlipHorizontal className="w-5 h-5" />
+                      <SwitchCamera className="w-4 h-4 shrink-0" />
+                      <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
                     </button>
 
                     <button
                       type="button"
+                      disabled={isCapturing}
                       onClick={takeSnapshot}
-                      className="px-6 py-3 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-extrabold text-sm shadow-lg flex items-center gap-2 active:scale-95 transition cursor-pointer"
+                      className="px-6 py-2.5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-extrabold text-sm shadow-lg flex items-center gap-2 active:scale-95 transition cursor-pointer disabled:opacity-50"
                     >
                       <Camera className="w-5 h-5" />
                       <span>กดถ่ายภาพ</span>

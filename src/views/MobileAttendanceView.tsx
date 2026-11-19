@@ -132,6 +132,12 @@ import {
   type WebAuthnSupportInfo,
   verifyBiometricPasskey,
 } from '../lib/webAuthn';
+import {
+  openCameraStream,
+  stopCameraStream,
+  formatCameraErrorTh,
+  type CameraFacingMode,
+} from '../lib/cameraStream';
 
 interface MobileAttendanceViewProps {
   students: Student[];
@@ -497,9 +503,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   // Camera Live Feed & Selfie Snapshot
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraRequestRef = useRef(0);
+  const facingModeRef = useRef<CameraFacingMode>('user');
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCameraSwitching, setIsCameraSwitching] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [cameraNotice, setCameraNotice] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<CameraFacingMode>('user');
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [activeCameraId, setActiveCameraId] = useState<string | null>(null);
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isFlashActive, setIsFlashActive] = useState(false);
@@ -848,58 +861,102 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   };
 
   // Start live webcam feed with front/back camera support
-  const startCamera = async (targetFacingMode: 'user' | 'environment' = facingMode) => {
+  const startCamera = async (
+    targetFacingMode: CameraFacingMode = facingModeRef.current,
+    preferredDeviceId?: string | null
+  ) => {
+    const requestId = ++cameraRequestRef.current;
+    facingModeRef.current = targetFacingMode;
+    setFacingMode(targetFacingMode);
     setCameraError(null);
+    setCameraNotice(null);
+    setIsCameraSwitching(true);
+
     try {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const currentStream = videoRef.current.srcObject as MediaStream;
-        currentStream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
+      const result = await openCameraStream({
+        facingMode: targetFacingMode,
+        currentStream: cameraStreamRef.current,
+        videoEl: videoRef.current,
+        preferredDeviceId,
+        idealWidth: 1280,
+        idealHeight: 720,
+        allowAnyFallback: true,
+        isCancelled: () => cameraRequestRef.current !== requestId,
+      });
+
+      if (cameraRequestRef.current !== requestId) {
+        stopCameraStream(result.stream, null);
+        return;
       }
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            facingMode: { ideal: targetFacingMode }, 
-            width: { ideal: 640 }, 
-            height: { ideal: 480 } 
-          },
-          audio: false
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-          setIsCameraActive(true);
-        }
-      } else {
-        setCameraError('เบราว์เซอร์นี้ไม่รองรับการเข้าถึงกล้อง');
+
+      const video = videoRef.current;
+      if (!video) {
+        stopCameraStream(result.stream, null);
+        setIsCameraActive(false);
+        return;
+      }
+
+      cameraStreamRef.current = result.stream;
+      video.srcObject = result.stream;
+      try {
+        await video.play();
+      } catch {
+        // Autoplay attribute keeps stream running on browsers with strict play() promises
+      }
+
+      if (cameraRequestRef.current !== requestId) {
+        stopCameraStream(result.stream, video);
+        return;
+      }
+
+      facingModeRef.current = result.resolvedFacingMode;
+      setFacingMode(result.resolvedFacingMode);
+      setAvailableCameras(result.devices);
+      setActiveCameraId(result.deviceId);
+      setIsCameraActive(true);
+
+      if (result.requestedUnavailable) {
+        setCameraNotice(
+          targetFacingMode === 'environment'
+            ? 'อุปกรณ์นี้มีกล้องเพียง 1 ตัว จึงแสดงภาพจากกล้องที่มีอยู่'
+            : 'แสดงภาพจากกล้องที่มีอยู่บนอุปกรณ์นี้'
+        );
       }
     } catch (err) {
+      if (err instanceof Error && err.message === 'CAMERA_CANCELLED') {
+        return;
+      }
+      if (cameraRequestRef.current !== requestId) return;
       console.warn('Camera access denied or unavailable, fallback active:', err);
-      setCameraError('ไม่สามารถเปิดกล้องได้ (กรุณาอนุญาตสิทธิ์การเข้าถึงกล้อง หรือใช้ปุ่มถ่ายภาพจำลอง)');
+      setCameraError(formatCameraErrorTh(err, targetFacingMode));
       setIsCameraActive(false);
+    } finally {
+      if (cameraRequestRef.current === requestId) {
+        setIsCameraSwitching(false);
+      }
     }
   };
 
   // Toggle front/back camera (สลับกล้องหน้า / กล้องหลัง)
   const handleToggleFacingMode = () => {
-    const nextMode = facingMode === 'user' ? 'environment' : 'user';
-    setFacingMode(nextMode);
-    startCamera(nextMode);
+    if (isCameraSwitching) return;
+    const nextMode: CameraFacingMode = facingModeRef.current === 'user' ? 'environment' : 'user';
+    // If multiple cameras exist and caller already clicked alternate mode, let openCameraStream resolve best device (or alternate deviceId)
+    void startCamera(nextMode);
   };
 
   // Stop camera feed
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-    }
+    cameraRequestRef.current++;
+    stopCameraStream(cameraStreamRef.current, videoRef.current);
+    cameraStreamRef.current = null;
     setIsCameraActive(false);
+    setIsCameraSwitching(false);
   };
 
   useEffect(() => {
     if (subTab === 'selfie_mobile') {
-      startCamera(facingMode);
+      void startCamera(facingModeRef.current);
     } else {
       stopCamera();
     }
@@ -2535,13 +2592,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 {!capturedPhotoUrl && (
                   <button
                     type="button"
-                    onClick={() => { void startCamera(); }}
-                    className="absolute top-2 right-2 z-30 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 shadow-lg flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto"
+                    disabled={isCameraSwitching}
+                    onClick={() => { void startCamera(facingModeRef.current, activeCameraId); }}
+                    className="absolute top-2 right-2 z-30 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 shadow-lg flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto disabled:opacity-60"
                     title="เปิด / รีเฟรชกล้อง (Refresh Camera)"
                     aria-label="เปิดหรือรีเฟรชกล้อง"
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-cyan-300" />
-                    <span>รีเฟรชกล้อง</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-cyan-300 ${isCameraSwitching ? 'animate-spin' : ''}`} />
+                    <span>{isCameraSwitching ? 'กำลังสลับ...' : 'รีเฟรชกล้อง'}</span>
                   </button>
                 )}
 
@@ -2555,10 +2613,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                       <div className="absolute top-1.5 w-8 h-1 bg-cyan-400/70 rounded-full" />
                       <div className="text-center px-2 space-y-0.5">
                         <p className="text-[10px] font-bold text-cyan-200 drop-shadow">
-                          วางใบหน้าในกรอบ
+                          {facingMode === 'user' ? 'วางใบหน้าในกรอบ' : 'ถ่ายภาพเช็คชื่อ (กล้องหลัง)'}
                         </p>
                         <p className="text-[8px] text-cyan-200">
-                          {facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'} (กดปุ่มสลับกล้องได้)
+                          {facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'} (กดปุ่มสลับกล้องด้านล่างได้)
                         </p>
                       </div>
                     </div>
@@ -2584,16 +2642,31 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   </div>
                 </div>
 
+                {cameraNotice && !cameraError && !capturedPhotoUrl && (
+                  <div className="absolute inset-x-3 bottom-2 z-20 px-2.5 py-1.5 rounded-xl bg-slate-900/85 border border-slate-600 text-slate-100 text-[10px] text-center backdrop-blur-md">
+                    {cameraNotice}
+                  </div>
+                )}
+
                 {cameraError && !capturedPhotoUrl && (
-                  <div className="absolute inset-x-3 bottom-3 p-2.5 rounded-xl bg-amber-950/90 border border-amber-500 text-amber-200 text-xs backdrop-blur-md text-center space-y-1.5">
+                  <div className="absolute inset-x-3 bottom-3 z-30 p-2.5 rounded-xl bg-amber-950/90 border border-amber-500 text-amber-200 text-xs backdrop-blur-md text-center space-y-1.5">
                     <p className="text-[11px]">{cameraError}</p>
-                    <button
-                      type="button"
-                      onClick={handleCaptureSnapshot}
-                      className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-xs"
-                    >
-                      กดถ่ายภาพจำลองทันที
-                    </button>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => { void startCamera(facingModeRef.current); }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] cursor-pointer border border-slate-600"
+                      >
+                        ลองเปิดกล้องอีกครั้ง
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCaptureSnapshot}
+                        className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] cursor-pointer shadow-xs"
+                      >
+                        ถ่ายภาพจำลอง
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2605,7 +2678,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setCapturedPhotoUrl(null)}
+                        onClick={() => {
+                          setCapturedPhotoUrl(null);
+                          if (!isCameraActive) {
+                            void startCamera(facingModeRef.current);
+                          }
+                        }}
                         className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
@@ -2660,40 +2738,65 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center gap-5 py-0.5">
-                    <button
-                      type="button"
-                      onClick={handleToggleFacingMode}
-                      className="px-2.5 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 text-[11px] font-bold"
-                      title="สลับกล้องหน้า / กล้องหลัง (Switch Front / Back Camera)"
-                      aria-label="สลับกล้องหน้าหรือกล้องหลัง"
-                    >
-                      <SwitchCamera className="w-4 h-4 text-amber-300 shrink-0" />
-                      <span className="hidden sm:inline">{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
-                    </button>
+                  <div className="space-y-1.5 py-0.5">
+                    <div className="flex items-center justify-center gap-4">
+                      <button
+                        type="button"
+                        disabled={isCameraSwitching}
+                        onClick={handleToggleFacingMode}
+                        className="px-2.5 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 text-[11px] font-bold disabled:opacity-50"
+                        title="สลับกล้องหน้า / กล้องหลัง (Switch Front / Back Camera)"
+                        aria-label="สลับกล้องหน้าหรือกล้องหลัง"
+                      >
+                        <SwitchCamera className="w-4 h-4 text-amber-300 shrink-0" />
+                        <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={handleCaptureSnapshot}
-                      disabled={isCapturing}
-                      className="w-12 h-12 rounded-full bg-white p-0.5 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer"
-                      title="ถ่ายรูปเช็คชื่อ"
-                      aria-label="ถ่ายรูปเช็คชื่อ"
-                    >
-                      <div className="w-full h-full rounded-full border-2 border-slate-900 bg-red-600 hover:bg-red-500 flex items-center justify-center transition">
-                        <Camera className="w-5 h-5 text-white" />
+                      <button
+                        type="button"
+                        onClick={handleCaptureSnapshot}
+                        disabled={isCapturing || isCameraSwitching}
+                        className="w-12 h-12 rounded-full bg-white p-0.5 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer disabled:opacity-60"
+                        title="ถ่ายรูปเช็คชื่อ"
+                        aria-label="ถ่ายรูปเช็คชื่อ"
+                      >
+                        <div className="w-full h-full rounded-full border-2 border-slate-900 bg-red-600 hover:bg-red-500 flex items-center justify-center transition">
+                          <Camera className="w-5 h-5 text-white" />
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleRefreshGps}
+                        className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
+                        title="รีเฟรชสัญญาณ GPS"
+                        aria-label="รีเฟรชสัญญาณ GPS"
+                      >
+                        <Navigation className={`w-4 h-4 ${isGpsLoading ? 'animate-spin text-blue-400' : ''}`} />
+                      </button>
+                    </div>
+                    {availableCameras.length > 2 && (
+                      <div className="flex items-center justify-center gap-1.5">
+                        <select
+                          aria-label="เลือกเลนส์กล้อง"
+                          value={activeCameraId || ''}
+                          disabled={isCameraSwitching}
+                          onChange={(e) => {
+                            const pickedId = e.target.value;
+                            if (pickedId) {
+                              void startCamera(facingModeRef.current, pickedId);
+                            }
+                          }}
+                          className="max-w-[240px] px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] text-slate-200 font-medium truncate"
+                        >
+                          {availableCameras.map((cam, idx) => (
+                            <option key={cam.deviceId || idx} value={cam.deviceId}>
+                              {cam.label || `กล้องที่ ${idx + 1}`}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleRefreshGps}
-                      className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
-                      title="รีเฟรชสัญญาณ GPS"
-                      aria-label="รีเฟรชสัญญาณ GPS"
-                    >
-                      <Navigation className={`w-4 h-4 ${isGpsLoading ? 'animate-spin text-blue-400' : ''}`} />
-                    </button>
+                    )}
                   </div>
                 )}
               </div>
