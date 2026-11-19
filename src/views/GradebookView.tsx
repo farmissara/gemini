@@ -1466,9 +1466,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
-      {/* Ultra-Compact Single-Row Header + Dropdown Workspace Menu */}
-      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
+      {/* Compact title, navigation, and actions in separate rows */}
+      <div className="shrink-0 px-3 py-2 app-page-header flex flex-col items-stretch gap-2 print:hidden">
+        <div className="w-full flex items-center gap-2 flex-wrap min-w-0">
           <span className="tone-chip w-6 h-6 rounded-lg shrink-0">
             <Award className="w-3.5 h-3.5" />
           </span>
@@ -1533,7 +1533,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             </div>
           ) : (
-            <div data-guide-id="gradebook-tabs" className="flex flex-wrap items-center gap-1.5">
+            <div data-guide-id="gradebook-tabs" className="w-full basis-full flex flex-wrap items-center gap-1.5">
               <select
                 aria-label={lang === 'th' ? 'เลือกหมวดงาน' : 'Select workspace'}
                 value={currentGradebookGroup.id}
@@ -1572,7 +1572,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+        <div className="w-full flex items-center justify-end gap-1.5 flex-wrap">
           <ModuleTourTrigger moduleId="gradebook" lang={lang} />
 
           {activeTab === 'pp3_online' && (
