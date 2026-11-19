@@ -2520,11 +2520,20 @@ export const App: React.FC = () => {
       const studentName = student ? `${student.firstNameTh} ${student.lastNameTh}` : 'นักเรียน';
 
       if (taggedRecords.length === 1) {
+        const singleTitle = isCheckout
+          ? '🔴 เช็คชื่อออกคาบเรียนสำเร็จ (Check-out)'
+          : firstRec.status === 'absent'
+            ? '⚠️ บันทึกขาดเรียนรายคาบ'
+            : firstRec.status === 'excused'
+              ? '📝 บันทึกลารายคาบ'
+              : firstRec.status === 'late'
+                ? '🟡 บันทึกมาสายรายคาบ'
+                : '🟢 เช็คชื่อเข้าคาบเรียนสำเร็จ (มาเรียน)';
         sendEduVerseNotification({
-          title: isCheckout ? '🔴 เช็คชื่อออกคาบเรียนสำเร็จ (Check-out)' : '🟢 เช็คชื่อเข้าคาบเรียนสำเร็จ (Check-in)',
+          title: singleTitle,
           body: `${studentName} • วิชา ${firstRec.courseCode || course?.code} คาบที่ ${firstRec.periodNumber} (${firstRec.timeSlot})`,
           category: 'attendance',
-          priority: 'normal',
+          priority: firstRec.status === 'absent' ? 'urgent' : 'normal',
           schoolId: activeSchool.id,
           targetStudentIds: student ? [student.id, student.studentIdNumber || ''].filter(Boolean) : [firstRec.studentId],
           targetRoles: ['student', 'parent', 'teacher', 'admin', 'super_admin'],

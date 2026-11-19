@@ -92,6 +92,7 @@ import {
 } from '../lib/courseTeacherFilter';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { TimetablePeriodAttendanceModal } from '../components/modals/TimetablePeriodAttendanceModal';
+import { TimetablePeriodRosterTable } from '../components/TimetablePeriodRosterTable';
 import {
   getTimetableSlotCardStyle,
   isCustomHexColor,
@@ -278,8 +279,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     (slot.semester || currentSemester) === viewSemester
   ));
 
-  // Main view mode: classroom schedule, attendance-hours criteria, staff workload summary, or substitute finder.
-  const [viewMode, setViewMode] = useState<'classroom' | 'calendar' | 'hours_criteria' | 'workload' | 'substitute'>('classroom');
+  // Main view mode: classroom schedule, period roll-call, calendar, attendance-hours criteria, staff workload summary, or substitute finder.
+  const [viewMode, setViewMode] = useState<'classroom' | 'period_rollcall' | 'calendar' | 'hours_criteria' | 'workload' | 'substitute'>('classroom');
+  const [rollcallDate, setRollcallDate] = useState<string>(() => getBangkokDateInputValue());
+  const [rollcallSlotId, setRollcallSlotId] = useState<string>('');
   const [workloadSearchTerm, setWorkloadSearchTerm] = useState('');
   const [workloadStatusFilter, setWorkloadStatusFilter] = useState<'all' | 'scheduled' | 'unassigned' | 'low' | 'within' | 'high'>('all');
   const [workloadMinDraft, setWorkloadMinDraft] = useState(String(workloadMinPeriods));
@@ -383,7 +386,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   // Ensure restricted viewers stay out of teacher/staff-only tabs
   useEffect(() => {
-    if (isPersonalViewer && (viewMode === 'workload' || viewMode === 'substitute')) {
+    if (isPersonalViewer && (viewMode === 'workload' || viewMode === 'substitute' || viewMode === 'period_rollcall')) {
       setViewMode('classroom');
     }
   }, [isPersonalViewer, viewMode]);
@@ -1864,6 +1867,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <Layers className="h-3.5 w-3.5" />
                 <span>ตารางห้อง</span>
               </button>
+              {!isPersonalViewer && (
+                <button
+                  type="button"
+                  aria-pressed={viewMode === 'period_rollcall'}
+                  data-active={viewMode === 'period_rollcall'}
+                  onClick={() => handleViewModeChange('period_rollcall')}
+                  className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+                >
+                  <UserCheck className="h-3.5 w-3.5" />
+                  <span>เช็กชื่อรายคาบ</span>
+                </button>
+              )}
               <button
                 type="button"
                 aria-pressed={viewMode === 'calendar'}
@@ -1986,7 +2001,155 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       )}
 
       {/* MAIN VIEW CONTENT: Grid Table, Substitute Finder, Workload, or Hours Criteria */}
-      {viewMode === 'substitute' ? (
+      {!isPersonalViewer && viewMode === 'period_rollcall' ? (() => {
+        const parsedRollcallDate = new Date(`${rollcallDate}T12:00:00`);
+        const rollcallJsDay = Number.isNaN(parsedRollcallDate.getTime()) ? 1 : parsedRollcallDate.getDay();
+        const rollcallWeekdayMap: Record<number, DayOfWeek> = {
+          1: 'mon',
+          2: 'tue',
+          3: 'wed',
+          4: 'thu',
+          5: 'fri',
+        };
+        const rollcallDayKey: DayOfWeek | null = rollcallWeekdayMap[rollcallJsDay] || null;
+        const rollcallHoliday = getHolidayForDate(rollcallDate, schoolId);
+        const daySlots = rollcallDayKey
+          ? activeSlots
+              .filter((s) => s.dayOfWeek === rollcallDayKey)
+              .slice()
+              .sort((a, b) => a.periodNumber - b.periodNumber)
+          : [];
+        const activeRollcallSlot =
+          daySlots.find((s) => s.id === rollcallSlotId) ||
+          daySlots.find((s) =>
+            getTimetableSlotActivityStatus({
+              slot: s,
+              schoolPeriods,
+              now: bangkokClock,
+              schoolId,
+              targetDateStr: rollcallDate,
+            }).isActive
+          ) ||
+          daySlots[0] ||
+          null;
+
+        return (
+          <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
+            <header className="shrink-0 border-b border-[var(--color-border)] px-3 py-2.5 space-y-2 bg-[var(--color-card)]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0 flex flex-wrap items-center gap-2">
+                  <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
+                    <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>เช็กชื่อและสถานะการเข้าเรียนรายคาบ</span>
+                  </h2>
+                  <span className="text-[11px] text-[var(--color-text-muted)]">
+                    ดึงสถานะเช็คอินเข้าโรงเรียนและใบลาอัตโนมัติ · บันทึกลงฐานข้อมูลเชื่อมรายงาน ปพ.5 / Report ทันที
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-body)]">
+                    <span>วันที่:</span>
+                    <input
+                      type="date"
+                      value={rollcallDate}
+                      onChange={(e) => setRollcallDate(e.target.value || todayBangkokDate)}
+                      className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-bold text-[var(--color-text-title)] tabular-nums"
+                    />
+                  </label>
+                  {renderRoomAndTermControls()}
+                </div>
+              </div>
+
+              {rollcallHoliday && (
+                <div className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 px-3 py-2 text-xs font-bold text-rose-800 dark:text-rose-200 flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 shrink-0" />
+                  <span>วันหยุด: {rollcallHoliday.nameTh} ({rollcallHoliday.nameEn})</span>
+                </div>
+              )}
+
+              {daySlots.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {daySlots.map((slot) => {
+                    const isSelected = activeRollcallSlot?.id === slot.id;
+                    const slotSum = getSlotAttendanceAndLeaveSummary({
+                      slot,
+                      dateStr: rollcallDate,
+                      courses,
+                      students,
+                      teachers,
+                      attendance,
+                      periodAttendance,
+                      leaveRequests,
+                    });
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        onClick={() => setRollcallSlotId(slot.id)}
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold cursor-pointer transition ${
+                          isSelected
+                            ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
+                            : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
+                        }`}
+                      >
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/15">
+                          คาบ {slot.periodNumber}
+                        </span>
+                        <span className="truncate max-w-[160px]">
+                          {slot.courseCode} · {slot.courseTitleTh}
+                        </span>
+                        <span className="text-[10px] opacity-85">({slot.classRoom})</span>
+                        {slotSum.periodCheckedTotal > 0 && (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded tabular-nums ${
+                              isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
+                            }`}
+                          >
+                            {slotSum.periodPresent + slotSum.periodLate}/{slotSum.expectedTotal}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </header>
+
+            {!rollcallDayKey ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--color-text-muted)] space-y-2">
+                <Calendar className="w-9 h-9 opacity-50" />
+                <p>วันที่เลือกตรงกับวันหยุดสุดสัปดาห์ (ไม่มีตารางเรียนปกติ)</p>
+              </div>
+            ) : !activeRollcallSlot ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--color-text-muted)] space-y-2">
+                <BookOpen className="w-9 h-9 opacity-50" />
+                <p>ไม่พบคาบเรียนในวันและตัวกรองที่เลือก กรุณาเปลี่ยนวันที่หรือเลือกห้องเรียนอื่น</p>
+              </div>
+            ) : (
+              <TimetablePeriodRosterTable
+                slot={activeRollcallSlot}
+                selectedDate={rollcallDate}
+                onDateChange={setRollcallDate}
+                schoolId={schoolId}
+                courses={courses}
+                students={students}
+                teachers={teachers}
+                schoolPeriods={schoolPeriods}
+                attendance={attendance}
+                periodAttendance={periodAttendance}
+                leaveRequests={leaveRequests}
+                currentUser={currentUser}
+                lang={lang}
+                onRecordPeriodAttendance={onRecordPeriodAttendance}
+                showDatePicker={false}
+                compactHeader={true}
+              />
+            )}
+          </section>
+        );
+      })() : viewMode === 'substitute' ? (
         <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
           <header className="shrink-0 border-b border-[var(--color-border)] p-2.5 sm:px-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -4023,6 +4186,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         </div>
                       </th>
                   ))}
+                  {!isPersonalViewer && (
+                    <th className="p-2.5 w-44 text-center font-bold text-[var(--color-text-title)] print:hidden">
+                      สถานะการเข้าเรียน
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-xs">
@@ -4246,6 +4414,103 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         </td>
                       );
                     })}
+                    {!isPersonalViewer && (() => {
+                      const dayAllSlots = activeSlots.filter((s) => s.dayOfWeek === day.key);
+                      const daySummaries = dayAllSlots.map((slot) =>
+                        getSlotAttendanceAndLeaveSummary({
+                          slot,
+                          dateStr: day.date,
+                          courses,
+                          students,
+                          teachers,
+                          attendance,
+                          periodAttendance,
+                          leaveRequests,
+                        })
+                      );
+                      const checkedSlotsCount = daySummaries.filter((sum) => sum.periodCheckedTotal > 0).length;
+                      const totalPresentMarks = daySummaries.reduce((acc, s) => acc + s.periodPresent + s.periodLate, 0);
+                      const totalLeaveMarks = daySummaries.reduce((acc, s) => acc + s.periodExcused, 0);
+                      const totalAbsentMarks = daySummaries.reduce((acc, s) => acc + s.periodAbsent, 0);
+                      const teacherLeaveSlots = daySummaries.filter((s) =>
+                        s.teacherStatuses.some((t) => t.status === 'on_leave_approved' || t.status === 'on_leave_pending')
+                      ).length;
+                      const teacherCheckedSlots = daySummaries.filter((s) =>
+                        s.teacherStatuses.some((t) => t.status === 'checked_in' || t.status === 'late')
+                      ).length;
+                      const maxStudentLeavesOnDay = daySummaries.reduce(
+                        (max, s) => Math.max(max, s.studentLeaveCount),
+                        0
+                      );
+
+                      return (
+                        <td className="p-2 border-l border-[var(--color-border)] align-middle text-[10px] print:hidden">
+                          {rowHoliday ? (
+                            <span className="inline-block rounded-md bg-rose-100 dark:bg-rose-950/70 px-2 py-1 text-[10px] font-bold text-rose-700 dark:text-rose-200">
+                              งดสอน (วันหยุด)
+                            </span>
+                          ) : dayAllSlots.length === 0 ? (
+                            <span className="text-[var(--color-text-muted)]">ไม่มีคาบสอน</span>
+                          ) : (
+                            <div className="space-y-1.5">
+                              <div className="flex flex-wrap gap-1 tabular-nums">
+                                {checkedSlotsCount > 0 ? (
+                                  <>
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold">
+                                      เช็กแล้ว {checkedSlotsCount}/{dayAllSlots.length} คาบ
+                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 font-semibold">
+                                      มา {totalPresentMarks}
+                                    </span>
+                                    {totalLeaveMarks > 0 && (
+                                      <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 font-bold">
+                                        ลา {totalLeaveMarks}
+                                      </span>
+                                    )}
+                                    {totalAbsentMarks > 0 && (
+                                      <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
+                                        ขาด {totalAbsentMarks}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
+                                    รอเช็ก {dayAllSlots.length} คาบ
+                                  </span>
+                                )}
+                                {teacherLeaveSlots > 0 && (
+                                  <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
+                                    ครูลา {teacherLeaveSlots} คาบ
+                                  </span>
+                                )}
+                                {teacherCheckedSlots > 0 && day.date <= todayBangkokDate && (
+                                  <span className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-200 font-semibold">
+                                    ครูเข้า รร. {teacherCheckedSlots}/{dayAllSlots.length}
+                                  </span>
+                                )}
+                                {maxStudentLeavesOnDay > 0 && checkedSlotsCount === 0 && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold">
+                                    นร.ลา {maxStudentLeavesOnDay}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRollcallDate(day.date);
+                                  setRollcallSlotId(dayAllSlots[0]?.id || '');
+                                  setViewMode('period_rollcall');
+                                }}
+                                className="w-full inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/70 px-2 py-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-200 cursor-pointer transition"
+                              >
+                                <UserCheck className="w-3 h-3 shrink-0" />
+                                <span>เช็กชื่อรายคน</span>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })()}
                   </tr>
                   );
                 })}
