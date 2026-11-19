@@ -11,8 +11,6 @@ import {
   HelpCircle,
   FileSpreadsheet,
   Bell,
-  Maximize2,
-  Minimize2,
   User,
   ShieldCheck,
   GraduationCap,
@@ -24,6 +22,7 @@ import {
   Mail,
   CreditCard,
   BookOpen,
+  Focus,
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
@@ -233,7 +232,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="app-topbar h-14 sm:h-16 border-b border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-md shadow-[0_1px_2px_rgba(15,23,42,0.04)] text-[var(--color-text-body)] sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full">
       {/* Zone 1: Brand + School Context + Consolidated Workspace Mode Dropdown */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        {onToggleMobileMenu && (
+        {!focusMode && onToggleMobileMenu && (
           <button
             type="button"
             onClick={onToggleMobileMenu}
@@ -254,7 +253,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {canAccessSchoolOperations && (
           <>
             <span className="hidden sm:inline h-5 w-px bg-[var(--color-border)] select-none" aria-hidden="true" />
-            {canSwitchSchool ? (
+            {canSwitchSchool && !focusMode ? (
               <button
                 type="button"
                 data-guide-id="nav-school-switcher"
@@ -361,9 +360,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* Zone 2: Compact Search + Alerts + Unified Account & Tools Dropdown */}
+      {/* Zone 2: Compact Search + Direct Focus Mode Toggle + Alerts + Account Menu */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-        {canAccessSchoolOperations && (
+        {!focusMode && canAccessSchoolOperations && (
           <div className="hidden md:block">
             <UnifiedNavbarSearch
               searchQuery={searchQuery}
@@ -385,14 +384,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {focusMode && onToggleFocusMode && (
+        {onToggleFocusMode && (
           <button
             type="button"
+            data-guide-id="header-focus-toggle"
             onClick={onToggleFocusMode}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] shadow-xs text-white text-[13px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2"
+            aria-pressed={focusMode}
+            title={
+              focusMode
+                ? (lang === 'th' ? 'แสดงแถบเมนูทั้งหมด (Ctrl+Shift+F)' : 'Show sidebar & menus (Ctrl+Shift+F)')
+                : (lang === 'th' ? 'ซ่อนแถบเมนูที่ไม่จำเป็น (โหมดโฟกัส · Ctrl+Shift+F)' : 'Hide non-essential menus (Focus Mode · Ctrl+Shift+F)')
+            }
+            className={
+              focusMode
+                ? 'inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] shadow-xs text-white text-[13px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2'
+                : 'inline-flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-[13px] font-medium transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40'
+            }
           >
-            <Minimize2 className="w-4 h-4 shrink-0" />
-            <span>{lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar'}</span>
+            <Focus className="w-4 h-4 shrink-0" />
+            <span>
+              {focusMode
+                ? (lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus')
+                : (lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode')}
+            </span>
           </button>
         )}
 
@@ -572,11 +586,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                   className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                 >
-                  <span className="flex items-center gap-3">
-                    {focusMode ? <Minimize2 className="h-4 w-4 text-[var(--color-primary-text)]" /> : <Maximize2 className="h-4 w-4 text-[var(--color-text-muted)]" />}
-                    <span>{lang === 'th' ? 'ซ่อนแถบเมนู (เต็มจอ)' : 'Fullscreen Workspace'}</span>
+                  <span className="flex items-center gap-3 min-w-0">
+                    <Focus className={`h-4 w-4 shrink-0 ${focusMode ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'}`} />
+                    <span className="truncate">{lang === 'th' ? 'โหมดโฟกัส (Focus Mode)' : 'Focus Mode'}</span>
                   </span>
-                  {focusMode && <Check className="h-4 w-4 text-[var(--color-primary-text)] shrink-0" />}
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-mono text-[var(--color-text-muted)]">Ctrl+Shift+F</span>
+                    {focusMode && <Check className="h-4 w-4 text-[var(--color-primary-text)]" />}
+                  </span>
                 </button>
               )}
 

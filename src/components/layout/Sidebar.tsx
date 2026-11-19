@@ -119,6 +119,8 @@ interface SidebarProps {
   lang: AppLanguage;
   desktopCollapsed?: boolean;
   onToggleDesktopCollapse?: () => void;
+  adminSimplifiedView?: boolean;
+  onToggleAdminSimplifiedView?: () => void;
 }
 
 export interface NavItemDef {
@@ -182,6 +184,20 @@ const ADMIN_FOCUS_TABS = new Set<NavTab>([
   'admin_superadmin_desk',
 ]);
 
+// Simplified View tabs for Admin dashboard (hides technical settings & executive tools, keeping core operations)
+const ADMIN_SIMPLIFIED_TABS = new Set<NavTab>([
+  'dashboard',
+  'students',
+  'teachers',
+  'courses',
+  'timetable',
+  'attendance',
+  'mobile_checkin',
+  'homework',
+  'gradebook',
+  'announcements',
+]);
+
 const ARCADE_TABS = new Set<NavTab>(['games', 'boss_raid', 'study_streak', 'hall_of_fame']);
 const SIDEBAR_FOCUS_STORAGE_KEY = 'baanpakkru_sidebar_focus_mode';
 
@@ -202,14 +218,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   lang,
   desktopCollapsed = false,
   onToggleDesktopCollapse,
+  adminSimplifiedView = false,
+  onToggleAdminSimplifiedView,
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const supportsFocusMode = currentRole === 'teacher' || currentRole === 'admin';
+  const isSimplifiedAdmin = currentRole === 'admin' && adminSimplifiedView;
+  const supportsFocusMode = (currentRole === 'teacher' || currentRole === 'admin') && !isSimplifiedAdmin;
   const focusStorageKey = currentRole === 'teacher'
     ? SIDEBAR_FOCUS_STORAGE_KEY
     : `${SIDEBAR_FOCUS_STORAGE_KEY}_${currentRole}`;
-  const focusTabs = currentRole === 'admin' ? ADMIN_FOCUS_TABS : FOCUS_TEACHER_TABS;
+  const focusTabs = isSimplifiedAdmin
+    ? ADMIN_SIMPLIFIED_TABS
+    : currentRole === 'admin'
+      ? ADMIN_FOCUS_TABS
+      : FOCUS_TEACHER_TABS;
 
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (!supportsFocusMode) return false;
@@ -748,12 +771,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             i.roles.includes(currentRole) &&
             isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
             isAllowedBySchoolPolicy(i.id) &&
-            (!focusMode || !supportsFocusMode || focusTabs.has(i.id) || i.id === resolvedSidebarActiveTab)
+            (isSimplifiedAdmin
+              ? ADMIN_SIMPLIFIED_TABS.has(i.id)
+              : !focusMode || !supportsFocusMode || focusTabs.has(i.id) || i.id === resolvedSidebarActiveTab)
         );
         return { ...cat, items };
       })
       .filter((cat) => cat.items.length > 0);
-  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, focusTabs, resolvedSidebarActiveTab]);
+  }, [categories, currentRole, featureFlags, schoolPermissions, isSimplifiedAdmin, focusMode, supportsFocusMode, focusTabs, resolvedSidebarActiveTab]);
 
   // Search filters across ALL role-allowed modules (including hidden extra ones)
   const searchResults = useMemo(() => {
@@ -793,8 +818,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (Object.prototype.hasOwnProperty.call(collapsed, catId)) {
       return Boolean(collapsed[catId]);
     }
-    // In Focus Mode for Admin/Teacher, keep all 3-5 core groups open so staff never hunt inside accordions
-    if (focusMode && supportsFocusMode) {
+    // In Simplified Admin or Focus Mode for Admin/Teacher, keep core groups open so staff never hunt inside accordions
+    if (isSimplifiedAdmin || (focusMode && supportsFocusMode)) {
       return false;
     }
     return catId !== activeCatId;
@@ -1031,7 +1056,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Expand/Collapse All shown only when viewing All Menus */}
-            {(!focusMode || !supportsFocusMode) && visibleCategories.length > 2 && (
+            {!isSimplifiedAdmin && (!focusMode || !supportsFocusMode) && visibleCategories.length > 2 && (
               <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between px-1">
                 <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
                   {lang === 'th' ? 'หมวดงานทั้งหมด' : 'All Workspaces'}
@@ -1104,8 +1129,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
               })}
             </div>
 
-            {/* Quiet Bottom Toggle for Secondary/Student Modules (Admin & Teacher) */}
-            {supportsFocusMode && (
+            {/* Quiet Bottom Toggle for Simplified View or Secondary/Student Modules */}
+            {isSimplifiedAdmin && onToggleAdminSimplifiedView ? (
+              <div className="pt-3 mt-2 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  onClick={onToggleAdminSimplifiedView}
+                  aria-pressed={true}
+                  className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] font-semibold text-[var(--color-primary-text)] bg-[var(--color-primary-light)]/70 hover:bg-[var(--color-primary-light)] transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <Layers className="w-4 h-4 shrink-0" />
+                    <span className="truncate">
+                      {lang === 'th' ? 'แสดงเมนู & ตั้งค่าทั้งหมด' : 'Exit Simplified View'}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            ) : supportsFocusMode && (
               <div className="pt-3 mt-2 border-t border-[var(--color-border)]">
                 <button
                   type="button"

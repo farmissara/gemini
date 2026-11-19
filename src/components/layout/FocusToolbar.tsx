@@ -1,0 +1,436 @@
+import React, { useMemo } from 'react';
+import {
+  ArrowLeft,
+  Award,
+  BellRing,
+  BookMarked,
+  BookOpen,
+  Calendar,
+  FileCheck2,
+  Focus,
+  GraduationCap,
+  HeartHandshake,
+  HeartPulse,
+  LayoutDashboard,
+  Mail,
+  Monitor,
+  MonitorPlay,
+  QrCode,
+  Receipt,
+  ShieldAlert,
+  SlidersHorizontal,
+  Smartphone,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import type { AppLanguage, AppProgramMode, SchoolFeatureFlags, UserRole } from '../../types';
+import type { NavTab } from './Sidebar';
+import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
+import type { SchoolPolicyId } from '../../lib/schoolPermissions';
+
+interface FocusToolbarProps {
+  currentTab: NavTab;
+  programMode: AppProgramMode;
+  currentRole: UserRole;
+  lang: AppLanguage;
+  featureFlags?: SchoolFeatureFlags;
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
+  onNavigateTab: (tab: NavTab) => void;
+  onChangeProgramMode: (mode: AppProgramMode) => void;
+  onExitFocusMode: () => void;
+  adminSimplifiedView?: boolean;
+}
+
+interface FocusToolMeta {
+  id: NavTab;
+  labelTh: string;
+  labelEn: string;
+  icon: LucideIcon;
+  roles: UserRole[];
+}
+
+const TOOL_CATALOG: Record<string, FocusToolMeta> = {
+  dashboard: {
+    id: 'dashboard',
+    labelTh: 'หน้าหลัก',
+    labelEn: 'Overview',
+    icon: LayoutDashboard,
+    roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+  },
+  timetable: {
+    id: 'timetable',
+    labelTh: 'ตารางสอน / เรียน',
+    labelEn: 'Timetable',
+    icon: Calendar,
+    roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+  },
+  courses: {
+    id: 'courses',
+    labelTh: 'รายวิชา',
+    labelEn: 'Courses',
+    icon: BookOpen,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  attendance: {
+    id: 'attendance',
+    labelTh: 'เช็คชื่อ & เวลาเรียน',
+    labelEn: 'Attendance',
+    icon: QrCode,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  mobile_checkin: {
+    id: 'mobile_checkin',
+    labelTh: 'เช็คชื่อมือถือ & ใบลา',
+    labelEn: 'Mobile Check-in',
+    icon: Smartphone,
+    roles: ['super_admin', 'admin', 'teacher', 'student'],
+  },
+  homework: {
+    id: 'homework',
+    labelTh: 'การบ้าน & ภาระงาน',
+    labelEn: 'Homework',
+    icon: FileCheck2,
+    roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+  },
+  gradebook: {
+    id: 'gradebook',
+    labelTh: 'คะแนน & ปพ.',
+    labelEn: 'Gradebook',
+    icon: Award,
+    roles: ['super_admin', 'admin', 'teacher', 'student'],
+  },
+  student_development_book: {
+    id: 'student_development_book',
+    labelTh: 'สมุดพัฒนาผู้เรียน',
+    labelEn: 'Dev Book',
+    icon: BookMarked,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  central_exam_hub: {
+    id: 'central_exam_hub',
+    labelTh: 'คลังข้อสอบกลาง',
+    labelEn: 'Exam Hub',
+    icon: BookOpen,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  students: {
+    id: 'students',
+    labelTh: 'ทะเบียนนักเรียน',
+    labelEn: 'Students',
+    icon: Users,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  teachers: {
+    id: 'teachers',
+    labelTh: 'ครู & บุคลากร',
+    labelEn: 'Faculty',
+    icon: GraduationCap,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  behavior_sdq: {
+    id: 'behavior_sdq',
+    labelTh: 'พฤติกรรม & SDQ',
+    labelEn: 'Behavior & SDQ',
+    icon: HeartHandshake,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  infirmary: {
+    id: 'infirmary',
+    labelTh: 'ห้องพยาบาล',
+    labelEn: 'Infirmary',
+    icon: HeartPulse,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  announcements: {
+    id: 'announcements',
+    labelTh: 'ประกาศโรงเรียน',
+    labelEn: 'Announcements',
+    icon: BellRing,
+    roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+  },
+  billing: {
+    id: 'billing',
+    labelTh: 'ค่าเทอม & ใบเสร็จ',
+    labelEn: 'Billing',
+    icon: Receipt,
+    roles: ['super_admin', 'admin', 'parent'],
+  },
+  executive_monitor: {
+    id: 'executive_monitor',
+    labelTh: 'มอนิเตอร์ & สพฐ.',
+    labelEn: 'OBEC Monitor',
+    icon: Monitor,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
+  executive_warning: {
+    id: 'executive_warning',
+    labelTh: 'เตือนภัยผู้เรียน',
+    labelEn: 'Early Warning',
+    icon: ShieldAlert,
+    roles: ['super_admin', 'admin'],
+  },
+  system_settings: {
+    id: 'system_settings',
+    labelTh: 'ตั้งค่าระบบ',
+    labelEn: 'Settings',
+    icon: SlidersHorizontal,
+    roles: ['super_admin', 'admin'],
+  },
+  admin_superadmin_desk: {
+    id: 'admin_superadmin_desk',
+    labelTh: 'ประสานงานส่วนกลาง',
+    labelEn: 'Admin Desk',
+    icon: Mail,
+    roles: ['admin', 'super_admin'],
+  },
+};
+
+const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> = {
+  obec_executive_dashboard: { th: 'รายงาน 8 กลุ่มสาระฯ สพฐ.', en: 'OBEC 8-Area Analytics' },
+  pp6_executive_dashboard: { th: 'ภาพรวมคุณภาพ ปพ.6', en: 'Pp.6 Executive Overview' },
+  qualitative_summary: { th: 'สรุปคุณลักษณะ & อ่านคิดวิเคราะห์', en: 'Qualitative Summary' },
+  report_insights: { th: 'รายงานสถิติ & กราฟ', en: 'Analytics & Charts' },
+  school_permissions: { th: 'ตั้งค่าสิทธิ์บทบาท', en: 'Role Permissions' },
+  school_gps: { th: 'ตั้งค่า GPS โรงเรียน', en: 'School GPS' },
+  admin_line_control: { th: 'ตั้งค่าแจ้งเตือน LINE OA', en: 'LINE OA Rules' },
+  admin_student_accounts: { th: 'บัญชีนักเรียน', en: 'Student Accounts' },
+  admin_saas_audit: { th: 'แพ็กเกจ AI & Audit Log', en: 'Packages & Audit' },
+  student_id_cards: { th: 'บัตรนักเรียนดิจิทัล', en: 'Digital Student ID' },
+  portfolio: { th: 'แฟ้มสะสมผลงาน', en: 'Portfolio' },
+  subject_labs: { th: 'ห้องทดลองเสมือนจริง', en: 'Subject Labs' },
+  socratic_tutor: { th: 'ติวเตอร์ AI', en: 'AI Tutor' },
+  career_quest: { th: 'เส้นทางอาชีพ AI', en: 'Career Quest' },
+  ai_diagnostic: { th: 'วิเคราะห์จุดอ่อน AI', en: 'AI Diagnostic' },
+  realworld_quests: { th: 'ภารกิจนอกห้องเรียน', en: 'Snap Quest' },
+  study_streak: { th: 'ภารกิจสะสมวินัย', en: 'Study Streak' },
+  games: { th: 'เกมฝึกทักษะ', en: 'Learning Games' },
+  boss_raid: { th: 'โหมดรวมพลังตอบคำถาม', en: 'Co-op Quiz' },
+  hall_of_fame: { th: 'หอเกียรติยศ', en: 'Hall of Fame' },
+  super_admin_console: { th: 'ศูนย์ควบคุมระบบแม่ข่าย', en: 'Super Admin Console' },
+};
+
+const CONTEXTUAL_CLUSTERS: Record<string, NavTab[]> = {
+  teaching: ['timetable', 'courses', 'attendance', 'homework', 'gradebook'],
+  attendance: ['attendance', 'mobile_checkin', 'timetable', 'behavior_sdq', 'students'],
+  grading: ['gradebook', 'student_development_book', 'homework', 'central_exam_hub', 'students'],
+  directory: ['students', 'teachers', 'timetable', 'courses', 'gradebook'],
+  care_ops: ['behavior_sdq', 'infirmary', 'attendance', 'announcements', 'billing'],
+  executive_admin: ['dashboard', 'executive_monitor', 'executive_warning', 'attendance', 'system_settings'],
+  executive_teacher: ['dashboard', 'timetable', 'attendance', 'homework', 'gradebook'],
+  student_parent_home: ['dashboard', 'timetable', 'homework', 'gradebook', 'announcements'],
+  settings: ['system_settings', 'students', 'teachers', 'admin_superadmin_desk', 'dashboard'],
+};
+
+const ADMIN_SIMPLIFIED_CORE_TABS = new Set<NavTab>([
+  'dashboard',
+  'students',
+  'teachers',
+  'courses',
+  'timetable',
+  'attendance',
+  'mobile_checkin',
+  'homework',
+  'gradebook',
+  'announcements',
+]);
+
+function getContextualClusterIds(tab: NavTab, role: UserRole): NavTab[] {
+  if (tab === 'attendance' || tab === 'mobile_checkin') return CONTEXTUAL_CLUSTERS.attendance;
+  if (tab === 'timetable' || tab === 'courses') return CONTEXTUAL_CLUSTERS.teaching;
+  if (tab === 'homework' || tab === 'central_exam_hub' || tab === 'gradebook' || tab === 'student_development_book' || tab === 'qualitative_summary') {
+    return CONTEXTUAL_CLUSTERS.grading;
+  }
+  if (tab === 'students' || tab === 'teachers') return CONTEXTUAL_CLUSTERS.directory;
+  if (tab === 'behavior_sdq' || tab === 'infirmary' || tab === 'billing' || tab === 'announcements') {
+    return role === 'student' || role === 'parent' ? CONTEXTUAL_CLUSTERS.student_parent_home : CONTEXTUAL_CLUSTERS.care_ops;
+  }
+  if (
+    tab === 'system_settings' ||
+    tab === 'school_gps' ||
+    tab === 'school_permissions' ||
+    tab === 'admin_line_control' ||
+    tab === 'admin_student_accounts' ||
+    tab === 'admin_saas_audit' ||
+    tab === 'admin_superadmin_desk'
+  ) {
+    return CONTEXTUAL_CLUSTERS.settings;
+  }
+  if (role === 'student' || role === 'parent') return CONTEXTUAL_CLUSTERS.student_parent_home;
+  if (role === 'teacher') return CONTEXTUAL_CLUSTERS.executive_teacher;
+  return CONTEXTUAL_CLUSTERS.executive_admin;
+}
+
+export const FocusToolbar: React.FC<FocusToolbarProps> = ({
+  currentTab,
+  programMode,
+  currentRole,
+  lang,
+  featureFlags,
+  schoolPermissions,
+  onNavigateTab,
+  onChangeProgramMode,
+  onExitFocusMode,
+  adminSimplifiedView = false,
+}) => {
+  const isSimplifiedAdmin = currentRole === 'admin' && adminSimplifiedView;
+  const isAllowedTool = (tabId: NavTab): boolean => {
+    if (isSimplifiedAdmin && !ADMIN_SIMPLIFIED_CORE_TABS.has(tabId)) return false;
+    const meta = TOOL_CATALOG[tabId];
+    if (!meta || !meta.roles.includes(currentRole)) return false;
+    if (!isTabEnabledByFeatureFlags(tabId, featureFlags)) return false;
+    if (schoolPermissions) {
+      if (currentRole === 'teacher') {
+        if (tabId === 'billing' && schoolPermissions.teacher_view_financials === false) return false;
+        if (tabId === 'behavior_sdq' && schoolPermissions.teacher_sdq_screening === false) return false;
+        if (tabId === 'infirmary' && schoolPermissions.teacher_infirmary_access === false) return false;
+        if ((tabId === 'attendance' || tabId === 'mobile_checkin') && schoolPermissions.teacher_attendance === false) return false;
+        if (tabId === 'homework' && schoolPermissions.teacher_homework === false) return false;
+      }
+      if (currentRole === 'student') {
+        if (tabId === 'mobile_checkin' && schoolPermissions.student_self_checkin === false) return false;
+        if (tabId === 'homework' && schoolPermissions.student_submit_homework === false) return false;
+        if (tabId === 'gradebook' && schoolPermissions.student_view_grades === false) return false;
+      }
+    }
+    return true;
+  };
+
+  const quickTools = useMemo(() => {
+    if (programMode !== 'school_erp') {
+      const lmsSuggestions: NavTab[] = ['timetable', 'homework', 'gradebook'];
+      return lmsSuggestions
+        .filter((id) => isAllowedTool(id))
+        .slice(0, 3)
+        .map((id) => TOOL_CATALOG[id]);
+    }
+
+    const candidates = isSimplifiedAdmin
+      ? (['dashboard', 'students', 'courses', 'attendance'] as NavTab[])
+      : getContextualClusterIds(currentTab, currentRole);
+    return candidates
+      .filter((id) => isAllowedTool(id))
+      .slice(0, 4)
+      .map((id) => TOOL_CATALOG[id]);
+  }, [currentTab, currentRole, programMode, featureFlags, schoolPermissions, isSimplifiedAdmin]);
+
+  const activeTitle = useMemo(() => {
+    if (programMode === 'lms_classroom') {
+      return lang === 'th' ? 'ห้องเรียนออนไลน์ (LMS)' : 'Virtual Classroom (LMS)';
+    }
+    if (programMode === 'parent_portal') {
+      return lang === 'th' ? 'พอร์ทัลผู้ปกครอง' : 'Parent Portal';
+    }
+    const catalogHit = TOOL_CATALOG[currentTab];
+    if (catalogHit) return lang === 'th' ? catalogHit.labelTh : catalogHit.labelEn;
+    const extraHit = EXTRA_ACTIVE_LABELS[currentTab];
+    if (extraHit) return lang === 'th' ? extraHit.th : extraHit.en;
+    return lang === 'th' ? 'พื้นที่ทำงานโฟกัส' : 'Focused Workspace';
+  }, [programMode, currentTab, lang]);
+
+  const normalizedActiveToolId: NavTab = useMemo(() => {
+    if (
+      currentTab === 'school_gps' ||
+      currentTab === 'school_permissions' ||
+      currentTab === 'admin_line_control' ||
+      currentTab === 'admin_student_accounts' ||
+      currentTab === 'admin_saas_audit'
+    ) {
+      return 'system_settings';
+    }
+    if (
+      currentTab === 'obec_executive_dashboard' ||
+      currentTab === 'pp6_executive_dashboard' ||
+      currentTab === 'report_insights'
+    ) {
+      return 'executive_monitor';
+    }
+    return currentTab;
+  }, [currentTab]);
+
+  const canGoHome = programMode !== 'school_erp' || currentTab !== 'dashboard';
+
+  return (
+    <div
+      role="region"
+      aria-label={lang === 'th' ? 'แถบเครื่องมือโหมดโฟกัส' : 'Focus mode toolbar'}
+      className="no-print mb-3 sm:mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2.5"
+    >
+      {/* Left: Active task context & quick home escape */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        {canGoHome && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                if (programMode !== 'school_erp') {
+                  onChangeProgramMode('school_erp');
+                }
+                onNavigateTab('dashboard');
+              }}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'หน้าหลัก' : 'Home'}</span>
+            </button>
+            <span className="h-4 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
+          </>
+        )}
+
+        <div className="flex items-center gap-2 min-w-0">
+          {programMode === 'lms_classroom' ? (
+            <MonitorPlay className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          ) : (
+            <Focus className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+          )}
+          <span className="text-xs font-medium text-[var(--color-text-muted)] whitespace-nowrap shrink-0 hidden sm:inline">
+            {lang === 'th' ? 'โหมดโฟกัส' : 'Focus'}
+            <span className="mx-1.5" aria-hidden="true">·</span>
+          </span>
+          <span className="text-[13px] font-bold text-[var(--color-text-title)] truncate">
+            {activeTitle}
+          </span>
+        </div>
+      </div>
+
+      {/* Center / Right: Contextual tools relevant ONLY to current work + Exit Focus */}
+      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 max-w-full">
+        {quickTools.length > 0 && (
+          <div className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
+            {quickTools.map((tool) => {
+              const Icon = tool.icon;
+              const isCurrent = programMode === 'school_erp' && normalizedActiveToolId === tool.id;
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  data-active={isCurrent}
+                  onClick={() => {
+                    if (programMode !== 'school_erp') {
+                      onChangeProgramMode('school_erp');
+                    }
+                    onNavigateTab(tool.id);
+                  }}
+                  className="seg-tab-btn whitespace-nowrap shrink-0"
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'th' ? tool.labelTh : tool.labelEn}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onExitFocusMode}
+          title={lang === 'th' ? 'ออกจากโหมดโฟกัส (Ctrl+Shift+F)' : 'Exit Focus Mode (Ctrl+Shift+F)'}
+          className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
+        >
+          <X className="w-3.5 h-3.5 shrink-0" />
+          <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>
+        </button>
+      </div>
+    </div>
+  );
+};

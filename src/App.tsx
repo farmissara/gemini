@@ -123,6 +123,7 @@ import type { DuplicateRecordReport, DuplicateRecordTarget } from './lib/duplica
 import { isMobileViewport } from './lib/screenOrientation';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
+import { FocusToolbar } from './components/layout/FocusToolbar';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ViewErrorBoundary } from './components/common/ViewErrorBoundary';
 import { SchoolSwitcherModal } from './components/modals/SchoolSwitcherModal';
@@ -414,6 +415,9 @@ export const App: React.FC = () => {
     }
   });
   useEffect(() => {
+    if (focusMode) {
+      setIsMobileMenuOpen(false);
+    }
     if (typeof window === 'undefined') return;
     try {
       window.localStorage.setItem('baanpakkru_focus_mode', focusMode ? '1' : '0');
@@ -431,6 +435,22 @@ export const App: React.FC = () => {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+  const [adminSimplifiedView, setAdminSimplifiedView] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('baanpakkru_admin_simplified_view') === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('baanpakkru_admin_simplified_view', adminSimplifiedView ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  }, [adminSimplifiedView]);
   const [dismissedDuplicateWarning, setDismissedDuplicateWarning] = useState(false);
   const [showDuplicateDetails, setShowDuplicateDetails] = useState(false);
   const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
@@ -4400,7 +4420,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Mobile Drawer Overlay and Sidebar */}
-      {!useImmersiveGameLayout && isMobileMenuOpen && (
+      {!useImmersiveGameLayout && !focusMode && isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div 
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
@@ -4436,6 +4456,8 @@ export const App: React.FC = () => {
                 lang={lang}
                 featureFlags={activeFeatureFlags}
                 schoolPermissions={schoolPermissions}
+                adminSimplifiedView={adminSimplifiedView}
+                onToggleAdminSimplifiedView={() => setAdminSimplifiedView((prev) => !prev)}
               />
             </div>
           </div>
@@ -4466,14 +4488,30 @@ export const App: React.FC = () => {
               schoolPermissions={schoolPermissions}
               desktopCollapsed={isSidebarCollapsed}
               onToggleDesktopCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+              adminSimplifiedView={adminSimplifiedView}
+              onToggleAdminSimplifiedView={() => setAdminSimplifiedView((prev) => !prev)}
             />
           </div>
         )}
 
         {/* Main Content Area */}
         <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'app-workspace p-4 sm:p-6 lg:p-8 pb-24 md:pb-10 overflow-y-auto'}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : focusMode ? 'max-w-none mx-auto' : 'max-w-[1440px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
-            {!useImmersiveGameLayout && currentRole === 'super_admin' && isSuperAdminSchoolView && (
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-[1440px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
+            {!useImmersiveGameLayout && focusMode && (
+              <FocusToolbar
+                currentTab={currentTab}
+                programMode={programMode}
+                currentRole={currentRole}
+                lang={lang}
+                featureFlags={activeFeatureFlags}
+                schoolPermissions={schoolPermissions}
+                onNavigateTab={navigateToAppTab}
+                onChangeProgramMode={handleChangeProgramMode}
+                onExitFocusMode={() => setFocusMode(false)}
+                adminSimplifiedView={adminSimplifiedView}
+              />
+            )}
+            {!useImmersiveGameLayout && !focusMode && currentRole === 'super_admin' && isSuperAdminSchoolView && (
               <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1">
                 <div className="text-[11px] font-semibold text-blue-900 dark:text-blue-100 truncate">
                   โหมดตรวจสอบรายโรงเรียน: <strong>{activeSchool.nameTh}</strong>
@@ -4635,6 +4673,8 @@ export const App: React.FC = () => {
                     }}
                     focusMode={focusMode}
                     onToggleFocusMode={() => setFocusMode((prev) => !prev)}
+                    adminSimplifiedView={adminSimplifiedView}
+                    onToggleAdminSimplifiedView={() => setAdminSimplifiedView((prev) => !prev)}
                   />
                 )}
 

@@ -33,8 +33,6 @@ import {
   BookOpen,
   ClipboardList,
   Printer,
-  Maximize2,
-  Minimize2,
   ListChecks,
   TrendingUp,
   Activity,
@@ -42,6 +40,7 @@ import {
   AlertTriangle,
   Compass,
   SlidersHorizontal,
+  Focus,
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { 
@@ -155,6 +154,8 @@ interface DashboardViewProps {
   onOpenPp5Summary?: () => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
+  adminSimplifiedView?: boolean;
+  onToggleAdminSimplifiedView?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -198,6 +199,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenPp5Summary,
   focusMode: controlledFocusMode,
   onToggleFocusMode,
+  adminSimplifiedView = false,
+  onToggleAdminSimplifiedView,
 }) => {
   const [localFocusMode, setLocalFocusMode] = useState(false);
   const isFocusMode = typeof controlledFocusMode === 'boolean' ? controlledFocusMode : localFocusMode;
@@ -213,13 +216,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const twoDaysAgoStr = getLocalDateString(new Date(Date.now() - 2 * 86400000));
 
   const currentRole = propCurrentRole || currentUser?.role || 'admin';
+  const isAdminSimplified = currentRole === 'admin' && adminSimplifiedView;
   const adminTeachersCount = useMemo(
     () => teachers.filter((t) => Boolean(t.isSchoolAdmin)).length,
     [teachers]
   );
   const isModuleEnabled = (tab: NavTab) => isTabEnabledByFeatureFlags(tab, featureFlags, currentRole);
-  const canViewExecutiveMonitor = ['super_admin', 'admin', 'teacher'].includes(currentRole);
-  const canViewEarlyWarning = ['super_admin', 'admin'].includes(currentRole) && isModuleEnabled('executive_warning');
+  const canViewExecutiveMonitor = !isAdminSimplified && ['super_admin', 'admin', 'teacher'].includes(currentRole);
+  const canViewEarlyWarning = !isAdminSimplified && ['super_admin', 'admin'].includes(currentRole) && isModuleEnabled('executive_warning');
   const canViewFinancials =
     isModuleEnabled('billing') &&
     (currentRole === 'super_admin' ||
@@ -256,6 +260,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       setDashboardTab(resolveAllowedSubTab(initialSubTab));
     }
   }, [initialSubTab, canViewExecutiveMonitor, canViewEarlyWarning]);
+
+  useEffect(() => {
+    if (isAdminSimplified) {
+      setDashboardTab((prev) => resolveAllowedSubTab(prev));
+    }
+  }, [isAdminSimplified]);
 
   // Slide-over Drawer for viewing captured selfie photo & GPS metadata
   const [selectedPhotoRecord, setSelectedPhotoRecord] = useState<AttendanceRecord | null>(null);
@@ -850,13 +860,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={handleToggleFocus}
               title={
                 isFocusMode
-                  ? (lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar')
-                  : (lang === 'th' ? 'ซ่อนแถบเมนู (เต็มจอ)' : 'Fullscreen Workspace')
+                  ? (lang === 'th' ? 'ออกจากโหมดโฟกัส (Ctrl+Shift+F)' : 'Exit Focus Mode (Ctrl+Shift+F)')
+                  : (lang === 'th' ? 'เปิดโหมดการทำงานแบบโฟกัส (Ctrl+Shift+F)' : 'Focus Mode (Ctrl+Shift+F)')
               }
               aria-label={
                 isFocusMode
-                  ? (lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar')
-                  : (lang === 'th' ? 'ซ่อนแถบเมนู (เต็มจอ)' : 'Fullscreen Workspace')
+                  ? (lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode')
+                  : (lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode')
               }
               className={
                 isFocusMode
@@ -864,14 +874,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   : 'btn-icon-tool cursor-pointer'
               }
             >
-              {isFocusMode ? (
-                <>
-                  <Minimize2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>{lang === 'th' ? 'แสดงแถบเมนู' : 'Show Sidebar'}</span>
-                </>
-              ) : (
-                <Maximize2 className="w-4 h-4" />
-              )}
+              <Focus className={isFocusMode ? 'w-3.5 h-3.5 shrink-0' : 'w-4 h-4'} />
+              {isFocusMode && <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>}
             </button>
           </div>
         </div>
@@ -999,6 +1003,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onOpenDrawer={setDrawerMode}
               onExportCsv={handleExportSelectedDateCsv}
               onOpenCentralExamPopup={onOpenCentralExamPopup}
+              simplifiedView={adminSimplifiedView}
+              onToggleSimplifiedView={onToggleAdminSimplifiedView}
             />
           ) : (
           <div className="dash-scroll-stack animate-in fade-in duration-150">

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Download,
   GraduationCap,
+  Layers,
   ListChecks,
   QrCode,
   Receipt,
@@ -106,6 +107,8 @@ interface AdminDashboardWorkspaceProps {
   onOpenDrawer: (mode: 'onboarding' | 'guardian_line') => void;
   onExportCsv: () => void;
   onOpenCentralExamPopup?: () => void;
+  simplifiedView?: boolean;
+  onToggleSimplifiedView?: () => void;
 }
 
 export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = ({
@@ -161,6 +164,8 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   onOpenDrawer,
   onExportCsv,
   onOpenCentralExamPopup,
+  simplifiedView = false,
+  onToggleSimplifiedView,
 }) => {
   const totalPendingActions = pendingLeaveCount + ungradedHomeworkCount + pendingSlipCount;
   const activeGatesCount = campusGates.filter((g) => g.isActive !== false).length;
@@ -193,7 +198,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
       onClick: () => void;
     }> = [];
 
-    if (showOnboardingCard) {
+    if (!simplifiedView && showOnboardingCard) {
       rows.push({
         id: 'onboarding',
         groupLabel: lang === 'th' ? 'ตั้งค่า' : 'Setup',
@@ -215,7 +220,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         onClick: () => onNavigate('mobile_checkin'),
       });
     }
-    if (pendingSlipCount > 0 && canViewFinancials) {
+    if (!simplifiedView && pendingSlipCount > 0 && canViewFinancials) {
       rows.push({
         id: 'slips',
         groupLabel: lang === 'th' ? 'การเงิน' : 'Finance',
@@ -237,7 +242,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         onClick: () => onNavigate('timetable'),
       });
     }
-    if (unclaimedCentralPacksCount > 0 && isModuleEnabled('central_exam_hub')) {
+    if (!simplifiedView && unclaimedCentralPacksCount > 0 && isModuleEnabled('central_exam_hub')) {
       rows.push({
         id: 'central-exam',
         groupLabel: lang === 'th' ? 'ข้อสอบ' : 'Exams',
@@ -298,6 +303,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
 
     return rows.slice(0, 6);
   }, [
+    simplifiedView,
     showOnboardingCard,
     completedOnboardingCount,
     onOpenDrawer,
@@ -319,78 +325,126 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     coursesCount,
   ]);
 
-  // 6 High-Frequency Admin Department Shortcuts (No Sidebar duplication clutter)
+  // 6 High-Frequency Admin Department Shortcuts (In Simplified View, hides technical/admin-system cards & keeps core ops)
   const quickDepartments: AdminCategoryActionItem[] = useMemo(() => {
-    const list: Array<AdminCategoryActionItem | false> = [
-      isModuleEnabled('students') && {
-        id: 'students',
-        label: lang === 'th' ? 'ทะเบียนนักเรียน & บัญชี' : 'Students & Accounts',
-        meta: lang === 'th' ? `${totalStudents} คน · กำลังเรียน ${activeStudents}` : `${totalStudents} total · ${activeStudents} active`,
-        icon: Users,
-        onClick: () => onNavigate('students'),
-      },
-      isModuleEnabled('teachers') && {
-        id: 'teachers',
-        label: lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff',
-        meta: lang === 'th'
-          ? `${teachersCount} คน${teacherLeavesTodayCount > 0 ? ` · ลาวันนี้ ${teacherLeavesTodayCount}` : ''}`
-          : `${teachersCount} staff`,
-        icon: GraduationCap,
-        urgent: teacherLeavesTodayCount > 0,
-        onClick: () => onNavigate('teachers'),
-      },
-      isModuleEnabled('timetable') && {
-        id: 'timetable',
-        label: lang === 'th' ? 'ตารางสอน & รายวิชา' : 'Timetable & Courses',
-        meta: lang === 'th' ? `วันนี้ ${todayScheduledSlots.length} คาบ · ${coursesCount} วิชา` : `${todayScheduledSlots.length} slots · ${coursesCount} courses`,
-        icon: Calendar,
-        onClick: () => onNavigate('timetable'),
-      },
-      isModuleEnabled('gradebook') && {
-        id: 'gradebook',
-        label: lang === 'th' ? 'วัดผล ปพ. & คลังข้อสอบ' : 'Grades & Exam Hub',
-        meta: unclaimedCentralPacksCount > 0
-          ? (lang === 'th' ? `${gradesCount} คะแนน · ข้อสอบใหม่ ${unclaimedCentralPacksCount}` : `${gradesCount} grades · ${unclaimedCentralPacksCount} new`)
-          : (lang === 'th' ? `${gradesCount} รายการคะแนน` : `${gradesCount} grade records`),
-        icon: Award,
-        urgent: unclaimedCentralPacksCount > 0,
-        onClick: () => onNavigate('gradebook'),
-      },
-      canViewFinancials
-        ? {
-            id: 'billing',
-            label: lang === 'th' ? 'ค่าเทอม & ตรวจสอบสลิป' : 'Tuition & Slips',
-            meta: pendingSlipCount > 0
-              ? (lang === 'th' ? `รอตรวจ ${pendingSlipCount} สลิป · ค้าง ${pendingInvoicesCount}` : `${pendingSlipCount} slips · ${pendingInvoicesCount} unpaid`)
-              : (lang === 'th' ? `จัดเก็บแล้ว ${collectionRate}%` : `${collectionRate}% collected`),
-            icon: Receipt,
-            urgent: pendingSlipCount > 0,
-            onClick: () => onNavigate('billing'),
-          }
-        : isModuleEnabled('announcements') && {
+    const list: Array<AdminCategoryActionItem | false> = simplifiedView
+      ? [
+          isModuleEnabled('students') && {
+            id: 'students',
+            label: lang === 'th' ? 'ทะเบียนนักเรียน' : 'Students',
+            meta: lang === 'th' ? `${totalStudents} คน · กำลังเรียน ${activeStudents}` : `${totalStudents} total · ${activeStudents} active`,
+            icon: Users,
+            onClick: () => onNavigate('students'),
+          },
+          isModuleEnabled('courses') && {
+            id: 'courses',
+            label: lang === 'th' ? 'รายวิชา & หลักสูตร' : 'Courses',
+            meta: lang === 'th' ? `${coursesCount} รายวิชา · ครู ${teachersCount} คน` : `${coursesCount} courses · ${teachersCount} staff`,
+            icon: BookOpen,
+            onClick: () => onNavigate('courses'),
+          },
+          isModuleEnabled('attendance') && {
+            id: 'attendance',
+            label: lang === 'th' ? 'เช็คชื่อ & เวลาเรียน' : 'Attendance',
+            meta: lang === 'th' ? `เช็คแล้ว ${totalForDate} · มาตรงเวลา ${onTimePercent}%` : `${totalForDate} checked · ${onTimePercent}% on-time`,
+            icon: QrCode,
+            onClick: () => onNavigate('attendance'),
+          },
+          isModuleEnabled('timetable') && {
+            id: 'timetable',
+            label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable',
+            meta: lang === 'th' ? `${todayScheduledSlots.length} คาบเรียนวันนี้` : `${todayScheduledSlots.length} slots today`,
+            icon: Calendar,
+            onClick: () => onNavigate('timetable'),
+          },
+          isModuleEnabled('gradebook') && {
+            id: 'gradebook',
+            label: lang === 'th' ? 'บันทึกคะแนน' : 'Gradebook',
+            meta: lang === 'th' ? `${gradesCount} รายการคะแนน` : `${gradesCount} grade records`,
+            icon: Award,
+            onClick: () => onNavigate('gradebook'),
+          },
+          isModuleEnabled('announcements') && {
             id: 'announcements',
-            label: lang === 'th' ? 'ข่าวสาร & ประกาศโรงเรียน' : 'Announcements',
+            label: lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements',
             meta: lang === 'th' ? `${announcementsCount} ประกาศในระบบ` : `${announcementsCount} posts`,
             icon: BellRing,
             onClick: () => onNavigate('announcements'),
           },
-      {
-        id: 'system_settings',
-        label: lang === 'th' ? 'ตั้งค่าระบบ สิทธิ์ & GPS' : 'System, Permissions & GPS',
-        meta: hasGpsConfigured
-          ? (lang === 'th' ? `GPS ${activeGatesCount || 1} จุด · ตัดสาย ${lateCutoffTime} · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `GPS ready · Late ${lateCutoffTime}`)
-          : (lang === 'th' ? `ยังไม่ปักพิกัด · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `No GPS · ${enabledPoliciesCount}/${totalPoliciesCount} rules`),
-        icon: SlidersHorizontal,
-        onClick: () => openControlTab('control_overview', 'system_settings'),
-      },
-    ];
+        ]
+      : [
+          isModuleEnabled('students') && {
+            id: 'students',
+            label: lang === 'th' ? 'ทะเบียนนักเรียน & บัญชี' : 'Students & Accounts',
+            meta: lang === 'th' ? `${totalStudents} คน · กำลังเรียน ${activeStudents}` : `${totalStudents} total · ${activeStudents} active`,
+            icon: Users,
+            onClick: () => onNavigate('students'),
+          },
+          isModuleEnabled('teachers') && {
+            id: 'teachers',
+            label: lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff',
+            meta: lang === 'th'
+              ? `${teachersCount} คน${teacherLeavesTodayCount > 0 ? ` · ลาวันนี้ ${teacherLeavesTodayCount}` : ''}`
+              : `${teachersCount} staff`,
+            icon: GraduationCap,
+            urgent: teacherLeavesTodayCount > 0,
+            onClick: () => onNavigate('teachers'),
+          },
+          isModuleEnabled('timetable') && {
+            id: 'timetable',
+            label: lang === 'th' ? 'ตารางสอน & รายวิชา' : 'Timetable & Courses',
+            meta: lang === 'th' ? `วันนี้ ${todayScheduledSlots.length} คาบ · ${coursesCount} วิชา` : `${todayScheduledSlots.length} slots · ${coursesCount} courses`,
+            icon: Calendar,
+            onClick: () => onNavigate('timetable'),
+          },
+          isModuleEnabled('gradebook') && {
+            id: 'gradebook',
+            label: lang === 'th' ? 'วัดผล ปพ. & คลังข้อสอบ' : 'Grades & Exam Hub',
+            meta: unclaimedCentralPacksCount > 0
+              ? (lang === 'th' ? `${gradesCount} คะแนน · ข้อสอบใหม่ ${unclaimedCentralPacksCount}` : `${gradesCount} grades · ${unclaimedCentralPacksCount} new`)
+              : (lang === 'th' ? `${gradesCount} รายการคะแนน` : `${gradesCount} grade records`),
+            icon: Award,
+            urgent: unclaimedCentralPacksCount > 0,
+            onClick: () => onNavigate('gradebook'),
+          },
+          canViewFinancials
+            ? {
+                id: 'billing',
+                label: lang === 'th' ? 'ค่าเทอม & ตรวจสอบสลิป' : 'Tuition & Slips',
+                meta: pendingSlipCount > 0
+                  ? (lang === 'th' ? `รอตรวจ ${pendingSlipCount} สลิป · ค้าง ${pendingInvoicesCount}` : `${pendingSlipCount} slips · ${pendingInvoicesCount} unpaid`)
+                  : (lang === 'th' ? `จัดเก็บแล้ว ${collectionRate}%` : `${collectionRate}% collected`),
+                icon: Receipt,
+                urgent: pendingSlipCount > 0,
+                onClick: () => onNavigate('billing'),
+              }
+            : isModuleEnabled('announcements') && {
+                id: 'announcements',
+                label: lang === 'th' ? 'ข่าวสาร & ประกาศโรงเรียน' : 'Announcements',
+                meta: lang === 'th' ? `${announcementsCount} ประกาศในระบบ` : `${announcementsCount} posts`,
+                icon: BellRing,
+                onClick: () => onNavigate('announcements'),
+              },
+          {
+            id: 'system_settings',
+            label: lang === 'th' ? 'ตั้งค่าระบบ สิทธิ์ & GPS' : 'System, Permissions & GPS',
+            meta: hasGpsConfigured
+              ? (lang === 'th' ? `GPS ${activeGatesCount || 1} จุด · ตัดสาย ${lateCutoffTime} · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `GPS ready · Late ${lateCutoffTime}`)
+              : (lang === 'th' ? `ยังไม่ปักพิกัด · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `No GPS · ${enabledPoliciesCount}/${totalPoliciesCount} rules`),
+            icon: SlidersHorizontal,
+            onClick: () => openControlTab('control_overview', 'system_settings'),
+          },
+        ];
 
     return list.filter((item): item is AdminCategoryActionItem => Boolean(item));
   }, [
+    simplifiedView,
     isModuleEnabled,
     lang,
     totalStudents,
     activeStudents,
+    totalForDate,
+    onTimePercent,
     teachersCount,
     teacherLeavesTodayCount,
     todayScheduledSlots.length,
@@ -464,6 +518,27 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {onToggleSimplifiedView && (
+            <button
+              type="button"
+              data-guide-id="admin-simplified-view-toggle"
+              aria-pressed={simplifiedView}
+              onClick={onToggleSimplifiedView}
+              title={
+                simplifiedView
+                  ? (lang === 'th' ? 'ปิดมุมมองแบบกระชับเพื่อแสดงตั้งค่าเทคนิคทั้งหมด' : 'Show full admin menus & technical settings')
+                  : (lang === 'th' ? 'ซ่อนตั้งค่าเทคนิค แสดงเฉพาะเมนูหลัก (นักเรียน รายวิชา เช็คชื่อ)' : 'Hide technical settings and keep core tabs')
+              }
+              className={
+                simplifiedView
+                  ? 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap'
+                  : 'btn-tool-neutral px-3.5 py-2 whitespace-nowrap'
+              }
+            >
+              <Layers className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'มุมมองแบบกระชับ' : 'Simplified View'}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onExportCsv}
@@ -564,27 +639,50 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             </div>
           </button>
 
-          {/* KPI 4: Guardian LINE & Tuition */}
-          <button
-            type="button"
-            onClick={() => onOpenDrawer('guardian_line')}
-            className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="type-meta font-semibold text-violet-700 dark:text-violet-300">
-                {lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition'}
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-            </div>
-            <div className="flex items-baseline gap-2.5 min-w-0">
-              <span className="type-kpi tabular-nums text-violet-700 dark:text-violet-300">{linePercent}%</span>
-              <span className="type-meta tabular-nums truncate">
-                {canViewFinancials
-                  ? (lang === 'th' ? `${lineConnectedCount}/${totalStudents} บ้าน · เก็บค่าเทอม ${collectionRate}%` : `${lineConnectedCount} LINE · ${collectionRate}% paid`)
-                  : (lang === 'th' ? `${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} families`)}
-              </span>
-            </div>
-          </button>
+          {/* KPI 4: Courses & Schedule in Simplified View OR Guardian LINE & Tuition in Full View */}
+          {simplifiedView ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (isModuleEnabled('courses')) onNavigate('courses');
+              }}
+              className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="type-meta font-semibold text-violet-700 dark:text-violet-300">
+                  {lang === 'th' ? 'รายวิชา & ตารางสอน' : 'Courses & Schedule'}
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2.5 min-w-0">
+                <span className="type-kpi tabular-nums text-violet-700 dark:text-violet-300">{coursesCount}</span>
+                <span className="type-meta tabular-nums truncate">
+                  {lang === 'th' ? `วิชา · คาบวันนี้ ${todayScheduledSlots.length} · ครู ${teachersCount}` : `${todayScheduledSlots.length} slots · ${teachersCount} staff`}
+                </span>
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpenDrawer('guardian_line')}
+              className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="type-meta font-semibold text-violet-700 dark:text-violet-300">
+                  {lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition'}
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2.5 min-w-0">
+                <span className="type-kpi tabular-nums text-violet-700 dark:text-violet-300">{linePercent}%</span>
+                <span className="type-meta tabular-nums truncate">
+                  {canViewFinancials
+                    ? (lang === 'th' ? `${lineConnectedCount}/${totalStudents} บ้าน · เก็บค่าเทอม ${collectionRate}%` : `${lineConnectedCount} LINE · ${collectionRate}% paid`)
+                    : (lang === 'th' ? `${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} families`)}
+                </span>
+              </div>
+            </button>
+          )}
         </div>
       </section>
 
@@ -773,7 +871,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             {lang === 'th' ? 'ทางลัดงานประจำฝ่าย' : 'Quick Department Access'}
           </h3>
           <div className="flex items-center gap-3 text-xs">
-            {showOnboardingCard && (
+            {!simplifiedView && showOnboardingCard && (
               <button
                 type="button"
                 onClick={() => onOpenDrawer('onboarding')}
@@ -783,7 +881,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
                 <span>{lang === 'th' ? `ตั้งค่าเริ่มต้น (${completedOnboardingCount}/3)` : `Setup (${completedOnboardingCount}/3)`}</span>
               </button>
             )}
-            {currentUser?.role === 'admin' && (
+            {!simplifiedView && currentUser?.role === 'admin' && (
               <button
                 type="button"
                 onClick={() => onNavigate('admin_superadmin_desk')}
