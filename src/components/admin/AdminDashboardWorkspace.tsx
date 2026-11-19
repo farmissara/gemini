@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Activity,
   AlertTriangle,
+  ArrowLeftRight,
   ArrowUpRight,
   Award,
   BarChart3,
@@ -17,15 +19,18 @@ import {
   HeartPulse,
   ListChecks,
   Mail,
+  MapPin,
   MessageSquare,
   Monitor,
   QrCode,
   Receipt,
   Search,
   ShieldAlert,
+  ShieldCheck,
   SlidersHorizontal,
   Smartphone,
   Sparkles,
+  UserCheck,
   Users,
   X,
 } from 'lucide-react';
@@ -33,13 +38,17 @@ import type {
   AppLanguage,
   AttendanceRecord,
   AuthUser,
+  CampusGateGeofence,
   School,
+  SchoolFeatureFlags,
   SystemConfig,
   TimetableSlot,
 } from '../../types';
 import type { NavTab } from '../layout/Sidebar';
 import type { DashboardSubTab } from '../../views/DashboardView';
+import type { SystemSettingsTab } from '../../views/SystemSettingsView';
 import { formatSemesterLabel } from '../../lib/schoolSettings';
+import type { SchoolPolicyId } from '../../lib/schoolPermissions';
 import type { ThaiHoliday } from '../../lib/thaiHolidays';
 
 export interface AdminCategoryActionItem {
@@ -98,6 +107,14 @@ interface AdminDashboardWorkspaceProps {
   canViewExecutiveMonitor: boolean;
   canViewEarlyWarning: boolean;
   isModuleEnabled: (tab: NavTab) => boolean;
+  // System Control & Mode Switching
+  canSwitchAdminTeacherMode?: boolean;
+  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
+  campusGates?: CampusGateGeofence[];
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
+  featureFlags?: SchoolFeatureFlags;
+  adminTeachersCount?: number;
+  onOpenSystemSettingsTab?: (tab: SystemSettingsTab) => void;
   // Lists
   displayRecords: AttendanceRecord[];
   fallbackAvatarSvg: (name?: string) => string;
@@ -156,6 +173,13 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   canViewExecutiveMonitor,
   canViewEarlyWarning,
   isModuleEnabled,
+  canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole,
+  campusGates = [],
+  schoolPermissions,
+  featureFlags,
+  adminTeachersCount = 0,
+  onOpenSystemSettingsTab,
   displayRecords,
   fallbackAvatarSvg,
   onNavigate,
@@ -169,6 +193,32 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   const [activeGroupFilter, setActiveGroupFilter] = useState<'all' | 'academics' | 'student_care' | 'finance_comm' | 'executive_settings'>('all');
 
   const totalPendingActions = pendingLeaveCount + ungradedHomeworkCount + pendingSlipCount;
+  const activeGatesCount = campusGates.filter((g) => g.isActive !== false).length;
+  const hasGpsConfigured = Boolean(school?.latitude && school?.longitude) || activeGatesCount > 0;
+  const gpsRadiusMeters = school?.geofenceRadiusMeters || 200;
+  const enabledPoliciesCount = schoolPermissions
+    ? Object.values(schoolPermissions).filter(Boolean).length
+    : 0;
+  const totalPoliciesCount = schoolPermissions
+    ? Object.keys(schoolPermissions).length
+    : 12;
+  const lateCutoffTime = systemConfig.lineNotificationSettings?.lateCutoffTime || '08:00';
+  const absenceCutoffTime = systemConfig.lineNotificationSettings?.absenceCutoffTime || '09:30';
+  const aiStudentEnabled = featureFlags?.allowStudentsAi !== false && school?.aiStudentEnabled !== false;
+  const studentLoginLabel =
+    school?.studentLoginIdentifierType === 'email_only'
+      ? (lang === 'th' ? 'อีเมลเท่านั้น' : 'Email only')
+      : school?.studentLoginIdentifierType === 'both'
+        ? (lang === 'th' ? 'รหัส นร. / อีเมล' : 'ID or Email')
+        : (lang === 'th' ? 'รหัสนักเรียน' : 'Student ID');
+
+  const openControlTab = (subTab: SystemSettingsTab, fallbackNav: NavTab) => {
+    if (onOpenSystemSettingsTab) {
+      onOpenSystemSettingsTab(subTab);
+    } else {
+      onNavigate(fallbackNav);
+    }
+  };
 
   const categoryGroups = useMemo(() => {
     const academicItems: AdminCategoryActionItem[] = [
@@ -648,6 +698,32 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+            <div
+              role="group"
+              aria-label={lang === 'th' ? 'สลับโหมดปฏิบัติงาน Admin / ครูผู้สอน' : 'Switch Admin / Teacher Mode'}
+              className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5"
+            >
+              <button
+                type="button"
+                aria-pressed={true}
+                onClick={() => onSwitchOperationalRole('admin')}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 cursor-pointer whitespace-nowrap inline-flex items-center gap-1"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'โหมด Admin' : 'Admin Mode'}</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={false}
+                onClick={() => onSwitchOperationalRole('teacher')}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--color-text-body)] hover:text-[var(--color-text-title)] cursor-pointer whitespace-nowrap inline-flex items-center gap-1"
+              >
+                <ArrowLeftRight className="w-3 h-3 shrink-0 text-[var(--color-primary-text)]" />
+                <span>{lang === 'th' ? 'สลับเป็นครูผู้สอน' : 'Teacher Mode'}</span>
+              </button>
+            </div>
+          )}
           {isModuleEnabled('attendance') && (
             <button
               type="button"
@@ -773,6 +849,179 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               </span>
             </div>
           </button>
+        </div>
+      </section>
+
+      {/* 2.5 SCHOOL SYSTEM CONTROL & OPERATIONS BAR */}
+      <section
+        aria-label={lang === 'th' ? 'แถบควบคุมและจัดการระบบโรงเรียน' : 'School System Control Bar'}
+        className="no-print rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden"
+      >
+        <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex items-center justify-center shrink-0">
+              <SlidersHorizontal className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-extrabold text-[var(--color-text-title)] truncate">
+                {lang === 'th' ? 'แถบควบคุมและจัดการระบบโรงเรียน' : 'School System Control & Governance Bar'}
+              </h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
+                {lang === 'th'
+                  ? `จุดเช็คชื่อ ${activeGatesCount} จุด · เปิดสิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount} นโยบาย · ครูมีสิทธิ์ Admin ${adminTeachersCount} คน`
+                  : `${activeGatesCount} active gates · ${enabledPoliciesCount}/${totalPoliciesCount} policies · ${adminTeachersCount} admin-teachers`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => openControlTab('control_overview', 'system_settings')}
+              className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition"
+            >
+              <Activity className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'มุมมองควบคุมระบบ' : 'System Control View'}</span>
+              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+            </button>
+            {canViewExecutiveMonitor && (
+              <button
+                type="button"
+                onClick={() => onSelectSubTab('executive_monitor')}
+                className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition"
+              >
+                <Monitor className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                <span>{lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร' : 'Executive Monitor'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4 Hairline-Divided Live Governance Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+          {/* Control 1: GPS & Campus Gates */}
+          <button
+            type="button"
+            onClick={() => openControlTab('school_gps', 'school_gps')}
+            className="p-3.5 text-left hover:bg-[var(--color-card-subtle)] transition cursor-pointer flex flex-col justify-between gap-1.5"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'พิกัด GPS & จุดสแกน' : 'Campus GPS & Gates'}</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+            </div>
+            <p className="text-xs font-bold text-[var(--color-text-title)] tabular-nums truncate">
+              {hasGpsConfigured
+                ? (lang === 'th' ? `พร้อมใช้งาน (${activeGatesCount || 1} จุด · ${gpsRadiusMeters} ม.)` : `Active (${activeGatesCount || 1} gates · ${gpsRadiusMeters}m)`)
+                : (lang === 'th' ? 'ยังไม่ตั้งค่าพิกัดโรงเรียน' : 'GPS not configured')}
+            </p>
+          </button>
+
+          {/* Control 2: Role Policies & Admin Teachers */}
+          <button
+            type="button"
+            onClick={() => openControlTab('school_permissions', 'school_permissions')}
+            className="p-3.5 text-left hover:bg-[var(--color-card-subtle)] transition cursor-pointer flex flex-col justify-between gap-1.5"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'สิทธิ์บทบาท & ครู Admin' : 'Permissions & Admin Staff'}</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+            </div>
+            <p className="text-xs font-bold text-[var(--color-text-title)] tabular-nums truncate">
+              {lang === 'th'
+                ? `เปิดใช้ ${enabledPoliciesCount}/${totalPoliciesCount} สิทธิ์ · ครู Admin ${adminTeachersCount} คน`
+                : `${enabledPoliciesCount}/${totalPoliciesCount} rules · ${adminTeachersCount} admin-teachers`}
+            </p>
+          </button>
+
+          {/* Control 3: LINE OA & Attendance Cutoffs */}
+          <button
+            type="button"
+            onClick={() => openControlTab('line_events', 'admin_line_control')}
+            className="p-3.5 text-left hover:bg-[var(--color-card-subtle)] transition cursor-pointer flex flex-col justify-between gap-1.5"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'LINE OA & เวลาตัดสาย/ขาด' : 'LINE OA & Cutoffs'}</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+            </div>
+            <p className="text-xs font-bold text-[var(--color-text-title)] tabular-nums truncate">
+              {lang === 'th'
+                ? `สาย ${lateCutoffTime} · ขาด ${absenceCutoffTime} · LINE ${linePercent}%`
+                : `Late ${lateCutoffTime} · Absent ${absenceCutoffTime} · ${linePercent}%`}
+            </p>
+          </button>
+
+          {/* Control 4: Student Accounts, AI & Audit */}
+          <button
+            type="button"
+            onClick={() => openControlTab('student_accounts', 'admin_student_accounts')}
+            className="p-3.5 text-left hover:bg-[var(--color-card-subtle)] transition cursor-pointer flex flex-col justify-between gap-1.5"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'บัญชีนักเรียน & สิทธิ์ AI' : 'Student Accounts & AI'}</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+            </div>
+            <p className="text-xs font-bold text-[var(--color-text-title)] tabular-nums truncate">
+              {lang === 'th'
+                ? `AI นักเรียน: ${aiStudentEnabled ? 'เปิดใช้งาน' : 'ปิดชั่วคราว'} · ${studentLoginLabel}`
+                : `Student AI: ${aiStudentEnabled ? 'ON' : 'OFF'} · ${studentLoginLabel}`}
+            </p>
+          </button>
+        </div>
+
+        {/* Fast Control Strip Links */}
+        <div className="px-4 py-2 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)]/60 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <button
+              type="button"
+              onClick={() => openControlTab('school_general', 'system_settings')}
+              className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] cursor-pointer"
+            >
+              {lang === 'th' ? 'ข้อมูลโรงเรียน & ภาคเรียน' : 'School Info & Term'}
+            </button>
+            <button
+              type="button"
+              onClick={() => openControlTab('saas_audit', 'admin_saas_audit')}
+              className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] cursor-pointer"
+            >
+              {lang === 'th' ? 'ประวัติ Audit Log & แพ็กเกจ' : 'Audit Log & Package'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('teachers')}
+              className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] cursor-pointer"
+            >
+              {lang === 'th' ? 'มอบหมายครูสิทธิ์ Admin' : 'Assign Admin Teachers'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('admin_superadmin_desk')}
+              className="font-semibold text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] cursor-pointer"
+            >
+              {lang === 'th' ? 'ประสานงาน Super Admin' : 'Super Admin Desk'}
+            </button>
+          </div>
+          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+            <button
+              type="button"
+              onClick={() => onSwitchOperationalRole('teacher')}
+              className="font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer inline-flex items-center gap-1"
+            >
+              <ArrowLeftRight className="w-3 h-3 shrink-0" />
+              <span>{lang === 'th' ? 'สลับทำงานในมุมมองครูผู้สอน' : 'Switch to Teacher Workspace'}</span>
+            </button>
+          )}
         </div>
       </section>
 

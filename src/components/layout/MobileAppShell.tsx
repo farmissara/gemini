@@ -16,6 +16,7 @@ import {
   ChevronRight, 
   BookOpen, 
   ArrowLeft, 
+  ArrowLeftRight,
   LogOut, 
   CreditCard, 
   Swords, 
@@ -303,6 +304,8 @@ interface MobileAppShellProps {
   onEquipCosmetic?: (payload: { frameId?: string; title?: string }) => void;
   onReviewRedemption?: (requestId: string, status: 'approved' | 'rejected', teacherNote?: string) => void;
   onCreateCustomReward?: (item: RewardItem) => void;
+  canSwitchAdminTeacherMode?: boolean;
+  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
 }
 
 export const MobileAppShell: React.FC<MobileAppShellProps> = ({
@@ -383,6 +386,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onEquipCosmetic,
   onReviewRedemption,
   onCreateCustomReward,
+  canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
     getPasskeyForUser(currentUser?.id)
@@ -920,7 +925,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <MoreHorizontal className="w-5 h-5" />
               </button>
               {isHeaderMenuOpen && (
-                <div className="absolute right-0 top-12 z-50 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
+                <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
+                  {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        onSwitchOperationalRole(currentRole === 'admin' ? 'teacher' : 'admin');
+                      }}
+                      className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <ArrowLeftRight className="w-4 h-4 shrink-0" />
+                      <span>
+                        {currentRole === 'admin'
+                          ? (lang === 'th' ? 'สลับเป็นโหมดครูผู้สอน' : 'Switch to Teacher Mode')
+                          : (lang === 'th' ? 'สลับเป็นโหมด Admin' : 'Switch to Admin Mode')}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -1018,6 +1040,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 onOpenCheckin={() => setActiveTab('checkin')}
                 onOpenExecutive={() => setActiveTab('executive')}
                 onJumpToDesktopTab={onJumpToDesktopTab}
+                canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+                onSwitchOperationalRole={onSwitchOperationalRole}
               />
             ) : currentRole === 'student' ? (
               <StudentMobileHome
@@ -1091,6 +1115,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                           : activeSchool.nameEn}
                   </p>
                 </div>
+
+                {/* 1-click Admin Mode Switch for Dual-Privilege Teachers */}
+                {currentRole === 'teacher' && canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+                  <button
+                    type="button"
+                    onClick={() => onSwitchOperationalRole('admin')}
+                    className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-between gap-2 cursor-pointer transition"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <ShieldCheck className="w-4 h-4 shrink-0" />
+                      <span className="text-xs font-bold truncate">
+                        {lang === 'th' ? 'สลับเข้าสู่โหมด Admin (มีสิทธิ์ผู้ดูแล)' : 'Switch to School Admin Mode'}
+                      </span>
+                    </span>
+                    <ArrowLeftRight className="w-4 h-4 shrink-0" />
+                  </button>
+                )}
 
                 {/* Today / Upcoming Holiday Alert */}
                 {todayHoliday ? (

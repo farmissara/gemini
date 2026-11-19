@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  ArrowLeftRight,
   ArrowRight,
   Award,
   BellRing,
@@ -15,6 +16,7 @@ import {
   GraduationCap,
   HeartHandshake,
   Laptop,
+  MapPin,
   MessageSquare,
   Monitor,
   Phone,
@@ -23,6 +25,7 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
+  ShieldCheck,
   SlidersHorizontal,
   Smartphone,
   UserCheck,
@@ -92,6 +95,8 @@ interface AdminDailyDashboardViewProps {
   onOpenCheckin?: () => void;
   onOpenExecutive?: () => void;
   onJumpToDesktopTab?: (tab: NavTab) => void;
+  canSwitchAdminTeacherMode?: boolean;
+  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
 }
 
 type DailySection = 'attendance' | 'leaves' | 'approvals';
@@ -115,6 +120,8 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   onOpenCheckin,
   onOpenExecutive,
   onJumpToDesktopTab,
+  canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole,
 }) => {
   const todayStr = getLocalDateString();
   const [section, setSection] = useState<DailySection>('attendance');
@@ -353,6 +360,16 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
           </h1>
 
           <div className="flex items-center gap-2 shrink-0">
+            {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+              <button
+                type="button"
+                onClick={() => onSwitchOperationalRole('teacher')}
+                className="min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-primary-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'สลับโหมดครู' : 'Teacher Mode'}</span>
+              </button>
+            )}
             {onOpenQuickHub && (
               <button
                 type="button"
@@ -1213,19 +1230,41 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                   </button>
                 )}
                 {onJumpToDesktopTab && (
-                  <button
-                    type="button"
-                    onClick={() => onJumpToDesktopTab('system_settings')}
-                    className="col-span-2 min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center justify-between gap-2 cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2 min-w-0">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                      <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                        {lang === 'th' ? 'ตั้งค่าระบบ สิทธิ์ และ GPS' : 'Settings & GPS'}
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onJumpToDesktopTab('system_settings')}
+                      className="col-span-2 min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center justify-between gap-2 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                          {lang === 'th' ? 'มุมมองควบคุมระบบโรงเรียน' : 'System Control View'}
+                        </span>
                       </span>
-                    </span>
-                    <Laptop className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
+                      <Laptop className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onJumpToDesktopTab('school_permissions')}
+                      className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                      <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                        {lang === 'th' ? 'กำหนดสิทธิ์' : 'Permissions'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onJumpToDesktopTab('school_gps')}
+                      className="min-h-[44px] px-2.5 py-2 rounded-xl hover:bg-[var(--color-card-subtle)] text-left flex items-center gap-2 cursor-pointer"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                      <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                        {lang === 'th' ? 'พิกัด GPS' : 'GPS Gates'}
+                      </span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>

@@ -34,10 +34,16 @@ import {
   GraduationCap,
   Upload,
   Trash2,
-  Shield
+  Shield,
+  LayoutGrid,
+  ShieldCheck,
+  ArrowRight,
+  Lock,
+  Activity,
 } from 'lucide-react';
-import { SystemConfig, LineNotificationSettings, Student, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
+import { SystemConfig, LineNotificationSettings, Student, Teacher, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
+import type { NavTab } from '../components/layout/Sidebar';
 import {
   approveStudentAccountInSupabase,
   createMissingStudentLoginAccounts,
@@ -58,12 +64,14 @@ import { SchoolPermissionSettingsView } from './SchoolPermissionSettingsView';
 import { SchoolPackagesAndAiPanel } from '../components/admin/SchoolPackagesAndAiPanel';
 import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
-import { getAuditLogs } from '../lib/auditLog';
-import { getSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import { appendAuditLog, getAuditLogs } from '../lib/auditLog';
+import { getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import { getSchoolRolePolicies, saveSchoolRolePolicies, type SchoolPolicyId } from '../lib/schoolPermissions';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 
 export type SystemSettingsTab =
+  | 'control_overview'
   | 'line_events'
   | 'line_connection'
   | 'preview_simulator'
@@ -79,6 +87,7 @@ interface SystemSettingsViewProps {
   systemConfig: SystemConfig;
   activeSchool: School;
   students: Student[];
+  teachers?: Teacher[];
   currentRole: UserRole;
   currentUser?: AuthUser | null;
   promotions?: PromotionCampaign[];
@@ -92,12 +101,17 @@ interface SystemSettingsViewProps {
   featureFlags?: SchoolFeatureFlags;
   onUpdateFeatureFlags?: (flags: SchoolFeatureFlags) => void;
   initialTab?: SystemSettingsTab;
+  onTabChange?: (tab: SystemSettingsTab) => void;
+  onNavigateModule?: (tab: NavTab) => void;
+  canSwitchAdminTeacherMode?: boolean;
+  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
 }
 
 export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   systemConfig,
   activeSchool,
   students,
+  teachers = [],
   currentRole,
   currentUser,
   promotions = [],
@@ -111,14 +125,23 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   featureFlags: externalFeatureFlags,
   onUpdateFeatureFlags,
   initialTab,
+  onTabChange,
+  onNavigateModule,
+  canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole,
 }) => {
   const { presets: customPresets, updatePresets: updateCustomPresets, resetPresets: resetCustomPresets } = useSchoolCustomPresets(activeSchool.id);
-  const [activeTab, setActiveTab] = useState<SystemSettingsTab>(initialTab || 'line_events');
+  const [activeTab, setActiveTab] = useState<SystemSettingsTab>(initialTab || 'control_overview');
   useEffect(() => {
     if (initialTab) {
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+  useEffect(() => {
+    onTabChange?.(activeTab);
+  }, [activeTab, onTabChange]);
+  const [policyTick, setPolicyTick] = useState(0);
+  const [quickSwitchMessage, setQuickSwitchMessage] = useState<string | null>(null);
   const [localFlags, setLocalFlags] = useState<SchoolFeatureFlags>(
     () => externalFeatureFlags || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise')
   );
@@ -697,21 +720,31 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 <span>LINE Official Account & System Automation Settings</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--color-text-title)]">
-                {lang === 'th' ? 'ตั้งค่าระบบ & การแจ้งเตือน LINE' : 'System & LINE Notification Settings'}
+                {lang === 'th' ? 'ศูนย์ควบคุมและจัดการระบบโรงเรียน' : 'School System Control & Settings'}
               </h1>
               <p className="text-[var(--color-text-body)] text-xs sm:text-sm max-w-2xl leading-relaxed">
-                {lang === 'th' 
-                  ? 'กำหนดค่าการเชื่อมต่อ LINE Messaging API, เลือกเหตุการณ์ที่ต้องการส่งแจ้งเตือนผู้ปกครอง (เข้าเรียน, ขาดเรียน, การบ้าน, ค่าเทอม, ห้องพยาบาล) พร้อมจำลองดูการ์ด Flex Message จริง'
-                  : 'Configure LINE Messaging API keys, customize event notification triggers for parents, and preview real-time Flex Message cards.'}
+                {lang === 'th'
+                  ? 'ควบคุมสิทธิ์การใช้งานบทบาท, พิกัด GPS ประตูโรงเรียน, ระบบแจ้งเตือน LINE OA, บัญชีนักเรียน, การเปิดใช้งาน AI และประวัติ Audit Log จากศูนย์กลางเดียว'
+                  : 'Centrally control role permissions, campus GPS gates, LINE OA triggers, student accounts, AI policies, and audit logs.'}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+              <button
+                type="button"
+                onClick={() => onSwitchOperationalRole('teacher')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-xs font-bold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{lang === 'th' ? 'สลับเป็นโหมดครู' : 'Switch to Teacher'}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleSave}
-              className="btn-action-primary px-5 py-2.5"
+              className="btn-action-primary px-5 py-2.5 whitespace-nowrap"
             >
               <Save className="w-4 h-4" />
               <span>{lang === 'th' ? 'บันทึกการตั้งค่า' : 'Save Settings'}</span>
@@ -773,49 +806,19 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       <div className="shrink-0 seg-tab-group overflow-x-auto no-scrollbar w-fit max-w-full">
         <button
           type="button"
-          data-active={activeTab === 'line_events'}
-          onClick={() => setActiveTab('line_events')}
-          className="seg-tab-btn"
+          data-active={activeTab === 'control_overview'}
+          onClick={() => setActiveTab('control_overview')}
+          className="seg-tab-btn whitespace-nowrap shrink-0"
         >
-          <BellRing className="w-3.5 h-3.5" />
-          <span>{lang === 'th' ? 'เหตุการณ์ที่ต้องแจ้งเตือน LINE' : 'Notification Events'}</span>
-        </button>
-
-        <button
-          type="button"
-          data-active={activeTab === 'preview_simulator'}
-          onClick={() => setActiveTab('preview_simulator')}
-          className="seg-tab-btn"
-        >
-          <Smartphone className="w-3.5 h-3.5" />
-          <span>{lang === 'th' ? 'จำลองหน้าจอแชต LINE & Flex Message' : 'Live Flex Message Simulator'}</span>
-        </button>
-
-        <button
-          type="button"
-          data-active={activeTab === 'line_connection'}
-          onClick={() => setActiveTab('line_connection')}
-          className="seg-tab-btn"
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>{lang === 'th' ? 'การเชื่อมต่อ LINE Messaging API' : 'LINE API & Webhook'}</span>
-        </button>
-
-        <button
-          type="button"
-          data-active={activeTab === 'subscribers'}
-          onClick={() => setActiveTab('subscribers')}
-          className="seg-tab-btn"
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>{lang === 'th' ? 'รายชื่อผู้รับแจ้งเตือน (Subscribers)' : 'Subscribers Directory'}</span>
+          <LayoutGrid className="w-3.5 h-3.5" />
+          <span>{lang === 'th' ? 'มุมมองควบคุมระบบ' : 'Control Overview'}</span>
         </button>
 
         <button
           type="button"
           data-active={activeTab === 'school_general'}
           onClick={() => setActiveTab('school_general')}
-          className="seg-tab-btn"
+          className="seg-tab-btn whitespace-nowrap shrink-0"
         >
           <Settings className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'ข้อมูลสถานศึกษา & สำรองข้อมูล' : 'General & Backup'}</span>
@@ -825,7 +828,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           type="button"
           data-active={activeTab === 'school_gps'}
           onClick={() => setActiveTab('school_gps')}
-          className="seg-tab-btn"
+          className="seg-tab-btn whitespace-nowrap shrink-0"
         >
           <MapPin className="w-3.5 h-3.5" />
           <span>{lang === 'th' ? 'พิกัด GPS & Geofence ประตูโรงเรียน' : 'School GPS & Geofence'}</span>
@@ -836,21 +839,61 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             type="button"
             data-active={activeTab === 'school_permissions'}
             onClick={() => setActiveTab('school_permissions')}
-            className="seg-tab-btn"
+            className="seg-tab-btn whitespace-nowrap shrink-0"
           >
             <Shield className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'สิทธิ์บทบาทโรงเรียน' : 'Role Permissions'}</span>
           </button>
         )}
 
+        <button
+          type="button"
+          data-active={activeTab === 'line_events'}
+          onClick={() => setActiveTab('line_events')}
+          className="seg-tab-btn whitespace-nowrap shrink-0"
+        >
+          <BellRing className="w-3.5 h-3.5" />
+          <span>{lang === 'th' ? 'เหตุการณ์แจ้งเตือน LINE & เวลาเรียน' : 'LINE Events & Cutoff'}</span>
+        </button>
+
+        <button
+          type="button"
+          data-active={activeTab === 'line_connection'}
+          onClick={() => setActiveTab('line_connection')}
+          className="seg-tab-btn whitespace-nowrap shrink-0"
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span>{lang === 'th' ? 'การเชื่อมต่อ LINE API' : 'LINE API & Webhook'}</span>
+        </button>
+
+        <button
+          type="button"
+          data-active={activeTab === 'preview_simulator'}
+          onClick={() => setActiveTab('preview_simulator')}
+          className="seg-tab-btn whitespace-nowrap shrink-0"
+        >
+          <Smartphone className="w-3.5 h-3.5" />
+          <span>{lang === 'th' ? 'จำลองการ์ด LINE Flex' : 'LINE Flex Simulator'}</span>
+        </button>
+
+        <button
+          type="button"
+          data-active={activeTab === 'subscribers'}
+          onClick={() => setActiveTab('subscribers')}
+          className="seg-tab-btn whitespace-nowrap shrink-0"
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>{lang === 'th' ? 'ผู้รับแจ้งเตือน' : 'Subscribers'}</span>
+        </button>
+
         {['admin', 'super_admin'].includes(currentRole) && (
           <button
             type="button"
             data-active={activeTab === 'student_accounts'}
             onClick={() => setActiveTab('student_accounts')}
-            className="seg-tab-btn"
+            className="seg-tab-btn whitespace-nowrap shrink-0"
           >
-            <Users className="w-3.5 h-3.5" />
+            <KeyRound className="w-3.5 h-3.5" />
             <span>อนุมัติ &amp; ผูกบัญชีนักเรียน</span>
           </button>
         )}
@@ -860,10 +903,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             type="button"
             data-active={activeTab === 'student_login_config'}
             onClick={() => setActiveTab('student_login_config')}
-            className="seg-tab-btn"
+            className="seg-tab-btn whitespace-nowrap shrink-0"
           >
             <GraduationCap className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'รูปแบบล็อกอินนักเรียน & ลิงก์โรงเรียน' : 'Student Login & School Link'}</span>
+            <span>{lang === 'th' ? 'ลิงก์ล็อกอินนักเรียน' : 'Student Login Link'}</span>
           </button>
         )}
 
@@ -872,16 +915,439 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             type="button"
             data-active={activeTab === 'saas_audit'}
             onClick={() => setActiveTab('saas_audit')}
-            className="seg-tab-btn"
+            className="seg-tab-btn whitespace-nowrap shrink-0"
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'แพ็กเกจระบบ สิทธิ์ AI & Audit Log' : 'Packages, AI Access & Audit Log'}</span>
+            <span>{lang === 'th' ? 'แพ็กเกจ AI & Audit Log' : 'Packages, AI & Audit Log'}</span>
           </button>
         )}
       </div>
 
       {/* Tab Panels Container */}
       <div className="space-y-4">
+      {/* TAB 0: UNIFIED SYSTEM CONTROL OPERATIONS OVERVIEW */}
+      {activeTab === 'control_overview' && (() => {
+        const policies = getSchoolRolePolicies(activeSchool.id);
+        const enabledPolicyCount = policies.filter((p) => p.enabled).length;
+        const policyById = new Map(policies.map((p) => [p.id, p]));
+        const adminTeachers = teachers.filter((t) => Boolean(t.isSchoolAdmin));
+        const recentLogs = getAuditLogs(activeSchool.id).slice(0, 5);
+        const gpsConfigured = Boolean(
+          (campusGates.length > 0) ||
+          (Number.isFinite(activeSchool.latitude) && Number.isFinite(activeSchool.longitude))
+        );
+
+        const handleQuickPolicyToggle = (policyId: SchoolPolicyId, labelTh: string) => {
+          const updated = policies.map((p) =>
+            p.id === policyId ? { ...p, enabled: !p.enabled } : p
+          );
+          saveSchoolRolePolicies(activeSchool.id, updated);
+          const nextState = updated.find((p) => p.id === policyId)?.enabled;
+          appendAuditLog(activeSchool.id, {
+            actorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email || 'Admin',
+            actorRole: currentRole,
+            actionType: 'feature_flags_update',
+            targetLabel: labelTh,
+            details: nextState ? 'เปิดใช้งานสิทธิ์จากศูนย์ควบคุมระบบ' : 'ปิดสิทธิ์จากศูนย์ควบคุมระบบ',
+          });
+          setPolicyTick((t) => t + 1);
+          setQuickSwitchMessage(`${nextState ? 'เปิด' : 'ปิด'} "${labelTh}" แล้ว`);
+          window.setTimeout(() => setQuickSwitchMessage(null), 2600);
+        };
+
+        const handleQuickStudentAiToggle = () => {
+          const nextAllowAi = localFlags.allowStudentsAi === false;
+          const nextFlags: SchoolFeatureFlags = {
+            ...localFlags,
+            allowStudentsAi: nextAllowAi,
+          };
+          setLocalFlags(nextFlags);
+          saveSchoolFeatureFlags(activeSchool.id, nextFlags);
+          onUpdateFeatureFlags?.(nextFlags);
+          appendAuditLog(activeSchool.id, {
+            actorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email || 'Admin',
+            actorRole: currentRole,
+            actionType: 'feature_flags_update',
+            targetLabel: 'สิทธิ์ใช้งาน AI สำหรับนักเรียน',
+            details: nextAllowAi ? 'อนุญาตให้นักเรียนใช้งาน AI Tutor / Diagnostic' : 'ระงับฟีเจอร์ AI สำหรับนักเรียนชั่วคราว',
+          });
+          setQuickSwitchMessage(`${nextAllowAi ? 'เปิด' : 'ปิด'}ฟีเจอร์ AI สำหรับนักเรียนแล้ว`);
+          window.setTimeout(() => setQuickSwitchMessage(null), 2600);
+        };
+
+        const controlPillars: Array<{
+          id: SystemSettingsTab;
+          category: string;
+          title: string;
+          statusLabel: string;
+          ready: boolean;
+          detail: string;
+          icon: React.ComponentType<{ className?: string }>;
+          actionLabel: string;
+        }> = [
+          {
+            id: 'school_gps',
+            category: 'ตำแหน่ง & ประตูสแกน',
+            title: 'พิกัด GPS & รัศมี Geofence',
+            statusLabel: gpsConfigured ? 'พร้อมใช้งาน' : 'ยังไม่ปักพิกัด',
+            ready: gpsConfigured,
+            detail: campusGates.length > 0
+              ? `กำหนดจุดประตูแล้ว ${campusGates.length} จุด · รัศมีหลัก ${activeSchool.geofenceRadiusMeters || 200} ม.`
+              : Number.isFinite(activeSchool.latitude)
+              ? `พิกัดหลัก ${Number(activeSchool.latitude).toFixed(4)}, ${Number(activeSchool.longitude).toFixed(4)} · รัศมี ${activeSchool.geofenceRadiusMeters || 200} ม.`
+              : 'กรุณาตั้งค่าพิกัดโรงเรียนเพื่อเปิดเช็คชื่อด้วยมือถือในรัศมี',
+            icon: MapPin,
+            actionLabel: 'ตั้งค่า GPS & ประตู',
+          },
+          {
+            id: 'school_permissions',
+            category: 'ความปลอดภัย & สิทธิ์',
+            title: 'สิทธิ์บทบาทครู / นักเรียน / ผู้ปกครอง',
+            statusLabel: `${enabledPolicyCount}/${policies.length} สิทธิ์เปิดอยู่`,
+            ready: enabledPolicyCount > 0,
+            detail: `ครูที่มีสิทธิ์ผู้ดูแล (Admin Switch): ${adminTeachers.length} คน · กำหนดสิทธิ์แยกตามบทบาททันที`,
+            icon: ShieldCheck,
+            actionLabel: 'จัดการสิทธิ์ทั้งหมด',
+          },
+          {
+            id: 'line_events',
+            category: 'การแจ้งเตือน & เวลาเรียน',
+            title: 'LINE OA & เวลาตัดสาย / ขาดเรียน',
+            statusLabel: `เชื่อมต่อ ${connectedPct}%`,
+            ready: connectedCount > 0 || Boolean(lineSettings.notifyAttendanceCheckIn),
+            detail: `ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น. · ผู้ปกครองเชื่อม LINE ${connectedCount}/${students.length} คน`,
+            icon: BellRing,
+            actionLabel: 'ตั้งค่า LINE & เวลา',
+          },
+          {
+            id: 'school_general',
+            category: 'โครงสร้างสถานศึกษา',
+            title: 'ปีการศึกษา ภาคเรียน โลโก้ และข้อมูลหลัก',
+            statusLabel: `ปี ${activeSchool.academicYear}/${activeSchool.currentSemester}`,
+            ready: Boolean(activeSchool.academicYear && activeSchool.currentSemester),
+            detail: `ระบบเกรด: ${activeSchool.gradingSystem === 'international' ? 'International (A-F)' : 'สพฐ. ไทย (4.00)'} · สำรองข้อมูล JSON ได้ทันที`,
+            icon: Building2,
+            actionLabel: 'แก้ข้อมูลโรงเรียน',
+          },
+          {
+            id: 'student_accounts',
+            category: 'บัญชีผู้ใช้งาน',
+            title: 'อนุมัติบัญชี & ลิงก์ล็อกอินโรงเรียน',
+            statusLabel: `รหัส/ล็อกอิน: ${activeSchool.studentLoginIdentifierType === 'student_id_only' ? 'รหัสนักเรียน' : activeSchool.studentLoginIdentifierType === 'email_only' ? 'อีเมล' : 'ทั้งคู่'}`,
+            ready: true,
+            detail: `นักเรียนในระบบ ${students.length} คน · สร้างบัญชีเป็นชุด ออกรหัสชั่วคราว และตั้งค่าลิงก์ล็อกอินโรงเรียน`,
+            icon: KeyRound,
+            actionLabel: 'จัดการบัญชีนักเรียน',
+          },
+          {
+            id: 'saas_audit',
+            category: 'AI & ตรวจสอบย้อนหลัง',
+            title: 'แพ็กเกจระบบ สิทธิ์ AI & Audit Log',
+            statusLabel: localFlags.allowStudentsAi === false ? 'AI นักเรียน: ปิด' : 'AI นักเรียน: เปิด',
+            ready: true,
+            detail: `บันทึก Audit Log ที่จัดเก็บ ${getAuditLogs(activeSchool.id).length} รายการ · ตรวจสอบการแก้เกรด สลิป และตั้งค่า`,
+            icon: Sliders,
+            actionLabel: 'เปิด AI & Audit Log',
+          },
+        ];
+
+        const quickLiveToggles: Array<{
+          id: string;
+          label: string;
+          desc: string;
+          enabled: boolean;
+          onToggle: () => void;
+        }> = [
+          {
+            id: 'student_self_checkin',
+            label: 'เช็คชื่อด้วยมือถือ & GPS สำหรับนักเรียน',
+            desc: 'ให้นักเรียนสแกน QR / เซลฟี่เช็คอินในรัศมี GPS ที่โรงเรียนกำหนด',
+            enabled: policyById.get('student_self_checkin')?.enabled !== false,
+            onToggle: () => handleQuickPolicyToggle('student_self_checkin', 'เช็คชื่อด้วยมือถือ & GPS สำหรับนักเรียน'),
+          },
+          {
+            id: 'student_view_grades',
+            label: 'ให้นักเรียนดูเกรดและ ปพ. ออนไลน์',
+            desc: 'เปิดสิทธิ์ดูผลคะแนน GPAX และรายงานผลการเรียนด้วยตนเอง',
+            enabled: policyById.get('student_view_grades')?.enabled !== false,
+            onToggle: () => handleQuickPolicyToggle('student_view_grades', 'ให้นักเรียนดูเกรดและ ปพ. ออนไลน์'),
+          },
+          {
+            id: 'teacher_view_financials',
+            label: 'ให้ครูเห็นสถานะการเงิน/ค่าเทอม',
+            desc: 'แสดงสถานะใบแจ้งหนี้และการชำระเงินให้ครูที่ปรึกษาช่วยติดตาม',
+            enabled: policyById.get('teacher_view_financials')?.enabled !== false,
+            onToggle: () => handleQuickPolicyToggle('teacher_view_financials', 'ให้ครูเห็นสถานะการเงิน/ค่าเทอม'),
+          },
+          {
+            id: 'allowStudentsAi',
+            label: 'เปิดใช้งานผู้ช่วย AI สำหรับนักเรียน',
+            desc: 'ควบคุมการเข้าถึง AI Diagnostic, Socratic Tutor และ Career Quest AI',
+            enabled: localFlags.allowStudentsAi !== false,
+            onToggle: handleQuickStudentAiToggle,
+          },
+        ];
+
+        return (
+          <div key={`control-${policyTick}`} className="space-y-4 animate-in fade-in duration-150">
+            {quickSwitchMessage && (
+              <div
+                role="status"
+                className="px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-xs font-semibold text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-2"
+              >
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{quickSwitchMessage}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQuickSwitchMessage(null)}
+                  className="text-xs font-bold px-1.5 py-0.5 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* 6-Pillar System Readiness Matrix */}
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--color-text-title)]">
+                    สถานะการทำงานและควบคุมระบบโรงเรียน (6 ด้านหลัก)
+                  </h2>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    กดเลือกหัวข้อเพื่อเข้าปรับตั้งค่าเชิงลึกได้ทันที
+                  </p>
+                </div>
+                <span className="text-xs font-semibold tabular-nums text-[var(--color-text-muted)]">
+                  พร้อมใช้งาน {controlPillars.filter((c) => c.ready).length}/{controlPillars.length} ด้าน
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 divide-y md:divide-y-0 md:gap-px bg-[var(--color-border)]">
+                {controlPillars.map((pillar) => {
+                  const Icon = pillar.icon;
+                  return (
+                    <div
+                      key={pillar.id}
+                      className="bg-[var(--color-card)] p-4 flex flex-col justify-between gap-3"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="font-semibold text-[var(--color-text-muted)] flex items-center gap-1.5 min-w-0 truncate">
+                            <Icon className="w-3.5 h-3.5 text-[var(--tone)] shrink-0" />
+                            <span className="truncate">{pillar.category}</span>
+                          </span>
+                          <span
+                            className={`font-bold tabular-nums shrink-0 ${
+                              pillar.ready
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : 'text-amber-700 dark:text-amber-300'
+                            }`}
+                          >
+                            {pillar.statusLabel}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                          {pillar.title}
+                        </h3>
+                        <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                          {pillar.detail}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 border-t border-[var(--color-border)] flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab(pillar.id)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                        >
+                          <span>{pillar.actionLabel}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live Operational Switches + Dual-Privilege Admin Teachers */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
+              {/* Left 7 cols: Instant System Switches */}
+              <div className="xl:col-span-7 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
+                <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-[var(--tone)] shrink-0" />
+                      <span>สวิตช์ควบคุมระบบด่วน (มีผลบังคับใช้ทันที)</span>
+                    </h2>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      เปิด/ปิดสิทธิ์สำคัญและบันทึกเข้า Audit Log อัตโนมัติ
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('school_permissions')}
+                    className="text-xs font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+                  >
+                    สิทธิ์ทั้งหมด →
+                  </button>
+                </div>
+
+                <div className="divide-y divide-[var(--color-border)] flex-1">
+                  {quickLiveToggles.map((item) => (
+                    <div
+                      key={item.id}
+                      className="px-4 py-3 flex items-center justify-between gap-4"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[var(--color-text-title)]">
+                          {item.label}
+                        </div>
+                        <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                          {item.desc}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={item.enabled}
+                        onClick={item.onToggle}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                          item.enabled ? 'bg-[var(--color-primary)]' : 'bg-slate-400 dark:bg-slate-600'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ${
+                            item.enabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right 5 cols: Admin-Authorized Teachers Roster */}
+              <div className="xl:col-span-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col">
+                <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                      <Users className="w-4 h-4 text-[var(--tone)] shrink-0" />
+                      <span>ครูที่ได้รับสิทธิ์ Admin ({adminTeachers.length})</span>
+                    </h2>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      สามารถสลับใช้งานทั้งโหมดครูและโหมด Admin ได้
+                    </p>
+                  </div>
+                  {onNavigateModule && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateModule('teachers')}
+                      className="text-xs font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+                    >
+                      จัดการสิทธิ์ครู →
+                    </button>
+                  )}
+                </div>
+
+                <div className="p-4 flex-1 flex flex-col justify-between gap-3">
+                  {adminTeachers.length === 0 ? (
+                    <div className="py-6 text-center space-y-2">
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        ยังไม่มีรายชื่อครูที่เปิดสิทธิ์เป็นผู้ดูแลโรงเรียน (isSchoolAdmin)
+                      </p>
+                      {onNavigateModule && (
+                        <button
+                          type="button"
+                          onClick={() => onNavigateModule('teachers')}
+                          className="btn-tool-neutral px-3 py-1.5 mx-auto"
+                        >
+                          ไปที่ทะเบียนบุคลากรและครู
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[var(--color-border)]">
+                      {adminTeachers.slice(0, 5).map((t) => (
+                        <div key={t.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2 text-xs">
+                          <div className="min-w-0">
+                            <div className="font-bold text-[var(--color-text-title)] truncate">
+                              {t.fullNameTh || t.fullNameEn}
+                            </div>
+                            <div className="text-[11px] text-[var(--color-text-muted)] truncate">
+                              {t.positionTitle || t.department || 'ครูผู้สอน'} · {t.email || t.teacherIdNumber}
+                            </div>
+                          </div>
+                          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 shrink-0">
+                            สลับโหมดได้
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Recent System Audit Trail */}
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-2">
+                <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-[var(--tone)] shrink-0" />
+                  <span>กิจกรรมควบคุมระบบล่าสุด (Audit Trail)</span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('saas_audit')}
+                  className="text-xs font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                >
+                  ดูทั้งหมด →
+                </button>
+              </div>
+              {recentLogs.length === 0 ? (
+                <p className="p-6 text-center text-xs text-[var(--color-text-muted)]">
+                  ยังไม่มีบันทึกการเปลี่ยนแปลงระบบในเครื่องนี้ (เมื่อปรับสิทธิ์ เปลี่ยนภาคเรียน หรืออนุมัติสลิป ระบบจะบันทึกที่นี่)
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="table-comfortable w-full text-left text-xs">
+                    <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                      <tr>
+                        <th className="py-2 px-4">เวลา</th>
+                        <th className="py-2 px-4">ผู้ดำเนินการ</th>
+                        <th className="py-2 px-4">รายการ</th>
+                        <th className="py-2 px-4">รายละเอียด</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-border)]">
+                      {recentLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-[var(--color-card-subtle)]">
+                          <td className="py-2 px-4 font-mono text-[11px] text-[var(--color-text-muted)] whitespace-nowrap tabular-nums">
+                            {new Date(log.timestamp).toLocaleString('th-TH')}
+                          </td>
+                          <td className="py-2 px-4 font-semibold text-[var(--color-text-title)] whitespace-nowrap">
+                            {log.actorName} · {log.actorRole}
+                          </td>
+                          <td className="py-2 px-4 font-medium text-[var(--color-text-title)]">
+                            {log.targetLabel}
+                          </td>
+                          <td className="py-2 px-4 text-[var(--color-text-body)]">
+                            {log.details}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* TAB 1: LINE Notification Events & Rules */}
       {activeTab === 'line_events' && (
         <div className="space-y-6 animate-in fade-in duration-200">

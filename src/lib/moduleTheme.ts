@@ -60,6 +60,9 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   // tone-7: System Settings & Coordination Desk
   school_gps: 'tone-7',
   school_permissions: 'tone-7',
+  admin_line_control: 'tone-7',
+  admin_student_accounts: 'tone-7',
+  admin_saas_audit: 'tone-7',
   admin_superadmin_desk: 'tone-7',
   system_settings: 'tone-7',
 };

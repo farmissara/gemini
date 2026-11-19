@@ -38,6 +38,10 @@ import {
   ChevronsUpDown,
   Monitor,
   ShieldAlert,
+  MapPin,
+  KeyRound,
+  Sliders,
+  ArrowLeftRight,
   LucideIcon,
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -50,6 +54,9 @@ export type NavTab =
   | 'school_permissions'
   | 'system_settings'
   | 'school_gps'
+  | 'admin_line_control'
+  | 'admin_student_accounts'
+  | 'admin_saas_audit'
   | 'executive_warning'
   | 'executive_monitor'
   | 'obec_executive_dashboard'
@@ -97,6 +104,9 @@ interface SidebarProps {
   setCurrentTab: (tab: NavTab) => void;
   currentRole: UserRole;
   isSuperAdminSchoolView: boolean;
+  canSwitchAdminTeacherMode?: boolean;
+  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
+  activeSettingsSubTab?: string;
   studentsCount: number;
   coursesCount: number;
   teachersCount?: number;
@@ -155,6 +165,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCurrentTab,
   currentRole,
   isSuperAdminSchoolView,
+  canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole,
+  activeSettingsSubTab,
   studentsCount,
   coursesCount,
   teachersCount = 0,
@@ -168,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const supportsFocusMode = currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
+  const supportsFocusMode = currentRole === 'teacher';
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (!supportsFocusMode) return false;
     if (typeof window !== 'undefined') {
@@ -556,35 +569,92 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 6: System Settings & Coordination (Slate · tone-7)
+    // Category 6: System Control & Administration (Slate · tone-7)
     list.push({
       id: 'administration',
-      labelTh: 'ตั้งค่าระบบ & ส่วนกลาง',
-      labelEn: 'Settings & Admin Desk',
-      shortLabelTh: 'ตั้งค่า',
-      shortLabelEn: 'Settings',
+      labelTh: 'ควบคุมและจัดการระบบโรงเรียน',
+      labelEn: 'System Control & Admin',
+      shortLabelTh: 'คุมระบบ',
+      shortLabelEn: 'Control',
       icon: SlidersHorizontal,
       items: [
         {
+          id: 'system_settings',
+          labelTh: 'ศูนย์ควบคุมระบบโรงเรียน',
+          labelEn: 'System Control Center',
+          shortLabelTh: 'คุมระบบ',
+          shortLabelEn: 'Control',
+          icon: SlidersHorizontal,
+          roles: ['super_admin', 'admin'],
+        },
+        {
+          id: 'school_permissions',
+          labelTh: 'สิทธิ์บทบาท & การเข้าถึง',
+          labelEn: 'Roles & Permissions',
+          icon: ShieldCheck,
+          roles: ['super_admin', 'admin'],
+        },
+        {
+          id: 'school_gps',
+          labelTh: 'พิกัด GPS & จุดสแกนประตู',
+          labelEn: 'School GPS & Gates',
+          icon: MapPin,
+          roles: ['super_admin', 'admin'],
+        },
+        {
+          id: 'admin_line_control',
+          labelTh: 'แจ้งเตือน LINE & เวลาตัดสาย',
+          labelEn: 'LINE OA & Cutoff Rules',
+          icon: BellRing,
+          roles: ['super_admin', 'admin'],
+        },
+        {
+          id: 'admin_student_accounts',
+          labelTh: 'บัญชีนักเรียน & ลิงก์ล็อกอิน',
+          labelEn: 'Student Accounts & Login',
+          icon: KeyRound,
+          roles: ['super_admin', 'admin'],
+        },
+        {
+          id: 'admin_saas_audit',
+          labelTh: 'แพ็กเกจ สิทธิ์ AI & Audit Log',
+          labelEn: 'Packages, AI & Audit Log',
+          icon: Sliders,
+          roles: ['super_admin', 'admin'],
+        },
+        {
           id: 'admin_superadmin_desk',
           labelTh: 'จดหมายประสานงานส่วนกลาง',
-          labelEn: 'Admin Desk',
+          labelEn: 'Super Admin Desk',
           icon: Mail,
           badge: coordinationUnreadCount > 0 ? `${coordinationUnreadCount} ใหม่` : null,
           roles: ['admin'],
-        },
-        {
-          id: 'system_settings',
-          labelTh: 'ศูนย์ตั้งค่าระบบ สิทธิ์ & GPS',
-          labelEn: 'Settings, Roles & GPS',
-          icon: SlidersHorizontal,
-          roles: ['super_admin', 'admin'],
         },
       ],
     });
 
     return list;
   }, [currentRole, isSuperAdminSchoolView, studentsCount, teachersCount, coursesCount, coordinationUnreadCount, unclaimedCentralPacksCount]);
+
+  // Resolve visual active tab in Sidebar when inside system_settings sub-tabs
+  const resolvedSidebarActiveTab: NavTab = useMemo(() => {
+    if (currentTab !== 'system_settings') return currentTab;
+    if (activeSettingsSubTab === 'school_gps') return 'school_gps';
+    if (activeSettingsSubTab === 'school_permissions') return 'school_permissions';
+    if (
+      activeSettingsSubTab === 'line_events' ||
+      activeSettingsSubTab === 'line_connection' ||
+      activeSettingsSubTab === 'preview_simulator' ||
+      activeSettingsSubTab === 'subscribers'
+    ) {
+      return 'admin_line_control';
+    }
+    if (activeSettingsSubTab === 'student_accounts' || activeSettingsSubTab === 'student_login_config') {
+      return 'admin_student_accounts';
+    }
+    if (activeSettingsSubTab === 'saas_audit') return 'admin_saas_audit';
+    return 'system_settings';
+  }, [currentTab, activeSettingsSubTab]);
 
   // Dashboard standalone entry + quick shortcuts (keep items inside their true categories too!)
   const dashboardItem: NavItemDef = useMemo(() => ({
@@ -600,6 +670,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ? ['career_quest', 'timetable', 'homework']
       : currentRole === 'parent'
       ? ['student_id_cards', 'billing', 'announcements']
+      : currentRole === 'admin'
+      ? ['attendance', 'teachers', 'system_settings']
       : ['attendance', 'students', 'gradebook'];
     const all = categories.flatMap((c) => c.items);
     return ids
@@ -624,12 +696,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             i.roles.includes(currentRole) &&
             isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
             isAllowedBySchoolPolicy(i.id) &&
-            (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
+            (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === resolvedSidebarActiveTab)
         );
         return { ...cat, items };
       })
       .filter((cat) => cat.items.length > 0);
-  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, currentTab]);
+  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, resolvedSidebarActiveTab]);
 
   // Search filtered items across dashboard + all categories
   const searchResults = useMemo(() => {
@@ -655,7 +727,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return results;
   }, [searchFilter, dashboardItem, categories, currentRole, featureFlags, schoolPermissions]);
 
-  const activeCatId = visibleCategories.find((c) => c.items.some((i) => i.id === currentTab))?.id;
+  const activeCatId = visibleCategories.find((c) => c.items.some((i) => i.id === resolvedSidebarActiveTab))?.id;
   useEffect(() => {
     if (activeCatId) {
       setCollapsed((prev) => {
@@ -687,17 +759,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (seen.has(item.id)) return;
         if (!item.roles.includes(currentRole) || !isTabEnabledByFeatureFlags(item.id, featureFlags, currentRole) || !isAllowedBySchoolPolicy(item.id)) return;
         seen.add(item.id);
-        if (!FOCUS_TEACHER_TABS.has(item.id) && item.id !== currentTab) {
+        if (!FOCUS_TEACHER_TABS.has(item.id) && item.id !== resolvedSidebarActiveTab) {
           hidden += 1;
         }
       });
     });
     return hidden;
-  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, currentTab]);
+  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, resolvedSidebarActiveTab]);
 
   const renderItem = (item: NavItemDef, onClick?: () => void) => {
     const Icon = item.icon;
-    const isActive = currentTab === item.id;
+    const isActive = resolvedSidebarActiveTab === item.id;
     const isNumericBadge = Boolean(item.badge && /^\d+$/.test(String(item.badge)));
     const isAiBadge = item.badge === 'AI';
     return (
@@ -756,6 +828,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <PanelLeftOpen className="w-4 h-4" />
             </button>
+            {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+              <button
+                type="button"
+                onClick={() => onSwitchOperationalRole(currentRole === 'admin' ? 'teacher' : 'admin')}
+                title={
+                  currentRole === 'admin'
+                    ? (lang === 'th' ? 'กำลังใช้โหมดผู้ดูแล (Admin) — คลิกสลับเป็นโหมดครูผู้สอน' : 'Admin Mode — Click to switch to Teacher Mode')
+                    : (lang === 'th' ? 'กำลังใช้โหมดครูผู้สอน — คลิกสลับเข้าโหมดผู้ดูแล (Admin)' : 'Teacher Mode — Click to switch to Admin Mode')
+                }
+                aria-label={lang === 'th' ? 'สลับโหมด Admin และครู' : 'Switch Admin/Teacher mode'}
+                className={`w-10 h-8 rounded-lg border flex items-center justify-center cursor-pointer transition ${
+                  currentRole === 'admin'
+                    ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                    : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+              </button>
+            )}
             {supportsFocusMode && (
               <button
                 type="button"
@@ -803,7 +894,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="w-6 h-px bg-[var(--color-border)] my-1 shrink-0" aria-hidden="true" />
               {cat.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentTab === item.id;
+                const isActive = resolvedSidebarActiveTab === item.id;
                 return (
                   <button
                     key={item.id}
@@ -868,6 +959,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         )}
       </div>
+
+      {/* Dual-Privilege Admin ↔ Teacher Operational Mode Switcher */}
+      {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+        <div className="shrink-0 px-2.5 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/70">
+          <div className="flex items-center justify-between gap-2 px-0.5 pb-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
+            <span className="truncate">{lang === 'th' ? 'สลับโหมดปฏิบัติงาน' : 'Operational Mode'}</span>
+            <span className="text-[var(--color-primary-text)] shrink-0">
+              {currentRole === 'admin'
+                ? (lang === 'th' ? 'สิทธิ์ Admin' : 'Admin Active')
+                : (lang === 'th' ? 'สิทธิ์ครูผู้สอน' : 'Teacher Active')}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px]">
+            <button
+              type="button"
+              onClick={() => onSwitchOperationalRole('admin')}
+              aria-pressed={currentRole === 'admin'}
+              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-bold transition cursor-pointer whitespace-nowrap ${
+                currentRole === 'admin'
+                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <ShieldCheck className="w-3 h-3 shrink-0" />
+              <span className="truncate">{lang === 'th' ? 'โหมด Admin' : 'Admin'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSwitchOperationalRole('teacher')}
+              aria-pressed={currentRole === 'teacher'}
+              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-bold transition cursor-pointer whitespace-nowrap ${
+                currentRole === 'teacher'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <GraduationCap className="w-3 h-3 shrink-0" />
+              <span className="truncate">{lang === 'th' ? 'โหมดครู' : 'Teacher'}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Teacher Focus vs All Menus Segmented Bar */}
       {supportsFocusMode && (
@@ -944,7 +1077,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="grid grid-cols-3 gap-1">
                   {quickShortcuts.map((item) => {
                     const Icon = item.icon;
-                    const isActive = currentTab === item.id;
+                    const isActive = resolvedSidebarActiveTab === item.id;
                     return (
                       <button
                         key={`quick-${item.id}`}

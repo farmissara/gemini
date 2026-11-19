@@ -27,6 +27,7 @@ import {
   ShieldAlert,
   Flame,
   Swords,
+  ArrowLeftRight,
   BarChart3,
   BellRing,
   Monitor,
@@ -42,9 +43,11 @@ import {
   MoreHorizontal,
   AlertTriangle,
   Compass,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { 
+  UserRole,
   Student, 
   Teacher,
   Course, 
@@ -67,6 +70,7 @@ import {
   SdqAssessment,
   InfirmaryVisit,
   SchoolFeatureFlags,
+  CampusGateGeofence,
 } from '../types';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { NavTab } from '../components/layout/Sidebar';
@@ -94,6 +98,7 @@ import { StudentDesktopDashboard } from '../components/student/StudentDesktopDas
 import { AdminDashboardWorkspace } from '../components/admin/AdminDashboardWorkspace';
 import { ObecLearningAreaExecutiveDashboard } from '../components/ObecLearningAreaExecutiveDashboard';
 import { Pp6ExecutiveQualityDashboard } from '../components/Pp6ExecutiveQualityDashboard';
+import type { SystemSettingsTab } from './SystemSettingsView';
 
 export type DashboardSubTab =
   | 'overview'
@@ -139,6 +144,11 @@ interface DashboardViewProps {
   infirmaryVisits?: InfirmaryVisit[];
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
   featureFlags?: SchoolFeatureFlags;
+  campusGates?: CampusGateGeofence[];
+  currentRole?: UserRole;
+  canSwitchAdminTeacherMode?: boolean;
+  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
+  onOpenSystemSettingsTab?: (tab: SystemSettingsTab) => void;
   initialSubTab?: DashboardSubTab;
   onSelectStudent?: (student: Student) => void;
   onOpenGradebookCourse?: (courseId?: string) => void;
@@ -177,6 +187,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   infirmaryVisits = [],
   schoolPermissions,
   featureFlags,
+  campusGates = [],
+  currentRole: propCurrentRole,
+  canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole,
+  onOpenSystemSettingsTab,
   initialSubTab,
   onSelectStudent,
   onOpenGradebookCourse,
@@ -199,7 +214,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
   const twoDaysAgoStr = getLocalDateString(new Date(Date.now() - 2 * 86400000));
 
-  const currentRole = currentUser?.role || 'admin';
+  const currentRole = propCurrentRole || currentUser?.role || 'admin';
+  const adminTeachersCount = useMemo(
+    () => teachers.filter((t) => Boolean(t.isSchoolAdmin)).length,
+    [teachers]
+  );
   const isModuleEnabled = (tab: NavTab) => isTabEnabledByFeatureFlags(tab, featureFlags, currentRole);
   const canViewExecutiveMonitor = ['super_admin', 'admin', 'teacher'].includes(currentRole);
   const canViewEarlyWarning = ['super_admin', 'admin'].includes(currentRole) && isModuleEnabled('executive_warning');
@@ -327,16 +346,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todayDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[new Date().getDay()];
   const todayScheduledSlots = useMemo(() => {
     const daySlots = scopedTimetableSlots.filter((s) => s.dayOfWeek === todayDayKey);
-    if (currentUser?.role === 'teacher') {
-      const teacherName = currentUser.fullNameTh || '';
+    if (currentRole === 'teacher') {
+      const teacherName = currentUser?.fullNameTh || '';
       const mine = daySlots.filter((s) => slotHasTeacher(s, teacherName));
       return (mine.length > 0 ? mine : daySlots).slice().sort((a, b) => a.periodNumber - b.periodNumber);
     }
     return daySlots.slice().sort((a, b) => a.periodNumber - b.periodNumber);
-  }, [scopedTimetableSlots, todayDayKey, currentUser]);
+  }, [scopedTimetableSlots, todayDayKey, currentRole, currentUser]);
   const pendingLeaveCount = scopedLeaves.filter((l) => l.status === 'pending').length;
   const ungradedHomeworkCount = scopedHomework.filter((h) => h.status === 'submitted' || h.status === 'late').length;
-  const isStaffUser = !currentUser?.role || currentUser.role === 'teacher' || currentUser.role === 'admin' || currentUser.role === 'super_admin';
+  const isStaffUser = !currentRole || currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
   const checkedInStudentIdsToday = useMemo(() => {
     const ids = new Set<string>();
     attendance.forEach((rec) => {
@@ -364,7 +383,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const step2Done = Boolean(school?.latitude && school?.longitude) || schoolPeriods.length >= 6;
   const step3Done = timetableSlots.length > 0;
   const completedOnboardingCount = [step1Done, step2Done, step3Done].filter(Boolean).length;
-  const showOnboardingCard = !onboardingDismissed && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && completedOnboardingCount < 3;
+  const showOnboardingCard = !onboardingDismissed && (currentRole === 'admin' || currentRole === 'super_admin') && completedOnboardingCount < 3;
 
   // Compute key overall stats (scoped strictly for student/parent)
   const totalStudents = scopedStudents.length;
@@ -946,7 +965,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">{completedOnboardingCount}/3</span>
                     </button>
                   )}
-                  {unclaimedCentralPacksCount > 0 && currentUser?.role === 'admin' && onOpenCentralExamPopup && (
+                  {unclaimedCentralPacksCount > 0 && currentRole === 'admin' && onOpenCentralExamPopup && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1019,7 +1038,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="dashboard-print-scroll flex-1 dash-scroll-stack pb-12">
         {/* TAB 1: DAILY OVERVIEW (Dedicated 60-30-10 Card Progress Dashboard for Students; Morning Brief for Staff/Parents) */}
         {dashboardTab === 'overview' && (
-          currentUser?.role === 'student' ? (
+          currentRole === 'student' ? (
             <StudentDesktopDashboard
               currentUser={currentUser}
               student={primaryScopedStudent}
@@ -1099,6 +1118,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               canViewExecutiveMonitor={canViewExecutiveMonitor}
               canViewEarlyWarning={canViewEarlyWarning}
               isModuleEnabled={isModuleEnabled}
+              canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+              onSwitchOperationalRole={onSwitchOperationalRole}
+              campusGates={campusGates}
+              schoolPermissions={schoolPermissions}
+              featureFlags={featureFlags}
+              adminTeachersCount={adminTeachersCount}
+              onOpenSystemSettingsTab={onOpenSystemSettingsTab}
               displayRecords={displayRecords}
               fallbackAvatarSvg={fallbackAvatarSvg}
               onNavigate={onNavigate}
@@ -1191,6 +1217,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {currentRole === 'teacher' && canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+                  <button
+                    type="button"
+                    onClick={() => onSwitchOperationalRole('admin')}
+                    className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
+                    <span>{lang === 'th' ? 'สลับเข้าสู่โหมด Admin' : 'Switch to Admin Mode'}</span>
+                  </button>
+                )}
                 {morningQuickActions.slice(0, 2).map((act) => (
                   <button
                     key={act.id}
@@ -1204,6 +1240,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ))}
               </div>
             </section>
+
+            {/* DUAL-PRIVILEGE TEACHER ADMIN CONTROL STRIP */}
+            {currentRole === 'teacher' && canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+              <section
+                aria-label={lang === 'th' ? 'แถบควบคุมสิทธิ์ Admin สำหรับครู' : 'Teacher Admin Privileges Bar'}
+                className="no-print rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'คุณมีสิทธิ์ผู้ดูแลระบบโรงเรียน (Admin) ควบคู่กับบทบาทครูผู้สอน' : 'You have School Admin privileges alongside your Teacher role'}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                      {lang === 'th'
+                        ? 'สลับเข้าโหมด Admin เพื่อควบคุมสิทธิ์ พิกัด GPS ระบบ LINE และตั้งค่าโรงเรียนได้ทันที'
+                        : 'Switch to Admin Mode anytime to manage permissions, GPS gates, LINE OA, and school settings'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onSwitchOperationalRole('admin')}
+                  className="btn-action-primary px-3.5 py-2 whitespace-nowrap shrink-0"
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'เปิดโหมด Admin & ศูนย์ควบคุม' : 'Open Admin Control Mode'}</span>
+                </button>
+              </section>
+            )}
 
             {/* STRICTLY 3 ROLE-ADAPTED LARGE KPI CELLS */}
             <section
