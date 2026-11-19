@@ -14,7 +14,7 @@ interface ConfirmActionModalProps {
   onConfirm: () => void | Promise<void>;
 }
 
-export function ConfirmActionModal({
+function ConfirmActionModal({
   isOpen,
   title,
   description,
@@ -75,3 +75,6 @@ export function ConfirmActionModal({
     </div>
   );
 }
+
+export { ConfirmActionModal };
+export default ConfirmActionModal;
