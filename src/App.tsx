@@ -3884,6 +3884,36 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleDeleteGrade = async (gradeId: string) => {
+    const target = grades.find((g) => g.id === gradeId);
+    if (!isDemoMode) {
+      await deleteStaleGradesFromDb(activeSchool.id, [gradeId]);
+    }
+    setGrades((prev) => {
+      const next = prev.filter((g) => g.id !== gradeId);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`eduverse_grades_${activeSchool.id}`, JSON.stringify(next));
+        } catch {
+          // ignore storage quota errors
+        }
+      }
+      if (target?.studentId) {
+        syncStudentGpaFromGrades(next, new Set([target.studentId]));
+      }
+      return next;
+    });
+    if (currentUser) {
+      appendAuditLog(activeSchool.id, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'grade_update',
+        targetLabel: target?.studentId || gradeId,
+        details: `ลบรายการคะแนนรายวิชา (${target?.courseId || gradeId})`,
+      });
+    }
+  };
+
   const handleSyncQuizScoresToGradebook = (
     courseId: string,
     packTitle: string,
@@ -5201,6 +5231,9 @@ export const App: React.FC = () => {
                     homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={viewAssignments}
                     onUpdateStudent={handleUpdateStudent}
+                    onAddStudent={handleAddStudent}
+                    onDeleteStudent={handleDeleteStudent}
+                    onDeleteGrade={handleDeleteGrade}
                     onPracticeInAi={
                       isTabEnabledByFeatureFlags('socratic_tutor', activeFeatureFlags, currentRole)
                         ? (topic) => {

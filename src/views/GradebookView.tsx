@@ -48,6 +48,7 @@ import {
   ChevronDown,
   Calculator,
   RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -91,7 +92,8 @@ import { GradeLevelQualitativeSummaryView } from '../components/GradeLevelQualit
 import { CoreSubjectsReportCardView } from '../components/CoreSubjectsReportCardView';
 import { Pp5CoreRoomSummaryView } from '../components/Pp5CoreRoomSummaryView';
 import { ThreeSemesterAchievementTrendChart } from '../components/ThreeSemesterAchievementTrendChart';
-import { MoeStudentDocumentCenter } from '../components/MoeStudentDocumentCenter';
+import { MoeDocViewSelection, MoeStudentDocumentCenter } from '../components/MoeStudentDocumentCenter';
+import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import {
   getPp3ApprovalStatusMeta,
   getStudentRegistryRecord,
@@ -132,6 +134,7 @@ interface GradebookViewProps {
   onChangeGradingSystem?: (mode: GradingSystem) => Promise<void> | void;
   onUpdateGrade: (gradeId: string, updates: Partial<GradeRecord>) => void;
   onAddGrade?: (grade: GradeRecord, options?: { notify?: boolean }) => void;
+  onDeleteGrade?: (gradeId: string) => Promise<void> | void;
   onNotifyGradeChange?: (grade: GradeRecord, isNewRecord?: boolean) => Promise<GradeAlertRecord | void> | GradeAlertRecord | void;
   onOpenReportCard: (student: Student) => void;
   timetableSlots?: TimetableSlot[];
@@ -142,7 +145,9 @@ interface GradebookViewProps {
   infirmaryVisits?: InfirmaryVisit[];
   homeworkSubmissions?: HomeworkSubmission[];
   assignments?: Assignment[];
+  onAddStudent?: (student: Student) => void;
   onUpdateStudent?: (student: Student) => void;
+  onDeleteStudent?: (studentId: string) => Promise<void> | void;
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
   onOpenImportExport?: () => void;
   onOpenStudentDevBook?: (studentId: string) => void;
@@ -175,6 +180,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   onChangeGradingSystem,
   onUpdateGrade,
   onAddGrade,
+  onDeleteGrade,
   onNotifyGradeChange,
   onOpenReportCard,
   timetableSlots = [],
@@ -185,7 +191,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   infirmaryVisits = [],
   homeworkSubmissions = [],
   assignments = [],
+  onAddStudent,
   onUpdateStudent,
+  onDeleteStudent,
   onPracticeInAi,
   onOpenImportExport,
   onOpenStudentDevBook,
@@ -216,7 +224,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     | 'qualitative_summary'
     | 'pp3_online'
     | 'onet_niets'
-  >(isPersonalGradeViewer ? 'pp6' : (initialTab || 'gradebook'));
+  >(() => {
+    if (isPersonalGradeViewer) return 'pp6';
+    if (initialTab === 'pp6' || initialTab === 'core_report_card') return 'moe_student_hub';
+    return initialTab || 'gradebook';
+  });
+  const [hubDocViewOverride, setHubDocViewOverride] = useState<MoeDocViewSelection | undefined>(() => {
+    if (initialTab === 'pp6') return 'pp6';
+    if (initialTab === 'core_report_card') return 'core_report_card';
+    return undefined;
+  });
+  const [pendingDeleteGrade, setPendingDeleteGrade] = useState<{ grade: GradeRecord; studentName: string } | null>(null);
+  const [isDeletingGrade, setIsDeletingGrade] = useState(false);
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [courseTeacherFilter, setCourseTeacherFilter] = useState<string>('all');
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
@@ -282,7 +301,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   useEffect(() => {
     if (initialTab && !isPersonalGradeViewer) {
-      setActiveTab(initialTab);
+      if (initialTab === 'pp6') {
+        setHubDocViewOverride('pp6');
+        setActiveTab('moe_student_hub');
+      } else if (initialTab === 'core_report_card') {
+        setHubDocViewOverride('core_report_card');
+        setActiveTab('moe_student_hub');
+      } else {
+        setActiveTab(initialTab);
+      }
     }
   }, [initialTab, isPersonalGradeViewer]);
 
@@ -1438,55 +1465,35 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     loggedInTeacherFilterKey && courseTeacherFilter === loggedInTeacherFilterKey
   );
 
-  const GRADEBOOK_GROUPS: Array<{
-    id: 'scoring' | 'pp_docs' | 'registry';
+  const primarySection: 'scores' | 'registry' | 'reports' =
+    activeTab === 'moe_student_hub' || activeTab === 'pp6' || activeTab === 'core_report_card'
+      ? 'registry'
+      : activeTab === 'gradebook' || activeTab === 'indicators'
+      ? 'scores'
+      : 'reports';
+
+  const REPORT_VIEW_OPTIONS: Array<{
+    id: 'pp5' | 'pp5_core_summary' | 'qualitative_summary' | 'pp3_online' | 'onet_niets';
     labelTh: string;
     labelEn: string;
-    tabs: Array<{
-      id: typeof activeTab;
-      labelTh: string;
-      labelEn: string;
-    }>;
   }> = [
-    {
-      id: 'scoring',
-      labelTh: '1. บันทึกคะแนน & ตัวชี้วัด',
-      labelEn: '1. Scoring & Indicators',
-      tabs: [
-        { id: 'gradebook', labelTh: 'สมุดบันทึกคะแนน (Gradebook)', labelEn: 'Gradebook' },
-        { id: 'indicators', labelTh: 'ตัวชี้วัด & หน่วย 1–3', labelEn: 'Indicators & Units' },
-      ],
-    },
-    {
-      id: 'pp_docs',
-      labelTh: '2. ศูนย์เอกสาร สพฐ. / ปพ. (รายคน & รายวิชา)',
-      labelEn: '2. MOE Documents & Pp. Records',
-      tabs: [
-        { id: 'moe_student_hub', labelTh: 'ศูนย์ทะเบียน & ออกเอกสาร สพฐ. รายคน (ปพ.1–8)', labelEn: 'Student MOE Hub (PP.1–8)' },
-        { id: 'pp5', labelTh: 'ปพ.5 (ประจำวิชา)', labelEn: 'Pp.5 (Course)' },
-        { id: 'pp6', labelTh: 'ปพ.6 (รายบุคคล)', labelEn: 'Pp.6 (Student)' },
-        { id: 'core_report_card', labelTh: 'Report Card วิชาพื้นฐาน (ปพ.5/6)', labelEn: 'Core Report Card' },
-      ],
-    },
-    {
-      id: 'registry',
-      labelTh: '3. สรุปผล & งานทะเบียนจบชั้น',
-      labelEn: '3. Summaries & Graduation Registry',
-      tabs: [
-        { id: 'pp5_core_summary', labelTh: 'สรุป ปพ.5 ทั้งห้อง & ตัวชี้วัด', labelEn: 'Pp.5 Room Summary' },
-        { id: 'qualitative_summary', labelTh: 'สรุปคุณลักษณะฯ & อ่านเขียน', labelEn: 'Qualitative Summary' },
-        { id: 'pp3_online', labelTh: 'ปพ.3 จบชั้น (ป.6/ม.3/ม.6)', labelEn: 'Pp.3 Graduation' },
-        { id: 'onet_niets', labelTh: 'สทศ. O-NET', labelEn: 'NIETS O-NET' },
-      ],
-    },
+    { id: 'pp5', labelTh: 'ปพ.5 แบบบันทึกผลการเรียนประจำวิชา (พิมพ์ A4)', labelEn: 'Pp.5 Course Record (A4)' },
+    { id: 'pp5_core_summary', labelTh: 'สรุปผล ปพ.5 ทั้งห้อง & ตัวชี้วัด', labelEn: 'Pp.5 Room Summary' },
+    { id: 'qualitative_summary', labelTh: 'สรุปคุณลักษณะฯ & การอ่าน คิดวิเคราะห์ เขียน', labelEn: 'Qualitative Summary' },
+    { id: 'pp3_online', labelTh: 'ปพ.3 แบบรายงานผู้สำเร็จการศึกษา (ป.6 / ม.3 / ม.6)', labelEn: 'Pp.3 Graduation Registry' },
+    { id: 'onet_niets', labelTh: 'สทศ. O-NET (ป.6 / ม.3 / ม.6)', labelEn: 'NIETS O-NET' },
   ];
-  const currentGradebookGroup =
-    GRADEBOOK_GROUPS.find((g) => g.tabs.some((t) => t.id === activeTab)) || GRADEBOOK_GROUPS[0];
+
+  const openStudentInRegistry = (studentId: string, docView: MoeDocViewSelection = 'pp1') => {
+    setSelectedStudentIdForPp6(studentId);
+    setHubDocViewOverride(docView);
+    setActiveTab('moe_student_hub');
+  };
 
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
-      {/* Gradebook title, workspace navigation, and actions */}
-      <div className="shrink-0 px-4 py-3 app-page-header flex flex-wrap items-end justify-between gap-x-4 gap-y-3 print:hidden">
+      {/* Gradebook title, clean 3-tab switcher, and actions */}
+      <div className="shrink-0 px-4 py-3 app-page-header flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 print:hidden">
         <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
           <span className="tone-chip w-10 h-10 rounded-xl shrink-0">
             <Award className="w-5 h-5" />
@@ -1526,12 +1533,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             </div>
           ) : (
-            <span className="px-2 py-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold text-[var(--color-text-muted)] shrink-0">
-              {systemConfig.gradingSystem === 'international' ? 'A–F' : '0–4'}
+            <span className="text-xs font-semibold text-[var(--color-text-muted)] shrink-0">
+              ระบบ {systemConfig.gradingSystem === 'international' ? 'A–F' : '0–4'}
             </span>
           )}
 
-          {/* Compact Integrated Menu Dropdowns (Replaces 2-row tab stack) */}
+          {/* Clean Top-Level Tabs (Replaces cluttered 2-dropdown / 10-subtab stack) */}
           {isPersonalGradeViewer ? (
             <div data-guide-id="gradebook-tabs" className="seg-tab-group text-[11px]">
               <button
@@ -1552,41 +1559,54 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             </div>
           ) : (
-            <div data-guide-id="gradebook-tabs" className="w-full basis-full flex flex-wrap items-center gap-2">
-              <select
-                aria-label={lang === 'th' ? 'เลือกหมวดงาน' : 'Select workspace'}
-                value={currentGradebookGroup.id}
-                onChange={(e) => {
-                  const nextGroup = GRADEBOOK_GROUPS.find((g) => g.id === e.target.value);
-                  if (nextGroup && nextGroup.tabs[0]) {
-                    setActiveTab(nextGroup.tabs[0].id);
-                  }
-                }}
-                className="h-11 rounded-xl border border-[color-mix(in_srgb,var(--tone)_35%,var(--color-border))] bg-[var(--tone-soft)] px-4 text-sm font-bold text-[var(--tone)] outline-none cursor-pointer"
-              >
-                {GRADEBOOK_GROUPS.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {lang === 'th' ? group.labelTh : group.labelEn}
-                  </option>
-                ))}
-              </select>
+            <div data-guide-id="gradebook-tabs" className="w-full basis-full flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]/70">
+              <div className="seg-tab-group overflow-x-auto no-scrollbar">
+                <button
+                  type="button"
+                  data-active={primarySection === 'scores'}
+                  onClick={() => {
+                    if (primarySection !== 'scores') setActiveTab('gradebook');
+                  }}
+                  className="seg-tab-btn whitespace-nowrap"
+                >
+                  {lang === 'th' ? '1. บันทึกคะแนนรายวิชา' : '1. Course Grading'}
+                </button>
+                <button
+                  type="button"
+                  data-active={primarySection === 'registry'}
+                  onClick={() => setActiveTab('moe_student_hub')}
+                  className="seg-tab-btn whitespace-nowrap"
+                >
+                  {lang === 'th' ? '2. รายชื่อเด็ก & งานทะเบียน (ปพ.1–8)' : '2. Student Registry & Docs'}
+                </button>
+                <button
+                  type="button"
+                  data-active={primarySection === 'reports'}
+                  onClick={() => {
+                    if (primarySection !== 'reports') setActiveTab('pp5');
+                  }}
+                  className="seg-tab-btn whitespace-nowrap"
+                >
+                  {lang === 'th' ? '3. รายงานสรุป & ส่งออก สพฐ.' : '3. Reports & OBEC Export'}
+                </button>
+              </div>
 
-              <select
-                aria-label={lang === 'th' ? 'เลือกเมนูย่อย' : 'Select section'}
-                value={activeTab}
-                onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
-                className="h-11 max-w-[360px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 text-sm font-bold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
-              >
-                {GRADEBOOK_GROUPS.map((group) => (
-                  <optgroup key={group.id} label={lang === 'th' ? group.labelTh : group.labelEn}>
-                    {group.tabs.map((tab) => (
-                      <option key={tab.id} value={tab.id}>
-                        {lang === 'th' ? tab.labelTh : tab.labelEn}
+              {primarySection === 'reports' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label={lang === 'th' ? 'เลือกแบบรายงาน' : 'Select report'}
+                    value={activeTab}
+                    onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
+                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-xs font-bold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
+                  >
+                    {REPORT_VIEW_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {lang === 'th' ? opt.labelTh : opt.labelEn}
                       </option>
                     ))}
-                  </optgroup>
-                ))}
-              </select>
+                  </select>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1796,6 +1816,28 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   )}
                 </select>
               </div>
+
+              {/* Sub-mode Toggle inside Course Scoring (สมุดคะแนน ปพ.5 | ตัวชี้วัด สพฐ.) */}
+              {!isPersonalGradeViewer && (activeTab === 'gradebook' || activeTab === 'indicators') && (
+                <div className="seg-tab-group shrink-0">
+                  <button
+                    type="button"
+                    data-active={activeTab === 'gradebook'}
+                    onClick={() => setActiveTab('gradebook')}
+                    className="seg-tab-btn px-2.5 py-1 text-xs whitespace-nowrap"
+                  >
+                    สมุดคะแนน (ปพ.5)
+                  </button>
+                  <button
+                    type="button"
+                    data-active={activeTab === 'indicators'}
+                    onClick={() => setActiveTab('indicators')}
+                    className="seg-tab-btn px-2.5 py-1 text-xs whitespace-nowrap"
+                  >
+                    ตัวชี้วัด สพฐ.
+                  </button>
+                </div>
+              )}
 
               {/* Student Live Search */}
               {!isPersonalGradeViewer && (
@@ -2746,20 +2788,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           {(() => {
                             const actionItems: TableActionItem[] = [
                               {
+                                id: 'moe_hub',
+                                label: 'งานทะเบียน & ออกเอกสาร สพฐ. (ปพ.1–8)',
+                                icon: <FileSpreadsheet className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => openStudentInRegistry(student.id, 'pp1'),
+                              },
+                              {
                                 id: 'transcript',
                                 label: 'ดูใบรายงานผล (Transcript / ปพ.6)',
                                 icon: <FileText className="w-3.5 h-3.5" />,
-                                variant: 'primary',
                                 onClick: () => onOpenReportCard(student),
-                              },
-                              {
-                                id: 'pp6_tab',
-                                label: 'เปิดในแท็บ ปพ.6 ประจำตัว',
-                                icon: <Award className="w-3.5 h-3.5" />,
-                                onClick: () => {
-                                  setSelectedStudentIdForPp6(student.id);
-                                  setActiveTab('pp6');
-                                },
                               },
                               {
                                 id: 'notify_grade',
@@ -2782,6 +2821,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                                           studentName: `${student.firstNameTh} ${student.lastNameTh}`,
                                           score: grade.totalScore,
                                           targetTab: 'socratic_tutor',
+                                        }),
+                                    },
+                                  ]
+                                : []),
+                              ...(effectiveCanEditGrades && onDeleteGrade
+                                ? [
+                                    {
+                                      id: 'delete_grade',
+                                      label: 'ลบคะแนนรายวิชานี้ออก',
+                                      icon: <Trash2 className="w-3.5 h-3.5" />,
+                                      variant: 'danger' as const,
+                                      dividerBefore: true,
+                                      onClick: () =>
+                                        setPendingDeleteGrade({
+                                          grade,
+                                          studentName: `${student.firstNameTh} ${student.lastNameTh}`,
                                         }),
                                     },
                                   ]
@@ -2944,20 +2999,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         ariaLabel={`จัดการผลการเรียน ${student.firstNameTh} ${student.lastNameTh}`}
                         items={[
                           {
+                            id: 'moe_hub',
+                            label: 'งานทะเบียน & ออกเอกสาร สพฐ. (ปพ.1–8)',
+                            icon: <FileSpreadsheet className="w-3.5 h-3.5" />,
+                            variant: 'primary',
+                            onClick: () => openStudentInRegistry(student.id, 'pp1'),
+                          },
+                          {
                             id: 'transcript',
                             label: 'ดูใบรายงานผล (Transcript / ปพ.6)',
                             icon: <FileText className="w-3.5 h-3.5" />,
-                            variant: 'primary',
                             onClick: () => onOpenReportCard(student),
-                          },
-                          {
-                            id: 'pp6_tab',
-                            label: 'เปิดในแท็บ ปพ.6 ประจำตัว',
-                            icon: <Award className="w-3.5 h-3.5" />,
-                            onClick: () => {
-                              setSelectedStudentIdForPp6(student.id);
-                              setActiveTab('pp6');
-                            },
                           },
                           {
                             id: 'notify_grade',
@@ -2980,6 +3032,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                                       studentName: `${student.firstNameTh} ${student.lastNameTh}`,
                                       score: grade.totalScore,
                                       targetTab: 'socratic_tutor',
+                                    }),
+                                },
+                              ]
+                            : []),
+                          ...(effectiveCanEditGrades && onDeleteGrade
+                            ? [
+                                {
+                                  id: 'delete_grade',
+                                  label: 'ลบคะแนนรายวิชานี้ออก',
+                                  icon: <Trash2 className="w-3.5 h-3.5" />,
+                                  variant: 'danger' as const,
+                                  dividerBefore: true,
+                                  onClick: () =>
+                                    setPendingDeleteGrade({
+                                      grade,
+                                      studentName: `${student.firstNameTh} ${student.lastNameTh}`,
                                     }),
                                 },
                               ]
@@ -3125,10 +3193,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           currentUser={currentUser}
           lang={lang}
           onOpenStudentDevBook={onOpenStudentDevBook}
-          onOpenStudentPp6={(studentId) => {
-            setSelectedStudentIdForPp6(studentId);
-            setActiveTab('pp6');
-          }}
+          onOpenStudentPp6={(studentId) => openStudentInRegistry(studentId, 'pp6')}
         />
       )}
 
@@ -3314,25 +3379,19 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                               label: 'ออกเอกสาร สพฐ. & บันทึกเลข ปพ.3',
                               icon: <FileSpreadsheet className="w-3.5 h-3.5" />,
                               variant: 'primary',
-                              onClick: () => {
-                                setSelectedStudentIdForPp6(stu.id);
-                                setActiveTab('moe_student_hub');
-                              },
+                              onClick: () => openStudentInRegistry(stu.id, 'pp3'),
                             },
                             {
                               id: 'pp1',
-                              label: 'ดูเอกสาร ปพ.1 / ใบรายงานผล',
+                              label: 'ดู & พิมพ์ ปพ.1 (ระเบียนผลการเรียน)',
                               icon: <FileText className="w-3.5 h-3.5" />,
-                              onClick: () => onOpenReportCard(stu),
+                              onClick: () => openStudentInRegistry(stu.id, 'pp1'),
                             },
                             {
                               id: 'pp6',
-                              label: 'ดูแบบรายงาน ปพ.6 ประจำตัว',
+                              label: 'ดู & พิมพ์ ปพ.6 ประจำตัว',
                               icon: <Award className="w-3.5 h-3.5" />,
-                              onClick: () => {
-                                setSelectedStudentIdForPp6(stu.id);
-                                setActiveTab('pp6');
-                              },
+                              onClick: () => openStudentInRegistry(stu.id, 'pp6'),
                             },
                           ]}
                         />
@@ -3513,13 +3572,43 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           currentUser={currentUser}
           selectedStudentId={selectedStudentIdForPp6}
           onSelectStudentId={(sid) => setSelectedStudentIdForPp6(sid)}
+          onAddStudent={onAddStudent}
           onUpdateStudent={onUpdateStudent}
+          onDeleteStudent={onDeleteStudent}
           onUpdateGrade={onUpdateGrade}
           onAddGrade={onAddGrade}
+          onDeleteGrade={onDeleteGrade}
+          onOpenStudentDevBook={onOpenStudentDevBook}
+          initialDocView={hubDocViewOverride}
           canEdit={effectiveCanEditGrades}
+          lang={lang}
         />
       )}
       </div>
+
+      {/* Confirm Delete Course Grade Modal */}
+      {pendingDeleteGrade && (
+        <ConfirmActionModal
+          isOpen={true}
+          title="ยืนยันลบรายการคะแนนรายวิชา"
+          description={`ต้องการลบคะแนนวิชา ${selectedCourse?.code || ''} ของ ${pendingDeleteGrade.studentName} ออกจากสมุดคะแนนหรือไม่?`}
+          detailNote="คะแนนและเกรดรายวิชานี้จะถูกลบออกจากฐานข้อมูล และระบบจะคำนวณ GPA เฉลี่ยใหม่ให้อัตโนมัติ"
+          confirmLabel={isDeletingGrade ? 'กำลังลบ...' : 'ยืนยันลบคะแนน'}
+          tone="danger"
+          isBusy={isDeletingGrade}
+          onCancel={() => !isDeletingGrade && setPendingDeleteGrade(null)}
+          onConfirm={async () => {
+            if (!onDeleteGrade) return;
+            setIsDeletingGrade(true);
+            try {
+              await onDeleteGrade(pendingDeleteGrade.grade.id);
+              setPendingDeleteGrade(null);
+            } finally {
+              setIsDeletingGrade(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
