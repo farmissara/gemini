@@ -294,9 +294,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   });
 
   return (
-    <div className="flex flex-col gap-5 pb-4 animate-in fade-in duration-200">
+    <div className="flex flex-col gap-5 pb-6 animate-in fade-in duration-200">
       {/* 1. VISUAL HERO BANNER — Student Identity + 1 Dominant Primary CTA */}
-      <section className="relative rounded-3xl overflow-hidden shadow-md bg-slate-900 min-h-[218px] flex flex-col justify-between">
+      <section className="relative rounded-3xl overflow-hidden shadow-lg shadow-slate-900/15 bg-slate-900 min-h-[236px] flex flex-col justify-between">
         <img
           src={heroCampusImg}
           alt={lang === 'th' ? 'ภาพบรรยากาศโรงเรียน' : 'Campus atmosphere'}
@@ -362,7 +362,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           <button
             type="button"
             onClick={() => (canSelfCheckin ? onOpenCheckin() : onOpenTimetable('day'))}
-            className="w-full min-h-[52px] px-4 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-900 font-bold text-sm flex items-center justify-between gap-3 shadow-lg transition cursor-pointer"
+            className="w-full min-h-[54px] px-4 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-900 font-bold text-[15px] flex items-center justify-between gap-3 shadow-lg ring-1 ring-black/5 transition cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
@@ -394,7 +394,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                         ? 'เช็คชื่อเข้า-ออกโรงเรียน'
                         : 'School Check-in & Out'}
                 </span>
-                <span className="block text-[11px] font-medium text-slate-500 truncate tabular-nums">
+                <span className="block text-xs font-medium text-slate-500 truncate tabular-nums">
                   {todayCheckin
                     ? lang === 'th'
                       ? `บันทึกล่าสุดเวลา ${todayCheckin.time} น.`
@@ -421,14 +421,14 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         className="flex flex-col gap-3"
       >
         {/* Attendance Visual Progress Card */}
-        <article className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
+        <article className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-medium text-[var(--color-text-muted)]">
                 {lang === 'th' ? 'สถิติการมาเรียน' : 'Attendance'}
               </p>
               <div className="mt-0.5 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[var(--color-text-title)] tabular-nums tracking-tight leading-none">
+                <span className="text-3xl font-bold text-[var(--color-text-title)] tabular-nums tracking-tight leading-none">
                   {attendanceRate !== null ? `${attendanceRate}%` : '—'}
                 </span>
                 <span className={`text-xs font-semibold ${attendanceStatusTone}`}>
@@ -436,7 +436,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 </span>
               </div>
             </div>
-            <span className="text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums">
+            <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums">
               {lang === 'th' ? `เกณฑ์ขั้นต่ำ 80%` : `80% target`}
             </span>
           </div>
@@ -444,7 +444,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           {/* Segmented Horizontal Progress Bar with 80% Benchmark Tick */}
           <div className="relative">
             <div
-              className="h-2.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden flex"
+              className="h-3 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden flex"
               role="progressbar"
               aria-valuenow={attendanceRate ?? 0}
               aria-valuemin={0}
@@ -471,7 +471,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums pt-0.5">
+          <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] tabular-nums pt-0.5">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500" aria-hidden="true" />
               {lang === 'th' ? `ตรงเวลา ${attendanceOnTime}` : `On time ${attendanceOnTime}`}
@@ -491,7 +491,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           <button
             type="button"
             onClick={onOpenGrades}
-            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] p-4 text-left space-y-3 transition cursor-pointer"
+            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:border-[var(--color-primary)] p-4 sm:p-5 text-left space-y-3 transition hover:shadow-md active:scale-[0.99] cursor-pointer"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -499,7 +499,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                   {lang === 'th' ? 'ผลการเรียนเฉลี่ย (GPAX)' : 'Academic Standing (GPAX)'}
                 </p>
                 <div className="mt-0.5 flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold text-[var(--color-text-title)] tabular-nums tracking-tight leading-none">
+                  <span className="text-3xl font-bold text-[var(--color-text-title)] tabular-nums tracking-tight leading-none">
                     {realGpax !== null ? realGpax.toFixed(2) : '—'}
                   </span>
                   <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums">
@@ -515,7 +515,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
 
             {/* Overall GPAX Progress Bar */}
             <div
-              className="h-2.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
+              className="h-3 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
               role="progressbar"
               aria-valuenow={gpaxPercent}
               aria-valuemin={0}
@@ -543,7 +543,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                         {subj.gradeLabel} · {subj.percent}%
                       </span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-2 w-full rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${getBarTone(subj.percent)}`}
                         style={{ width: `${subj.percent}%` }}
@@ -567,7 +567,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           <button
             type="button"
             onClick={onOpenHomework}
-            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] px-4 py-3.5 text-left space-y-2 transition cursor-pointer"
+            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:border-[var(--color-primary)] px-4 py-3.5 text-left space-y-2 transition hover:shadow-md active:scale-[0.99] cursor-pointer"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -615,7 +615,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 />
               </div>
               {totalHomeworkCount > 0 && (
-                <span className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums shrink-0">
+                <span className="text-xs font-semibold text-[var(--color-text-muted)] tabular-nums shrink-0">
                   {completedHomeworkCount}/{totalHomeworkCount}
                 </span>
               )}
@@ -653,7 +653,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
       ) : featuredSlot && featuredActivity ? (
         <section
           aria-label={lang === 'th' ? 'คาบเรียนปัจจุบัน' : 'Current class'}
-          className={`rounded-2xl border p-4 space-y-3 transition ${
+          className={`rounded-2xl border p-4 sm:p-5 space-y-3 shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition ${
             featuredActivity.isActive
               ? 'border-rose-400 dark:border-rose-600 bg-rose-50/60 dark:bg-rose-950/25'
               : 'border-[var(--color-border)] bg-[var(--color-card)]'
@@ -757,7 +757,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               <p className="text-xs font-semibold text-[var(--color-text-title)] truncate">
                 {upcomingHoliday.nameTh}
               </p>
-              <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+              <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
                 {lang === 'th' ? `วันหยุดถัดไป · ${upcomingHoliday.date}` : `Next holiday · ${upcomingHoliday.date}`}
               </p>
             </div>
@@ -769,7 +769,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
       {/* 4. CLEAN 2x3 VISUAL MENU GRID (Spacious, Uncluttered, Thumb-Friendly) */}
       <section aria-label={lang === 'th' ? 'เมนูลัดสำหรับนักเรียน' : 'Student shortcuts'} className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-semibold text-[var(--color-text-muted)]">
+          <h2 className="text-[13px] font-bold text-[var(--color-text-title)]">
             {lang === 'th' ? 'เมนูการเรียนของฉัน' : 'My Learning'}
           </h2>
         </div>
@@ -786,10 +786,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[var(--color-text-title)]">
+              <p className="text-[15px] font-bold text-[var(--color-text-title)]">
                 {lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
               </p>
-              <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">
+              <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
                 {todayHoliday || isWeekend
                   ? lang === 'th'
                     ? 'วันหยุด · ดูปฏิทิน'
@@ -813,10 +813,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 <GraduationCap className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-[var(--color-text-title)]">
+                <p className="text-[15px] font-bold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'ผลการเรียน' : 'Grades'}
                 </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">
+                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
                   {realGpax !== null ? `GPAX ${realGpax.toFixed(2)}` : `${scopedCourses.length} วิชา`}
                 </p>
               </div>
@@ -834,10 +834,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               <Award className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[var(--color-text-title)]">
+              <p className="text-[15px] font-bold text-[var(--color-text-title)]">
                 {lang === 'th' ? 'ผลงานของฉัน' : 'Portfolio'}
               </p>
-              <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">
+              <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
                 {myPortfolioCount > 0
                   ? lang === 'th'
                     ? `${myPortfolioCount} รายการ`
@@ -861,10 +861,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 <BookOpen className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-[var(--color-text-title)]">
+                <p className="text-[15px] font-bold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'การบ้าน' : 'Homework'}
                 </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">
+                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
                   {pendingHomeworkCount > 0
                     ? lang === 'th'
                       ? `รอส่ง ${pendingHomeworkCount} งาน`
@@ -888,10 +888,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[var(--color-text-title)]">
+              <p className="text-[15px] font-bold text-[var(--color-text-title)]">
                 {lang === 'th' ? 'ยื่นใบลา' : 'Leave'}
               </p>
-              <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">
+              <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
                 {pendingLeavesCount > 0
                   ? lang === 'th'
                     ? `รออนุมัติ ${pendingLeavesCount}`
@@ -915,10 +915,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 <Gamepad2 className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-[var(--color-text-title)]">
+                <p className="text-[15px] font-bold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'เกม & แล็บ' : 'Games & Labs'}
                 </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                   {lang === 'th' ? 'ฝึกฝน 8 สาระ' : 'Play & learn'}
                 </p>
               </div>
@@ -933,10 +933,10 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 <Megaphone className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-[var(--color-text-title)]">
+                <p className="text-[15px] font-bold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'ประกาศ' : 'News'}
                 </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">
+                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
                   {scopedAnnouncements.length} {lang === 'th' ? 'ข่าวสาร' : 'posts'}
                 </p>
               </div>
@@ -959,7 +959,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                   <span>{lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}</span>
                   <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />
                 </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                <p className="text-xs text-[var(--color-text-muted)] truncate">
                   {lang === 'th'
                     ? 'Quiz 5 ข้อ · พลังความพร้อม · Role-Play AI'
                     : 'Vibe quiz, real-grade readiness & role-play'}
@@ -975,7 +975,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
       {canOpenAnnouncements && latestAnnouncement && (
         <section aria-label={lang === 'th' ? 'ประกาศล่าสุด' : 'Latest announcement'} className="space-y-2">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-xs font-semibold text-[var(--color-text-muted)]">
+            <h2 className="text-[13px] font-bold text-[var(--color-text-title)]">
               {lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}
             </h2>
             <button
@@ -990,9 +990,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           <button
             type="button"
             onClick={() => onOpenAnnouncements(latestAnnouncement)}
-            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] p-4 text-left space-y-1.5 transition cursor-pointer"
+            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:border-[var(--color-primary)] p-4 sm:p-5 text-left space-y-1.5 transition hover:shadow-md active:scale-[0.99] cursor-pointer"
           >
-            <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+            <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)] tabular-nums">
               <span className="font-semibold text-[var(--color-primary-text)] flex items-center gap-1.5">
                 <BellRing className="w-3.5 h-3.5" />
                 <span>{latestAnnouncement.category}</span>
