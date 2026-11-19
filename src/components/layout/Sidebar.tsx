@@ -816,15 +816,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setCurrentTab(item.id);
           onClick?.();
         }}
-        className={`${getModuleTone(item.id)} group w-full flex min-h-8.5 items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[12px] transition cursor-pointer ${
+        className={`${getModuleTone(item.id)} group relative w-full flex min-h-10 sm:min-h-9 items-center justify-between gap-2 px-3 py-2 sm:py-1.5 rounded-xl text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
           isActive
-            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
+            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold before:absolute before:-left-1.5 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-[var(--tone)]'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
-        <span className="flex items-center gap-2.5 min-w-0">
+        <span className="flex items-center gap-3 min-w-0">
           <Icon
-            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+            className={`w-4 h-4 shrink-0 transition-colors ${
               isActive
                 ? 'text-[var(--tone)]'
                 : 'text-[color-mix(in_srgb,var(--tone)_72%,var(--color-text-muted))] group-hover:text-[var(--tone)]'
@@ -834,12 +834,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </span>
         {item.badge && (
           <span
-            className={`shrink-0 tabular-nums ${
+            className={`shrink-0 tabular-nums rounded-full px-1.5 py-0.5 leading-none ${
               isNumericBadge
-                ? 'text-[11px] font-medium text-[var(--color-text-muted)]'
+                ? 'text-[11px] font-medium text-[var(--color-text-muted)] bg-[var(--color-card-subtle)]'
                 : isAiBadge
-                  ? 'text-[10px] font-bold text-[var(--tone)]'
-                  : 'text-[10px] font-semibold text-rose-600 dark:text-rose-400'
+                  ? 'text-[10px] font-bold text-[var(--tone)] bg-[var(--tone-soft)]'
+                  : 'text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50'
             }`}
           >
             {item.badge}
@@ -851,17 +851,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   if (desktopCollapsed) {
     return (
-      <aside className="w-15 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+      <aside className="w-16 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
         {onToggleDesktopCollapse && (
-          <div className="shrink-0 p-2 border-b border-[var(--color-border)] flex flex-col items-center gap-1.5">
+          <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex flex-col items-center gap-2">
             <button
               type="button"
               onClick={onToggleDesktopCollapse}
               title={lang === 'th' ? 'ขยายเมนูด้านข้าง' : 'Expand sidebar'}
               aria-label={lang === 'th' ? 'ขยายเมนูด้านข้าง' : 'Expand sidebar'}
-              className="w-10 h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[#1e293b] dark:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition"
+              className="w-10 h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs hover:bg-[var(--color-primary-light)] hover:border-[var(--color-primary)]/40 text-[#1e293b] dark:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
             >
-              <PanelLeftOpen className="w-4 h-4" />
+              <PanelLeftOpen className="w-[18px] h-[18px]" />
             </button>
             {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
               <button
@@ -873,13 +873,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : (lang === 'th' ? 'กำลังใช้โหมดครูผู้สอน — คลิกสลับเข้าโหมดผู้ดูแล (Admin)' : 'Teacher Mode — Click to switch to Admin Mode')
                 }
                 aria-label={lang === 'th' ? 'สลับโหมด Admin และครู' : 'Switch Admin/Teacher mode'}
-                className={`w-10 h-8 rounded-lg border flex items-center justify-center cursor-pointer transition ${
+                className={`w-10 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition ${
                   currentRole === 'admin'
                     ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
                     : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <ArrowLeftRight className="w-4 h-4" />
               </button>
             )}
             {supportsFocusMode && (
@@ -896,18 +896,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       ? 'กำลังแสดงทุกเมนู — คลิกเพื่อเปิดโหมดลดภาระครู'
                       : 'All menus shown — click for Teacher Focus Mode'
                 }
-                className={`w-10 h-8 rounded-lg border flex items-center justify-center cursor-pointer transition ${
+                className={`w-10 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition ${
                   focusMode
                     ? 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
                     : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <Coffee className="w-3.5 h-3.5" />
+                <Coffee className="w-4 h-4" />
               </button>
             )}
           </div>
         )}
-        <nav className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1 flex flex-col items-center">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-1.5 flex flex-col items-center">
           {/* Home Dashboard Icon */}
           <button
             type="button"
@@ -915,18 +915,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => setCurrentTab(dashboardItem.id)}
             title={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
             aria-label={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
-            className={`${getModuleTone(dashboardItem.id)} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+            className={`${getModuleTone(dashboardItem.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
               resolvedSidebarActiveTab === dashboardItem.id
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] shadow-xs'
                 : 'text-[var(--tone)]/80 hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
             }`}
           >
-            <LayoutDashboard className="w-4 h-4" />
+            <LayoutDashboard className="w-[18px] h-[18px]" />
           </button>
 
           {visibleCategories.map((cat) => (
             <React.Fragment key={cat.id}>
-              <div className="w-6 h-px bg-[var(--color-border)] my-1 shrink-0" aria-hidden="true" />
+              <div className="w-7 h-px bg-[var(--color-border)] my-1.5 shrink-0" aria-hidden="true" />
               {cat.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = resolvedSidebarActiveTab === item.id;
@@ -938,15 +938,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setCurrentTab(item.id)}
                     title={`${lang === 'th' ? cat.shortLabelTh : cat.shortLabelEn} · ${lang === 'th' ? item.labelTh : item.labelEn}`}
                     aria-label={lang === 'th' ? item.labelTh : item.labelEn}
-                    className={`${getModuleTone(item.id)} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                    className={`${getModuleTone(item.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                       isActive
-                        ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
+                        ? 'bg-[var(--tone-soft)] text-[var(--tone)] shadow-xs'
                         : 'text-[color-mix(in_srgb,var(--tone)_75%,var(--color-text-muted))] hover:bg-[var(--tone-soft)]/50 hover:text-[var(--tone)]'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-[18px] h-[18px]" />
                     {item.badge && !/^\d+$/.test(String(item.badge)) && item.badge !== 'AI' && (
-                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                      <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[var(--color-card)]" />
                     )}
                   </button>
                 );
@@ -959,24 +959,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-68 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+    <aside className="w-72 max-w-[85vw] border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
       {/* Search + Collapse Header */}
-      <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex items-center gap-1.5" data-guide-id="sidebar-search">
+      <div className="shrink-0 p-3 border-b border-[var(--color-border)] flex items-center gap-2" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
-          <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={lang === 'th' ? 'ค้นหาเมนู...' : 'Search menu...'}
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full pl-8 pr-6 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+            className="w-full h-10 sm:h-9 pl-9 pr-8 text-[13px] rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] transition focus:outline-hidden focus:bg-[var(--color-card)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
           />
           {searchFilter && (
             <button
               type="button"
               onClick={() => setSearchFilter('')}
               aria-label="clear"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-border)]/60 hover:text-[var(--color-text-title)] cursor-pointer transition"
             >
               ✕
             </button>
@@ -988,49 +988,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onToggleDesktopCollapse}
             title={lang === 'th' ? 'ย่อแถบเมนูเพื่อเพิ่มพื้นที่ทำงาน' : 'Collapse sidebar for more workspace'}
             aria-label={lang === 'th' ? 'ย่อแถบเมนู' : 'Collapse sidebar'}
-            className="shrink-0 w-8 h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition"
+            className="shrink-0 w-10 h-10 sm:w-9 sm:h-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
           >
-            <PanelLeftClose className="w-4 h-4" />
+            <PanelLeftClose className="w-[18px] h-[18px]" />
           </button>
         )}
       </div>
 
       {/* Dual-Privilege Admin ↔ Teacher Operational Mode Switcher */}
       {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-        <div className="shrink-0 px-2.5 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/70">
-          <div className="flex items-center justify-between gap-2 px-0.5 pb-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
+        <div className="shrink-0 px-3 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/70">
+          <div className="flex items-center justify-between gap-2 px-0.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
             <span className="truncate">{lang === 'th' ? 'สลับโหมดปฏิบัติงาน' : 'Operational Mode'}</span>
-            <span className="text-[var(--color-primary-text)] shrink-0">
+            <span className="text-[var(--color-primary-text)] shrink-0 normal-case tracking-normal">
               {currentRole === 'admin'
                 ? (lang === 'th' ? 'สิทธิ์ Admin' : 'Admin Active')
                 : (lang === 'th' ? 'สิทธิ์ครูผู้สอน' : 'Teacher Active')}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px]">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
             <button
               type="button"
               onClick={() => onSwitchOperationalRole('admin')}
               aria-pressed={currentRole === 'admin'}
-              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-bold transition cursor-pointer whitespace-nowrap ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 font-bold transition cursor-pointer whitespace-nowrap ${
                 currentRole === 'admin'
                   ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
               }`}
             >
-              <ShieldCheck className="w-3 h-3 shrink-0" />
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{lang === 'th' ? 'โหมด Admin' : 'Admin'}</span>
             </button>
             <button
               type="button"
               onClick={() => onSwitchOperationalRole('teacher')}
               aria-pressed={currentRole === 'teacher'}
-              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-bold transition cursor-pointer whitespace-nowrap ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 font-bold transition cursor-pointer whitespace-nowrap ${
                 currentRole === 'teacher'
                   ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
               }`}
             >
-              <GraduationCap className="w-3 h-3 shrink-0" />
+              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{lang === 'th' ? 'โหมดครู' : 'Teacher'}</span>
             </button>
           </div>
@@ -1039,20 +1039,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Teacher Focus vs All Menus Segmented Bar */}
       {supportsFocusMode && (
-        <div className="shrink-0 px-2.5 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/60">
-          <div className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px]">
+        <div className="shrink-0 px-3 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/60">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
             <button
               type="button"
               onClick={() => setFocusModeState(true)}
               aria-pressed={focusMode}
-              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 font-semibold transition cursor-pointer whitespace-nowrap ${
                 focusMode
                   ? 'bg-sky-600 text-white shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
               }`}
               title={lang === 'th' ? 'แสดงเฉพาะงานสอนและงานประจำของครู' : 'Daily teaching focus'}
             >
-              <Coffee className="w-3 h-3 shrink-0" />
+              <Coffee className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{lang === 'th' ? 'ลดภาระครู' : 'Focus'}</span>
               {focusMode && hiddenByFocusCount > 0 && (
                 <span className="opacity-85 tabular-nums">(-{hiddenByFocusCount})</span>
@@ -1062,10 +1062,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               onClick={() => setFocusModeState(false)}
               aria-pressed={!focusMode}
-              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 font-semibold transition cursor-pointer whitespace-nowrap ${
                 !focusMode
                   ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
               }`}
             >
               <span className="truncate">{lang === 'th' ? 'แสดงทั้งหมด' : 'All Menus'}</span>
@@ -1074,14 +1074,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      <nav className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-3">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4">
         {searchFilter.trim() ? (
           <div className="space-y-1">
-            <div className="px-2 pb-1 text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
               {lang === 'th' ? `ผลการค้นหา (${searchResults.length})` : `Results (${searchResults.length})`}
             </div>
             {searchResults.length === 0 ? (
-              <div className="p-6 text-center text-xs text-[var(--color-text-muted)]">
+              <div className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
                 {lang === 'th' ? 'ไม่พบเมนู' : 'No menus found'}
               </div>
             ) : (
@@ -1091,25 +1091,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : (
           <>
             {/* Primary Overview + Compact 1-Row Quick Shortcuts */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <button
                 type="button"
                 data-nav-tab={dashboardItem.id}
                 onClick={() => setCurrentTab(dashboardItem.id)}
-                className={`${getModuleTone(dashboardItem.id)} w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12px] font-bold transition cursor-pointer border ${
+                className={`${getModuleTone(dashboardItem.id)} w-full flex min-h-11 items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-bold transition cursor-pointer border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                   resolvedSidebarActiveTab === dashboardItem.id
-                    ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_32%,transparent)]'
-                    : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--tone-soft)]/50'
+                    ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_32%,transparent)] shadow-xs'
+                    : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] shadow-xs hover:bg-[var(--tone-soft)]/50'
                 }`}
               >
-                <span className="tone-chip w-6 h-6 rounded-lg">
-                  <LayoutDashboard className="w-3.5 h-3.5" />
+                <span className="tone-chip w-7 h-7 rounded-lg">
+                  <LayoutDashboard className="w-4 h-4" />
                 </span>
                 <span className="truncate">{lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}</span>
               </button>
 
               {quickShortcuts.length > 0 && (
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-3 gap-1.5">
                   {quickShortcuts.map((item) => {
                     const Icon = item.icon;
                     const isActive = resolvedSidebarActiveTab === item.id;
@@ -1119,14 +1119,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         type="button"
                         onClick={() => setCurrentTab(item.id)}
                         title={lang === 'th' ? item.labelTh : item.labelEn}
-                        className={`${getModuleTone(item.id)} flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer border whitespace-nowrap ${
+                        className={`${getModuleTone(item.id)} flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-xl text-[11px] font-semibold transition cursor-pointer border ${
                           isActive
                             ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_35%,transparent)]'
                             : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
                         }`}
                       >
-                        <Icon className="w-3 h-3 shrink-0 text-[var(--tone)]" />
-                        <span className="truncate">
+                        <Icon className="w-4 h-4 shrink-0 text-[var(--tone)]" />
+                        <span className="w-full truncate text-center">
                           {lang === 'th' ? item.shortLabelTh || item.labelTh : item.shortLabelEn || item.labelEn}
                         </span>
                       </button>
@@ -1137,16 +1137,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Section Header + Expand/Collapse All */}
-            <div className="pt-1 border-t border-[var(--color-border)] flex items-center justify-between px-1">
-              <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between px-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                 {lang === 'th' ? 'กลุ่มงานตามฝ่าย' : 'Workspaces'}
               </span>
               <button
                 type="button"
                 onClick={handleToggleExpandAll}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer transition"
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer transition"
               >
-                <ChevronsUpDown className="w-3 h-3" />
+                <ChevronsUpDown className="w-3.5 h-3.5" />
                 <span>
                   {anyCategoryExpanded
                     ? lang === 'th'
@@ -1160,7 +1160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Color-Coded Work Groups */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {visibleCategories.map((cat) => {
                 const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
                 const CategoryIcon = cat.icon;
@@ -1182,33 +1182,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           [cat.id]: !(previous[cat.id] ?? cat.id !== activeCatId),
                         }));
                       }}
-                      className={`w-full flex min-h-9.5 items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left transition cursor-pointer border ${
+                      className={`w-full flex min-h-11 sm:min-h-10 items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left transition cursor-pointer border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                         isActiveCategory || !isCollapsed
                           ? 'bg-[color-mix(in_srgb,var(--tone-soft)_68%,var(--color-card))] border-[color-mix(in_srgb,var(--tone)_28%,var(--color-border))] text-[var(--color-text-title)]'
                           : 'bg-[var(--color-card)] border-transparent hover:bg-[color-mix(in_srgb,var(--tone-soft)_42%,var(--color-card))] hover:border-[color-mix(in_srgb,var(--tone)_20%,var(--color-border))] text-[var(--color-text-body)]'
                       }`}
                     >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="tone-chip w-6 h-6 rounded-lg">
-                          <CategoryIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="tone-chip w-7 h-7 rounded-lg">
+                          <CategoryIcon className="h-4 w-4 shrink-0" />
                         </span>
-                        <span className="truncate text-[12px] font-bold">
+                        <span className="truncate text-[13px] font-bold">
                           {lang === 'th' ? cat.labelTh : cat.labelEn}
                         </span>
                       </span>
                       <span className="flex items-center gap-1.5 shrink-0">
                         {isCollapsed && alertBadge && (
-                          <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                          <span className="rounded-full bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-rose-600 dark:text-rose-400">
                             {alertBadge}
                           </span>
                         )}
-                        <span className="text-[11px] font-medium tabular-nums text-[var(--color-text-muted)]">
+                        <span className="rounded-full bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums text-[var(--color-text-muted)]">
                           {cat.items.length}
                         </span>
                         {isCollapsed ? (
-                          <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                          <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
                         ) : (
-                          <ChevronDown className="w-3.5 h-3.5 text-[var(--tone)]" />
+                          <ChevronDown className="w-4 h-4 text-[var(--tone)]" />
                         )}
                       </span>
                     </button>
@@ -1216,7 +1216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {!isCollapsed && (
                       <div
                         id={`sidebar-category-${cat.id}`}
-                        className="space-y-0.5 pl-2.5 pr-0.5 pt-0.5 pb-1"
+                        className="space-y-0.5 ml-5 pl-2.5 pr-0.5 pt-1 pb-1.5 border-l border-[var(--color-border)]"
                       >
                         {cat.items.map((item) => renderItem(item))}
                       </div>
@@ -1231,4 +1231,3 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
-
