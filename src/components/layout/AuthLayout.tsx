@@ -655,7 +655,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
       {/* Unified Top Bar */}
-      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-md shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <a href="#portal-auth" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
             <BaanPakKruLogo size={32} />
@@ -664,12 +664,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </a>
 
           <div className="flex items-center gap-2 shrink-0">
-            <PWAInstallButton lang={lang} variant="nav" className="h-9" />
+            <PWAInstallButton lang={lang} variant="nav" className="h-10" />
 
             <button
               type="button"
               onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] px-2.5 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
+              className="flex h-10 items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] px-2.5 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
               title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
             >
               <Globe className="h-3.5 w-3.5 text-[var(--color-primary-text)] shrink-0" />
@@ -679,7 +679,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <button
               type="button"
               onClick={() => setThemePalette?.(isLight ? 'sapphire' : 'light_warm')}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] transition cursor-pointer shrink-0"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] transition cursor-pointer shrink-0"
               title={lang === 'th' ? 'สลับโหมดสีถนอมสายตา' : 'Toggle Theme'}
               aria-label={lang === 'th' ? 'สลับโหมดสีถนอมสายตา' : 'Toggle theme'}
             >
@@ -698,7 +698,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         >
           <form
             onSubmit={handleSetFirstStudentPassword}
-            className="w-full max-w-md space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-2xl"
+            className="w-full max-w-md max-h-[90vh] overflow-y-auto space-y-5 rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 sm:p-8 shadow-2xl"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
@@ -714,19 +714,19 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
             </div>
 
-            <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+            <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] leading-relaxed leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
               {lang === 'th'
                 ? 'ตั้งรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร และอย่าใช้รหัสนักเรียนเป็นรหัสผ่าน รหัสชั่วคราวหมดอายุภายใน 24 ชั่วโมง'
                 : 'Use at least 8 characters. Do not use your student ID as your password. This temporary password expires in 24 hours.'}
             </p>
 
             {firstPasswordError && (
-              <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+              <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
                 {firstPasswordError}
               </p>
             )}
 
-            <label className="block space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
+            <label className="block space-y-1.5 text-[13px] font-medium text-[var(--color-text-body)]">
               <span>{lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}</span>
               <input
                 type="password"
@@ -735,11 +735,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 required
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
               />
             </label>
 
-            <label className="block space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
+            <label className="block space-y-1.5 text-[13px] font-medium text-[var(--color-text-body)]">
               <span>{lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}</span>
               <input
                 type="password"
@@ -748,14 +748,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 required
                 value={confirmNewPassword}
                 onChange={(event) => setConfirmNewPassword(event.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
               />
             </label>
 
             <button
               type="submit"
               disabled={isSettingFirstPassword}
-              className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+              className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
             >
               {isSettingFirstPassword
                 ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
@@ -773,24 +773,24 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           id="portal-auth"
           className="editorial-grid-surface flex-1"
         >
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
             {/* Compact Mobile Headline (Visible before form on mobile, integrated on lg+) */}
-            <div className="mb-6 lg:hidden space-y-2">
+            <div className="mb-8 lg:hidden space-y-2.5">
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-primary-text)] flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
                 <span>{lang === 'th' ? 'แพลตฟอร์มบริหารสถานศึกษา · PDPA-First' : 'School Operations Platform · PDPA-First'}</span>
               </p>
-              <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-[var(--color-text-title)] text-balance">
+              <h1 className="text-[1.75rem] font-extrabold leading-tight tracking-tight text-[var(--color-text-title)] text-balance">
                 {lang === 'th' ? 'งานโรงเรียนครบในระบบเดียว ลดภาระงานเอกสารให้คุณครู' : 'Everyday school operations, unified in one calm workspace'}
               </h1>
-              <p className="text-xs leading-relaxed text-[var(--color-text-body)]">
+              <p className="text-sm leading-relaxed text-[var(--color-text-body)]">
                 {lang === 'th'
                   ? 'เชื่อมงานวิชาการ การเช็คชื่อ และข้อมูลผู้เรียนแบบแยกสิทธิ์รายโรงเรียน'
                   : 'Connect academics, attendance, and student care with strict school-level isolation.'}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:gap-12">
+            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
               {/* LEFT COLUMN: Editorial Narrative + Clean Campus Frame + 3-Pillar Strip */}
               <div className="order-2 lg:order-1 space-y-6">
                 <div className="hidden lg:block space-y-3.5">
@@ -798,12 +798,12 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     <span className="h-2 w-2 rounded-sm bg-[var(--color-primary)]" aria-hidden="true" />
                     <span>{lang === 'th' ? 'แพลตฟอร์มบริหารสถานศึกษา · แยกข้อมูลรายโรงเรียน (PDPA)' : 'School Operations Platform · School-Level PDPA Isolation'}</span>
                   </div>
-                  <h1 className="max-w-2xl text-3xl font-extrabold leading-[1.15] tracking-tight text-[var(--color-text-title)] text-balance xl:text-[2.65rem]">
+                  <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.12] tracking-tight text-[var(--color-text-title)] text-balance xl:text-5xl">
                     {lang === 'th'
                       ? 'งานโรงเรียนครบในระบบเดียว ลดภาระงานเอกสารให้คุณครู'
                       : 'Everyday school work, unified in one calm workspace'}
                   </h1>
-                  <p className="max-w-xl text-[15px] leading-relaxed text-[var(--color-text-body)]">
+                  <p className="max-w-xl text-base leading-relaxed text-[var(--color-text-body)]">
                     {lang === 'th'
                       ? 'เชื่อมงานวิชาการ ปพ.5 การเช็คชื่อ QR & GPS และการดูแลผู้เรียน สำหรับผู้บริหาร คุณครู นักเรียน และผู้ปกครอง ในภาษาภาพชุดเดียวกันตั้งแต่หน้าแรกถึงแดชบอร์ด'
                       : 'Unify grading, QR & GPS attendance, and student care for school leaders, teachers, students, and families with one cohesive visual system.'}
@@ -811,7 +811,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 </div>
 
                 {/* Clean Framed Photography + Understated Caption */}
-                <div className="saas-card overflow-hidden">
+                <div className="saas-card overflow-hidden rounded-2xl shadow-lg shadow-slate-900/5">
                   <img
                     src={heroImage}
                     alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนของ BaanPakKru (บ้านพักครู)' : 'Classroom learning with BaanPakKru'}
@@ -870,18 +870,18 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
 
               {/* RIGHT COLUMN: Calm Auth Card */}
-              <div className="order-1 lg:order-2 w-full max-w-md mx-auto lg:ml-auto lg:mr-0">
-                <div className="saas-card overflow-hidden shadow-md shadow-slate-900/5">
+              <div className="order-1 lg:order-2 w-full max-w-md mx-auto lg:ml-auto lg:mr-0 lg:sticky lg:top-24">
+                <div className="saas-card overflow-hidden rounded-3xl shadow-xl shadow-slate-900/10 ring-1 ring-black/5">
                   {inviteIdParam ? (
                     <>
-                      <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-3">
+                      <div className="p-6 sm:p-8 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-4">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
                               <GraduationCap className="h-5 w-5" />
                             </div>
                             <div className="min-w-0">
-                              <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+                              <h2 className="text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
                                 {lang === 'th' ? 'ตอบรับคำเชิญเข้าสู่ระบบ' : 'Accept Invitation'}
                               </h2>
                               <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">
@@ -892,7 +892,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         </div>
                       </div>
 
-                      <div className="p-5 sm:p-6 space-y-4">
+                      <div className="p-6 sm:p-8 space-y-5">
                         {inviteLoading && (
                           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 text-xs text-[var(--color-text-muted)] text-center">
                             {lang === 'th' ? 'กำลังตรวจสอบข้อมูลคำเชิญ...' : 'Verifying invitation...'}
@@ -900,7 +900,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         )}
 
                         {inviteLoadError && (
-                          <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3.5 text-xs text-rose-900 dark:text-rose-200 space-y-2">
+                          <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3.5 text-[13px] leading-relaxed text-rose-900 dark:text-rose-200 space-y-2">
                             <p className="font-bold flex items-center gap-1.5">
                               <AlertCircle className="w-4 h-4 shrink-0" />
                               <span>{inviteLoadError}</span>
@@ -909,7 +909,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         )}
 
                         {inviteInfo && inviteInfo.isAccepted && !invitePendingActivationMsg && (
-                          <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5">
+                          <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3.5 text-[13px] leading-relaxed text-emerald-900 dark:text-emerald-200 space-y-1.5">
                             <p className="font-bold flex items-center gap-1.5">
                               <CheckCircle2 className="w-4 h-4 shrink-0" />
                               <span>{lang === 'th' ? 'คำเชิญนี้ถูกตอบรับแล้ว' : 'This invitation has already been accepted'}</span>
@@ -923,7 +923,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         )}
 
                         {inviteInfo && inviteInfo.isExpired && !inviteInfo.isAccepted && (
-                          <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 p-3.5 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+                          <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 p-3.5 text-[13px] leading-relaxed text-amber-900 dark:text-amber-200 space-y-1.5">
                             <p className="font-bold flex items-center gap-1.5">
                               <AlertCircle className="w-4 h-4 shrink-0" />
                               <span>{lang === 'th' ? 'ลิงก์คำเชิญนี้หมดอายุแล้ว' : 'This invitation link has expired'}</span>
@@ -937,7 +937,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         )}
 
                         {invitePendingActivationMsg && (
-                          <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 space-y-2">
+                          <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3.5 text-[13px] leading-relaxed text-emerald-900 dark:text-emerald-200 space-y-2">
                             <p className="font-bold flex items-center gap-1.5">
                               <CheckCircle2 className="w-4 h-4 shrink-0" />
                               <span>{lang === 'th' ? 'ลงทะเบียนบัญชีเรียบร้อยแล้ว' : 'Account Registered'}</span>
@@ -946,7 +946,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             <button
                               type="button"
                               onClick={handleClearInviteMode}
-                              className="w-full mt-1 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-2.5 text-xs font-bold text-white cursor-pointer"
+                              className="w-full mt-1 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white cursor-pointer transition min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                             >
                               {lang === 'th' ? 'ไปหน้าเข้าสู่ระบบ' : 'Go to Sign In'}
                             </button>
@@ -975,13 +975,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             </div>
 
                             {inviteAcceptError && (
-                              <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2">
+                              <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-[13px] leading-relaxed text-rose-900 dark:text-rose-200 flex items-start gap-2">
                                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                                 <span>{inviteAcceptError}</span>
                               </div>
                             )}
 
-                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                            <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                               <span className="flex items-center gap-1.5 mb-1">
                                 <Lock className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                                 {lang === 'th' ? 'ตั้งรหัสผ่านเข้าสู่ระบบ (อย่างน้อย 8 ตัวอักษร)' : 'New Password (min 8 chars)'}
@@ -995,7 +995,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                   value={invitePassword}
                                   onChange={(e) => setInvitePassword(e.target.value)}
                                   placeholder="••••••••"
-                                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] pl-3 pr-10 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs pl-3.5 pr-10 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                                 />
                                 <button
                                   type="button"
@@ -1007,7 +1007,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               </div>
                             </label>
 
-                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                            <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                               <span className="flex items-center gap-1.5 mb-1">
                                 <Lock className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                                 {lang === 'th' ? 'ยืนยันรหัสผ่านอีกครั้ง' : 'Confirm Password'}
@@ -1020,14 +1020,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 value={inviteConfirmPassword}
                                 onChange={(e) => setInviteConfirmPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                               />
                             </label>
 
                             <button
                               type="submit"
                               disabled={inviteAcceptSubmitting}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer"
+                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                             >
                               <span>
                                 {inviteAcceptSubmitting
@@ -1053,7 +1053,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     </>
                   ) : (
                     <>
-                      <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-4">
+                      <div className="p-6 sm:p-8 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-5">
                         {/* Connected School Portal Banner */}
                         {portalSchool && mode === 'login' && (
                       <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/60 p-3 flex items-center justify-between gap-2.5">
@@ -1099,7 +1099,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         </div>
                       )}
                       <div className="min-w-0">
-                        <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+                        <h2 className="text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
                           {mode === 'login'
                             ? isStudentPortalMode && portalSchool
                               ? lang === 'th'
@@ -1133,7 +1133,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     </div>
 
                     {/* Top Mode Switcher */}
-                    <div className="flex rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-1">
+                    <div className="flex gap-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1.5">
                       <button
                         type="button"
                         onClick={() => {
@@ -1141,9 +1141,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           setError(null);
                           setNotice(null);
                         }}
-                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
+                        className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition cursor-pointer ${
                           mode === 'login'
-                            ? 'bg-[var(--color-primary)] text-white'
+                            ? 'bg-[var(--color-primary)] text-white shadow-sm'
                             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                         }`}
                       >
@@ -1157,9 +1157,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           setError(null);
                           setNotice(null);
                         }}
-                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition cursor-pointer ${
+                        className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition cursor-pointer ${
                           mode === 'register'
-                            ? 'bg-[var(--color-primary)] text-white'
+                            ? 'bg-[var(--color-primary)] text-white shadow-sm'
                             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                         }`}
                       >
@@ -1169,16 +1169,16 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   </div>
 
                   {/* Form Body */}
-                  <div className="p-5 sm:p-6 space-y-4">
+                  <div className="p-6 sm:p-8 space-y-5">
                     {error && (
-                      <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
+                      <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-[13px] leading-relaxed font-medium text-rose-900 dark:text-rose-200 flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                         <span className="leading-relaxed">{error}</span>
                       </div>
                     )}
 
                     {notice && (
-                      <div role="status" className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs font-medium text-emerald-900 dark:text-emerald-200 flex items-start gap-2">
+                      <div role="status" className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-[13px] leading-relaxed font-medium text-emerald-900 dark:text-emerald-200 flex items-start gap-2">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                         <span className="leading-relaxed">{notice}</span>
                       </div>
@@ -1193,7 +1193,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             setLoginMethod('email');
                             setError(null);
                           }}
-                          className={`flex-1 rounded-lg px-2.5 py-1.5 font-bold transition cursor-pointer ${
+                          className={`flex-1 rounded-lg px-3 py-2 font-bold transition cursor-pointer ${
                             loginMethod === 'email'
                               ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs border border-[var(--color-border)]'
                               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
@@ -1207,7 +1207,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             setLoginMethod('portal');
                             setError(null);
                           }}
-                          className={`flex-1 rounded-lg px-2.5 py-1.5 font-bold transition cursor-pointer ${
+                          className={`flex-1 rounded-lg px-3 py-2 font-bold transition cursor-pointer ${
                             loginMethod === 'portal'
                               ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs border border-[var(--color-border)]'
                               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
@@ -1221,7 +1221,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     {/* School Code Lookup Bar (Privacy-safe: fetches only exact code on demand) */}
                     {mode === 'login' && loginMethod === 'portal' && !portalSchool && (
                       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2">
-                        <label className="block text-[11px] font-bold text-[var(--color-text-title)]">
+                        <label className="block text-xs font-semibold text-[var(--color-text-title)]">
                           {lang === 'th' ? 'กรอกรหัสสถานศึกษาเพื่อเข้าสู่ระบบด้วยรหัสนักเรียน' : 'Enter your School Code to unlock Student ID sign-in'}
                         </label>
                         <div className="flex items-center gap-2">
@@ -1236,7 +1236,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               }
                             }}
                             placeholder={lang === 'th' ? 'เช่น BP-001' : 'e.g. BP-001'}
-                            className="flex-1 min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                            className="flex-1 min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                           />
                           <button
                             type="button"
@@ -1288,7 +1288,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     <form onSubmit={handleSubmit} className="space-y-3.5">
                       {mode === 'register' && registerStep === 1 && (
                         <>
-                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                          <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                             {lang === 'th' ? 'ชื่อโรงเรียน (ภาษาไทย)' : 'School Name (Thai)'}
                             <input
                               required
@@ -1296,28 +1296,28 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               value={schoolNameTh}
                               onChange={(e) => setSchoolNameTh(e.target.value)}
                               placeholder={lang === 'th' ? 'เช่น โรงเรียนสาธิตวิทยาคม' : 'Thai school name'}
-                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                             />
                           </label>
 
-                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                          <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                             {lang === 'th' ? 'ชื่อโรงเรียน (ภาษาอังกฤษ)' : 'School Name (English)'}
                             <input
                               maxLength={150}
                               value={schoolNameEn}
                               onChange={(e) => setSchoolNameEn(e.target.value)}
                               placeholder="e.g. Satit Wittayakhom School"
-                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                             />
                           </label>
 
                           <div className="grid grid-cols-2 gap-3">
-                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                            <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                               {lang === 'th' ? 'ประเภทสถานศึกษา' : 'School Type'}
                               <select
                                 value={schoolType}
                                 onChange={(e) => setSchoolType(e.target.value as School['type'])}
-                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                               >
                                 <option value="public">{lang === 'th' ? 'รัฐบาล' : 'Public'}</option>
                                 <option value="private">{lang === 'th' ? 'เอกชน' : 'Private'}</option>
@@ -1326,7 +1326,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               </select>
                             </label>
 
-                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                            <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                               {lang === 'th' ? 'จังหวัด / พื้นที่ตั้ง' : 'Province / Location'}
                               <select
                                 required
@@ -1341,7 +1341,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                     setProvince(val);
                                   }
                                 }}
-                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                               >
                                 <option value="">{lang === 'th' ? '-- เลือกจังหวัด --' : '-- Select Location --'}</option>
                                 {(lang === 'en'
@@ -1360,7 +1360,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           </div>
 
                           {isCustomProvince && (
-                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                            <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                               {lang === 'th' ? 'ระบุประเทศ / เมือง / รัฐที่ตั้งสถานศึกษา' : 'Country / City / State'}
                               <input
                                 required
@@ -1368,7 +1368,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 value={province}
                                 onChange={(e) => setProvince(e.target.value)}
                                 placeholder={lang === 'th' ? 'เช่น สิงคโปร์, โตเกียว (ญี่ปุ่น), London (UK)' : 'e.g. Singapore, Tokyo (Japan), London (UK)'}
-                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                               />
                             </label>
                           )}
@@ -1376,7 +1376,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           <button
                             type="button"
                             onClick={handleNextRegisterStep}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition cursor-pointer mt-1"
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition cursor-pointer mt-1 min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                           >
                             <span>{lang === 'th' ? 'ถัดไป: ตั้งค่าบัญชีผู้ดูแล' : 'Next: Administrator Account'}</span>
                             <ArrowRight className="w-4 h-4" />
@@ -1398,7 +1398,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             </button>
                           </div>
 
-                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                          <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                             {lang === 'th' ? 'ชื่อผู้ดูแลสถานศึกษา (Admin)' : 'Administrator Name'}
                             <input
                               required
@@ -1408,7 +1408,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 if (!fullNameEn) setFullNameEn('');
                               }}
                               placeholder={lang === 'th' ? 'ชื่อ-นามสกุล ผู้ดูแลระบบ' : 'Full name'}
-                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                             />
                           </label>
                         </>
@@ -1416,7 +1416,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
                       {(mode === 'login' || registerStep === 2) && (
                         <>
-                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                          <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                             <span className="flex items-center gap-1.5 mb-1">
                               {allowStudentIdInput ? (
                                 <GraduationCap className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
@@ -1453,11 +1453,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                       : 'Student ID or email@school.ac.th'
                                   : 'yourname@school.ac.th'
                               }
-                              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20 font-medium"
+                              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] font-medium"
                             />
                           </label>
 
-                          <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                          <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">
                             <span className="flex items-center gap-1.5 mb-1">
                               <Lock className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                               {lang === 'th' ? 'รหัสผ่าน' : 'Password'}
@@ -1472,7 +1472,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] pl-3 pr-10 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs pl-3.5 pr-10 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                               />
                               <button
                                 type="button"
@@ -1519,7 +1519,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-1"
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-1 min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                           >
                             {isLoading
                               ? lang === 'th'
@@ -1550,7 +1550,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       {/* Modal: Forgot / Reset Password (Privacy-Safe, No Personal Admin Email Leak) */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-md rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-6 overflow-hidden">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-6 sm:p-8">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
@@ -1571,13 +1571,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   setShowForgotPasswordModal(false);
                   setResetStatus(null);
                 }}
-                className="rounded-lg p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-3 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+            <div className="p-3 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[13px] leading-relaxed text-blue-900 dark:text-blue-200 space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
                 <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                 <span>{lang === 'th' ? 'วิธีรีเซ็ตรหัสผ่าน' : 'How password reset works'}</span>
@@ -1590,21 +1590,21 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </div>
 
             {resetStatus && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-[13px] leading-relaxed text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-relaxed">{resetStatus}</div>
               </div>
             )}
 
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-2">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-[13px] leading-relaxed text-rose-800 dark:text-rose-200 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-relaxed">{error}</div>
               </div>
             )}
 
             <form onSubmit={handleRequestPasswordReset} className="space-y-3">
-              <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+              <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
                 {lang === 'th' ? 'กรอกอีเมลบัญชีผู้ใช้ของคุณ' : 'Enter your registered email address'}
                 <input
                   type="email"
@@ -1612,7 +1612,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   placeholder="user@school.ac.th"
-                  className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                  className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                 />
               </label>
 
@@ -1650,7 +1650,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
       {isPasswordRecovery && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-2xl">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 sm:p-8 shadow-2xl">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
                 <KeyRound className="h-5 w-5" />
@@ -1671,14 +1671,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   {lang === 'th' ? 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' : 'Your password has been changed.'}
                 </div>
                 {passwordResetError && (
-                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
                     {passwordResetError}
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={onPasswordResetComplete}
-                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)]"
+                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                 >
                   {lang === 'th' ? 'กลับเข้าสู่ระบบ' : 'Return to sign in'}
                 </button>
@@ -1686,11 +1686,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             ) : (
               <form onSubmit={handleUpdatePassword} className="space-y-3">
                 {passwordResetError && (
-                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
                     {passwordResetError}
                   </div>
                 )}
-                <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
                   {lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}
                   <input
                     type="password"
@@ -1699,10 +1699,10 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     required
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                   />
                 </label>
-                <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
                   {lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}
                   <input
                     type="password"
@@ -1711,13 +1711,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                     required
                     value={confirmNewPassword}
                     onChange={(event) => setConfirmNewPassword(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-blue-600/20"
+                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
                   />
                 </label>
                 <button
                   type="submit"
                   disabled={isUpdatingPassword}
-                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                 >
                   {isUpdatingPassword
                     ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
