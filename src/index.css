@@ -27,35 +27,35 @@
    ======================================================== */
 
 :root {
-  --color-canvas: #f8fafc;
+  --color-canvas: #f5f8f8;
   --color-card: #ffffff;
-  --color-card-subtle: #f8fafc;
-  --color-border: #e5e7eb;
-  --color-text-title: #0f172a;
-  --color-text-body: #334155;
-  --color-text-muted: #64748b;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: #eff6ff;
-  --color-primary-text: #1d4ed8;
-  --role-admin-accent: #0f766e;
-  --role-teacher-accent: #2563eb;
+  --color-card-subtle: #f7f9f9;
+  --color-border: #e2e9e9;
+  --color-text-title: #182b38;
+  --color-text-body: #405661;
+  --color-text-muted: #637781;
+  --color-primary: #285fc5;
+  --color-primary-hover: #214fa8;
+  --color-primary-light: #edf3ff;
+  --color-primary-text: #244f9b;
+  --role-admin-accent: #14766e;
+  --role-teacher-accent: #285fc5;
 }
 
 /* Light Eye-Care Neutral Paper (สะอาด เรียบ คมชัดแบบ Apple / Linear) */
 .theme-light_warm,
 .theme-light {
-  --color-canvas: #f8fafc;
+  --color-canvas: #f5f8f8;
   --color-card: #ffffff;
-  --color-card-subtle: #f8fafc;
-  --color-border: #e5e7eb;
-  --color-text-title: #0f172a;
-  --color-text-body: #334155;
-  --color-text-muted: #64748b;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: #eff6ff;
-  --color-primary-text: #1d4ed8;
+  --color-card-subtle: #f7f9f9;
+  --color-border: #e2e9e9;
+  --color-text-title: #182b38;
+  --color-text-body: #405661;
+  --color-text-muted: #637781;
+  --color-primary: #285fc5;
+  --color-primary-hover: #214fa8;
+  --color-primary-light: #edf3ff;
+  --color-primary-text: #244f9b;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
@@ -99,21 +99,61 @@
 
 @layer components {
   .app-workspace {
-    background-color: var(--color-canvas);
+    background:
+      radial-gradient(ellipse at 8% 0%, color-mix(in srgb, var(--color-primary-light) 44%, transparent), transparent 34rem),
+      var(--color-canvas);
   }
 
   .app-page-header {
-    background-color: var(--color-card);
+    background: linear-gradient(135deg, var(--color-card), color-mix(in srgb, var(--color-card-subtle) 52%, var(--color-card)));
+    border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
+    border-radius: 1.125rem;
+    box-shadow: 0 1px 2px rgb(24 43 56 / 0.035), 0 8px 24px rgb(24 43 56 / 0.025);
+  }
+
+  .app-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem;
     border: 1px solid var(--color-border);
     border-radius: 1rem;
+    background: color-mix(in srgb, var(--color-card) 94%, transparent);
+  }
+
+  .app-section-card {
+    border: 1px solid var(--color-border);
+    border-radius: 1.125rem;
+    background: var(--color-card);
+    box-shadow: 0 1px 2px rgb(24 43 56 / 0.025), 0 10px 28px rgb(24 43 56 / 0.025);
+  }
+
+  .app-workspace :is(h1, h2, h3) {
+    color: var(--color-text-title);
+    letter-spacing: -0.025em;
   }
 
   .table-comfortable tbody > tr > td {
     padding-block: 0.575rem !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  }
+
+  .table-comfortable tbody > tr:last-child > td {
+    border-bottom: 0;
+  }
+
+  .table-comfortable tbody > tr {
+    transition: background-color 140ms ease;
+  }
+
+  .table-comfortable tbody > tr:hover {
+    background-color: color-mix(in srgb, var(--color-primary-light) 48%, transparent);
   }
 
   .table-comfortable thead > tr > th {
     padding-block: 0.55rem !important;
+    color: var(--color-text-muted);
   }
 
   .gradebook-score-table thead > tr > th {
@@ -130,6 +170,26 @@
   }
 }
 
+.app-topbar {
+  background-color: color-mix(in srgb, var(--color-card) 92%, transparent);
+  border-color: color-mix(in srgb, var(--color-border) 84%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-border) 48%, transparent);
+}
+
+.app-sidebar {
+  background-color: color-mix(in srgb, var(--color-card) 97%, var(--color-canvas));
+  border-color: var(--color-border);
+}
+
+.app-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea) {
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.app-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea):focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
 
 /* ========================================================
    COLOR TONES (สีประจำหมวด & กลุ่มฟังก์ชันมาตรฐาน Light/Dark)
@@ -202,9 +262,8 @@
   .editorial-grid-surface {
     background-color: var(--color-canvas);
     background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--color-border) 42%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--color-border) 42%, transparent) 1px, transparent 1px);
-    background-size: 36px 36px;
+      radial-gradient(ellipse at 12% 8%, color-mix(in srgb, var(--color-primary-light) 56%, transparent), transparent 42%),
+      radial-gradient(ellipse at 92% 20%, color-mix(in srgb, var(--tone-6-soft) 34%, transparent), transparent 38%);
   }
 
   .morning-brief-strip {
@@ -486,7 +545,7 @@
     background-color: var(--color-card);
     border: 1px solid var(--color-border);
     border-radius: var(--dash-card-radius);
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    box-shadow: 0 2px 8px -4px rgb(24 43 56 / 0.12), 0 1px 2px rgb(24 43 56 / 0.04);
   }
   .saas-card-header {
     padding: var(--dash-card-pad);

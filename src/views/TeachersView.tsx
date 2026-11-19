@@ -646,7 +646,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   return (
     <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
       {/* Compact Header and Controls */}
-      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-1.5">
+      <div className="shrink-0 px-3.5 py-2.5 sm:px-4 app-page-header flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 flex-wrap min-w-0">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <GraduationCap className="w-4 h-4" />
@@ -902,7 +902,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       )}
 
       {/* Filter and Search Bar */}
-      <div className="shrink-0 toolbar-filter-zone flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div className="shrink-0 toolbar-filter-zone app-filter-bar flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="fn-group-tone flex-1 w-full">
           <span className="fn-group-label">{lang === 'th' ? 'ค้นหา & สังกัด' : 'Filter'}</span>
           <div className="relative flex-1 min-w-44">
@@ -932,7 +932,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             aria-label={lang === 'th' ? 'กรองตามกลุ่มสาระหรือฝ่ายงาน' : 'Filter by department'}
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="hidden md:block w-48 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+            className="w-full sm:w-48 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
           >
             <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระ/ฝ่ายงาน' : 'All Departments'}</option>
             {departments.map((dept) => (

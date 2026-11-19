@@ -880,7 +880,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   if (desktopCollapsed) {
     return (
-      <aside className="w-16 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+      <aside className="app-sidebar w-16 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
         {onToggleDesktopCollapse && (
           <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex flex-col items-center gap-2">
             <button
@@ -997,7 +997,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-72 max-w-[85vw] border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200 shadow-[1px_0_0_var(--color-border)]">
+    <aside className="app-sidebar w-72 max-w-[85vw] border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200 shadow-[1px_0_0_var(--color-border)]">
       {/* Search + Collapse Header */}
       <div className="shrink-0 p-3 border-b border-[var(--color-border)]/70 bg-[var(--color-card)] flex items-center gap-2" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
