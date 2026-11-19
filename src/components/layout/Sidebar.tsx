@@ -1,39 +1,33 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  BookOpen, 
-  QrCode, 
-  Award, 
-  Receipt, 
-  BellRing, 
-  Swords, 
-  Smartphone, 
-  FolderGit2, 
-  Calendar, 
-  HeartHandshake, 
-  CreditCard, 
-  HeartPulse, 
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  QrCode,
+  Award,
+  Receipt,
+  BellRing,
+  Swords,
+  Smartphone,
+  FolderGit2,
+  Calendar,
+  HeartHandshake,
+  CreditCard,
+  HeartPulse,
   FileCheck2,
   SlidersHorizontal,
   ShieldCheck,
   GraduationCap,
-  MessageSquare,
   FlaskConical,
   BrainCircuit,
   Trophy,
-  ShieldAlert,
   Flame,
   Camera,
   Sparkles,
-  MapPin,
   Search,
-  Layers,
-  Monitor,
   Mail,
   ChevronDown,
   ChevronRight,
-  Pin,
   PanelLeftClose,
   PanelLeftOpen,
   Coffee,
@@ -41,14 +35,15 @@ import {
   BarChart3,
   BookMarked,
   ClipboardCheck,
-  LucideIcon
+  ChevronsUpDown,
+  LucideIcon,
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone, getCategoryTone } from '../../lib/moduleTheme';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
 
-export type NavTab = 
+export type NavTab =
   | 'super_admin_console'
   | 'school_permissions'
   | 'system_settings'
@@ -58,10 +53,10 @@ export type NavTab =
   | 'obec_executive_dashboard'
   | 'pp6_executive_dashboard'
   | 'admin_superadmin_desk'
-  | 'dashboard' 
-  | 'students' 
+  | 'dashboard'
+  | 'students'
   | 'teachers'
-  | 'courses' 
+  | 'courses'
   | 'timetable'
   | 'homework'
   | 'study_streak'
@@ -69,7 +64,7 @@ export type NavTab =
   | 'socratic_tutor'
   | 'realworld_quests'
   | 'ai_diagnostic'
-  | 'attendance' 
+  | 'attendance'
   | 'mobile_checkin'
   | 'behavior_sdq'
   | 'student_id_cards'
@@ -79,20 +74,21 @@ export type NavTab =
   | 'boss_raid'
   | 'hall_of_fame'
   | 'portfolio'
-  | 'gradebook' 
+  | 'gradebook'
   | 'student_development_book'
   | 'qualitative_summary'
   | 'central_exam_hub'
-  | 'billing' 
+  | 'billing'
   | 'announcements';
 
-export type NavCategoryId = 
+export type NavCategoryId =
   | 'super_admin'
   | 'academics'
+  | 'assessment'
   | 'student_care'
   | 'innovation'
-  | 'administration'
-  | 'finance';
+  | 'finance'
+  | 'administration';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -115,6 +111,8 @@ export interface NavItemDef {
   id: NavTab;
   labelTh: string;
   labelEn: string;
+  shortLabelTh?: string;
+  shortLabelEn?: string;
   icon: LucideIcon;
   badge?: string | null;
   roles: UserRole[];
@@ -192,18 +190,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [currentRole, supportsFocusMode]);
 
-  const toggleFocusMode = () => {
-    setFocusMode((prev) => {
-      const next = !prev;
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem(SIDEBAR_FOCUS_STORAGE_KEY, next ? '1' : '0');
-        } catch {
-          // ignore storage failure
-        }
+  const setFocusModeState = (next: boolean) => {
+    setFocusMode(next);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(SIDEBAR_FOCUS_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        // ignore storage failure
       }
-      return next;
-    });
+    }
+  };
+
+  const toggleFocusMode = () => {
+    setFocusModeState(!focusMode);
   };
 
   const isAllowedBySchoolPolicy = (tabId: NavTab): boolean => {
@@ -225,11 +224,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return true;
   };
 
-  // Master Categories Definition (Consolidated: executive_monitor/warning in Dashboard, school_gps/permissions in System Settings)
+  // Master Categories Definition — separated clearly by domain & color identity
   const categories: NavCategoryDef[] = useMemo(() => {
     const list: NavCategoryDef[] = [];
 
-    // Category 0: Super Admin Console
+    // Category 0: Super Admin Console (Amber · tone-3)
     if (currentRole === 'super_admin') {
       list.push({
         id: 'super_admin',
@@ -258,21 +257,105 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // Category 1: Core Classroom, Directory & Curriculum
+    // Category 1: Core Directory & Schedule (Blue · tone-1)
     list.push({
       id: 'academics',
-      labelTh: 'งานหลัก & ห้องเรียน',
-      labelEn: 'Core & Academics',
-      shortLabelTh: 'วิชาการ',
-      shortLabelEn: 'Academics',
-      icon: GraduationCap,
+      labelTh: 'ทะเบียน & ตารางเรียน',
+      labelEn: 'Directory & Schedule',
+      shortLabelTh: 'ทะเบียน',
+      shortLabelEn: 'Directory',
+      icon: Users,
       items: [
         {
-          id: 'dashboard',
-          labelTh: 'แดชบอร์ดหลักรวมศูนย์',
-          labelEn: 'Unified Dashboard',
-          icon: LayoutDashboard,
+          id: 'students',
+          labelTh: 'ทะเบียนนักเรียน',
+          labelEn: 'Student Directory',
+          shortLabelTh: 'นักเรียน',
+          shortLabelEn: 'Students',
+          icon: Users,
+          badge: studentsCount > 0 ? `${studentsCount}` : null,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'teachers',
+          labelTh: 'บุคลากรและครู',
+          labelEn: 'Faculty & Staff',
+          shortLabelTh: 'บุคลากร',
+          shortLabelEn: 'Faculty',
+          icon: GraduationCap,
+          badge: teachersCount > 0 ? `${teachersCount}` : null,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'courses',
+          labelTh: 'รายวิชา & หลักสูตร',
+          labelEn: 'Courses & Curriculum',
+          shortLabelTh: 'รายวิชา',
+          shortLabelEn: 'Courses',
+          icon: BookOpen,
+          badge: coursesCount > 0 ? `${coursesCount}` : null,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'timetable',
+          labelTh: 'ตารางเรียน & ตารางสอน',
+          labelEn: 'Timetable & Schedule',
+          shortLabelTh: 'ตาราง',
+          shortLabelEn: 'Schedule',
+          icon: Calendar,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+      ],
+    });
+
+    // Category 2: Assessment, OBEC Analytics & Tasks (Emerald · tone-2)
+    list.push({
+      id: 'assessment',
+      labelTh: 'วัดผล สพฐ. & การสอน',
+      labelEn: 'Assessment & OBEC',
+      shortLabelTh: 'วัดผล',
+      shortLabelEn: 'Grading',
+      icon: Award,
+      items: [
+        {
+          id: 'gradebook',
+          labelTh: 'บันทึกคะแนน & ทะเบียนผล',
+          labelEn: 'Grading & Academic Records',
+          shortLabelTh: 'คะแนน',
+          shortLabelEn: 'Grades',
+          icon: Award,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'homework',
+          labelTh: 'การบ้าน & ภาระงาน',
+          labelEn: 'Homework & Tasks',
+          shortLabelTh: 'การบ้าน',
+          shortLabelEn: 'Tasks',
+          icon: FileCheck2,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'central_exam_hub',
+          labelTh: 'คลังข้อสอบกลางมาตรฐาน',
+          labelEn: 'Central Exam Hub',
+          icon: BookOpen,
+          badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : null,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'student_development_book',
+          labelTh: 'สมุดพัฒนาคุณภาพผู้เรียน',
+          labelEn: 'Student Development Book',
+          icon: BookMarked,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'qualitative_summary',
+          labelTh: 'สรุปคุณลักษณะฯ & อ่านคิดวิเคราะห์',
+          labelEn: 'Qualitative & Reading Analytics',
+          icon: ClipboardCheck,
+          roles: ['super_admin', 'admin', 'teacher'],
         },
         {
           id: 'obec_executive_dashboard',
@@ -288,82 +371,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: GraduationCap,
           roles: ['super_admin', 'admin', 'teacher'],
         },
-        {
-          id: 'students',
-          labelTh: 'ทะเบียนนักเรียน',
-          labelEn: 'Student Directory',
-          icon: Users,
-          badge: studentsCount > 0 ? `${studentsCount}` : null,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'teachers',
-          labelTh: 'บุคลากรและครู',
-          labelEn: 'Faculty & Staff',
-          icon: GraduationCap,
-          badge: teachersCount > 0 ? `${teachersCount}` : null,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'courses',
-          labelTh: 'รายวิชา & หลักสูตร',
-          labelEn: 'Courses & Curriculum',
-          icon: BookOpen,
-          badge: coursesCount > 0 ? `${coursesCount}` : null,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'timetable',
-          labelTh: 'ตารางเรียน & ตารางสอน',
-          labelEn: 'Timetable & Schedule',
-          icon: Calendar,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
-        {
-          id: 'gradebook',
-          labelTh: 'บันทึกคะแนน & ทะเบียนผลการเรียน',
-          labelEn: 'Grading & Academic Records',
-          icon: Award,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'student_development_book',
-          labelTh: 'สมุดบันทึกพัฒนาคุณภาพผู้เรียน',
-          labelEn: 'Student Development Book',
-          icon: BookMarked,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'qualitative_summary',
-          labelTh: 'สรุปคุณลักษณะฯ & อ่านคิดวิเคราะห์',
-          labelEn: 'Qualitative & Reading Analytics',
-          icon: ClipboardCheck,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'homework',
-          labelTh: 'การบ้าน & ภาระงาน',
-          labelEn: 'Homework & Tasks',
-          icon: FileCheck2,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
-        {
-          id: 'central_exam_hub',
-          labelTh: 'คลังข้อสอบกลางมาตรฐาน',
-          labelEn: 'Central Exam Hub',
-          icon: BookOpen,
-          badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : null,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
       ],
     });
 
-    // Category 2: Student Care, Attendance & Health
+    // Category 3: Student Care, Attendance & Health (Rose · tone-4)
     list.push({
       id: 'student_care',
       labelTh: 'เช็กชื่อ กิจการ & สุขภาพ',
       labelEn: 'Attendance, Care & Health',
-      shortLabelTh: 'กิจการ',
+      shortLabelTh: 'เช็กชื่อ',
       shortLabelEn: 'Care',
       icon: HeartPulse,
       items: [
@@ -371,6 +387,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'attendance',
           labelTh: 'ระบบสแกนเช็คชื่อหน้าประตู',
           labelEn: 'Gate QR Check-in',
+          shortLabelTh: 'เช็กชื่อ',
+          shortLabelEn: 'Check-in',
           icon: QrCode,
           roles: ['super_admin', 'admin', 'teacher'],
         },
@@ -385,6 +403,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'student_id_cards',
           labelTh: 'บัตรนักเรียนดิจิทัล',
           labelEn: 'Digital Student ID',
+          shortLabelTh: 'บัตร',
+          shortLabelEn: 'ID Card',
           icon: CreditCard,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
@@ -405,11 +425,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 3: Learning & Innovation
+    // Category 4: Learning & Innovation (Violet · tone-5)
     list.push({
       id: 'innovation',
-      labelTh: 'การเรียนรู้ & นวัตกรรม',
-      labelEn: 'Learning & Innovation',
+      labelTh: 'AI & นวัตกรรมการเรียนรู้',
+      labelEn: 'AI & Learning Innovation',
       shortLabelTh: 'นวัตกรรม',
       shortLabelEn: 'Innovation',
       icon: Sparkles,
@@ -418,16 +438,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'career_quest',
           labelTh: 'เส้นทางอาชีพ (Career Quest AI)',
           labelEn: 'Career Quest AI',
+          shortLabelTh: 'อาชีพ AI',
+          shortLabelEn: 'Career',
           icon: Compass,
           badge: 'AI',
           roles: ['super_admin', 'admin', 'teacher', 'student'],
-        },
-        {
-          id: 'portfolio',
-          labelTh: 'แฟ้มผลงานดิจิทัล',
-          labelEn: 'Digital Portfolio',
-          icon: FolderGit2,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
           id: 'socratic_tutor',
@@ -441,6 +456,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'วิเคราะห์ทักษะ & เสริมจุดแข็ง',
           labelEn: 'Skill Diagnostics',
           icon: BrainCircuit,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'portfolio',
+          labelTh: 'แฟ้มผลงานดิจิทัล',
+          labelEn: 'Digital Portfolio',
+          icon: FolderGit2,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
@@ -488,7 +510,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 4: Finance & Announcements
+    // Category 5: Finance & Announcements (Cyan · tone-6)
     list.push({
       id: 'finance',
       labelTh: 'การเงิน & การสื่อสาร',
@@ -498,27 +520,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Receipt,
       items: [
         {
-          id: 'billing',
-          labelTh: 'ค่าเทอม & ใบเสร็จรับเงิน',
-          labelEn: 'Tuition & Invoices',
-          icon: Receipt,
-          roles: ['super_admin', 'admin', 'parent'],
-        },
-        {
           id: 'announcements',
           labelTh: 'ข่าวสาร & ประกาศโรงเรียน',
           labelEn: 'Announcements & News',
+          shortLabelTh: 'ประกาศ',
+          shortLabelEn: 'News',
           icon: BellRing,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
+        {
+          id: 'billing',
+          labelTh: 'ค่าเทอม & ใบเสร็จรับเงิน',
+          labelEn: 'Tuition & Invoices',
+          shortLabelTh: 'ค่าเทอม',
+          shortLabelEn: 'Billing',
+          icon: Receipt,
+          roles: ['super_admin', 'admin', 'parent'],
         },
       ],
     });
 
-    // Category 5: Unified Administration & Settings Hub
+    // Category 6: System Settings & Coordination (Slate · tone-7)
     list.push({
       id: 'administration',
-      labelTh: 'ศูนย์ตั้งค่า & การประสานงาน',
-      labelEn: 'Settings & Admin Hub',
+      labelTh: 'ตั้งค่าระบบ & ส่วนกลาง',
+      labelEn: 'Settings & Admin Desk',
       shortLabelTh: 'ตั้งค่า',
       shortLabelEn: 'Settings',
       icon: SlidersHorizontal,
@@ -544,29 +570,76 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return list;
   }, [currentRole, isSuperAdminSchoolView, studentsCount, teachersCount, coursesCount, coordinationUnreadCount, unclaimedCentralPacksCount]);
 
-  // Search filtered items across all categories
+  // Dashboard standalone entry + quick shortcuts (keep items inside their true categories too!)
+  const dashboardItem: NavItemDef = useMemo(() => ({
+    id: 'dashboard',
+    labelTh: 'แดชบอร์ดหลักรวมศูนย์',
+    labelEn: 'Unified Dashboard',
+    icon: LayoutDashboard,
+    roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+  }), []);
+
+  const quickShortcuts = useMemo(() => {
+    const ids: NavTab[] = currentRole === 'student'
+      ? ['career_quest', 'timetable', 'homework']
+      : currentRole === 'parent'
+      ? ['student_id_cards', 'billing', 'announcements']
+      : ['attendance', 'students', 'gradebook'];
+    const all = categories.flatMap((c) => c.items);
+    return ids
+      .map((id) =>
+        all.find(
+          (i) =>
+            i.id === id &&
+            i.roles.includes(currentRole) &&
+            isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
+            isAllowedBySchoolPolicy(i.id)
+        )
+      )
+      .filter((i): i is NavItemDef => Boolean(i));
+  }, [categories, currentRole, featureFlags, schoolPermissions]);
+
+  // Visible items per category
+  const visibleCategories = useMemo(() => {
+    return categories
+      .map((cat) => {
+        const items = cat.items.filter(
+          (i) =>
+            i.roles.includes(currentRole) &&
+            isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
+            isAllowedBySchoolPolicy(i.id) &&
+            (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
+        );
+        return { ...cat, items };
+      })
+      .filter((cat) => cat.items.length > 0);
+  }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, currentTab]);
+
+  // Search filtered items across dashboard + all categories
   const searchResults = useMemo(() => {
     if (!searchFilter.trim()) return [];
     const query = searchFilter.toLowerCase().trim();
     const results: NavItemDef[] = [];
-    categories.forEach(cat => {
-      cat.items.forEach(item => {
-        if (!item.roles.includes(currentRole)) return;
-        if (!isTabEnabledByFeatureFlags(item.id, featureFlags, currentRole)) return;
-        if (!isAllowedBySchoolPolicy(item.id)) return;
-        if (
-          item.labelTh.toLowerCase().includes(query) ||
-          item.labelEn.toLowerCase().includes(query) ||
-          item.id.toLowerCase().includes(query)
-        ) {
-          results.push(item);
-        }
-      });
+    const pool = [dashboardItem, ...categories.flatMap((c) => c.items)];
+    const seen = new Set<NavTab>();
+    pool.forEach((item) => {
+      if (seen.has(item.id)) return;
+      if (!item.roles.includes(currentRole)) return;
+      if (!isTabEnabledByFeatureFlags(item.id, featureFlags, currentRole)) return;
+      if (!isAllowedBySchoolPolicy(item.id)) return;
+      if (
+        item.labelTh.toLowerCase().includes(query) ||
+        item.labelEn.toLowerCase().includes(query) ||
+        item.id.toLowerCase().includes(query)
+      ) {
+        seen.add(item.id);
+        results.push(item);
+      }
     });
     return results;
-  }, [searchFilter, categories, currentRole, featureFlags, schoolPermissions]);
+  }, [searchFilter, dashboardItem, categories, currentRole, featureFlags, schoolPermissions]);
 
-  const activeCatId = categories.find(c => c.items.some(i => i.id === currentTab))?.id;
+  const activeCatId = visibleCategories.find((c) => c.items.some((i) => i.id === currentTab))?.id;
   useEffect(() => {
     if (activeCatId) {
       setCollapsed((prev) => {
@@ -576,22 +649,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [activeCatId]);
 
-  const pinned = useMemo(() => {
-    const ids: NavTab[] = currentRole === 'student'
-      ? ['dashboard', 'career_quest', 'timetable', 'homework']
-      : currentRole === 'parent'
-      ? ['dashboard', 'student_id_cards', 'billing', 'announcements']
-      : ['dashboard', 'attendance', 'students', 'gradebook'];
-    const all = categories.flatMap(c => c.items);
-    return ids
-      .map(id => all.find(i =>
-        i.id === id &&
-        i.roles.includes(currentRole) &&
-        isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
-        isAllowedBySchoolPolicy(i.id)
-      ))
-      .filter((i): i is NavItemDef => Boolean(i));
-  }, [categories, currentRole, featureFlags, schoolPermissions]);
+  const anyCategoryExpanded = visibleCategories.some(
+    (cat) => !(collapsed[cat.id] ?? cat.id !== activeCatId)
+  );
+
+  const handleToggleExpandAll = () => {
+    const nextState = anyCategoryExpanded;
+    const updated: Record<string, boolean> = {};
+    visibleCategories.forEach((cat) => {
+      updated[cat.id] = nextState;
+    });
+    setCollapsed(updated);
+  };
 
   const hiddenByFocusCount = useMemo(() => {
     if (!supportsFocusMode || !focusMode) return 0;
@@ -610,26 +679,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return hidden;
   }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, currentTab]);
 
-  const pinnedIds = new Set(pinned.map(p => p.id));
-
   const renderItem = (item: NavItemDef, onClick?: () => void) => {
     const Icon = item.icon;
     const isActive = currentTab === item.id;
     const isNumericBadge = Boolean(item.badge && /^\d+$/.test(String(item.badge)));
+    const isAiBadge = item.badge === 'AI';
     return (
       <button
         key={item.id}
         type="button"
         data-nav-tab={item.id}
-        onClick={() => { setCurrentTab(item.id); onClick?.(); }}
-        className={`${getModuleTone(item.id)} w-full flex min-h-9 items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[12px] transition cursor-pointer ${
+        onClick={() => {
+          setCurrentTab(item.id);
+          onClick?.();
+        }}
+        className={`${getModuleTone(item.id)} group w-full flex min-h-8.5 items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[12px] transition cursor-pointer ${
           isActive
             ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
-        <span className="flex items-center gap-2.5 truncate">
-          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--tone)]' : 'text-[var(--color-text-muted)]'}`} />
+        <span className="flex items-center gap-2.5 min-w-0">
+          <Icon
+            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+              isActive
+                ? 'text-[var(--tone)]'
+                : 'text-[color-mix(in_srgb,var(--tone)_72%,var(--color-text-muted))] group-hover:text-[var(--tone)]'
+            }`}
+          />
           <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
         </span>
         {item.badge && (
@@ -637,7 +714,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className={`shrink-0 tabular-nums ${
               isNumericBadge
                 ? 'text-[11px] font-medium text-[var(--color-text-muted)]'
-                : 'text-[10px] font-semibold text-rose-600 dark:text-rose-400'
+                : isAiBadge
+                  ? 'text-[10px] font-bold text-[var(--tone)]'
+                  : 'text-[10px] font-semibold text-rose-600 dark:text-rose-400'
             }`}
           >
             {item.badge}
@@ -648,15 +727,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   if (desktopCollapsed) {
-    const visibleItems = categories.flatMap((cat) =>
-      cat.items.filter((i) =>
-        i.roles.includes(currentRole) &&
-        isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
-        isAllowedBySchoolPolicy(i.id) &&
-        (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
-      )
-    );
-    const dedupedItems = Array.from(new Map(visibleItems.map((i) => [i.id, i])).values());
     return (
       <aside className="w-15 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
         {onToggleDesktopCollapse && (
@@ -677,8 +747,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 aria-pressed={focusMode}
                 title={
                   focusMode
-                    ? (lang === 'th' ? 'โหมดลดภาระครู (ซ่อนเมนูรอง) — คลิกเพื่อแสดงทั้งหมด' : 'Teacher Focus Mode ON — click to show all')
-                    : (lang === 'th' ? 'กำลังแสดงทุกเมนู — คลิกเพื่อเปิดโหมดลดภาระครู' : 'All menus shown — click for Teacher Focus Mode')
+                    ? lang === 'th'
+                      ? 'โหมดลดภาระครู (ซ่อนเมนูรอง) — คลิกเพื่อแสดงทั้งหมด'
+                      : 'Teacher Focus Mode ON — click to show all'
+                    : lang === 'th'
+                      ? 'กำลังแสดงทุกเมนู — คลิกเพื่อเปิดโหมดลดภาระครู'
+                      : 'All menus shown — click for Teacher Focus Mode'
                 }
                 className={`w-10 h-8 rounded-lg border flex items-center justify-center cursor-pointer transition ${
                   focusMode
@@ -692,37 +766,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
         <nav className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1 flex flex-col items-center">
-          {dedupedItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                data-nav-tab={item.id}
-                onClick={() => setCurrentTab(item.id)}
-                title={lang === 'th' ? item.labelTh : item.labelEn}
-                aria-label={lang === 'th' ? item.labelTh : item.labelEn}
-                className={`${getModuleTone(item.id)} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                  isActive
-                    ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
-                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {item.badge && !/^\d+$/.test(String(item.badge)) && (
-                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500" />
-                )}
-              </button>
-            );
-          })}
+          {/* Home Dashboard Icon */}
+          <button
+            type="button"
+            data-nav-tab={dashboardItem.id}
+            onClick={() => setCurrentTab(dashboardItem.id)}
+            title={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
+            aria-label={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
+            className={`${getModuleTone(dashboardItem.id)} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+              currentTab === dashboardItem.id
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
+                : 'text-[var(--tone)]/80 hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+          </button>
+
+          {visibleCategories.map((cat) => (
+            <React.Fragment key={cat.id}>
+              <div className="w-6 h-px bg-[var(--color-border)] my-1 shrink-0" aria-hidden="true" />
+              {cat.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-nav-tab={item.id}
+                    onClick={() => setCurrentTab(item.id)}
+                    title={`${lang === 'th' ? cat.shortLabelTh : cat.shortLabelEn} · ${lang === 'th' ? item.labelTh : item.labelEn}`}
+                    aria-label={lang === 'th' ? item.labelTh : item.labelEn}
+                    className={`${getModuleTone(item.id)} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                      isActive
+                        ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
+                        : 'text-[color-mix(in_srgb,var(--tone)_75%,var(--color-text-muted))] hover:bg-[var(--tone-soft)]/50 hover:text-[var(--tone)]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.badge && !/^\d+$/.test(String(item.badge)) && item.badge !== 'AI' && (
+                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    )}
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </nav>
       </aside>
     );
   }
 
   return (
-    <aside className="w-66 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+    <aside className="w-68 border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+      {/* Search + Collapse Header */}
       <div className="shrink-0 p-2.5 border-b border-[var(--color-border)] flex items-center gap-1.5" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -734,8 +830,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="w-full pl-8 pr-6 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
           />
           {searchFilter && (
-            <button type="button" onClick={() => setSearchFilter('')} aria-label="clear"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer">✕</button>
+            <button
+              type="button"
+              onClick={() => setSearchFilter('')}
+              aria-label="clear"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+            >
+              ✕
+            </button>
           )}
         </div>
         {onToggleDesktopCollapse && (
@@ -751,111 +853,198 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
+      {/* Teacher Focus vs All Menus Segmented Bar */}
       {supportsFocusMode && (
-        <div className="shrink-0 px-2.5 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/70 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={toggleFocusMode}
-            aria-pressed={focusMode}
-            className={`flex-1 flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-              focusMode
-                ? 'bg-sky-100/90 text-sky-900 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800'
-                : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
-            }`}
-            title={
-              lang === 'th'
-                ? 'ซ่อนเมนูรอง/บริหารที่ไม่ใช้ประจำเพื่อให้ครูทำงานง่ายขึ้น (ยังคงค้นหาทุกเมนูได้)'
-                : 'Hide secondary/admin items for calmer daily teaching workflow'
-            }
-          >
-            <span className="flex items-center gap-1.5 min-w-0 truncate">
-              <Coffee className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">
-                {focusMode
-                  ? (lang === 'th' ? 'โหมดลดภาระครู' : 'Teacher Focus')
-                  : (lang === 'th' ? 'แสดงเมนูทั้งหมด' : 'All Menus')}
-              </span>
-            </span>
-            <span className="shrink-0 text-[10px] font-bold opacity-80">
-              {focusMode && hiddenByFocusCount > 0
-                ? (lang === 'th' ? `ซ่อน ${hiddenByFocusCount}` : `-${hiddenByFocusCount}`)
-                : (lang === 'th' ? 'ครบ' : 'All')}
-            </span>
-          </button>
+        <div className="shrink-0 px-2.5 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)]/60">
+          <div className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setFocusModeState(true)}
+              aria-pressed={focusMode}
+              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-semibold transition cursor-pointer whitespace-nowrap ${
+                focusMode
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+              title={lang === 'th' ? 'แสดงเฉพาะงานสอนและงานประจำของครู' : 'Daily teaching focus'}
+            >
+              <Coffee className="w-3 h-3 shrink-0" />
+              <span className="truncate">{lang === 'th' ? 'ลดภาระครู' : 'Focus'}</span>
+              {focusMode && hiddenByFocusCount > 0 && (
+                <span className="opacity-85 tabular-nums">(-{hiddenByFocusCount})</span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFocusModeState(false)}
+              aria-pressed={!focusMode}
+              className={`flex items-center justify-center gap-1 rounded-md px-2 py-1 font-semibold transition cursor-pointer whitespace-nowrap ${
+                !focusMode
+                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+              }`}
+            >
+              <span className="truncate">{lang === 'th' ? 'แสดงทั้งหมด' : 'All Menus'}</span>
+            </button>
+          </div>
         </div>
       )}
 
-      <nav className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2.5">
+      <nav className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-3">
         {searchFilter.trim() ? (
           <div className="space-y-1">
-            <div className="px-2 pb-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
+            <div className="px-2 pb-1 text-[11px] font-semibold text-[var(--color-text-muted)]">
               {lang === 'th' ? `ผลการค้นหา (${searchResults.length})` : `Results (${searchResults.length})`}
             </div>
-            {searchResults.length === 0
-              ? <div className="p-6 text-center text-xs text-[var(--color-text-muted)]">{lang === 'th' ? 'ไม่พบเมนู' : 'No menus found'}</div>
-              : searchResults.map(item => renderItem(item, () => setSearchFilter('')))}
+            {searchResults.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'ไม่พบเมนู' : 'No menus found'}
+              </div>
+            ) : (
+              searchResults.map((item) => renderItem(item, () => setSearchFilter('')))
+            )}
           </div>
         ) : (
           <>
-            {pinned.length > 0 && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 px-2 pb-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
-                  <Pin className="w-3 h-3" />{lang === 'th' ? 'ใช้บ่อย' : 'Favorites'}
+            {/* Primary Overview + Compact 1-Row Quick Shortcuts */}
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                data-nav-tab={dashboardItem.id}
+                onClick={() => setCurrentTab(dashboardItem.id)}
+                className={`${getModuleTone(dashboardItem.id)} w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12px] font-bold transition cursor-pointer border ${
+                  currentTab === dashboardItem.id
+                    ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_32%,transparent)]'
+                    : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--tone-soft)]/50'
+                }`}
+              >
+                <span className="tone-chip w-6 h-6 rounded-lg">
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                </span>
+                <span className="truncate">{lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}</span>
+              </button>
+
+              {quickShortcuts.length > 0 && (
+                <div className="grid grid-cols-3 gap-1">
+                  {quickShortcuts.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = currentTab === item.id;
+                    return (
+                      <button
+                        key={`quick-${item.id}`}
+                        type="button"
+                        onClick={() => setCurrentTab(item.id)}
+                        title={lang === 'th' ? item.labelTh : item.labelEn}
+                        className={`${getModuleTone(item.id)} flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer border whitespace-nowrap ${
+                          isActive
+                            ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_35%,transparent)]'
+                            : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
+                        }`}
+                      >
+                        <Icon className="w-3 h-3 shrink-0 text-[var(--tone)]" />
+                        <span className="truncate">
+                          {lang === 'th' ? item.shortLabelTh || item.labelTh : item.shortLabelEn || item.labelEn}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {pinned.map(item => renderItem(item))}
-              </div>
-            )}
-            {categories.map((cat) => {
-              const items = cat.items.filter(
-                (i) =>
-                  i.roles.includes(currentRole) &&
-                  !pinnedIds.has(i.id) &&
-                  isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
-                  isAllowedBySchoolPolicy(i.id) &&
-                  (!focusMode || !supportsFocusMode || FOCUS_TEACHER_TABS.has(i.id) || i.id === currentTab)
-              );
-              if (items.length === 0) return null;
-              const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
-              const CategoryIcon = cat.icon;
-              const isActiveCategory = cat.id === activeCatId;
-              const catTone = getCategoryTone(cat.id);
-              return (
-                <div key={cat.id} className="space-y-1">
-                  <button
-                    type="button"
-                    aria-expanded={!isCollapsed}
-                    aria-controls={`sidebar-category-${cat.id}`}
-                    onClick={() => {
-                      setCollapsed((previous) => ({
-                        ...previous,
-                        [cat.id]: !(previous[cat.id] ?? cat.id !== activeCatId),
-                      }));
-                    }}
-                    className={`${catTone} w-full flex min-h-9 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
-                      isActiveCategory
-                        ? 'text-[var(--color-text-title)]'
-                        : !isCollapsed
-                          ? 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
-                          : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
-                    }`}
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <CategoryIcon className={`h-3.5 w-3.5 shrink-0 ${isActiveCategory ? 'text-[var(--tone)]' : 'text-[var(--color-text-muted)]'}`} />
-                      <span className="truncate">{lang === 'th' ? cat.labelTh : cat.labelEn}</span>
-                    </span>
-                    {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-60" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />}
-                  </button>
-                  {!isCollapsed && (
-                    <div id={`sidebar-category-${cat.id}`} className="space-y-1 pl-1">
-                      {items.map(item => renderItem(item))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Section Header + Expand/Collapse All */}
+            <div className="pt-1 border-t border-[var(--color-border)] flex items-center justify-between px-1">
+              <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'กลุ่มงานตามฝ่าย' : 'Workspaces'}
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleExpandAll}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer transition"
+              >
+                <ChevronsUpDown className="w-3 h-3" />
+                <span>
+                  {anyCategoryExpanded
+                    ? lang === 'th'
+                      ? 'ย่อทั้งหมด'
+                      : 'Collapse all'
+                    : lang === 'th'
+                      ? 'ขยายทั้งหมด'
+                      : 'Expand all'}
+                </span>
+              </button>
+            </div>
+
+            {/* Color-Coded Work Groups */}
+            <div className="space-y-1.5">
+              {visibleCategories.map((cat) => {
+                const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
+                const CategoryIcon = cat.icon;
+                const isActiveCategory = cat.id === activeCatId;
+                const catTone = getCategoryTone(cat.id);
+                const alertBadge = cat.items.find(
+                  (i) => i.badge && !/^\d+$/.test(String(i.badge)) && i.badge !== 'AI'
+                )?.badge;
+
+                return (
+                  <div key={cat.id} className={`${catTone} space-y-1`}>
+                    <button
+                      type="button"
+                      aria-expanded={!isCollapsed}
+                      aria-controls={`sidebar-category-${cat.id}`}
+                      onClick={() => {
+                        setCollapsed((previous) => ({
+                          ...previous,
+                          [cat.id]: !(previous[cat.id] ?? cat.id !== activeCatId),
+                        }));
+                      }}
+                      className={`w-full flex min-h-9.5 items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left transition cursor-pointer border ${
+                        isActiveCategory || !isCollapsed
+                          ? 'bg-[color-mix(in_srgb,var(--tone-soft)_68%,var(--color-card))] border-[color-mix(in_srgb,var(--tone)_28%,var(--color-border))] text-[var(--color-text-title)]'
+                          : 'bg-[var(--color-card)] border-transparent hover:bg-[color-mix(in_srgb,var(--tone-soft)_42%,var(--color-card))] hover:border-[color-mix(in_srgb,var(--tone)_20%,var(--color-border))] text-[var(--color-text-body)]'
+                      }`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="tone-chip w-6 h-6 rounded-lg">
+                          <CategoryIcon className="h-3.5 w-3.5 shrink-0" />
+                        </span>
+                        <span className="truncate text-[12px] font-bold">
+                          {lang === 'th' ? cat.labelTh : cat.labelEn}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        {isCollapsed && alertBadge && (
+                          <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                            {alertBadge}
+                          </span>
+                        )}
+                        <span className="text-[11px] font-medium tabular-nums text-[var(--color-text-muted)]">
+                          {cat.items.length}
+                        </span>
+                        {isCollapsed ? (
+                          <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-[var(--tone)]" />
+                        )}
+                      </span>
+                    </button>
+
+                    {!isCollapsed && (
+                      <div
+                        id={`sidebar-category-${cat.id}`}
+                        className="space-y-0.5 pl-2.5 pr-0.5 pt-0.5 pb-1"
+                      >
+                        {cat.items.map((item) => renderItem(item))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </>
         )}
       </nav>
     </aside>
   );
 };
+

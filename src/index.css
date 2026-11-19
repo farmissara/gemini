@@ -134,6 +134,7 @@
   --tone-4: #be123c; --tone-4-soft: #fde9ee; --tone-4-solid: #be123c; --tone-4-solid-hover: #9f1239;
   --tone-5: #6d28d9; --tone-5-soft: #f1eafd; --tone-5-solid: #6d28d9; --tone-5-solid-hover: #5b21b6;
   --tone-6: #0e7490; --tone-6-soft: #e0f5fa; --tone-6-solid: #0e7490; --tone-6-solid-hover: #155e75;
+  --tone-7: #334155; --tone-7-soft: #eef2f6; --tone-7-solid: #334155; --tone-7-solid-hover: #1e293b;
 }
 .dark {
   --tone-1: #8aa8ff; --tone-1-soft: rgb(47 91 234 / 0.22); --tone-1-solid: #2563eb; --tone-1-solid-hover: #1d4ed8;
@@ -142,6 +143,7 @@
   --tone-4: #fb7f9c; --tone-4-soft: rgb(224 51 95 / 0.22); --tone-4-solid: #be123c; --tone-4-solid-hover: #9f1239;
   --tone-5: #b69bff; --tone-5-soft: rgb(124 77 219 / 0.24); --tone-5-solid: #6d28d9; --tone-5-solid-hover: #5b21b6;
   --tone-6: #4fd3ef; --tone-6-soft: rgb(8 145 178 / 0.22); --tone-6-solid: #0e7490; --tone-6-solid-hover: #155e75;
+  --tone-7: #cbd5e1; --tone-7-soft: rgb(148 163 184 / 0.18); --tone-7-solid: #475569; --tone-7-solid-hover: #334155;
 }
 .tone-1 { --tone: var(--tone-1); --tone-soft: var(--tone-1-soft); --tone-solid: var(--tone-1-solid); --tone-solid-hover: var(--tone-1-solid-hover); }
 .tone-2 { --tone: var(--tone-2); --tone-2-soft: var(--tone-2-soft); --tone-soft: var(--tone-2-soft); --tone-solid: var(--tone-2-solid); --tone-solid-hover: var(--tone-2-solid-hover); }
@@ -149,6 +151,7 @@
 .tone-4 { --tone: var(--tone-4); --tone-soft: var(--tone-4-soft); --tone-solid: var(--tone-4-solid); --tone-solid-hover: var(--tone-4-solid-hover); }
 .tone-5 { --tone: var(--tone-5); --tone-soft: var(--tone-5-soft); --tone-solid: var(--tone-5-solid); --tone-solid-hover: var(--tone-5-solid-hover); }
 .tone-6 { --tone: var(--tone-6); --tone-soft: var(--tone-6-soft); --tone-solid: var(--tone-6-solid); --tone-solid-hover: var(--tone-6-solid-hover); }
+.tone-7 { --tone: var(--tone-7); --tone-soft: var(--tone-7-soft); --tone-solid: var(--tone-7-solid); --tone-solid-hover: var(--tone-7-solid-hover); }
 
 @layer components {
   .tone-chip {
