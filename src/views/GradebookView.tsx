@@ -86,6 +86,7 @@ import {
 } from '../lib/moeQualitativeStore';
 import { GradeLevelQualitativeSummaryView } from '../components/GradeLevelQualitativeSummaryView';
 import { CoreSubjectsReportCardView } from '../components/CoreSubjectsReportCardView';
+import { Pp5CoreRoomSummaryView } from '../components/Pp5CoreRoomSummaryView';
 
 interface GradebookViewProps {
   students: Student[];
@@ -118,6 +119,7 @@ interface GradebookViewProps {
     | 'gradebook'
     | 'indicators'
     | 'pp5'
+    | 'pp5_core_summary'
     | 'pp6'
     | 'core_report_card'
     | 'qualitative_summary'
@@ -170,6 +172,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     | 'gradebook'
     | 'indicators'
     | 'pp5'
+    | 'pp5_core_summary'
     | 'pp6'
     | 'core_report_card'
     | 'qualitative_summary'
@@ -1403,6 +1406,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
             <button
               type="button"
+              data-active={activeTab === 'pp5_core_summary'}
+              onClick={() => setActiveTab('pp5_core_summary')}
+              className="seg-tab-btn"
+            >
+              สรุป ปพ.5 ทั้งห้อง &amp; ตัวชี้วัด
+            </button>
+
+            <button
+              type="button"
               data-active={activeTab === 'core_report_card'}
               onClick={() => setActiveTab('core_report_card')}
               className="seg-tab-btn"
@@ -2497,6 +2509,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           setPp5Page={setPp5Page}
           searchQuery={studentSearchTerm}
           renderPageControls={renderPageControls}
+        />
+      )}
+
+      {/* ========================================================
+          TAB: สรุปคะแนนและเกรดเฉลี่ยรายวิชาพื้นฐาน ปพ.5 รายห้องอัตโนมัติ
+          ======================================================== */}
+      {activeTab === 'pp5_core_summary' && !isPersonalGradeViewer && (
+        <Pp5CoreRoomSummaryView
+          students={students}
+          courses={courses}
+          grades={grades}
+          systemConfig={systemConfig}
+          school={school}
+          lang={lang}
+          onOpenCoursePp5={(courseId) => {
+            setSelectedCourseId(courseId);
+            setActiveTab('pp5');
+          }}
         />
       )}
 

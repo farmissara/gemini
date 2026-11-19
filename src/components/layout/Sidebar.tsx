@@ -56,6 +56,7 @@ export type NavTab =
   | 'executive_warning'
   | 'executive_monitor'
   | 'obec_executive_dashboard'
+  | 'pp6_executive_dashboard'
   | 'admin_superadmin_desk'
   | 'dashboard' 
   | 'students' 
@@ -278,6 +279,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'ประเมินผล 8 กลุ่มสาระฯ (สพฐ.)',
           labelEn: 'OBEC 8-Area Analytics',
           icon: BarChart3,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'pp6_executive_dashboard',
+          labelTh: 'ภาพรวมคุณภาพ ปพ.6 (ผู้บริหาร)',
+          labelEn: 'OBEC Pp.6 Executive',
+          icon: GraduationCap,
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {

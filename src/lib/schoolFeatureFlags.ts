@@ -553,6 +553,7 @@ const PROTECTED_SYSTEM_TABS = new Set<string>([
   'school_permissions',
   'executive_monitor',
   'obec_executive_dashboard',
+  'pp6_executive_dashboard',
 ]);
 
 export const isTabEnabledByFeatureFlags = (

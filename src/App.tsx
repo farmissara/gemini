@@ -442,6 +442,7 @@ export const App: React.FC = () => {
       | 'gradebook'
       | 'indicators'
       | 'pp5'
+      | 'pp5_core_summary'
       | 'pp6'
       | 'core_report_card'
       | 'qualitative_summary'
@@ -1140,6 +1141,15 @@ export const App: React.FC = () => {
       return;
     }
 
+    if (tab === 'pp6_executive_dashboard') {
+      if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+        setDashboardInitialSubTab('pp6_quality_overview');
+        setProgramMode('school_erp');
+        setCurrentTab('dashboard');
+      }
+      return;
+    }
+
     if (tab === 'executive_warning') {
       if (!isTabEnabledByFeatureFlags('executive_warning', activeFeatureFlags, currentRole)) {
         setDataSyncError(
@@ -1187,6 +1197,7 @@ export const App: React.FC = () => {
       'central_exam_hub',
       'attendance',
       'obec_executive_dashboard',
+      'pp6_executive_dashboard',
       'student_development_book',
       'qualitative_summary',
       'system_settings',
@@ -4533,6 +4544,24 @@ export const App: React.FC = () => {
                     onOpenGradebookCourse={(courseId) => {
                       setIsGamePlaying(false);
                       setGradebookJumpTarget({ courseId, tab: 'pp5' });
+                      setProgramMode('school_erp');
+                      setCurrentTab('gradebook');
+                    }}
+                    onOpenStudentDevBook={(studentId) => {
+                      setIsGamePlaying(false);
+                      setDevBookTargetStudentId(studentId);
+                      setProgramMode('school_erp');
+                      setCurrentTab('student_development_book');
+                    }}
+                    onOpenStudentPp6={(studentId) => {
+                      setIsGamePlaying(false);
+                      setGradebookJumpTarget({ studentId, tab: 'pp6' });
+                      setProgramMode('school_erp');
+                      setCurrentTab('gradebook');
+                    }}
+                    onOpenPp5Summary={() => {
+                      setIsGamePlaying(false);
+                      setGradebookJumpTarget({ tab: 'pp5_core_summary' });
                       setProgramMode('school_erp');
                       setCurrentTab('gradebook');
                     }}

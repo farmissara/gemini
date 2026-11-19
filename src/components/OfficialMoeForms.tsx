@@ -468,6 +468,72 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     };
   }, [rows, systemConfig.gradingSystem, courseIsActivity]);
 
+  const roomSummaryRows = useMemo(() => {
+    const byRoom = new Map<string, typeof rows>();
+    rows.forEach((row) => {
+      const room = (row.student.room || selectedCourse.room || 'ไม่ระบุห้อง').trim();
+      const list = byRoom.get(room) || [];
+      list.push(row);
+      byRoom.set(room, list);
+    });
+
+    const result: Array<{
+      room: string;
+      studentCount: number;
+      avgScore: number;
+      avgGpa: number;
+      indicatorPassed: number;
+      indicatorFailed: number;
+      indicatorPassPct: number;
+    }> = [];
+
+    byRoom.forEach((list, room) => {
+      const n = list.length;
+      let scoreSum = 0;
+      let scoreCount = 0;
+      let gpaSum = 0;
+      let gpaCount = 0;
+      let indicatorPassed = 0;
+      let indicatorFailed = 0;
+
+      list.forEach((r) => {
+        if (r.grade) {
+          scoreSum += r.grade.totalScore;
+          scoreCount += 1;
+        }
+        if (!r.resolved.isSpecial && r.resolved.countsInGpa) {
+          gpaSum += r.resolved.point;
+          gpaCount += 1;
+        }
+        const unitFailed = r.hasAnyUnitScore
+          ? r.unitResults.some((u) => u.hasRecorded && u.pct < 50)
+          : false;
+        const formativePct =
+          r.courseworkSubtotal !== null ? Math.round((r.courseworkSubtotal / 60) * 100) : 0;
+        const passed =
+          Boolean(r.grade) &&
+          !r.resolved.isSpecial &&
+          !unitFailed &&
+          (r.grade?.totalScore ?? 0) >= 50 &&
+          formativePct >= 50;
+        if (passed) indicatorPassed += 1;
+        else indicatorFailed += 1;
+      });
+
+      result.push({
+        room,
+        studentCount: n,
+        avgScore: scoreCount > 0 ? Math.round((scoreSum / scoreCount) * 10) / 10 : 0,
+        avgGpa: gpaCount > 0 ? Math.round((gpaSum / gpaCount) * 100) / 100 : 0,
+        indicatorPassed,
+        indicatorFailed,
+        indicatorPassPct: n > 0 ? Math.round((indicatorPassed / n) * 100) : 0,
+      });
+    });
+
+    return result.sort((a, b) => a.room.localeCompare(b.room, 'th'));
+  }, [rows, selectedCourse.room]);
+
   const obecComplianceRows = useMemo(() => {
     const hasIndicators = indicatorSets.length > 0;
     const has3Units = indicatorSets.length >= 3;
@@ -967,6 +1033,46 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* 1.3 Classroom Summary Table: Room GPA & Indicator Pass/Fail from GradeRecord */}
+              {roomSummaryRows.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] border-collapse border border-slate-700 text-center tabular-nums">
+                    <thead>
+                      <tr className="bg-slate-100 font-bold text-slate-900">
+                        <th className="border border-slate-600 px-2.5 py-1.5 text-left">
+                          ๑.๓ สรุปผลรวมทั้งห้องเรียน (คำนวณ GPA รายห้องและผ่าน/ไม่ผ่านตัวชี้วัดจาก GradeRecord)
+                        </th>
+                        <th className="border border-slate-600 px-2 py-1.5">จำนวนนักเรียน</th>
+                        <th className="border border-slate-600 px-2 py-1.5">คะแนนเฉลี่ยรวม</th>
+                        <th className="border border-slate-600 px-2 py-1.5">เกรดเฉลี่ยรายห้อง (GPA)</th>
+                        <th className="border border-slate-600 px-2 py-1.5 bg-emerald-50">ผ่านตัวชี้วัด (คน / %)</th>
+                        <th className="border border-slate-600 px-2 py-1.5 bg-rose-50">ไม่ผ่านตัวชี้วัด (คน / %)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {roomSummaryRows.map((rm) => (
+                        <tr key={rm.room}>
+                          <td className="border border-slate-600 px-2.5 py-1.5 text-left font-bold">
+                            ห้อง {rm.room}
+                          </td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono">{rm.studentCount} คน</td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono">{rm.avgScore.toFixed(1)}</td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold">
+                            {rm.avgGpa.toFixed(2)}
+                          </td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold text-emerald-900 bg-emerald-50/60">
+                            {rm.indicatorPassed} คน ({rm.indicatorPassPct}%)
+                          </td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold text-rose-800 bg-rose-50/60">
+                            {rm.indicatorFailed} คน ({100 - rm.indicatorPassPct}%)
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* Part 2: Complete Student Score, Attendance & Evaluation Roster */}

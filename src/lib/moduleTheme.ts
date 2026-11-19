@@ -16,6 +16,7 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   dashboard: 'tone-1',
   executive_monitor: 'tone-1',
   obec_executive_dashboard: 'tone-1',
+  pp6_executive_dashboard: 'tone-1',
   students: 'tone-1',
   teachers: 'tone-1',
   courses: 'tone-1',

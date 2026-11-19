@@ -92,6 +92,7 @@ import { ExecutiveMonitorView } from './ExecutiveMonitorView';
 import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
 import { StudentDesktopDashboard } from '../components/student/StudentDesktopDashboard';
 import { ObecLearningAreaExecutiveDashboard } from '../components/ObecLearningAreaExecutiveDashboard';
+import { Pp6ExecutiveQualityDashboard } from '../components/Pp6ExecutiveQualityDashboard';
 
 export type DashboardSubTab =
   | 'overview'
@@ -99,6 +100,7 @@ export type DashboardSubTab =
   | 'live_attendance'
   | 'executive_monitor'
   | 'obec_learning_areas'
+  | 'pp6_quality_overview'
   | 'early_warning'
   | 'innovative_hub'
   | 'announcements';
@@ -139,6 +141,9 @@ interface DashboardViewProps {
   initialSubTab?: DashboardSubTab;
   onSelectStudent?: (student: Student) => void;
   onOpenGradebookCourse?: (courseId?: string) => void;
+  onOpenStudentDevBook?: (studentId: string) => void;
+  onOpenStudentPp6?: (studentId: string) => void;
+  onOpenPp5Summary?: () => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
 }
@@ -174,6 +179,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   initialSubTab,
   onSelectStudent,
   onOpenGradebookCourse,
+  onOpenStudentDevBook,
+  onOpenStudentPp6,
+  onOpenPp5Summary,
   focusMode: controlledFocusMode,
   onToggleFocusMode,
 }) => {
@@ -205,6 +213,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (!candidate) return 'overview';
     if (candidate === 'executive_monitor' && !canViewExecutiveMonitor) return 'overview';
     if (candidate === 'obec_learning_areas' && !canViewExecutiveMonitor) return 'overview';
+    if (candidate === 'pp6_quality_overview' && !canViewExecutiveMonitor) return 'overview';
     if (candidate === 'early_warning' && !canViewEarlyWarning) return 'overview';
     return candidate;
   };
@@ -734,7 +743,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h1 className="type-page-title truncate">
             {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
           </h1>
-          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'early_warning' && (
+          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
             <button
               type="button"
               onClick={() => setDashboardTab('overview')}
@@ -787,6 +796,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 className="seg-tab-btn whitespace-nowrap shrink-0"
               >
                 {lang === 'th' ? 'กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}
+              </button>
+            )}
+
+            {canViewExecutiveMonitor && (
+              <button
+                type="button"
+                data-active={dashboardTab === 'pp6_quality_overview'}
+                onClick={() => setDashboardTab('pp6_quality_overview')}
+                className="seg-tab-btn whitespace-nowrap shrink-0"
+              >
+                {lang === 'th' ? 'ภาพรวม ปพ.6 (ผู้บริหาร)' : 'OBEC Pp.6 Overview'}
               </button>
             )}
 
@@ -1963,6 +1983,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   onNavigate('gradebook');
                 }
               }}
+            />
+          </div>
+        )}
+
+        {/* UNIFIED LENS: EXECUTIVE PP.6 STUDENT QUALITY OVERVIEW */}
+        {dashboardTab === 'pp6_quality_overview' && canViewExecutiveMonitor && (
+          <div className="animate-in fade-in duration-150">
+            <Pp6ExecutiveQualityDashboard
+              students={students}
+              courses={courses}
+              grades={grades}
+              attendance={attendance}
+              periodAttendance={periodAttendance}
+              timetableSlots={timetableSlots}
+              systemConfig={systemConfig}
+              school={school}
+              lang={lang}
+              onOpenStudentDevBook={onOpenStudentDevBook}
+              onOpenStudentPp6={onOpenStudentPp6}
+              onOpenPp5Summary={onOpenPp5Summary}
             />
           </div>
         )}
