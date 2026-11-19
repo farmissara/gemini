@@ -16,6 +16,10 @@ export interface ExpiringPeriodQrSession {
   token: string;
   shortCode: string;
   url: string;
+  roomLabel?: string;
+  classroomLat?: number;
+  classroomLng?: number;
+  classroomRadiusMeters?: number;
   revokedAt?: number;
 }
 
@@ -41,6 +45,10 @@ export function buildExpiringPeriodQrSession(params: {
   date: string;
   checkType: AttendanceCheckType;
   ttlMinutes: number;
+  roomLabel?: string;
+  classroomLat?: number;
+  classroomLng?: number;
+  classroomRadiusMeters?: number;
 }): ExpiringPeriodQrSession {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + Math.max(1, params.ttlMinutes) * 60_000;
@@ -66,6 +74,20 @@ export function buildExpiringPeriodQrSession(params: {
     type: params.checkType,
   });
 
+  if (
+    params.classroomLat !== undefined &&
+    params.classroomLng !== undefined &&
+    Number.isFinite(params.classroomLat) &&
+    Number.isFinite(params.classroomLng)
+  ) {
+    search.set('clat', String(Number(params.classroomLat).toFixed(6)));
+    search.set('clng', String(Number(params.classroomLng).toFixed(6)));
+    search.set('crad', String(Math.max(15, Math.round(params.classroomRadiusMeters || 50))));
+    if (params.roomLabel) {
+      search.set('croom', params.roomLabel);
+    }
+  }
+
   return {
     id: `pqr-${issuedAt}-${nonce}`,
     schoolId: params.schoolId,
@@ -81,6 +103,10 @@ export function buildExpiringPeriodQrSession(params: {
     expiresAt,
     token,
     shortCode,
+    roomLabel: params.roomLabel,
+    classroomLat: params.classroomLat,
+    classroomLng: params.classroomLng,
+    classroomRadiusMeters: params.classroomRadiusMeters,
     url: `${origin}/?${search.toString()}`,
   };
 }

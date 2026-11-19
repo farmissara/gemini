@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   Building2,
+  Camera,
   CheckCheck,
   CheckCircle2,
   Clock,
@@ -11,6 +12,7 @@ import {
   Inbox,
   Mail,
   MessageSquare,
+  Monitor,
   Paperclip,
   RefreshCw,
   Search,
@@ -18,6 +20,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import {
   AdminCoordinationAttachment,
   AdminCoordinationMessage,
@@ -72,6 +75,9 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [noticeMsg, setNoticeMsg] = useState<string | null>(null);
+  const [isCapturingScreen, setIsCapturingScreen] = useState(false);
+  const [showCameraCaptureModal, setShowCameraCaptureModal] = useState(false);
+  const [previewImageAttachment, setPreviewImageAttachment] = useState<AdminCoordinationAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -206,6 +212,108 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [activeSchool.id, filterType, isSuperAdmin, messages, searchQuery, selectedSchoolId]);
+
+  const appendDataUrlAsAttachment = (dataUrl: string, prefix: string) => {
+    const base64Part = dataUrl.split(',')[1] || '';
+    const estimatedBytes = Math.round((base64Part.length * 3) / 4);
+    if (estimatedBytes > 4 * 1024 * 1024) {
+      setErrorMsg('ภาพที่แคปเจอร์มีขนาดเกิน 4 MB กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+    const mimeMatch = /^data:([^;]+);base64,/.exec(dataUrl);
+    const mimeType = mimeMatch?.[1] || 'image/jpeg';
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const newAtt: AdminCoordinationAttachment = {
+      id: `att-cap-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: `${prefix}-${stamp}.${ext}`,
+      size: estimatedBytes,
+      mimeType,
+      dataUrl,
+    };
+    setAttachments((prev) => [...prev, newAtt].slice(0, 5));
+    setNoticeMsg('แคปเจอร์และแนบภาพเรียบร้อยแล้ว พร้อมส่งให้ Super Admin');
+    window.setTimeout(() => setNoticeMsg(null), 3500);
+  };
+
+  const handleCaptureScreen = async () => {
+    setErrorMsg(null);
+    if (attachments.length >= 5) {
+      setErrorMsg('แนบไฟล์ได้สูงสุด 5 ไฟล์ต่อข้อความ กรุณาลบไฟล์เดิมก่อนแคปเจอร์ใหม่');
+      return;
+    }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+      setErrorMsg(
+        'เบราว์เซอร์หรืออุปกรณ์นี้ไม่รองรับการแคปเจอร์หน้าจอโดยตรง กรุณาใช้ปุ่ม "ถ่ายภาพจากกล้อง" หรือกด Ctrl+V วางภาพหน้าจอแทน'
+      );
+      return;
+    }
+
+    setIsCapturingScreen(true);
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 15 } },
+        audio: false,
+      });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.muted = true;
+      await video.play();
+
+      // Wait briefly for the first rendered video frame
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+
+      const sourceW = video.videoWidth || 1280;
+      const sourceH = video.videoHeight || 720;
+      const maxWidth = 1440;
+      const scale = sourceW > maxWidth ? maxWidth / sourceW : 1;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(sourceW * scale));
+      canvas.height = Math.max(1, Math.round(sourceH * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('ไม่สามารถประมวลผลภาพหน้าจอได้');
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
+      appendDataUrlAsAttachment(dataUrl, 'screen-capture');
+    } catch (err: unknown) {
+      const errName = err instanceof Error ? err.name : '';
+      if (errName !== 'AbortError' && errName !== 'NotAllowedError') {
+        setErrorMsg(
+          'ไม่สามารถแคปเจอร์หน้าจอได้ในขณะนี้ สามารถใช้ปุ่ม "ถ่ายภาพจากกล้อง" หรือวางภาพจากคลิปบอร์ด (Ctrl+V) แทนได้'
+        );
+      }
+    } finally {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      setIsCapturingScreen(false);
+    }
+  };
+
+  const handlePasteScreenshot = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          try {
+            const att = await readFileAsCoordinationAttachment(file);
+            setAttachments((prev) => [...prev, att].slice(0, 5));
+            setNoticeMsg('วางภาพจากคลิปบอร์ดแนบในข้อความเรียบร้อยแล้ว');
+            window.setTimeout(() => setNoticeMsg(null), 3000);
+          } catch (err) {
+            setErrorMsg(err instanceof Error ? err.message : 'ไม่สามารถวางภาพแนบได้');
+          }
+        }
+      }
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -600,11 +708,18 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
                                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs max-w-full"
                               >
                                 {isImage && att.dataUrl ? (
-                                  <img
-                                    src={att.dataUrl}
-                                    alt={att.name}
-                                    className="w-8 h-8 rounded object-cover border border-[var(--color-border)] shrink-0"
-                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewImageAttachment(att)}
+                                    className="shrink-0 cursor-pointer"
+                                    title="คลิกดูภาพขนาดเต็ม"
+                                  >
+                                    <img
+                                      src={att.dataUrl}
+                                      alt={att.name}
+                                      className="w-10 h-10 rounded object-cover border border-[var(--color-border)] hover:opacity-90"
+                                    />
+                                  </button>
                                 ) : (
                                   <FileText className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
                                 )}
@@ -741,17 +856,18 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
             </label>
 
             <label className="block space-y-1 text-xs font-bold text-[var(--color-text-body)]">
-              <span>รายละเอียดข้อความ</span>
+              <span>รายละเอียดข้อความ (สามารถกด Ctrl+V วางภาพแคปเจอร์หน้าจอได้ทันที)</span>
               <textarea
                 rows={4}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="พิมพ์รายละเอียดที่ต้องการประสานงาน..."
+                onPaste={handlePasteScreenshot}
+                placeholder="พิมพ์รายละเอียดที่ต้องการประสานงาน หรือวางภาพแคปเจอร์หน้าจอที่นี่..."
                 className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)] resize-y"
               />
             </label>
 
-            {/* Attachment Picker */}
+            {/* Attachment & Capture Picker (Requirement 6) */}
             <div className="space-y-2">
               <input
                 ref={fileInputRef}
@@ -761,7 +877,27 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => void handleCaptureScreen()}
+                  disabled={isCapturingScreen || attachments.length >= 5}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-xs font-bold text-blue-900 dark:text-blue-200 cursor-pointer disabled:opacity-50"
+                  title="แคปเจอร์ภาพหน้าจอเพื่อส่งข้อมูลให้ Super Admin"
+                >
+                  <Monitor className="w-3.5 h-3.5 shrink-0" />
+                  <span>{isCapturingScreen ? 'กำลัง Capture ภาพ...' : 'Capture หน้าจอ'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCameraCaptureModal(true)}
+                  disabled={attachments.length >= 5}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-xs font-bold text-emerald-900 dark:text-emerald-200 cursor-pointer disabled:opacity-50"
+                  title="เปิดกล้องถ่ายภาพหรืออัปโหลดภาพส่งให้ Super Admin"
+                >
+                  <Camera className="w-3.5 h-3.5 shrink-0" />
+                  <span>Capture ภาพจากกล้อง</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -770,10 +906,10 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
                   <Paperclip className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                   <span>แนบไฟล์เอกสาร / รูปภาพ</span>
                 </button>
-                <span className="text-[10px] text-[var(--color-text-muted)]">
-                  รองรับ PDF, Word, Excel, CSV, รูปภาพ (ไม่เกิน 4 MB/ไฟล์, สูงสุด 5 ไฟล์)
-                </span>
               </div>
+              <p className="text-[10px] text-[var(--color-text-muted)]">
+                รองรับ Capture หน้าจอ, ถ่ายภาพจากกล้อง, Ctrl+V วางภาพ, PDF, Word, Excel, CSV (ไม่เกิน 4 MB/ไฟล์, สูงสุด 5 ไฟล์)
+              </p>
 
               {attachments.length > 0 && (
                 <div className="space-y-1.5">
@@ -783,7 +919,20 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
                       className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        {att.mimeType.startsWith('image/') ? (
+                        {att.mimeType.startsWith('image/') && att.dataUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImageAttachment(att)}
+                            className="shrink-0 cursor-pointer"
+                            title="คลิกดูภาพขนาดเต็ม"
+                          >
+                            <img
+                              src={att.dataUrl}
+                              alt={att.name}
+                              className="w-8 h-8 rounded object-cover border border-[var(--color-border)]"
+                            />
+                          </button>
+                        ) : att.mimeType.startsWith('image/') ? (
                           <ImageIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                         ) : (
                           <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -824,6 +973,67 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
           </form>
         </div>
       </div>
+
+      {/* Camera Capture Modal for Super Admin Messages */}
+      <ImageCaptureUploadModal
+        isOpen={showCameraCaptureModal}
+        title="Capture ภาพจากกล้องหรืออัปโหลดส่งให้ Super Admin"
+        onSelectImage={(imageUrl) => {
+          if (imageUrl.startsWith('data:')) {
+            appendDataUrlAsAttachment(imageUrl, 'camera-capture');
+          } else {
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            setAttachments((prev) =>
+              [
+                ...prev,
+                {
+                  id: `att-url-${Date.now()}`,
+                  name: `captured-image-${stamp}.jpg`,
+                  size: 1024,
+                  mimeType: 'image/jpeg',
+                  dataUrl: imageUrl,
+                },
+              ].slice(0, 5)
+            );
+          }
+          setShowCameraCaptureModal(false);
+        }}
+        onClose={() => setShowCameraCaptureModal(false)}
+      />
+
+      {/* Full-size Image Preview Modal */}
+      {previewImageAttachment && previewImageAttachment.dataUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs"
+          onClick={() => setPreviewImageAttachment(null)}
+        >
+          <div
+            className="max-w-3xl w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                {previewImageAttachment.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewImageAttachment(null)}
+                className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                aria-label="ปิดตัวอย่างภาพ"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-[75vh] overflow-auto rounded-xl bg-black/90 flex items-center justify-center">
+              <img
+                src={previewImageAttachment.dataUrl}
+                alt={previewImageAttachment.name}
+                className="max-h-[72vh] w-auto object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

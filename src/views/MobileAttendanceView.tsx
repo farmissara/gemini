@@ -44,7 +44,9 @@ import {
   Settings,
   Building2,
   Briefcase,
-  HeartPulse
+  HeartPulse,
+  LocateFixed,
+  SmartphoneOff
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
@@ -79,7 +81,8 @@ import {
   LeaveType,
   LeaveStatus,
   SchoolPeriodTime,
-  UserRole
+  UserRole,
+  ClassroomGpsConfig
 } from '../types';
 import { PagedList } from '../components/PagedList';
 import { ContinuousRapidScannerModal } from '../components/modals/ContinuousRapidScannerModal';
@@ -92,8 +95,20 @@ import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/co
 import {
   buildPrimaryGateFromSchool,
   calculateHaversineDistanceMeters,
+  isValidCoordinatePair,
   sanitizeSchoolCampusGates,
 } from '../lib/schoolGps';
+import {
+  checkDistanceToClassroomGps,
+  findClassroomGpsConfig,
+  saveClassroomGpsConfig,
+} from '../lib/classroomGps';
+import {
+  detectTeacherApprovalRoleForLeave,
+  enrichLeaveRequestForDualApproval,
+  resolveStudentLeaveApprovers,
+  type LeaveApprovalScope,
+} from '../lib/leaveApprovalRouting';
 import {
   formatNfcUidDisplay,
   getNdefReaderConstructor,
@@ -154,7 +169,7 @@ interface MobileAttendanceViewProps {
   ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
   onAddLeaveRequest?: (req: LeaveRequest) => void;
-  onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string) => void;
+  onUpdateLeaveStatus?: (reqId: string, status: LeaveStatus, remarks?: string, scope?: LeaveApprovalScope) => void;
   initialSubTab?: 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
   embeddedMobile?: boolean;
   initialPeriodCourseId?: string;
@@ -578,6 +593,102 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     initialPeriodCheckType || 'check_in'
   );
 
+  // Classroom GPS config for Period Check-in (Requirement 1)
+  const [classroomGps, setClassroomGps] = useState<ClassroomGpsConfig | null>(() =>
+    findClassroomGpsConfig(activeSchoolId, {
+      courseId: selectedCourse.id,
+      room: selectedCourse.room,
+    })
+  );
+  const [roomLatInput, setRoomLatInput] = useState<string>(() =>
+    classroomGps ? classroomGps.lat.toFixed(6) : ''
+  );
+  const [roomLngInput, setRoomLngInput] = useState<string>(() =>
+    classroomGps ? classroomGps.lng.toFixed(6) : ''
+  );
+  const [roomRadiusInput, setRoomRadiusInput] = useState<number>(() =>
+    classroomGps?.radiusMeters ?? 40
+  );
+  const [isLocatingRoom, setIsLocatingRoom] = useState(false);
+  const [roomGpsNotice, setRoomGpsNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [periodRosterFilter, setPeriodRosterFilter] = useState<'all' | 'unchecked' | 'proxy' | 'mobile'>('all');
+  const [periodRosterSearch, setPeriodRosterSearch] = useState('');
+
+  useEffect(() => {
+    const found = findClassroomGpsConfig(activeSchoolId, {
+      courseId: selectedCourse.id,
+      room: selectedCourse.room,
+    });
+    setClassroomGps(found);
+    setRoomLatInput(found ? found.lat.toFixed(6) : '');
+    setRoomLngInput(found ? found.lng.toFixed(6) : '');
+    setRoomRadiusInput(found?.radiusMeters ?? 40);
+    setRoomGpsNotice(null);
+  }, [activeSchoolId, selectedCourse.id, selectedCourse.room]);
+
+  const handleDetectRoomGps = () => {
+    if (!navigator.geolocation) {
+      setRoomGpsNotice({ type: 'err', text: 'เบราว์เซอร์ไม่รองรับการอ่านพิกัด GPS' });
+      return;
+    }
+    setIsLocatingRoom(true);
+    setRoomGpsNotice(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setRoomLatInput(lat.toFixed(6));
+        setRoomLngInput(lng.toFixed(6));
+        const saved = saveClassroomGpsConfig(activeSchoolId, {
+          courseId: selectedCourse.id,
+          courseCode: selectedCourse.code,
+          room: selectedCourse.room || selectedCourse.code || 'ห้องเรียน',
+          lat,
+          lng,
+          radiusMeters: roomRadiusInput || 40,
+          updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
+        });
+        setClassroomGps(saved);
+        setIsLocatingRoom(false);
+        setRoomGpsNotice({
+          type: 'ok',
+          text: `บันทึกพิกัดห้อง ${saved.room} สำเร็จ (${lat.toFixed(5)}, ${lng.toFixed(5)} · รัศมี ${saved.radiusMeters} ม.)`,
+        });
+      },
+      () => {
+        setIsLocatingRoom(false);
+        setRoomGpsNotice({
+          type: 'err',
+          text: 'อ่านพิกัด GPS ไม่สำเร็จ กรุณาอนุญาตตำแหน่ง (Location) หรือกรอก Lat/Lng ด้วยตนเอง',
+        });
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
+
+  const handleSaveManualRoomGps = () => {
+    const lat = Number(roomLatInput.trim());
+    const lng = Number(roomLngInput.trim());
+    if (!isValidCoordinatePair(lat, lng)) {
+      setRoomGpsNotice({ type: 'err', text: 'พิกัด Lat / Lng ไม่ถูกต้อง กรุณากรอกค่าละติจูด/ลองจิจูดให้ครบถ้วน' });
+      return;
+    }
+    const saved = saveClassroomGpsConfig(activeSchoolId, {
+      courseId: selectedCourse.id,
+      courseCode: selectedCourse.code,
+      room: selectedCourse.room || selectedCourse.code || 'ห้องเรียน',
+      lat,
+      lng,
+      radiusMeters: Math.max(15, Math.min(300, Number(roomRadiusInput) || 40)),
+      updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
+    });
+    setClassroomGps(saved);
+    setRoomGpsNotice({
+      type: 'ok',
+      text: `บันทึกพิกัดห้อง ${saved.room} แล้ว (รัศมี ${saved.radiusMeters} ม.)`,
+    });
+  };
+
   // Teacher hourly/period leave state
   const [leaveScope, setLeaveScope] = useState<'full_day' | 'period_hourly'>('full_day');
   const [leavePeriodNum, setLeavePeriodNum] = useState<number>(1);
@@ -894,15 +1005,28 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     );
   };
 
-  // Automatically read real device GPS when entering Selfie Check-in or when real school gates finish loading
+  // Automatically read real device GPS when entering Selfie Check-in or Student Period Check-in
   useEffect(() => {
     if (subTab === 'selfie_mobile' && normalizedGates.length > 0) {
       handleRefreshGps();
+    } else if (subTab === 'period_checkin' && isRestrictedViewer && navigator.geolocation) {
+      setIsGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setRealGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setGpsError(null);
+          setIsGpsLoading(false);
+        },
+        () => {
+          setIsGpsLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
+      );
     } else if (normalizedGates.length === 0) {
       setCurrentGpsDistance(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subTab, normalizedGates.length, _school?.id]);
+  }, [subTab, normalizedGates.length, _school?.id, isRestrictedViewer]);
 
   // Recalculate exact distance whenever the user switches to a different real gate
   useEffect(() => {
@@ -1095,11 +1219,30 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       return;
     }
 
+    const resolvedLeaveUserRole: 'student' | 'teacher' = isSelfCheckin
+      ? loggedInProfile.userType === 'student'
+        ? 'student'
+        : 'teacher'
+      : effectiveUserType;
+    const leaveTargetStudent =
+      resolvedLeaveUserRole === 'student'
+        ? students.find((s) => s.id === targetLeaveUserId) || selectedStudent || ownStudent
+        : undefined;
+    const dualApprovers =
+      resolvedLeaveUserRole === 'student'
+        ? resolveStudentLeaveApprovers({
+            student: leaveTargetStudent,
+            teachers,
+            courses,
+            courseId: leaveScope === 'period_hourly' ? leaveCourseId : undefined,
+          })
+        : null;
+
     const newLeave: LeaveRequest = {
       id: `leave-${Date.now()}`,
       userId: targetLeaveUserId,
       userName: isSelfCheckin ? loggedInProfile.userName : activePersonName,
-      userRole: isSelfCheckin ? (loggedInProfile.userType === 'student' ? 'student' : 'teacher') : effectiveUserType,
+      userRole: resolvedLeaveUserRole,
       gradeLevelOrDepartment: isSelfCheckin ? loggedInProfile.departmentOrRoom : activeDepartmentOrRoom,
       leaveType,
       leaveScope,
@@ -1109,7 +1252,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       courseTitle: leaveScope === 'period_hourly' ? (selectedCourseObj?.titleTh || selectedCourseObj?.titleEn) : undefined,
       substituteTeacherId: leaveScope === 'period_hourly' ? leaveSubstituteTeacherId : undefined,
       substituteTeacherName: leaveScope === 'period_hourly' ? (substituteTeacherObj?.fullNameTh || 'ระบุครูสอนแทนแล้ว') : undefined,
-      ccEmailsOrRoles: leaveScope === 'period_hourly' ? (leaveCcRoles || 'ฝ่ายวิชาการ, หัวหน้ากลุ่มสาระฯ') : undefined,
+      ccEmailsOrRoles:
+        resolvedLeaveUserRole === 'student' && dualApprovers
+          ? `ครูประจำชั้น: ${dualApprovers.homeroomTeacherName} | ครูประจำวิชา: ${dualApprovers.subjectTeacherNames.join(', ')}`
+          : leaveScope === 'period_hourly'
+            ? (leaveCcRoles || 'ฝ่ายวิชาการ, หัวหน้ากลุ่มสาระฯ')
+            : undefined,
+      homeroomTeacherName: dualApprovers?.homeroomTeacherName,
+      homeroomApprovalStatus: dualApprovers ? 'pending' : undefined,
+      subjectTeacherNames: dualApprovers?.subjectTeacherNames,
+      subjectApprovals: dualApprovers?.subjectApprovals,
       startDate: leaveStartDate,
       endDate: leaveScope === 'period_hourly' ? leaveStartDate : leaveEndDate,
       reason: leaveScope === 'period_hourly' && leaveMissionNumber
@@ -1124,25 +1276,35 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       onAddLeaveRequest(newLeave);
     }
 
-    // Send push notification alert to substitute teacher and academic head
+    // Send push notification alert to substitute teacher / homeroom + subject teachers
     if (leaveScope === 'period_hourly') {
       sendEduVerseNotification({
-        title: `📋 แจ้งเตือนครูลาสอนรายคาบ: ${newLeave.userName}`,
+        title: `📋 แจ้งเตือน${resolvedLeaveUserRole === 'student' ? 'นักเรียนลาเรียนรายคาบ' : 'ครูลาสอนรายคาบ'}: ${newLeave.userName}`,
         body: `ลาคาบที่ ${leavePeriodNum} (${newLeave.courseCode || 'วิชาเรียน'}) ${newLeave.substituteTeacherName ? `มอบหมายสอนแทน: ${newLeave.substituteTeacherName}` : ''} | CC: ${newLeave.ccEmailsOrRoles || 'วิชาการ'}`,
+        category: 'announcement',
+        priority: 'urgent',
+      }).catch(() => {});
+    } else if (resolvedLeaveUserRole === 'student' && dualApprovers) {
+      sendEduVerseNotification({
+        title: `📩 คำขอใบลานักเรียนใหม่: ${newLeave.userName}`,
+        body: `ส่งอนุมัติทั้งครูประจำชั้น (${dualApprovers.homeroomTeacherName}) และครูประจำวิชา (${dualApprovers.subjectTeacherNames.slice(0, 3).join(', ')})`,
         category: 'announcement',
         priority: 'urgent',
       }).catch(() => {});
     }
 
     setLeaveSuccessNotice(
-      leaveScope === 'period_hourly'
-        ? `ส่งใบลาสอนคาบที่ ${leavePeriodNum} (${newLeave.courseCode}) เรียบร้อยแล้ว ระบบได้แจ้งเตือนครูผู้สอนแทน (${newLeave.substituteTeacherName || '-'}) และ CC บุคลากรที่เกี่ยวข้องแล้ว`
-        : `ส่งใบ${leaveType === 'sick' ? 'ลาป่วย' : leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}เรียบร้อยแล้ว รอครูประจำชั้นหรือฝ่ายวิชาการอนุมัติ`
+      resolvedLeaveUserRole === 'student' && dualApprovers
+        ? `ส่งใบ${leaveType === 'sick' ? 'ลาป่วย' : leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}เรียบร้อยแล้ว — ส่งอนุมัติทั้งครูประจำชั้น (${dualApprovers.homeroomTeacherName}) และครูประจำวิชา (${dualApprovers.subjectTeacherNames.length} ท่าน) แล้ว`
+        : leaveScope === 'period_hourly'
+          ? `ส่งใบลาสอนคาบที่ ${leavePeriodNum} (${newLeave.courseCode}) เรียบร้อยแล้ว ระบบได้แจ้งเตือนครูผู้สอนแทน (${newLeave.substituteTeacherName || '-'}) และ CC บุคลากรที่เกี่ยวข้องแล้ว`
+          : `ส่งใบ${leaveType === 'sick' ? 'ลาป่วย' : leaveType === 'personal' ? 'ลากิจ' : 'ไปราชการ'}เรียบร้อยแล้ว รอครูประจำชั้นและครูประจำวิชาอนุมัติ`
     );
     setLeaveReason('');
     setLeaveAttachmentUrl('');
     setLeaveMissionNumber('');
-    setTimeout(() => setLeaveSuccessNotice(null), 5000);
+    setLeaveFormStep(1);
+    setTimeout(() => setLeaveSuccessNotice(null), 6000);
   };
 
   // Periods list (driven by school admin period configuration)
@@ -1223,12 +1385,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setTimeout(() => setProxySavedNotification(null), 5000);
   };
 
-  // Period Check-in Code + Shareable Link (QR Code & URL)
+  // Period Check-in Code + Shareable Link (QR Code & URL with Classroom GPS)
   const expectedPeriodCode = `${selectedCourse.code || 'GEN-101'}-P${selectedPeriod}-${periodDate.replace(/-/g, '')}`;
+  const periodClassroomGpsParams = classroomGps
+    ? `&clat=${classroomGps.lat.toFixed(6)}&clng=${classroomGps.lng.toFixed(6)}&crad=${classroomGps.radiusMeters}&croom=${encodeURIComponent(classroomGps.room)}`
+    : '';
   const periodCheckinUrl =
     typeof window !== 'undefined'
-      ? `${window.location.origin}/?tab=mobile_checkin&subTab=period_checkin&courseId=${encodeURIComponent(selectedCourse.id)}&period=${selectedPeriod}&date=${encodeURIComponent(periodDate)}&code=${encodeURIComponent(expectedPeriodCode)}`
-      : `https://eduverse.school/?tab=mobile_checkin&subTab=period_checkin&courseId=${encodeURIComponent(selectedCourse.id)}&period=${selectedPeriod}&date=${encodeURIComponent(periodDate)}&code=${encodeURIComponent(expectedPeriodCode)}`;
+      ? `${window.location.origin}/?tab=mobile_checkin&subTab=period_checkin&courseId=${encodeURIComponent(selectedCourse.id)}&period=${selectedPeriod}&date=${encodeURIComponent(periodDate)}&code=${encodeURIComponent(expectedPeriodCode)}${periodClassroomGpsParams}`
+      : `https://eduverse.school/?tab=mobile_checkin&subTab=period_checkin&courseId=${encodeURIComponent(selectedCourse.id)}&period=${selectedPeriod}&date=${encodeURIComponent(periodDate)}&code=${encodeURIComponent(expectedPeriodCode)}${periodClassroomGpsParams}`;
 
   const handleCopyPeriodLink = async () => {
     try {
@@ -1241,6 +1406,50 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       setPeriodQrCopied(true);
       setTimeout(() => setPeriodQrCopied(false), 3000);
     }
+  };
+
+  // Requirement 3: Instant 1-tap teacher proxy check-in for students without mobile phones
+  const handleTeacherProxyPeriodCheckin = (
+    student: Student,
+    status: 'present' | 'late' | 'absent' | 'excused' = 'present',
+    isNoPhoneProxy = false
+  ) => {
+    const currentPeriodInfo = periodsList.find((p) => p.period === selectedPeriod);
+    const existing = periodAttendance.find(
+      (p) =>
+        p.studentId === student.id &&
+        p.courseId === selectedCourse.id &&
+        p.date === periodDate &&
+        p.periodNumber === selectedPeriod
+    );
+    const record: PeriodAttendanceRecord = {
+      id: existing?.id || `patt-proxy-${Date.now()}-${student.id}`,
+      schoolId: selectedCourse.schoolId || activeSchoolId,
+      courseId: selectedCourse.id,
+      courseCode: selectedCourse.code || 'GEN-101',
+      periodNumber: selectedPeriod,
+      timeSlot: currentPeriodInfo?.time || '08:30 - 09:20',
+      date: periodDate,
+      studentId: student.id,
+      status,
+      recordType: periodCheckType,
+      verifiedByTeacherId: currentUser?.id || 'usr-teacher',
+      verifiedByTeacherName:
+        currentUser?.fullNameTh || currentUser?.fullNameEn || selectedCourse.teacherName || 'ครูผู้สอน',
+      checkMethod: 'teacher_proxy',
+      remarks: isNoPhoneProxy
+        ? `ครูกดรับเช็คชื่อแทน (นักเรียนไม่มีมือถือ) คาบที่ ${selectedPeriod}`
+        : `ครูบันทึกเช็คชื่อคาบที่ ${selectedPeriod} (${selectedCourse.code})`,
+    };
+    onRecordPeriodAttendance([record]);
+    setPeriodStatuses((prev) => ({ ...prev, [student.id]: status }));
+    playChime();
+    setPeriodSavedNotification(
+      isNoPhoneProxy
+        ? `ครูกดรับเช็คชื่อแทน ${student.firstNameTh} ${student.lastNameTh} (ไม่มีมือถือ) คาบที่ ${selectedPeriod} เรียบร้อยแล้ว`
+        : `บันทึกสถานะ ${student.firstNameTh} ${student.lastNameTh} คาบที่ ${selectedPeriod} แล้ว`
+    );
+    setTimeout(() => setPeriodSavedNotification(null), 4000);
   };
 
   const handleStudentSelfPeriodCheckin = (overrideCode?: string) => {
@@ -1260,6 +1469,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     let resolvedExpiresAt: number | null = initialPeriodExpiresAt ?? null;
     let resolvedToken: string | null = initialPeriodToken ?? null;
     let resolvedCheckType: 'check_in' | 'check_out' = periodCheckType;
+    let urlRoomLat: number | null = null;
+    let urlRoomLng: number | null = null;
+    let urlRoomRadius: number | null = null;
+    let urlRoomName: string | null = null;
+
+    if (typeof window !== 'undefined') {
+      const currentParams = new URLSearchParams(window.location.search);
+      const pLat = Number(currentParams.get('clat'));
+      const pLng = Number(currentParams.get('clng'));
+      const pRad = Number(currentParams.get('crad'));
+      const pRoom = currentParams.get('croom');
+      if (isValidCoordinatePair(pLat, pLng)) {
+        urlRoomLat = pLat;
+        urlRoomLng = pLng;
+        urlRoomRadius = !Number.isNaN(pRad) && pRad > 0 ? pRad : 40;
+        urlRoomName = pRoom || null;
+      }
+    }
 
     if (rawInput) {
       try {
@@ -1272,6 +1499,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           const qExp = parsed.searchParams.get('exp');
           const qToken = parsed.searchParams.get('token');
           const qType = parsed.searchParams.get('type');
+          const qClat = Number(parsed.searchParams.get('clat'));
+          const qClng = Number(parsed.searchParams.get('clng'));
+          const qCrad = Number(parsed.searchParams.get('crad'));
+          const qCroom = parsed.searchParams.get('croom');
           if (qCourse) resolvedCourseId = qCourse;
           if (qPeriod && !Number.isNaN(Number(qPeriod))) resolvedPeriodNum = Number(qPeriod);
           if (qDate) resolvedDate = qDate;
@@ -1279,9 +1510,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           if (qExp && !Number.isNaN(Number(qExp))) resolvedExpiresAt = Number(qExp);
           if (qToken) resolvedToken = qToken;
           if (qType === 'check_in' || qType === 'check_out') resolvedCheckType = qType;
+          if (isValidCoordinatePair(qClat, qClng)) {
+            urlRoomLat = qClat;
+            urlRoomLng = qClng;
+            urlRoomRadius = !Number.isNaN(qCrad) && qCrad > 0 ? qCrad : 40;
+            urlRoomName = qCroom || null;
+          }
         } else {
           resolvedCode = rawInput;
-          const activeSchoolId = _school?.id || currentUser?.schoolId || 'sch-1';
           const savedSession = loadSavedPeriodQrSessions(activeSchoolId).find(
             (s) =>
               s.shortCode.toUpperCase() === rawInput.toUpperCase() ||
@@ -1295,6 +1531,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             resolvedToken = savedSession.token;
             resolvedExpiresAt = savedSession.revokedAt ? 1 : savedSession.expiresAt;
             resolvedCheckType = savedSession.checkType;
+            if (
+              typeof savedSession.classroomLat === 'number' &&
+              typeof savedSession.classroomLng === 'number' &&
+              isValidCoordinatePair(savedSession.classroomLat, savedSession.classroomLng)
+            ) {
+              urlRoomLat = savedSession.classroomLat;
+              urlRoomLng = savedSession.classroomLng;
+              urlRoomRadius = savedSession.classroomRadiusMeters || 40;
+              urlRoomName = savedSession.roomLabel || null;
+            }
           } else {
             const matchingCourse = courses.find((c) => rawInput.toUpperCase().startsWith((c.code || '').toUpperCase()));
             if (matchingCourse) {
@@ -1313,7 +1559,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
 
     const tokenValidation = validatePeriodQrTokenState({
-      schoolId: _school?.id || currentUser?.schoolId || 'sch-1',
+      schoolId: activeSchoolId,
       token: resolvedToken,
       code: resolvedCode,
       expiresAt: resolvedExpiresAt,
@@ -1328,6 +1574,59 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
 
     const targetCourse = courses.find((c) => c.id === resolvedCourseId) || selectedCourse;
+
+    // Requirement 1: Validate Classroom GPS coordinates before accepting period check-in
+    const storedRoomGps = findClassroomGpsConfig(activeSchoolId, {
+      courseId: targetCourse.id,
+      room: targetCourse.room,
+    });
+    const effectiveRoomGps: ClassroomGpsConfig | null =
+      urlRoomLat !== null && urlRoomLng !== null
+        ? {
+            id: storedRoomGps?.id || `url-room-${targetCourse.id}`,
+            schoolId: activeSchoolId,
+            courseId: targetCourse.id,
+            courseCode: targetCourse.code,
+            room: urlRoomName || targetCourse.room || targetCourse.code || 'ห้องเรียน',
+            lat: urlRoomLat,
+            lng: urlRoomLng,
+            radiusMeters: urlRoomRadius || 40,
+            updatedAt: new Date().toISOString(),
+          }
+        : storedRoomGps;
+
+    if (!effectiveRoomGps) {
+      setStudentPeriodCheckinError(
+        `ยังไม่ได้ตั้งค่าพิกัด GPS ห้องเรียน (${targetCourse.room || targetCourse.code}) กรุณาแจ้งครูผู้สอนตั้งค่าพิกัดห้องเรียนก่อนเช็คชื่อรายคาบ`
+      );
+      return;
+    }
+
+    if (!realGpsCoords) {
+      if (navigator.geolocation) {
+        setIsGpsLoading(true);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setRealGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setIsGpsLoading(false);
+          },
+          () => setIsGpsLoading(false),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
+      setStudentPeriodCheckinError(
+        'ยังไม่ได้รับสัญญาณ GPS ปัจจุบันเพื่อตรวจสอบพิกัดห้องเรียน กรุณาอนุญาตตำแหน่ง (Location) แล้วกดเช็คชื่ออีกครั้ง'
+      );
+      return;
+    }
+
+    const roomGpsCheck = checkDistanceToClassroomGps(realGpsCoords, effectiveRoomGps);
+    if (!roomGpsCheck.inRange) {
+      setStudentPeriodCheckinError(
+        `อยู่นอกพิกัดห้องเรียน ${effectiveRoomGps.room} (ห่าง ${roomGpsCheck.distanceMeters.toLocaleString()} ม. เกินรัศมีที่กำหนด ${roomGpsCheck.radiusMeters} ม.) กรุณาเข้าห้องเรียนแล้วลองใหม่ หรือแจ้งครูผู้สอนหากไม่มีสัญญาณ`
+      );
+      return;
+    }
 
     // Strict validation: Must belong to targetCourse (enrolledStudentIds or room match)
     let isStudentEnrolledInClass = false;
@@ -1363,7 +1662,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       verifiedByTeacherId: 'qr-self-checkin',
       verifiedByTeacherName: targetCourse.teacherName || 'ระบบ Barcode/QR รายคาบ',
       checkMethod: 'qr_code',
-      remarks: `นักเรียนสแกน Barcode/QR ${actionLabel} (${resolvedCode})`,
+      remarks: `นักเรียนสแกน Barcode/QR ${actionLabel} (${resolvedCode}) · พิกัดห้อง ${effectiveRoomGps.room} (ห่าง ${roomGpsCheck.distanceMeters} ม.)`,
     };
 
     onRecordPeriodAttendance([record]);
@@ -1373,7 +1672,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setPeriodCheckType(resolvedCheckType);
     playChime();
     setStudentPeriodCheckinMsg(
-      `${resolvedCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} วันที่ ${resolvedDate} สำเร็จแล้ว!`
+      `${resolvedCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} ห้อง ${effectiveRoomGps.room} (ระยะ ${roomGpsCheck.distanceMeters} ม.) สำเร็จแล้ว!`
     );
     setTimeout(() => setStudentPeriodCheckinMsg(null), 5000);
   };
@@ -2218,16 +2517,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   />
                 )}
 
-                {/* Camera Switch Front/Back Button (สลับกล้องหน้า/หลัง) */}
-                {!capturedPhotoUrl && isCameraActive && (
+                {/* Refresh Camera Button (ย้ายสลับตำแหน่งมากับปุ่มสลับกล้องหน้า/หลัง) */}
+                {!capturedPhotoUrl && (
                   <button
                     type="button"
-                    onClick={handleToggleFacingMode}
+                    onClick={() => { void startCamera(); }}
                     className="absolute top-2 right-2 z-30 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white text-[11px] font-bold border border-white/20 shadow-lg flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto"
-                    title="สลับกล้องหน้า / กล้องหลัง (Switch Front / Back Camera)"
+                    title="เปิด / รีเฟรชกล้อง (Refresh Camera)"
+                    aria-label="เปิดหรือรีเฟรชกล้อง"
                   >
-                    <SwitchCamera className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
+                    <RefreshCw className="w-3.5 h-3.5 text-cyan-300" />
+                    <span>รีเฟรชกล้อง</span>
                   </button>
                 )}
 
@@ -2349,12 +2649,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <div className="flex items-center justify-center gap-5 py-0.5">
                     <button
                       type="button"
-                      onClick={() => { void startCamera(); }}
-                      className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
-                      title="เปิด/รีเฟรชกล้อง"
-                      aria-label="เปิดหรือรีเฟรชกล้อง"
+                      onClick={handleToggleFacingMode}
+                      className="px-2.5 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 text-[11px] font-bold"
+                      title="สลับกล้องหน้า / กล้องหลัง (Switch Front / Back Camera)"
+                      aria-label="สลับกล้องหน้าหรือกล้องหลัง"
                     >
-                      <RefreshCw className="w-4 h-4" />
+                      <SwitchCamera className="w-4 h-4 text-amber-300 shrink-0" />
+                      <span className="hidden sm:inline">{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
                     </button>
 
                     <button
@@ -2946,6 +3247,32 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
                   )}
                 </div>
+                    {/* Dual Approval Routing Preview for Student Leave (Requirement 2) */}
+                    {((isSelfCheckin && loggedInProfile.userType === 'student') || (!isSelfCheckin && effectiveUserType === 'student')) && (() => {
+                      const previewApprovers = resolveStudentLeaveApprovers({
+                        student: selectedStudent || ownStudent,
+                        teachers,
+                        courses,
+                        courseId: leaveScope === 'period_hourly' ? leaveCourseId : undefined,
+                      });
+                      return (
+                        <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 space-y-1.5">
+                          <p className="text-[11px] font-bold text-sky-900 dark:text-sky-200">
+                            เส้นทางการอนุมัติใบลานักเรียน (ส่งอนุมัติทั้ง 2 ฝ่ายอัตโนมัติ)
+                          </p>
+                          <div className="text-[11px] text-sky-800 dark:text-sky-300 space-y-0.5">
+                            <p>
+                              • <strong>ครูประจำชั้น:</strong> {previewApprovers.homeroomTeacherName}
+                            </p>
+                            <p>
+                              • <strong>ครูประจำวิชา ({previewApprovers.subjectTeacherNames.length} ท่าน):</strong>{' '}
+                              {previewApprovers.subjectTeacherNames.join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <button
                       type="button"
                       onClick={() => {
@@ -3057,7 +3384,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
             <div className="saas-card-body">
               <div className="divide-y divide-[var(--color-border)]">
-                <PagedList items={scopedLeaveRequests} pageSize={3} emptyState={<p className="type-meta py-4 text-center">ยังไม่มีประวัติใบลา</p>} renderItem={(req) => (
+                <PagedList items={scopedLeaveRequests} pageSize={3} emptyState={<p className="type-meta py-4 text-center">ยังไม่มีประวัติใบลา</p>} renderItem={(rawReq) => {
+                  const req = enrichLeaveRequestForDualApproval(rawReq, {
+                    schoolId: activeSchoolId,
+                    students,
+                    teachers,
+                    courses,
+                  });
+                  const isStudentLeave = req.userRole === 'student';
+                  const subjectList = req.subjectApprovals || [];
+                  const approvedSubjects = subjectList.filter((s) => s.status === 'approved').length;
+                  const teacherRoleInfo = detectTeacherApprovalRoleForLeave(req, currentUser, teachers, courses);
+                  return (
                   <div key={req.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
@@ -3083,9 +3421,52 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         ) : (
                           <X className="w-3.5 h-3.5" />
                         )}
-                        <span>{req.status === 'approved' ? 'อนุมัติ' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}</span>
+                        <span>{req.status === 'approved' ? 'อนุมัติครบ' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}</span>
                       </span>
                     </div>
+
+                    {/* Dual Approval Status: Homeroom + Subject Teachers */}
+                    {isStudentLeave && (
+                      <div className="p-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1 text-[11px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[var(--color-text-muted)] truncate">
+                            ครูประจำชั้น: <strong className="text-[var(--color-text-title)]">{req.homeroomTeacherName || 'ครูประจำชั้น'}</strong>
+                          </span>
+                          <span className={`font-bold shrink-0 ${
+                            req.homeroomApprovalStatus === 'approved'
+                              ? 'text-emerald-700 dark:text-emerald-300'
+                              : req.homeroomApprovalStatus === 'rejected'
+                                ? 'text-rose-700 dark:text-rose-300'
+                                : 'text-amber-700 dark:text-amber-300'
+                          }`}>
+                            {req.homeroomApprovalStatus === 'approved' ? 'อนุมัติแล้ว' : req.homeroomApprovalStatus === 'rejected' ? 'ไม่อนุมัติ' : 'รออนุมัติ'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[var(--color-text-muted)] truncate">
+                            ครูประจำวิชา ({approvedSubjects}/{subjectList.length || 1}):{' '}
+                            <strong className="text-[var(--color-text-title)]">
+                              {(req.subjectTeacherNames || []).slice(0, 2).join(', ') || 'ครูผู้สอนรายวิชา'}
+                            </strong>
+                          </span>
+                          <span className={`font-bold shrink-0 ${
+                            subjectList.length > 0 && approvedSubjects === subjectList.length
+                              ? 'text-emerald-700 dark:text-emerald-300'
+                              : subjectList.some((s) => s.status === 'rejected')
+                                ? 'text-rose-700 dark:text-rose-300'
+                                : 'text-amber-700 dark:text-amber-300'
+                          }`}>
+                            {subjectList.length > 0 && approvedSubjects === subjectList.length
+                              ? 'อนุมัติครบ'
+                              : subjectList.some((s) => s.status === 'rejected')
+                                ? 'ไม่อนุมัติ'
+                                : approvedSubjects > 0
+                                  ? `อนุมัติแล้ว ${approvedSubjects}`
+                                  : 'รออนุมัติ'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     {req.leaveScope === 'period_hourly' && (
                       <p className="type-meta text-[var(--color-primary-text)]">
@@ -3110,27 +3491,72 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     )}
 
                     {req.status === 'pending' && onUpdateLeaveStatus && (currentUser?.role === 'teacher' || currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
-                      <div className="flex items-center gap-2 pt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบมือถือ')}
-                          className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>อนุมัติ</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ')}
-                          className="py-1.5 px-3 rounded-lg bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>ปฏิเสธ</span>
-                        </button>
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                        {isStudentLeave ? (
+                          <>
+                            {req.homeroomApprovalStatus !== 'approved' && (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'ครูประจำชั้นอนุมัติผ่านมือถือ', 'homeroom')}
+                                className="flex-1 min-w-[118px] py-1.5 px-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>อนุมัติ (ครูประจำชั้น)</span>
+                              </button>
+                            )}
+                            {!(subjectList.length > 0 && approvedSubjects === subjectList.length) && (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'ครูประจำวิชาอนุมัติผ่านมือถือ', 'subject')}
+                                className="flex-1 min-w-[118px] py-1.5 px-2.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>อนุมัติ (ครูวิชา)</span>
+                              </button>
+                            )}
+                            {(isSchoolAdmin || (teacherRoleInfo.isHomeroom && teacherRoleInfo.isSubject)) && (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติครบทั้ง 2 ฝ่าย', 'both')}
+                                className="py-1.5 px-2.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] transition cursor-pointer"
+                              >
+                                อนุมัติทั้ง 2 ฝ่าย
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ', 'both')}
+                              className="py-1.5 px-2.5 rounded-lg bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>ปฏิเสธ</span>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบมือถือ', 'both')}
+                              className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>อนุมัติ</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ', 'both')}
+                              className="py-1.5 px-3 rounded-lg bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>ปฏิเสธ</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
-                )} />
+                  );
+                }} />
               </div>
             </div>
           </div>
@@ -3937,6 +4363,97 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                   <span>{periodSavedNotification}</span>
                 </div>
               )}
+
+              {/* Requirement 1: Classroom GPS Setup Card for Staff/Teachers */}
+              {!isRestrictedViewer && (
+                <div className={`p-3 rounded-xl border space-y-2.5 ${
+                  classroomGps
+                    ? 'bg-emerald-50/70 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800'
+                    : 'bg-amber-50/80 dark:bg-amber-950/25 border-amber-300 dark:border-amber-800'
+                }`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className={`w-4 h-4 shrink-0 ${classroomGps ? 'text-emerald-600' : 'text-amber-600'}`} />
+                      <span className="text-xs font-bold text-[var(--color-text-title)]">
+                        พิกัด GPS ห้องเรียน ({selectedCourse.room || selectedCourse.code})
+                      </span>
+                    </div>
+                    <span className={`text-[11px] font-bold ${
+                      classroomGps ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'
+                    }`}>
+                      {classroomGps
+                        ? `ตั้งค่าแล้ว · รัศมี ${classroomGps.radiusMeters} ม.`
+                        : 'จำเป็นต้องตั้งพิกัดห้องเรียนก่อนเช็คชื่อรายคาบ'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-semibold text-[var(--color-text-muted)]">ละติจูด (Lat)</label>
+                      <input
+                        type="text"
+                        value={roomLatInput}
+                        onChange={(e) => setRoomLatInput(e.target.value)}
+                        placeholder="เช่น 13.756331"
+                        className="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-mono"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-semibold text-[var(--color-text-muted)]">ลองจิจูด (Lng)</label>
+                      <input
+                        type="text"
+                        value={roomLngInput}
+                        onChange={(e) => setRoomLngInput(e.target.value)}
+                        placeholder="เช่น 100.501762"
+                        className="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-mono"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] font-semibold text-[var(--color-text-muted)]">รัศมีห้อง (ม.)</label>
+                      <select
+                        value={roomRadiusInput}
+                        onChange={(e) => setRoomRadiusInput(Number(e.target.value))}
+                        className="w-full mt-0.5 px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                      >
+                        <option value={20}>20 ม.</option>
+                        <option value={30}>30 ม.</option>
+                        <option value={40}>40 ม.</option>
+                        <option value={50}>50 ม.</option>
+                        <option value={80}>80 ม.</option>
+                        <option value={100}>100 ม.</option>
+                      </select>
+                    </div>
+                    <div className="sm:col-span-4 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleDetectRoomGps}
+                        disabled={isLocatingRoom}
+                        className="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60"
+                      >
+                        <LocateFixed className={`w-3.5 h-3.5 ${isLocatingRoom ? 'animate-spin' : ''}`} />
+                        <span>{isLocatingRoom ? 'กำลังดึง...' : 'ดึงพิกัดห้องเรียนนี้'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveManualRoomGps}
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold cursor-pointer"
+                      >
+                        บันทึก
+                      </button>
+                    </div>
+                  </div>
+
+                  {roomGpsNotice && (
+                    <p className={`text-[11px] font-semibold ${
+                      roomGpsNotice.type === 'ok'
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'text-rose-700 dark:text-rose-300'
+                    }`}>
+                      {roomGpsNotice.text}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -4083,6 +4600,55 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                     </div>
                   )}
 
+                  {/* Requirement 1: Student Classroom GPS Status Strip */}
+                  {(() => {
+                    const roomCheck =
+                      classroomGps && realGpsCoords
+                        ? checkDistanceToClassroomGps(realGpsCoords, classroomGps)
+                        : null;
+                    return (
+                      <div className={`p-2.5 rounded-xl border text-xs flex flex-wrap items-center justify-between gap-2 ${
+                        !classroomGps
+                          ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                          : roomCheck?.inRange
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                            : 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+                      }`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          <span className="font-semibold">
+                            {!classroomGps
+                              ? `ยังไม่ได้ตั้งพิกัดห้องเรียน (${selectedCourse.room || selectedCourse.code}) กรุณาแจ้งครูผู้สอน`
+                              : !realGpsCoords
+                                ? `ห้อง ${classroomGps.room} (รัศมี ${classroomGps.radiusMeters} ม.) · รออ่านพิกัด GPS ของคุณ`
+                                : roomCheck?.inRange
+                                  ? `อยู่ในพิกัดห้อง ${classroomGps.room} (ห่าง ${roomCheck.distanceMeters} ม. / รัศมี ${roomCheck.radiusMeters} ม.)`
+                                  : `อยู่นอกพิกัดห้อง ${classroomGps.room} (ห่าง ${roomCheck?.distanceMeters.toLocaleString()} ม. / รัศมี ${roomCheck?.radiusMeters} ม.)`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!navigator.geolocation) return;
+                            setIsGpsLoading(true);
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => {
+                                setRealGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                                setIsGpsLoading(false);
+                              },
+                              () => setIsGpsLoading(false),
+                              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                            );
+                          }}
+                          className="px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-900/70 border border-current/20 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <LocateFixed className={`w-3 h-3 ${isGpsLoading ? 'animate-spin' : ''}`} />
+                          <span>อัปเดต GPS</span>
+                        </button>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       type="button"
@@ -4192,54 +4758,147 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           ) : (
             <div className="saas-card overflow-hidden">
-              <div className="divide-y divide-[var(--color-border)]">
-                <PagedList items={periodStudentIds} pageSize={4} renderItem={(stuId) => {
-                  const st = students.find(s => s.id === stuId);
-                  if (!st) return null;
-                  const savedRecord = periodAttendance.find(
-                    (p) => p.studentId === stuId && p.courseId === selectedCourse.id && p.date === periodDate && p.periodNumber === selectedPeriod
-                  );
-                  const status = periodStatuses[st.id] || savedRecord?.status || 'present';
-
+              {(() => {
+                const recordByStudent = new Map<string, PeriodAttendanceRecord>();
+                for (const p of periodAttendance) {
+                  if (p.courseId === selectedCourse.id && p.date === periodDate && p.periodNumber === selectedPeriod) {
+                    recordByStudent.set(p.studentId, p);
+                  }
+                }
+                const uncheckedCount = periodStudentIds.filter((id) => !recordByStudent.has(id)).length;
+                const proxyCount = periodStudentIds.filter((id) => recordByStudent.get(id)?.checkMethod === 'teacher_proxy').length;
+                const mobileCount = periodStudentIds.filter((id) => recordByStudent.get(id)?.checkMethod === 'qr_code').length;
+                const q = periodRosterSearch.trim().toLowerCase();
+                const filteredIds = periodStudentIds.filter((stuId) => {
+                  const st = students.find((s) => s.id === stuId);
+                  if (!st) return false;
+                  const rec = recordByStudent.get(stuId);
+                  if (periodRosterFilter === 'unchecked' && rec) return false;
+                  if (periodRosterFilter === 'proxy' && rec?.checkMethod !== 'teacher_proxy') return false;
+                  if (periodRosterFilter === 'mobile' && rec?.checkMethod !== 'qr_code') return false;
+                  if (!q) return true;
                   return (
-                    <div key={st.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={st.avatarUrl}
-                          alt={st.firstNameEn}
-                          className="w-9 h-9 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="type-card-title truncate">{st.firstNameTh} {st.lastNameTh}</p>
-                          <p className="type-meta font-mono truncate">
-                            {st.studentIdNumber} · {st.gradeLevel} {st.room}
-                            {savedRecord?.checkMethod === 'qr_code' ? ' · สแกน QR' : ''}
-                          </p>
+                    `${st.firstNameTh} ${st.lastNameTh}`.toLowerCase().includes(q) ||
+                    (st.studentIdNumber || '').toLowerCase().includes(q) ||
+                    (st.room || '').toLowerCase().includes(q)
+                  );
+                });
+
+                return (
+                  <>
+                    <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                          <SmartphoneOff className="w-3.5 h-3.5 text-amber-600" />
+                          <span>ตรวจเช็คชื่อรายคาบ · กรณีนักเรียนไม่มีมือถือ กดรับแทนได้ทันที</span>
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {(
+                            [
+                              ['all', `ทั้งหมด (${periodStudentIds.length})`],
+                              ['unchecked', `ยังไม่เช็ค (${uncheckedCount})`],
+                              ['proxy', `ครูรับแทน (${proxyCount})`],
+                              ['mobile', `สแกนมือถือ (${mobileCount})`],
+                            ] as const
+                          ).map(([key, label]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => setPeriodRosterFilter(key)}
+                              className={`px-2 py-1 rounded-md text-[10px] font-bold cursor-pointer border transition ${
+                                periodRosterFilter === key
+                                  ? 'bg-[var(--color-primary)] text-white border-transparent'
+                                  : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-1 self-end sm:self-auto max-w-full flex-wrap justify-end">
-                        {(['present', 'late', 'absent', 'excused'] as const).map((pst) => (
-                          <button
-                            key={pst}
-                            type="button"
-                            onClick={() => setPeriodStatuses(prev => ({ ...prev, [st.id]: pst }))}
-                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                              status === pst
-                                ? pst === 'present' ? 'bg-emerald-700 text-white' :
-                                  pst === 'late' ? 'bg-amber-500 text-slate-950' :
-                                  pst === 'excused' ? 'bg-[var(--color-primary)] text-white' : 'bg-rose-700 text-white'
-                                : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                            }`}
-                          >
-                            {pst === 'present' ? 'เข้าเรียน' : pst === 'late' ? 'สาย' : pst === 'excused' ? 'ลา' : 'ขาด'}
-                          </button>
-                        ))}
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-2" />
+                        <input
+                          type="text"
+                          value={periodRosterSearch}
+                          onChange={(e) => setPeriodRosterSearch(e.target.value)}
+                          placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                          className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                        />
                       </div>
                     </div>
-                  );
-                }} />
-              </div>
+
+                    <div className="divide-y divide-[var(--color-border)]">
+                      <PagedList items={filteredIds} pageSize={8} emptyState={<p className="type-meta text-center py-4">ไม่พบรายชื่อนักเรียนตามตัวกรอง</p>} renderItem={(stuId) => {
+                        const st = students.find(s => s.id === stuId);
+                        if (!st) return null;
+                        const savedRecord = recordByStudent.get(stuId);
+                        const status = periodStatuses[st.id] || savedRecord?.status || 'present';
+
+                        return (
+                          <div key={st.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={st.avatarUrl}
+                                alt={st.firstNameEn}
+                                className="w-9 h-9 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="type-card-title truncate">{st.firstNameTh} {st.lastNameTh}</p>
+                                  {savedRecord?.checkMethod === 'qr_code' && (
+                                    <span className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-[10px] font-bold">
+                                      สแกนมือถือแล้ว
+                                    </span>
+                                  )}
+                                  {savedRecord?.checkMethod === 'teacher_proxy' && (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-[10px] font-bold">
+                                      ครูกดรับแทน
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="type-meta font-mono truncate">
+                                  {st.studentIdNumber} · {st.gradeLevel} {st.room}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 self-end sm:self-auto max-w-full flex-wrap justify-end">
+                              {(!savedRecord || savedRecord.checkMethod !== 'qr_code') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTeacherProxyPeriodCheckin(st, 'present', true)}
+                                  className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition cursor-pointer inline-flex items-center gap-1"
+                                  title="กรณีนักเรียนไม่มีมือถือ ให้ครูกดรับเช็คชื่อแทนทันที"
+                                >
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                  <span>ไม่มีมือถือ · กดรับแทน</span>
+                                </button>
+                              )}
+                              {(['present', 'late', 'absent', 'excused'] as const).map((pst) => (
+                                <button
+                                  key={pst}
+                                  type="button"
+                                  onClick={() => handleTeacherProxyPeriodCheckin(st, pst, false)}
+                                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                    (savedRecord ? savedRecord.status : status) === pst && (savedRecord || periodStatuses[st.id])
+                                      ? pst === 'present' ? 'bg-emerald-700 text-white' :
+                                        pst === 'late' ? 'bg-amber-500 text-slate-950' :
+                                        pst === 'excused' ? 'bg-[var(--color-primary)] text-white' : 'bg-rose-700 text-white'
+                                      : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                                  }`}
+                                >
+                                  {pst === 'present' ? 'เข้าเรียน' : pst === 'late' ? 'สาย' : pst === 'excused' ? 'ลา' : 'ขาด'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }} />
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
 

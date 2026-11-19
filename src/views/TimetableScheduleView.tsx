@@ -88,6 +88,7 @@ import {
   slotMatchesLoggedInTeacher,
 } from '../lib/courseTeacherFilter';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
+import { TimetablePeriodAttendanceModal } from '../components/modals/TimetablePeriodAttendanceModal';
 import {
   getTimetableSlotCardStyle,
   isCustomHexColor,
@@ -135,6 +136,7 @@ interface TimetableScheduleViewProps {
     date: string;
     checkType: 'check_in' | 'check_out';
   }) => void;
+  onRecordPeriodAttendance?: (records: PeriodAttendanceRecord[]) => void;
 }
 
 const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
@@ -199,6 +201,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   periodAttendance = [],
   canSelfCheckin = true,
   onOpenPeriodCheckin,
+  onRecordPeriodAttendance,
 }) => {
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const roomOptions = savedRoomOptions?.length ? savedRoomOptions : presets.roomOptions;
@@ -458,6 +461,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [slotActionError, setSlotActionError] = useState<string | null>(null);
   const [isSavingSlot, setIsSavingSlot] = useState(false);
   const [selectedSlotForDetail, setSelectedSlotForDetail] = useState<TimetableSlot | null>(null);
+  const [periodRosterTarget, setPeriodRosterTarget] = useState<{
+    slot: TimetableSlot;
+    date: string;
+  } | null>(null);
+  const canOpenPeriodRoster = !isPersonalViewer;
   const [isEditingSelectedSlot, setIsEditingSelectedSlot] = useState(false);
   const [editSlotDraft, setEditSlotDraft] = useState<TimetableSlot | null>(null);
   const openSlotDetails = (slot: TimetableSlot) => {
@@ -3139,6 +3147,21 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 <span className="block text-[9px] text-[var(--color-text-body)]">
                                   {slot.classRoom} · {formatSlotTeachersDisplay(slot)}
                                 </span>
+                                {canOpenPeriodRoster && (
+                                  <div className="pt-1 border-t border-current/15">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPeriodRosterTarget({ slot, date: day.date });
+                                      }}
+                                      className="w-full min-h-[28px] inline-flex items-center justify-center gap-1 rounded-md bg-emerald-700 hover:bg-emerald-800 px-2 py-1 text-[10px] font-bold text-white shadow-xs cursor-pointer"
+                                    >
+                                      <UserCheck className="w-3 h-3 shrink-0" />
+                                      <span>ดูรายชื่อ / เช็กชื่อคาบนี้</span>
+                                    </button>
+                                  </div>
+                                )}
                                 {canShowWeekSlotCheckin && (
                                   <div className="pt-1 border-t border-current/15">
                                     <button
@@ -3711,6 +3734,23 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                     </div>
                                   </div>
 
+                                  {canOpenPeriodRoster && (
+                                    <div className="pt-1.5 mt-1 border-t border-current/15 print:hidden">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setPeriodRosterTarget({ slot, date: day.date });
+                                        }}
+                                        className="w-full min-h-[28px] inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-2 py-1 text-[10px] font-bold text-white shadow-xs cursor-pointer transition"
+                                        title="ดูรายชื่อนักเรียนและเช็กชื่อรายคาบนี้ได้ทันที"
+                                      >
+                                        <UserCheck className="w-3 h-3 shrink-0" />
+                                        <span>รายชื่อ / เช็กชื่อ</span>
+                                      </button>
+                                    </div>
+                                  )}
+
                                   {canShowGridCheckin && (
                                     <div className="pt-1.5 mt-1 border-t border-current/15 print:hidden">
                                       <button
@@ -4133,6 +4173,22 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 </>
               ) : (
                 <>
+                  {canOpenPeriodRoster && (
+                    <div className="w-full pb-2 mb-1 border-b border-[var(--color-border)]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = selectedSlotForDetail;
+                          closeSlotDetails();
+                          setPeriodRosterTarget({ slot: target, date: todayBangkokDate });
+                        }}
+                        className="w-full min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-2 text-xs font-bold text-white cursor-pointer transition"
+                      >
+                        <UserCheck className="w-4 h-4" />
+                        <span>ดูรายชื่อนักเรียน &amp; เช็กชื่อคาบนี้ทันที</span>
+                      </button>
+                    </div>
+                  )}
                   {canUsePeriodCheckin && (() => {
                     const detailActivity = getTimetableSlotActivityStatus({
                       slot: selectedSlotForDetail,
@@ -4840,6 +4896,21 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             setIsConfirmingSlotAction(false);
           }
         }}
+      />
+      <TimetablePeriodAttendanceModal
+        isOpen={Boolean(periodRosterTarget)}
+        onClose={() => setPeriodRosterTarget(null)}
+        slot={periodRosterTarget?.slot || null}
+        initialDate={periodRosterTarget?.date || todayBangkokDate}
+        schoolId={schoolId}
+        courses={courses}
+        students={students}
+        schoolPeriods={schoolPeriods}
+        periodAttendance={periodAttendance}
+        leaveRequests={leaveRequests}
+        currentUser={currentUser}
+        lang={lang}
+        onRecordPeriodAttendance={onRecordPeriodAttendance}
       />
     </div>
   );

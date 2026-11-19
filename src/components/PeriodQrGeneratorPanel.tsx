@@ -1,20 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  AlertTriangle,
   Ban,
   Check,
+  CheckCircle2,
   Clock,
   Copy,
+  LocateFixed,
+  MapPin,
   Maximize2,
   QrCode,
   RefreshCw,
+  Search,
   ShieldCheck,
+  Smartphone,
   Timer,
+  UserCheck,
   Users,
   X,
 } from 'lucide-react';
 import {
   AppLanguage,
   AttendanceCheckType,
+  AuthUser,
+  ClassroomGpsConfig,
   Course,
   PeriodAttendanceRecord,
   SchoolPeriodTime,
@@ -34,6 +43,8 @@ import {
   savePeriodQrSessions,
 } from '../lib/periodQrTokens';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import { findClassroomGpsConfig, saveClassroomGpsConfig } from '../lib/classroomGps';
+import { isValidCoordinatePair } from '../lib/schoolGps';
 
 interface PeriodQrGeneratorPanelProps {
   schoolId: string;
@@ -43,6 +54,8 @@ interface PeriodQrGeneratorPanelProps {
   schoolPeriods?: SchoolPeriodTime[];
   timetableSlots?: TimetableSlot[];
   periodAttendance?: PeriodAttendanceRecord[];
+  currentUser?: AuthUser | null;
+  onRecordPeriodAttendance?: (records: PeriodAttendanceRecord[]) => void;
   lang: AppLanguage;
 }
 
@@ -56,6 +69,8 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
   schoolPeriods = [],
   timetableSlots = [],
   periodAttendance = [],
+  currentUser = null,
+  onRecordPeriodAttendance,
   lang,
 }) => {
   const todayStr = getLocalDateString();
@@ -123,6 +138,19 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
   const [copiedField, setCopiedField] = useState<'url' | 'code' | null>(null);
   const [showFullscreenModal, setShowFullscreenModal] = useState(false);
 
+  // Classroom GPS state (Requirement 1: Period check-in requires classroom GPS coordinates)
+  const [classroomGps, setClassroomGps] = useState<ClassroomGpsConfig | null>(null);
+  const [roomLatInput, setRoomLatInput] = useState('');
+  const [roomLngInput, setRoomLngInput] = useState('');
+  const [roomRadiusInput, setRoomRadiusInput] = useState<number>(50);
+  const [isLocatingRoom, setIsLocatingRoom] = useState(false);
+  const [gpsFeedback, setGpsFeedback] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+
+  // Teacher proxy roster state (Requirement 3: Check in students without mobile phones)
+  const [rosterSearch, setRosterSearch] = useState('');
+  const [rosterFilter, setRosterFilter] = useState<'all' | 'unchecked' | 'proxy' | 'mobile'>('all');
+  const [proxyNotice, setProxyNotice] = useState<string | null>(null);
+
   // Keep selectedCourseId valid if school or teacher filter changes
   useEffect(() => {
     const pool = filteredCourses.length > 0 ? filteredCourses : availableCourses;
@@ -150,10 +178,123 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
   const selectedPeriodInfo =
     teachablePeriods.find((p) => p.periodNumber === selectedPeriodNum) || teachablePeriods[0];
 
+  // Sync saved classroom GPS whenever course changes
+  useEffect(() => {
+    if (!selectedCourse) return;
+    const saved = findClassroomGpsConfig(schoolId, {
+      courseId: selectedCourse.id,
+      room: selectedCourse.room,
+    });
+    setClassroomGps(saved);
+    setRoomLatInput(saved ? String(saved.lat) : '');
+    setRoomLngInput(saved ? String(saved.lng) : '');
+    setRoomRadiusInput(saved?.radiusMeters || 50);
+    setGpsFeedback(null);
+  }, [schoolId, selectedCourse]);
+
+  const parsedRoomLat = roomLatInput.trim() !== '' ? Number(roomLatInput) : NaN;
+  const parsedRoomLng = roomLngInput.trim() !== '' ? Number(roomLngInput) : NaN;
+  const hasValidClassroomGps = isValidCoordinatePair(parsedRoomLat, parsedRoomLng);
+
+  const handleDetectClassroomGps = () => {
+    if (!navigator.geolocation) {
+      setGpsFeedback({
+        type: 'error',
+        text: 'เบราว์เซอร์ไม่รองรับ GPS อัตโนมัติ กรุณากรอกละติจูด/ลองจิจูดด้วยตนเอง',
+      });
+      return;
+    }
+    setIsLocatingRoom(true);
+    setGpsFeedback(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setRoomLatInput(String(lat));
+        setRoomLngInput(String(lng));
+        saveClassroomGpsConfig(schoolId, {
+          roomLabel: selectedCourse?.room || selectedCourse?.titleTh || 'ห้องเรียน',
+          courseId: selectedCourse?.id,
+          lat,
+          lng,
+          radiusMeters: roomRadiusInput,
+          updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
+        });
+        const fresh = findClassroomGpsConfig(schoolId, {
+          courseId: selectedCourse?.id,
+          room: selectedCourse?.room,
+        });
+        setClassroomGps(fresh);
+        setIsLocatingRoom(false);
+        setGpsFeedback({
+          type: 'ok',
+          text: `ดึงและบันทึกพิกัดห้องเรียนสำเร็จ (${lat}, ${lng} · รัศมี ${roomRadiusInput} ม.)`,
+        });
+      },
+      () => {
+        setIsLocatingRoom(false);
+        setGpsFeedback({
+          type: 'error',
+          text: 'ไม่สามารถอ่านตำแหน่ง GPS ได้ กรุณาอนุญาตการเข้าถึงตำแหน่งหรือกรอกพิกัดด้วยตนเอง',
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleSaveClassroomGps = () => {
+    if (!hasValidClassroomGps) {
+      setGpsFeedback({
+        type: 'error',
+        text: 'กรุณาระบุพิกัดละติจูด/ลองจิจูดของห้องเรียนให้ถูกต้องก่อนบันทึก',
+      });
+      return;
+    }
+    saveClassroomGpsConfig(schoolId, {
+      roomLabel: selectedCourse?.room || selectedCourse?.titleTh || 'ห้องเรียน',
+      courseId: selectedCourse?.id,
+      lat: parsedRoomLat,
+      lng: parsedRoomLng,
+      radiusMeters: roomRadiusInput,
+      updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
+    });
+    const fresh = findClassroomGpsConfig(schoolId, {
+      courseId: selectedCourse?.id,
+      room: selectedCourse?.room,
+    });
+    setClassroomGps(fresh);
+    setGpsFeedback({
+      type: 'ok',
+      text: `บันทึกพิกัดห้องเรียน ${selectedCourse?.room || selectedCourse?.code || ''} เรียบร้อยแล้ว`,
+    });
+  };
+
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeSessionId) || sessions[0] || null,
     [sessions, activeSessionId]
   );
+
+  const rosterCourse = useMemo(() => {
+    if (activeSession) {
+      return availableCourses.find((c) => c.id === activeSession.courseId) || selectedCourse;
+    }
+    return selectedCourse;
+  }, [activeSession, availableCourses, selectedCourse]);
+
+  const rosterStudents = useMemo(() => {
+    if (!rosterCourse) return students;
+    if (rosterCourse.enrolledStudentIds && rosterCourse.enrolledStudentIds.length > 0) {
+      const set = new Set(rosterCourse.enrolledStudentIds);
+      const matched = students.filter((s) => set.has(s.id));
+      if (matched.length > 0) return matched;
+    }
+    if (rosterCourse.room) {
+      const roomLower = rosterCourse.room.trim().toLowerCase();
+      const matched = students.filter((s) => (s.room || '').trim().toLowerCase() === roomLower);
+      if (matched.length > 0) return matched;
+    }
+    return students;
+  }, [rosterCourse, students]);
 
   const enrolledCountForSelectedCourse = useMemo(() => {
     if (!selectedCourse) return students.length;
@@ -169,6 +310,28 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
     return students.length;
   }, [selectedCourse, students]);
 
+  const rosterCourseId = activeSession?.courseId || selectedCourse?.id || '';
+  const rosterPeriodNumber = activeSession?.periodNumber ?? selectedPeriodNum;
+  const rosterDate = activeSession?.date || selectedDate;
+  const rosterTimeSlot =
+    activeSession?.timeSlot ||
+    (selectedPeriodInfo ? `${selectedPeriodInfo.startTime} - ${selectedPeriodInfo.endTime}` : '08:30 - 09:20');
+
+  const sessionAttendanceByStudent = useMemo(() => {
+    const map = new Map<string, PeriodAttendanceRecord>();
+    periodAttendance.forEach((p) => {
+      if (
+        p.courseId === rosterCourseId &&
+        p.periodNumber === rosterPeriodNumber &&
+        p.date === rosterDate &&
+        (p.recordType || 'check_in') === 'check_in'
+      ) {
+        map.set(p.studentId, p);
+      }
+    });
+    return map;
+  }, [periodAttendance, rosterCourseId, rosterPeriodNumber, rosterDate]);
+
   const checkedInCountForSession = useMemo(() => {
     if (!activeSession) return 0;
     return periodAttendance.filter(
@@ -180,6 +343,42 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
     ).length;
   }, [activeSession, periodAttendance]);
 
+  const handleTeacherProxyAccept = (
+    student: Student,
+    status: 'present' | 'late' | 'excused' | 'absent',
+    isNoPhone = false
+  ) => {
+    if (!onRecordPeriodAttendance || !rosterCourse) return;
+    const existing = sessionAttendanceByStudent.get(student.id);
+    const teacherName =
+      currentUser?.fullNameTh || currentUser?.fullNameEn || rosterCourse.teacherName || 'ครูผู้สอน';
+    const rec: PeriodAttendanceRecord = {
+      id: existing?.id || `patt-proxy-${Date.now()}-${student.id}`,
+      schoolId,
+      courseId: rosterCourse.id,
+      courseCode: rosterCourse.code || 'GEN-101',
+      periodNumber: rosterPeriodNumber,
+      timeSlot: rosterTimeSlot,
+      date: rosterDate,
+      studentId: student.id,
+      status,
+      recordType: 'check_in',
+      verifiedByTeacherId: currentUser?.id || 'usr-teacher',
+      verifiedByTeacherName: teacherName,
+      checkMethod: 'teacher_proxy',
+      remarks: isNoPhone
+        ? `ครูกดรับเช็คชื่อแทน (นักเรียนไม่มีมือถือ) · ${rosterCourse.code} คาบ ${rosterPeriodNumber}`
+        : `ครูเช็คชื่อรายคาบ (${rosterCourse.code} คาบ ${rosterPeriodNumber})`,
+    };
+    onRecordPeriodAttendance([rec]);
+    setProxyNotice(
+      isNoPhone
+        ? `ครูกดรับเช็คชื่อแทน "${student.firstNameTh} ${student.lastNameTh}" (กรณีไม่มีมือถือ) เรียบร้อยแล้ว`
+        : `บันทึกสถานะ "${student.firstNameTh} ${student.lastNameTh}" เรียบร้อยแล้ว`
+    );
+    window.setTimeout(() => setProxyNotice(null), 3500);
+  };
+
   const handleGenerateQr = (overrideConfig?: {
     courseId?: string;
     periodNumber?: number;
@@ -188,6 +387,37 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
     const courseObj =
       availableCourses.find((c) => c.id === (overrideConfig?.courseId || selectedCourse?.id)) ||
       selectedCourse;
+    const savedGps = findClassroomGpsConfig(schoolId, {
+      courseId: courseObj.id,
+      room: courseObj.room,
+    });
+    const effectiveLat = hasValidClassroomGps ? parsedRoomLat : savedGps?.lat;
+    const effectiveLng = hasValidClassroomGps ? parsedRoomLng : savedGps?.lng;
+    const effectiveRadius = hasValidClassroomGps
+      ? roomRadiusInput
+      : savedGps?.radiusMeters || 50;
+
+    if (!isValidCoordinatePair(effectiveLat, effectiveLng)) {
+      setGpsFeedback({
+        type: 'error',
+        text: 'กรุณาตั้งค่าพิกัดห้องเรียน (GPS) ก่อนสร้าง QR Code เช็คชื่อรายคาบ',
+      });
+      return;
+    }
+
+    // Persist classroom GPS automatically when generating QR
+    saveClassroomGpsConfig(schoolId, {
+      roomLabel: courseObj.room || courseObj.titleTh || 'ห้องเรียน',
+      courseId: courseObj.id,
+      lat: Number(effectiveLat),
+      lng: Number(effectiveLng),
+      radiusMeters: effectiveRadius,
+      updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
+    });
+    setClassroomGps(
+      findClassroomGpsConfig(schoolId, { courseId: courseObj.id, room: courseObj.room })
+    );
+
     const pNum = overrideConfig?.periodNumber ?? selectedPeriodNum;
     const periodObj =
       teachablePeriods.find((p) => p.periodNumber === pNum) || selectedPeriodInfo;
@@ -203,6 +433,10 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
       date: selectedDate,
       checkType,
       ttlMinutes: ttl,
+      roomLabel: courseObj.room || courseObj.titleTh,
+      classroomLat: Number(effectiveLat),
+      classroomLng: Number(effectiveLng),
+      classroomRadiusMeters: effectiveRadius,
     });
 
     setSessions((prev) => {
@@ -449,17 +683,114 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
               </div>
             </div>
 
+            {/* Mandatory Classroom GPS Configuration (Requirement 1) */}
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <span>
+                    {lang === 'th'
+                      ? `พิกัดห้องเรียน (จำเป็นต้องตั้งค่าก่อนเช็คชื่อคาบ)`
+                      : 'Classroom GPS Geofence (Required)'}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDetectClassroomGps}
+                  disabled={isLocatingRoom}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white text-[11px] font-bold cursor-pointer disabled:opacity-50"
+                >
+                  <LocateFixed className={`w-3.5 h-3.5 ${isLocatingRoom ? 'animate-spin' : ''}`} />
+                  <span>{isLocatingRoom ? 'กำลังดึงพิกัด...' : 'ดึงพิกัดห้องเรียนนี้'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={roomLatInput}
+                  onChange={(e) => setRoomLatInput(e.target.value)}
+                  placeholder="ละติจูด (Lat)"
+                  aria-label="ละติจูดห้องเรียน"
+                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-mono"
+                />
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={roomLngInput}
+                  onChange={(e) => setRoomLngInput(e.target.value)}
+                  placeholder="ลองจิจูด (Lng)"
+                  aria-label="ลองจิจูดห้องเรียน"
+                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-mono"
+                />
+                <div className="flex items-center gap-1.5">
+                  <select
+                    aria-label="รัศมีห้องเรียน"
+                    value={roomRadiusInput}
+                    onChange={(e) => setRoomRadiusInput(Number(e.target.value))}
+                    className="flex-1 px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs"
+                  >
+                    {[20, 30, 50, 80, 100, 150, 200].map((r) => (
+                      <option key={r} value={r}>
+                        รัศมี {r} ม.
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleSaveClassroomGps}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold cursor-pointer shrink-0"
+                  >
+                    บันทึก
+                  </button>
+                </div>
+              </div>
+
+              {classroomGps ? (
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1 tabular-nums">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    พร้อมใช้งาน: ห้อง {classroomGps.roomLabel} ({classroomGps.lat.toFixed(5)},{' '}
+                    {classroomGps.lng.toFixed(5)} · รัศมี {classroomGps.radiusMeters} ม.)
+                  </span>
+                </p>
+              ) : (
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>ยังไม่ได้ตั้งค่าพิกัดห้องเรียน กรุณากด "ดึงพิกัดห้องเรียนนี้" หรือกรอกพิกัดก่อนสร้าง QR</span>
+                </p>
+              )}
+
+              {gpsFeedback && (
+                <p
+                  className={`text-[11px] font-semibold ${
+                    gpsFeedback.type === 'ok'
+                      ? 'text-emerald-700 dark:text-emerald-300'
+                      : 'text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  {gpsFeedback.text}
+                </p>
+              )}
+            </div>
+
             <div className="pt-1">
               <button
                 type="button"
                 onClick={() => handleGenerateQr()}
-                className="w-full py-2.5 px-4 rounded-xl bg-[var(--color-primary)] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition"
+                disabled={!hasValidClassroomGps}
+                className="w-full py-2.5 px-4 rounded-xl bg-[var(--color-primary)] hover:opacity-95 disabled:opacity-45 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition"
               >
                 <QrCode className="w-4 h-4" />
                 <span>
                   {lang === 'th'
-                    ? `สร้าง QR Code ชั่วคราว (${ttlMinutes} นาที)`
-                    : `Generate ${ttlMinutes}-Min Expiring QR`}
+                    ? hasValidClassroomGps
+                      ? `สร้าง QR Code ชั่วคราวพร้อมพิกัดห้อง (${ttlMinutes} นาที)`
+                      : 'ตั้งค่าพิกัดห้องเรียนก่อนสร้าง QR Code'
+                    : hasValidClassroomGps
+                      ? `Generate ${ttlMinutes}-Min Expiring QR with Room GPS`
+                      : 'Configure Classroom GPS to Generate QR'}
                 </span>
               </button>
             </div>
@@ -535,6 +866,17 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
                       ? `เช็คชื่อแล้ว ${checkedInCountForSession} คน`
                       : `${checkedInCountForSession} checked in`}
                   </p>
+                  {isValidCoordinatePair(activeSession.classroomLat, activeSession.classroomLng) && (
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold mt-0.5 flex items-center gap-1 tabular-nums">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      <span>
+                        พิกัดห้อง {activeSession.roomLabel || 'เรียน'}:{' '}
+                        {Number(activeSession.classroomLat).toFixed(5)},{' '}
+                        {Number(activeSession.classroomLng).toFixed(5)} (รัศมี{' '}
+                        {activeSession.classroomRadiusMeters || 50} ม.)
+                      </span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Live Countdown Readout */}
@@ -728,6 +1070,183 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
           )}
         </div>
       </div>
+
+      {/* Live Roster & Teacher Proxy Check-in for Students Without Phones (Requirement 3) */}
+      {onRecordPeriodAttendance && rosterCourse && (
+        <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <span>
+                  ตรวจเช็คชื่อรายคาบ · กรณีนักเรียนไม่มีมือถือเช็คอิน (ให้ครูกดรับแทน)
+                </span>
+              </h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
+                {rosterCourse.code} {rosterCourse.titleTh} · คาบที่ {rosterPeriodNumber} · วันที่ {rosterDate} · เช็คชื่อแล้ว{' '}
+                {sessionAttendanceByStudent.size}/{rosterStudents.length} คน
+              </p>
+            </div>
+            <div className="relative w-full sm:w-56">
+              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={rosterSearch}
+                onChange={(e) => setRosterSearch(e.target.value)}
+                placeholder="ค้นหาชื่อ / รหัสนักเรียน..."
+                className="w-full pl-8 pr-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
+              />
+            </div>
+          </div>
+
+          <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              {(
+                [
+                  { id: 'all', label: `ทั้งหมด (${rosterStudents.length})` },
+                  {
+                    id: 'unchecked',
+                    label: `ยังไม่เช็คชื่อ (${rosterStudents.filter((s) => !sessionAttendanceByStudent.has(s.id)).length})`,
+                  },
+                  {
+                    id: 'proxy',
+                    label: `ครูกดรับแทน (${Array.from(sessionAttendanceByStudent.values()).filter((r) => r.checkMethod === 'teacher_proxy').length})`,
+                  },
+                  {
+                    id: 'mobile',
+                    label: `สแกนมือถือ/QR (${Array.from(sessionAttendanceByStudent.values()).filter((r) => r.checkMethod === 'qr_code' || r.checkMethod === 'student_mobile').length})`,
+                  },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRosterFilter(tab.id)}
+                  className={`px-2.5 py-1 rounded-md border font-semibold cursor-pointer transition ${
+                    rosterFilter === tab.id
+                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                      : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {proxyNotice && (
+              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{proxyNotice}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="divide-y divide-[var(--color-border)] max-h-[340px] overflow-y-auto">
+            {rosterStudents
+              .filter((st) => {
+                const rec = sessionAttendanceByStudent.get(st.id);
+                if (rosterFilter === 'unchecked' && rec) return false;
+                if (rosterFilter === 'proxy' && rec?.checkMethod !== 'teacher_proxy') return false;
+                if (
+                  rosterFilter === 'mobile' &&
+                  rec?.checkMethod !== 'qr_code' &&
+                  rec?.checkMethod !== 'student_mobile'
+                ) {
+                  return false;
+                }
+                const q = rosterSearch.trim().toLowerCase();
+                if (!q) return true;
+                return (
+                  `${st.firstNameTh} ${st.lastNameTh}`.toLowerCase().includes(q) ||
+                  (st.studentIdNumber || '').toLowerCase().includes(q)
+                );
+              })
+              .map((st) => {
+                const rec = sessionAttendanceByStudent.get(st.id);
+                const isMobileChecked =
+                  rec?.checkMethod === 'qr_code' || rec?.checkMethod === 'student_mobile';
+                const isProxyChecked = rec?.checkMethod === 'teacher_proxy';
+
+                return (
+                  <div
+                    key={st.id}
+                    className="px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={st.avatarUrl}
+                        alt={st.firstNameTh}
+                        className="w-8 h-8 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-bold text-[var(--color-text-title)] truncate">
+                            {st.firstNameTh} {st.lastNameTh}
+                          </span>
+                          {isMobileChecked && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
+                              <Smartphone className="w-2.5 h-2.5" />
+                              <span>สแกน QR</span>
+                            </span>
+                          )}
+                          {isProxyChecked && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-200 text-[10px] font-bold">
+                              <UserCheck className="w-2.5 h-2.5" />
+                              <span>ครูกดรับแทน</span>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-mono text-[var(--color-text-muted)] truncate">
+                          {st.studentIdNumber} · {st.gradeLevel} {st.room}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+                      {!isMobileChecked && (
+                        <button
+                          type="button"
+                          onClick={() => handleTeacherProxyAccept(st, 'present', true)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer transition ${
+                            isProxyChecked && rec?.status === 'present'
+                              ? 'bg-sky-700 text-white border-sky-700'
+                              : 'bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-700'
+                          }`}
+                        >
+                          <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {isProxyChecked && rec?.status === 'present'
+                              ? 'รับแทนแล้ว ✓'
+                              : 'ไม่มีมือถือ · กดรับแทน'}
+                          </span>
+                        </button>
+                      )}
+                      {(['present', 'late', 'excused', 'absent'] as const).map((pst) => (
+                        <button
+                          key={pst}
+                          type="button"
+                          onClick={() => handleTeacherProxyAccept(st, pst, false)}
+                          className={`px-2 py-1 rounded-md text-[11px] font-bold cursor-pointer transition ${
+                            rec?.status === pst
+                              ? pst === 'present'
+                                ? 'bg-emerald-700 text-white'
+                                : pst === 'late'
+                                  ? 'bg-amber-500 text-slate-950'
+                                  : pst === 'excused'
+                                    ? 'bg-[var(--color-primary)] text-white'
+                                    : 'bg-rose-700 text-white'
+                              : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                          }`}
+                        >
+                          {pst === 'present' ? 'มา' : pst === 'late' ? 'สาย' : pst === 'excused' ? 'ลา' : 'ขาด'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {/* Recent Generated Period QR Sessions */}
       {sessions.length > 0 && (

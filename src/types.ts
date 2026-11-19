@@ -331,6 +331,17 @@ export interface AttendanceRecord {
 export type LeaveType = 'sick' | 'personal' | 'official' | 'vacation';
 export type LeaveStatus = 'pending' | 'approved' | 'rejected';
 
+export interface LeaveSubjectApproval {
+  teacherId?: string;
+  teacherName: string;
+  courseId?: string;
+  courseCode?: string;
+  courseTitle?: string;
+  status: LeaveStatus;
+  approvedAt?: string;
+  remarks?: string;
+}
+
 export interface LeaveRequest {
   id: string;
   schoolId?: string;
@@ -354,8 +365,27 @@ export interface LeaveRequest {
   status: LeaveStatus;
   approvedBy?: string;
   approvalRemarks?: string;
+  // Dual approval routing: homeroom teacher + subject teachers
+  homeroomTeacherName?: string;
+  homeroomApprovalStatus?: LeaveStatus;
+  homeroomApprovedBy?: string;
+  homeroomApprovedAt?: string;
+  homeroomRemarks?: string;
+  subjectTeacherNames?: string[];
+  subjectApprovals?: LeaveSubjectApproval[];
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface ClassroomGpsConfig {
+  roomKey: string;
+  roomLabel: string;
+  courseId?: string;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  updatedBy?: string;
+  updatedAt: string;
 }
 
 export interface CampusGateGeofence {
