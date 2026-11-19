@@ -15,6 +15,7 @@ import {
   FileCheck2,
   Printer,
   RefreshCw,
+  Save,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
@@ -28,6 +29,13 @@ import {
   loadQualitativeAssessments,
   summarizeStudentQualitative,
 } from '../../lib/moeQualitativeStore';
+import {
+  getStudentRegistryRecord,
+  loadSchoolRegistryMap,
+  loadSchoolRegistrySigners,
+  saveSchoolRegistrySigners,
+  saveStudentRegistryAndQualitativeToDb,
+} from '../../lib/studentRegistryStore';
 
 interface ReportCardModalProps {
   student: Student;
@@ -63,12 +71,19 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
     };
   };
 
+  const getSyncedRegistryDefaults = () => {
+    const signers = loadSchoolRegistrySigners(schoolId);
+    const registryMap = loadSchoolRegistryMap(schoolId);
+    return getStudentRegistryRecord(registryMap, student, signers);
+  };
+
   const initialQual = getSyncedQualitativeDefaults();
+  const initialReg = getSyncedRegistryDefaults();
   const printRef = useRef<HTMLDivElement>(null);
   const [gradePage, setGradePage] = useState(0);
-  const [advisorName, setAdvisorName] = useState('');
-  const [registrarName, setRegistrarName] = useState('');
-  const [principalName, setPrincipalName] = useState('');
+  const [advisorName, setAdvisorName] = useState(initialReg.advisorName || '');
+  const [registrarName, setRegistrarName] = useState(initialReg.registrarName || '');
+  const [principalName, setPrincipalName] = useState(initialReg.principalName || '');
   const [readingRating, setReadingRating] = useState(initialQual.readingRating);
   const [attributeRating, setAttributeRating] = useState(initialQual.attributeRating);
   const [competencyRating, setCompetencyRating] = useState(initialQual.competencyRating);
@@ -76,18 +91,69 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   const [homeroomRemark, setHomeroomRemark] = useState(initialQual.homeroomRemark);
   const [showMoeConfig, setShowMoeConfig] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isSavingSigners, setIsSavingSigners] = useState(false);
   const [pdfNotice, setPdfNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     const synced = getSyncedQualitativeDefaults();
+    const syncedReg = getSyncedRegistryDefaults();
     setReadingRating(synced.readingRating);
     setAttributeRating(synced.attributeRating);
     setCompetencyRating(synced.competencyRating);
     setActivityResult(synced.activityResult);
     setHomeroomRemark(synced.homeroomRemark);
+    setAdvisorName(syncedReg.advisorName || '');
+    setRegistrarName(syncedReg.registrarName || '');
+    setPrincipalName(syncedReg.principalName || '');
     setGradePage(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.id, schoolId, academicYear, semester]);
+
+  const handleSaveRegistrySignersAndComment = async () => {
+    setIsSavingSigners(true);
+    try {
+      const currentSigners = loadSchoolRegistrySigners(schoolId);
+      const nextSigners = {
+        ...currentSigners,
+        registrarName: registrarName.trim() || currentSigners.registrarName,
+        principalName: principalName.trim() || currentSigners.principalName,
+        updatedAt: new Date().toISOString(),
+      };
+      saveSchoolRegistrySigners(schoolId, nextSigners);
+
+      const baseRecord = getSyncedRegistryDefaults();
+      const qualMap = loadQualitativeAssessments(schoolId, academicYear, semester);
+      const baseQual = getStudentQualitativeRecord(qualMap, student.id);
+
+      await saveStudentRegistryAndQualitativeToDb({
+        schoolId,
+        studentId: student.id,
+        academicYear,
+        semester,
+        registry: {
+          ...baseRecord,
+          advisorName: advisorName.trim(),
+          registrarName: registrarName.trim(),
+          principalName: principalName.trim(),
+        },
+        qualitative: {
+          ...baseQual,
+          homeroomComment: homeroomRemark.trim(),
+        },
+      });
+      setPdfNotice({
+        type: 'success',
+        message: 'บันทึกรายชื่อผู้ลงนามและความเห็นครูที่ปรึกษาลงฐานข้อมูลทะเบียนนักเรียนแล้ว',
+      });
+    } catch {
+      setPdfNotice({
+        type: 'error',
+        message: 'ไม่สามารถบันทึกข้อมูลผู้ลงนามได้ กรุณาลองใหม่อีกครั้ง',
+      });
+    } finally {
+      setIsSavingSigners(false);
+    }
+  };
 
   const handleResyncFromPp5Pp6 = () => {
     const synced = getSyncedQualitativeDefaults();
@@ -272,8 +338,17 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
+                  onClick={handleSaveRegistrySignersAndComment}
+                  disabled={isSavingSigners}
+                  className="inline-flex items-center gap-1 rounded-md bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1 text-[11px] font-semibold text-white whitespace-nowrap cursor-pointer disabled:opacity-60"
+                >
+                  <Save className="w-3 h-3" />
+                  <span>{isSavingSigners ? 'กำลังบันทึก...' : 'บันทึกลงฐานข้อมูลเด็ก'}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleResyncFromPp5Pp6}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-300 hover:text-emerald-200 cursor-pointer"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-300 hover:text-emerald-200 whitespace-nowrap cursor-pointer"
                 >
                   <RefreshCw className="w-3 h-3" />
                   <span>ซิงค์จาก ปพ.๕/ปพ.๖</span>

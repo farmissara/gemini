@@ -290,6 +290,25 @@ export interface Student {
   interests?: string[];
   languages?: string[];
   nfcCardUid?: string; // รหัสบัตรนักเรียน NFC / RFID
+  // Extended Thai MOE Registration & Official Document Fields
+  prefixTh?: string;
+  nationality?: string;
+  religion?: string;
+  birthPlace?: string;
+  fatherName?: string;
+  fatherPhone?: string;
+  motherName?: string;
+  motherPhone?: string;
+  pp1DocNo?: string;
+  pp3SetNo?: string;
+  pp3BookNo?: string;
+  pp3ApprovalStatus?: 'pending' | 'verified' | 'approved' | 'not_eligible';
+  graduationDate?: string;
+  pp7DocNo?: string;
+  advisorName?: string;
+  registrarName?: string;
+  principalName?: string;
+  academicHeadName?: string;
 }
 
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'sick' | 'leave';

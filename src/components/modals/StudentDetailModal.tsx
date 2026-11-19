@@ -49,6 +49,7 @@ interface StudentDetailModalProps {
   onClose: () => void;
   onOpenReportCard: (student: Student) => void;
   onOpenDevelopmentBook?: (student: Student) => void;
+  onOpenMoeDocumentCenter?: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
   onUpdateStudent?: (student: Student) => void;
   gradingSystem?: GradingSystem;
@@ -62,6 +63,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onClose,
   onOpenReportCard,
   onOpenDevelopmentBook,
+  onOpenMoeDocumentCenter,
   onToggleLineSync,
   onUpdateStudent,
   gradingSystem = 'thai',
@@ -501,11 +503,22 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 <Award className="w-3.5 h-3.5" />
                 <span>Transcript</span>
               </button>
+              {onOpenMoeDocumentCenter && (
+                <button
+                  type="button"
+                  onClick={() => onOpenMoeDocumentCenter(student)}
+                  className="px-3 py-1.5 rounded-lg border border-sky-600/30 bg-sky-50 hover:bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:hover:bg-sky-900/60 dark:text-sky-200 font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
+                  title="เปิดศูนย์งานทะเบียน & ออกเอกสาร สพฐ. รายคน (ปพ.1–8)"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>เอกสาร สพฐ. (ปพ.1–8)</span>
+                </button>
+              )}
               {onOpenDevelopmentBook && (
                 <button
                   type="button"
                   onClick={() => onOpenDevelopmentBook(student)}
-                  className="px-3 py-1.5 rounded-lg border border-emerald-600/30 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-200 font-semibold flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-emerald-600/30 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-200 font-semibold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
                   title="เปิดสมุดบันทึกพัฒนาคุณภาพผู้เรียนรายบุคคล"
                 >
                   <BookOpen className="w-3.5 h-3.5" />

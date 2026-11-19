@@ -120,6 +120,18 @@ function buildPdfFromJpegPages(pages: Array<{ bytes: Uint8Array; width: number; 
   return new Blob(blobParts, { type: 'application/pdf' });
 }
 
+export function buildA4PdfBlobFromCanvases(canvases: HTMLCanvasElement[]): Blob {
+  const pages = canvases.map((canvas) => {
+    const jpegUrl = canvas.toDataURL('image/jpeg', 0.94);
+    return {
+      bytes: dataUrlToBytes(jpegUrl),
+      width: canvas.width,
+      height: canvas.height,
+    };
+  });
+  return buildPdfFromJpegPages(pages);
+}
+
 function drawTruncatedText(
   ctx: CanvasRenderingContext2D,
   text: string,

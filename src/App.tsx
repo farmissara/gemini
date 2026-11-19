@@ -99,6 +99,7 @@ import {
   submitInvoiceSlipToDb
 } from './lib/supabase';
 import { cleanupStudentCampusData } from './lib/campusDataStore';
+import { hydrateSchoolRegistryFromSupabase } from './lib/studentRegistryStore';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import {
   buildPrimaryGateFromSchool,
@@ -467,6 +468,7 @@ export const App: React.FC = () => {
       | 'core_report_card'
       | 'qualitative_summary'
       | 'pp3_online'
+      | 'moe_student_hub'
       | 'onet_niets';
   } | null>(null);
   const [featureFlagsBySchool, setFeatureFlagsBySchool] = useState<Record<string, SchoolFeatureFlags>>({});
@@ -1671,6 +1673,25 @@ export const App: React.FC = () => {
     };
   }, [activeSchool.id, activeSchool.schoolTier, isDemoMode]);
 
+  // Hydrate unified student OBEC/MOE registration records + qualitative assessments from Supabase into local cache
+  useEffect(() => {
+    if (isDemoMode || !isDataReady || !activeSchool.id || loadedSchoolId !== activeSchool.id) {
+      return;
+    }
+    void hydrateSchoolRegistryFromSupabase(
+      activeSchool.id,
+      systemConfig.academicYear || '2569',
+      systemConfig.currentSemester || '1'
+    );
+  }, [
+    isDemoMode,
+    isDataReady,
+    activeSchool.id,
+    loadedSchoolId,
+    systemConfig.academicYear,
+    systemConfig.currentSemester,
+  ]);
+
   useEffect(() => {
     if (
       !currentUser ||
@@ -1739,6 +1760,13 @@ export const App: React.FC = () => {
     setStudents((prev) =>
       prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
     );
+  };
+
+  const handleOpenStudentMoeDocs = (student: Student) => {
+    setIsGamePlaying(false);
+    setGradebookJumpTarget({ studentId: student.id, tab: 'moe_student_hub' });
+    setProgramMode('school_erp');
+    setCurrentTab('gradebook');
   };
 
   const handleCleanupOrphanGrades = () => {
@@ -4688,6 +4716,7 @@ export const App: React.FC = () => {
                     currentRole={currentRole}
                     onSelectStudent={setSelectedStudentForProfile}
                     onOpenReportCard={setSelectedStudentForReport}
+                    onOpenMoeDocumentCenter={handleOpenStudentMoeDocs}
                     onToggleLineSync={handleToggleLineSync}
                     onAddStudent={handleAddStudent}
                     onAddStudents={handleAddStudents}
@@ -5119,8 +5148,10 @@ export const App: React.FC = () => {
                     periodAttendance={viewPeriodAttendance}
                     behaviorRecords={viewBehaviorRecords}
                     sdqAssessments={viewSdqAssessments}
+                    infirmaryVisits={viewInfirmaryVisits}
                     homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={viewAssignments}
+                    onUpdateStudent={handleUpdateStudent}
                     onPracticeInAi={
                       isTabEnabledByFeatureFlags('socratic_tutor', activeFeatureFlags, currentRole)
                         ? (topic) => {
@@ -5458,6 +5489,10 @@ export const App: React.FC = () => {
           onOpenReportCard={(stu) => {
             setSelectedStudentForProfile(null);
             setSelectedStudentForReport(stu);
+          }}
+          onOpenMoeDocumentCenter={(stu) => {
+            setSelectedStudentForProfile(null);
+            handleOpenStudentMoeDocs(stu);
           }}
           onOpenDevelopmentBook={
             ['super_admin', 'admin', 'teacher'].includes(currentRole)

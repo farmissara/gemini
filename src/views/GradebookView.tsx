@@ -10,6 +10,7 @@ import {
   GradeRecord,
   GradingSystem,
   HomeworkSubmission,
+  InfirmaryVisit,
   PeriodAttendanceRecord,
   School,
   SdqAssessment,
@@ -90,6 +91,13 @@ import { GradeLevelQualitativeSummaryView } from '../components/GradeLevelQualit
 import { CoreSubjectsReportCardView } from '../components/CoreSubjectsReportCardView';
 import { Pp5CoreRoomSummaryView } from '../components/Pp5CoreRoomSummaryView';
 import { ThreeSemesterAchievementTrendChart } from '../components/ThreeSemesterAchievementTrendChart';
+import { MoeStudentDocumentCenter } from '../components/MoeStudentDocumentCenter';
+import {
+  getPp3ApprovalStatusMeta,
+  getStudentRegistryRecord,
+  loadSchoolRegistryMap,
+  loadSchoolRegistrySigners,
+} from '../lib/studentRegistryStore';
 
 interface CourseScoreWeights {
   midterm: number;
@@ -131,8 +139,10 @@ interface GradebookViewProps {
   periodAttendance?: PeriodAttendanceRecord[];
   behaviorRecords?: BehaviorRecord[];
   sdqAssessments?: SdqAssessment[];
+  infirmaryVisits?: InfirmaryVisit[];
   homeworkSubmissions?: HomeworkSubmission[];
   assignments?: Assignment[];
+  onUpdateStudent?: (student: Student) => void;
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
   onOpenImportExport?: () => void;
   onOpenStudentDevBook?: (studentId: string) => void;
@@ -142,6 +152,7 @@ interface GradebookViewProps {
   initialTab?:
     | 'gradebook'
     | 'indicators'
+    | 'moe_student_hub'
     | 'pp5'
     | 'pp5_core_summary'
     | 'pp6'
@@ -171,8 +182,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   periodAttendance = [],
   behaviorRecords = [],
   sdqAssessments = [],
+  infirmaryVisits = [],
   homeworkSubmissions = [],
   assignments = [],
+  onUpdateStudent,
   onPracticeInAi,
   onOpenImportExport,
   onOpenStudentDevBook,
@@ -195,6 +208,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [activeTab, setActiveTab] = useState<
     | 'gradebook'
     | 'indicators'
+    | 'moe_student_hub'
     | 'pp5'
     | 'pp5_core_summary'
     | 'pp6'
@@ -1200,6 +1214,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       'สถานะการสำเร็จการศึกษา'
     ];
 
+    const regMap = loadSchoolRegistryMap(school?.id || 'default');
+    const signers = loadSchoolRegistrySigners(school?.id || 'default');
     const rows = pp3EligibleStudents.map((s, idx) => {
       const summary = calculateStudentAcademicSummary({
         student: s,
@@ -1207,6 +1223,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         grades,
         gradingSystem: systemConfig.gradingSystem,
       });
+      const reg = getStudentRegistryRecord(regMap, s, signers);
+      const pp3Meta = getPp3ApprovalStatusMeta(reg.pp3ApprovalStatus);
       const metricValue = summary.hideGpaCalculations
         ? (summary.averageRawScore !== null
             ? `${summary.averageRawScore}% (${getRawScoreFeedback(summary.averageRawScore).labelTh})`
@@ -1216,17 +1234,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         idx + 1,
         `"${s.studentIdNumber}"`,
         `"${s.nationalId || ''}"`,
-        `"${getStudentPrefixTh(s)}"`,
+        `"${reg.prefixTh || getStudentPrefixTh(s)}"`,
         `"${s.firstNameTh}"`,
         `"${s.lastNameTh}"`,
         `"${s.gradeLevel}"`,
         `"${s.room}"`,
         `"${summary.isPrimary ? 'รายปี' : 'รายภาคเรียน'}"`,
         `"${metricValue}"`,
-        '""',
-        '""',
-        '""',
-        '"รอตรวจสอบและยืนยันข้อมูลการจบการศึกษา"'
+        `"${reg.pp3SetNo || ''}"`,
+        `"${reg.pp3BookNo || ''}"`,
+        `"${reg.graduationDate || ''}"`,
+        `"${pp3Meta.labelTh}"`
       ];
     });
 
@@ -1441,9 +1459,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     },
     {
       id: 'pp_docs',
-      labelTh: '2. เอกสาร ปพ. (รายวิชา / บุคคล)',
-      labelEn: '2. Pp.5 / Pp.6 Records',
+      labelTh: '2. ศูนย์เอกสาร สพฐ. / ปพ. (รายคน & รายวิชา)',
+      labelEn: '2. MOE Documents & Pp. Records',
       tabs: [
+        { id: 'moe_student_hub', labelTh: 'ศูนย์ทะเบียน & ออกเอกสาร สพฐ. รายคน (ปพ.1–8)', labelEn: 'Student MOE Hub (PP.1–8)' },
         { id: 'pp5', labelTh: 'ปพ.5 (ประจำวิชา)', labelEn: 'Pp.5 (Course)' },
         { id: 'pp6', labelTh: 'ปพ.6 (รายบุคคล)', labelEn: 'Pp.6 (Student)' },
         { id: 'core_report_card', labelTh: 'Report Card วิชาพื้นฐาน (ปพ.5/6)', labelEn: 'Core Report Card' },
@@ -3219,6 +3238,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     grades,
                     gradingSystem: systemConfig.gradingSystem,
                   });
+                  const regMap = loadSchoolRegistryMap(school?.id || 'default');
+                  const signers = loadSchoolRegistrySigners(school?.id || 'default');
+                  const reg = getStudentRegistryRecord(regMap, stu, signers);
+                  const pp3Meta = getPp3ApprovalStatusMeta(reg.pp3ApprovalStatus);
                   const hasRealGpa = summary.hasRecordedGrades && summary.gpax !== null;
                   const effectiveGpax = hasRealGpa && summary.gpax !== null ? summary.gpax : 0;
                   const primaryFeedback = getRawScoreFeedback(summary.averageRawScore);
@@ -3255,13 +3278,27 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         )}
                       </td>
                       <td className="py-2 px-3 font-mono text-xs">
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">ยังไม่กำหนด</span>
-                        <span className="text-[10px] text-[var(--color-text-muted)] block">กรอกหลังออกเลขทะเบียนจริง</span>
+                        {reg.pp3SetNo || reg.pp3BookNo ? (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">
+                              ชุด {reg.pp3SetNo || '-'} / เล่ม {reg.pp3BookNo || '-'}
+                            </span>
+                            {reg.graduationDate && (
+                              <span className="text-[10px] text-[var(--color-text-muted)] block">
+                                อนุมัติ: {reg.graduationDate}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">ยังไม่กำหนด</span>
+                            <span className="text-[10px] text-[var(--color-text-muted)] block">แก้ไขได้ที่ศูนย์เอกสาร สพฐ.</span>
+                          </>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          รอตรวจสอบข้อมูล
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold ${pp3Meta.toneClass}`}>
+                          {pp3Meta.labelTh}
                         </span>
                       </td>
                       <td className="py-2 px-3 text-right">
@@ -3269,10 +3306,19 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                           ariaLabel={`จัดการรายงาน ปพ. ของ ${stu.firstNameTh} ${stu.lastNameTh}`}
                           items={[
                             {
+                              id: 'moe_hub',
+                              label: 'ออกเอกสาร สพฐ. & บันทึกเลข ปพ.3',
+                              icon: <FileSpreadsheet className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => {
+                                setSelectedStudentIdForPp6(stu.id);
+                                setActiveTab('moe_student_hub');
+                              },
+                            },
+                            {
                               id: 'pp1',
                               label: 'ดูเอกสาร ปพ.1 / ใบรายงานผล',
                               icon: <FileText className="w-3.5 h-3.5" />,
-                              variant: 'primary',
                               onClick: () => onOpenReportCard(stu),
                             },
                             {
@@ -3441,6 +3487,33 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </table>
           </div>
         </div>
+      )}
+
+      {/* ========================================================
+          ศูนย์ทะเบียน & ออกเอกสาร สพฐ. รายบุคคล (ปพ.1–ปพ.8)
+         ======================================================== */}
+      {activeTab === 'moe_student_hub' && !isPersonalGradeViewer && (
+        <MoeStudentDocumentCenter
+          students={students}
+          courses={courses}
+          grades={grades}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          timetableSlots={timetableSlots}
+          behaviorRecords={behaviorRecords}
+          sdqAssessments={sdqAssessments}
+          infirmaryVisits={infirmaryVisits}
+          systemConfig={systemConfig}
+          school={school}
+          currentRole={currentRole}
+          currentUser={currentUser}
+          selectedStudentId={selectedStudentIdForPp6}
+          onSelectStudentId={(sid) => setSelectedStudentIdForPp6(sid)}
+          onUpdateStudent={onUpdateStudent}
+          onUpdateGrade={onUpdateGrade}
+          onAddGrade={onAddGrade}
+          canEdit={effectiveCanEditGrades}
+        />
       )}
       </div>
     </div>

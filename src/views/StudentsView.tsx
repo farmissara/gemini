@@ -77,6 +77,7 @@ interface StudentsViewProps {
   currentRole?: UserRole;
   onSelectStudent: (student: Student) => void;
   onOpenReportCard: (student: Student) => void;
+  onOpenMoeDocumentCenter?: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
   onAddStudent: (newStudent: Student) => void;
   onAddStudents?: (newStudents: Student[]) => void;
@@ -98,6 +99,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   currentRole = 'admin',
   onSelectStudent,
   onOpenReportCard,
+  onOpenMoeDocumentCenter,
   onToggleLineSync,
   onAddStudent,
   onAddStudents,
@@ -1550,6 +1552,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               icon: <Award className="w-3.5 h-3.5" />,
                               onClick: () => onOpenReportCard(student),
                             },
+                            ...(onOpenMoeDocumentCenter
+                              ? [
+                                  {
+                                    id: 'moe_docs',
+                                    label: 'ศูนย์งานทะเบียน & ออกเอกสาร สพฐ. (ปพ.1–8)',
+                                    icon: <FileText className="w-3.5 h-3.5" />,
+                                    variant: 'primary' as const,
+                                    onClick: () => onOpenMoeDocumentCenter(student),
+                                  },
+                                ]
+                              : []),
                             {
                               id: 'edit',
                               label: 'แก้ไขข้อมูล / ห้อง / สถานะ',
