@@ -11,6 +11,7 @@ import {
 } from './moeGrading';
 import { formatSemesterLabel } from './schoolSettings';
 import { generateQrMatrix } from './qrCode';
+import { resolveMoeLearningArea } from '../data/moeCurriculumStandards';
 
 export interface MoeSummaryPdfPayload {
   student: Student;
@@ -702,6 +703,7 @@ export function printHtmlElementInIsolatedFrame(htmlContent: string, title: stri
     html, body { margin: 0; padding: 0; font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; color: #0f172a !important; background: #ffffff !important; }
     .print\\:hidden { display: none !important; }
     .hidden.print\\:block { display: block !important; }
+    .hidden.print\\:inline { display: inline !important; }
   </style>
 </head>
 <body>${htmlContent}</body>
@@ -991,7 +993,7 @@ export function downloadGradeDistributionReportPdf(payload: GradeDistributionPdf
 
   const scopeTitle =
     scope === 'course' && selectedCourse
-      ? `รายวิชา: ${selectedCourse.code} — ${selectedCourse.titleTh || selectedCourse.titleEn} (${selectedCourse.titleEn}) • ครูผู้สอน: ${selectedCourse.teacherName || '-'}`
+      ? `รายวิชา: ${selectedCourse.code} — ${selectedCourse.titleTh || selectedCourse.titleEn} • ${resolveMoeLearningArea(selectedCourse).shortTh} • ครูผู้สอน: ${selectedCourse.teacherName || '-'}`
       : scope === 'by_subject'
       ? `ขอบเขตรายงาน: เปรียบเทียบผลสัมฤทธิ์รายวิชา (${subjectRows.length} วิชา)${departmentFilter !== 'all' ? ` • กลุ่มสาระฯ ${departmentFilter}` : ''}`
       : `ขอบเขตรายงาน: สรุปรวมทุกรายวิชา (${courses.length} รายวิชา)${departmentFilter !== 'all' ? ` • กลุ่มสาระฯ ${departmentFilter}` : ''}`;

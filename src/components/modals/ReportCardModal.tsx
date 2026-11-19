@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Student, Course, GradeRecord, SystemConfig, School } from '../../types';
 import { formatSemesterLabel } from '../../lib/schoolSettings';
 import {
@@ -14,6 +14,7 @@ import {
   Download,
   FileCheck2,
   Printer,
+  RefreshCw,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
@@ -21,6 +22,12 @@ import {
   downloadMoeGradeSummaryPdf,
   printHtmlElementInIsolatedFrame,
 } from '../../lib/moeReportPdf';
+import { resolveMoeLearningArea } from '../../data/moeCurriculumStandards';
+import {
+  getStudentQualitativeRecord,
+  loadQualitativeAssessments,
+  summarizeStudentQualitative,
+} from '../../lib/moeQualitativeStore';
 
 interface ReportCardModalProps {
   student: Student;
@@ -39,19 +46,61 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   school,
   onClose,
 }) => {
+  const schoolId = school?.id || student.schoolId || 'default';
+  const academicYear = systemConfig.academicYear || '2569';
+  const semester = systemConfig.currentSemester || '1';
+
+  const getSyncedQualitativeDefaults = () => {
+    const map = loadQualitativeAssessments(schoolId, academicYear, semester);
+    const rec = getStudentQualitativeRecord(map, student.id);
+    const sum = summarizeStudentQualitative(rec);
+    return {
+      readingRating: sum.readingLabel,
+      attributeRating: sum.attrLabel,
+      competencyRating: sum.compLabel,
+      activityResult: sum.activityResult,
+      homeroomRemark: rec.homeroomComment || '',
+    };
+  };
+
+  const initialQual = getSyncedQualitativeDefaults();
   const printRef = useRef<HTMLDivElement>(null);
   const [gradePage, setGradePage] = useState(0);
   const [advisorName, setAdvisorName] = useState('');
   const [registrarName, setRegistrarName] = useState('');
   const [principalName, setPrincipalName] = useState('');
-  const [readingRating, setReadingRating] = useState('ดีเยี่ยม (๓)');
-  const [attributeRating, setAttributeRating] = useState('ดีเยี่ยม (๓)');
-  const [competencyRating, setCompetencyRating] = useState('ดีเยี่ยม (๓)');
-  const [activityResult, setActivityResult] = useState('ผ (ผ่าน)');
-  const [homeroomRemark, setHomeroomRemark] = useState('');
+  const [readingRating, setReadingRating] = useState(initialQual.readingRating);
+  const [attributeRating, setAttributeRating] = useState(initialQual.attributeRating);
+  const [competencyRating, setCompetencyRating] = useState(initialQual.competencyRating);
+  const [activityResult, setActivityResult] = useState(initialQual.activityResult);
+  const [homeroomRemark, setHomeroomRemark] = useState(initialQual.homeroomRemark);
   const [showMoeConfig, setShowMoeConfig] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfNotice, setPdfNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    const synced = getSyncedQualitativeDefaults();
+    setReadingRating(synced.readingRating);
+    setAttributeRating(synced.attributeRating);
+    setCompetencyRating(synced.competencyRating);
+    setActivityResult(synced.activityResult);
+    setHomeroomRemark(synced.homeroomRemark);
+    setGradePage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.id, schoolId, academicYear, semester]);
+
+  const handleResyncFromPp5Pp6 = () => {
+    const synced = getSyncedQualitativeDefaults();
+    setReadingRating(synced.readingRating);
+    setAttributeRating(synced.attributeRating);
+    setCompetencyRating(synced.competencyRating);
+    setActivityResult(synced.activityResult);
+    setHomeroomRemark(synced.homeroomRemark);
+    setPdfNotice({
+      type: 'success',
+      message: 'ซิงค์ผลประเมินคุณลักษณะฯ การอ่านคิดวิเคราะห์เขียน สมรรถนะ และกิจกรรมจาก ปพ.๕/ปพ.๖ แล้ว',
+    });
+  };
 
   const summary = calculateStudentAcademicSummary({
     student,
@@ -215,18 +264,28 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
 
         {showMoeConfig && (
           <div className="p-4 bg-slate-900 text-slate-100 border-b border-slate-800 space-y-3 text-xs print:hidden">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-bold flex items-center gap-1.5 text-sky-300">
                 <FileCheck2 className="w-4 h-4" />
-                กำหนดผลประเมินองค์ประกอบหลักสูตรแกนกลางฯ (ศธ.) และผู้ลงนามสำหรับ PDF
+                กำหนดผลประเมินองค์ประกอบหลักสูตรแกนกลางฯ (ศธ.) และผู้ลงนาม (ดึงค่าจาก ปพ.๕ / ปพ.๖ อัตโนมัติ)
               </span>
-              <button
-                type="button"
-                onClick={() => setShowMoeConfig(false)}
-                className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
-              >
-                ซ่อนแผงตั้งค่า
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleResyncFromPp5Pp6}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-300 hover:text-emerald-200 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>ซิงค์จาก ปพ.๕/ปพ.๖</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMoeConfig(false)}
+                  className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
+                >
+                  ซ่อนแผงตั้งค่า
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
               <label className="space-y-1">
@@ -433,7 +492,12 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                         </td>
                         <td className="py-2 px-2.5">
                           <div className="font-semibold text-slate-900">{course.titleTh}</div>
-                          <div className="text-[11px] text-slate-600">{course.titleEn}</div>
+                          <div className="text-[11px] text-slate-600">
+                            {course.titleEn}
+                            <span className="ml-1.5 text-[10px] text-slate-500">
+                              • {resolveMoeLearningArea(course).shortTh}
+                            </span>
+                          </div>
                         </td>
                         <td className="py-2 px-2.5 text-center font-mono text-slate-800">
                           {summary.isPrimary

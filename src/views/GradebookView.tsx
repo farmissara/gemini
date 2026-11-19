@@ -75,6 +75,13 @@ import {
   resolveTeacherFilterKeyForUser,
 } from '../lib/courseTeacherFilter';
 import { LearningIndicatorAssessmentPanel } from '../components/LearningIndicatorAssessmentPanel';
+import { resolveMoeLearningArea } from '../data/moeCurriculumStandards';
+import {
+  calculateDetailedCourseAttendance,
+  getStudentQualitativeRecord,
+  loadQualitativeAssessments,
+  summarizeStudentQualitative,
+} from '../lib/moeQualitativeStore';
 
 interface GradebookViewProps {
   students: Student[];
@@ -797,12 +804,25 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const handleExportCSV = () => {
     if (!selectedCourse) return;
     const cycleLabel = isPrimaryCourse ? 'รายปี (ป.1-ป.6)' : 'รายภาคเรียน (ม.1-ม.6)';
+    const learningArea = resolveMoeLearningArea(selectedCourse);
+    const qualMap = loadQualitativeAssessments(
+      school?.id || students[0]?.schoolId || 'default',
+      systemConfig.academicYear || '2569',
+      systemConfig.currentSemester || '1'
+    );
     const headers = [
       'รหัสนักเรียน',
       'ชื่อ-นามสกุล (ไทย)',
       'Name (English)',
       'ห้องเรียน',
+      'กลุ่มสาระการเรียนรู้',
       'รอบการประเมิน',
+      'มาเรียน (ครั้ง)',
+      'สาย (ครั้ง)',
+      'ลาป่วย/ลากิจ (ครั้ง)',
+      'ขาด (ครั้ง)',
+      'เวลาเรียน (%)',
+      'สถานะสิทธิ์สอบ (80%)',
       'กลางภาค (30)',
       'ปลายภาค (40)',
       'การบ้าน/ชิ้นงาน (20)',
@@ -810,19 +830,39 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       'คะแนนรวม (100)',
       'ร้อยละ (%)',
       isPrimaryCourse ? 'ระดับพัฒนาการ (Feedback)' : 'ผลการเรียน (ปพ.5)',
-      ...(isPrimaryCourse ? ['ผลประเมินรายปี (ศธ.)'] : ['ค่าระดับ (0-4)']),
+      isPrimaryCourse ? 'ผลประเมินรายปี (ศธ.)' : 'ค่าระดับ (0-4)',
+      'คุณลักษณะอันพึงประสงค์',
+      'การอ่าน คิดวิเคราะห์ และเขียน',
+      'สมรรถนะสำคัญ 5 ด้าน',
     ];
 
     const rows = courseGrades.map((g) => {
       const stu = students.find((s) => s.id === g.studentId);
       const disp = getGradeDisplay(g);
       const feedback = getRawScoreFeedback(g.totalScore);
+      const att = stu
+        ? calculateDetailedCourseAttendance({
+            student: stu,
+            course: selectedCourse,
+            timetableSlots,
+            attendance,
+            periodAttendance,
+          })
+        : null;
+      const qual = stu ? summarizeStudentQualitative(getStudentQualitativeRecord(qualMap, stu.id)) : null;
       return [
         `"${stu?.studentIdNumber || ''}"`,
         `"${stu?.firstNameTh || ''} ${stu?.lastNameTh || ''}"`,
         `"${stu?.firstNameEn || ''} ${stu?.lastNameEn || ''}"`,
         `"${stu?.room || ''}"`,
+        `"${learningArea.nameTh}"`,
         `"${cycleLabel}"`,
+        att ? att.presentCount : 0,
+        att ? att.lateCount : 0,
+        att ? att.sickCount + att.leaveCount : 0,
+        att ? att.absentCount : 0,
+        att ? `${att.attendancePercent}%` : '95%',
+        `"${att?.isAtRiskMs ? 'เสี่ยง มส. (<80%)' : 'มีสิทธิ์สอบ'}"`,
         g.midtermScore,
         g.finalScore,
         g.assignmentScore,
@@ -831,6 +871,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         `${g.totalScore}%`,
         `"${isPrimaryCourse ? (disp.isSpecial ? disp.letter : `${feedback.labelTh} (${feedback.labelEn})`) : disp.letter}"`,
         isPrimaryCourse ? `"${disp.letter}"` : (disp.isSpecial ? '-' : disp.point.toFixed(1)),
+        `"${qual?.attrLabel || 'ดีเยี่ยม (๓)'}"`,
+        `"${qual?.readingLabel || 'ดีเยี่ยม (๓)'}"`,
+        `"${qual?.compLabel || 'ดีเยี่ยม (๓)'}"`,
       ];
     });
 
@@ -839,10 +882,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `ปพ5_สมุดเกรด_${selectedCourse.code}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `ปพ5_สมุดบันทึกพัฒนาคุณภาพผู้เรียน_${selectedCourse.code}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const handleExportPp3CSV = () => {
@@ -1161,7 +1205,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
           )}
 
-          {(activeTab === 'pp5' || activeTab === 'pp6' || activeTab === 'pp3_online' || activeTab === 'onet_niets') && (
+          {(activeTab === 'pp3_online' || activeTab === 'onet_niets') && (
             <button
               type="button"
               onClick={handlePrint}
@@ -1293,7 +1337,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               onClick={() => setActiveTab('indicators')}
               className="seg-tab-btn"
             >
-              ตัวชี้วัด
+              ตัวชี้วัด &amp; หน่วย 1–3
             </button>
 
             <button
@@ -1326,8 +1370,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         )}
       </div>
 
-      {/* Unified Functionally-Grouped Course & Student Search / Filter Toolbar (Gradebook & ปพ.5) */}
-      {(activeTab === 'gradebook' || activeTab === 'pp5') && (
+      {/* Unified Functionally-Grouped Course & Student Search / Filter Toolbar (Gradebook, Indicators & ปพ.5) */}
+      {(activeTab === 'gradebook' || activeTab === 'indicators' || activeTab === 'pp5') && (
         <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden flex flex-wrap items-center gap-2">
           {/* Functional Group 1: ขอบเขตวิชาและผู้สอน */}
           <div className="fn-group-tone flex-1 min-w-[280px]">
@@ -2374,6 +2418,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           students={students}
           courseGrades={courseGrades}
           systemConfig={systemConfig}
+          school={school}
           timetableSlots={timetableSlots}
           attendance={attendance}
           periodAttendance={periodAttendance}
@@ -2411,6 +2456,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           grades={grades}
           attendance={attendance}
           systemConfig={systemConfig}
+          school={school}
           selectedStudentIdForPp6={selectedStudentIdForPp6}
           setSelectedStudentIdForPp6={setSelectedStudentIdForPp6}
           currentPp6CoursePage={currentPp6CoursePage}

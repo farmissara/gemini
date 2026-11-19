@@ -1,15 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AttendanceRecord,
   Course,
   GradeRecord,
+  LearningIndicatorScore,
+  LearningIndicatorSet,
   PeriodAttendanceRecord,
+  School,
   Student,
   SystemConfig,
   TimetableSlot,
 } from '../types';
 import { formatSemesterLabel } from '../lib/schoolSettings';
-import { calculateStudentCourseEligibility } from '../lib/examEligibility';
 import {
   aggregateGradesByAssessmentCycle,
   calculateStudentAcademicSummary,
@@ -22,23 +24,70 @@ import {
   resolveEffectiveGrade,
 } from '../lib/moeGrading';
 import {
+  createObcUnitSetsForCourse,
+  evaluateObecAttributeSummary,
+  evaluateObecReadingSummary,
+  MOE_ATTRIBUTES_DECISION_RULES,
+  MOE_DESIRABLE_ATTRIBUTES_RUBRIC,
+  MOE_KEY_COMPETENCIES,
+  MOE_READING_DECISION_RULES,
+  MOE_READING_WRITING_RUBRIC,
+  MOE_STUDENT_ACTIVITIES,
+  resolveMoeLearningArea,
+} from '../data/moeCurriculumStandards';
+import {
+  loadLearningIndicatorScores,
+  loadLearningIndicatorSets,
+  saveLearningIndicatorSet,
+} from '../lib/learningIndicatorStore';
+import {
+  calculateDetailedCourseAttendance,
+  createDefaultStudentQualitative,
+  getStudentQualitativeRecord,
+  loadPp5CourseSettings,
+  loadQualitativeAssessments,
+  Pp5CourseSettings,
+  savePp5CourseSettings,
+  saveQualitativeAssessments,
+  StudentQualitativeAssessment,
+  summarizeStudentQualitative,
+} from '../lib/moeQualitativeStore';
+import { printHtmlElementInIsolatedFrame } from '../lib/moeReportPdf';
+import {
   Award,
+  BookOpen,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
+  Clock,
   Copy,
+  FileCheck2,
   FileText,
   GraduationCap,
+  Layers,
+  Printer,
   Search,
   Sparkles,
   X,
 } from 'lucide-react';
+
+export type Pp5SectionId =
+  | 'cover_summary'
+  | 'attendance'
+  | 'indicators_units'
+  | 'attributes'
+  | 'reading'
+  | 'obec_audit'
+  | 'all';
 
 interface Pp5OfficialFormProps {
   selectedCourse: Course;
   students: Student[];
   courseGrades: GradeRecord[];
   systemConfig: SystemConfig;
+  school?: School;
   timetableSlots: TimetableSlot[];
   attendance: AttendanceRecord[];
   periodAttendance: PeriodAttendanceRecord[];
@@ -63,12 +112,11 @@ const getCategoryTypeLabel = (category: string) => {
   return `รายวิชาเพิ่มเติม (${category})`;
 };
 
-const deriveQualityRating = (totalScore: number | null, isMs: boolean) => {
-  if (isMs || totalScore === null) return { level: '-', code: '-', pass: false, num: -1 };
-  if (totalScore >= 75) return { level: 'ดีเยี่ยม', code: '๓', pass: true, num: 3 };
-  if (totalScore >= 60) return { level: 'ดี', code: '๒', pass: true, num: 2 };
-  if (totalScore >= 50) return { level: 'ผ่าน', code: '๑', pass: true, num: 1 };
-  return { level: 'ไม่ผ่าน', code: '๐', pass: false, num: 0 };
+const QUALITY_LABELS: Record<number, string> = {
+  3: 'ดีเยี่ยม (๓)',
+  2: 'ดี (๒)',
+  1: 'ผ่าน (๑)',
+  0: 'ไม่ผ่าน (๐)',
 };
 
 export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
@@ -76,6 +124,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   students,
   courseGrades,
   systemConfig,
+  school,
   timetableSlots,
   attendance,
   periodAttendance,
@@ -85,26 +134,143 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   searchQuery = '',
   renderPageControls,
 }) => {
-  const [affiliationOffice, setAffiliationOffice] = useState('สำนักงานเขตพื้นที่การศึกษา (สพฐ.)');
-  const [headOfDeptName, setHeadOfDeptName] = useState('');
-  const [measurementHeadName, setMeasurementHeadName] = useState('');
-  const [directorName, setDirectorName] = useState('');
-  const [docSetNo, setDocSetNo] = useState(`๑ / ${systemConfig.academicYear || '๒๕๖๙'}`);
-  const [qualityOverrides, setQualityOverrides] = useState<
-    Record<string, { attr?: number; reading?: number; competency?: number }>
-  >({});
+  const schoolId = school?.id || selectedCourse.schoolId || 'default';
+  const academicYear = selectedCourse.academicYear || systemConfig.academicYear || '2569';
+  const semester = selectedCourse.semester || systemConfig.currentSemester || '1';
+  const learningArea = useMemo(() => resolveMoeLearningArea(selectedCourse), [selectedCourse]);
+
+  const [activeSection, setActiveSection] = useState<Pp5SectionId>('cover_summary');
+  const [courseCfg, setCourseCfg] = useState<Pp5CourseSettings>(() =>
+    loadPp5CourseSettings(selectedCourse.id, academicYear)
+  );
+  const [qualitativeMap, setQualitativeMap] = useState<Record<string, StudentQualitativeAssessment>>(() =>
+    loadQualitativeAssessments(schoolId, academicYear, semester)
+  );
+  const [indicatorSets, setIndicatorSets] = useState<LearningIndicatorSet[]>([]);
+  const [indicatorScoresMap, setIndicatorScoresMap] = useState<Record<string, LearningIndicatorScore[]>>({});
+  const [seedingIndicators, setSeedingIndicators] = useState(false);
+  const [noticeText, setNoticeText] = useState('');
+  const printSheetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCourseCfg(loadPp5CourseSettings(selectedCourse.id, academicYear));
+  }, [selectedCourse.id, academicYear]);
+
+  useEffect(() => {
+    setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
+  }, [schoolId, academicYear, semester]);
+
+  useEffect(() => {
+    let mounted = true;
+    void loadLearningIndicatorSets({
+      schoolId,
+      courseId: selectedCourse.id,
+      academicYear,
+      semester,
+    }).then(async (loaded) => {
+      if (!mounted) return;
+      setIndicatorSets(loaded);
+      const entries = await Promise.all(
+        loaded.map(async (s) => [s.id, await loadLearningIndicatorScores({ schoolId, setId: s.id })] as const)
+      );
+      if (mounted) {
+        const next: Record<string, LearningIndicatorScore[]> = {};
+        entries.forEach(([id, list]) => {
+          next[id] = list;
+        });
+        setIndicatorScoresMap(next);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [schoolId, selectedCourse.id, academicYear, semester]);
+
+  const updateCourseCfg = (patch: Partial<Pp5CourseSettings>) => {
+    setCourseCfg((prev) => {
+      const next = { ...prev, ...patch };
+      savePp5CourseSettings(selectedCourse.id, next);
+      return next;
+    });
+  };
+
+  const updateStudentQualitative = (
+    studentId: string,
+    updater: (prev: StudentQualitativeAssessment) => StudentQualitativeAssessment
+  ) => {
+    setQualitativeMap((prev) => {
+      const current = getStudentQualitativeRecord(prev, studentId);
+      const updated = { ...updater(current), updatedAt: new Date().toISOString() };
+      const nextMap = { ...prev, [studentId]: updated };
+      saveQualitativeAssessments(schoolId, academicYear, semester, nextMap);
+      return nextMap;
+    });
+  };
+
+  const handleBatchApplyAttributes = (level: 3 | 2 | 1 | 0) => {
+    setQualitativeMap((prev) => {
+      const nextMap = { ...prev };
+      rosterStudents.forEach((stu) => {
+        const current = getStudentQualitativeRecord(nextMap, stu.id);
+        nextMap[stu.id] = {
+          ...current,
+          attributes: Array(8).fill(level),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      saveQualitativeAssessments(schoolId, academicYear, semester, nextMap);
+      return nextMap;
+    });
+    setNoticeText(`กำหนดคุณลักษณะอันพึงประสงค์ ๘ ประการ เป็น "${QUALITY_LABELS[level]}" ครบทุกคนแล้ว`);
+  };
+
+  const handleBatchApplyReading = (level: 3 | 2 | 1 | 0) => {
+    setQualitativeMap((prev) => {
+      const nextMap = { ...prev };
+      rosterStudents.forEach((stu) => {
+        const current = getStudentQualitativeRecord(nextMap, stu.id);
+        nextMap[stu.id] = {
+          ...current,
+          readingWriting: Array(5).fill(level),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      saveQualitativeAssessments(schoolId, academicYear, semester, nextMap);
+      return nextMap;
+    });
+    setNoticeText(`กำหนดผลการอ่าน คิดวิเคราะห์ และเขียน ๕ ด้าน เป็น "${QUALITY_LABELS[level]}" ครบทุกคนแล้ว`);
+  };
+
+  const handleSeedObecUnits1To3 = async () => {
+    setSeedingIndicators(true);
+    try {
+      const generated = createObcUnitSetsForCourse({
+        schoolId,
+        course: selectedCourse,
+        academicYear,
+        semester,
+      });
+      for (const s of generated) {
+        await saveLearningIndicatorSet(s);
+      }
+      setIndicatorSets((prev) => {
+        const existing = new Set(prev.map((x) => x.id));
+        return [...prev, ...generated.filter((x) => !existing.has(x.id))];
+      });
+      setNoticeText(`นำเข้ามาตรฐานตัวชี้วัด หน่วยที่ 1–3 (${learningArea.shortTh}) เข้าสู่ ปพ.๕ เรียบร้อยแล้ว`);
+    } finally {
+      setSeedingIndicators(false);
+    }
+  };
 
   const totalHours = selectedCourse.totalHours || Math.max(20, Math.round(selectedCourse.credits * 40));
   const minAttendanceHours = selectedCourse.minAttendanceHours || Math.round(totalHours * 0.8);
 
-  // Merge enrolled students and any student with a grade record in this course
   const rosterStudents = useMemo(() => {
     const enrolledIds = new Set(selectedCourse.enrolledStudentIds || []);
     const gradedIds = new Set(courseGrades.map((g) => g.studentId));
     const combinedIds = new Set([...enrolledIds, ...gradedIds]);
-    const list = students.filter((s) => combinedIds.has(s.id));
-    if (list.length > 0) return list;
-    return [];
+    return students.filter((s) => combinedIds.has(s.id));
   }, [students, selectedCourse.enrolledStudentIds, courseGrades]);
 
   const courseStage = useMemo(
@@ -112,7 +278,6 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     [selectedCourse, rosterStudents]
   );
   const isPrimaryCourse = isPrimaryStage(courseStage);
-  const isEarlyPrimaryCourse = courseStage === 'primary_early';
   const courseIsActivity = isActivityCourse(selectedCourse);
 
   const distinctRooms = useMemo(() => {
@@ -123,37 +288,70 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   const rows = useMemo(() => {
     return rosterStudents.map((student, index) => {
       const grade = courseGrades.find((g) => g.studentId === student.id);
-      const eligibility = calculateStudentCourseEligibility({
+      const attendanceDetail = calculateDetailedCourseAttendance({
         student,
         course: selectedCourse,
         timetableSlots,
         attendance,
         periodAttendance,
       });
-      const isMs = eligibility.isAtRiskMs;
+      const isMs = attendanceDetail.isAtRiskMs;
       const resolved = resolveEffectiveGrade(grade, selectedCourse, systemConfig.gradingSystem, isMs);
-      const baseQuality = deriveQualityRating(grade ? grade.totalScore : null, isMs || resolved.letter === 'ร');
-      const overrides = qualityOverrides[student.id] || {};
-      const attrNum = overrides.attr ?? baseQuality.num;
-      const readingNum = overrides.reading ?? baseQuality.num;
-      const competencyNum = overrides.competency ?? baseQuality.num;
+      const qualRecord = getStudentQualitativeRecord(qualitativeMap, student.id);
+      const qualSummary = summarizeStudentQualitative(qualRecord);
       const courseworkSubtotal = grade
         ? grade.assignmentScore + grade.quizScore + grade.midtermScore
         : null;
+
+      // Unit indicator breakdown
+      const unitResults = indicatorSets.map((set) => {
+        const maxScore = set.indicators.reduce((sum, ind) => sum + ind.maxScore, 0);
+        const setScores = indicatorScoresMap[set.id] || [];
+        let earned = 0;
+        let passedCount = 0;
+        let hasRecorded = false;
+        set.indicators.forEach((ind) => {
+          const found = setScores.find((sc) => sc.studentId === student.id && sc.indicatorId === ind.id);
+          if (found) {
+            hasRecorded = true;
+            earned += found.score;
+            if (found.score >= ind.maxScore * 0.5) passedCount += 1;
+          }
+        });
+        const pct = maxScore > 0 ? Math.round((earned / maxScore) * 100) : 0;
+        return {
+          setId: set.id,
+          earned,
+          maxScore,
+          pct,
+          passedCount,
+          totalCount: set.indicators.length,
+          hasRecorded,
+        };
+      });
+
+      const totalUnitEarned = unitResults.reduce((s, u) => s + u.earned, 0);
+      const totalUnitMax = unitResults.reduce((s, u) => s + u.maxScore, 0);
+      const hasAnyUnitScore = unitResults.some((u) => u.hasRecorded);
 
       return {
         index,
         student,
         grade,
-        eligibility,
+        attendanceDetail,
         isMs: isMs || resolved.letter === 'มส.',
         resolved,
         finalLetter: resolved.letter,
-        baseQuality,
-        attrNum,
-        readingNum,
-        competencyNum,
+        qualRecord,
+        qualSummary,
+        attrNum: qualSummary.attrLevel,
+        readingNum: qualSummary.readingLevel,
+        competencyNum: qualSummary.compLevel,
         courseworkSubtotal,
+        unitResults,
+        totalUnitEarned,
+        totalUnitMax,
+        hasAnyUnitScore,
       };
     });
   }, [
@@ -164,7 +362,9 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     attendance,
     periodAttendance,
     systemConfig.gradingSystem,
-    qualityOverrides,
+    qualitativeMap,
+    indicatorSets,
+    indicatorScoresMap,
   ]);
 
   const filteredRows = useMemo(() => {
@@ -182,7 +382,6 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     );
   }, [rows, searchQuery]);
 
-  // Live statistics for Part 1
   const stats = useMemo(() => {
     const total = rows.length;
     const isThai = systemConfig.gradingSystem === 'thai';
@@ -204,6 +403,10 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
     const readingCounts: Record<'3' | '2' | '1' | '0', number> = { '3': 0, '2': 0, '1': 0, '0': 0 };
     const competencyCounts: Record<'3' | '2' | '1' | '0', number> = { '3': 0, '2': 0, '1': 0, '0': 0 };
 
+    let totalAttPercent = 0;
+    let msRiskCount = 0;
+    let realLogStudents = 0;
+
     rows.forEach((row) => {
       if (row.finalLetter in counts) {
         counts[row.finalLetter] += 1;
@@ -224,17 +427,25 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
         scores.push(row.grade.totalScore);
       }
 
-      if (row.attrNum >= 0) attrCounts[String(row.attrNum) as '3' | '2' | '1' | '0'] += 1;
-      if (row.readingNum >= 0) readingCounts[String(row.readingNum) as '3' | '2' | '1' | '0'] += 1;
-      if (row.competencyNum >= 0) competencyCounts[String(row.competencyNum) as '3' | '2' | '1' | '0'] += 1;
+      attrCounts[String(row.attrNum) as '3' | '2' | '1' | '0'] += 1;
+      readingCounts[String(row.readingNum) as '3' | '2' | '1' | '0'] += 1;
+      competencyCounts[String(row.competencyNum) as '3' | '2' | '1' | '0'] += 1;
+
+      totalAttPercent += row.attendanceDetail.attendancePercent;
+      if (row.attendanceDetail.isAtRiskMs) msRiskCount += 1;
+      if (row.attendanceDetail.source !== 'baseline_timetable') realLogStudents += 1;
     });
 
     const pct = (n: number) => (total > 0 ? ((n / total) * 100).toFixed(1) : '0.0');
-    const mean = scores.length > 0
-      ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
-      : '-';
+    const meanNum = scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : null;
+    const mean = meanNum !== null ? meanNum.toFixed(1) : '-';
+    const sd =
+      meanNum !== null && scores.length > 1
+        ? Math.sqrt(scores.reduce((s, v) => s + (v - meanNum) ** 2, 0) / scores.length).toFixed(1)
+        : '-';
     const max = scores.length > 0 ? Math.max(...scores) : '-';
     const min = scores.length > 0 ? Math.min(...scores) : '-';
+    const avgAttendancePct = total > 0 ? (totalAttPercent / total).toFixed(1) : '0.0';
 
     return {
       total,
@@ -248,47 +459,265 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
       competencyCounts,
       pct,
       mean,
+      sd,
       max,
       min,
+      avgAttendancePct,
+      msRiskCount,
+      realLogStudents,
     };
   }, [rows, systemConfig.gradingSystem, courseIsActivity]);
 
+  const obecComplianceRows = useMemo(() => {
+    const hasIndicators = indicatorSets.length > 0;
+    const has3Units = indicatorSets.length >= 3;
+    const hasScoredIndicators = Object.values(indicatorScoresMap).some((list) => list.length > 0);
+    const hasRealAttendance = stats.realLogStudents > 0;
+    const hasGrades = courseGrades.length > 0;
+    const hasQualRecords = Object.keys(qualitativeMap).length > 0;
+
+    return [
+      {
+        no: 1,
+        topic: 'สมุดบันทึกพัฒนาคุณภาพผู้เรียน (ปพ.๕)',
+        obecRule: 'มีหน้าปก/ข้อมูลรายวิชา สรุปผลสัมฤทธิ์ บัญชีคะแนน และคณะกรรมการอนุมัติ ๔ ระดับ',
+        statusText: `ครบทั้ง ๔ ส่วน (อัตราส่วน ${courseCfg.scoreRatioMid}:${courseCfg.scoreRatioFinal})`,
+        ready: true,
+        targetSection: 'cover_summary' as Pp5SectionId,
+      },
+      {
+        no: 2,
+        topic: 'ตัวชี้วัดและมาตรฐานตัวชี้วัด หน่วยที่ ๑–๓',
+        obecRule: 'จำแนกตัวชี้วัดระหว่างทาง-ปลายทาง เชื่อมโยงมาตรฐาน ๘ กลุ่มสาระฯ',
+        statusText: has3Units
+          ? `ครบ ${indicatorSets.length} หน่วย (${indicatorSets.reduce((s, x) => s + x.indicators.length, 0)} ตัวชี้วัด)`
+          : hasIndicators
+          ? `มี ${indicatorSets.length} หน่วย (แนะนำเพิ่มให้ครบ ๓ หน่วย)`
+          : 'ยังไม่ได้กำหนดชุดตัวชี้วัดรายวิชา',
+        ready: has3Units,
+        targetSection: 'indicators_units' as Pp5SectionId,
+      },
+      {
+        no: 3,
+        topic: 'สถิติการมาเรียน (เกณฑ์เวลาเรียน ๘๐%)',
+        obecRule: 'บันทึกเวลาเรียนจริง มา/สาย/ลาป่วย/ลากิจ/ขาด ตัดสินสิทธิ์สอบ มส. (< ๘๐%)',
+        statusText: hasRealAttendance
+          ? `เชื่อมข้อมูลเช็คชื่อจริง ${stats.realLogStudents}/${stats.total} คน · เฉลี่ย ${stats.avgAttendancePct}%`
+          : `ใช้ค่ามาตรฐานตารางสอน (${stats.avgAttendancePct}%) — รอบันทึกเช็คชื่อรายคาบ/วัน`,
+        ready: hasRealAttendance,
+        targetSection: 'attendance' as Pp5SectionId,
+      },
+      {
+        no: 4,
+        topic: 'คะแนนตามตัวชี้วัด กลุ่มสาระการเรียนรู้',
+        obecRule: `บันทึกคะแนนรายตัวชี้วัดภายใต้ ${learningArea.nameTh}`,
+        statusText: hasScoredIndicators
+          ? 'บันทึกคะแนนตามตัวชี้วัดรายบุคคลแล้ว'
+          : 'รอครูกรอกคะแนนรายตัวชี้วัดในหน่วยการเรียนรู้',
+        ready: hasScoredIndicators,
+        targetSection: 'indicators_units' as Pp5SectionId,
+      },
+      {
+        no: 5,
+        topic: 'การประเมินหน่วยการเรียนรู้ (รายวิชาพื้นฐาน/เพิ่มเติม)',
+        obecRule: 'สรุปคะแนนและผลการผ่านตัวชี้วัดแยกตามหน่วยการเรียนรู้ที่ ๑–๓',
+        statusText: hasIndicators ? `พร้อมรายงานประเมิน ${indicatorSets.length} หน่วย` : 'รอตั้งค่าหน่วยการเรียนรู้',
+        ready: hasIndicators,
+        targetSection: 'indicators_units' as Pp5SectionId,
+      },
+      {
+        no: 6,
+        topic: 'การประเมินคุณลักษณะอันพึงประสงค์ ๘ ประการ & เกณฑ์ สพฐ.',
+        obecRule: 'ประเมินครบทั้ง ๘ ข้อ (๐–๓) และตัดสินผลตามเกณฑ์ สพฐ. พร้อมตาราง Rubric',
+        statusText: hasQualRecords
+          ? `บันทึกประเมินครบ ๘ ด้าน (ดีเยี่ยม ${stats.attrCounts['3']} คน)`
+          : 'ใช้ค่าเริ่มต้นดีเยี่ยม (๓) — สามารถปรับรายข้อได้ทั้ง ๘ ประการ',
+        ready: true,
+        targetSection: 'attributes' as Pp5SectionId,
+      },
+      {
+        no: 7,
+        topic: 'การประเมินการอ่าน คิดวิเคราะห์ และเขียน ๕ ด้าน & เกณฑ์ สพฐ.',
+        obecRule: 'ประเมินครบ ๕ ด้าน (อ่านหาสารสนเทศ, จับประเด็น, วิเคราะห์, วิจารณ์, เขียนสื่อความหมาย)',
+        statusText: `ประเมิน ๕ ด้านครบ (ดีเยี่ยม ${stats.readingCounts['3']} คน · ผ่านเกณฑ์ ${stats.total - stats.readingCounts['0']} คน)`,
+        ready: true,
+        targetSection: 'reading' as Pp5SectionId,
+      },
+      {
+        no: 8,
+        topic: 'รอบการประเมิน ป.๑–ป.๖ (รายปี) vs ม.๑–ม.๖ (รายภาค)',
+        obecRule: 'ประถมศึกษาประเมินรายปีเน้นคะแนนดิบ/ร้อยละ; มัธยมประเมินรายภาค ๐–๔ และ GPAX',
+        statusText: isPrimaryCourse
+          ? 'โหมดประถมศึกษา (ประเมินรายปี • แสดงคะแนนดิบและร้อยละ)'
+          : `โหมดมัธยมศึกษา (${formatSemesterLabel(semester)} • ระบบเกรด ๐–๔ / A–F)`,
+        ready: true,
+        targetSection: 'cover_summary' as Pp5SectionId,
+      },
+      {
+        no: 9,
+        topic: 'ผลการเรียน & อักษรพิเศษ (ร, มส., ผ, มผ)',
+        obecRule: 'บันทึกคะแนนระหว่างภาค/ปลายภาค พร้อมจัดการ ร / มส. / ผ / มผ ตามระเบียบ ศธ.',
+        statusText: hasGrades
+          ? `บันทึกคะแนนแล้ว ${courseGrades.length} คน (ผ่าน ${stats.passedCount} / เสี่ยง มส. ${stats.msRiskCount})`
+          : 'ยังไม่มีคะแนนบันทึกในวิชานี้',
+        ready: hasGrades,
+        targetSection: 'cover_summary' as Pp5SectionId,
+      },
+    ];
+  }, [
+    indicatorSets,
+    indicatorScoresMap,
+    stats,
+    courseGrades.length,
+    qualitativeMap,
+    courseCfg.scoreRatioMid,
+    courseCfg.scoreRatioFinal,
+    learningArea.nameTh,
+    isPrimaryCourse,
+    semester,
+  ]);
+
+  const handlePrintPp5 = () => {
+    if (!printSheetRef.current) return;
+    printHtmlElementInIsolatedFrame(
+      printSheetRef.current.innerHTML,
+      `ปพ5_สมุดบันทึกพัฒนาคุณภาพผู้เรียน_${selectedCourse.code}`
+    );
+  };
+
+  const showCoverSummary = activeSection === 'cover_summary' || activeSection === 'all';
+  const showAttendance = activeSection === 'attendance' || activeSection === 'all';
+  const showIndicatorsUnits = activeSection === 'indicators_units' || activeSection === 'all';
+  const showAttributes = activeSection === 'attributes' || activeSection === 'all';
+  const showReading = activeSection === 'reading' || activeSection === 'all';
+  const showObecAudit = activeSection === 'obec_audit' || activeSection === 'all';
+
+  const sectionTabs: Array<{ id: Pp5SectionId; label: string }> = [
+    { id: 'cover_summary', label: '๑. ปก & สรุปผลสัมฤทธิ์' },
+    { id: 'attendance', label: '๒. สถิติการมาเรียน (80%)' },
+    { id: 'indicators_units', label: '๓. ตัวชี้วัด & ประเมินหน่วย 1–3' },
+    { id: 'attributes', label: '๔. คุณลักษณะฯ 8 ข้อ & เกณฑ์' },
+    { id: 'reading', label: '๕. อ่าน คิดวิเคราะห์ฯ 5 ด้าน & เกณฑ์' },
+    { id: 'obec_audit', label: '๖. เทียบเกณฑ์ สพฐ./ศธ.' },
+    { id: 'all', label: 'ดูทั้งเล่ม ปพ.๕' },
+  ];
+
+  const ratioPresets: Array<{ mid: number; final: number; label: string }> = [
+    { mid: 70, final: 30, label: '70 : 30 (มาตรฐาน สพฐ.)' },
+    { mid: 80, final: 20, label: '80 : 20 (เน้นปฏิบัติ/พื้นฐาน)' },
+    { mid: 60, final: 40, label: '60 : 40 (เน้นสอบปลายภาค)' },
+  ];
+
   return (
     <div className="space-y-3">
-      {/* Screen-only Collapsible Official Metadata Editor Bar */}
-      <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 print:hidden group">
+      {/* Screen-only Section Switcher & Print Controls */}
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2.5 print:hidden space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <BookOpen className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                สมุดบันทึกผลการพัฒนาคุณภาพผู้เรียน (ปพ.๕ ฉบับ สพฐ.) · {selectedCourse.code} {selectedCourse.titleTh}
+              </div>
+              <div className="text-[11px] text-[var(--color-text-muted)]">
+                {learningArea.nameTh} · {getCategoryTypeLabel(selectedCourse.category)}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handlePrintPp5}
+            className="btn-action-primary px-3 py-1.5 text-xs shrink-0"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>พิมพ์เอกสาร ปพ.๕ (A4)</span>
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {sectionTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveSection(tab.id)}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                activeSection === tab.id
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {noticeText && (
+        <div className="rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-800 px-3 py-2 text-xs font-semibold text-emerald-800 dark:text-emerald-200 flex items-center justify-between gap-2 print:hidden">
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{noticeText}</span>
+          </span>
+          <button type="button" onClick={() => setNoticeText('')} className="cursor-pointer opacity-70 hover:opacity-100">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Screen-only Collapsible Official Metadata & Ratio Editor */}
+      <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 print:hidden">
         <summary className="list-none flex flex-wrap items-center justify-between gap-2 cursor-pointer text-xs font-bold text-[var(--color-text-title)]">
           <div className="flex items-center gap-2">
             <FileText className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-            <span>ตั้งค่าข้อมูลหัวกระดาษและผู้ลงนาม ปพ.๕ (คลิกเพื่อแก้ไขก่อนพิมพ์)</span>
+            <span>ตั้งค่าหัวกระดาษ อัตราส่วนคะแนน สพฐ. และผู้ลงนาม ปพ.๕</span>
           </div>
           <span className="text-[11px] font-normal text-[var(--color-text-muted)]">
-            {affiliationOffice} · ชุดที่ {docSetNo}
+            {courseCfg.affiliationOffice} · ชุดที่ {courseCfg.docSetNo} · อัตราส่วน {courseCfg.scoreRatioMid}:{courseCfg.scoreRatioFinal}
           </span>
         </summary>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs pt-2.5 mt-2 border-t border-[var(--color-border)]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs pt-2.5 mt-2 border-t border-[var(--color-border)]">
           <div>
             <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">
-              สังกัด / สำนักงานเขตพื้นที่
+              สังกัด / สำนักงานเขตพื้นที่ (สพป./สพม.)
             </label>
             <input
               type="text"
-              value={affiliationOffice}
-              onChange={(e) => setAffiliationOffice(e.target.value)}
+              value={courseCfg.affiliationOffice}
+              onChange={(e) => updateCourseCfg({ affiliationOffice: e.target.value })}
               className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
             />
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">
-              ชุดที่ / ปีการศึกษา (บน ปพ.๕)
+              ชุดที่ / ปีการศึกษา
             </label>
             <input
               type="text"
-              value={docSetNo}
-              onChange={(e) => setDocSetNo(e.target.value)}
+              value={courseCfg.docSetNo}
+              onChange={(e) => updateCourseCfg({ docSetNo: e.target.value })}
               className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
             />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">
+              อัตราส่วนคะแนน (ระหว่างเรียน : ปลายภาค)
+            </label>
+            <select
+              value={`${courseCfg.scoreRatioMid}:${courseCfg.scoreRatioFinal}`}
+              onChange={(e) => {
+                const [mid, fin] = e.target.value.split(':').map(Number);
+                updateCourseCfg({ scoreRatioMid: mid, scoreRatioFinal: fin });
+              }}
+              className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+            >
+              {ratioPresets.map((p) => (
+                <option key={p.label} value={`${p.mid}:${p.final}`}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-[10px] font-semibold text-[var(--color-text-muted)] mb-1">
@@ -296,8 +725,8 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
             </label>
             <input
               type="text"
-              value={headOfDeptName}
-              onChange={(e) => setHeadOfDeptName(e.target.value)}
+              value={courseCfg.headOfDeptName}
+              onChange={(e) => updateCourseCfg({ headOfDeptName: e.target.value })}
               placeholder="เว้นว่างเพื่อพิมพ์เส้นประ..."
               className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
             />
@@ -308,8 +737,8 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
             </label>
             <input
               type="text"
-              value={measurementHeadName}
-              onChange={(e) => setMeasurementHeadName(e.target.value)}
+              value={courseCfg.measurementHeadName}
+              onChange={(e) => updateCourseCfg({ measurementHeadName: e.target.value })}
               placeholder="เว้นว่างเพื่อพิมพ์เส้นประ..."
               className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
             />
@@ -320,8 +749,8 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
             </label>
             <input
               type="text"
-              value={directorName}
-              onChange={(e) => setDirectorName(e.target.value)}
+              value={courseCfg.directorName}
+              onChange={(e) => updateCourseCfg({ directorName: e.target.value })}
               placeholder="เว้นว่างเพื่อพิมพ์เส้นประ..."
               className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
             />
@@ -329,25 +758,39 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
         </div>
       </details>
 
-      {/* Official White A4-Ready Paper Sheet */}
-      <div className="bg-white text-slate-900 rounded-2xl p-5 sm:p-8 shadow-sm border border-slate-300 space-y-6 print:m-0 print:p-0 print:border-none print:shadow-none">
-        {/* Official Government Document Header */}
+      {/* =================================================================
+          OFFICIAL WHITE A4-READY PAPER SHEET
+          ================================================================= */}
+      <div
+        ref={printSheetRef}
+        className="bg-white text-slate-900 rounded-2xl p-5 sm:p-8 shadow-sm border border-slate-300 space-y-8 print:m-0 print:p-0 print:border-none print:shadow-none"
+      >
+        {/* Official Government Document Header (Always Shown) */}
         <div className="border-b-2 border-slate-900 pb-4 space-y-4">
           <div className="flex items-start justify-between gap-4">
-            <div className="w-16 h-16 rounded-full border-2 border-slate-800 flex flex-col items-center justify-center text-center shrink-0">
-              <GraduationCap className="w-7 h-7 text-slate-900" />
-              <span className="text-[8px] font-bold tracking-wider">สพฐ.</span>
-            </div>
+            {school?.logoUrl ? (
+              <img
+                src={school.logoUrl}
+                alt={school.nameTh}
+                className="w-16 h-16 object-contain border border-slate-300 rounded-lg p-1 shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full border-2 border-slate-800 flex flex-col items-center justify-center text-center shrink-0">
+                <GraduationCap className="w-7 h-7 text-slate-900" />
+                <span className="text-[8px] font-bold tracking-wider">สพฐ.</span>
+              </div>
+            )}
 
             <div className="text-center flex-1 space-y-0.5">
               <p className="text-xs font-bold text-slate-700">
-                แบบบันทึกผลการพัฒนาคุณภาพผู้เรียน (ปพ.๕)
+                สมุดบันทึกผลการพัฒนาคุณภาพผู้เรียน (ปพ.๕)
               </p>
               <h2 className="text-lg sm:text-xl font-extrabold text-slate-950">
-                โรงเรียน{systemConfig.schoolNameTh}
+                โรงเรียน{school?.nameTh || systemConfig.schoolNameTh}
               </h2>
               <p className="text-xs font-medium text-slate-700">
-                สังกัด {affiliationOffice}
+                สังกัด {courseCfg.affiliationOffice}
+                {school?.code ? ` · รหัสสถานศึกษา ${school.code}` : ''}
               </p>
               <p className="text-[11px] text-slate-600">
                 ตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน พุทธศักราช ๒๕๕๑ (ฉบับปรับปรุง พุทธศักราช ๒๕๖๐)
@@ -356,11 +799,10 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
 
             <div className="border-2 border-slate-900 px-3 py-1.5 text-center shrink-0">
               <div className="text-sm font-extrabold text-slate-950">ปพ.๕</div>
-              <div className="text-[10px] font-mono text-slate-700">ชุดที่ {docSetNo}</div>
+              <div className="text-[10px] font-mono text-slate-700">ชุดที่ {courseCfg.docSetNo}</div>
             </div>
           </div>
 
-          {/* Course & Curriculum Specification Box */}
           <table className="w-full text-xs border-collapse border border-slate-700">
             <tbody>
               <tr>
@@ -373,17 +815,17 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
               <tr>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">ประเภทวิชา</td>
                 <td className="border border-slate-500 px-3 py-1.5">{getCategoryTypeLabel(selectedCourse.category)}</td>
-                <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold w-36">กลุ่มสาระการเรียนรู้</td>
-                <td className="border border-slate-500 px-3 py-1.5">{selectedCourse.department || '-'}</td>
+                <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold w-40">กลุ่มสาระการเรียนรู้</td>
+                <td className="border border-slate-500 px-3 py-1.5 font-medium">{learningArea.nameTh}</td>
               </tr>
               <tr>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">
-                  {isPrimaryCourse ? 'รอบการประเมิน / ปีการศึกษา' : 'ภาคเรียน / ปีการศึกษา'}
+                  {isPrimaryCourse ? 'รอบประเมิน / ปีการศึกษา' : 'ภาคเรียน / ปีการศึกษา'}
                 </td>
                 <td className="border border-slate-500 px-3 py-1.5">
                   {isPrimaryCourse
-                    ? `ประเมินผลรายปี • ปีการศึกษา ${selectedCourse.academicYear || systemConfig.academicYear}`
-                    : `${formatSemesterLabel(selectedCourse.semester)} ปีการศึกษา ${selectedCourse.academicYear || systemConfig.academicYear}`}
+                    ? `ประเมินผลรายปี • ปีการศึกษา ${academicYear}`
+                    : `${formatSemesterLabel(semester)} ปีการศึกษา ${academicYear}`}
                   <span className="ml-1.5 text-[10px] text-slate-600">
                     ({getEducationStageLabelTh(courseStage)})
                   </span>
@@ -392,15 +834,15 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                 <td className="border border-slate-500 px-3 py-1.5">{distinctRooms}</td>
               </tr>
               <tr>
-                <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">น้ำหนัก / เวลาเรียน</td>
+                <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">เวลาเรียน / น้ำหนัก</td>
                 <td className="border border-slate-500 px-3 py-1.5 tabular-nums">
                   {courseIsActivity
                     ? `กิจกรรมพัฒนาผู้เรียน (ประเมิน ผ/มผ • ${totalHours} ชม.)`
                     : selectedCourse.credits === 0
                     ? `ไม่มีหน่วยกิต (${totalHours} ชม. • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`
                     : isPrimaryCourse
-                    ? `${selectedCourse.credits.toFixed(1)} น้ำหนักวิชา (${totalHours} ชม./ปี • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`
-                    : `${selectedCourse.credits.toFixed(1)} หน่วยกิต (${totalHours} ชม./ภาค • เกณฑ์ 80% = ${minAttendanceHours} ชม.)`}
+                    ? `${selectedCourse.credits.toFixed(1)} น้ำหนักวิชา (${totalHours} ชม./ปี • อัตราส่วน ${courseCfg.scoreRatioMid}:${courseCfg.scoreRatioFinal})`
+                    : `${selectedCourse.credits.toFixed(1)} หน่วยกิต (${totalHours} ชม./ภาค • อัตราส่วน ${courseCfg.scoreRatioMid}:${courseCfg.scoreRatioFinal})`}
                 </td>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">ครูผู้สอน</td>
                 <td className="border border-slate-500 px-3 py-1.5 font-semibold">{selectedCourse.teacherName || '-'}</td>
@@ -409,366 +851,894 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
           </table>
         </div>
 
-        {/* Part 1: Summary Result Tables */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
-              ส่วนที่ ๑ แบบสรุปผลการพัฒนาคุณภาพผู้เรียนประจำรายวิชา
-            </h3>
-            <div className="text-[11px] font-mono tabular-nums text-slate-700">
-              คะแนนเฉลี่ย (Mean): <strong>{stats.mean}</strong> | สูงสุด: <strong>{stats.max}</strong> | ต่ำสุด: <strong>{stats.min}</strong>
-            </div>
-          </div>
+        {/* ===============================================================
+            SECTION 1: สรุปผลสัมฤทธิ์ & บัญชีคะแนนรวม ปพ.๕
+           =============================================================== */}
+        {showCoverSummary && (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-1.5">
+                <h3 className="text-xs font-extrabold text-slate-950">
+                  ส่วนที่ ๑ แบบสรุปผลการพัฒนาคุณภาพผู้เรียนประจำรายวิชา (สพฐ.)
+                </h3>
+                <div className="text-[11px] font-mono tabular-nums text-slate-700">
+                  เฉลี่ย (Mean): <strong>{stats.mean}</strong> | SD: <strong>{stats.sd}</strong> | สูงสุด: <strong>{stats.max}</strong> | ต่ำสุด: <strong>{stats.min}</strong>
+                </div>
+              </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px] border-collapse border border-slate-700 text-center tabular-nums">
-              <thead>
-                <tr className="bg-slate-100 font-bold text-slate-900">
-                  <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 text-left w-28">
-                    รายการสรุปผลสัมฤทธิ์
-                  </th>
-                  <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 w-14">
-                    ทั้งหมด<br />(คน)
-                  </th>
-                  <th colSpan={stats.gradeKeys.length} className="border border-slate-600 px-2 py-1">
-                    จำนวนผู้เรียนที่ได้ระดับผลการเรียน ({systemConfig.gradingSystem === 'thai' ? 'ระบบ 0–4' : 'ระบบ A–F'})
-                  </th>
-                  <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 bg-emerald-50">
-                    ผ่านเกณฑ์<br />(ระดับ 1–4)
-                  </th>
-                  <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 bg-blue-50">
-                    ระดับดีขึ้นไป<br />(3–4)
-                  </th>
-                </tr>
-                <tr className="bg-slate-50 font-bold text-slate-800">
-                  {stats.gradeKeys.map((key) => (
-                    <th key={key} className="border border-slate-600 px-1.5 py-1 min-w-8 font-mono">
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-slate-600 px-2 py-1.5 text-left font-bold bg-slate-50">จำนวน (คน)</td>
-                  <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold">{stats.total}</td>
-                  {stats.gradeKeys.map((key) => (
-                    <td key={key} className="border border-slate-600 px-1.5 py-1.5 font-mono">
-                      {stats.counts[key]}
-                    </td>
-                  ))}
-                  <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-emerald-50/70 text-emerald-900">
-                    {stats.passedCount}
-                  </td>
-                  <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-blue-50/70 text-blue-900">
-                    {stats.level3OrAboveCount}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border border-slate-600 px-2 py-1.5 text-left font-bold bg-slate-50">ร้อยละ (%)</td>
-                  <td className="border border-slate-600 px-2 py-1.5 font-mono">100.0</td>
-                  {stats.gradeKeys.map((key) => (
-                    <td key={key} className="border border-slate-600 px-1.5 py-1.5 font-mono text-slate-600">
-                      {stats.pct(stats.counts[key])}
-                    </td>
-                  ))}
-                  <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-emerald-50/70 text-emerald-900">
-                    {stats.pct(stats.passedCount)}%
-                  </td>
-                  <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-blue-50/70 text-blue-900">
-                    {stats.pct(stats.level3OrAboveCount)}%
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* 1.2 Desirable Attributes / Analytical Reading / Key Competencies Summary */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px] border-collapse border border-slate-700 text-center tabular-nums">
-              <thead>
-                <tr className="bg-slate-100 font-bold text-slate-900">
-                  <th className="border border-slate-600 px-2.5 py-1.5 text-left">
-                    ๑.๒ สรุปผลการประเมินตามหลักสูตรแกนกลางฯ
-                  </th>
-                  <th className="border border-slate-600 px-2 py-1.5">ดีเยี่ยม (๓)</th>
-                  <th className="border border-slate-600 px-2 py-1.5">ดี (๒)</th>
-                  <th className="border border-slate-600 px-2 py-1.5">ผ่าน (๑)</th>
-                  <th className="border border-slate-600 px-2 py-1.5">ไม่ผ่าน (๐)</th>
-                  <th className="border border-slate-600 px-2 py-1.5">ร้อยละระดับดีขึ้นไป</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { label: 'คุณลักษณะอันพึงประสงค์ ๘ ประการ', counts: stats.attrCounts },
-                  { label: 'การอ่าน คิดวิเคราะห์ และเขียน', counts: stats.readingCounts },
-                  { label: 'สมรรถนะสำคัญของผู้เรียน ๕ ประการ', counts: stats.competencyCounts },
-                ].map(({ label, counts }) => {
-                  const goodOrAbove = counts['3'] + counts['2'];
-                  return (
-                    <tr key={label}>
-                      <td className="border border-slate-600 px-2.5 py-1.5 text-left font-medium">{label}</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['3']} คน</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['2']} คน</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['1']} คน</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['0']} คน</td>
-                      <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold">
-                        {stats.pct(goodOrAbove)}%
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] border-collapse border border-slate-700 text-center tabular-nums">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-slate-900">
+                      <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 text-left w-28">
+                        รายการสรุปผลสัมฤทธิ์
+                      </th>
+                      <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 w-14">
+                        ทั้งหมด<br />(คน)
+                      </th>
+                      <th colSpan={stats.gradeKeys.length} className="border border-slate-600 px-2 py-1">
+                        จำนวนผู้เรียนที่ได้ระดับผลการเรียน ({systemConfig.gradingSystem === 'thai' ? 'ระบบ 0–4' : 'ระบบ A–F'})
+                      </th>
+                      <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 bg-emerald-50">
+                        ผ่านเกณฑ์<br />(ระดับ 1–4)
+                      </th>
+                      <th rowSpan={2} className="border border-slate-600 px-2 py-1.5 bg-blue-50">
+                        ระดับดีขึ้นไป<br />(3–4)
+                      </th>
+                    </tr>
+                    <tr className="bg-slate-50 font-bold text-slate-800">
+                      {stats.gradeKeys.map((key) => (
+                        <th key={key} className="border border-slate-600 px-1.5 py-1 min-w-8 font-mono">
+                          {key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-slate-600 px-2 py-1.5 text-left font-bold bg-slate-50">จำนวน (คน)</td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold">{stats.total}</td>
+                      {stats.gradeKeys.map((key) => (
+                        <td key={key} className="border border-slate-600 px-1.5 py-1.5 font-mono">
+                          {stats.counts[key]}
+                        </td>
+                      ))}
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-emerald-50/70 text-emerald-900">
+                        {stats.passedCount}
+                      </td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-blue-50/70 text-blue-900">
+                        {stats.level3OrAboveCount}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    <tr>
+                      <td className="border border-slate-600 px-2 py-1.5 text-left font-bold bg-slate-50">ร้อยละ (%)</td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono">100.0</td>
+                      {stats.gradeKeys.map((key) => (
+                        <td key={key} className="border border-slate-600 px-1.5 py-1.5 font-mono text-slate-600">
+                          {stats.pct(stats.counts[key])}
+                        </td>
+                      ))}
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-emerald-50/70 text-emerald-900">
+                        {stats.pct(stats.passedCount)}%
+                      </td>
+                      <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold bg-blue-50/70 text-blue-900">
+                        {stats.pct(stats.level3OrAboveCount)}%
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
-        {/* Part 2: Complete Student Score, Attendance & Evaluation Roster */}
-        <div className="space-y-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
-              ส่วนที่ ๒ บัญชีรายชื่อ เวลาเรียน คะแนนเก็บ และผลการประเมินรายบุคคล
-            </h3>
-            <span className="text-[11px] text-slate-600 font-medium">
-              อัตราส่วนคะแนน: ระหว่างภาค ๖๐ (ชิ้นงาน ๒๐ + ย่อย ๑๐ + กลางภาค ๓๐) : ปลายภาค ๔๐ = ๑๐๐ คะแนน
-            </span>
-          </div>
+              {/* 1.2 Desirable Attributes / Analytical Reading / Key Competencies Summary */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] border-collapse border border-slate-700 text-center tabular-nums">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-slate-900">
+                      <th className="border border-slate-600 px-2.5 py-1.5 text-left">
+                        ๑.๒ สรุปผลการประเมินตามองค์ประกอบหลักสูตรแกนกลางฯ (เชื่อมข้อมูลจริงจากแบบประเมิน)
+                      </th>
+                      <th className="border border-slate-600 px-2 py-1.5">ดีเยี่ยม (๓)</th>
+                      <th className="border border-slate-600 px-2 py-1.5">ดี (๒)</th>
+                      <th className="border border-slate-600 px-2 py-1.5">ผ่าน (๑)</th>
+                      <th className="border border-slate-600 px-2 py-1.5">ไม่ผ่าน (๐)</th>
+                      <th className="border border-slate-600 px-2 py-1.5">ร้อยละระดับดีขึ้นไป</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: 'คุณลักษณะอันพึงประสงค์ ๘ ประการ', counts: stats.attrCounts },
+                      { label: 'การอ่าน คิดวิเคราะห์ และเขียนสื่อความหมาย ๕ ด้าน', counts: stats.readingCounts },
+                      { label: 'สมรรถนะสำคัญของผู้เรียน ๕ ประการ', counts: stats.competencyCounts },
+                    ].map(({ label, counts }) => {
+                      const goodOrAbove = counts['3'] + counts['2'];
+                      return (
+                        <tr key={label}>
+                          <td className="border border-slate-600 px-2.5 py-1.5 text-left font-medium">{label}</td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['3']} คน</td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['2']} คน</td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['1']} คน</td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono">{counts['0']} คน</td>
+                          <td className="border border-slate-600 px-2 py-1.5 font-mono font-bold">
+                            {stats.pct(goodOrAbove)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse border border-slate-700 text-center tabular-nums">
-              <thead>
-                <tr className="bg-slate-100 font-bold text-slate-900">
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1.5 w-10">ที่</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-2 text-left min-w-44">เลขประจำตัว / ชื่อ-สกุล</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1.5 w-14">ห้อง</th>
-                  <th colSpan={2} className="border border-slate-600 py-1 px-1">เวลาเรียน ({totalHours} ชม.)</th>
-                  <th colSpan={4} className="border border-slate-600 py-1 px-1">คะแนนระหว่างภาค (๖๐)</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-14">ปลายภาค<br />(๔๐)</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-14 bg-amber-50">รวม<br />(๑๐๐)</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-14 bg-slate-200">ระดับผล<br />การเรียน</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-16">คุณลักษณะ<br />(๓)</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-16">อ่านคิดฯ<br />(๓)</th>
-                  <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-16">สมรรถนะ<br />(๓)</th>
-                </tr>
-                <tr className="bg-slate-50 text-[10px] font-semibold text-slate-800">
-                  <th className="border border-slate-600 py-1 px-1 w-14">มา/ทั้งหมด</th>
-                  <th className="border border-slate-600 py-1 px-1 w-14">ร้อยละ</th>
-                  <th className="border border-slate-600 py-1 px-1 w-12">ชิ้นงาน<br />(๒๐)</th>
-                  <th className="border border-slate-600 py-1 px-1 w-12">ย่อย<br />(๑๐)</th>
-                  <th className="border border-slate-600 py-1 px-1 w-12">กลางภาค<br />(๓๐)</th>
-                  <th className="border border-slate-600 py-1 px-1 w-12 bg-slate-100">รวม<br />(๖๐)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={15} className="border border-slate-500 py-6 text-slate-500">
-                      {rows.length === 0
-                        ? 'ยังไม่มีนักเรียนลงทะเบียนหรือบันทึกคะแนนในรายวิชานี้'
-                        : 'ไม่พบนักเรียนที่ตรงกับคำค้นหา'}
-                    </td>
+            {/* Part 2: Complete Student Score, Attendance & Evaluation Roster */}
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-1.5">
+                <h3 className="text-xs font-extrabold text-slate-950">
+                  ส่วนที่ ๒ บัญชีรายชื่อ เวลาเรียน คะแนนเก็บ และผลการประเมินรายบุคคล
+                </h3>
+                <span className="text-[11px] text-slate-600 font-medium">
+                  สัดส่วนคะแนน ปพ.๕: ระหว่างภาค {courseCfg.scoreRatioMid} : ปลายภาค {courseCfg.scoreRatioFinal} (เทียบฐาน 100 คะแนน)
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse border border-slate-700 text-center tabular-nums">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-slate-900">
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1.5 w-10">ที่</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-2 text-left min-w-44">เลขประจำตัว / ชื่อ-สกุล</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1.5 w-14">ห้อง</th>
+                      <th colSpan={2} className="border border-slate-600 py-1 px-1">เวลาเรียน ({totalHours} ชม.)</th>
+                      <th colSpan={4} className="border border-slate-600 py-1 px-1">คะแนนระหว่างภาค (๖๐)</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-14">ปลายภาค<br />(๔๐)</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-14 bg-amber-50">รวม<br />(๑๐๐)</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-14 bg-slate-200">ระดับผล<br />การเรียน</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-16">คุณลักษณะ<br />(๓)</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-16">อ่านคิดฯ<br />(๓)</th>
+                      <th rowSpan={2} className="border border-slate-600 py-2 px-1 w-16">สมรรถนะ<br />(๓)</th>
+                    </tr>
+                    <tr className="bg-slate-50 text-[10px] font-semibold text-slate-800">
+                      <th className="border border-slate-600 py-1 px-1 w-14">มา/ทั้งหมด</th>
+                      <th className="border border-slate-600 py-1 px-1 w-14">ร้อยละ</th>
+                      <th className="border border-slate-600 py-1 px-1 w-12">ชิ้นงาน<br />(๒๐)</th>
+                      <th className="border border-slate-600 py-1 px-1 w-12">ย่อย<br />(๑๐)</th>
+                      <th className="border border-slate-600 py-1 px-1 w-12">กลางภาค<br />(๓๐)</th>
+                      <th className="border border-slate-600 py-1 px-1 w-12 bg-slate-100">รวม<br />(๖๐)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={15} className="border border-slate-500 py-6 text-slate-500">
+                          {rows.length === 0
+                            ? 'ยังไม่มีนักเรียนลงทะเบียนหรือบันทึกคะแนนในรายวิชานี้'
+                            : 'ไม่พบนักเรียนที่ตรงกับคำค้นหา'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredRows.map((row, idx) => {
+                        const isVisible =
+                          activeSection === 'all' ||
+                          (idx >= currentPp5Page * pp5PageSize && idx < (currentPp5Page + 1) * pp5PageSize);
+                        return (
+                          <tr
+                            key={row.student.id}
+                            className={`${isVisible ? '' : 'hidden print:table-row'} hover:bg-slate-50`}
+                          >
+                            <td className="border border-slate-400 py-1.5 font-mono">{idx + 1}</td>
+                            <td className="border border-slate-400 py-1.5 px-2 text-left">
+                              <span className="font-semibold text-slate-900">
+                                {getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}
+                              </span>
+                              <span className="block text-[10px] text-slate-600 font-mono">
+                                {row.student.studentIdNumber}
+                              </span>
+                            </td>
+                            <td className="border border-slate-400 py-1.5 text-[11px]">{row.student.room}</td>
+                            <td className="border border-slate-400 py-1.5 font-mono text-[11px]">
+                              {row.attendanceDetail.attendedHours}/{row.attendanceDetail.totalScheduledHours}
+                            </td>
+                            <td
+                              className={`border border-slate-400 py-1.5 font-mono font-bold text-[11px] ${
+                                row.isMs ? 'text-rose-700 bg-rose-50' : 'text-emerald-800'
+                              }`}
+                            >
+                              {row.attendanceDetail.attendancePercent}%{row.isMs ? ' (มส.)' : ''}
+                            </td>
+                            <td className="border border-slate-400 py-1.5 font-mono">
+                              {row.grade ? row.grade.assignmentScore : '-'}
+                            </td>
+                            <td className="border border-slate-400 py-1.5 font-mono">
+                              {row.grade ? row.grade.quizScore : '-'}
+                            </td>
+                            <td className="border border-slate-400 py-1.5 font-mono">
+                              {row.grade ? row.grade.midtermScore : '-'}
+                            </td>
+                            <td className="border border-slate-400 py-1.5 font-mono font-semibold bg-slate-50">
+                              {row.courseworkSubtotal ?? '-'}
+                            </td>
+                            <td className="border border-slate-400 py-1.5 font-mono">
+                              {row.grade ? row.grade.finalScore : '-'}
+                            </td>
+                            <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
+                              {row.grade ? (
+                                <span>
+                                  {isPrimaryCourse ? `${row.grade.totalScore}%` : row.grade.totalScore}
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td
+                              className={`border border-slate-400 py-1.5 font-mono font-extrabold text-sm ${
+                                row.isMs || row.finalLetter === '0' || row.finalLetter === 'F' || row.finalLetter === 'มผ'
+                                  ? 'bg-rose-50 text-rose-800'
+                                  : row.finalLetter === 'ร'
+                                    ? 'bg-amber-50 text-amber-800'
+                                    : 'bg-slate-100 text-slate-950'
+                              }`}
+                            >
+                              {row.finalLetter}
+                            </td>
+                            <td className="border border-slate-400 py-1 px-1 text-[11px] font-medium">
+                              {row.qualSummary.attrLabel}
+                            </td>
+                            <td className="border border-slate-400 py-1 px-1 text-[11px] font-medium">
+                              {row.qualSummary.readingLabel}
+                            </td>
+                            <td className="border border-slate-400 py-1 px-1 text-[11px] font-medium">
+                              {row.qualSummary.compLabel}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {activeSection !== 'all' &&
+                renderPageControls(currentPp5Page, filteredRows.length, pp5PageSize, setPp5Page, 'PP5 pages', true)}
+            </div>
+
+            {/* Official Grading Criteria Reference */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] bg-slate-50 p-3.5 rounded-lg border border-slate-400">
+              <div>
+                <span className="font-bold text-slate-900 block mb-0.5">๑. เกณฑ์ตัดสินระดับผลการเรียน ๘ ระดับ</span>
+                <span className="text-slate-700 leading-relaxed">
+                  ๔ (๘๐–๑๐๐) • ๓.๕ (๗๕–๗๙) • ๓ (๗๐–๗๔) • ๒.๕ (๖๕–๖๙) • ๒ (๖๐–๖๔) • ๑.๕ (๕๕–๕๙) • ๑ (๕๐–๕๔) • ๐ (๐–๔๙)
+                </span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-900 block mb-0.5">๒. เกณฑ์เวลาเรียนและอักษรแสดงผลการเรียน</span>
+                <span className="text-slate-700 leading-relaxed">
+                  เวลาเรียนต้องไม่น้อยกว่าร้อยละ ๘๐ ({minAttendanceHours} จาก {totalHours} ชม.) หากไม่ถึงเกณฑ์ให้ระดับ มส. • ขาดส่งงาน/สอบสำคัญให้ ร
+                </span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-900 block mb-0.5">๓. ระดับผลการประเมินด้านอื่นๆ (๐–๓)</span>
+                <span className="text-slate-700 leading-relaxed">
+                  ระดับ ๓ = ดีเยี่ยม • ระดับ ๒ = ดี • ระดับ ๑ = ผ่านเกณฑ์ขั้นต่ำ • ระดับ ๐ = ไม่ผ่านเกณฑ์
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===============================================================
+            SECTION 2 (Item 3): สถิติการมาเรียนและบันทึกเวลาเรียน (80% สพฐ.)
+           =============================================================== */}
+        {showAttendance && (
+          <div className="space-y-3 break-inside-avoid">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-1.5">
+              <h3 className="text-xs font-extrabold text-slate-950 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-slate-800" />
+                <span>สถิติการมาเรียนและเวลาเรียนประจำรายวิชา (เกณฑ์ ๘๐% ตามระเบียบ สพฐ.)</span>
+              </h3>
+              <div className="text-[11px] font-mono tabular-nums text-slate-700">
+                เวลาเรียนเต็ม: <strong>{totalHours} ชม.</strong> | ขั้นต่ำ 80%: <strong>{minAttendanceHours} ชม.</strong> | เฉลี่ยทั้งห้อง: <strong>{stats.avgAttendancePct}%</strong> | เสี่ยง มส.: <strong className="text-rose-700">{stats.msRiskCount} คน</strong>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse border border-slate-700 text-center tabular-nums">
+                <thead>
+                  <tr className="bg-slate-100 font-bold text-slate-900">
+                    <th className="border border-slate-600 py-2 px-1.5 w-10">ที่</th>
+                    <th className="border border-slate-600 py-2 px-2 text-left min-w-44">เลขประจำตัว / ชื่อ-สกุล</th>
+                    <th className="border border-slate-600 py-2 px-1.5 w-14">ห้อง</th>
+                    <th className="border border-slate-600 py-2 px-1.5">บันทึกจริง<br />(ครั้ง/คาบ)</th>
+                    <th className="border border-slate-600 py-2 px-1.5 bg-emerald-50">มาเรียน</th>
+                    <th className="border border-slate-600 py-2 px-1.5 bg-amber-50">มาสาย</th>
+                    <th className="border border-slate-600 py-2 px-1.5">ลาป่วย</th>
+                    <th className="border border-slate-600 py-2 px-1.5">ลากิจ</th>
+                    <th className="border border-slate-600 py-2 px-1.5 bg-rose-50">ขาดเรียน</th>
+                    <th className="border border-slate-600 py-2 px-1.5">ชม.เรียนจริง<br />/ {totalHours}</th>
+                    <th className="border border-slate-600 py-2 px-1.5">ร้อยละ</th>
+                    <th className="border border-slate-600 py-2 px-2">เกณฑ์สิทธิ์สอบ (≥ 80%)</th>
                   </tr>
-                ) : (
-                  filteredRows.map((row, idx) => {
-                    const isVisible =
-                      idx >= currentPp5Page * pp5PageSize &&
-                      idx < (currentPp5Page + 1) * pp5PageSize;
-                    const renderQualityText = (val: number) =>
-                      val === 3 ? 'ดีเยี่ยม (๓)' : val === 2 ? 'ดี (๒)' : val === 1 ? 'ผ่าน (๑)' : val === 0 ? 'ไม่ผ่าน (๐)' : '-';
+                </thead>
+                <tbody>
+                  {filteredRows.map((row, idx) => {
+                    const att = row.attendanceDetail;
                     return (
-                      <tr
-                        key={row.student.id}
-                        className={`${isVisible ? '' : 'hidden print:table-row'} hover:bg-slate-50`}
-                      >
+                      <tr key={row.student.id} className="hover:bg-slate-50">
                         <td className="border border-slate-400 py-1.5 font-mono">{idx + 1}</td>
                         <td className="border border-slate-400 py-1.5 px-2 text-left">
-                          <span className="font-semibold text-slate-900">
-                            {getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}
-                          </span>
-                          <span className="block text-[10px] text-slate-600 font-mono">
-                            {row.student.studentIdNumber}
-                          </span>
+                          <span className="font-semibold">{getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}</span>
+                          <span className="block text-[10px] font-mono text-slate-500">{row.student.studentIdNumber}</span>
                         </td>
-                        <td className="border border-slate-400 py-1.5 text-[11px]">{row.student.room}</td>
+                        <td className="border border-slate-400 py-1.5">{row.student.room}</td>
                         <td className="border border-slate-400 py-1.5 font-mono text-[11px]">
-                          {row.eligibility.attendedHours}/{row.eligibility.totalScheduledHours}
+                          {att.recordedSessions > 0 ? `${att.recordedSessions}` : 'ตารางสอน'}
                         </td>
-                        <td
-                          className={`border border-slate-400 py-1.5 font-mono font-bold text-[11px] ${
-                            row.isMs ? 'text-rose-700 bg-rose-50' : 'text-emerald-800'
-                          }`}
-                        >
-                          {row.eligibility.attendancePercent}%{row.isMs ? ' (มส.)' : ''}
+                        <td className="border border-slate-400 py-1.5 font-mono text-emerald-800 bg-emerald-50/40">{att.presentCount}</td>
+                        <td className="border border-slate-400 py-1.5 font-mono text-amber-800 bg-amber-50/40">{att.lateCount}</td>
+                        <td className="border border-slate-400 py-1.5 font-mono">{att.sickCount}</td>
+                        <td className="border border-slate-400 py-1.5 font-mono">{att.leaveCount}</td>
+                        <td className="border border-slate-400 py-1.5 font-mono text-rose-800 bg-rose-50/40">{att.absentCount}</td>
+                        <td className="border border-slate-400 py-1.5 font-mono font-semibold">
+                          {att.attendedHours}/{att.totalScheduledHours}
                         </td>
-                        <td className="border border-slate-400 py-1.5 font-mono">
-                          {row.grade ? row.grade.assignmentScore : '-'}
+                        <td className={`border border-slate-400 py-1.5 font-mono font-bold ${att.isAtRiskMs ? 'text-rose-700 bg-rose-50' : 'text-emerald-800'}`}>
+                          {att.attendancePercent}%
                         </td>
-                        <td className="border border-slate-400 py-1.5 font-mono">
-                          {row.grade ? row.grade.quizScore : '-'}
+                        <td className={`border border-slate-400 py-1.5 font-semibold text-[11px] ${att.isAtRiskMs ? 'text-rose-700 bg-rose-50' : 'text-emerald-800'}`}>
+                          {att.isAtRiskMs ? 'ไม่มีสิทธิ์สอบ (เสี่ยง มส.)' : 'มีสิทธิ์สอบ (ผ่านเกณฑ์ 80%)'}
                         </td>
-                        <td className="border border-slate-400 py-1.5 font-mono">
-                          {row.grade ? row.grade.midtermScore : '-'}
-                        </td>
-                        <td className="border border-slate-400 py-1.5 font-mono font-semibold bg-slate-50">
-                          {row.courseworkSubtotal ?? '-'}
-                        </td>
-                        <td className="border border-slate-400 py-1.5 font-mono">
-                          {row.grade ? row.grade.finalScore : '-'}
-                        </td>
-                        <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
-                          {row.grade ? (
-                            <span>
-                              {isPrimaryCourse ? `${row.grade.totalScore}%` : row.grade.totalScore}
-                              {isPrimaryCourse ? <span className="block text-[9px] font-normal text-slate-600">({row.grade.totalScore}/100)</span> : null}
-                            </span>
-                          ) : '-'}
-                        </td>
-                        <td
-                          className={`border border-slate-400 py-1.5 font-mono font-extrabold text-sm ${
-                            row.isMs || row.finalLetter === '0' || row.finalLetter === 'F' || row.finalLetter === 'มผ'
-                              ? 'bg-rose-50 text-rose-800'
-                              : row.finalLetter === 'ร'
-                                ? 'bg-amber-50 text-amber-800'
-                                : 'bg-slate-100 text-slate-950'
-                          }`}
-                        >
-                          {row.finalLetter}
-                        </td>
-                        {(['attr', 'reading', 'competency'] as const).map((metricKey) => {
-                          const currentVal =
-                            metricKey === 'attr'
-                              ? row.attrNum
-                              : metricKey === 'reading'
-                              ? row.readingNum
-                              : row.competencyNum;
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ===============================================================
+            SECTION 3 (Items 2, 4, 5, 6): มาตรฐานตัวชี้วัด หน่วย 1-3 & คะแนนตามตัวชี้วัด & การประเมินหน่วยการเรียนรู้
+           =============================================================== */}
+        {showIndicatorsUnits && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-1.5">
+              <div>
+                <h3 className="text-xs font-extrabold text-slate-950 flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-slate-800" />
+                  <span>มาตรฐานตัวชี้วัด หน่วยที่ ๑–๓, คะแนนตามตัวชี้วัด ({learningArea.nameTh}) และการประเมินหน่วยการเรียนรู้ ({getCategoryTypeLabel(selectedCourse.category)})</span>
+                </h3>
+              </div>
+              {indicatorSets.length === 0 && (
+                <button
+                  type="button"
+                  onClick={handleSeedObecUnits1To3}
+                  disabled={seedingIndicators}
+                  className="print:hidden inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{seedingIndicators ? 'กำลังนำเข้า...' : `นำเข้ามาตรฐานตัวชี้วัด หน่วย 1–3 (${learningArea.shortTh})`}</span>
+                </button>
+              )}
+            </div>
+
+            {indicatorSets.length === 0 ? (
+              <div className="p-6 rounded-xl border border-dashed border-slate-400 text-center text-xs text-slate-600">
+                ยังไม่มีชุดตัวชี้วัดในรายวิชา {selectedCourse.code} — กดปุ่มด้านบนหรือไปที่แท็บ &quot;ตัวชี้วัด&quot; เพื่อนำเข้ามาตรฐานตัวชี้วัด หน่วยที่ 1–3
+              </div>
+            ) : (
+              <>
+                {/* Table A: มาตรฐานและตัวชี้วัด หน่วยที่ 1-3 */}
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-bold text-slate-900">
+                    ๓.๑ มาตรฐานการเรียนรู้และตัวชี้วัด หน่วยที่ ๑–{indicatorSets.length} ({learningArea.nameTh})
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] border-collapse border border-slate-700 tabular-nums">
+                      <thead>
+                        <tr className="bg-slate-100 font-bold text-slate-900">
+                          <th className="border border-slate-600 py-1.5 px-2 w-32 text-left">หน่วยการเรียนรู้</th>
+                          <th className="border border-slate-600 py-1.5 px-2 w-24">รหัสมาตรฐาน</th>
+                          <th className="border border-slate-600 py-1.5 px-2 w-24">รหัสตัวชี้วัด</th>
+                          <th className="border border-slate-600 py-1.5 px-2 text-left">คำอธิบายตัวชี้วัดตามหลักสูตรแกนกลางฯ</th>
+                          <th className="border border-slate-600 py-1.5 px-2 w-24">ประเภท (สพฐ.)</th>
+                          <th className="border border-slate-600 py-1.5 px-2 w-16">คะแนนเต็ม</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {indicatorSets.flatMap((set, uIdx) =>
+                          set.indicators.map((ind, iIdx) => {
+                            const isFormative = (ind.description || '').includes('ระหว่างทาง');
+                            return (
+                              <tr key={ind.id}>
+                                {iIdx === 0 && (
+                                  <td
+                                    rowSpan={set.indicators.length}
+                                    className="border border-slate-500 px-2 py-1.5 font-bold bg-slate-50 align-top"
+                                  >
+                                    หน่วยที่ {uIdx + 1}<br />
+                                    <span className="font-normal text-[10px] text-slate-600">{set.unitTitle || set.title}</span>
+                                  </td>
+                                )}
+                                <td className="border border-slate-400 px-2 py-1 text-center font-mono font-semibold">
+                                  {set.standardCode || '-'}
+                                </td>
+                                <td className="border border-slate-400 px-2 py-1 text-center font-mono font-bold">
+                                  {ind.code || '-'}
+                                </td>
+                                <td className="border border-slate-400 px-2 py-1">{ind.title}</td>
+                                <td className="border border-slate-400 px-2 py-1 text-center">
+                                  {isFormative ? 'ระหว่างทาง' : 'ปลายทาง'}
+                                </td>
+                                <td className="border border-slate-400 px-2 py-1 text-center font-mono font-bold">
+                                  {ind.maxScore}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Table B: การประเมินหน่วยการเรียนรู้...(วิชา)...พื้นฐาน/เพิ่มเติม และคะแนนตามตัวชี้วัด */}
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-bold text-slate-900">
+                    ๓.๒ การประเมินหน่วยการเรียนรู้ รายวิชา {selectedCourse.titleTh} ({getCategoryTypeLabel(selectedCourse.category)}) — คะแนนตามตัวชี้วัด
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse border border-slate-700 text-center tabular-nums">
+                      <thead>
+                        <tr className="bg-slate-100 font-bold text-slate-900">
+                          <th className="border border-slate-600 py-2 px-1.5 w-10">ที่</th>
+                          <th className="border border-slate-600 py-2 px-2 text-left min-w-44">เลขประจำตัว / ชื่อ-สกุล</th>
+                          {indicatorSets.map((set, idx) => {
+                            const maxU = set.indicators.reduce((sum, i) => sum + i.maxScore, 0);
+                            return (
+                              <th key={set.id} className="border border-slate-600 py-1.5 px-2 min-w-24">
+                                หน่วยที่ {idx + 1}<br />
+                                <span className="text-[10px] font-normal">({set.standardCode || 'มาตรฐาน'} · {maxU} คะแนน)</span>
+                              </th>
+                            );
+                          })}
+                          <th className="border border-slate-600 py-2 px-2 bg-amber-50">รวมตัวชี้วัด</th>
+                          <th className="border border-slate-600 py-2 px-2">ร้อยละ</th>
+                          <th className="border border-slate-600 py-2 px-2">ระดับคุณภาพหน่วย</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredRows.map((row, idx) => {
+                          const unitPct = row.totalUnitMax > 0 ? Math.round((row.totalUnitEarned / row.totalUnitMax) * 100) : 0;
+                          const unitFb = getRawScoreFeedback(row.hasAnyUnitScore ? unitPct : null);
                           return (
-                            <td key={metricKey} className="border border-slate-400 py-1 px-1 text-[11px] font-medium">
-                              <span className="hidden print:inline">{renderQualityText(currentVal)}</span>
+                            <tr key={row.student.id} className="hover:bg-slate-50">
+                              <td className="border border-slate-400 py-1.5 font-mono">{idx + 1}</td>
+                              <td className="border border-slate-400 py-1.5 px-2 text-left">
+                                <span className="font-semibold">{getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}</span>
+                                <span className="block text-[10px] font-mono text-slate-500">{row.student.studentIdNumber}</span>
+                              </td>
+                              {row.unitResults.map((u) => (
+                                <td key={u.setId} className="border border-slate-400 py-1.5 font-mono">
+                                  {u.hasRecorded ? (
+                                    <span>
+                                      <strong>{u.earned}</strong>/{u.maxScore}
+                                      <span className="block text-[10px] text-slate-600">
+                                        ผ่าน {u.passedCount}/{u.totalCount}
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400">-</span>
+                                  )}
+                                </td>
+                              ))}
+                              <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
+                                {row.hasAnyUnitScore ? `${row.totalUnitEarned}/${row.totalUnitMax}` : '-'}
+                              </td>
+                              <td className="border border-slate-400 py-1.5 font-mono font-bold">
+                                {row.hasAnyUnitScore ? `${unitPct}%` : '-'}
+                              </td>
+                              <td className="border border-slate-400 py-1.5 font-semibold text-[11px]">
+                                {row.hasAnyUnitScore ? unitFb.labelTh : 'รอบันทึกคะแนน'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ===============================================================
+            SECTION 4 (Items 7, 9, 10): การประเมินคุณลักษณะอันพึงประสงค์ 8 ประการ & เกณฑ์การประเมินฯ
+           =============================================================== */}
+        {showAttributes && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-1.5">
+              <h3 className="text-xs font-extrabold text-slate-950 flex items-center gap-1.5">
+                <ClipboardCheck className="w-4 h-4 text-slate-800" />
+                <span>การประเมินคุณลักษณะอันพึงประสงค์ ๘ ประการ และเกณฑ์การประเมินคุณลักษณะอันพึงประสงค์ (สพฐ.)</span>
+              </h3>
+              <div className="print:hidden flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-slate-600 font-semibold">กำหนดทั้งห้อง:</span>
+                {([3, 2, 1] as const).map((lv) => (
+                  <button
+                    key={lv}
+                    type="button"
+                    onClick={() => handleBatchApplyAttributes(lv)}
+                    className="px-2 py-1 rounded border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold cursor-pointer"
+                  >
+                    {QUALITY_LABELS[lv]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Assessment Table across 8 attributes */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] border-collapse border border-slate-700 text-center tabular-nums">
+                <thead>
+                  <tr className="bg-slate-100 font-bold text-slate-900">
+                    <th className="border border-slate-600 py-2 px-1.5 w-8">ที่</th>
+                    <th className="border border-slate-600 py-2 px-2 text-left min-w-40">เลขประจำตัว / ชื่อ-สกุล</th>
+                    {MOE_DESIRABLE_ATTRIBUTES_RUBRIC.map((attr) => (
+                      <th key={attr.index} className="border border-slate-600 py-1.5 px-1 min-w-16" title={attr.titleTh}>
+                        ข้อ {attr.index}<br />
+                        <span className="text-[9px] font-normal block truncate max-w-20 mx-auto">
+                          {attr.titleTh.replace(/^[๑-๘]+\.\s*/, '')}
+                        </span>
+                      </th>
+                    ))}
+                    <th className="border border-slate-600 py-2 px-2 bg-emerald-50 min-w-24">สรุปผล (สพฐ.)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row, idx) => {
+                    const summary = evaluateObecAttributeSummary(row.qualRecord.attributes);
+                    return (
+                      <tr key={row.student.id} className="hover:bg-slate-50">
+                        <td className="border border-slate-400 py-1.5 font-mono">{idx + 1}</td>
+                        <td className="border border-slate-400 py-1.5 px-2 text-left">
+                          <span className="font-semibold">{getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}</span>
+                        </td>
+                        {MOE_DESIRABLE_ATTRIBUTES_RUBRIC.map((attr, aIdx) => {
+                          const val = row.qualRecord.attributes[aIdx] ?? 3;
+                          return (
+                            <td key={attr.index} className="border border-slate-400 py-1 px-0.5">
+                              <span className="hidden print:inline font-mono font-bold">{val}</span>
                               <select
-                                value={currentVal}
-                                onChange={(e) =>
-                                  setQualityOverrides((prev) => ({
-                                    ...prev,
-                                    [row.student.id]: {
-                                      ...(prev[row.student.id] || {}),
-                                      [metricKey]: Number(e.target.value),
-                                    },
-                                  }))
-                                }
-                                className="print:hidden w-full bg-transparent text-center text-[11px] font-medium focus:outline-none cursor-pointer"
+                                value={val}
+                                onChange={(e) => {
+                                  const nextScore = Number(e.target.value);
+                                  updateStudentQualitative(row.student.id, (prev) => {
+                                    const nextAttrs = [...prev.attributes];
+                                    nextAttrs[aIdx] = nextScore;
+                                    return { ...prev, attributes: nextAttrs };
+                                  });
+                                }}
+                                className="print:hidden w-full bg-transparent text-center font-mono font-semibold cursor-pointer focus:outline-none"
                               >
-                                <option value={-1}>-</option>
-                                <option value={3}>ดีเยี่ยม (๓)</option>
-                                <option value={2}>ดี (๒)</option>
-                                <option value={1}>ผ่าน (๑)</option>
-                                <option value={0}>ไม่ผ่าน (๐)</option>
+                                <option value={3}>3</option>
+                                <option value={2}>2</option>
+                                <option value={1}>1</option>
+                                <option value={0}>0</option>
                               </select>
                             </td>
                           );
                         })}
+                        <td className={`border border-slate-400 py-1.5 px-2 font-bold ${summary.level === 0 ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50/70 text-emerald-900'}`}>
+                          {summary.label}
+                        </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          {renderPageControls(currentPp5Page, filteredRows.length, pp5PageSize, setPp5Page, 'PP5 pages', true)}
-        </div>
-
-        {/* Part 3: Official Grading Criteria Reference */}
-        <div className="space-y-2">
-          <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
-            ส่วนที่ ๓ เกณฑ์การวัดและประเมินผลตามระเบียบกระทรวงศึกษาธิการ
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] bg-slate-50 p-3.5 rounded-lg border border-slate-400">
-            <div>
-              <span className="font-bold text-slate-900 block mb-0.5">๑. เกณฑ์ตัดสินระดับผลการเรียน ๘ ระดับ</span>
-              <span className="text-slate-700 leading-relaxed">
-                ๔ (๘๐–๑๐๐) • ๓.๕ (๗๕–๗๙) • ๓ (๗๐–๗๔) • ๒.๕ (๖๕–๖๙) • ๒ (๖๐–๖๔) • ๑.๕ (๕๕–๕๙) • ๑ (๕๐–๕๔) • ๐ (๐–๔๙)
-              </span>
-            </div>
-            <div>
-              <span className="font-bold text-slate-900 block mb-0.5">๒. เกณฑ์เวลาเรียนและอักษรแสดงผลการเรียน</span>
-              <span className="text-slate-700 leading-relaxed">
-                เวลาเรียนต้องไม่น้อยกว่าร้อยละ ๘๐ ({minAttendanceHours} จาก {totalHours} ชม.) หากไม่ถึงเกณฑ์ให้ระดับ มส. • ขาดส่งงาน/สอบสำคัญให้ ร
-              </span>
-            </div>
-            <div>
-              <span className="font-bold text-slate-900 block mb-0.5">๓. ระดับผลการประเมินด้านอื่นๆ (๐–๓)</span>
-              <span className="text-slate-700 leading-relaxed">
-                ระดับ ๓ = ดีเยี่ยม • ระดับ ๒ = ดี • ระดับ ๑ = ผ่านเกณฑ์ขั้นต่ำ • ระดับ ๐ = ไม่ผ่านเกณฑ์
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Part 4: 4-Tier Official MOE Approval Block */}
-        <div className="space-y-2 break-inside-avoid">
-          <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
-            ส่วนที่ ๔ การเสนอและการพิจารณาอนุมัติผลการเรียน
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-slate-700 divide-y sm:divide-y-0 sm:divide-x divide-slate-700 text-xs">
-            <div className="p-3.5 flex flex-col justify-between min-h-36">
-              <div className="space-y-1">
-                <p className="font-bold text-slate-900">๑. ครูผู้สอน</p>
-                <p className="text-[11px] text-slate-600">ได้ดำเนินการวัดและประเมินผลถูกต้องตามระเบียบฯ แล้ว</p>
-              </div>
-              <div className="pt-8 text-center space-y-1">
-                <div className="border-b border-dotted border-slate-500 mx-4"></div>
-                <p className="font-semibold">({selectedCourse.teacherName || '............................................'})</p>
-                <p className="text-[11px] text-slate-600">วันที่ ....... / ............ / ...........</p>
-              </div>
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            <div className="p-3.5 flex flex-col justify-between min-h-36">
-              <div className="space-y-1">
-                <p className="font-bold text-slate-900">๒. หัวหน้ากลุ่มสาระการเรียนรู้</p>
-                <p className="text-[11px] text-slate-700">[  ] เห็นควรอนุมัติ   [  ] ปรับปรุงแก้ไข</p>
+            {/* Official Rubric Table (Item 9: เกณฑ์การประเมินคุณลักษณะอันพึงประสงค์) */}
+            <div className="space-y-2 break-inside-avoid">
+              <h4 className="text-xs font-bold text-slate-900">
+                เกณฑ์การประเมินคุณลักษณะอันพึงประสงค์ ๘ ประการ (ตามแนวทางปฏิบัติ สพฐ. กระทรวงศึกษาธิการ)
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] border-collapse border border-slate-700 text-left">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-slate-900 text-center">
+                      <th className="border border-slate-600 py-1.5 px-2 w-40 text-left">คุณลักษณะอันพึงประสงค์</th>
+                      <th className="border border-slate-600 py-1.5 px-2 w-48 text-left">ตัวชี้วัดพฤติกรรมสำคัญ</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ดีเยี่ยม (๓)</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ดี (๒)</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ผ่าน (๑)</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ไม่ผ่าน (๐)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOE_DESIRABLE_ATTRIBUTES_RUBRIC.map((item) => (
+                      <tr key={item.index}>
+                        <td className="border border-slate-400 px-2 py-1.5 font-bold align-top">{item.titleTh}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top text-slate-700">
+                          {item.subIndicators.map((sub, i) => (
+                            <div key={i}>• {sub}</div>
+                          ))}
+                        </td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top">{item.level3Desc}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top">{item.level2Desc}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top">{item.level1Desc}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top text-rose-800">{item.level0Desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div className="pt-8 text-center space-y-1">
-                <div className="border-b border-dotted border-slate-500 mx-4"></div>
-                <p className="font-semibold">({headOfDeptName.trim() || '............................................'})</p>
-                <p className="text-[11px] text-slate-600">วันที่ ....... / ............ / ...........</p>
-              </div>
-            </div>
-
-            <div className="p-3.5 flex flex-col justify-between min-h-36">
-              <div className="space-y-1">
-                <p className="font-bold text-slate-900">๓. หัวหน้างานวัดและประเมินผล</p>
-                <p className="text-[11px] text-slate-700">[  ] ตรวจทานคะแนนและสถิติถูกต้อง</p>
-              </div>
-              <div className="pt-8 text-center space-y-1">
-                <div className="border-b border-dotted border-slate-500 mx-4"></div>
-                <p className="font-semibold">({measurementHeadName.trim() || '............................................'})</p>
-                <p className="text-[11px] text-slate-600">วันที่ ....... / ............ / ...........</p>
-              </div>
-            </div>
-
-            <div className="p-3.5 flex flex-col justify-between min-h-36 bg-slate-50/70">
-              <div className="space-y-1">
-                <p className="font-bold text-slate-950">๔. ผู้อำนวยการสถานศึกษา</p>
-                <p className="text-[11px] font-semibold text-slate-800">[  ] อนุมัติ   [  ] ไม่อนุมัติ</p>
-              </div>
-              <div className="pt-8 text-center space-y-1">
-                <div className="border-b border-dotted border-slate-500 mx-4"></div>
-                <p className="font-semibold">({directorName.trim() || '............................................'})</p>
-                <p className="text-[11px] text-slate-600">วันที่อนุมัติ ....... / ............ / ...........</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-400">
+                {MOE_ATTRIBUTES_DECISION_RULES.map((rule) => (
+                  <div key={rule.level}>
+                    <span className="font-bold text-slate-900 block">{rule.label}</span>
+                    <span className="text-slate-700">{rule.rule}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ===============================================================
+            SECTION 5 (Items 8, 11): การประเมินการอ่าน คิดวิเคราะห์ และเขียน & เกณฑ์ฯ สพฐ.
+           =============================================================== */}
+        {showReading && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-1.5">
+              <h3 className="text-xs font-extrabold text-slate-950 flex items-center gap-1.5">
+                <FileCheck2 className="w-4 h-4 text-slate-800" />
+                <span>การประเมินผลการอ่าน คิดวิเคราะห์ และเขียน และเกณฑ์การประเมินการอ่าน คิด วิเคราะห์ และการเขียนสื่อความหมาย (สพฐ.)</span>
+              </h3>
+              <div className="print:hidden flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-slate-600 font-semibold">กำหนดทั้งห้อง:</span>
+                {([3, 2, 1] as const).map((lv) => (
+                  <button
+                    key={lv}
+                    type="button"
+                    onClick={() => handleBatchApplyReading(lv)}
+                    className="px-2 py-1 rounded border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold cursor-pointer"
+                  >
+                    {QUALITY_LABELS[lv]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] border-collapse border border-slate-700 text-center tabular-nums">
+                <thead>
+                  <tr className="bg-slate-100 font-bold text-slate-900">
+                    <th className="border border-slate-600 py-2 px-1.5 w-8">ที่</th>
+                    <th className="border border-slate-600 py-2 px-2 text-left min-w-44">เลขประจำตัว / ชื่อ-สกุล</th>
+                    {MOE_READING_WRITING_RUBRIC.map((dim) => (
+                      <th key={dim.index} className="border border-slate-600 py-1.5 px-1.5 min-w-24" title={dim.titleTh}>
+                        ด้านที่ {dim.index}<br />
+                        <span className="text-[10px] font-normal">{dim.shortTh}</span>
+                      </th>
+                    ))}
+                    <th className="border border-slate-600 py-2 px-2 w-16">รวม (๑๕)</th>
+                    <th className="border border-slate-600 py-2 px-2 w-14">ร้อยละ</th>
+                    <th className="border border-slate-600 py-2 px-2 bg-emerald-50 min-w-24">สรุปผล (สพฐ.)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row, idx) => {
+                    const rwSum = row.qualRecord.readingWriting.slice(0, 5).reduce((a, b) => a + b, 0);
+                    const rwSummary = evaluateObecReadingSummary(row.qualRecord.readingWriting);
+                    return (
+                      <tr key={row.student.id} className="hover:bg-slate-50">
+                        <td className="border border-slate-400 py-1.5 font-mono">{idx + 1}</td>
+                        <td className="border border-slate-400 py-1.5 px-2 text-left">
+                          <span className="font-semibold">{getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}</span>
+                        </td>
+                        {MOE_READING_WRITING_RUBRIC.map((dim, dIdx) => {
+                          const val = row.qualRecord.readingWriting[dIdx] ?? 3;
+                          return (
+                            <td key={dim.index} className="border border-slate-400 py-1 px-1">
+                              <span className="hidden print:inline font-mono font-bold">{val}</span>
+                              <select
+                                value={val}
+                                onChange={(e) => {
+                                  const nextScore = Number(e.target.value);
+                                  updateStudentQualitative(row.student.id, (prev) => {
+                                    const nextRw = [...prev.readingWriting];
+                                    nextRw[dIdx] = nextScore;
+                                    return { ...prev, readingWriting: nextRw };
+                                  });
+                                }}
+                                className="print:hidden w-full bg-transparent text-center font-mono font-semibold cursor-pointer focus:outline-none"
+                              >
+                                <option value={3}>3 (ดีเยี่ยม)</option>
+                                <option value={2}>2 (ดี)</option>
+                                <option value={1}>1 (ผ่าน)</option>
+                                <option value={0}>0 (ไม่ผ่าน)</option>
+                              </select>
+                            </td>
+                          );
+                        })}
+                        <td className="border border-slate-400 py-1.5 font-mono font-bold">{rwSum}</td>
+                        <td className="border border-slate-400 py-1.5 font-mono font-bold">{rwSummary.percent}%</td>
+                        <td className={`border border-slate-400 py-1.5 px-2 font-bold ${rwSummary.level === 0 ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50/70 text-emerald-900'}`}>
+                          {rwSummary.label}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Official Rubric Table (Item 11: เกณฑ์การประเมินการอ่าน คิด วิเคราะห์ และการเขียนสื่อความหมาย) */}
+            <div className="space-y-2 break-inside-avoid">
+              <h4 className="text-xs font-bold text-slate-900">
+                เกณฑ์การประเมินการอ่าน คิดวิเคราะห์ และการเขียนสื่อความหมาย ๕ ด้าน (ฉบับ สพฐ. กระทรวงศึกษาธิการ)
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] border-collapse border border-slate-700 text-left">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-slate-900 text-center">
+                      <th className="border border-slate-600 py-1.5 px-2 w-48 text-left">องค์ประกอบ / ตัวชี้วัด</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ดีเยี่ยม (๓)</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ดี (๒)</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ผ่าน (๑)</th>
+                      <th className="border border-slate-600 py-1.5 px-2">ไม่ผ่าน (๐)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOE_READING_WRITING_RUBRIC.map((dim) => (
+                      <tr key={dim.index}>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top">
+                          <span className="font-bold block">{dim.titleTh}</span>
+                          <span className="text-[10px] text-slate-600">{dim.description}</span>
+                        </td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top">{dim.level3Desc}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top">{dim.level2Desc}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top">{dim.level1Desc}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 align-top text-rose-800">{dim.level0Desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px] bg-slate-50 p-3 rounded-lg border border-slate-400">
+                {MOE_READING_DECISION_RULES.map((rule) => (
+                  <div key={rule.level}>
+                    <span className="font-bold text-slate-900 block">{rule.label} · {rule.scoreRange}</span>
+                    <span className="text-slate-700">{rule.rule}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===============================================================
+            SECTION 6: ทบทวนและเปรียบเทียบมาตรฐาน สพฐ. และกระทรวงศึกษาธิการ
+           =============================================================== */}
+        {showObecAudit && (
+          <div className="space-y-3 break-inside-avoid">
+            <div className="border-b border-slate-300 pb-1.5">
+              <h3 className="text-xs font-extrabold text-slate-950">
+                การทบทวนและเปรียบเทียบความสอดคล้องกับมาตรฐาน สพฐ. และกระทรวงศึกษาธิการ
+              </h3>
+              <p className="text-[11px] text-slate-600">
+                ตรวจสอบความครบถ้วนของรายวิชา {selectedCourse.code} ({selectedCourse.titleTh}) เทียบกับระเบียบวัดและประเมินผลตามหลักสูตรแกนกลางฯ พ.ศ. ๒๕๕๑ (ปรับปรุง ๒๕๖๐)
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse border border-slate-700">
+                <thead>
+                  <tr className="bg-slate-100 font-bold text-slate-900">
+                    <th className="border border-slate-600 py-2 px-2 w-10 text-center">ข้อ</th>
+                    <th className="border border-slate-600 py-2 px-2.5 text-left w-56">องค์ประกอบเอกสาร / รายงาน</th>
+                    <th className="border border-slate-600 py-2 px-2.5 text-left">ข้อกำหนดมาตรฐาน สพฐ. / ศธ.</th>
+                    <th className="border border-slate-600 py-2 px-2.5 text-left">ผลการตรวจสอบข้อมูลในระบบปัจจุบัน</th>
+                    <th className="border border-slate-600 py-2 px-2 w-28 text-center print:hidden">การดำเนินการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {obecComplianceRows.map((item) => (
+                    <tr key={item.no} className="hover:bg-slate-50">
+                      <td className="border border-slate-400 py-2 px-2 text-center font-mono font-bold">{item.no}</td>
+                      <td className="border border-slate-400 py-2 px-2.5 font-bold text-slate-900">{item.topic}</td>
+                      <td className="border border-slate-400 py-2 px-2.5 text-slate-700">{item.obecRule}</td>
+                      <td className={`border border-slate-400 py-2 px-2.5 font-semibold ${item.ready ? 'text-emerald-800 bg-emerald-50/40' : 'text-amber-800 bg-amber-50/40'}`}>
+                        {item.ready ? '✓ ' : '• '}
+                        {item.statusText}
+                      </td>
+                      <td className="border border-slate-400 py-2 px-2 text-center print:hidden">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSection(item.targetSection)}
+                          className="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 text-[11px] font-semibold text-slate-800 cursor-pointer"
+                        >
+                          เปิดดูส่วนนี้
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Part 4: 4-Tier Official MOE Approval Block (Always on Cover Summary / All) */}
+        {showCoverSummary && (
+          <div className="space-y-2 break-inside-avoid">
+            <h3 className="text-xs font-extrabold text-slate-950 border-b border-slate-300 pb-1">
+              ส่วนที่ ๔ การเสนอและการพิจารณาอนุมัติผลการเรียน
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-slate-700 divide-y sm:divide-y-0 sm:divide-x divide-slate-700 text-xs">
+              <div className="p-3.5 flex flex-col justify-between min-h-36">
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-900">๑. ครูผู้สอน</p>
+                  <p className="text-[11px] text-slate-600">ได้ดำเนินการวัดและประเมินผลถูกต้องตามระเบียบฯ แล้ว</p>
+                </div>
+                <div className="pt-8 text-center space-y-1">
+                  <div className="border-b border-dotted border-slate-500 mx-4"></div>
+                  <p className="font-semibold">({selectedCourse.teacherName || '............................................'})</p>
+                  <p className="text-[11px] text-slate-600">วันที่ ....... / ............ / ...........</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 flex flex-col justify-between min-h-36">
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-900">๒. หัวหน้ากลุ่มสาระการเรียนรู้</p>
+                  <p className="text-[11px] text-slate-700">[  ] เห็นควรอนุมัติ   [  ] ปรับปรุงแก้ไข</p>
+                </div>
+                <div className="pt-8 text-center space-y-1">
+                  <div className="border-b border-dotted border-slate-500 mx-4"></div>
+                  <p className="font-semibold">({courseCfg.headOfDeptName.trim() || '............................................'})</p>
+                  <p className="text-[11px] text-slate-600">วันที่ ....... / ............ / ...........</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 flex flex-col justify-between min-h-36">
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-900">๓. หัวหน้างานวัดและประเมินผล</p>
+                  <p className="text-[11px] text-slate-700">[  ] ตรวจทานคะแนนและสถิติถูกต้อง</p>
+                </div>
+                <div className="pt-8 text-center space-y-1">
+                  <div className="border-b border-dotted border-slate-500 mx-4"></div>
+                  <p className="font-semibold">({courseCfg.measurementHeadName.trim() || '............................................'})</p>
+                  <p className="text-[11px] text-slate-600">วันที่ ....... / ............ / ...........</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 flex flex-col justify-between min-h-36 bg-slate-50/70">
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-950">๔. ผู้อำนวยการสถานศึกษา</p>
+                  <p className="text-[11px] font-semibold text-slate-800">[  ] อนุมัติ   [  ] ไม่อนุมัติ</p>
+                </div>
+                <div className="pt-8 text-center space-y-1">
+                  <div className="border-b border-dotted border-slate-500 mx-4"></div>
+                  <p className="font-semibold">({courseCfg.directorName.trim() || '............................................'})</p>
+                  <p className="text-[11px] text-slate-600">วันที่อนุมัติ ....... / ............ / ...........</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
+// =========================================================================
+// PP6 OFFICIAL FORM (แบบรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล ปพ.๖)
+// Synced with persisted moeQualitativeStore!
+// =========================================================================
 interface Pp6OfficialFormProps {
   students: Student[];
   courses: Course[];
   grades: GradeRecord[];
   attendance: AttendanceRecord[];
   systemConfig: SystemConfig;
+  school?: School;
   selectedStudentIdForPp6: string;
   setSelectedStudentIdForPp6: (id: string) => void;
   currentPp6CoursePage: number;
@@ -784,23 +1754,7 @@ interface Pp6OfficialFormProps {
   ) => React.ReactNode;
 }
 
-const MOE_ATTRIBUTES = [
-  '๑. รักชาติ ศาสน์ กษัตริย์',
-  '๒. ซื่อสัตย์สุจริต',
-  '๓. มีวินัย',
-  '๔. ใฝ่เรียนรู้',
-  '๕. อยู่อย่างพอเพียง',
-  '๖. มุ่งมั่นในการทำงาน',
-  '๗. รักความเป็นไทย',
-  '๘. มีจิตสาธารณะ',
-];
-
-const MOE_ACTIVITIES = [
-  { name: '๑. กิจกรรมแนะแนว', hours: '๒๐ ชม.', result: 'ผ (ผ่าน)' },
-  { name: '๒. กิจกรรมนักเรียน (ลูกเสือ / เนตรนารี / ยุวกาชาด)', hours: '๒๐ ชม.', result: 'ผ (ผ่าน)' },
-  { name: '๓. กิจกรรมชมรม / ชุมนุม', hours: '๒๐ ชม.', result: 'ผ (ผ่าน)' },
-  { name: '๔. กิจกรรมเพื่อสังคมและสาธารณประโยชน์', hours: '๑๕ ชม.', result: 'ผ (ผ่าน)' },
-];
+const MOE_ATTRIBUTES = MOE_DESIRABLE_ATTRIBUTES_RUBRIC.map((a) => a.titleTh);
 
 export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
   students,
@@ -808,6 +1762,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
   grades,
   attendance,
   systemConfig,
+  school,
   selectedStudentIdForPp6,
   setSelectedStudentIdForPp6,
   currentPp6CoursePage,
@@ -815,15 +1770,20 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
   setPp6CoursePage,
   renderPageControls,
 }) => {
+  const schoolId = school?.id || students[0]?.schoolId || 'default';
+  const academicYear = systemConfig.academicYear || '2569';
+  const semester = systemConfig.currentSemester || '1';
+
   const [studentSearch, setStudentSearch] = useState('');
-  const [homeroomComment, setHomeroomComment] = useState(
-    'นักเรียนมีความตั้งใจในการเรียน สนใจใฝ่รู้ รับผิดชอบงานที่ได้รับมอบหมายสม่ำเสมอ อยู่ร่วมกับเพื่อนและปฏิบัติตามระเบียบของสถานศึกษาได้เป็นอย่างดี'
-  );
   const [commentCopied, setCommentCopied] = useState(false);
-  const [attributeRatings, setAttributeRatings] = useState<Record<number, string>>({});
-  const [readingRating, setReadingRating] = useState('ดีเยี่ยม (๓)');
-  const [competencyRating, setCompetencyRating] = useState('ดีเยี่ยม (๓)');
-  const [activityRatings, setActivityRatings] = useState<Record<number, string>>({});
+  const [qualitativeMap, setQualitativeMap] = useState<Record<string, StudentQualitativeAssessment>>(() =>
+    loadQualitativeAssessments(schoolId, academicYear, semester)
+  );
+  const pp6PrintRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
+  }, [schoolId, academicYear, semester]);
 
   const filteredStudents = useMemo(() => {
     const q = studentSearch.trim().toLowerCase();
@@ -847,7 +1807,33 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
 
   const currentIdx = selectedStudent ? students.findIndex((s) => s.id === selectedStudent.id) : -1;
 
-  // Courses relevant to this student (enrolled or has grade record)
+  const studentQual = useMemo(
+    () =>
+      selectedStudent
+        ? getStudentQualitativeRecord(qualitativeMap, selectedStudent.id)
+        : createDefaultStudentQualitative(''),
+    [qualitativeMap, selectedStudent]
+  );
+
+  const studentQualSummary = useMemo(() => summarizeStudentQualitative(studentQual), [studentQual]);
+
+  const updateSelectedStudentQual = (
+    updater: (prev: StudentQualitativeAssessment) => StudentQualitativeAssessment
+  ) => {
+    if (!selectedStudent) return;
+    setQualitativeMap((prev) => {
+      const current = getStudentQualitativeRecord(prev, selectedStudent.id);
+      const updated = { ...updater(current), updatedAt: new Date().toISOString() };
+      const next = { ...prev, [selectedStudent.id]: updated };
+      saveQualitativeAssessments(schoolId, academicYear, semester, next);
+      return next;
+    });
+  };
+
+  const defaultHomeroomComment =
+    'นักเรียนมีความตั้งใจในการเรียน สนใจใฝ่รู้ รับผิดชอบงานที่ได้รับมอบหมายสม่ำเสมอ อยู่ร่วมกับเพื่อนและปฏิบัติตามระเบียบของสถานศึกษาได้เป็นอย่างดี';
+  const homeroomComment = studentQual.homeroomComment ?? defaultHomeroomComment;
+
   const studentCourses = useMemo(() => {
     if (!selectedStudent) return [];
     const matched = courses.filter(
@@ -858,7 +1844,6 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
     return matched.length > 0 ? matched : courses;
   }, [courses, grades, selectedStudent]);
 
-  // Credit-weighted & Primary vs Secondary MOE Summary
   const academicSummary = useMemo(() => {
     if (!selectedStudent) {
       return {
@@ -916,7 +1901,6 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
 
   const pp6OverallFeedback = getRawScoreFeedback(academicSummary.averageRawScore);
 
-  // Student Attendance Summary
   const attendanceStats = useMemo(() => {
     if (!selectedStudent) return { total: 0, present: 0, late: 0, leaveOrSick: 0, absent: 0, pct: '-' };
     const recs = attendance.filter((a) => a.studentId === selectedStudent.id);
@@ -980,15 +1964,25 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
 
     if (resolvedTone === 'praise') {
       const strengthText = bestSubjects.length > 0 ? ` โดดเด่นเป็นพิเศษในรายวิชา${bestSubjects.join(' และ')}` : '';
-      setHomeroomComment(
-        `${fullName} ${academicPhrase}${strengthText} อีกทั้ง${attendanceNote} มีความรับผิดชอบและอยู่ร่วมกับเพื่อนได้อย่างเหมาะสม ขอชื่นชมและส่งเสริมให้พัฒนาศักยภาพอย่างต่อเนื่อง`
-      );
+      updateSelectedStudentQual((prev) => ({
+        ...prev,
+        homeroomComment: `${fullName} ${academicPhrase}${strengthText} อีกทั้ง${attendanceNote} มีความรับผิดชอบและอยู่ร่วมกับเพื่อนได้อย่างเหมาะสม ขอชื่นชมและส่งเสริมให้พัฒนาศักยภาพอย่างต่อเนื่อง`,
+      }));
       return;
     }
 
     const supportText = weakSubjects.length > 0 ? ` แนะนำให้ทบทวนเพิ่มเติมในรายวิชา${weakSubjects.join(' และ')} รวมถึงติดตามงานที่ค้างส่ง` : ' แนะนำให้จัดตารางทบทวนบทเรียนอย่างสม่ำเสมอ';
-    setHomeroomComment(
-      `${fullName} ${academicPhrase} และ${attendanceNote}${supportText} ทั้งนี้ครูประจำชั้นยินดีร่วมมือกับผู้ปกครองในการดูแลช่วยเหลือและให้กำลังใจผู้เรียนอย่างใกล้ชิด`
+    updateSelectedStudentQual((prev) => ({
+      ...prev,
+      homeroomComment: `${fullName} ${academicPhrase} และ${attendanceNote}${supportText} ทั้งนี้ครูประจำชั้นยินดีร่วมมือกับผู้ปกครองในการดูแลช่วยเหลือและให้กำลังใจผู้เรียนอย่างใกล้ชิด`,
+    }));
+  };
+
+  const handlePrintPp6 = () => {
+    if (!pp6PrintRef.current || !selectedStudent) return;
+    printHtmlElementInIsolatedFrame(
+      pp6PrintRef.current.innerHTML,
+      `ปพ6_${selectedStudent.studentIdNumber}`
     );
   };
 
@@ -1064,24 +2058,43 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
             <span>ถัดไป</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
+          <button
+            type="button"
+            onClick={handlePrintPp6}
+            className="btn-action-primary px-3 py-1.5 text-xs"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>พิมพ์ ปพ.๖ (A4)</span>
+          </button>
         </div>
       </div>
 
       {selectedStudent && (
-        <div className="bg-white text-slate-900 rounded-2xl p-5 sm:p-8 shadow-sm border border-slate-300 space-y-6 print:m-0 print:p-0 print:border-none print:shadow-none">
+        <div
+          ref={pp6PrintRef}
+          className="bg-white text-slate-900 rounded-2xl p-5 sm:p-8 shadow-sm border border-slate-300 space-y-6 print:m-0 print:p-0 print:border-none print:shadow-none"
+        >
           {/* Official P.P.6 Header */}
           <div className="border-b-2 border-slate-900 pb-4 space-y-4">
             <div className="flex items-start justify-between gap-4">
-              <div className="w-14 h-14 rounded-full border-2 border-slate-800 flex flex-col items-center justify-center shrink-0">
-                <Award className="w-6 h-6 text-slate-900" />
-                <span className="text-[8px] font-bold">สพฐ.</span>
-              </div>
+              {school?.logoUrl ? (
+                <img
+                  src={school.logoUrl}
+                  alt={school.nameTh}
+                  className="w-14 h-14 object-contain border border-slate-300 rounded-lg p-1 shrink-0"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full border-2 border-slate-800 flex flex-col items-center justify-center shrink-0">
+                  <Award className="w-6 h-6 text-slate-900" />
+                  <span className="text-[8px] font-bold">สพฐ.</span>
+                </div>
+              )}
               <div className="text-center flex-1 space-y-0.5">
                 <p className="text-xs font-bold text-slate-700">
                   แบบรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล (ปพ.๖)
                 </p>
                 <h2 className="text-lg sm:text-xl font-extrabold text-slate-950">
-                  โรงเรียน{systemConfig.schoolNameTh}
+                  โรงเรียน{school?.nameTh || systemConfig.schoolNameTh}
                 </h2>
                 <p className="text-[11px] text-slate-600">
                   สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน •{' '}
@@ -1136,15 +2149,15 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
 
           {/* Section 1: Subject Grades Table */}
           <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-1.5">
+              <h3 className="text-xs font-extrabold text-slate-950">
                 ตอนที่ ๑ ผลการพัฒนาคุณภาพผู้เรียนรายวิชา ({academicSummary.isPrimary ? 'ประเมินผลรายปี' : 'ประเมินผลรายภาคเรียน'})
               </h3>
               {academicSummary.isPrimary && (
-                <span className="text-[11px] font-semibold text-sky-900 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-semibold text-sky-900">
                   {academicSummary.isEarlyPrimary
-                    ? 'ป.1–ป.3: สื่อสารด้วยคะแนนดิบ (เต็ม 100) / ร้อยละ (%) และสรุปเกรด 0–4 รายปี'
-                    : 'ประถมศึกษา: ประเมินรายปี เกรด 0–4 ควบคู่คะแนนดิบ (เต็ม 100) / ร้อยละ (%)'}
+                    ? 'ป.๑–ป.๓: สื่อสารด้วยคะแนนดิบ (เต็ม ๑๐๐) / ร้อยละ (%) และสรุปเกรด ๐–๔ รายปี'
+                    : 'ประถมศึกษา: ประเมินรายปี เกรด ๐–๔ ควบคู่คะแนนดิบ (เต็ม ๑๐๐) / ร้อยละ (%)'}
                 </span>
               )}
             </div>
@@ -1155,9 +2168,9 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                     <th className="border border-slate-600 py-2 px-2 w-10">ที่</th>
                     <th className="border border-slate-600 py-2 px-2 w-24">รหัสวิชา</th>
                     <th className="border border-slate-600 py-2 px-2 text-left">รายวิชา</th>
+                    <th className="border border-slate-600 py-2 px-2 w-28">กลุ่มสาระฯ</th>
                     <th className="border border-slate-600 py-2 px-2 w-24">ประเภท</th>
                     <th className="border border-slate-600 py-2 px-2 w-16">{academicSummary.isPrimary ? 'น้ำหนัก' : 'หน่วยกิต'}</th>
-                    <th className="border border-slate-600 py-2 px-2 w-16">คะแนนเต็ม</th>
                     <th className="border border-slate-600 py-2 px-2 w-24 bg-amber-50">คะแนนที่ได้ (%)</th>
                     <th className="border border-slate-600 py-2 px-2 w-20 bg-slate-200">ระดับผลการเรียน</th>
                     <th className="border border-slate-600 py-2 px-2 w-24">ผลการตัดสิน</th>
@@ -1173,6 +2186,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                       cycleEntry?.resolved ||
                       resolveEffectiveGrade(grade, course, systemConfig.gradingSystem, false);
                     const rawFeedback = grade ? getRawScoreFeedback(grade.totalScore) : null;
+                    const area = resolveMoeLearningArea(course);
                     const isVisible =
                       index >= currentPp6CoursePage * pp6CoursePageSize &&
                       index < (currentPp6CoursePage + 1) * pp6CoursePageSize;
@@ -1188,14 +2202,16 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                           {course.titleTh}
                         </td>
                         <td className="border border-slate-400 py-1.5 text-[11px] text-slate-600">
+                          {area.shortTh}
+                        </td>
+                        <td className="border border-slate-400 py-1.5 text-[11px] text-slate-600">
                           {getCategoryTypeLabel(course.category)}
                         </td>
                         <td className="border border-slate-400 py-1.5 font-mono">
                           {resolved.isActivity || course.credits <= 0 ? '-' : course.credits.toFixed(1)}
                         </td>
-                        <td className="border border-slate-400 py-1.5 font-mono">100</td>
                         <td className="border border-slate-400 py-1.5 font-mono font-bold bg-amber-50">
-                          {grade ? `${grade.totalScore}% (${grade.totalScore}/100)` : '-'}
+                          {grade ? `${grade.totalScore}%` : '-'}
                         </td>
                         <td className={`border border-slate-400 py-1.5 font-mono font-extrabold ${
                           resolved.letter === 'ร' || resolved.letter === 'มส.' || resolved.letter === 'มผ'
@@ -1229,26 +2245,26 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                   <tr className="bg-slate-100 font-bold text-slate-950 border-t-2 border-slate-700">
                     {academicSummary.hideGpaCalculations ? (
                       <>
-                        <td colSpan={4} className="border border-slate-600 py-2 px-3 text-left">
+                        <td colSpan={5} className="border border-slate-600 py-2 px-3 text-left">
                           สรุปผลการประเมินรายปี (ป.1–ป.6 • {academicSummary.gradedSubjectCount} รายวิชา)
                         </td>
-                        <td colSpan={3} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
-                          คะแนนดิบเฉลี่ย: {academicSummary.averageRawScore !== null ? `${academicSummary.averageRawScore}% (เต็ม 100)` : '-'}
+                        <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
+                          เฉลี่ย: {academicSummary.averageRawScore !== null ? `${academicSummary.averageRawScore}%` : '-'}
                         </td>
                         <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-semibold text-sm text-emerald-900">
-                          พัฒนาการภาพรวม: {pp6OverallFeedback.labelTh}
+                          {pp6OverallFeedback.labelTh}
                         </td>
                       </>
                     ) : (
                       <>
-                        <td colSpan={4} className="border border-slate-600 py-2 px-3 text-left">
+                        <td colSpan={5} className="border border-slate-600 py-2 px-3 text-left">
                           สรุปผลการเรียนประจำภาคเรียน (ม.1–ม.6)
                         </td>
                         <td className="border border-slate-600 py-2 font-mono">
                           {academicSummary.registeredCredits.toFixed(1)}
                         </td>
-                        <td colSpan={2} className="border border-slate-600 py-2 px-2 text-right font-mono">
-                          หน่วยกิตที่ได้: {academicSummary.earnedCredits.toFixed(1)}
+                        <td colSpan={1} className="border border-slate-600 py-2 px-2 text-right font-mono">
+                          ได้ {academicSummary.earnedCredits.toFixed(1)} นก.
                         </td>
                         <td colSpan={2} className="border border-slate-600 py-2 px-3 text-right font-mono text-sm">
                           GPA: {academicSummary.termGpa} | GPAX: {academicSummary.gpax}
@@ -1269,10 +2285,10 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
             )}
           </div>
 
-          {/* Section 2: 8 Desirable Attributes, Analytical Reading, Competencies & Student Activities */}
+          {/* Section 2: 8 Desirable Attributes, 5 Reading/Writing Dimensions, Competencies & Activities */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
-              ตอนที่ ๒ การประเมินคุณลักษณะอันพึงประสงค์ การอ่านคิดวิเคราะห์ สมรรถนะ และกิจกรรมพัฒนาผู้เรียน
+            <h3 className="text-xs font-extrabold text-slate-950 border-b border-slate-300 pb-1">
+              ตอนที่ ๒ การประเมินคุณลักษณะอันพึงประสงค์ การอ่านคิดวิเคราะห์ สมรรถนะ และกิจกรรมพัฒนาผู้เรียน (ซิงค์ข้อมูลกับ ปพ.๕)
             </h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* 8 MOE Desirable Attributes Table */}
@@ -1285,42 +2301,44 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                 </thead>
                 <tbody>
                   {MOE_ATTRIBUTES.map((attr, idx) => {
-                    const val = attributeRatings[idx] || 'ดีเยี่ยม (๓)';
+                    const numVal = studentQual.attributes[idx] ?? 3;
+                    const textVal = QUALITY_LABELS[numVal] || 'ดีเยี่ยม (๓)';
                     return (
                       <tr key={attr}>
                         <td className="border border-slate-400 px-2.5 py-1">{attr}</td>
                         <td className="border border-slate-400 px-2 py-1 text-center font-semibold text-emerald-800">
-                          <span className="hidden print:inline">{val}</span>
+                          <span className="hidden print:inline">{textVal}</span>
                           <select
-                            value={val}
-                            onChange={(e) => setAttributeRatings((prev) => ({ ...prev, [idx]: e.target.value }))}
+                            value={numVal}
+                            onChange={(e) => {
+                              const nextNum = Number(e.target.value);
+                              updateSelectedStudentQual((prev) => {
+                                const nextAttrs = [...prev.attributes];
+                                nextAttrs[idx] = nextNum;
+                                return { ...prev, attributes: nextAttrs };
+                              });
+                            }}
                             className="print:hidden w-full bg-transparent text-center font-semibold text-emerald-800 focus:outline-none cursor-pointer"
                           >
-                            <option value="ดีเยี่ยม (๓)">ดีเยี่ยม (๓)</option>
-                            <option value="ดี (๒)">ดี (๒)</option>
-                            <option value="ผ่าน (๑)">ผ่าน (๑)</option>
-                            <option value="ไม่ผ่าน (๐)">ไม่ผ่าน (๐)</option>
+                            <option value={3}>ดีเยี่ยม (๓)</option>
+                            <option value={2}>ดี (๒)</option>
+                            <option value={1}>ผ่าน (๑)</option>
+                            <option value={0}>ไม่ผ่าน (๐)</option>
                           </select>
                         </td>
                       </tr>
                     );
                   })}
                   <tr className="bg-slate-50 font-bold">
-                    <td className="border border-slate-600 px-2.5 py-1.5">สรุปผลการประเมินคุณลักษณะอันพึงประสงค์</td>
+                    <td className="border border-slate-600 px-2.5 py-1.5">สรุปผลการประเมินคุณลักษณะอันพึงประสงค์ (เกณฑ์ สพฐ.)</td>
                     <td className="border border-slate-600 px-2 py-1.5 text-center text-emerald-900">
-                      {Object.values(attributeRatings).some((v) => v === 'ไม่ผ่าน (๐)')
-                        ? 'ไม่ผ่าน (๐)'
-                        : Object.values(attributeRatings).some((v) => v === 'ผ่าน (๑)')
-                        ? 'ผ่าน (๑)'
-                        : Object.values(attributeRatings).some((v) => v === 'ดี (๒)')
-                        ? 'ดี (๒)'
-                        : 'ดีเยี่ยม (๓)'}
+                      {studentQualSummary.attrLabel}
                     </td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* Student Development Activities & Reading/Competencies */}
+              {/* Student Development Activities & 5 Reading/Writing Dimensions & Competencies */}
               <div className="space-y-3">
                 <table className="w-full text-xs border-collapse border border-slate-700">
                   <thead>
@@ -1331,8 +2349,8 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {MOE_ACTIVITIES.map((act, idx) => {
-                      const val = activityRatings[idx] || act.result;
+                    {MOE_STUDENT_ACTIVITIES.map((act, idx) => {
+                      const val = studentQual.activities[idx] || act.defaultResult;
                       return (
                         <tr key={act.name}>
                           <td className="border border-slate-400 px-2.5 py-1.5">{act.name}</td>
@@ -1341,7 +2359,14 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                             <span className="hidden print:inline">{val}</span>
                             <select
                               value={val}
-                              onChange={(e) => setActivityRatings((prev) => ({ ...prev, [idx]: e.target.value }))}
+                              onChange={(e) => {
+                                const nextAct = e.target.value as 'ผ (ผ่าน)' | 'มผ (ไม่ผ่าน)';
+                                updateSelectedStudentQual((prev) => {
+                                  const nextActs = [...prev.activities];
+                                  nextActs[idx] = nextAct;
+                                  return { ...prev, activities: nextActs };
+                                });
+                              }}
                               className="print:hidden w-full bg-transparent text-center font-bold text-emerald-800 focus:outline-none cursor-pointer"
                             >
                               <option value="ผ (ผ่าน)">ผ (ผ่าน)</option>
@@ -1357,40 +2382,68 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                 <table className="w-full text-xs border-collapse border border-slate-700">
                   <thead>
                     <tr className="bg-slate-100 font-bold text-slate-900">
-                      <th className="border border-slate-600 px-2.5 py-1.5 text-left">การประเมินสมรรถนะและการอ่านคิดวิเคราะห์</th>
+                      <th className="border border-slate-600 px-2.5 py-1.5 text-left">การอ่าน คิดวิเคราะห์ และเขียน (๕ ด้าน) &amp; สมรรถนะ</th>
                       <th className="border border-slate-600 px-2 py-1.5 text-center w-28">ระดับคุณภาพ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td className="border border-slate-400 px-2.5 py-1.5">การอ่าน คิดวิเคราะห์ และเขียน</td>
-                      <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">
-                        <span className="hidden print:inline">{readingRating}</span>
-                        <select
-                          value={readingRating}
-                          onChange={(e) => setReadingRating(e.target.value)}
-                          className="print:hidden w-full bg-transparent text-center font-bold text-emerald-800 focus:outline-none cursor-pointer"
-                        >
-                          <option value="ดีเยี่ยม (๓)">ดีเยี่ยม (๓)</option>
-                          <option value="ดี (๒)">ดี (๒)</option>
-                          <option value="ผ่าน (๑)">ผ่าน (๑)</option>
-                          <option value="ไม่ผ่าน (๐)">ไม่ผ่าน (๐)</option>
-                        </select>
+                    {MOE_READING_WRITING_RUBRIC.map((dim, dIdx) => {
+                      const val = studentQual.readingWriting[dIdx] ?? 3;
+                      return (
+                        <tr key={dim.index}>
+                          <td className="border border-slate-400 px-2.5 py-1">{dim.titleTh}</td>
+                          <td className="border border-slate-400 px-2 py-1 text-center font-semibold text-emerald-800">
+                            <span className="hidden print:inline">{QUALITY_LABELS[val]}</span>
+                            <select
+                              value={val}
+                              onChange={(e) => {
+                                const nextNum = Number(e.target.value);
+                                updateSelectedStudentQual((prev) => {
+                                  const nextRw = [...prev.readingWriting];
+                                  nextRw[dIdx] = nextNum;
+                                  return { ...prev, readingWriting: nextRw };
+                                });
+                              }}
+                              className="print:hidden w-full bg-transparent text-center font-semibold text-emerald-800 focus:outline-none cursor-pointer"
+                            >
+                              <option value={3}>ดีเยี่ยม (๓)</option>
+                              <option value={2}>ดี (๒)</option>
+                              <option value={1}>ผ่าน (๑)</option>
+                              <option value={0}>ไม่ผ่าน (๐)</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-slate-50 font-bold">
+                      <td className="border border-slate-600 px-2.5 py-1.5">
+                        สรุปผลการอ่าน คิดวิเคราะห์ และเขียน ({studentQualSummary.readingPercent}%)
+                      </td>
+                      <td className="border border-slate-600 px-2 py-1.5 text-center text-emerald-900">
+                        {studentQualSummary.readingLabel}
                       </td>
                     </tr>
                     <tr>
-                      <td className="border border-slate-400 px-2.5 py-1.5">สมรรถนะสำคัญของผู้เรียน ๕ ประการ</td>
+                      <td className="border border-slate-400 px-2.5 py-1.5 font-medium">
+                        สมรรถนะสำคัญของผู้เรียน ๕ ประการ ({MOE_KEY_COMPETENCIES.length} ด้าน)
+                      </td>
                       <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-emerald-800">
-                        <span className="hidden print:inline">{competencyRating}</span>
+                        <span className="hidden print:inline">{studentQualSummary.compLabel}</span>
                         <select
-                          value={competencyRating}
-                          onChange={(e) => setCompetencyRating(e.target.value)}
+                          value={studentQualSummary.compLevel}
+                          onChange={(e) => {
+                            const nextNum = Number(e.target.value);
+                            updateSelectedStudentQual((prev) => ({
+                              ...prev,
+                              competencies: Array(5).fill(nextNum),
+                            }));
+                          }}
                           className="print:hidden w-full bg-transparent text-center font-bold text-emerald-800 focus:outline-none cursor-pointer"
                         >
-                          <option value="ดีเยี่ยม (๓)">ดีเยี่ยม (๓)</option>
-                          <option value="ดี (๒)">ดี (๒)</option>
-                          <option value="ผ่าน (๑)">ผ่าน (๑)</option>
-                          <option value="ไม่ผ่าน (๐)">ไม่ผ่าน (๐)</option>
+                          <option value={3}>ดีเยี่ยม (๓)</option>
+                          <option value={2}>ดี (๒)</option>
+                          <option value={1}>ผ่าน (๑)</option>
+                          <option value={0}>ไม่ผ่าน (๐)</option>
                         </select>
                       </td>
                     </tr>
@@ -1402,7 +2455,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
 
           {/* Section 3: Attendance, Advisor Opinion & Parent Acknowledgment */}
           <div className="space-y-3 break-inside-avoid">
-            <h3 className="text-xs font-extrabold text-slate-950 uppercase tracking-wide border-l-4 border-slate-900 pl-2">
+            <h3 className="text-xs font-extrabold text-slate-950 border-b border-slate-300 pb-1">
               ตอนที่ ๓ สถิติเวลาเรียน ความคิดเห็นครูประจำชั้น และการรับทราบของผู้ปกครอง
             </h3>
 
@@ -1474,7 +2527,12 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
               <textarea
                 rows={3}
                 value={homeroomComment}
-                onChange={(e) => setHomeroomComment(e.target.value)}
+                onChange={(e) =>
+                  updateSelectedStudentQual((prev) => ({
+                    ...prev,
+                    homeroomComment: e.target.value,
+                  }))
+                }
                 className="w-full text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded p-2 print:border-none print:bg-transparent print:p-0 resize-none"
               />
             </div>

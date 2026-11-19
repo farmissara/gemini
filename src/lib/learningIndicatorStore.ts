@@ -157,37 +157,83 @@ export async function saveLearningIndicatorSet(set: LearningIndicatorSet): Promi
   }
 }
 
+const LOCAL_SCORES_PREFIX = 'eduverse_learning_indicator_scores_v1_';
+
+function localScoresKey(schoolId: string, setId: string): string {
+  return `${LOCAL_SCORES_PREFIX}${schoolId}_${setId}`;
+}
+
+export function readLocalIndicatorScores(schoolId: string, setId: string): LearningIndicatorScore[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(localScoresKey(schoolId, setId));
+    return raw ? (JSON.parse(raw) as LearningIndicatorScore[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeLocalIndicatorScores(schoolId: string, setId: string, scores: LearningIndicatorScore[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(localScoresKey(schoolId, setId), JSON.stringify(scores));
+  } catch {
+    // Browser storage can be unavailable or full.
+  }
+}
+
 export async function loadLearningIndicatorScores(params: {
   schoolId: string;
   setId: string;
 }): Promise<LearningIndicatorScore[]> {
+  const local = readLocalIndicatorScores(params.schoolId, params.setId);
   const client = getSupabaseClient();
-  if (!client) return [];
-  const { data, error } = await client
-    .from('student_learning_indicator_scores')
-    .select('*')
-    .eq('school_id', params.schoolId)
-    .eq('set_id', params.setId);
-  if (error) {
-    if (!missingIndicatorTable(error)) console.warn('[Indicators] Load scores failed:', error.message);
-    return [];
+  if (!client) return local;
+  try {
+    const { data, error } = await client
+      .from('student_learning_indicator_scores')
+      .select('*')
+      .eq('school_id', params.schoolId)
+      .eq('set_id', params.setId);
+    if (error) {
+      if (!missingIndicatorTable(error)) console.warn('[Indicators] Load scores failed:', error.message);
+      return local;
+    }
+    const mapped: LearningIndicatorScore[] = (data || []).map((row) => ({
+      id: row.id,
+      schoolId: row.school_id,
+      setId: row.set_id,
+      indicatorId: row.indicator_id,
+      studentId: row.student_id,
+      score: Number(row.score),
+      result: row.result,
+      evidence: row.evidence || undefined,
+      assessedBy: row.assessed_by || undefined,
+      assessedAt: row.assessed_at,
+      updatedAt: row.updated_at,
+    }));
+    if (mapped.length > 0) {
+      writeLocalIndicatorScores(params.schoolId, params.setId, mapped);
+      return mapped;
+    }
+    return local;
+  } catch {
+    return local;
   }
-  return (data || []).map((row) => ({
-    id: row.id,
-    schoolId: row.school_id,
-    setId: row.set_id,
-    indicatorId: row.indicator_id,
-    studentId: row.student_id,
-    score: Number(row.score),
-    result: row.result,
-    evidence: row.evidence || undefined,
-    assessedBy: row.assessed_by || undefined,
-    assessedAt: row.assessed_at,
-    updatedAt: row.updated_at,
-  }));
 }
 
 export async function saveLearningIndicatorScores(scores: LearningIndicatorScore[]): Promise<void> {
+  if (scores.length === 0) return;
+  const grouped = new Map<string, LearningIndicatorScore[]>();
+  scores.forEach((item) => {
+    const key = `${item.schoolId}::${item.setId}`;
+    grouped.set(key, [...(grouped.get(key) || []), item]);
+  });
+  grouped.forEach((group, key) => {
+    const [schoolId, setId] = key.split('::');
+    writeLocalIndicatorScores(schoolId, setId, group);
+  });
+
   const client = getSupabaseClient();
   if (!client) return;
   const rows = scores.map((score) => ({
@@ -206,5 +252,6 @@ export async function saveLearningIndicatorScores(scores: LearningIndicatorScore
   const { error } = await client
     .from('student_learning_indicator_scores')
     .upsert(rows, { onConflict: 'school_id,set_id,indicator_id,student_id' });
-  if (error) throw error;
+  if (error && !missingIndicatorTable(error)) throw error;
 }
+
