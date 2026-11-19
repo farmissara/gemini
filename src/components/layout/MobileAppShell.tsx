@@ -65,6 +65,7 @@ import {
   Plus,
   X,
   Check,
+  UserCheck,
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -154,6 +155,8 @@ import {
 } from '../../lib/thaiHolidays';
 import { GoogleCalendarSyncModal } from '../GoogleCalendarSyncModal';
 import { PeriodTimeMissionsCard } from '../PeriodTimeMissionsCard';
+import { TimetablePeriodAttendanceModal } from '../modals/TimetablePeriodAttendanceModal';
+import { getSlotAttendanceAndLeaveSummary } from '../../lib/timetableAttendanceStatus';
 import {
   enterLandscapeGameMode,
   exitLandscapeGameMode,
@@ -413,6 +416,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const [bioBusy, setBioBusy] = useState(false);
   const [bioMsg, setBioMsg] = useState<string | null>(null);
   const [bioErr, setBioErr] = useState<string | null>(null);
+  const [mobilePeriodRosterTarget, setMobilePeriodRosterTarget] = useState<{
+    slot: TimetableSlot;
+    date: string;
+  } | null>(null);
 
   React.useEffect(() => {
     setPasskey(getPasskeyForUser(currentUser?.id));
@@ -2339,6 +2346,86 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                                 )}
                               </div>
 
+                              {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (() => {
+                                const slotSummary = getSlotAttendanceAndLeaveSummary({
+                                  slot,
+                                  dateStr: todayBangkokStr,
+                                  courses: scopedCourses,
+                                  students,
+                                  teachers,
+                                  attendance,
+                                  periodAttendance,
+                                  leaveRequests,
+                                });
+                                const leavingTeacher = slotSummary.teacherStatuses.find(
+                                  (ts) => ts.status === 'on_leave_approved' || ts.status === 'on_leave_pending'
+                                );
+                                const primaryTeacher = slotSummary.teacherStatuses[0];
+                                return (
+                                  <div className="space-y-2 pt-1.5 border-t border-[var(--color-border)]">
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                      {leavingTeacher ? (
+                                        <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
+                                          ครูลา{leavingTeacher.substituteTeacherName ? ` · แทน ${leavingTeacher.substituteTeacherName}` : ''}
+                                        </span>
+                                      ) : selectedTimetableDay === todayDayKey && primaryTeacher ? (
+                                        primaryTeacher.status === 'checked_in' ? (
+                                          <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold tabular-nums">
+                                            ครูเข้า รร.{primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}
+                                          </span>
+                                        ) : primaryTeacher.status === 'late' ? (
+                                          <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold">
+                                            ครูสาย รร.
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-semibold">
+                                            ครูยังไม่เช็คอิน รร.
+                                          </span>
+                                        )
+                                      ) : null}
+                                      {slotSummary.periodCheckedTotal > 0 ? (
+                                        <>
+                                          <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 font-bold tabular-nums">
+                                            มา {slotSummary.periodPresent + slotSummary.periodLate}/{slotSummary.expectedTotal}
+                                          </span>
+                                          {slotSummary.periodExcused > 0 && (
+                                            <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 font-bold tabular-nums">
+                                              ลา {slotSummary.periodExcused}
+                                            </span>
+                                          )}
+                                          {slotSummary.periodAbsent > 0 && (
+                                            <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold tabular-nums">
+                                              ขาด {slotSummary.periodAbsent}
+                                            </span>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <>
+                                          {slotSummary.studentLeaveCount > 0 && (
+                                            <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold tabular-nums">
+                                              นร.ลา {slotSummary.studentLeaveCount}
+                                            </span>
+                                          )}
+                                          {selectedTimetableDay === todayDayKey && slotSummary.hasAnyGateRecordsForDate && slotSummary.expectedTotal > 0 && (
+                                            <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
+                                              เข้า รร. {slotSummary.gatePresentCount}/{slotSummary.expectedTotal}
+                                            </span>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setMobilePeriodRosterTarget({ slot, date: todayBangkokStr })}
+                                      className="w-full min-h-[40px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-xs"
+                                    >
+                                      <UserCheck className="w-4 h-4 shrink-0" />
+                                      <span>รายชื่อ / เช็กชื่อนักเรียน</span>
+                                    </button>
+                                  </div>
+                                );
+                              })()}
+
                               {canShowMobileDayCheckin && (
                                 <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
                                   <button
@@ -4080,6 +4167,24 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           onClose={() => setShowMobileCalendarSync(false)}
         />
       )}
+
+      <TimetablePeriodAttendanceModal
+        isOpen={Boolean(mobilePeriodRosterTarget)}
+        onClose={() => setMobilePeriodRosterTarget(null)}
+        slot={mobilePeriodRosterTarget?.slot || null}
+        initialDate={mobilePeriodRosterTarget?.date || todayBangkokStr}
+        schoolId={activeSchool.id}
+        courses={scopedCourses}
+        students={students}
+        teachers={teachers}
+        schoolPeriods={schoolPeriods}
+        attendance={attendance}
+        periodAttendance={periodAttendance}
+        leaveRequests={leaveRequests}
+        currentUser={currentUser}
+        lang={lang}
+        onRecordPeriodAttendance={onRecordPeriodAttendance}
+      />
     </div>
   );
 };

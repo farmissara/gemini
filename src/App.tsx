@@ -4855,7 +4855,9 @@ export const App: React.FC = () => {
                     })}
                     onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
                     leaveRequests={viewLeaveRequests}
+                    attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
+                    onRecordPeriodAttendance={handleRecordPeriodAttendance}
                     canSelfCheckin={
                       currentRole === 'student'
                         ? schoolPermissions.student_self_checkin !== false

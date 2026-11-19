@@ -5,15 +5,18 @@ import {
   CheckCircle2,
   Clock,
   LocateFixed,
+  LogIn,
   MapPin,
   Search,
   Smartphone,
   UserCheck,
+  UserMinus,
   Users,
   X,
 } from 'lucide-react';
 import {
   AppLanguage,
+  AttendanceRecord,
   AuthUser,
   ClassroomGpsConfig,
   Course,
@@ -21,6 +24,7 @@ import {
   PeriodAttendanceRecord,
   SchoolPeriodTime,
   Student,
+  Teacher,
   TimetableSlot,
 } from '../../types';
 import {
@@ -28,6 +32,13 @@ import {
   saveClassroomGpsConfig,
 } from '../../lib/classroomGps';
 import { isValidCoordinatePair } from '../../lib/schoolGps';
+import {
+  resolveMatchedCourseForSlot,
+  resolveSlotStudents,
+  resolveStudentGateStatusForDate,
+  resolveStudentLeaveForSlotDate,
+  resolveTeacherSchoolStatusesForSlotDate,
+} from '../../lib/timetableAttendanceStatus';
 
 interface TimetablePeriodAttendanceModalProps {
   isOpen: boolean;
@@ -37,7 +48,9 @@ interface TimetablePeriodAttendanceModalProps {
   schoolId: string;
   courses: Course[];
   students: Student[];
+  teachers?: Teacher[];
   schoolPeriods: SchoolPeriodTime[];
+  attendance?: AttendanceRecord[];
   periodAttendance: PeriodAttendanceRecord[];
   leaveRequests?: LeaveRequest[];
   currentUser?: AuthUser | null;
@@ -45,16 +58,21 @@ interface TimetablePeriodAttendanceModalProps {
   onRecordPeriodAttendance?: (records: PeriodAttendanceRecord[]) => void;
 }
 
-type RosterFilter = 'all' | 'unchecked' | 'proxy' | 'mobile' | 'leave';
+type RosterFilter =
+  | 'all'
+  | 'unchecked'
+  | 'gate_missing'
+  | 'absent'
+  | 'leave'
+  | 'proxy'
+  | 'mobile';
 
-function normalizeRoomToken(value?: string | null): string {
-  return (value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/^ห้อง\s*/i, '')
-    .replace(/^room\s*/i, '')
-    .replace(/\s+/g, '');
-}
+const LEAVE_TYPE_LABELS: Record<string, string> = {
+  sick: 'ลาป่วย',
+  personal: 'ลากิจ',
+  official: 'ไปราชการ',
+  vacation: 'ลาพักผ่อน',
+};
 
 export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceModalProps> = ({
   isOpen,
@@ -64,7 +82,9 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
   schoolId,
   courses,
   students,
+  teachers = [],
   schoolPeriods,
+  attendance = [],
   periodAttendance,
   leaveRequests = [],
   currentUser,
@@ -88,13 +108,10 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
   const [isLocatingGps, setIsLocatingGps] = useState(false);
   const [gpsStatusMsg, setGpsStatusMsg] = useState<string | null>(null);
 
-  const matchedCourse = useMemo(() => {
-    if (!slot) return undefined;
-    return (
-      courses.find((c) => slot.courseId && c.id === slot.courseId) ||
-      courses.find((c) => c.code && slot.courseCode && c.code.toLowerCase() === slot.courseCode.toLowerCase())
-    );
-  }, [courses, slot]);
+  const matchedCourse = useMemo(
+    () => (slot ? resolveMatchedCourseForSlot(slot, courses) : undefined),
+    [courses, slot]
+  );
 
   const resolvedCourseId = slot?.courseId || matchedCourse?.id || slot?.courseCode || 'course-slot';
   const resolvedRoomLabel = (slot?.room || slot?.classRoom || matchedCourse?.room || 'ห้องเรียน').trim();
@@ -133,35 +150,8 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
 
   const slotStudents = useMemo(() => {
     if (!slot) return [];
-    // 1. Enrolled students in linked course
-    if (matchedCourse?.enrolledStudentIds && matchedCourse.enrolledStudentIds.length > 0) {
-      const idSet = new Set(matchedCourse.enrolledStudentIds);
-      const enrolled = students.filter((s) => idSet.has(s.id));
-      if (enrolled.length > 0) return enrolled;
-    }
-
-    // 2. Match by classroom / room token
-    const slotRoomTokens = [slot.classRoom, slot.room, matchedCourse?.room]
-      .map((r) => normalizeRoomToken(r))
-      .filter(Boolean);
-    if (slotRoomTokens.length > 0) {
-      const byRoom = students.filter((s) => {
-        const stuRoom = normalizeRoomToken(s.room);
-        const stuGradeRoom = normalizeRoomToken(`${s.gradeLevel}${s.room}`);
-        const enrolledRooms = (s.enrolledRooms || []).map((r) => normalizeRoomToken(r));
-        return slotRoomTokens.some(
-          (tok) =>
-            (stuRoom && (tok === stuRoom || tok.includes(stuRoom) || stuRoom.includes(tok))) ||
-            (stuGradeRoom && (tok.includes(stuGradeRoom) || stuGradeRoom.includes(tok))) ||
-            enrolledRooms.some((er) => er && (tok.includes(er) || er.includes(tok)))
-        );
-      });
-      if (byRoom.length > 0) return byRoom;
-    }
-
-    // 3. Fallback to all students in school so teachers can always take roll
-    return students;
-  }, [slot, matchedCourse, students]);
+    return resolveSlotStudents(slot, courses, students);
+  }, [slot, courses, students]);
 
   const recordsByStudentId = useMemo(() => {
     const map = new Map<string, PeriodAttendanceRecord>();
@@ -169,7 +159,7 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
     periodAttendance.forEach((rec) => {
       const courseMatches =
         rec.courseId === resolvedCourseId ||
-        (slot.courseCode && rec.courseCode.toLowerCase() === slot.courseCode.toLowerCase());
+        (Boolean(slot.courseCode) && rec.courseCode.toLowerCase() === slot.courseCode.toLowerCase());
       if (
         courseMatches &&
         rec.periodNumber === slot.periodNumber &&
@@ -184,18 +174,32 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
 
   const leaveByStudentId = useMemo(() => {
     const map = new Map<string, LeaveRequest>();
-    leaveRequests.forEach((req) => {
-      if (req.userRole !== 'student') return;
-      if (req.status === 'rejected') return;
-      if (req.startDate <= selectedDate && req.endDate >= selectedDate) {
-        if (req.leaveScope === 'period_hourly' && req.periodNumber && slot && req.periodNumber !== slot.periodNumber) {
-          return;
-        }
-        map.set(req.userId, req);
-      }
+    if (!slot) return map;
+    slotStudents.forEach((st) => {
+      const leave = resolveStudentLeaveForSlotDate(st, slot, selectedDate, leaveRequests);
+      if (leave) map.set(st.id, leave);
     });
     return map;
-  }, [leaveRequests, selectedDate, slot]);
+  }, [slotStudents, slot, selectedDate, leaveRequests]);
+
+  const gateStatusByStudentId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof resolveStudentGateStatusForDate>>();
+    slotStudents.forEach((st) => {
+      map.set(st.id, resolveStudentGateStatusForDate(st, selectedDate, attendance));
+    });
+    return map;
+  }, [slotStudents, selectedDate, attendance]);
+
+  const teacherStatuses = useMemo(() => {
+    if (!slot) return [];
+    return resolveTeacherSchoolStatusesForSlotDate(
+      slot,
+      selectedDate,
+      teachers,
+      attendance,
+      leaveRequests
+    );
+  }, [slot, selectedDate, teachers, attendance, leaveRequests]);
 
   const stats = useMemo(() => {
     let checked = 0;
@@ -205,6 +209,7 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
     let absent = 0;
     let proxyCount = 0;
     let mobileCount = 0;
+    let gateNotChecked = 0;
 
     slotStudents.forEach((st) => {
       const saved = recordsByStudentId.get(st.id);
@@ -218,6 +223,11 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
       }
       if (saved?.checkMethod === 'teacher_proxy') proxyCount += 1;
       if (saved?.checkMethod === 'qr_code' || saved?.checkMethod === 'student_mobile') mobileCount += 1;
+
+      const gate = gateStatusByStudentId.get(st.id);
+      if (!gate || (gate.status !== 'present' && gate.status !== 'late')) {
+        gateNotChecked += 1;
+      }
     });
 
     return {
@@ -230,15 +240,23 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
       absent,
       proxyCount,
       mobileCount,
+      gateNotChecked,
     };
-  }, [slotStudents, recordsByStudentId, draftStatuses]);
+  }, [slotStudents, recordsByStudentId, draftStatuses, gateStatusByStudentId]);
 
   const visibleStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return slotStudents.filter((st) => {
       const saved = recordsByStudentId.get(st.id);
       const leave = leaveByStudentId.get(st.id);
-      if (rosterFilter === 'unchecked' && (saved || draftStatuses[st.id])) return false;
+      const gate = gateStatusByStudentId.get(st.id);
+      const effectiveStatus = draftStatuses[st.id] || saved?.status;
+
+      if (rosterFilter === 'unchecked' && effectiveStatus) return false;
+      if (rosterFilter === 'gate_missing' && (gate?.status === 'present' || gate?.status === 'late')) {
+        return false;
+      }
+      if (rosterFilter === 'absent' && effectiveStatus !== 'absent') return false;
       if (rosterFilter === 'proxy' && saved?.checkMethod !== 'teacher_proxy') return false;
       if (
         rosterFilter === 'mobile' &&
@@ -257,7 +275,15 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
         (st.room || '').toLowerCase().includes(q)
       );
     });
-  }, [slotStudents, recordsByStudentId, leaveByStudentId, rosterFilter, draftStatuses, searchQuery]);
+  }, [
+    slotStudents,
+    recordsByStudentId,
+    leaveByStudentId,
+    gateStatusByStudentId,
+    rosterFilter,
+    draftStatuses,
+    searchQuery,
+  ]);
 
   if (!isOpen || !slot) return null;
 
@@ -271,6 +297,14 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
   ) => {
     if (!onRecordPeriodAttendance) return;
     const existing = recordsByStudentId.get(student.id);
+    const statusLabelTh =
+      status === 'present'
+        ? 'เข้าเรียน'
+        : status === 'late'
+          ? 'มาสาย'
+          : status === 'excused'
+            ? 'ลา'
+            : 'ขาดเรียน';
     const record: PeriodAttendanceRecord = {
       id: existing?.id || `patt-tt-${Date.now()}-${student.id}`,
       schoolId,
@@ -287,29 +321,29 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
       checkMethod: 'teacher_proxy',
       remarks: isNoPhoneProxy
         ? `ครูกดรับเช็คชื่อแทน (นักเรียนไม่มีมือถือ) · คาบ ${slot.periodNumber} ${slot.courseCode}`
-        : `ครูเช็คชื่อจากหน้าตารางสอน (${slot.courseCode} คาบ ${slot.periodNumber})`,
+        : `ครูบันทึกสถานะ "${statusLabelTh}" จากตารางสอน (${slot.courseCode} คาบ ${slot.periodNumber})`,
     };
     onRecordPeriodAttendance([record]);
     setDraftStatuses((prev) => ({ ...prev, [student.id]: status }));
     setFeedbackMsg(
       isNoPhoneProxy
-        ? `ครูกดรับเช็คชื่อแทน "${student.firstNameTh} ${student.lastNameTh}" (กรณีไม่มีมือถือ) เรียบร้อยแล้ว`
-        : `อัปเดตสถานะ "${student.firstNameTh} ${student.lastNameTh}" เรียบร้อยแล้ว`
+        ? `ครูกดรับเช็คชื่อแทน "${student.firstNameTh} ${student.lastNameTh}" และบันทึกลงฐานข้อมูลแล้ว`
+        : `บันทึกสถานะ "${statusLabelTh}" ของ ${student.firstNameTh} ${student.lastNameTh} ลงฐานข้อมูลแล้ว`
     );
     window.setTimeout(() => setFeedbackMsg(null), 3500);
   };
 
-  const handleMarkAllUncheckedPresent = () => {
+  const handleBulkMarkUnchecked = (defaultStatus: 'present' | 'absent') => {
     if (!onRecordPeriodAttendance) return;
     const recordsToSave: PeriodAttendanceRecord[] = [];
     const nextDrafts: Record<string, 'present' | 'late' | 'absent' | 'excused'> = { ...draftStatuses };
 
     slotStudents.forEach((student) => {
       const existing = recordsByStudentId.get(student.id);
-      if (existing) return;
+      if (existing || draftStatuses[student.id]) return;
       const leave = leaveByStudentId.get(student.id);
       const nextStatus: 'present' | 'late' | 'absent' | 'excused' =
-        draftStatuses[student.id] || (leave?.status === 'approved' ? 'excused' : 'present');
+        leave?.status === 'approved' ? 'excused' : defaultStatus;
       nextDrafts[student.id] = nextStatus;
       recordsToSave.push({
         id: `patt-tt-${Date.now()}-${student.id}`,
@@ -328,7 +362,9 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
         remarks:
           nextStatus === 'excused' && leave
             ? `ลาตามใบลาอนุมัติ (${leave.reason})`
-            : `ครูกดรับเช็คชื่อจากตารางสอน (${slot.courseCode} คาบ ${slot.periodNumber})`,
+            : nextStatus === 'absent'
+              ? `ครูบันทึกขาดเรียนสำหรับนักเรียนที่ยังไม่เช็คชื่อ (${slot.courseCode} คาบ ${slot.periodNumber})`
+              : `ครูกดรับเช็คชื่อจากตารางสอน (${slot.courseCode} คาบ ${slot.periodNumber})`,
       });
     });
 
@@ -340,7 +376,11 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
 
     onRecordPeriodAttendance(recordsToSave);
     setDraftStatuses(nextDrafts);
-    setFeedbackMsg(`บันทึกเช็คชื่อนักเรียนที่เหลือจำนวน ${recordsToSave.length} คนเรียบร้อยแล้ว`);
+    setFeedbackMsg(
+      defaultStatus === 'absent'
+        ? `บันทึกขาดเรียน/ลาสำหรับนักเรียนที่เหลือ ${recordsToSave.length} คนลงฐานข้อมูลแล้ว`
+        : `บันทึกเข้าเรียน/ลาสำหรับนักเรียนที่เหลือ ${recordsToSave.length} คนลงฐานข้อมูลแล้ว`
+    );
     window.setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
@@ -412,7 +452,7 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
         role="dialog"
         aria-modal="true"
         aria-labelledby="timetable-period-roster-title"
-        className="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden"
+        className="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden"
       >
         {/* Header */}
         <div className="px-4 sm:px-5 py-3.5 border-b border-[var(--color-border)] flex items-start justify-between gap-3 shrink-0 bg-[var(--color-card)]">
@@ -452,7 +492,7 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
           </button>
         </div>
 
-        {/* Controls + Classroom GPS Status */}
+        {/* Controls + Teacher Gate Status + Classroom GPS */}
         <div className="px-4 sm:px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5 shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -484,16 +524,73 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
             </div>
 
             {onRecordPeriodAttendance && (
-              <button
-                type="button"
-                onClick={handleMarkAllUncheckedPresent}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer transition"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>เช็คเข้าเรียนทั้งหมด ({stats.unchecked} คนที่เหลือ)</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleBulkMarkUnchecked('present')}
+                  disabled={stats.unchecked === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold cursor-pointer transition"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>เช็คเข้าเรียนทั้งหมด ({stats.unchecked})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkMarkUnchecked('absent')}
+                  disabled={stats.unchecked === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 disabled:opacity-50 text-white text-xs font-bold cursor-pointer transition"
+                  title="บันทึกขาดเรียนสำหรับนักเรียนที่ยังไม่เช็คชื่อ (ถ้ามีใบลาอนุมัติจะบันทึกเป็น 'ลา' ให้อัตโนมัติ)"
+                >
+                  <UserMinus className="w-3.5 h-3.5" />
+                  <span>เช็คขาดที่เหลือ ({stats.unchecked})</span>
+                </button>
+              </div>
             )}
           </div>
+
+          {/* Teacher School Check-in & Leave Status Banner */}
+          {teacherStatuses.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs">
+              <span className="font-bold text-[var(--color-text-muted)] shrink-0">ครูผู้สอน:</span>
+              {teacherStatuses.map((ts, idx) => (
+                <div key={`${ts.teacherName}-${idx}`} className="inline-flex flex-wrap items-center gap-1.5">
+                  <span className="font-bold text-[var(--color-text-title)]">{ts.teacherName}</span>
+                  {ts.status === 'checked_in' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold tabular-nums">
+                      <LogIn className="w-3 h-3" />
+                      <span>เข้าโรงเรียนแล้ว{ts.checkInTime ? ` ${ts.checkInTime} น.` : ''}</span>
+                    </span>
+                  )}
+                  {ts.status === 'late' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-[11px] font-bold tabular-nums">
+                      <Clock className="w-3 h-3" />
+                      <span>เข้าโรงเรียนสาย{ts.checkInTime ? ` ${ts.checkInTime} น.` : ''}</span>
+                    </span>
+                  )}
+                  {(ts.status === 'on_leave_approved' || ts.status === 'on_leave_pending') && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-[11px] font-bold">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>
+                        {ts.leave ? LEAVE_TYPE_LABELS[ts.leave.leaveType] || 'ลา' : 'ลา'} (
+                        {ts.status === 'on_leave_approved' ? 'อนุมัติแล้ว' : 'รออนุมัติ'})
+                        {ts.substituteTeacherName ? ` · ครูสอนแทน: ${ts.substituteTeacherName}` : ''}
+                      </span>
+                    </span>
+                  )}
+                  {ts.status === 'absent' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-[11px] font-bold">
+                      <span>ขาด / ไม่มาปฏิบัติหน้าที่</span>
+                    </span>
+                  )}
+                  {ts.status === 'not_checked_in' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-[11px] font-semibold">
+                      <span>ยังไม่เช็คอินเข้าโรงเรียน</span>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Inline Classroom GPS Setter */}
           {showGpsEditor && (
@@ -567,10 +664,16 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
               <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
                 สาย {stats.late}
               </span>
+              <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800">
+                ลา {stats.excused}
+              </span>
+              <span className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+                ขาด {stats.absent}
+              </span>
               <span className="px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-200 dark:border-sky-800">
                 ครูกดรับแทน {stats.proxyCount}
               </span>
-              <span className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+              <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
                 ยังไม่เช็ค {stats.unchecked}
               </span>
             </div>
@@ -592,9 +695,11 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
               [
                 { id: 'all', label: `ทั้งหมด (${slotStudents.length})` },
                 { id: 'unchecked', label: `ยังไม่เช็คชื่อ (${stats.unchecked})` },
+                { id: 'gate_missing', label: `ยังไม่เข้า รร. (${stats.gateNotChecked})` },
+                { id: 'absent', label: `ขาดเรียน (${stats.absent})` },
+                { id: 'leave', label: `มีใบลา (${leaveByStudentId.size})` },
                 { id: 'proxy', label: `ครูกดรับแทน (${stats.proxyCount})` },
                 { id: 'mobile', label: `สแกนมือถือ/QR (${stats.mobileCount})` },
-                { id: 'leave', label: `มีใบลา (${leaveByStudentId.size})` },
               ] as const
             ).map((tab) => (
               <button
@@ -631,6 +736,7 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
             visibleStudents.map((st, idx) => {
               const saved = recordsByStudentId.get(st.id);
               const leave = leaveByStudentId.get(st.id);
+              const gate = gateStatusByStudentId.get(st.id);
               const currentStatus = draftStatuses[st.id] || saved?.status;
               const isPhoneChecked =
                 saved?.checkMethod === 'qr_code' || saved?.checkMethod === 'student_mobile';
@@ -655,6 +761,27 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
                         <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
                           {st.firstNameTh} {st.lastNameTh}
                         </span>
+                        {/* School gate check-in status */}
+                        {gate?.status === 'present' ? (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-[10px] font-semibold tabular-nums">
+                            <LogIn className="w-2.5 h-2.5" />
+                            <span>เข้า รร.{gate.time ? ` ${gate.time}` : ''}</span>
+                          </span>
+                        ) : gate?.status === 'late' ? (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-[10px] font-semibold tabular-nums">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>สาย รร.{gate.time ? ` ${gate.time}` : ''}</span>
+                          </span>
+                        ) : gate?.status === 'absent' ? (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-[10px] font-semibold">
+                            <span>ขาด รร.</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold">
+                            <span>ยังไม่เช็คอินเข้า รร.</span>
+                          </span>
+                        )}
+
                         {isPhoneChecked && (
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
                             <Smartphone className="w-2.5 h-2.5" />
@@ -668,10 +795,14 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
                           </span>
                         )}
                         {leave && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-[10px] font-bold">
+                          <span
+                            title={leave.reason}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-[10px] font-bold"
+                          >
                             <AlertTriangle className="w-2.5 h-2.5" />
                             <span>
-                              {leave.status === 'approved' ? 'ใบลาอนุมัติแล้ว' : 'ยื่นใบลารออนุมัติ'}
+                              {LEAVE_TYPE_LABELS[leave.leaveType] || 'ใบลา'} (
+                              {leave.status === 'approved' ? 'อนุมัติแล้ว' : 'รออนุมัติ'})
                             </span>
                           </span>
                         )}
@@ -710,15 +841,15 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
                             key={pst}
                             type="button"
                             onClick={() => handleInstantTeacherAccept(st, pst, false)}
-                            className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
                               currentStatus === pst
                                 ? pst === 'present'
-                                  ? 'bg-emerald-700 text-white'
+                                  ? 'bg-emerald-700 text-white shadow-xs'
                                   : pst === 'late'
-                                    ? 'bg-amber-500 text-slate-950'
+                                    ? 'bg-amber-500 text-slate-950 shadow-xs'
                                     : pst === 'excused'
-                                      ? 'bg-[var(--color-primary)] text-white'
-                                      : 'bg-rose-700 text-white'
+                                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                                      : 'bg-rose-700 text-white shadow-xs'
                                 : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
                             }`}
                           >
@@ -735,15 +866,15 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
         </div>
 
         {/* Footer */}
-        <div className="px-4 sm:px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2 shrink-0 text-xs">
+        <div className="px-4 sm:px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
           <span className="text-[var(--color-text-muted)] flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-emerald-600" />
-            <span>บันทึกสถานะเช็คชื่อรายคาบแบบเรียลไทม์ทันทีที่กดปุ่ม</span>
+            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>บันทึกข้อมูลรายคาบลงฐานข้อมูลทันที เพื่อใช้คำนวณ ปพ.5 / มส. และ Report / Monitor</span>
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold cursor-pointer"
+            className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold cursor-pointer ml-auto"
           >
             เสร็จสิ้น
           </button>

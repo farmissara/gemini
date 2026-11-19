@@ -37,7 +37,7 @@ import {
   Edit3,
   X,
 } from 'lucide-react';
-import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest, PeriodAttendanceRecord } from '../types';
+import { Assignment, AttendanceRecord, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest, PeriodAttendanceRecord } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
@@ -109,6 +109,7 @@ import {
   getVisibleCalendarNotesMapForMonth,
   saveCalendarNote,
 } from '../lib/calendarNotes';
+import { getSlotAttendanceAndLeaveSummary } from '../lib/timetableAttendanceStatus';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -142,6 +143,7 @@ interface TimetableScheduleViewProps {
     semesterOptions?: string[]
   ) => Promise<void>;
   leaveRequests?: LeaveRequest[];
+  attendance?: AttendanceRecord[];
   periodAttendance?: PeriodAttendanceRecord[];
   canSelfCheckin?: boolean;
   onOpenPeriodCheckin?: (params: {
@@ -213,6 +215,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   onUpdateTeachingLoadThresholds,
   onUpdateAcademicPeriod,
   leaveRequests = [],
+  attendance = [],
   periodAttendance = [],
   canSelfCheckin = true,
   onOpenPeriodCheckin,
@@ -816,6 +819,123 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       date: dateStr,
       checkType,
     });
+  };
+
+  const renderSlotStaffStatusBadges = (
+    slot: TimetableSlot,
+    dateStr: string,
+    isHolidayOff: boolean
+  ) => {
+    if (isPersonalViewer || isHolidayOff) return null;
+    const summary = getSlotAttendanceAndLeaveSummary({
+      slot,
+      dateStr,
+      courses,
+      students,
+      teachers,
+      attendance,
+      periodAttendance,
+      leaveRequests,
+    });
+
+    const leavingTeacher = summary.teacherStatuses.find(
+      (ts) => ts.status === 'on_leave_approved' || ts.status === 'on_leave_pending'
+    );
+    const primaryTeacher = summary.teacherStatuses[0];
+    const isTodayDate = dateStr === todayBangkokDate;
+    const hasTeacherGateRecord =
+      primaryTeacher &&
+      (primaryTeacher.status === 'checked_in' ||
+        primaryTeacher.status === 'late' ||
+        primaryTeacher.status === 'absent');
+
+    const showTeacherBadge =
+      Boolean(leavingTeacher) ||
+      Boolean(hasTeacherGateRecord && dateStr <= todayBangkokDate) ||
+      Boolean(primaryTeacher && isTodayDate);
+
+    const showStudentSummary =
+      summary.periodCheckedTotal > 0 ||
+      summary.studentLeaveCount > 0 ||
+      (isTodayDate && summary.hasAnyGateRecordsForDate && summary.expectedTotal > 0);
+
+    if (!showTeacherBadge && !showStudentSummary) return null;
+
+    return (
+      <div className="mt-1 flex flex-wrap items-center gap-1 print:hidden">
+        {leavingTeacher && (
+          <span
+            title={
+              leavingTeacher.substituteTeacherName
+                ? `${leavingTeacher.teacherName} ลา · ครูสอนแทน: ${leavingTeacher.substituteTeacherName}`
+                : `${leavingTeacher.teacherName} ยื่นใบลา`
+            }
+            className="inline-flex items-center gap-0.5 rounded bg-rose-100 dark:bg-rose-950/90 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800"
+          >
+            <span>
+              ครูลา{leavingTeacher.substituteTeacherName ? ` · แทน ${leavingTeacher.substituteTeacherName.split(' ')[0]}` : ''}
+            </span>
+          </span>
+        )}
+        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'checked_in' && dateStr <= todayBangkokDate && (
+          <span
+            title={`${primaryTeacher.teacherName} เช็คอินเข้าโรงเรียนแล้ว${primaryTeacher.checkInTime ? ` เวลา ${primaryTeacher.checkInTime}` : ''}`}
+            className="inline-flex items-center gap-0.5 rounded bg-emerald-100/90 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:text-emerald-200 tabular-nums"
+          >
+            <span>ครูเข้า รร.{primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}</span>
+          </span>
+        )}
+        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'late' && dateStr <= todayBangkokDate && (
+          <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 dark:text-amber-200 tabular-nums">
+            <span>ครูสาย รร.</span>
+          </span>
+        )}
+        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'absent' && dateStr <= todayBangkokDate && (
+          <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200">
+            <span>ครูขาด</span>
+          </span>
+        )}
+        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'not_checked_in' && isTodayDate && (
+          <span
+            title={`${primaryTeacher.teacherName} ยังไม่เช็คอินเข้าโรงเรียนวันนี้`}
+            className="inline-flex items-center gap-0.5 rounded bg-amber-50 dark:bg-amber-950/70 px-1.5 py-0.5 text-[9px] font-semibold text-amber-900 dark:text-amber-200 border border-amber-300/70 dark:border-amber-700"
+          >
+            <span>ครูยังไม่เข้า รร.</span>
+          </span>
+        )}
+
+        {summary.periodCheckedTotal > 0 ? (
+          <>
+            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:text-emerald-200 tabular-nums">
+              <span>มา {summary.periodPresent + summary.periodLate}/{summary.expectedTotal}</span>
+            </span>
+            {summary.periodExcused > 0 && (
+              <span className="inline-flex items-center rounded bg-indigo-100 dark:bg-indigo-950/80 px-1.5 py-0.5 text-[9px] font-bold text-indigo-800 dark:text-indigo-200 tabular-nums">
+                ลา {summary.periodExcused}
+              </span>
+            )}
+            {summary.periodAbsent > 0 && (
+              <span className="inline-flex items-center rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200 tabular-nums">
+                ขาด {summary.periodAbsent}
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            {summary.studentLeaveCount > 0 && (
+              <span className="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 dark:text-amber-200 tabular-nums">
+                นร.ลา {summary.studentLeaveCount}
+              </span>
+            )}
+            {isTodayDate && summary.hasAnyGateRecordsForDate && summary.expectedTotal > 0 && (
+              <span className="inline-flex items-center rounded bg-white/80 dark:bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                เข้า รร. {summary.gatePresentCount}/{summary.expectedTotal}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   const isAllClassroomsView = viewMode === 'classroom' && (
@@ -3242,6 +3362,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   <p className="text-[11px] text-[var(--color-text-body)] mt-0.5">
                                     {formatSlotTeachersDisplay(slot)} {slot.room ? `· ห้อง ${slot.room}` : ''}
                                   </p>
+                                  {renderSlotStaffStatusBadges(
+                                    slot,
+                                    selectedCalendarDate,
+                                    selectedDateHolidays.some((h) => h.isSchoolDayOff)
+                                  )}
                                 </button>
                                 {(status.hasCheckIn || status.hasCheckOut) && (
                                   <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
@@ -3249,6 +3374,19 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   </span>
                                 )}
                               </div>
+
+                              {canOpenPeriodRoster && (
+                                <div className="pt-1.5 border-t border-current/15 print:hidden">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPeriodRosterTarget({ slot, date: selectedCalendarDate })}
+                                    className="w-full min-h-[34px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs cursor-pointer transition"
+                                  >
+                                    <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                                    <span>รายชื่อ / เช็กชื่อนักเรียน</span>
+                                  </button>
+                                </div>
+                              )}
 
                               {canShowDateCheckin && (
                                 <div className="flex items-center gap-2 pt-1.5 border-t border-current/15">
@@ -3434,6 +3572,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 <span className="block text-[9px] text-[var(--color-text-body)]">
                                   {slot.classRoom} · {formatSlotTeachersDisplay(slot)}
                                 </span>
+                                {renderSlotStaffStatusBadges(
+                                  slot,
+                                  day.date,
+                                  Boolean(dayHoliday?.isSchoolDayOff)
+                                )}
                                 {canOpenPeriodRoster && (
                                   <div className="pt-1 border-t border-current/15">
                                     <button
@@ -4019,6 +4162,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                       <MapPin className="w-2.5 h-2.5 shrink-0" />
                                       <span className="truncate">{slot.room || 'ไม่ระบุห้องสถานที่'}</span>
                                     </div>
+                                    {renderSlotStaffStatusBadges(
+                                      slot,
+                                      day.date,
+                                      Boolean(rowHoliday?.isSchoolDayOff)
+                                    )}
                                   </div>
 
                                   {canOpenPeriodRoster && (
@@ -5192,7 +5340,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         schoolId={schoolId}
         courses={courses}
         students={students}
+        teachers={teachers}
         schoolPeriods={schoolPeriods}
+        attendance={attendance}
         periodAttendance={periodAttendance}
         leaveRequests={leaveRequests}
         currentUser={currentUser}
