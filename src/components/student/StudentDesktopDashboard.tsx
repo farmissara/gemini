@@ -310,13 +310,13 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
   }, [currentUser?.id, student?.id, school?.id]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-150">
+    <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-150">
       {/* ==================================================================== */}
       {/* 1. CLEAN EDITORIAL WELCOME HEADER (60-30-10: Neutral Surface + 1 CTA) */}
       {/* ==================================================================== */}
       <section
         aria-label={lang === 'th' ? 'ภาพรวมประจำวันของนักเรียน' : 'Student daily summary'}
-        className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5"
+        className="rounded-2xl border border-[var(--color-border)] bg-gradient-to-br from-[var(--color-primary-light)] via-[var(--color-card)] to-[var(--color-card)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-5 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6"
       >
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)] tabular-nums">
@@ -331,11 +331,11 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             </span>
           </div>
 
-          <h2 className="text-2xl font-bold tracking-tight text-[var(--color-text-title)] text-balance truncate">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-title)] text-balance truncate">
             {userDisplayName}
           </h2>
 
-          <p className="text-sm text-[var(--color-text-muted)] tabular-nums truncate">
+          <p className="text-sm sm:text-[15px] text-[var(--color-text-muted)] tabular-nums truncate">
             {student
               ? `${student.gradeLevel} ${student.room} · ${lang === 'th' ? 'รหัส' : 'ID'} ${student.studentIdNumber}`
               : lang === 'th'
@@ -362,7 +362,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             <button
               type="button"
               onClick={() => onNavigate('mobile_checkin')}
-              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-sm font-semibold inline-flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0"
+              className="min-h-12 w-full sm:w-auto justify-center px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-sm font-semibold inline-flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25"
             >
               {attendanceStats.todayRecord ? (
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -383,7 +383,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             <button
               type="button"
               onClick={() => onNavigate('timetable')}
-              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-sm font-semibold inline-flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0"
+              className="min-h-12 w-full sm:w-auto justify-center px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-sm font-semibold inline-flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25"
             >
               <Calendar className="w-4 h-4 shrink-0" />
               <span>{lang === 'th' ? 'ดูตารางเรียนวันนี้' : 'View Today’s Schedule'}</span>
@@ -394,7 +394,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             <button
               type="button"
               onClick={() => onNavigate('timetable')}
-              className="min-h-[44px] px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-bg)] text-[var(--color-text-title)] text-sm font-medium inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+              className="min-h-12 w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] hover:border-[var(--color-primary)]/40 shadow-xs text-[var(--color-text-title)] text-sm font-medium inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>{lang === 'th' ? 'ตารางเรียน' : 'Timetable'}</span>
               <ArrowUpRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
@@ -408,18 +408,18 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       {/* ==================================================================== */}
       <div
         data-guide-id="dashboard-kpis"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-stretch"
       >
         {/* CARD A: ATTENDANCE VISUAL PROGRESS */}
         <section
           aria-label={lang === 'th' ? 'ความสม่ำเสมอในการมาเรียน' : 'Attendance progress'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-6"
+          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-6"
         >
           <div className="space-y-5">
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-0.5">
-                <h3 className="text-sm font-semibold text-[var(--color-text-title)]">
+                <h3 className="text-base font-semibold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'การมาเรียนของคุณ' : 'Attendance'}
                 </h3>
                 <p className={`text-xs font-medium ${attendanceStanding.tone}`}>
@@ -430,7 +430,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                 <button
                   type="button"
                   onClick={() => onNavigate(studentCanSelfCheckin ? 'mobile_checkin' : 'timetable')}
-                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{lang === 'th' ? 'รายละเอียด' : 'Details'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -441,7 +441,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             {/* Big Tabular Metric */}
             <div className="flex items-baseline justify-between gap-4">
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold tracking-tight text-[var(--color-text-title)] tabular-nums">
+                <span className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--color-text-title)] tabular-nums">
                   {attendanceStats.rate !== null ? `${attendanceStats.rate}%` : '—'}
                 </span>
                 <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
@@ -462,7 +462,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             {/* Segmented Visual Progress Bar with 80% MOE Benchmark */}
             <div className="space-y-2">
               <div
-                className="relative h-3 w-full rounded-full bg-[var(--color-card-subtle)] overflow-hidden"
+                className="relative h-3 w-full rounded-full bg-[var(--color-card-subtle)] ring-1 ring-inset ring-black/5 overflow-hidden"
                 role="progressbar"
                 aria-valuenow={attendanceStats.rate ?? 0}
                 aria-valuemin={0}
@@ -541,7 +541,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                 <button
                   type="button"
                   onClick={() => onOpenPhotoRecord(attendanceStats.todayRecord!)}
-                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition cursor-pointer whitespace-nowrap shrink-0"
                 >
                   {lang === 'th' ? 'ดูหลักฐาน' : 'View proof'}
                 </button>
@@ -561,7 +561,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                   <button
                     type="button"
                     onClick={() => onNavigate('mobile_checkin')}
-                    className="text-xs font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                    className="text-[13px] font-semibold text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition cursor-pointer whitespace-nowrap shrink-0"
                   >
                     {lang === 'th' ? 'เช็คชื่อเลย →' : 'Check in →'}
                   </button>
@@ -574,7 +574,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         {/* CARD B: GRADES & SUBJECT MASTERY VISUAL PROGRESS */}
         <section
           aria-label={lang === 'th' ? 'ผลการเรียนและความก้าวหน้ารายวิชา' : 'Grades and subject progress'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-6"
+          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-6"
         >
           {studentCanViewGrades ? (
             <>
@@ -582,7 +582,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-0.5">
-                    <h3 className="text-sm font-semibold text-[var(--color-text-title)]">
+                    <h3 className="text-base font-semibold text-[var(--color-text-title)]">
                       {gpaxDisplay.isRawScore
                         ? lang === 'th'
                           ? 'คะแนนเฉลี่ยสะสม'
@@ -598,7 +598,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                   <button
                     type="button"
                     onClick={() => onNavigate('gradebook')}
-                    className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                    className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                   >
                     <span>{lang === 'th' ? 'เปิดสมุดพก' : 'Report card'}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -609,7 +609,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                 <div className="space-y-2.5">
                   <div className="flex items-baseline justify-between gap-3">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-4xl font-bold tracking-tight text-[var(--color-text-title)] tabular-nums">
+                      <span className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--color-text-title)] tabular-nums">
                         {gpaxDisplay.primaryValue}
                       </span>
                       {gpaxDisplay.scaleSuffix && (
@@ -626,7 +626,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                   </div>
 
                   <div
-                    className="h-3 w-full rounded-full bg-[var(--color-card-subtle)] overflow-hidden"
+                    className="h-3 w-full rounded-full bg-[var(--color-card-subtle)] ring-1 ring-inset ring-black/5 overflow-hidden"
                     role="progressbar"
                     aria-valuenow={gpaxDisplay.barPercent}
                     aria-valuemin={0}
@@ -656,7 +656,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                             · {row.score}%
                           </span>
                         </div>
-                        <div className="h-1.5 w-full rounded-full bg-[var(--color-card-subtle)] overflow-hidden">
+                        <div className="h-2 w-full rounded-full bg-[var(--color-card-subtle)] overflow-hidden">
                           <div
                             className={`h-full rounded-full ${getProgressBarTone(row.score)}`}
                             style={{ width: `${row.score}%` }}
@@ -700,7 +700,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             <div className="space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-0.5">
-                  <h3 className="text-sm font-semibold text-[var(--color-text-title)]">
+                  <h3 className="text-base font-semibold text-[var(--color-text-title)]">
                     {lang === 'th' ? 'ความคืบหน้าการส่งงาน' : 'Assignment Progress'}
                   </h3>
                   <p className="text-xs text-[var(--color-text-muted)]">
@@ -711,14 +711,14 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                   <button
                     type="button"
                     onClick={() => onNavigate('homework')}
-                    className="text-xs font-medium text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                    className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition cursor-pointer"
                   >
                     {lang === 'th' ? 'เปิดหน้าการบ้าน →' : 'Open tasks →'}
                   </button>
                 )}
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold tracking-tight text-[var(--color-text-title)] tabular-nums">
+                <span className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--color-text-title)] tabular-nums">
                   {homeworkStats.percent}%
                 </span>
                 <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
@@ -727,7 +727,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                     : `${homeworkStats.completed} of ${homeworkStats.total} completed`}
                 </span>
               </div>
-              <div className="h-3 w-full rounded-full bg-[var(--color-card-subtle)] overflow-hidden">
+              <div className="h-3 w-full rounded-full bg-[var(--color-card-subtle)] ring-1 ring-inset ring-black/5 overflow-hidden">
                 <div
                   className={`h-full rounded-full ${getProgressBarTone(homeworkStats.percent)}`}
                   style={{ width: `${homeworkStats.percent}%` }}
@@ -741,17 +741,17 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       {/* ==================================================================== */}
       {/* 3. SECONDARY WORKSPACE: TODAY'S SCHEDULE + TASKS & SCHOOL UPDATES    */}
       {/* ==================================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-stretch">
         {/* CARD C: TODAY'S SCHEDULE */}
         <section
           data-guide-id="dashboard-today-desk"
           aria-label={lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s schedule'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-4"
+          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-4"
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-semibold text-[var(--color-text-title)]">
+                <h3 className="text-base font-semibold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s Schedule'}
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
@@ -770,7 +770,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                 <button
                   type="button"
                   onClick={() => onNavigate('timetable')}
-                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{lang === 'th' ? 'ดูตารางทั้งหมด' : 'Full timetable'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -781,7 +781,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             {todayHoliday || isTodayWeekend ? (
               <div className="py-8 text-center space-y-2">
                 <Calendar className="w-7 h-7 text-[var(--color-text-muted)] mx-auto opacity-50" />
-                <p className="text-sm font-semibold text-[var(--color-text-title)]">
+                <p className="text-base font-semibold text-[var(--color-text-title)]">
                   {todayHoliday
                     ? todayHoliday.nameTh
                     : lang === 'th'
@@ -822,7 +822,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                       key={slot.id}
                       type="button"
                       onClick={() => onNavigate('timetable')}
-                      className="w-full py-3 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 transition cursor-pointer"
+                      className="w-full py-3 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-xl px-3 -mx-3 transition cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-20 shrink-0 text-xs font-mono tabular-nums text-[var(--color-text-muted)]">
@@ -864,13 +864,13 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         {/* CARD D: HOMEWORK PROGRESS & LATEST UPDATES */}
         <section
           aria-label={lang === 'th' ? 'การบ้านและประกาศโรงเรียน' : 'Homework and updates'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-5"
+          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-5"
         >
           {/* Homework Progress Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-semibold text-[var(--color-text-title)]">
+                <h3 className="text-base font-semibold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'การบ้านและงานที่ได้รับมอบหมาย' : 'Homework & Tasks'}
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
@@ -887,7 +887,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                 <button
                   type="button"
                   onClick={() => onNavigate('homework')}
-                  className="text-xs font-medium text-[var(--color-primary-text)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{lang === 'th' ? 'เปิดหน้าการบ้าน' : 'All tasks'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -920,7 +920,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
                       key={asg.id}
                       type="button"
                       onClick={() => onNavigate('homework')}
-                      className="w-full py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 transition cursor-pointer"
+                      className="w-full py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-xl px-3 -mx-3 transition cursor-pointer"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-[var(--color-text-title)] truncate">
@@ -959,7 +959,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
               <button
                 type="button"
                 onClick={onOpenAnnouncementsTab}
-                className="w-full flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-lg p-2 -mx-2 transition cursor-pointer"
+                className="w-full flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-xl p-3 -mx-3 transition cursor-pointer"
               >
                 <div className="flex items-start gap-2.5 min-w-0">
                   <Megaphone className="w-4 h-4 text-[var(--color-primary-text)] shrink-0 mt-0.5" />
@@ -1008,7 +1008,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       {canOpenCareerQuest && (
       <section
         aria-label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน Career Quest AI' : 'Career Quest AI'}
-        className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div className="flex items-start gap-3.5 min-w-0">
           <div className="w-11 h-11 rounded-2xl bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
@@ -1016,7 +1016,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
           </div>
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+              <h3 className="text-base font-bold text-[var(--color-text-title)]">
                 {lang === 'th' ? 'Career Quest AI · เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}
               </h3>
               {careerQuestSnapshot?.career && (
@@ -1046,7 +1046,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         <button
           type="button"
           onClick={() => onNavigate('career_quest')}
-          className="min-h-[42px] px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+          className="min-h-11 w-full sm:w-auto px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md active:scale-[0.99] transition cursor-pointer whitespace-nowrap shrink-0"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>
