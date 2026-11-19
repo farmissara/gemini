@@ -16,6 +16,7 @@ import {
   saveLearningIndicatorScores,
   saveLearningIndicatorSet,
 } from '../lib/learningIndicatorStore';
+import { createMoeScienceM3IndicatorSets } from '../data/moeScienceM3Indicators';
 
 interface Props {
   course: Course;
@@ -148,6 +149,35 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
     }
   };
 
+  const importMoeScienceM3Sets = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const year = course.academicYear || systemConfig.academicYear;
+      const semester = course.semester || systemConfig.currentSemester;
+      const standardSets = createMoeScienceM3IndicatorSets({
+        schoolId,
+        courseId: course.id,
+        academicYear: year,
+        semester,
+      });
+
+      for (const standardSet of standardSets) {
+        await saveLearningIndicatorSet(standardSet);
+      }
+
+      setSets((current) => {
+        const existingIds = new Set(current.map((set) => set.id));
+        return [...current, ...standardSets.filter((set) => !existingIds.has(set.id))];
+      });
+      setSelectedSetId(standardSets[0]?.id || '');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถนำเข้าตัวชี้วัดมาตรฐาน สพฐ. ได้');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getScore = (studentId: string, indicatorId: string) =>
     scores.find((item) => item.studentId === studentId && item.indicatorId === indicatorId);
 
@@ -270,6 +300,20 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
               <Save className="w-4 h-4" /> บันทึกชุด
             </button>
           </div>
+        </div>
+      )}
+
+      {sets.length === 0 && canEdit && (
+        <div className="rounded-xl border border-dashed border-[var(--color-border)] p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold text-sm">ชุดตัวชี้วัดวิทยาศาสตร์ มัธยมศึกษาปีที่ 3</div>
+            <div className="text-xs text-[var(--color-text-muted)]">
+              นำเข้าชุด ว 1.3 ว 2.3 และ ว 3.1 จากเอกสาร ปพ.5
+            </div>
+          </div>
+          <button type="button" onClick={importMoeScienceM3Sets} disabled={saving} className="seg-tab-btn px-3">
+            <Plus className="w-4 h-4" /> นำเข้าตัวชี้วัดมาตรฐาน สพฐ.
+          </button>
         </div>
       )}
 
