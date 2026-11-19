@@ -656,7 +656,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
       {/* Unified Top Bar */}
       <header className="sticky top-0 z-30 border-b border-[var(--color-border)]/80 bg-[var(--color-card)]/85 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <a href="#portal-auth" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
             <BaanPakKruLogo size={32} />
             <span>BaanPakKru</span>

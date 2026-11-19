@@ -232,7 +232,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     !focusMode;
 
   return (
-    <header className="h-14 sm:h-16 border-b border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-md shadow-[0_1px_2px_rgba(15,23,42,0.04)] text-[var(--color-text-body)] sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full">
+    <header className="app-topbar h-14 sm:h-16 border-b border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-md shadow-[0_1px_2px_rgba(15,23,42,0.04)] text-[var(--color-text-body)] sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full">
       {/* Zone 1: Brand + School Context + Consolidated Workspace Mode Dropdown */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {onToggleMobileMenu && (
