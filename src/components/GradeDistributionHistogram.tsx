@@ -508,17 +508,17 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs overflow-hidden print:hidden">
       {/* Header Bar */}
-      <div className="px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
+      <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setIsExpanded((prev) => !prev)}
           className="flex items-center gap-2 min-w-0 text-left cursor-pointer group"
         >
-          <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-            <BarChart3 className="w-3.5 h-3.5" />
+          <div className="p-2.5 rounded-xl bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+            <BarChart3 className="w-5 h-5" />
           </div>
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h3 className="text-xs font-bold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition">
+            <h3 className="text-base md:text-lg font-bold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition">
               {lang === 'th' ? 'สถิติ & ฮิสโตแกรมเกรด' : 'Grade Distribution'}
             </h3>
             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 font-mono tabular-nums">
@@ -642,7 +642,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
             <button
               type="button"
               onClick={onDownloadPdf}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold shadow-2xs transition cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-sm font-bold shadow-2xs transition cursor-pointer whitespace-nowrap"
               title={
                 lang === 'th'
                   ? 'ดาวน์โหลดรายงานสรุปการกระจายเกรดเป็น PDF สำหรับงานทะเบียน/ฝ่ายวิชาการ'
@@ -657,7 +657,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
           <button
             type="button"
             onClick={() => setIsExpanded((prev) => !prev)}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-sm font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
             aria-label={isExpanded ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
           >
             <span>{isExpanded ? (lang === 'th' ? 'ย่อกราฟ' : 'Hide') : (lang === 'th' ? 'ดูกราฟ' : 'Chart')}</span>

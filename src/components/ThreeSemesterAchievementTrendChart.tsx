@@ -384,13 +384,13 @@ export const ThreeSemesterAchievementTrendChart: React.FC<ThreeSemesterAchieveme
   const isCourseActivityOnly = selectedCourse ? isActivityCourse(selectedCourse) : false;
 
   return (
-    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:break-inside-avoid">
+    <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:break-inside-avoid">
       {/* Header Bar */}
-      <div className="px-3.5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2.5">
+      <div className="px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <TrendingUp className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-            <h3 className="text-xs sm:text-sm font-bold text-[var(--color-text-title)]">
+            <h3 className="text-base md:text-xl font-bold text-[var(--color-text-title)]">
               {lang === 'th'
                 ? 'เปรียบเทียบผลสัมฤทธิ์ทางการเรียนย้อนหลัง 3 ภาคเรียน (3-Semester GPA Trend)'
                 : '3-Semester Academic Achievement Trend (GPA)'}
@@ -406,7 +406,7 @@ export const ThreeSemesterAchievementTrendChart: React.FC<ThreeSemesterAchieveme
 
         {/* Scope Selector & Student Picker */}
         <div className="flex flex-wrap items-center gap-1.5 print:hidden">
-          <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 text-[11px]">
+          <div className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-sm">
             <button
               type="button"
               onClick={() => setScope('course')}
@@ -476,41 +476,41 @@ export const ThreeSemesterAchievementTrendChart: React.FC<ThreeSemesterAchieveme
       </div>
 
       {/* Body: Summary KPI Strip + Recharts ComposedChart */}
-      <div className="p-3.5 space-y-3">
+      <div className="p-5 space-y-5">
         {/* 4-column Term Comparison Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2">
-            <div className="text-[11px] text-[var(--color-text-muted)]">{oldestPoint.labelTh}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 text-sm">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-4 py-3">
+            <div className="text-xs md:text-sm text-[var(--color-text-muted)]">{oldestPoint.labelTh}</div>
             <div className="mt-0.5 flex items-baseline justify-between gap-2">
-              <span className="text-base font-bold font-mono tabular-nums text-[var(--color-text-title)]">
+              <span className="text-xl md:text-2xl font-bold font-mono tabular-nums text-[var(--color-text-title)]">
                 {oldestPoint.averageGpa.toFixed(2)}
               </span>
-              <span className="text-[11px] font-mono tabular-nums text-[var(--color-text-muted)]">
+              <span className="text-xs md:text-sm font-mono tabular-nums text-[var(--color-text-muted)]">
                 {oldestPoint.averageScore}% · ผ่าน {oldestPoint.passRate}%
               </span>
             </div>
           </div>
 
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2">
-            <div className="text-[11px] text-[var(--color-text-muted)]">{prevPoint.labelTh}</div>
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-4 py-3">
+            <div className="text-xs md:text-sm text-[var(--color-text-muted)]">{prevPoint.labelTh}</div>
             <div className="mt-0.5 flex items-baseline justify-between gap-2">
-              <span className="text-base font-bold font-mono tabular-nums text-[var(--color-text-title)]">
+              <span className="text-xl md:text-2xl font-bold font-mono tabular-nums text-[var(--color-text-title)]">
                 {prevPoint.averageGpa.toFixed(2)}
               </span>
-              <span className="text-[11px] font-mono tabular-nums text-[var(--color-text-muted)]">
+              <span className="text-xs md:text-sm font-mono tabular-nums text-[var(--color-text-muted)]">
                 {prevPoint.averageScore}% · ผ่าน {prevPoint.passRate}%
               </span>
             </div>
           </div>
 
-          <div className="rounded-lg border border-[var(--color-primary)]/40 bg-[var(--color-primary-light)]/60 px-3 py-2">
-            <div className="text-[11px] font-semibold text-[var(--color-primary-text)]">{latestPoint.labelTh}</div>
+          <div className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary-light)]/60 px-4 py-3">
+            <div className="text-xs md:text-sm font-semibold text-[var(--color-primary-text)]">{latestPoint.labelTh}</div>
             <div className="mt-0.5 flex items-baseline justify-between gap-2">
-              <span className="text-base font-extrabold font-mono tabular-nums text-[var(--color-text-title)]">
+              <span className="text-xl md:text-2xl font-extrabold font-mono tabular-nums text-[var(--color-text-title)]">
                 {latestPoint.averageGpa.toFixed(2)}
               </span>
               <span
-                className={`text-[11px] font-mono font-bold tabular-nums ${
+                className={`text-xs md:text-sm font-mono font-bold tabular-nums ${
                   directionDelta.vsPrevTerm > 0
                     ? 'text-emerald-700 dark:text-emerald-300'
                     : directionDelta.vsPrevTerm < 0
@@ -524,8 +524,8 @@ export const ThreeSemesterAchievementTrendChart: React.FC<ThreeSemesterAchieveme
             </div>
           </div>
 
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2">
-            <div className="text-[11px] text-[var(--color-text-muted)]">ทิศทางพัฒนาการ 3 ภาค</div>
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-4 py-3">
+            <div className="text-xs md:text-sm text-[var(--color-text-muted)]">ทิศทางพัฒนาการ 3 ภาค</div>
             <div className="mt-0.5 flex items-center gap-1.5">
               {directionDelta.vsThreeTerms > 0.01 ? (
                 <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -535,7 +535,7 @@ export const ThreeSemesterAchievementTrendChart: React.FC<ThreeSemesterAchieveme
                 <Minus className="w-4 h-4 text-slate-500 shrink-0" />
               )}
               <span
-                className={`text-xs font-bold tabular-nums truncate ${
+                className={`text-sm font-bold tabular-nums truncate ${
                   directionDelta.vsThreeTerms > 0.01
                     ? 'text-emerald-700 dark:text-emerald-300'
                     : directionDelta.vsThreeTerms < -0.01
@@ -555,7 +555,7 @@ export const ThreeSemesterAchievementTrendChart: React.FC<ThreeSemesterAchieveme
             ยังไม่มีข้อมูลผลการเรียนในขอบเขตที่เลือกสำหรับแสดงกราฟเปรียบเทียบ 3 ภาคเรียน
           </div>
         ) : (
-          <div className="w-full min-w-0 h-[220px]">
+          <div className="w-full min-w-0 h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartPoints} margin={{ top: 12, right: 16, left: -12, bottom: 2 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" opacity={0.45} />
@@ -634,7 +634,7 @@ export const ThreeSemesterAchievementTrendChart: React.FC<ThreeSemesterAchieveme
         )}
 
         {/* Footnote on recorded vs baseline data */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[var(--color-border)] text-xs md:text-sm text-[var(--color-text-muted)]">
           <span>
             {hasAnyEstimated
               ? 'หมายเหตุ: ภาคเรียนปัจจุบันใช้ข้อมูลคะแนนจริงจาก GradeRecord ส่วนภาคเรียนก่อนหน้าที่ยังไม่มีระเบียนย้อนหลังแสดงค่าอ้างอิงเทียบฐานปัจจุบันเพื่อดูทิศทางแนวโน้ม'

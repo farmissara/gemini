@@ -1465,20 +1465,20 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     GRADEBOOK_GROUPS.find((g) => g.tabs.some((t) => t.id === activeTab)) || GRADEBOOK_GROUPS[0];
 
   return (
-    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
-      {/* Compact title and navigation with actions aligned alongside */}
-      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-end justify-between gap-x-3 gap-y-1 print:hidden">
-        <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
-          <span className="tone-chip w-6 h-6 rounded-lg shrink-0">
-            <Award className="w-3.5 h-3.5" />
+    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
+      {/* Gradebook title, workspace navigation, and actions */}
+      <div className="shrink-0 px-4 py-3 app-page-header flex flex-wrap items-end justify-between gap-x-4 gap-y-3 print:hidden">
+        <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
+          <span className="tone-chip w-10 h-10 rounded-xl shrink-0">
+            <Award className="w-5 h-5" />
           </span>
-          <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
+          <h1 className="text-base md:text-xl font-bold text-[var(--color-text-title)] leading-tight truncate">
             {isPersonalGradeViewer
               ? 'ผลการเรียน & ใบ ปพ.6'
               : 'บันทึกคะแนน & งานทะเบียน'}
           </h1>
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
-            <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-[11px] shrink-0">
+            <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-sm shrink-0">
               <button
                 type="button"
                 disabled={isUpdatingGradingMode}
@@ -1533,7 +1533,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             </div>
           ) : (
-            <div data-guide-id="gradebook-tabs" className="w-full basis-full flex flex-wrap items-center gap-1.5">
+            <div data-guide-id="gradebook-tabs" className="w-full basis-full flex flex-wrap items-center gap-2">
               <select
                 aria-label={lang === 'th' ? 'เลือกหมวดงาน' : 'Select workspace'}
                 value={currentGradebookGroup.id}
@@ -1543,7 +1543,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     setActiveTab(nextGroup.tabs[0].id);
                   }
                 }}
-                className="h-8 rounded-lg border border-[color-mix(in_srgb,var(--tone)_35%,var(--color-border))] bg-[var(--tone-soft)] px-2 text-xs font-bold text-[var(--tone)] outline-none cursor-pointer"
+                className="h-11 rounded-xl border border-[color-mix(in_srgb,var(--tone)_35%,var(--color-border))] bg-[var(--tone-soft)] px-4 text-sm font-bold text-[var(--tone)] outline-none cursor-pointer"
               >
                 {GRADEBOOK_GROUPS.map((group) => (
                   <option key={group.id} value={group.id}>
@@ -1556,7 +1556,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 aria-label={lang === 'th' ? 'เลือกเมนูย่อย' : 'Select section'}
                 value={activeTab}
                 onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
-                className="h-8 max-w-[240px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs font-bold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
+                className="h-11 max-w-[360px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 text-sm font-bold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
               >
                 {GRADEBOOK_GROUPS.map((group) => (
                   <optgroup key={group.id} label={lang === 'th' ? group.labelTh : group.labelEn}>
@@ -1712,7 +1712,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           (gradeEligibilityFilter !== 'all' ? 1 : 0);
 
         return (
-          <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden space-y-1.5 py-1.5 px-2.5">
+          <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden space-y-2 py-3 px-4">
             <div className="flex flex-wrap items-center gap-1.5">
               {loggedInTeacherFilterKey && (
                 <button
@@ -1780,7 +1780,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
               {/* Student Live Search */}
               {!isPersonalGradeViewer && (
-                <div className="relative w-full sm:w-44 shrink-0">
+                <div className="relative w-full sm:w-60 shrink-0">
                   <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
                   <input
                     type="text"
@@ -1791,7 +1791,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       setPp5Page(0);
                     }}
                     placeholder="ค้นหานักเรียน / ห้อง..."
-                    className="w-full h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] pl-7 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
+                    className="w-full h-11 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] pl-9 pr-8 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
                   />
                   {studentSearchTerm && (
                     <button
@@ -1815,7 +1815,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowMoreFilters((prev) => !prev)}
-                  className={`h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition shrink-0 ${
+                  className={`h-11 inline-flex items-center gap-2 px-4 rounded-xl border text-sm font-semibold cursor-pointer transition shrink-0 ${
                     showMoreFilters || extraFilterCount > 0
                       ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
                       : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
@@ -1828,7 +1828,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               )}
 
               {!isPersonalGradeViewer && (
-                <span className="h-8 inline-flex items-center px-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[11px] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+                <span className="h-11 inline-flex items-center px-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-sm font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
                   {activeTab === 'gradebook' ? `${filteredGradebookRows.length}/${gradebookRows.length}` : `${courseGrades.length} คน`}
                 </span>
               )}
@@ -2023,7 +2023,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         {activeTab === 'gradebook' && selectedCourse && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden print:overflow-visible">
           {/* Single slim Course + MOE Stage Bar */}
-          <div className="px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <span className="font-mono font-bold text-[var(--color-primary-text)]">{selectedCourse.code}</span>
               <span className="text-[var(--color-text-title)] font-bold truncate">{selectedCourse.titleTh || selectedCourse.titleEn}</span>
@@ -2486,8 +2486,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           {/* DESKTOP & TABLET VIEW: Wide Multi-column Data Table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="table-comfortable w-full text-left text-xs">
-              <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
+            <table className="table-comfortable gradebook-score-table w-full text-left text-sm">
+              <thead className="bg-[var(--color-card-subtle)] text-sm md:text-base text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                 <tr>
                   <th className="py-3 px-3">Student</th>
                   <th className="py-3 px-3">Room</th>
