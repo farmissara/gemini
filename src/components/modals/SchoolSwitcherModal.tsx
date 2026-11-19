@@ -27,18 +27,18 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
   lang,
 }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-xl shadow-2xl p-6 space-y-5 text-[var(--color-text-body)]">
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-primary-text)]">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg shadow-xl p-5 sm:p-6 space-y-5 text-[var(--color-text-body)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 shrink-0 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary-text)]">
               <Building2 className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-[var(--color-text-title)]">
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold text-[var(--color-text-title)]">
                 {lang === 'th' ? 'ข้อมูลสถาบันการศึกษา (School Institution)' : 'School Institution Info'}
               </h3>
-              <p className="text-xs text-[var(--color-text-muted)]">
+              <p className="text-sm text-[var(--color-text-muted)]">
                 {lang === 'th' ? 'แสดงเฉพาะโรงเรียนที่บัญชีของคุณมีสิทธิ์เข้าถึง' : 'Only schools your account is authorized to access are shown.'}
               </p>
             </div>
@@ -46,14 +46,14 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+            className="shrink-0 p-2 -m-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* List of Schools */}
-        <div className="space-y-2.5 pr-1">
+        <div className="space-y-2">
           <PagedList items={schools} pageSize={3} renderItem={(sch) => {
             const isActive = activeSchool.id === sch.id;
             return (
@@ -63,49 +63,49 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
                   onSelectSchool(sch);
                   onClose();
                 }}
-                className={`group p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                className={`group px-4 py-3.5 rounded-xl border cursor-pointer transition-colors flex items-center justify-between gap-3 ${
                   isActive
-                    ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-sm'
-                    : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
+                    ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]'
+                    : 'bg-transparent border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
                 }`}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-[var(--color-primary-text)] bg-[var(--color-card)] px-2 py-0.5 rounded border border-[var(--color-border)]">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="font-mono text-xs text-[var(--color-text-muted)]">
                       {sch.code}
                     </span>
-                    <span className="text-xs font-bold text-[var(--color-text-title)]">
+                    <span className="text-sm font-semibold text-[var(--color-text-title)]">
                       {sch.nameTh}
                     </span>
                   </div>
 
-                  <p className="text-xs text-[var(--color-text-body)]">
+                  <p className="text-sm text-[var(--color-text-body)]">
                     {sch.nameEn}
                   </p>
 
-                  <div className="flex items-center gap-3 pt-1 text-[11px] text-[var(--color-text-muted)]">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-[var(--color-text-muted)]">
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                      <MapPin className="w-3.5 h-3.5" />
                       {sch.province}
                     </span>
-                    <span>•</span>
+                    <span className="opacity-50">•</span>
                     <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3 text-emerald-700 dark:text-emerald-300" />
+                      <Users className="w-3.5 h-3.5" />
                       {sch.studentsCount.toLocaleString()} {lang === 'th' ? 'คน' : 'students'}
                     </span>
-                    <span>•</span>
+                    <span className="opacity-50">•</span>
                     <span className="capitalize">{sch.type}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
                   {isActive ? (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 text-xs font-medium text-[var(--color-primary-text)]">
+                      <Check className="w-4 h-4" />
                       {lang === 'th' ? 'ใช้งานอยู่' : 'Active'}
                     </span>
                   ) : (
-                    <span className="text-xs font-semibold text-[var(--color-primary-text)] group-hover:underline">
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-text)] transition-colors">
                       {lang === 'th' ? 'สลับ' : 'Select'}
                     </span>
                   )}
@@ -115,7 +115,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
           }} />
         </div>
 
-        <div className="pt-3 border-t border-[var(--color-border)]">
+        <div>
           <span className="text-xs text-[var(--color-text-muted)]">
             {lang === 'th' ? `ระบบมีทั้งหมด ${schools.length} โรงเรียน` : `Total ${schools.length} Schools`}
           </span>
