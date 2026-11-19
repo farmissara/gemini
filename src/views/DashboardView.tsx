@@ -854,6 +854,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <span>{lang === 'th' ? 'นวัตกรรม' : 'Innovations'}</span>
                     </button>
                   )}
+                  {isStaffUser && isModuleEnabled('student_development_book') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        onNavigate('student_development_book');
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                      <span>{lang === 'th' ? 'สมุดบันทึกพัฒนาคุณภาพผู้เรียน' : 'Development Book'}</span>
+                    </button>
+                  )}
                   {isModuleEnabled('announcements') && (
                     <button
                       type="button"

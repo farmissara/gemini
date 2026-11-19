@@ -48,6 +48,7 @@ interface StudentDetailModalProps {
   attendance: AttendanceRecord[];
   onClose: () => void;
   onOpenReportCard: (student: Student) => void;
+  onOpenDevelopmentBook?: (student: Student) => void;
   onToggleLineSync: (studentId: string) => void;
   onUpdateStudent?: (student: Student) => void;
   gradingSystem?: GradingSystem;
@@ -60,6 +61,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   attendance,
   onClose,
   onOpenReportCard,
+  onOpenDevelopmentBook,
   onToggleLineSync,
   onUpdateStudent,
   gradingSystem = 'thai',
@@ -499,6 +501,17 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 <Award className="w-3.5 h-3.5" />
                 <span>Transcript</span>
               </button>
+              {onOpenDevelopmentBook && (
+                <button
+                  type="button"
+                  onClick={() => onOpenDevelopmentBook(student)}
+                  className="px-3 py-1.5 rounded-lg border border-emerald-600/30 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-200 font-semibold flex items-center gap-1 cursor-pointer"
+                  title="เปิดสมุดบันทึกพัฒนาคุณภาพผู้เรียนรายบุคคล"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>สมุดพัฒนาฯ</span>
+                </button>
+              )}
             </div>
           </div>
 

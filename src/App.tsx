@@ -5268,6 +5268,16 @@ export const App: React.FC = () => {
             setSelectedStudentForProfile(null);
             setSelectedStudentForReport(stu);
           }}
+          onOpenDevelopmentBook={
+            ['super_admin', 'admin', 'teacher'].includes(currentRole)
+              ? (stu) => {
+                  setSelectedStudentForProfile(null);
+                  setDevBookTargetStudentId(stu.id);
+                  setProgramMode('school_erp');
+                  setCurrentTab('student_development_book');
+                }
+              : undefined
+          }
           onToggleLineSync={handleToggleLineSync}
           gradingSystem={systemConfig.gradingSystem}
           onUpdateStudent={(updated) => {
