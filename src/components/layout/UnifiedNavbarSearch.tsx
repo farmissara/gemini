@@ -284,7 +284,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                 ? 'Search students, teachers, courses...'
                 : 'Search my courses & info...'
           }
-          className="w-44 2xl:w-60 pl-8 pr-14 py-1 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:bg-[var(--color-card)] transition-all"
+          className="w-40 2xl:w-52 pl-8 pr-14 py-1 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:bg-[var(--color-card)] transition-all"
         />
         <div className="absolute right-1.5 flex items-center gap-1">
           {hasActiveFilter ? (
