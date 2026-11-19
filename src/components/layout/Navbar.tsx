@@ -232,44 +232,44 @@ export const Navbar: React.FC<NavbarProps> = ({
     !focusMode;
 
   return (
-    <header className="h-12 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-3 sm:px-5 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full">
+    <header className="h-14 sm:h-16 border-b border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-md shadow-[0_1px_2px_rgba(15,23,42,0.04)] text-[var(--color-text-body)] sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full">
       {/* Zone 1: Brand + School Context + Consolidated Workspace Mode Dropdown */}
-      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {onToggleMobileMenu && (
           <button
             type="button"
             onClick={onToggleMobileMenu}
-            className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer shrink-0"
+            className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] active:scale-95 transition cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
             aria-label={lang === 'th' ? 'เปิดเมนู' : 'Open menu'}
           >
-            <Menu className="w-4.5 h-4.5" />
+            <Menu className="w-5 h-5" />
           </button>
         )}
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <BaanPakKruLogo size={22} />
-          <span className="font-bold text-sm tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <BaanPakKruLogo size={26} />
+          <span className="font-bold text-[15px] sm:text-base tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
             BaanPakKru
           </span>
         </div>
 
         {canAccessSchoolOperations && (
           <>
-            <span className="hidden sm:inline text-[var(--color-border)] select-none">/</span>
+            <span className="hidden sm:inline h-5 w-px bg-[var(--color-border)] select-none" aria-hidden="true" />
             {canSwitchSchool ? (
               <button
                 type="button"
                 data-guide-id="nav-school-switcher"
                 onClick={onOpenSchoolSwitcher}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-xs font-medium transition min-w-0 max-w-[120px] sm:max-w-[175px] cursor-pointer"
+                className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-[13px] font-medium transition min-w-0 max-w-[120px] sm:max-w-[200px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
                 title={lang === 'th' ? 'สลับโรงเรียน' : 'Switch School'}
               >
                 <span className="truncate">{lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
               </button>
             ) : (
               <span
-                className="hidden sm:inline-flex items-center px-1.5 py-1 text-xs font-medium text-[var(--color-text-body)] min-w-0 max-w-[150px] lg:max-w-[180px] truncate"
+                className="hidden sm:inline-flex items-center px-1.5 py-1 text-[13px] font-medium text-[var(--color-text-body)] min-w-0 max-w-[150px] lg:max-w-[220px] truncate"
                 title={lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
               >
                 <span className="truncate">{lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}</span>
@@ -291,14 +291,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setIsWorkspaceMenuOpen((prev) => !prev);
                 setIsAccountMenuOpen(false);
               }}
-              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)]/50 hover:border-[var(--color-primary)]/40 text-xs font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs hover:bg-[var(--color-primary-light)]/60 hover:border-[var(--color-primary)]/40 text-[13px] font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
             >
-              <ActiveWorkspaceIcon className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+              <ActiveWorkspaceIcon className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
               <span className="hidden xs:inline sm:inline">
                 {lang === 'th' ? activeWorkspaceMode.th : activeWorkspaceMode.en}
               </span>
               <ChevronDown
-                className={`w-3.5 h-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${
+                className={`w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-150 ${
                   isWorkspaceMenuOpen ? 'rotate-180' : ''
                 }`}
               />
@@ -307,9 +307,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {isWorkspaceMenuOpen && (
               <div
                 role="menu"
-                className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-xl space-y-0.5 animate-in fade-in duration-100"
+                className="absolute left-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1.5rem))] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.22)] space-y-1 animate-in fade-in duration-100"
               >
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                   {lang === 'th' ? 'สลับโหมดระบบ' : 'Workspace Mode'}
                 </div>
                 {allowedWorkspaceModes.map((mode) => {
@@ -326,25 +326,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setProgramMode(mode.id);
                         setIsWorkspaceMenuOpen(false);
                       }}
-                      className={`w-full flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition cursor-pointer ${
+                      className={`w-full flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition cursor-pointer ${
                         active
                           ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
                           : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
-                      <Icon
-                        className={`w-4 h-4 mt-0.5 shrink-0 ${
-                          active ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'
+                      <span
+                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                          active ? 'bg-[var(--color-card)]/70' : 'bg-[var(--color-card-subtle)]'
                         }`}
-                      />
+                      >
+                        <Icon
+                          className={`w-4 h-4 shrink-0 ${
+                            active ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'
+                          }`}
+                        />
+                      </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold truncate">
+                          <span className="text-[13px] font-semibold truncate">
                             {lang === 'th' ? mode.th : mode.en}
                           </span>
-                          {active && <Check className="w-3.5 h-3.5 shrink-0" />}
+                          {active && <Check className="w-4 h-4 shrink-0" />}
                         </div>
-                        <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                        <p className="mt-0.5 text-xs leading-snug text-[var(--color-text-muted)] line-clamp-2">
                           {lang === 'th' ? mode.descTh : mode.descEn}
                         </p>
                       </div>
@@ -358,7 +364,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Zone 2: Compact Search + Alerts + Unified Account & Tools Dropdown */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {canAccessSchoolOperations && (
           <div className="hidden md:block">
             <UnifiedNavbarSearch
@@ -385,9 +391,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={onToggleFocusMode}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] shadow-xs text-white text-[13px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2"
           >
-            <Minimize2 className="w-3.5 h-3.5 shrink-0" />
+            <Minimize2 className="w-4 h-4 shrink-0" />
             <span>{lang === 'th' ? 'ปิดโฟกัส' : 'Exit Focus'}</span>
           </button>
         )}
@@ -397,13 +403,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             data-guide-id="nav-notifications"
             onClick={onOpenNotifications}
-            className="relative w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+            className="relative w-10 h-10 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
             aria-label={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
             title={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-[18px] h-[18px]" />
             {(unreadCount > 0 || coordinationUnreadCount > 0) && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600" />
+              <span className="absolute top-2 right-2.5 sm:top-1.5 sm:right-2 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-[var(--color-card)]" />
             )}
           </button>
         )}
@@ -419,51 +425,63 @@ export const Navbar: React.FC<NavbarProps> = ({
               setIsAccountMenuOpen((prev) => !prev);
               setIsWorkspaceMenuOpen(false);
             }}
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-[var(--color-card-subtle)] transition whitespace-nowrap"
+            className="flex cursor-pointer items-center gap-2 rounded-xl p-1 sm:pl-1 sm:pr-2 hover:bg-[var(--color-card-subtle)] transition whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
           >
             <img
               src={currentUser?.avatarUrl || buildInitialsAvatar(displayName)}
               alt={displayName}
               referrerPolicy="no-referrer"
-              className="w-6.5 h-6.5 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+              className="w-8 h-8 rounded-full object-cover ring-2 ring-[var(--color-card)] border border-[var(--color-border)] shrink-0"
             />
-            <span className="hidden sm:inline text-xs font-medium text-[var(--color-text-title)] truncate max-w-[100px]">
+            <span className="hidden sm:inline text-[13px] font-medium text-[var(--color-text-title)] truncate max-w-[110px]">
               {displayName.split(' ')[0]}
             </span>
-            <ChevronDown className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+            <ChevronDown
+              className={`hidden sm:block h-4 w-4 text-[var(--color-text-muted)] transition-transform duration-150 ${
+                isAccountMenuOpen ? 'rotate-180' : ''
+              }`}
+            />
           </button>
 
           {isAccountMenuOpen && (
             <div
               role="menu"
-              className="absolute right-0 top-full z-50 mt-1.5 max-h-[82vh] w-68 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-xl space-y-1 animate-in fade-in duration-100"
+              className="absolute right-0 top-full z-50 mt-2 max-h-[82vh] w-[min(18.5rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.22)] space-y-1 animate-in fade-in duration-100"
             >
-              <div className="px-2.5 py-2 border-b border-[var(--color-border)]">
-                <p className="text-xs font-semibold text-[var(--color-text-title)] truncate">{displayName}</p>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  {roleLabelMap[currentRole]?.[lang] || currentRole}
-                </p>
+              <div className="flex items-center gap-3 px-3 py-3 border-b border-[var(--color-border)] mb-1">
+                <img
+                  src={currentUser?.avatarUrl || buildInitialsAvatar(displayName)}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[var(--color-text-title)] truncate">{displayName}</p>
+                  <p className="text-xs text-[var(--color-text-muted)] truncate">
+                    {roleLabelMap[currentRole]?.[lang] || currentRole}
+                  </p>
+                </div>
               </div>
 
               {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-                <div className="px-2 py-2 border-b border-[var(--color-border)] space-y-1.5">
-                  <p className="text-[11px] font-semibold text-[var(--color-text-muted)] px-0.5">
+                <div className="px-2 py-2.5 border-b border-[var(--color-border)] space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] px-1">
                     {lang === 'th' ? 'สลับโหมดปฏิบัติงาน' : 'Operational Role Mode'}
                   </p>
-                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-[11px]">
+                  <div className="grid grid-cols-2 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1 text-xs">
                     <button
                       type="button"
                       onClick={() => {
                         setIsAccountMenuOpen(false);
                         onSwitchOperationalRole('admin');
                       }}
-                      className={`flex items-center justify-center gap-1 rounded-md px-2 py-1.5 font-bold cursor-pointer transition ${
+                      className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 font-bold cursor-pointer transition ${
                         currentRole === 'admin'
                           ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                          : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
-                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <ShieldCheck className="w-4 h-4 shrink-0" />
                       <span>{lang === 'th' ? 'โหมด Admin' : 'Admin'}</span>
                     </button>
                     <button
@@ -472,13 +490,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setIsAccountMenuOpen(false);
                         onSwitchOperationalRole('teacher');
                       }}
-                      className={`flex items-center justify-center gap-1 rounded-md px-2 py-1.5 font-bold cursor-pointer transition ${
+                      className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 font-bold cursor-pointer transition ${
                         currentRole === 'teacher'
                           ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
-                      <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                      <GraduationCap className="w-4 h-4 shrink-0" />
                       <span>{lang === 'th' ? 'โหมดครู' : 'Teacher'}</span>
                     </button>
                   </div>
@@ -493,53 +511,53 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setIsAccountMenuOpen(false);
                     onOpenProfile();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                 >
                   <User className="h-4 w-4 text-[var(--color-text-muted)]" />
                   <span>{lang === 'th' ? 'โปรไฟล์ของฉัน' : 'My Profile'}</span>
                 </button>
               )}
 
-              <div className="px-2.5 py-2 border-t border-[var(--color-border)] space-y-2">
+              <div className="px-3 py-2.5 border-t border-[var(--color-border)] space-y-3">
                 <div data-guide-id="nav-theme-toggle" className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-[var(--color-text-body)]">
+                  <span className="text-[13px] font-medium text-[var(--color-text-body)]">
                     {lang === 'th' ? 'ธีมสี' : 'Theme'}
                   </span>
-                  <div className="flex items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+                  <div className="flex items-center p-0.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
                     <button
                       type="button"
                       onClick={() => setThemePalette('light_warm')}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium cursor-pointer ${
-                        isLight ? 'bg-[var(--color-card)] text-[var(--color-text-title)]' : 'text-[var(--color-text-muted)]'
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
+                        isLight ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
-                      <Sun className="w-3 h-3" />
+                      <Sun className="w-3.5 h-3.5" />
                       <span>{lang === 'th' ? 'สว่าง' : 'Light'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setThemePalette('sapphire')}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium cursor-pointer ${
-                        !isLight ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-muted)]'
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
+                        !isLight ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
-                      <Moon className="w-3 h-3" />
+                      <Moon className="w-3.5 h-3.5" />
                       <span>{lang === 'th' ? 'มืด' : 'Dark'}</span>
                     </button>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-[var(--color-text-body)]">
+                  <span className="text-[13px] font-medium text-[var(--color-text-body)]">
                     {lang === 'th' ? 'ภาษา' : 'Language'}
                   </span>
                   <button
                     type="button"
                     data-guide-id="nav-lang-toggle"
                     onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-[11px] font-semibold cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-semibold cursor-pointer transition"
                   >
-                    <Globe className="w-3 h-3" />
+                    <Globe className="w-3.5 h-3.5" />
                     <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
                   </button>
                 </div>
@@ -554,13 +572,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setIsAccountMenuOpen(false);
                     onToggleFocusMode();
                   }}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                 >
-                  <span className="flex items-center gap-2.5">
+                  <span className="flex items-center gap-3">
                     {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4 text-[var(--color-text-muted)]" />}
                     <span>{lang === 'th' ? 'โหมดโฟกัสเนื้อหา' : 'Focus Mode'}</span>
                   </span>
-                  <span className="text-[11px] text-[var(--color-text-muted)]">
+                  <span className="rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-[var(--color-text-muted)]">
                     {focusMode ? 'ON' : 'OFF'}
                   </span>
                 </button>
@@ -568,31 +586,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Collapsible Secondary Tools, Guides & Support Group */}
               {hasMoreToolsItems && (
-                <div className="pt-1 border-t border-[var(--color-border)]">
+                <div className="pt-1.5 mt-1 border-t border-[var(--color-border)]">
                   <button
                     type="button"
                     aria-expanded={isToolsGroupOpen}
                     onClick={() => setIsToolsGroupOpen((prev) => !prev)}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
                   >
-                    <span className="flex items-center gap-2">
-                      <Wrench className="h-3.5 w-3.5" />
+                    <span className="flex items-center gap-3">
+                      <Wrench className="h-4 w-4" />
                       <span>{lang === 'th' ? 'เครื่องมือและคู่มือเพิ่มเติม' : 'Tools & Guides'}</span>
                       {coordinationUnreadCount > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                        <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold leading-none">
                           {coordinationUnreadCount}
                         </span>
                       )}
                     </span>
                     <ChevronDown
-                      className={`h-3.5 w-3.5 transition-transform duration-150 ${
+                      className={`h-4 w-4 transition-transform duration-150 ${
                         isToolsGroupOpen ? 'rotate-180' : ''
                       }`}
                     />
                   </button>
 
                   {isToolsGroupOpen && (
-                    <div className="mt-1 pl-1 space-y-0.5">
+                    <div className="mt-1 ml-3 pl-2 border-l border-[var(--color-border)] space-y-0.5">
                       {onSwitchToMobileMode && (
                         <button
                           type="button"
@@ -600,9 +618,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsAccountMenuOpen(false);
                             onSwitchToMobileMode();
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                         >
-                          <Smartphone className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                          <Smartphone className="h-4 w-4 text-[var(--color-text-muted)]" />
                           <span>{lang === 'th' ? 'มุมมองมือถือ' : 'Mobile View'}</span>
                         </button>
                       )}
@@ -614,9 +632,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsAccountMenuOpen(false);
                             onOpenImportExport();
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                         >
-                          <FileSpreadsheet className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                          <FileSpreadsheet className="h-4 w-4 text-[var(--color-text-muted)]" />
                           <span>{lang === 'th' ? 'นำเข้า / ส่งออก' : 'Import / Export'}</span>
                         </button>
                       )}
@@ -628,14 +646,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsAccountMenuOpen(false);
                             onOpenCoordinationDesk();
                           }}
-                          className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                          className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                         >
-                          <span className="flex items-center gap-2.5">
-                            <Mail className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                          <span className="flex items-center gap-3">
+                            <Mail className="h-4 w-4 text-[var(--color-text-muted)]" />
                             <span>{lang === 'th' ? 'ประสานงานส่วนกลาง' : 'Coordination Desk'}</span>
                           </span>
                           {coordinationUnreadCount > 0 && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold leading-none">
                               {coordinationUnreadCount}
                             </span>
                           )}
@@ -649,9 +667,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsAccountMenuOpen(false);
                             onOpenExamPaymentSettings();
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                         >
-                          <CreditCard className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                          <CreditCard className="h-4 w-4 text-[var(--color-text-muted)]" />
                           <span>{lang === 'th' ? 'ตั้งค่าชำระเงินคลังข้อสอบ' : 'Exam Payment Settings'}</span>
                         </button>
                       )}
@@ -663,9 +681,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsAccountMenuOpen(false);
                             onOpenGuide(currentRole === 'student' || currentRole === 'parent' ? 'student' : 'teacher');
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                         >
-                          <HelpCircle className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                          <HelpCircle className="h-4 w-4 text-[var(--color-text-muted)]" />
                           <span>{lang === 'th' ? 'คู่มือการใช้งาน' : 'User Guide'}</span>
                         </button>
                       )}
@@ -677,9 +695,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsAccountMenuOpen(false);
                             onOpenOnboardingTutor();
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                         >
-                          <Sparkles className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                          <Sparkles className="h-4 w-4 text-[var(--color-text-muted)]" />
                           <span>{lang === 'th' ? 'ติวเตอร์แนะนำระบบ' : 'System Tutor'}</span>
                         </button>
                       )}
@@ -691,16 +709,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsAccountMenuOpen(false);
                             onOpenLoginGuide();
                           }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                         >
-                          <BookOpen className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                          <BookOpen className="h-4 w-4 text-[var(--color-text-muted)]" />
                           <span>{lang === 'th' ? 'คู่มือการเข้าสู่ระบบ' : 'Login Guide'}</span>
                         </button>
                       )}
 
                       {!focusMode && (
-                        <div className="pt-1">
-                          <PWAInstallButton lang={lang} variant="nav" className="w-full justify-center py-1.5 text-[11px]" />
+                        <div className="pt-1.5 px-1">
+                          <PWAInstallButton lang={lang} variant="nav" className="w-full justify-center py-2 text-xs" />
                         </div>
                       )}
                     </div>
@@ -708,14 +726,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               )}
 
-              <div className="pt-1 border-t border-[var(--color-border)]">
+              <div className="pt-1.5 mt-1 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAccountMenuOpen(false);
                     onLogout();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 sm:py-2 text-left text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
