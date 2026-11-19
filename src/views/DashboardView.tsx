@@ -2089,7 +2089,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               courses={courses}
               grades={grades}
               attendance={attendance}
+              periodAttendance={periodAttendance}
+              timetableSlots={timetableSlots}
+              schoolPeriods={schoolPeriods}
               invoices={canViewFinancials ? invoices : []}
+              canViewFinancials={canViewFinancials}
               announcements={announcements}
               infirmaryVisits={infirmaryVisits}
               behaviorRecords={behaviorRecords}
@@ -2097,6 +2101,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               homeworkSubmissions={homeworkSubmissions}
               leaveRequests={leaveRequests}
               lang={lang}
+              onOpenGradebookCourse={onOpenGradebookCourse}
               onNavigate={(tab) => {
                 if (tab === 'executive_warning' && canViewEarlyWarning) {
                   setDashboardTab('early_warning');

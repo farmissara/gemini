@@ -36,6 +36,8 @@ import {
   BookMarked,
   ClipboardCheck,
   ChevronsUpDown,
+  Monitor,
+  ShieldAlert,
   LucideIcon,
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -370,6 +372,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelEn: 'OBEC Pp.6 Executive',
           icon: GraduationCap,
           roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'executive_monitor',
+          labelTh: 'ศูนย์มอนิเตอร์รายงานผู้บริหาร',
+          labelEn: 'Executive Report Monitor',
+          icon: Monitor,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'executive_warning',
+          labelTh: 'เรดาร์เตือนภัยผู้เรียน (EWS)',
+          labelEn: 'Early Warning Radar',
+          icon: ShieldAlert,
+          roles: ['super_admin', 'admin'],
         },
       ],
     });
