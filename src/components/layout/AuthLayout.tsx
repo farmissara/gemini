@@ -655,7 +655,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
       {/* Unified Top Bar */}
-      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-md shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <header className="sticky top-0 z-30 border-b border-[var(--color-border)]/80 bg-[var(--color-card)]/85 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <a href="#portal-auth" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
             <BaanPakKruLogo size={32} />
@@ -771,11 +771,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         {/* ===================================================================== */}
         <section
           id="portal-auth"
-          className="editorial-grid-surface flex-1"
+          className="editorial-grid-surface relative isolate flex-1 overflow-hidden bg-[radial-gradient(ellipse_at_8%_0%,rgba(79,70,229,0.08),transparent_44%),radial-gradient(ellipse_at_92%_12%,rgba(13,148,136,0.07),transparent_38%)]"
         >
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+          <div className="mx-auto max-w-[1440px] px-4 py-7 sm:px-6 sm:py-10 lg:px-10 lg:py-14 2xl:px-14">
             {/* Compact Mobile Headline (Visible before form on mobile, integrated on lg+) */}
-            <div className="mb-8 lg:hidden space-y-2.5">
+            <div className="mb-7 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 p-5 shadow-sm backdrop-blur-sm lg:hidden space-y-2.5">
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-primary-text)] flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
                 <span>{lang === 'th' ? 'แพลตฟอร์มบริหารสถานศึกษา · PDPA-First' : 'School Operations Platform · PDPA-First'}</span>
@@ -790,20 +790,20 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
+            <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12 xl:gap-16 2xl:gap-20">
               {/* LEFT COLUMN: Editorial Narrative + Clean Campus Frame + 3-Pillar Strip */}
-              <div className="order-2 lg:order-1 space-y-6">
+              <div className="order-2 lg:order-1 space-y-6 lg:space-y-7">
                 <div className="hidden lg:block space-y-3.5">
                   <div className="inline-flex items-center gap-2 text-xs font-bold tracking-wide text-[var(--color-primary-text)]">
                     <span className="h-2 w-2 rounded-sm bg-[var(--color-primary)]" aria-hidden="true" />
                     <span>{lang === 'th' ? 'แพลตฟอร์มบริหารสถานศึกษา · แยกข้อมูลรายโรงเรียน (PDPA)' : 'School Operations Platform · School-Level PDPA Isolation'}</span>
                   </div>
-                  <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.12] tracking-tight text-[var(--color-text-title)] text-balance xl:text-5xl">
+                  <h1 className="max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-[-0.035em] text-[var(--color-text-title)] text-balance xl:text-5xl 2xl:text-[3.75rem]">
                     {lang === 'th'
                       ? 'งานโรงเรียนครบในระบบเดียว ลดภาระงานเอกสารให้คุณครู'
                       : 'Everyday school work, unified in one calm workspace'}
                   </h1>
-                  <p className="max-w-xl text-base leading-relaxed text-[var(--color-text-body)]">
+                  <p className="max-w-2xl text-[15px] leading-7 text-[var(--color-text-body)] sm:text-base">
                     {lang === 'th'
                       ? 'เชื่อมงานวิชาการ ปพ.5 การเช็คชื่อ QR & GPS และการดูแลผู้เรียน สำหรับผู้บริหาร คุณครู นักเรียน และผู้ปกครอง ในภาษาภาพชุดเดียวกันตั้งแต่หน้าแรกถึงแดชบอร์ด'
                       : 'Unify grading, QR & GPS attendance, and student care for school leaders, teachers, students, and families with one cohesive visual system.'}
@@ -811,14 +811,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 </div>
 
                 {/* Clean Framed Photography + Understated Caption */}
-                <div className="saas-card overflow-hidden rounded-2xl shadow-lg shadow-slate-900/5">
+                <div className="saas-card overflow-hidden rounded-[1.5rem] border-white/80 shadow-[0_24px_64px_-36px_rgba(15,23,42,0.3)]">
                   <img
                     src={heroImage}
                     alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนของ BaanPakKru (บ้านพักครู)' : 'Classroom learning with BaanPakKru'}
-                    className="aspect-[16/9] w-full object-cover"
+                    className="aspect-[16/9] w-full object-cover transition-transform duration-700 hover:scale-[1.015]"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)]">
+                  <div className="border-t border-[var(--color-border)] bg-[var(--color-card)]/90 px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] sm:px-5">
                     <span className="font-semibold text-[var(--color-text-body)] flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       {portalSchool
@@ -870,8 +870,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
 
               {/* RIGHT COLUMN: Calm Auth Card */}
-              <div className="order-1 lg:order-2 w-full max-w-md mx-auto lg:ml-auto lg:mr-0 lg:sticky lg:top-24">
-                <div className="saas-card overflow-hidden rounded-3xl shadow-xl shadow-slate-900/10 ring-1 ring-black/5">
+              <div className="order-1 lg:order-2 w-full max-w-[30rem] mx-auto lg:ml-auto lg:mr-0 lg:sticky lg:top-24">
+                <div className="saas-card overflow-hidden rounded-[1.75rem] border-white/80 shadow-[0_28px_80px_-34px_rgba(15,23,42,0.28)] ring-1 ring-slate-900/[0.04]">
                   {inviteIdParam ? (
                     <>
                       <div className="p-6 sm:p-8 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-4">
