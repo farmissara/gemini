@@ -1430,7 +1430,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           </span>
           <div className="min-w-0 flex items-baseline gap-2">
             <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
-              วัดผลและประเมินผล (Gradebook &amp; ปพ.)
+              {isPersonalGradeViewer
+                ? 'ผลการเรียน & ใบ ปพ.6'
+                : 'บันทึกคะแนน & งานทะเบียน (Gradebook & Registry)'}
             </h1>
             <span className="hidden xl:inline module-category-kicker">
               {lang === 'th' ? moduleGroup.labelTh : moduleGroup.labelEn}
@@ -1601,93 +1603,126 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         </div>
       </div>
 
-      {/* Compact Main Tab Switcher */}
-      <div data-guide-id="gradebook-tabs" className="shrink-0 seg-tab-group w-full sm:w-fit overflow-x-auto no-scrollbar">
-        <button
-          type="button"
-          data-active={activeTab === 'pp6'}
-          onClick={() => setActiveTab('pp6')}
-          className="seg-tab-btn"
-        >
-          {isPersonalGradeViewer ? 'ใบรายงานผลการเรียน (ปพ.6)' : 'ปพ.6 (รายบุคคล)'}
-        </button>
+      {/* Organized Workspace Navigation */}
+      {isPersonalGradeViewer ? (
+        <div data-guide-id="gradebook-tabs" className="shrink-0 seg-tab-group w-full sm:w-fit overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            data-active={activeTab === 'pp6'}
+            onClick={() => setActiveTab('pp6')}
+            className="seg-tab-btn"
+          >
+            ใบรายงานผลการเรียน (ปพ.6)
+          </button>
+          <button
+            type="button"
+            data-active={activeTab === 'gradebook'}
+            onClick={() => setActiveTab('gradebook')}
+            className="seg-tab-btn"
+          >
+            คะแนนแยกแต่ละรายวิชา
+          </button>
+        </div>
+      ) : (() => {
+        const GRADEBOOK_GROUPS: Array<{
+          id: 'scoring' | 'pp_docs' | 'registry';
+          labelTh: string;
+          labelEn: string;
+          tabs: Array<{
+            id: typeof activeTab;
+            labelTh: string;
+            labelEn: string;
+          }>;
+        }> = [
+          {
+            id: 'scoring',
+            labelTh: '1. บันทึกคะแนน & ตัวชี้วัด',
+            labelEn: '1. Scoring & Indicators',
+            tabs: [
+              { id: 'gradebook', labelTh: 'สมุดบันทึกคะแนน (Gradebook)', labelEn: 'Gradebook' },
+              { id: 'indicators', labelTh: 'ตัวชี้วัด & หน่วย 1–3', labelEn: 'Indicators & Units' },
+            ],
+          },
+          {
+            id: 'pp_docs',
+            labelTh: '2. เอกสาร ปพ. (รายวิชา / บุคคล)',
+            labelEn: '2. Pp.5 / Pp.6 Records',
+            tabs: [
+              { id: 'pp5', labelTh: 'ปพ.5 (ประจำวิชา)', labelEn: 'Pp.5 (Course)' },
+              { id: 'pp6', labelTh: 'ปพ.6 (รายบุคคล)', labelEn: 'Pp.6 (Student)' },
+              { id: 'core_report_card', labelTh: 'Report Card วิชาพื้นฐาน (ปพ.5/6)', labelEn: 'Core Report Card' },
+            ],
+          },
+          {
+            id: 'registry',
+            labelTh: '3. สรุปผล & งานทะเบียนจบชั้น',
+            labelEn: '3. Summaries & Graduation Registry',
+            tabs: [
+              { id: 'pp5_core_summary', labelTh: 'สรุป ปพ.5 ทั้งห้อง & ตัวชี้วัด', labelEn: 'Pp.5 Room Summary' },
+              { id: 'qualitative_summary', labelTh: 'สรุปคุณลักษณะฯ & อ่านเขียน', labelEn: 'Qualitative Summary' },
+              { id: 'pp3_online', labelTh: 'ปพ.3 จบชั้น (ป.6/ม.3/ม.6)', labelEn: 'Pp.3 Graduation' },
+              { id: 'onet_niets', labelTh: 'สทศ. O-NET', labelEn: 'NIETS O-NET' },
+            ],
+          },
+        ];
+        const currentGroup =
+          GRADEBOOK_GROUPS.find((g) => g.tabs.some((t) => t.id === activeTab)) || GRADEBOOK_GROUPS[0];
+        return (
+          <div
+            data-guide-id="gradebook-tabs"
+            className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 flex flex-col gap-2 print:hidden"
+          >
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-[var(--color-text-muted)] px-1 shrink-0">
+                {lang === 'th' ? 'หมวดงาน:' : 'Workspace:'}
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {GRADEBOOK_GROUPS.map((group) => {
+                  const isActiveGroup = group.id === currentGroup.id;
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => {
+                        if (!isActiveGroup) {
+                          setActiveTab(group.tabs[0].id);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border whitespace-nowrap ${
+                        isActiveGroup
+                          ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_35%,transparent)] shadow-xs'
+                          : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      <span>{lang === 'th' ? group.labelTh : group.labelEn}</span>
+                      <span className="ml-1.5 text-[10px] opacity-75 tabular-nums">({group.tabs.length})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        <button
-          type="button"
-          data-active={activeTab === 'gradebook'}
-          onClick={() => setActiveTab('gradebook')}
-          className="seg-tab-btn"
-        >
-          {isPersonalGradeViewer ? 'คะแนนแยกแต่ละรายวิชา' : 'สมุดบันทึกคะแนน (Gradebook)'}
-        </button>
-
-        {!isPersonalGradeViewer && (
-          <>
-            <button
-              type="button"
-              data-active={activeTab === 'indicators'}
-              onClick={() => setActiveTab('indicators')}
-              className="seg-tab-btn"
-            >
-              ตัวชี้วัด &amp; หน่วย 1–3
-            </button>
-
-            <button
-              type="button"
-              data-active={activeTab === 'pp5'}
-              onClick={() => setActiveTab('pp5')}
-              className="seg-tab-btn"
-            >
-              ปพ.5 (ประจำวิชา)
-            </button>
-
-            <button
-              type="button"
-              data-active={activeTab === 'pp5_core_summary'}
-              onClick={() => setActiveTab('pp5_core_summary')}
-              className="seg-tab-btn"
-            >
-              สรุป ปพ.5 ทั้งห้อง &amp; ตัวชี้วัด
-            </button>
-
-            <button
-              type="button"
-              data-active={activeTab === 'core_report_card'}
-              onClick={() => setActiveTab('core_report_card')}
-              className="seg-tab-btn"
-            >
-              Report Card วิชาพื้นฐาน (ปพ.5/6)
-            </button>
-
-            <button
-              type="button"
-              data-active={activeTab === 'qualitative_summary'}
-              onClick={() => setActiveTab('qualitative_summary')}
-              className="seg-tab-btn"
-            >
-              สรุปคุณลักษณะฯ &amp; อ่านเขียน
-            </button>
-
-            <button
-              type="button"
-              data-active={activeTab === 'pp3_online'}
-              onClick={() => setActiveTab('pp3_online')}
-              className="seg-tab-btn"
-            >
-              ปพ.3 จบชั้น (ป.6/ม.3/ม.6)
-            </button>
-
-            <button
-              type="button"
-              data-active={activeTab === 'onet_niets'}
-              onClick={() => setActiveTab('onet_niets')}
-              className="seg-tab-btn"
-            >
-              สทศ. O-NET
-            </button>
-          </>
-        )}
-      </div>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-[var(--color-border)]">
+              <span className="text-[11px] font-semibold text-[var(--color-text-muted)] px-1 shrink-0">
+                {lang === 'th' ? 'เมนูย่อย:' : 'Section:'}
+              </span>
+              <div className="seg-tab-group flex-wrap">
+                {currentGroup.tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    data-active={activeTab === tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className="seg-tab-btn"
+                  >
+                    {lang === 'th' ? tab.labelTh : tab.labelEn}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Unified Functionally-Grouped Course & Student Search / Filter Toolbar (Gradebook, Indicators & ปพ.5) */}
       {(activeTab === 'gradebook' || activeTab === 'indicators' || activeTab === 'pp5') && (

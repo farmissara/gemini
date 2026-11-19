@@ -33,6 +33,9 @@ import {
   CalendarDays,
   LogIn,
   LogOut,
+  StickyNote,
+  Edit3,
+  X,
 } from 'lucide-react';
 import { Assignment, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest, PeriodAttendanceRecord } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
@@ -94,6 +97,18 @@ import {
   isCustomHexColor,
   TIMETABLE_COLOR_PRESETS,
 } from '../lib/timetableColors';
+import {
+  CALENDAR_NOTE_COLORS,
+  CALENDAR_NOTES_UPDATED_EVENT,
+  CalendarNote,
+  CalendarNoteColor,
+  CalendarNoteScope,
+  deleteCalendarNote,
+  getCalendarNoteColorMeta,
+  getVisibleCalendarNotesForDate,
+  getVisibleCalendarNotesMapForMonth,
+  saveCalendarNote,
+} from '../lib/calendarNotes';
 
 interface TimetableScheduleViewProps {
   slots: TimetableSlot[];
@@ -287,6 +302,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [showAddHolidayForm, setShowAddHolidayForm] = useState(false);
   const [newHolidayDate, setNewHolidayDate] = useState(() => getBangkokDateInputValue());
   const [newHolidayNameTh, setNewHolidayNameTh] = useState('');
+  const [calendarNotesTick, setCalendarNotesTick] = useState(0);
+  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteTitleDraft, setNoteTitleDraft] = useState('');
+  const [noteContentDraft, setNoteContentDraft] = useState('');
+  const [noteScopeDraft, setNoteScopeDraft] = useState<CalendarNoteScope>('personal');
+  const [noteColorDraft, setNoteColorDraft] = useState<CalendarNoteColor>('amber');
   const [subDate, setSubDate] = useState<string>(() => getBangkokDateInputValue());
   const [subSelectedTeacher, setSubSelectedTeacher] = useState<string>('');
   const [sentSubRequests, setSentSubRequests] = useState<Record<string, boolean>>({});
@@ -294,6 +316,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [subNotice, setSubNotice] = useState<string | null>(null);
   const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
   const [showImportExportModal, setShowImportExportModal] = useState(false);
+
+  useEffect(() => {
+    const onNotesUpdated = () => setCalendarNotesTick((v) => v + 1);
+    window.addEventListener(CALENDAR_NOTES_UPDATED_EVENT, onNotesUpdated);
+    return () => window.removeEventListener(CALENDAR_NOTES_UPDATED_EVENT, onNotesUpdated);
+  }, []);
 
   // Live 30-second Bangkok clock tick so active-period Check-in/Check-out buttons appear/disappear on schedule
   useEffect(() => {
@@ -2532,6 +2560,65 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         const selectedDayAssignments = assignments.filter(
           (a) => a.status !== 'closed' && (a.dueDate || '').slice(0, 10) === selectedCalendarDate
         );
+        void calendarNotesTick;
+        const monthNotesMap = getVisibleCalendarNotesMapForMonth(
+          schoolId,
+          calendarMonthCursor.year,
+          calendarMonthCursor.month,
+          currentUser?.id,
+          currentRole
+        );
+        const selectedDateNotes = getVisibleCalendarNotesForDate(
+          schoolId,
+          selectedCalendarDate,
+          currentUser?.id,
+          currentRole
+        );
+        const resetNoteForm = () => {
+          setShowNoteForm(false);
+          setEditingNoteId(null);
+          setNoteTitleDraft('');
+          setNoteContentDraft('');
+          setNoteScopeDraft('personal');
+          setNoteColorDraft('amber');
+        };
+        const handleStartNewNote = (targetDate?: string) => {
+          if (targetDate) setSelectedCalendarDate(targetDate);
+          setEditingNoteId(null);
+          setNoteTitleDraft('');
+          setNoteContentDraft('');
+          setNoteScopeDraft('personal');
+          setNoteColorDraft('amber');
+          setShowNoteForm(true);
+        };
+        const handleStartEditNote = (note: CalendarNote) => {
+          setEditingNoteId(note.id);
+          setNoteTitleDraft(note.title);
+          setNoteContentDraft(note.content);
+          setNoteScopeDraft(note.scope);
+          setNoteColorDraft(note.color);
+          setShowNoteForm(true);
+        };
+        const handleSaveNote = (e: React.FormEvent) => {
+          e.preventDefault();
+          const trimmedTitle = noteTitleDraft.trim();
+          const trimmedContent = noteContentDraft.trim();
+          if (!trimmedTitle && !trimmedContent) return;
+          saveCalendarNote({
+            id: editingNoteId || undefined,
+            schoolId,
+            date: selectedCalendarDate,
+            title: trimmedTitle || trimmedContent.slice(0, 40),
+            content: trimmedContent,
+            scope: isPersonalViewer ? 'personal' : noteScopeDraft,
+            color: noteColorDraft,
+            authorId: currentUser?.id || `role:${currentRole}`,
+            authorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentRole,
+            authorRole: currentRole,
+          });
+          resetNoteForm();
+          setCalendarNotesTick((v) => v + 1);
+        };
 
         return (
           <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
@@ -2792,6 +2879,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         const cellAsgCount = assignments.filter(
                           (a) => a.status !== 'closed' && (a.dueDate || '').slice(0, 10) === cell.dateStr
                         ).length;
+                        const cellNotes = monthNotesMap.get(cell.dateStr) || [];
 
                         return (
                           <button
@@ -2820,17 +2908,32 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                               >
                                 {cell.dayNum}
                               </span>
-                              {cellAsgCount > 0 && (
-                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-300 tabular-nums">
-                                  งาน {cellAsgCount}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1">
+                                {cellNotes.length > 0 && (
+                                  <span
+                                    title={cellNotes.map((n) => n.title).join(', ')}
+                                    className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 tabular-nums"
+                                  >
+                                    <StickyNote className="w-2.5 h-2.5 shrink-0" />
+                                    <span>{cellNotes.length}</span>
+                                  </span>
+                                )}
+                                {cellAsgCount > 0 && (
+                                  <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-300 tabular-nums">
+                                    งาน {cellAsgCount}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             <div className="space-y-0.5 w-full">
                               {primaryHoliday ? (
                                 <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 line-clamp-2 leading-tight">
                                   {primaryHoliday.nameTh}
+                                </p>
+                              ) : cellNotes[0] ? (
+                                <p className="text-[10px] font-semibold text-amber-800 dark:text-amber-200 truncate leading-tight">
+                                  {cellNotes[0].title}
                                 </p>
                               ) : cellClassCount > 0 ? (
                                 <p className="text-[10px] font-medium text-[var(--color-text-muted)] tabular-nums">
@@ -2938,6 +3041,148 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         ))}
                       </div>
                     )}
+
+                    {/* Calendar Notes Section for Selected Date */}
+                    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <StickyNote className="w-4 h-4 text-amber-500 shrink-0" />
+                          <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                            {lang === 'th' ? `โน้ตบันทึกประจำวัน (${selectedDateNotes.length})` : `Daily Notes (${selectedDateNotes.length})`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => (showNoteForm ? resetNoteForm() : handleStartNewNote())}
+                          className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-2.5 py-1 text-[11px] font-bold cursor-pointer shrink-0 transition"
+                        >
+                          {showNoteForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                          <span>{showNoteForm ? 'ปิด' : 'เพิ่มโน้ต'}</span>
+                        </button>
+                      </div>
+
+                      {showNoteForm && (
+                        <form onSubmit={handleSaveNote} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2.5 space-y-2 text-xs">
+                          <input
+                            type="text"
+                            value={noteTitleDraft}
+                            onChange={(e) => setNoteTitleDraft(e.target.value)}
+                            placeholder="หัวข้อโน้ต / เตือนความจำ (เช่น นัดประชุมผู้ปกครอง, เตรียมข้อสอบ)"
+                            className="w-full h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+                          />
+                          <textarea
+                            rows={2}
+                            value={noteContentDraft}
+                            onChange={(e) => setNoteContentDraft(e.target.value)}
+                            placeholder="รายละเอียดเพิ่มเติม..."
+                            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)] resize-none"
+                          />
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-1">
+                              {CALENDAR_NOTE_COLORS.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => setNoteColorDraft(c.id)}
+                                  title={c.labelTh}
+                                  className={`w-5 h-5 rounded-full ${c.dotClass} flex items-center justify-center cursor-pointer transition ${
+                                    noteColorDraft === c.id ? 'ring-2 ring-offset-1 ring-[var(--color-text-title)] scale-110' : 'opacity-70 hover:opacity-100'
+                                  }`}
+                                >
+                                  {noteColorDraft === c.id && <Check className="w-3 h-3 text-white" />}
+                                </button>
+                              ))}
+                            </div>
+
+                            {!isPersonalViewer && (
+                              <select
+                                aria-label="ขอบเขตโน้ต"
+                                value={noteScopeDraft}
+                                onChange={(e) => setNoteScopeDraft(e.target.value as CalendarNoteScope)}
+                                className="h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-[11px] font-semibold text-[var(--color-text-title)]"
+                              >
+                                <option value="personal">โน้ตส่วนตัว</option>
+                                <option value="school">โน้ตโรงเรียน (ทุกคนเห็น)</option>
+                              </select>
+                            )}
+
+                            <button
+                              type="submit"
+                              disabled={!noteTitleDraft.trim() && !noteContentDraft.trim()}
+                              className="h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 text-[11px] font-bold cursor-pointer transition"
+                            >
+                              {editingNoteId ? 'อัปเดตโน้ต' : 'บันทึกโน้ต'}
+                            </button>
+                          </div>
+                        </form>
+                      )}
+
+                      {selectedDateNotes.length === 0 && !showNoteForm ? (
+                        <p className="text-[11px] text-[var(--color-text-muted)]">
+                          ยังไม่มีโน้ตสำหรับวันนี้ — กด &ldquo;+ เพิ่มโน้ต&rdquo; เพื่อบันทึกเตือนความจำหรือหมายเหตุประจำวัน
+                        </p>
+                      ) : selectedDateNotes.length > 0 ? (
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                          {selectedDateNotes.map((note) => {
+                            const colorMeta = getCalendarNoteColorMeta(note.color);
+                            const canModify =
+                              note.authorId === (currentUser?.id || `role:${currentRole}`) || isAdmin;
+                            return (
+                              <div
+                                key={note.id}
+                                className={`rounded-xl border p-2.5 text-xs space-y-1 ${colorMeta.cardClass}`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className={`w-2 h-2 rounded-full ${colorMeta.dotClass} shrink-0`} />
+                                      <p className="font-bold text-[var(--color-text-title)] truncate">
+                                        {note.title}
+                                      </p>
+                                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${colorMeta.badgeClass}`}>
+                                        {note.scope === 'school' ? 'โรงเรียน' : 'ส่วนตัว'}
+                                      </span>
+                                    </div>
+                                    {note.content && (
+                                      <p className="text-[11px] text-[var(--color-text-body)] mt-0.5 whitespace-pre-line">
+                                        {note.content}
+                                      </p>
+                                    )}
+                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                                      บันทึกโดย {note.authorName}
+                                    </p>
+                                  </div>
+                                  {canModify && (
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleStartEditNote(note)}
+                                        className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                                        title="แก้ไขโน้ต"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          deleteCalendarNote(schoolId, note.id);
+                                          if (editingNoteId === note.id) resetNoteForm();
+                                          setCalendarNotesTick((v) => v + 1);
+                                        }}
+                                        className="p-1 rounded hover:bg-rose-500/15 text-rose-600 cursor-pointer"
+                                        title="ลบโน้ต"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
 
                     <div className="space-y-2 overflow-y-auto">
                       {!selectedDayKey ? (
@@ -3062,6 +3307,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <div aria-label="ปฏิทินตารางสอนรายสัปดาห์" className="grid min-w-[900px] grid-cols-5 gap-2">
                   {calendarWeekDays.map((day) => {
                     const dayHoliday = getHolidayForDate(day.date, schoolId);
+                    const dayNotes = getVisibleCalendarNotesForDate(
+                      schoolId,
+                      day.date,
+                      currentUser?.id,
+                      currentRole
+                    );
                     const daySlots = activeSlots
                       .filter((slot) => slot.dayOfWeek === day.key)
                       .sort((a, b) => (
@@ -3071,13 +3322,49 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     return (
                       <section key={day.key} aria-label={formatCalendarDate(day.date)} className="min-h-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2">
                         <header className={`sticky top-0 z-10 mb-2 rounded-lg border p-2 ${dayHoliday ? 'border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/60' : 'border-[var(--color-border)] bg-[var(--color-card)]'}`}>
-                          <h3 className="text-[11px] font-bold text-[var(--color-text-title)]">{formatCalendarDate(day.date)}</h3>
+                          <div className="flex items-center justify-between gap-1">
+                            <h3 className="text-[11px] font-bold text-[var(--color-text-title)]">{formatCalendarDate(day.date)}</h3>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCalendarLayoutMode('month');
+                                handleStartNewNote(day.date);
+                              }}
+                              className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 cursor-pointer shrink-0"
+                              title="เพิ่มโน้ตวันนี้"
+                            >
+                              <StickyNote className="w-2.5 h-2.5" />
+                              <span>+ โน้ต</span>
+                            </button>
+                          </div>
                           {dayHoliday ? (
                             <p className="mt-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-300">
                               วันหยุด: {dayHoliday.nameTh}
                             </p>
                           ) : (
-                            <p className="mt-0.5 text-[9px] text-[var(--color-text-muted)] tabular-nums">{daySlots.length} คาบ</p>
+                            <p className="mt-0.5 text-[9px] text-[var(--color-text-muted)] tabular-nums">
+                              {daySlots.length} คาบ{dayNotes.length > 0 ? ` · ${dayNotes.length} โน้ต` : ''}
+                            </p>
+                          )}
+                          {dayNotes.length > 0 && (
+                            <div className="mt-1.5 space-y-1">
+                              {dayNotes.slice(0, 2).map((n) => {
+                                const cm = getCalendarNoteColorMeta(n.color);
+                                return (
+                                  <button
+                                    key={n.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setCalendarLayoutMode('month');
+                                      setSelectedCalendarDate(day.date);
+                                    }}
+                                    className={`w-full text-left rounded border px-1.5 py-0.5 text-[9px] font-semibold truncate cursor-pointer ${cm.cardClass}`}
+                                  >
+                                    • {n.title}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           )}
                         </header>
                         <div className="space-y-2">

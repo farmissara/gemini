@@ -557,6 +557,7 @@ const PROTECTED_SYSTEM_TABS = new Set<string>([
   'executive_monitor',
   'obec_executive_dashboard',
   'pp6_executive_dashboard',
+  'report_insights',
 ]);
 
 export const isTabEnabledByFeatureFlags = (

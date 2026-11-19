@@ -61,6 +61,10 @@ import {
   Coins,
   Radio,
   Compass,
+  StickyNote,
+  Plus,
+  X,
+  Check,
 } from 'lucide-react';
 import { 
   AuthUser, 
@@ -105,6 +109,17 @@ import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
 import { slotHasTeacher } from '../../lib/timetableTeachers';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
+import {
+  CALENDAR_NOTE_COLORS,
+  CALENDAR_NOTES_UPDATED_EVENT,
+  CalendarNote,
+  CalendarNoteColor,
+  CalendarNoteScope,
+  deleteCalendarNote,
+  getCalendarNoteColorMeta,
+  getVisibleCalendarNotesForDate,
+  saveCalendarNote,
+} from '../../lib/calendarNotes';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -266,6 +281,7 @@ interface MobileAppShellProps {
   onAddQuestion: (q: QuizQuestion) => void;
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onUpdateStudent?: (student: Student) => void;
+  onUpdateTeacher?: (teacher: Teacher) => void;
   timetableSlots?: TimetableSlot[];
   schoolPeriods?: SchoolPeriodTime[];
   gradingSystem?: GradingSystem;
@@ -349,6 +365,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onAddQuestion,
   onImportQuestions,
   onUpdateStudent,
+  onUpdateTeacher,
   timetableSlots = [],
   schoolPeriods = DEFAULT_SCHOOL_PERIODS,
   gradingSystem = activeSchool.gradingSystem || 'thai',
@@ -511,6 +528,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     getPublicHolidaySyncStatus(currentBangkokYear)
   );
   const [isSyncingHolidays, setIsSyncingHolidays] = useState(false);
+  const [mobileCalendarNotesTick, setMobileCalendarNotesTick] = useState(0);
+  const [showMobileNoteForm, setShowMobileNoteForm] = useState(false);
+  const [mobileEditingNoteId, setMobileEditingNoteId] = useState<string | null>(null);
+  const [mobileNoteTitle, setMobileNoteTitle] = useState('');
+  const [mobileNoteContent, setMobileNoteContent] = useState('');
+  const [mobileNoteScope, setMobileNoteScope] = useState<CalendarNoteScope>('personal');
+  const [mobileNoteColor, setMobileNoteColor] = useState<CalendarNoteColor>('amber');
 
   // Dynamic Check-in deep-link state so tapping any timetable slot jumps cleanly into Period Check-in/Check-out
   const [mobileAttendanceInitialSubTab, setMobileAttendanceInitialSubTab] = useState<
@@ -569,7 +593,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       setHolidaySyncTick((v) => v + 1);
     };
     window.addEventListener('eduverse:holidays-updated', onHolidaysUpdated);
-    return () => window.removeEventListener('eduverse:holidays-updated', onHolidaysUpdated);
+    const onNotesUpdated = () => setMobileCalendarNotesTick((v) => v + 1);
+    window.addEventListener(CALENDAR_NOTES_UPDATED_EVENT, onNotesUpdated);
+    return () => {
+      window.removeEventListener('eduverse:holidays-updated', onHolidaysUpdated);
+      window.removeEventListener(CALENDAR_NOTES_UPDATED_EVENT, onNotesUpdated);
+    };
   }, [mobileCalendarMonthCursor.year, currentBangkokYear]);
 
   const handleManualMobileHolidaySync = async (targetYear = currentBangkokYear) => {
@@ -2413,6 +2442,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                       {monthCells.map((cell, idx) => {
                         if (!cell) return <div key={`mblank-${idx}`} className="h-12" />;
                         const cellHol = monthHolidays.find((h) => h.date === cell.dateStr);
+                        void mobileCalendarNotesTick;
+                        const cellHasNote = getVisibleCalendarNotesForDate(
+                          activeSchool.id,
+                          cell.dateStr,
+                          currentUser?.id,
+                          currentRole
+                        ).length > 0;
                         const isToday = cell.dateStr === todayBangkokStr;
                         const isSel = cell.dateStr === mobileSelectedCalendarDate;
                         const isWknd = isWeekendDate(cell.dateStr);
@@ -2432,7 +2468,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                             }`}
                           >
                             <span className={isToday ? 'underline decoration-2' : ''}>{cell.dayNum}</span>
-                            {cellHol && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
+                            {(cellHol || cellHasNote) && (
+                              <span className="flex items-center gap-0.5">
+                                {cellHol && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
+                                {cellHasNote && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -2458,6 +2499,168 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                         </p>
                       </div>
                     ))}
+
+                    {/* Mobile Calendar Notes Section */}
+                    {(() => {
+                      void mobileCalendarNotesTick;
+                      const mobileDayNotes = getVisibleCalendarNotesForDate(
+                        activeSchool.id,
+                        mobileSelectedCalendarDate,
+                        currentUser?.id,
+                        currentRole
+                      );
+                      const resetMobileNoteForm = () => {
+                        setShowMobileNoteForm(false);
+                        setMobileEditingNoteId(null);
+                        setMobileNoteTitle('');
+                        setMobileNoteContent('');
+                        setMobileNoteScope('personal');
+                        setMobileNoteColor('amber');
+                      };
+                      const handleMobileSaveNote = (e: React.FormEvent) => {
+                        e.preventDefault();
+                        if (!mobileNoteTitle.trim() && !mobileNoteContent.trim()) return;
+                        saveCalendarNote({
+                          id: mobileEditingNoteId || undefined,
+                          schoolId: activeSchool.id,
+                          date: mobileSelectedCalendarDate,
+                          title: mobileNoteTitle.trim() || mobileNoteContent.trim().slice(0, 40),
+                          content: mobileNoteContent.trim(),
+                          scope: isRestrictedViewer ? 'personal' : mobileNoteScope,
+                          color: mobileNoteColor,
+                          authorId: currentUser?.id || `role:${currentRole}`,
+                          authorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentRole,
+                          authorRole: currentRole,
+                        });
+                        resetMobileNoteForm();
+                        setMobileCalendarNotesTick((v) => v + 1);
+                      };
+                      const handleMobileEditNote = (note: CalendarNote) => {
+                        setMobileEditingNoteId(note.id);
+                        setMobileNoteTitle(note.title);
+                        setMobileNoteContent(note.content);
+                        setMobileNoteScope(note.scope);
+                        setMobileNoteColor(note.color);
+                        setShowMobileNoteForm(true);
+                      };
+                      return (
+                        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                              <StickyNote className="w-3.5 h-3.5 text-amber-500" />
+                              <span>โน้ตประจำวัน ({mobileDayNotes.length})</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => (showMobileNoteForm ? resetMobileNoteForm() : setShowMobileNoteForm(true))}
+                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] text-white px-2.5 py-1 text-[11px] font-bold cursor-pointer"
+                            >
+                              {showMobileNoteForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                              <span>{showMobileNoteForm ? 'ปิด' : 'เพิ่มโน้ต'}</span>
+                            </button>
+                          </div>
+
+                          {showMobileNoteForm && (
+                            <form onSubmit={handleMobileSaveNote} className="space-y-2 pt-1">
+                              <input
+                                type="text"
+                                value={mobileNoteTitle}
+                                onChange={(e) => setMobileNoteTitle(e.target.value)}
+                                placeholder="หัวข้อโน้ต / เตือนความจำ"
+                                className="w-full h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs text-[var(--color-text-title)]"
+                              />
+                              <textarea
+                                rows={2}
+                                value={mobileNoteContent}
+                                onChange={(e) => setMobileNoteContent(e.target.value)}
+                                placeholder="รายละเอียดเพิ่มเติม..."
+                                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] resize-none"
+                              />
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  {CALENDAR_NOTE_COLORS.map((c) => (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      onClick={() => setMobileNoteColor(c.id)}
+                                      className={`w-5 h-5 rounded-full ${c.dotClass} flex items-center justify-center cursor-pointer ${
+                                        mobileNoteColor === c.id ? 'ring-2 ring-offset-1 ring-[var(--color-text-title)]' : 'opacity-70'
+                                      }`}
+                                    >
+                                      {mobileNoteColor === c.id && <Check className="w-3 h-3 text-white" />}
+                                    </button>
+                                  ))}
+                                </div>
+                                {!isRestrictedViewer && (
+                                  <select
+                                    value={mobileNoteScope}
+                                    onChange={(e) => setMobileNoteScope(e.target.value as CalendarNoteScope)}
+                                    className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-[11px] font-semibold"
+                                  >
+                                    <option value="personal">ส่วนตัว</option>
+                                    <option value="school">โน้ตโรงเรียน</option>
+                                  </select>
+                                )}
+                                <button
+                                  type="submit"
+                                  disabled={!mobileNoteTitle.trim() && !mobileNoteContent.trim()}
+                                  className="h-8 rounded-lg bg-emerald-600 text-white px-3 text-[11px] font-bold disabled:opacity-50 cursor-pointer"
+                                >
+                                  {mobileEditingNoteId ? 'อัปเดต' : 'บันทึก'}
+                                </button>
+                              </div>
+                            </form>
+                          )}
+
+                          {mobileDayNotes.length === 0 && !showMobileNoteForm ? (
+                            <p className="text-[11px] text-[var(--color-text-muted)]">ยังไม่มีโน้ตสำหรับวันที่นี้</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {mobileDayNotes.map((note) => {
+                                const cm = getCalendarNoteColorMeta(note.color);
+                                const canEdit =
+                                  note.authorId === (currentUser?.id || `role:${currentRole}`) ||
+                                  currentRole === 'admin' ||
+                                  currentRole === 'super_admin';
+                                return (
+                                  <div key={note.id} className={`rounded-xl border p-2.5 text-xs flex items-start justify-between gap-2 ${cm.cardClass}`}>
+                                    <div className="min-w-0">
+                                      <p className="font-bold text-[var(--color-text-title)]">{note.title}</p>
+                                      {note.content && (
+                                        <p className="text-[11px] text-[var(--color-text-body)] mt-0.5 whitespace-pre-line">{note.content}</p>
+                                      )}
+                                    </div>
+                                    {canEdit && (
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleMobileEditNote(note)}
+                                          className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                                          title="แก้ไข"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            deleteCalendarNote(activeSchool.id, note.id);
+                                            setMobileCalendarNotesTick((v) => v + 1);
+                                          }}
+                                          className="p-1 text-rose-600 cursor-pointer"
+                                          title="ลบ"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {selectedCalDaySlots.map((slot) => {
                       const slotActivity = getTimetableSlotActivityStatus({
@@ -3131,11 +3334,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             {canViewDigitalId && profilePage === 0 && (
               <DigitalIdCardView
                 students={currentRole === 'student' ? (ownStudent ? [ownStudent] : []) : isRestrictedViewer ? linkedStudents : students}
+                teachers={teachers}
                 school={activeSchool}
                 lang={lang}
                 currentRole={currentRole}
                 currentUser={currentUser}
                 onUpdateStudent={onUpdateStudent}
+                onUpdateTeacher={onUpdateTeacher}
               />
             )}
 

@@ -13,9 +13,10 @@ export type ModuleTone = 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 
  * - tone-7 (Slate): ตั้งค่าระบบ & ประสานงาน (Settings, Permissions & Desk)
  */
 export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
-  // tone-1: Core Directory & Schedule
+  // tone-1: Core Directory & Schedule & Executive Reports
   dashboard: 'tone-1',
   executive_monitor: 'tone-1',
+  report_insights: 'tone-1',
   students: 'tone-1',
   teachers: 'tone-1',
   courses: 'tone-1',
@@ -115,6 +116,7 @@ export const CATEGORY_TONE_MAP: Record<NavCategoryId, ModuleTone> = {
   super_admin: 'tone-3',
   academics: 'tone-1',
   assessment: 'tone-2',
+  report_monitor: 'tone-1',
   student_care: 'tone-4',
   innovation: 'tone-5',
   finance: 'tone-6',

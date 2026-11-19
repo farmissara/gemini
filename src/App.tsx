@@ -1132,6 +1132,15 @@ export const App: React.FC = () => {
       return;
     }
 
+    if (tab === 'report_insights') {
+      if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+        setDashboardInitialSubTab('insights');
+        setProgramMode('school_erp');
+        setCurrentTab('dashboard');
+      }
+      return;
+    }
+
     if (tab === 'obec_executive_dashboard') {
       if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
         setDashboardInitialSubTab('obec_learning_areas');
@@ -1196,6 +1205,8 @@ export const App: React.FC = () => {
       'announcements',
       'central_exam_hub',
       'attendance',
+      'executive_monitor',
+      'report_insights',
       'obec_executive_dashboard',
       'pp6_executive_dashboard',
       'student_development_book',
@@ -4067,6 +4078,7 @@ export const App: React.FC = () => {
           onAddQuestion={handleAddQuestion}
           onImportQuestions={handleImportQuestions}
           onUpdateStudent={handleUpdateStudent}
+          onUpdateTeacher={handleUpdateTeacher}
           onUpdateGrade={handleUpdateGrade}
           onAddGrade={handleAddGrade}
           schools={currentRole === 'super_admin' ? schools : (activeSchool.id ? [activeSchool] : [])}
@@ -4369,6 +4381,8 @@ export const App: React.FC = () => {
                 }}
                 currentRole={currentRole}
                 isSuperAdminSchoolView={isSuperAdminSchoolView}
+                activeSettingsSubTab={systemSettingsInitialTab}
+                activeDashboardSubTab={dashboardInitialSubTab}
                 studentsCount={viewStudents.length}
                 teachersCount={schoolTeachers.length}
                 coursesCount={viewCourses.length}
@@ -4395,6 +4409,8 @@ export const App: React.FC = () => {
               setCurrentTab={navigateToAppTab}
               currentRole={currentRole}
               isSuperAdminSchoolView={isSuperAdminSchoolView}
+              activeSettingsSubTab={systemSettingsInitialTab}
+              activeDashboardSubTab={dashboardInitialSubTab}
               studentsCount={viewStudents.length}
               teachersCount={schoolTeachers.length}
               coursesCount={viewCourses.length}
@@ -4934,11 +4950,13 @@ export const App: React.FC = () => {
                 {currentTab === 'student_id_cards' && (
                   <DigitalIdCardView
                     students={viewStudents}
+                    teachers={schoolTeachers}
                     school={activeSchool}
                     lang={lang}
                     currentRole={currentRole}
                     currentUser={currentUser}
                     onUpdateStudent={handleUpdateStudent}
+                    onUpdateTeacher={handleUpdateTeacher}
                   />
                 )}
 

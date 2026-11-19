@@ -87,6 +87,7 @@ export type NavTab =
   | 'student_development_book'
   | 'qualitative_summary'
   | 'central_exam_hub'
+  | 'report_insights'
   | 'billing'
   | 'announcements';
 
@@ -94,6 +95,7 @@ export type NavCategoryId =
   | 'super_admin'
   | 'academics'
   | 'assessment'
+  | 'report_monitor'
   | 'student_care'
   | 'innovation'
   | 'finance'
@@ -107,6 +109,7 @@ interface SidebarProps {
   canSwitchAdminTeacherMode?: boolean;
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
   activeSettingsSubTab?: string;
+  activeDashboardSubTab?: string;
   studentsCount: number;
   coursesCount: number;
   teachersCount?: number;
@@ -149,6 +152,10 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'gradebook',
   'student_development_book',
   'qualitative_summary',
+  'obec_executive_dashboard',
+  'pp6_executive_dashboard',
+  'executive_monitor',
+  'report_insights',
   'timetable',
   'students',
   'behavior_sdq',
@@ -168,6 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
   activeSettingsSubTab,
+  activeDashboardSubTab,
   studentsCount,
   coursesCount,
   teachersCount = 0,
@@ -323,20 +331,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 2: Assessment, OBEC Analytics & Tasks (Emerald · tone-2)
+    // Category 2: Assessment & Teaching Tasks (Emerald · tone-2)
     list.push({
       id: 'assessment',
       labelTh: 'วัดผล สพฐ. & การสอน',
-      labelEn: 'Assessment & OBEC',
+      labelEn: 'Assessment & Teaching',
       shortLabelTh: 'วัดผล',
       shortLabelEn: 'Grading',
       icon: Award,
       items: [
         {
           id: 'gradebook',
-          labelTh: 'บันทึกคะแนน & ทะเบียนผล',
-          labelEn: 'Grading & Academic Records',
-          shortLabelTh: 'คะแนน',
+          labelTh: 'บันทึกคะแนน & งานทะเบียน',
+          labelEn: 'Gradebook & Registration',
+          shortLabelTh: 'คะแนน/ทะเบียน',
           shortLabelEn: 'Grades',
           icon: Award,
           roles: ['super_admin', 'admin', 'teacher'],
@@ -365,11 +373,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: BookMarked,
           roles: ['super_admin', 'admin', 'teacher'],
         },
+      ],
+    });
+
+    // Category 2B: Report / Monitor (Blue · tone-1)
+    list.push({
+      id: 'report_monitor',
+      labelTh: 'Report / Monitor',
+      labelEn: 'Report / Monitor',
+      shortLabelTh: 'รายงาน',
+      shortLabelEn: 'Reports',
+      icon: Monitor,
+      items: [
         {
-          id: 'qualitative_summary',
-          labelTh: 'สรุปคุณลักษณะฯ & อ่านคิดวิเคราะห์',
-          labelEn: 'Qualitative & Reading Analytics',
-          icon: ClipboardCheck,
+          id: 'executive_monitor',
+          labelTh: 'ศูนย์มอนิเตอร์รายงานผู้บริหาร',
+          labelEn: 'Executive Report Monitor',
+          icon: Monitor,
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {
@@ -387,10 +407,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {
-          id: 'executive_monitor',
-          labelTh: 'ศูนย์มอนิเตอร์รายงานผู้บริหาร',
-          labelEn: 'Executive Report Monitor',
-          icon: Monitor,
+          id: 'qualitative_summary',
+          labelTh: 'สรุปคุณลักษณะฯ & อ่านคิดวิเคราะห์',
+          labelEn: 'Qualitative & Reading Analytics',
+          icon: ClipboardCheck,
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {
@@ -399,6 +419,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelEn: 'Early Warning Radar',
           icon: ShieldAlert,
           roles: ['super_admin', 'admin'],
+        },
+        {
+          id: 'report_insights',
+          labelTh: 'รายงานสถิติ & กราฟสรุปผล',
+          labelEn: 'Analytics & Charts Report',
+          icon: BarChart3,
+          roles: ['super_admin', 'admin', 'teacher'],
         },
       ],
     });
@@ -636,8 +663,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return list;
   }, [currentRole, isSuperAdminSchoolView, studentsCount, teachersCount, coursesCount, coordinationUnreadCount, unclaimedCentralPacksCount]);
 
-  // Resolve visual active tab in Sidebar when inside system_settings sub-tabs
+  // Resolve visual active tab in Sidebar when inside system_settings or dashboard monitor sub-tabs
   const resolvedSidebarActiveTab: NavTab = useMemo(() => {
+    if (currentTab === 'dashboard') {
+      if (activeDashboardSubTab === 'executive_monitor') return 'executive_monitor';
+      if (activeDashboardSubTab === 'obec_learning_areas') return 'obec_executive_dashboard';
+      if (activeDashboardSubTab === 'pp6_quality_overview') return 'pp6_executive_dashboard';
+      if (activeDashboardSubTab === 'early_warning') return 'executive_warning';
+      if (activeDashboardSubTab === 'insights') return 'report_insights';
+      return 'dashboard';
+    }
     if (currentTab !== 'system_settings') return currentTab;
     if (activeSettingsSubTab === 'school_gps') return 'school_gps';
     if (activeSettingsSubTab === 'school_permissions') return 'school_permissions';
@@ -654,7 +689,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     if (activeSettingsSubTab === 'saas_audit') return 'admin_saas_audit';
     return 'system_settings';
-  }, [currentTab, activeSettingsSubTab]);
+  }, [currentTab, activeSettingsSubTab, activeDashboardSubTab]);
 
   // Dashboard standalone entry + quick shortcuts (keep items inside their true categories too!)
   const dashboardItem: NavItemDef = useMemo(() => ({
@@ -881,7 +916,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
             aria-label={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
             className={`${getModuleTone(dashboardItem.id)} relative w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
-              currentTab === dashboardItem.id
+              resolvedSidebarActiveTab === dashboardItem.id
                 ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
                 : 'text-[var(--tone)]/80 hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
             }`}
@@ -1062,7 +1097,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 data-nav-tab={dashboardItem.id}
                 onClick={() => setCurrentTab(dashboardItem.id)}
                 className={`${getModuleTone(dashboardItem.id)} w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12px] font-bold transition cursor-pointer border ${
-                  currentTab === dashboardItem.id
+                  resolvedSidebarActiveTab === dashboardItem.id
                     ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_32%,transparent)]'
                     : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--tone-soft)]/50'
                 }`}

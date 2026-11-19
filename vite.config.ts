@@ -58,7 +58,7 @@ export default defineConfig(() => {
           skipWaiting: true,
           importScripts: ['/push-sw.js'],
           navigateFallbackDenylist: [/^\/api\//, /^\/manifest\.webmanifest$/],
-          maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
+          maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [
             {

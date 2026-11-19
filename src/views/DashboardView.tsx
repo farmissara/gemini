@@ -1198,11 +1198,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           : lang === 'th'
                             ? 'วันนี้ยังไม่มีคาบสอนในตาราง · พร้อมตรวจงานและบันทึกคะแนน ปพ.5'
                             : 'No classes scheduled today · Ready for grading and student support'
-                        : currentRole === 'student'
-                          ? lang === 'th'
-                            ? `วันนี้มีเรียน ${todayScheduledSlots.length} คาบ · ติดตามงานที่ได้รับมอบหมายและเวลาเข้าเรียนของคุณ`
-                            : `${todayScheduledSlots.length} classes today · Track your attendance and assignments`
-                          : currentRole === 'parent'
+                        : currentRole === 'parent'
                             ? primaryScopedStudent
                               ? lang === 'th'
                                 ? `ข้อมูลผู้เรียนในความดูแล: ${primaryScopedStudent.firstNameTh} ${primaryScopedStudent.lastNameTh} (ชั้น ${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
@@ -1341,89 +1337,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </span>
                       </div>
                     </button>
-                  </>
-                ) : currentRole === 'student' ? (
-                  <>
-                    {/* Student KPI 1: Personal Attendance */}
-                    <button
-                      type="button"
-                      onClick={() => onNavigate(studentCanSelfCheckin ? 'mobile_checkin' : 'timetable')}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">{lang === 'th' ? 'สถิติมาตรงเวลาของคุณ' : 'Your Attendance'}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                      </div>
-                      <div className="flex items-baseline gap-2.5">
-                        <span className="type-kpi tabular-nums">{scopedAttendanceRate}%</span>
-                        <span className="type-meta tabular-nums">
-                          {totalForDate > 0
-                            ? `${presentCount}/${totalForDate} ${lang === 'th' ? 'วันนี้' : 'today'}`
-                            : `${scopedAttendance.length} ${lang === 'th' ? 'ครั้งสะสม' : 'records'}`}
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* Student KPI 2: Today Classes */}
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('timetable')}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">{lang === 'th' ? 'คาบเรียนวันนี้' : 'Today’s Classes'}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                      </div>
-                      <div className="flex items-baseline gap-2.5">
-                        <span className="type-kpi tabular-nums">{todayScheduledSlots.length}</span>
-                        <span className="type-meta tabular-nums">
-                          {scopedCourses.length} {lang === 'th' ? 'วิชาที่ลงทะเบียน' : 'enrolled courses'}
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* Student KPI 3: Grades (gated) OR Open Homework */}
-                    {studentCanViewGrades ? (
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('gradebook')}
-                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="type-meta">
-                            {ownAcademicSummary?.hideGpaCalculations
-                              ? (lang === 'th' ? 'คะแนนเฉลี่ยสะสม' : 'Average Score')
-                              : (lang === 'th' ? 'เกรดเฉลี่ยสะสม (GPAX)' : 'Cumulative GPAX')}
-                          </span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                        </div>
-                        <div className="flex items-baseline gap-2.5">
-                          <span className="type-kpi tabular-nums">
-                            {ownAcademicSummary?.hideGpaCalculations
-                              ? (ownAcademicSummary.averageRawScore !== null ? `${ownAcademicSummary.averageRawScore}%` : '—')
-                              : (ownAcademicSummary?.hasRecordedGrades && ownAcademicSummary.gpax !== null ? ownAcademicSummary.gpax.toFixed(2) : '—')}
-                          </span>
-                          <span className="type-meta">
-                            {lang === 'th' ? 'เปิดสมุดพกส่วนตัว' : 'Open report card'}
-                          </span>
-                        </div>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('homework')}
-                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="type-meta">{lang === 'th' ? 'งานและแบบฝึกหัด' : 'Assignments'}</span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                        </div>
-                        <div className="flex items-baseline gap-2.5">
-                          <span className="type-kpi tabular-nums">{scopedAssignments.length}</span>
-                          <span className="type-meta">{lang === 'th' ? 'เปิดหน้าส่งงาน' : 'View homework'}</span>
-                        </div>
-                      </button>
-                    )}
                   </>
                 ) : currentRole === 'parent' ? (
                   <>
@@ -1609,11 +1522,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="saas-card-header">
                     <h2 className="type-section-title truncate">
-                      {currentRole === 'student'
-                        ? (lang === 'th' ? 'ประวัติเช็คชื่อของคุณ' : 'Your Recent Check-ins')
-                        : currentRole === 'parent'
-                          ? (lang === 'th' ? 'การมาเรียนของบุตรหลาน' : 'Child Check-in History')
-                          : (lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins')}
+                      {currentRole === 'parent'
+                        ? (lang === 'th' ? 'การมาเรียนของบุตรหลาน' : 'Child Check-in History')
+                        : (lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins')}
                     </h2>
 
                     <div className="no-print flex items-center gap-3 shrink-0">
@@ -1657,25 +1568,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <p className="type-meta">
                           {lang === 'th' ? `ยังไม่มีรายการวันที่ ${selectedDate}` : `No check-ins for ${selectedDate}`}
                         </p>
-                        {currentRole === 'student' ? (
-                          studentCanSelfCheckin ? (
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('mobile_checkin')}
-                              className="btn-action-primary px-4 py-2 mx-auto"
-                            >
-                              <span>{lang === 'th' ? 'เปิดเช็คชื่อเข้าเรียน' : 'Open Check-in'}</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('timetable')}
-                              className="btn-tool-neutral px-4 py-2 mx-auto"
-                            >
-                              <span>{lang === 'th' ? 'ดูตารางเรียนวันนี้' : 'View Timetable'}</span>
-                            </button>
-                          )
-                        ) : currentRole === 'parent' ? (
+                        {currentRole === 'parent' ? (
                           <button
                             type="button"
                             onClick={() => onNavigate('timetable')}
@@ -1746,23 +1639,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="saas-card-header">
                     <h2 className="type-section-title truncate">
-                      {currentRole === 'student'
-                        ? (lang === 'th' ? 'ตารางเรียนและสิ่งที่ต้องทำวันนี้' : 'Today’s Schedule & Tasks')
-                        : currentRole === 'parent'
-                          ? (lang === 'th' ? 'รายการสำคัญสำหรับผู้ปกครอง' : 'Family Action Items')
-                          : (lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items')}
+                      {currentRole === 'parent'
+                        ? (lang === 'th' ? 'รายการสำคัญสำหรับผู้ปกครอง' : 'Family Action Items')
+                        : (lang === 'th' ? 'รายการที่ต้องจัดการ' : 'Action Items')}
                     </h2>
                     {(() => {
                       const headerTarget: { tab: NavTab; label: string } | null =
-                        currentRole === 'student'
-                          ? isModuleEnabled('timetable')
-                            ? { tab: 'timetable', label: lang === 'th' ? 'ตารางเรียน →' : 'Timetable →' }
-                            : isModuleEnabled('homework') && schoolPermissions?.student_submit_homework !== false
-                              ? { tab: 'homework', label: lang === 'th' ? 'การบ้าน →' : 'Homework →' }
-                              : studentCanViewGrades
-                                ? { tab: 'gradebook', label: lang === 'th' ? 'ผลการเรียน →' : 'Grades →' }
-                                : null
-                          : currentRole === 'parent'
+                        currentRole === 'parent'
                             ? parentCanViewGrades
                               ? { tab: 'gradebook', label: lang === 'th' ? 'ผลการเรียน →' : 'Grades →' }
                               : isModuleEnabled('timetable')
@@ -1799,42 +1682,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick: () => void;
                       }> = [];
 
-                      if (currentRole === 'student') {
-                        if (isModuleEnabled('timetable')) {
-                          todayScheduledSlots.slice(0, 3).forEach((slot) => {
-                            actionRows.push({
-                              id: `slot-${slot.id}`,
-                              label: `${lang === 'th' ? 'คาบ' : 'P'}${slot.periodNumber} · ${slot.courseTitleTh || slot.courseTitleEn || slot.courseCode || ''}`,
-                              value: slot.room || (lang === 'th' ? 'ห้องเรียน' : 'Class'),
-                              onClick: () => onNavigate('timetable'),
-                            });
-                          });
-                        }
-                        if (studentCanSelfCheckin) {
-                          actionRows.push({
-                            id: 'student-checkin',
-                            label: lang === 'th' ? 'เช็คชื่อเข้าเรียน / สแกน QR' : 'Self Check-in / Scan QR',
-                            value: lang === 'th' ? 'พร้อมใช้งาน' : 'Ready',
-                            onClick: () => onNavigate('mobile_checkin'),
-                          });
-                        }
-                        if (isModuleEnabled('homework') && schoolPermissions?.student_submit_homework !== false) {
-                          actionRows.push({
-                            id: 'student-homework',
-                            label: lang === 'th' ? 'การบ้านและแบบฝึกหัด' : 'Homework & Tasks',
-                            value: `${scopedAssignments.length} ${lang === 'th' ? 'รายการ' : 'tasks'}`,
-                            onClick: () => onNavigate('homework'),
-                          });
-                        }
-                        if (studentCanViewGrades && actionRows.length < 5) {
-                          actionRows.push({
-                            id: 'student-grades',
-                            label: lang === 'th' ? 'สมุดพกและผลการเรียน' : 'My Grades & Report',
-                            value: `${scopedCourses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
-                            onClick: () => onNavigate('gradebook'),
-                          });
-                        }
-                      } else if (currentRole === 'parent') {
+                      if (currentRole === 'parent') {
                         if (parentCanPayTuition && pendingInvoices.length > 0) {
                           actionRows.push({
                             id: 'parent-invoices',

@@ -1152,7 +1152,7 @@ export const ROLE_WORKFLOW_STEPS: IllustratedWorkflowStep[] = [
     summaryTh: 'กรอกหรือนำเข้าคะแนนคำนวณเกรด 0–4 / A–F ดูกราฟฮิสโตแกรมกระจายเกรด และดาวน์โหลดรายงาน PDF',
     summaryEn: 'Record or import grades, inspect interactive distribution histograms, and download PDF reports.',
     detailsTh: [
-      'เลือกรายวิชาในเมนู "บันทึกคะแนน & ทะเบียนผลการเรียน" กรอกคะแนนหรือนำเข้าจาก Excel',
+      'เลือกรายวิชาในเมนู "บันทึกคะแนน & งานทะเบียน" กรอกคะแนนหรือนำเข้าจาก Excel',
       'ดูกราฟ "ฮิสโตแกรมการกระจายเกรด" ชี้เมาส์ที่แท่งกราฟเพื่อดูจำนวนนักเรียนและค่าเฉลี่ยได้ทันที',
       'กด "Download PDF" เพื่อส่งออกรายงานสรุปสถิติเกรด หรือส่งออก CSV รูปแบบ ปพ.5 / DMC / SchoolMIS',
     ],
