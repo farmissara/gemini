@@ -26,9 +26,11 @@ import {
   X,
 } from 'lucide-react';
 import {
+  acceptStaffParentInvitation,
   authenticateWithSupabase,
   completeFirstStudentPasswordChange,
   fetchSchoolLoginPortalInfo,
+  fetchStaffParentInvitationPublic,
   registerSchoolWithSupabase,
   requestPasswordReset,
   resendSignupConfirmation,
@@ -37,6 +39,7 @@ import {
   updatePassword,
   type AuthContext,
   type SchoolLoginPortalInfo,
+  type StaffParentInvitationPublicInfo,
 } from '../../lib/authDb';
 import {
   getPrimaryDevicePasskey,
@@ -132,10 +135,60 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [portalSchool, setPortalSchool] = useState<SchoolLoginPortalInfo | null>(null);
   const [isStudentPortalMode, setIsStudentPortalMode] = useState(false);
 
+  // Staff / Parent Invite Acceptance State (?inviteId=...)
+  const [inviteIdParam, setInviteIdParam] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('inviteId')?.trim() || null;
+  });
+  const [inviteInfo, setInviteInfo] = useState<StaffParentInvitationPublicInfo | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteLoadError, setInviteLoadError] = useState<string | null>(null);
+  const [invitePassword, setInvitePassword] = useState('');
+  const [inviteConfirmPassword, setInviteConfirmPassword] = useState('');
+  const [showInvitePassword, setShowInvitePassword] = useState(false);
+  const [inviteAcceptSubmitting, setInviteAcceptSubmitting] = useState(false);
+  const [inviteAcceptError, setInviteAcceptError] = useState<string | null>(null);
+  const [invitePendingActivationMsg, setInvitePendingActivationMsg] = useState<string | null>(null);
+
   useEffect(() => {
     setPrimaryPasskey(getPrimaryDevicePasskey());
     getWebAuthnSupportInfo().then(setWebAuthnSupport).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!inviteIdParam) {
+      setInviteInfo(null);
+      setInviteLoadError(null);
+      return;
+    }
+    let active = true;
+    setInviteLoading(true);
+    setInviteLoadError(null);
+    fetchStaffParentInvitationPublic(inviteIdParam)
+      .then((info) => {
+        if (!active) return;
+        if (!info) {
+          setInviteLoadError(
+            lang === 'th'
+              ? 'ไม่พบคำเชิญนี้ หรือคำเชิญถูกลบออกจากระบบแล้ว'
+              : 'This invitation could not be found or is no longer available.'
+          );
+          setInviteInfo(null);
+        } else {
+          setInviteInfo(info);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setInviteLoadError(err instanceof Error ? err.message : 'โหลดข้อมูลคำเชิญไม่สำเร็จ');
+      })
+      .finally(() => {
+        if (active) setInviteLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [inviteIdParam, lang]);
 
   useEffect(() => {
     if (initialError) setError(initialError);
@@ -537,6 +590,66 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     }
   };
 
+  const handleClearInviteMode = () => {
+    setInviteIdParam(null);
+    setInviteInfo(null);
+    setInviteLoadError(null);
+    setInviteAcceptError(null);
+    setInvitePendingActivationMsg(null);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('inviteId');
+      const query = params.toString();
+      const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+    }
+  };
+
+  const handleAcceptInvitationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteInfo) return;
+    setInviteAcceptError(null);
+    if (invitePassword.length < 8) {
+      setInviteAcceptError(
+        lang === 'th' ? 'กรุณาตั้งรหัสผ่านอย่างน้อย 8 ตัวอักษร' : 'Password must be at least 8 characters.'
+      );
+      return;
+    }
+    if (invitePassword !== inviteConfirmPassword) {
+      setInviteAcceptError(
+        lang === 'th' ? 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' : 'The passwords do not match.'
+      );
+      return;
+    }
+
+    setInviteAcceptSubmitting(true);
+    try {
+      const result = await acceptStaffParentInvitation({
+        invitationId: inviteInfo.invitationId,
+        email: inviteInfo.invitedEmail,
+        password: invitePassword,
+        inviteRole: inviteInfo.inviteRole,
+      });
+
+      if (result.sessionCreated && result.authContext) {
+        handleClearInviteMode();
+        onLogin(result.authContext);
+        return;
+      }
+
+      setInvitePendingActivationMsg(
+        lang === 'th'
+          ? `สร้างบัญชีสำหรับ ${inviteInfo.invitedEmail} เรียบร้อยแล้ว หากยังเข้าสู่ระบบไม่ได้ทันที กรุณายืนยันอีเมลในกล่องจดหมาย หรือแจ้งผู้ดูแลระบบโรงเรียนกดปุ่ม "อนุมัติใช้งาน" ในหน้าบุคลากร/ครู`
+          : `Account created for ${inviteInfo.invitedEmail}. Check your inbox for verification or ask your school administrator to approve activation.`
+      );
+      setEmail(inviteInfo.invitedEmail);
+    } catch (err: unknown) {
+      setInviteAcceptError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setInviteAcceptSubmitting(false);
+    }
+  };
+
   const isLight = !themePalette.includes('dark') && themePalette !== 'sapphire';
 
   return (
@@ -759,9 +872,190 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               {/* RIGHT COLUMN: Calm Auth Card */}
               <div className="order-1 lg:order-2 w-full max-w-md mx-auto lg:ml-auto lg:mr-0">
                 <div className="saas-card overflow-hidden shadow-md shadow-slate-900/5">
-                  <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-4">
-                    {/* Connected School Portal Banner */}
-                    {portalSchool && mode === 'login' && (
+                  {inviteIdParam ? (
+                    <>
+                      <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
+                              <GraduationCap className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h2 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+                                {lang === 'th' ? 'ตอบรับคำเชิญเข้าสู่ระบบ' : 'Accept Invitation'}
+                              </h2>
+                              <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">
+                                {lang === 'th' ? 'ตั้งรหัสผ่านสำหรับบัญชีผู้ใช้งานโรงเรียน' : 'Set a password for your school account'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 sm:p-6 space-y-4">
+                        {inviteLoading && (
+                          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 text-xs text-[var(--color-text-muted)] text-center">
+                            {lang === 'th' ? 'กำลังตรวจสอบข้อมูลคำเชิญ...' : 'Verifying invitation...'}
+                          </div>
+                        )}
+
+                        {inviteLoadError && (
+                          <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3.5 text-xs text-rose-900 dark:text-rose-200 space-y-2">
+                            <p className="font-bold flex items-center gap-1.5">
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span>{inviteLoadError}</span>
+                            </p>
+                          </div>
+                        )}
+
+                        {inviteInfo && inviteInfo.isAccepted && !invitePendingActivationMsg && (
+                          <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5">
+                            <p className="font-bold flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 shrink-0" />
+                              <span>{lang === 'th' ? 'คำเชิญนี้ถูกตอบรับแล้ว' : 'This invitation has already been accepted'}</span>
+                            </p>
+                            <p className="text-[11px] leading-relaxed">
+                              {lang === 'th'
+                                ? `คุณสามารถกลับไปหน้าเข้าสู่ระบบปกติและล็อกอินด้วยอีเมล ${inviteInfo.invitedEmail} ได้เลย`
+                                : `You can sign in with ${inviteInfo.invitedEmail} from the standard login screen.`}
+                            </p>
+                          </div>
+                        )}
+
+                        {inviteInfo && inviteInfo.isExpired && !inviteInfo.isAccepted && (
+                          <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 p-3.5 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+                            <p className="font-bold flex items-center gap-1.5">
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span>{lang === 'th' ? 'ลิงก์คำเชิญนี้หมดอายุแล้ว' : 'This invitation link has expired'}</span>
+                            </p>
+                            <p className="text-[11px] leading-relaxed">
+                              {lang === 'th'
+                                ? 'กรุณาแจ้งผู้ดูแลระบบโรงเรียนส่งลิงก์เชิญใหม่ให้คุณอีกครั้ง'
+                                : 'Please ask your school administrator to generate a new invitation link.'}
+                            </p>
+                          </div>
+                        )}
+
+                        {invitePendingActivationMsg && (
+                          <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 space-y-2">
+                            <p className="font-bold flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 shrink-0" />
+                              <span>{lang === 'th' ? 'ลงทะเบียนบัญชีเรียบร้อยแล้ว' : 'Account Registered'}</span>
+                            </p>
+                            <p className="text-[11px] leading-relaxed">{invitePendingActivationMsg}</p>
+                            <button
+                              type="button"
+                              onClick={handleClearInviteMode}
+                              className="w-full mt-1 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-2.5 text-xs font-bold text-white cursor-pointer"
+                            >
+                              {lang === 'th' ? 'ไปหน้าเข้าสู่ระบบ' : 'Go to Sign In'}
+                            </button>
+                          </div>
+                        )}
+
+                        {inviteInfo && !inviteInfo.isAccepted && !inviteInfo.isExpired && !invitePendingActivationMsg && (
+                          <form onSubmit={handleAcceptInvitationSubmit} className="space-y-3.5">
+                            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 text-xs space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-bold text-[var(--color-text-title)] truncate">
+                                  {lang === 'th' ? inviteInfo.schoolNameTh : inviteInfo.schoolNameEn || inviteInfo.schoolNameTh}
+                                </span>
+                                <span className="shrink-0 px-2 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px] font-bold">
+                                  {inviteInfo.inviteRole === 'teacher'
+                                    ? (lang === 'th' ? 'ครูผู้สอน' : 'Teacher')
+                                    : (lang === 'th' ? 'ผู้ปกครอง' : 'Parent')}
+                                </span>
+                              </div>
+                              <p className="font-semibold text-[var(--color-text-body)]">
+                                {inviteInfo.fullNameTh || inviteInfo.fullNameEn || inviteInfo.invitedEmail}
+                              </p>
+                              <p className="text-[11px] font-mono text-[var(--color-text-muted)] truncate">
+                                {inviteInfo.invitedEmail}
+                              </p>
+                            </div>
+
+                            {inviteAcceptError && (
+                              <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>{inviteAcceptError}</span>
+                              </div>
+                            )}
+
+                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                              <span className="flex items-center gap-1.5 mb-1">
+                                <Lock className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                                {lang === 'th' ? 'ตั้งรหัสผ่านเข้าสู่ระบบ (อย่างน้อย 8 ตัวอักษร)' : 'New Password (min 8 chars)'}
+                              </span>
+                              <div className="relative">
+                                <input
+                                  type={showInvitePassword ? 'text' : 'password'}
+                                  required
+                                  minLength={8}
+                                  autoComplete="new-password"
+                                  value={invitePassword}
+                                  onChange={(e) => setInvitePassword(e.target.value)}
+                                  placeholder="••••••••"
+                                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] pl-3 pr-10 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowInvitePassword((prev) => !prev)}
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                                >
+                                  {showInvitePassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+                            </label>
+
+                            <label className="block text-xs font-bold text-[var(--color-text-title)]">
+                              <span className="flex items-center gap-1.5 mb-1">
+                                <Lock className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                                {lang === 'th' ? 'ยืนยันรหัสผ่านอีกครั้ง' : 'Confirm Password'}
+                              </span>
+                              <input
+                                type={showInvitePassword ? 'text' : 'password'}
+                                required
+                                minLength={8}
+                                autoComplete="new-password"
+                                value={inviteConfirmPassword}
+                                onChange={(e) => setInviteConfirmPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                              />
+                            </label>
+
+                            <button
+                              type="submit"
+                              disabled={inviteAcceptSubmitting}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer"
+                            >
+                              <span>
+                                {inviteAcceptSubmitting
+                                  ? (lang === 'th' ? 'กำลังสร้างบัญชี...' : 'Activating account...')
+                                  : (lang === 'th' ? 'ยืนยันตั้งรหัสผ่านและเข้าสู่ระบบ' : 'Set Password & Join School')}
+                              </span>
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </form>
+                        )}
+
+                        <div className="pt-2 border-t border-[var(--color-border)] flex justify-center">
+                          <button
+                            type="button"
+                            onClick={handleClearInviteMode}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span>{lang === 'th' ? 'กลับหน้าเข้าสู่ระบบปกติ' : 'Back to standard sign in'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-5 sm:p-6 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-4">
+                        {/* Connected School Portal Banner */}
+                        {portalSchool && mode === 'login' && (
                       <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/60 p-3 flex items-center justify-between gap-2.5">
                         <div className="flex items-center gap-2.5 min-w-0">
                           {portalSchool.logoUrl ? (
@@ -1244,6 +1538,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                       )}
                     </form>
                   </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

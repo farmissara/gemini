@@ -140,7 +140,10 @@ Deno.serve(async (request) => {
     return respond(500, { error: 'Could not create the invitation record.' });
   }
 
-  const appSiteUrl = Deno.env.get('APP_SITE_URL');
+  const redirectToInput = typeof payload.redirectTo === 'string' && /^https?:\/\//i.test(payload.redirectTo.trim())
+    ? payload.redirectTo.trim()
+    : null;
+  const appSiteUrl = Deno.env.get('APP_SITE_URL') || redirectToInput;
   const { error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
     ...(appSiteUrl ? { redirectTo: appSiteUrl } : {}),
     data: {

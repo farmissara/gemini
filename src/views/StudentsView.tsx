@@ -30,10 +30,16 @@ import {
   X,
   QrCode,
   FileDown,
+  Copy,
+  Link2,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
+import { STAFF_INVITE_RPC_SQL } from '../lib/supabase';
 import {
   approveStudentAccountInSupabase,
   deleteStudentAccountRegistrationInSupabase,
+  InviteBackendSetupError,
   inviteStudentAccount,
   inviteTeacherOrParentAccount,
   linkStudentAccountToStudent,
@@ -41,6 +47,7 @@ import {
   listStudentAccountLinks,
   StaffParentAccountLink,
   StudentAccountLink,
+  TeacherParentInviteResult,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
@@ -151,6 +158,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [inviteEmailInput, setInviteEmailInput] = useState('');
   const [inviteFullNameInput, setInviteFullNameInput] = useState('');
   const [inviteModalError, setInviteModalError] = useState<string | null>(null);
+  const [inviteLinkResult, setInviteLinkResult] = useState<TeacherParentInviteResult | null>(null);
+  const [inviteBackendMissing, setInviteBackendMissing] = useState<{ message: string; detail?: string } | null>(null);
+  const [copiedInviteField, setCopiedInviteField] = useState<'link' | 'message' | 'sql' | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<{
     title: string;
     description: string;
@@ -340,9 +350,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     });
   };
 
+  const handleCopyInviteField = async (value: string, field: 'link' | 'message' | 'sql') => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedInviteField(field);
+      window.setTimeout(() => {
+        setCopiedInviteField((prev) => (prev === field ? null : prev));
+      }, 2200);
+    } catch {
+      // Clipboard blocked in restricted context
+    }
+  };
+
   const handleOpenInviteModal = (student: Student, role: 'student' | 'parent') => {
     setInviteDialog({ role, student });
     setInviteModalError(null);
+    setInviteLinkResult(null);
+    setInviteBackendMissing(null);
+    setCopiedInviteField(null);
     if (role === 'parent') {
       setInviteEmailInput(student.guardianEmail?.trim() || '');
       setInviteFullNameInput(student.guardianName?.trim() || '');
@@ -352,8 +377,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     }
   };
 
-  const handleSubmitInviteDialog = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const submitInviteDialogAction = async () => {
     if (!inviteDialog) return;
     const email = inviteEmailInput.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -364,14 +388,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     const { role, student } = inviteDialog;
     setInvitingStudentId(student.id);
     setInviteModalError(null);
+    setInviteLinkResult(null);
+    setInviteBackendMissing(null);
     setAccountsError(null);
     setAccountsSuccess(null);
     try {
       if (role === 'student') {
         await inviteStudentAccount({ schoolId, studentId: student.id, email });
         setAccountsSuccess(`ส่งคำเชิญตั้งค่าบัญชีนักเรียน (${student.firstNameTh} ${student.lastNameTh}) ไปที่ ${email} แล้ว`);
+        setInviteDialog(null);
       } else {
-        await inviteTeacherOrParentAccount({
+        const result = await inviteTeacherOrParentAccount({
           schoolId,
           inviteRole: 'parent',
           studentId: student.id,
@@ -379,16 +406,36 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           fullNameTh: inviteFullNameInput.trim() || student.guardianName || `ผู้ปกครองของ ${student.firstNameTh}`,
           fullNameEn: inviteFullNameInput.trim() || student.guardianName || '',
         });
-        setAccountsSuccess(`ส่งคำเชิญผู้ปกครองของ ${student.firstNameTh} ${student.lastNameTh} ไปที่ ${email} แล้ว`);
+        if (result.deliveryMethod === 'email_edge_function') {
+          setAccountsSuccess(`ส่งคำเชิญผู้ปกครองของ ${student.firstNameTh} ${student.lastNameTh} ไปที่ ${email} แล้ว`);
+          setInviteDialog(null);
+        } else {
+          setInviteLinkResult(result);
+          setAccountsSuccess(`สร้างลิงก์คำเชิญผู้ปกครองของ ${student.firstNameTh} ${student.lastNameTh} เรียบร้อยแล้ว`);
+        }
         await refreshAccountLinks();
       }
-      setInviteDialog(null);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'ส่งคำเชิญบัญชีไม่สำเร็จ';
-      setInviteModalError(msg);
+      if (
+        error instanceof InviteBackendSetupError ||
+        (error as { code?: string })?.code === 'INVITE_BACKEND_MISSING'
+      ) {
+        setInviteBackendMissing({
+          message: error instanceof Error ? error.message : 'ยังไม่ได้ติดตั้งฟังก์ชันคำเชิญใน Supabase',
+          detail: error instanceof InviteBackendSetupError ? error.technicalDetail : undefined,
+        });
+      } else {
+        const msg = error instanceof Error ? error.message : 'ส่งคำเชิญบัญชีไม่สำเร็จ';
+        setInviteModalError(msg);
+      }
     } finally {
       setInvitingStudentId(null);
     }
+  };
+
+  const handleSubmitInviteDialog = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await submitInviteDialogAction();
   };
 
   // Distinct grade levels in active students for filter
@@ -2778,8 +2825,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {/* Invite Student or Parent Modal */}
       {inviteDialog && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden">
-            <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 {inviteDialog.role === 'parent' ? <Send className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
                 <h3 className="text-sm font-bold">
@@ -2796,7 +2843,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={(e) => void handleSubmitInviteDialog(e)} className="p-5 space-y-4">
+            <form onSubmit={(e) => void handleSubmitInviteDialog(e)} className="p-5 space-y-4 overflow-y-auto">
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 text-xs space-y-1">
                 <p className="font-bold text-[var(--color-text-title)]">
                   นักเรียน: {inviteDialog.student.firstNameTh} {inviteDialog.student.lastNameTh}
@@ -2812,59 +2859,164 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </div>
               )}
 
-              {inviteDialog.role === 'parent' && (
-                <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
-                  <span>ชื่อ-สกุลผู้ปกครอง</span>
-                  <input
-                    type="text"
-                    required
-                    value={inviteFullNameInput}
-                    onChange={(e) => setInviteFullNameInput(e.target.value)}
-                    placeholder="เช่น คุณสมหญิง ใจดี"
-                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                  />
-                </label>
+              {inviteLinkResult && inviteLinkResult.deliveryMethod === 'invite_link_rpc' ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>สร้างลิงก์คำเชิญผู้ปกครองสำเร็จ</span>
+                    </p>
+                    <p className="text-[11px] leading-relaxed">
+                      ส่งลิงก์ด้านล่างให้ผู้ปกครอง ({inviteLinkResult.email}) ทาง LINE หรืออีเมล เพื่อให้กดตั้งรหัสผ่านและผูกบัญชีกับ {inviteDialog.student.firstNameTh} {inviteDialog.student.lastNameTh}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-[var(--color-text-title)] flex items-center gap-1">
+                      <Link2 className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                      <span>ลิงก์คำเชิญสำหรับตั้งรหัสผ่าน (ใช้ได้ 7 วัน)</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={inviteLinkResult.inviteUrl}
+                        onFocus={(e) => e.currentTarget.select()}
+                        className="flex-1 min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[11px] font-mono text-[var(--color-text-title)] outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyInviteField(inviteLinkResult.inviteUrl, 'link')}
+                        className="shrink-0 px-3 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {copiedInviteField === 'link' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedInviteField === 'link' ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const inviteMsg = `เรียนผู้ปกครองของ ${inviteDialog.student.firstNameTh} ${inviteDialog.student.lastNameTh}\nขอเชิญเข้าใช้งานระบบโรงเรียนบ้านพักครู (BaanPakKru)\nอีเมลบัญชี: ${inviteLinkResult.email}\nกรุณาเปิดลิงก์เพื่อตั้งรหัสผ่านและเข้าสู่ระบบ:\n${inviteLinkResult.inviteUrl}`;
+                        void handleCopyInviteField(inviteMsg, 'message');
+                      }}
+                      className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedInviteField === 'message' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                      <span>{copiedInviteField === 'message' ? 'คัดลอกข้อความแล้ว' : 'คัดลอกข้อความส่ง LINE'}</span>
+                    </button>
+
+                    <a
+                      href={`mailto:${encodeURIComponent(inviteLinkResult.email)}?subject=${encodeURIComponent('เชิญผู้ปกครองเข้าสู่ระบบ BaanPakKru')}&body=${encodeURIComponent(`เรียนผู้ปกครองของ ${inviteDialog.student.firstNameTh} ${inviteDialog.student.lastNameTh}\n\nกรุณาเปิดลิงก์ด้านล่างเพื่อตั้งรหัสผ่านและเข้าสู่ระบบ:\n${inviteLinkResult.inviteUrl}`)}`}
+                      className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-center gap-1.5"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>เปิดแอปอีเมลส่ง</span>
+                    </a>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                    <button
+                      type="button"
+                      onClick={() => setInviteDialog(null)}
+                      className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
+                    >
+                      เสร็จสิ้น
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {inviteBackendMissing && (
+                    <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 p-3.5 space-y-2.5 text-xs text-amber-950 dark:text-amber-100">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <div className="space-y-1 min-w-0">
+                          <p className="font-bold">ต้องติดตั้งฟังก์ชันสร้างคำเชิญใน Supabase ก่อน (ทำครั้งเดียว)</p>
+                          <p className="text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
+                            {inviteBackendMissing.message} — กดคัดลอก SQL แล้วรันใน Supabase SQL Editor จากนั้นกดลองส่งคำเชิญอีกครั้ง
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyInviteField(STAFF_INVITE_RPC_SQL, 'sql')}
+                          className="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          {copiedInviteField === 'sql' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedInviteField === 'sql' ? 'คัดลอก SQL แล้ว' : '1. คัดลอก SQL ติดตั้งระบบคำเชิญ'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={invitingStudentId === inviteDialog.student.id}
+                          onClick={() => void submitInviteDialogAction()}
+                          className="px-3 py-1.5 rounded-lg border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white text-[11px] font-bold text-amber-900 dark:text-amber-100 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${invitingStudentId === inviteDialog.student.id ? 'animate-spin' : ''}`} />
+                          <span>ลองส่งคำเชิญอีกครั้ง</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {inviteDialog.role === 'parent' && (
+                    <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
+                      <span>ชื่อ-สกุลผู้ปกครอง</span>
+                      <input
+                        type="text"
+                        required
+                        value={inviteFullNameInput}
+                        onChange={(e) => setInviteFullNameInput(e.target.value)}
+                        placeholder="เช่น คุณสมหญิง ใจดี"
+                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                      />
+                    </label>
+                  )}
+
+                  <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
+                    <span>
+                      {inviteDialog.role === 'parent'
+                        ? 'อีเมลของผู้ปกครองสำหรับรับลิงก์ตั้งรหัสผ่าน'
+                        : 'อีเมลของนักเรียนสำหรับรับลิงก์ตั้งรหัสผ่าน'}
+                    </span>
+                    <input
+                      type="email"
+                      required
+                      value={inviteEmailInput}
+                      onChange={(e) => setInviteEmailInput(e.target.value)}
+                      placeholder={inviteDialog.role === 'parent' ? 'parent@example.com' : 'student@school.ac.th'}
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                    />
+                  </label>
+
+                  <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                    {inviteDialog.role === 'parent'
+                      ? 'เมื่อผู้ปกครองกดลิงก์เชิญและตั้งรหัสผ่านแล้ว ระบบจะเชื่อมบัญชีผู้ปกครองกับข้อมูลนักเรียนคนนี้โดยอัตโนมัติ'
+                      : 'เมื่อนักเรียนกดลิงก์ในอีเมลและตั้งรหัสผ่านแล้ว บัญชีจะเชื่อมกับรหัสนักเรียนและเปิดใช้งานทันที'}
+                  </p>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                    <button
+                      type="button"
+                      onClick={() => setInviteDialog(null)}
+                      className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={invitingStudentId === inviteDialog.student.id}
+                      className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{invitingStudentId === inviteDialog.student.id ? 'กำลังส่งคำเชิญ...' : 'ส่งคำเชิญ'}</span>
+                    </button>
+                  </div>
+                </>
               )}
-
-              <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
-                <span>
-                  {inviteDialog.role === 'parent'
-                    ? 'อีเมลของผู้ปกครองสำหรับรับลิงก์ตั้งรหัสผ่าน'
-                    : 'อีเมลของนักเรียนสำหรับรับลิงก์ตั้งรหัสผ่าน'}
-                </span>
-                <input
-                  type="email"
-                  required
-                  value={inviteEmailInput}
-                  onChange={(e) => setInviteEmailInput(e.target.value)}
-                  placeholder={inviteDialog.role === 'parent' ? 'parent@example.com' : 'student@school.ac.th'}
-                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                />
-              </label>
-
-              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
-                {inviteDialog.role === 'parent'
-                  ? 'เมื่อผู้ปกครองกดลิงก์ในอีเมลและตั้งรหัสผ่านแล้ว ระบบจะเชื่อมบัญชีผู้ปกครองกับข้อมูลนักเรียนคนนี้โดยอัตโนมัติ'
-                  : 'เมื่อนักเรียนกดลิงก์ในอีเมลและตั้งรหัสผ่านแล้ว บัญชีจะเชื่อมกับรหัสนักเรียนและเปิดใช้งานทันที'}
-              </p>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setInviteDialog(null)}
-                  className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={invitingStudentId === inviteDialog.student.id}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{invitingStudentId === inviteDialog.student.id ? 'กำลังส่งคำเชิญ...' : 'ส่งคำเชิญ'}</span>
-                </button>
-              </div>
             </form>
           </div>
         </div>

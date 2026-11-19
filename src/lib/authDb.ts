@@ -628,6 +628,46 @@ export async function inviteStudentAccount(params: {
   return data.invitationId;
 }
 
+export interface TeacherParentInviteResult {
+  invitationId: string;
+  deliveryMethod: 'email_edge_function' | 'invite_link_rpc';
+  inviteUrl: string;
+  email: string;
+  inviteRole: 'teacher' | 'parent';
+  fullNameTh?: string;
+}
+
+export interface StaffParentInvitationPublicInfo {
+  invitationId: string;
+  schoolId: string;
+  schoolNameTh: string;
+  schoolNameEn: string;
+  schoolCode: string;
+  inviteRole: 'teacher' | 'parent';
+  invitedEmail: string;
+  fullNameTh: string;
+  fullNameEn: string;
+  expiresAt: string;
+  isAccepted: boolean;
+  isExpired: boolean;
+}
+
+export class InviteBackendSetupError extends Error {
+  code = 'INVITE_BACKEND_MISSING' as const;
+  technicalDetail: string;
+
+  constructor(message: string, technicalDetail = '') {
+    super(message);
+    this.name = 'InviteBackendSetupError';
+    this.technicalDetail = technicalDetail;
+  }
+}
+
+function buildStaffInviteUrl(invitationId: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/?inviteId=${encodeURIComponent(invitationId)}`;
+}
+
 export async function inviteTeacherOrParentAccount(params: {
   schoolId: string;
   inviteRole: 'teacher' | 'parent';
@@ -636,26 +676,183 @@ export async function inviteTeacherOrParentAccount(params: {
   fullNameEn?: string;
   teacherId?: string;
   studentId?: string;
-}): Promise<string> {
+}): Promise<TeacherParentInviteResult> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
+  if (!client) {
+    throw new Error('ยังไม่ได้เชื่อมต่อฐานข้อมูล Supabase (กรุณาตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY)');
+  }
 
+  const normalizedEmail = params.email.trim().toLowerCase();
+  const roleLabelTh = params.inviteRole === 'teacher' ? 'ครู' : 'ผู้ปกครอง';
+
+  const { data: sessionData } = await client.auth.getSession();
+  if (!sessionData?.session?.access_token) {
+    throw new Error(
+      `โหมดสาธิตไม่สามารถส่งคำเชิญบัญชี${roleLabelTh}จริงได้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase`
+    );
+  }
+
+  // Tier 1: Try Supabase Edge Function (sends automatic invitation email via Supabase Auth)
   const { data, error } = await client.functions.invoke('invite-staff-parent', {
     body: {
       schoolId: params.schoolId,
       inviteRole: params.inviteRole,
-      email: params.email.trim().toLowerCase(),
+      email: normalizedEmail,
       fullNameTh: params.fullNameTh?.trim() || '',
       fullNameEn: params.fullNameEn?.trim() || '',
       teacherId: params.teacherId || null,
       studentId: params.studentId || null,
+      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
     },
   });
-  if (error) throw new Error(`ไม่สามารถส่งคำเชิญบัญชี${params.inviteRole === 'teacher' ? 'ครู' : 'ผู้ปกครอง'}ได้: ${error.message}`);
-  if (typeof data?.invitationId !== 'string') {
-    throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบส่งคำเชิญตอบกลับไม่ถูกต้อง');
+
+  if (!error && typeof data?.invitationId === 'string') {
+    return {
+      invitationId: data.invitationId,
+      deliveryMethod: 'email_edge_function',
+      inviteUrl: buildStaffInviteUrl(data.invitationId),
+      email: normalizedEmail,
+      inviteRole: params.inviteRole,
+      fullNameTh: params.fullNameTh?.trim(),
+    };
   }
-  return data.invitationId;
+
+  // Tier 2: Automatic RPC fallback when Edge Function is not deployed / unreachable / SMTP failed
+  const edgeMsg = error?.message || (typeof data?.error === 'string' ? data.error : 'Edge Function unavailable');
+  const { data: rpcId, error: rpcError } = await client.rpc('create_staff_parent_invitation', {
+    target_school_id: params.schoolId,
+    target_invite_role: params.inviteRole,
+    target_email: normalizedEmail,
+    target_full_name_th: params.fullNameTh?.trim() || '',
+    target_full_name_en: params.fullNameEn?.trim() || '',
+    target_teacher_id: params.teacherId || null,
+    target_student_id: params.studentId || null,
+  });
+
+  if (!rpcError && typeof rpcId === 'string' && rpcId.length > 0) {
+    return {
+      invitationId: rpcId,
+      deliveryMethod: 'invite_link_rpc',
+      inviteUrl: buildStaffInviteUrl(rpcId),
+      email: normalizedEmail,
+      inviteRole: params.inviteRole,
+      fullNameTh: params.fullNameTh?.trim(),
+    };
+  }
+
+  // Tier 3: Neither Edge Function nor SQL RPC exists in the connected Supabase project
+  const rpcMsg = rpcError?.message || '';
+  const isMissingRpc =
+    rpcError?.code === 'PGRST202' ||
+    rpcError?.code === '42883' ||
+    rpcError?.code === '42P01' ||
+    /could not find the function|schema cache|does not exist/i.test(rpcMsg);
+
+  if (isMissingRpc) {
+    throw new InviteBackendSetupError(
+      `ยังไม่สามารถส่งคำเชิญอัตโนมัติได้ เนื่องจากโปรเจกต์ Supabase นี้ยังไม่ได้ Deploy Edge Function "invite-staff-parent" และยังไม่ได้ติดตั้งฟังก์ชัน SQL สำหรับสร้างลิงก์คำเชิญ`,
+      `Edge: ${edgeMsg}${rpcMsg ? ` | RPC: ${rpcMsg}` : ''}`
+    );
+  }
+
+  throw new Error(`ไม่สามารถส่งคำเชิญบัญชี${roleLabelTh}ได้: ${rpcMsg || edgeMsg}`);
+}
+
+export async function fetchStaffParentInvitationPublic(
+  invitationId: string
+): Promise<StaffParentInvitationPublicInfo | null> {
+  const client = getSupabaseClient();
+  if (!client || !invitationId.trim()) return null;
+
+  const { data, error } = await client.rpc('get_staff_parent_invitation_public', {
+    target_invitation_id: invitationId.trim(),
+  });
+  if (error || !Array.isArray(data) || data.length === 0) {
+    return null;
+  }
+  const row = data[0] as {
+    invitation_id: string;
+    school_id: string;
+    school_name_th: string;
+    school_name_en: string;
+    school_code: string;
+    invite_role: 'teacher' | 'parent';
+    invited_email: string;
+    full_name_th: string;
+    full_name_en: string;
+    expires_at: string;
+    is_accepted: boolean;
+    is_expired: boolean;
+  };
+  return {
+    invitationId: row.invitation_id,
+    schoolId: row.school_id,
+    schoolNameTh: row.school_name_th,
+    schoolNameEn: row.school_name_en,
+    schoolCode: row.school_code,
+    inviteRole: row.invite_role,
+    invitedEmail: row.invited_email,
+    fullNameTh: row.full_name_th,
+    fullNameEn: row.full_name_en,
+    expiresAt: row.expires_at,
+    isAccepted: Boolean(row.is_accepted),
+    isExpired: Boolean(row.is_expired),
+  };
+}
+
+export async function acceptStaffParentInvitation(params: {
+  invitationId: string;
+  email: string;
+  password: string;
+  inviteRole: 'teacher' | 'parent';
+}): Promise<{ sessionCreated: boolean; authContext?: AuthContext }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const { data, error } = await client.auth.signUp({
+    email: params.email.trim().toLowerCase(),
+    password: params.password,
+    options: {
+      emailRedirectTo: typeof window === 'undefined' ? undefined : window.location.origin,
+      data: {
+        signup_type: params.inviteRole === 'teacher' ? 'teacher_invite' : 'parent_invite',
+        invitation_id: params.invitationId,
+      },
+    },
+  });
+
+  if (error) {
+    if (/confirmation email|rate limit/i.test(error.message)) {
+      return { sessionCreated: false };
+    }
+    throw new Error(error.message);
+  }
+
+  if (data.session) {
+    const context = await restoreSupabaseSession();
+    if (context) {
+      return { sessionCreated: true, authContext: context };
+    }
+  }
+  return { sessionCreated: false };
+}
+
+export async function approveStaffParentAccountInSupabase(
+  schoolId: string,
+  userId: string
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { error } = await client.rpc('approve_staff_parent_account', {
+    target_school_id: schoolId,
+    target_user_id: userId,
+  });
+  if (error) {
+    throw new Error(`ไม่สามารถอนุมัติบัญชีได้: ${error.message}`);
+  }
 }
 
 export async function listSchoolStaffParentAccounts(schoolId: string): Promise<StaffParentAccountLink[]> {

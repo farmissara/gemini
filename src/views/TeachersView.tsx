@@ -34,6 +34,10 @@ import {
   Send,
   RefreshCw,
   Briefcase,
+  Copy,
+  Check,
+  Link2,
+  AlertTriangle,
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
@@ -44,10 +48,14 @@ import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
+import { STAFF_INVITE_RPC_SQL, saveTeachersToDb } from '../lib/supabase';
 import {
+  approveStaffParentAccountInSupabase,
+  InviteBackendSetupError,
   inviteTeacherOrParentAccount,
   listSchoolStaffParentAccounts,
   type StaffParentAccountLink,
+  type TeacherParentInviteResult,
 } from '../lib/authDb';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
@@ -123,6 +131,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [inviteEmailInput, setInviteEmailInput] = useState('');
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<TeacherParentInviteResult | null>(null);
+  const [inviteNeedsBackendSql, setInviteNeedsBackendSql] = useState<{ message: string; detail?: string } | null>(null);
+  const [copiedInviteField, setCopiedInviteField] = useState<'link' | 'message' | 'sql' | null>(null);
+  const [approvingAccountId, setApprovingAccountId] = useState<string | null>(null);
   
   // Image Capture / Upload Modal State
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -524,14 +536,48 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     void refreshTeacherAccounts();
   }, [refreshTeacherAccounts]);
 
+  const handleCopyInviteText = async (value: string, field: 'link' | 'message' | 'sql') => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedInviteField(field);
+      window.setTimeout(() => {
+        setCopiedInviteField((prev) => (prev === field ? null : prev));
+      }, 2200);
+    } catch {
+      // Clipboard blocked in restricted context
+    }
+  };
+
   const handleOpenTeacherInviteModal = (teacher: Teacher) => {
     setInviteModalTeacher(teacher);
     setInviteEmailInput(teacher.email?.trim() || '');
     setInviteFeedback(null);
+    setInviteResult(null);
+    setInviteNeedsBackendSql(null);
+    setCopiedInviteField(null);
   };
 
-  const handleSubmitTeacherInvite = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleApproveTeacherAccount = async (userId: string) => {
+    if (!schoolId || schoolId === 'default-school') return;
+    setApprovingAccountId(userId);
+    try {
+      await approveStaffParentAccountInSupabase(schoolId, userId);
+      setInviteFeedback({
+        type: 'success',
+        message: 'อนุมัติเปิดใช้งานบัญชีครูเรียบร้อยแล้ว คุณครูสามารถเข้าสู่ระบบได้ทันที',
+      });
+      await refreshTeacherAccounts();
+    } catch (error) {
+      setInviteFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'ไม่สามารถอนุมัติบัญชีครูได้',
+      });
+    } finally {
+      setApprovingAccountId(null);
+    }
+  };
+
+  const submitTeacherInvite = async () => {
     if (!inviteModalTeacher) return;
     const targetEmail = inviteEmailInput.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
@@ -541,8 +587,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
     setInviteSubmitting(true);
     setInviteFeedback(null);
+    setInviteResult(null);
+    setInviteNeedsBackendSql(null);
     try {
-      await inviteTeacherOrParentAccount({
+      if (schoolId && schoolId !== 'default-school') {
+        await saveTeachersToDb(schoolId, [inviteModalTeacher]).catch(() => {});
+      }
+      const result = await inviteTeacherOrParentAccount({
         schoolId,
         inviteRole: 'teacher',
         email: targetEmail,
@@ -550,20 +601,44 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         fullNameEn: inviteModalTeacher.fullNameEn,
         teacherId: inviteModalTeacher.id,
       });
-      setInviteFeedback({
-        type: 'success',
-        message: `ส่งคำเชิญเข้าสู่ระบบไปยัง ${targetEmail} เรียบร้อยแล้ว`,
-      });
-      setInviteModalTeacher(null);
+
+      if (result.deliveryMethod === 'email_edge_function') {
+        setInviteFeedback({
+          type: 'success',
+          message: `ส่งคำเชิญเข้าสู่ระบบไปยัง ${targetEmail} เรียบร้อยแล้ว`,
+        });
+        setInviteModalTeacher(null);
+      } else {
+        setInviteResult(result);
+        setInviteFeedback({
+          type: 'success',
+          message: `สร้างลิงก์เชิญสำหรับ ${inviteModalTeacher.fullNameTh} (${targetEmail}) เรียบร้อยแล้ว`,
+        });
+      }
       await refreshTeacherAccounts();
     } catch (error) {
-      setInviteFeedback({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'ไม่สามารถส่งคำเชิญบัญชีครูได้',
-      });
+      if (
+        error instanceof InviteBackendSetupError ||
+        (error as { code?: string })?.code === 'INVITE_BACKEND_MISSING'
+      ) {
+        setInviteNeedsBackendSql({
+          message: error instanceof Error ? error.message : 'ยังไม่ได้ติดตั้งฟังก์ชันคำเชิญใน Supabase',
+          detail: error instanceof InviteBackendSetupError ? error.technicalDetail : undefined,
+        });
+      } else {
+        setInviteFeedback({
+          type: 'error',
+          message: error instanceof Error ? error.message : 'ไม่สามารถส่งคำเชิญบัญชีครูได้',
+        });
+      }
     } finally {
       setInviteSubmitting(false);
     }
+  };
+
+  const handleSubmitTeacherInvite = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await submitTeacherInvite();
   };
 
   const teachersGroup = getModuleGroupMeta('teachers');
@@ -798,15 +873,27 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     <p className="font-bold text-[var(--color-text-title)] truncate">{acc.full_name_th || acc.full_name_en}</p>
                     <p className="text-[11px] font-mono text-[var(--color-text-muted)] truncate">{acc.email || '—'}</p>
                   </div>
-                  <span
-                    className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border ${
-                      acc.status === 'active'
-                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                        : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                    }`}
-                  >
-                    {acc.status === 'active' ? 'ใช้งานได้' : acc.status}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {acc.status === 'pending' && (
+                      <button
+                        type="button"
+                        disabled={approvingAccountId === acc.id}
+                        onClick={() => void handleApproveTeacherAccount(acc.id)}
+                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white cursor-pointer disabled:opacity-50"
+                      >
+                        {approvingAccountId === acc.id ? 'กำลังอนุมัติ...' : 'อนุมัติใช้งาน'}
+                      </button>
+                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        acc.status === 'active'
+                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                          : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                      }`}
+                    >
+                      {acc.status === 'active' ? 'ใช้งานได้' : acc.status === 'pending' ? 'รออนุมัติ' : acc.status}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -2529,8 +2616,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
       {inviteModalTeacher && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden">
-            <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
                 <h3 className="text-sm font-bold">เชิญครู / บุคลากรเข้าสู่ระบบ</h3>
@@ -2543,7 +2630,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={(e) => void handleSubmitTeacherInvite(e)} className="p-5 space-y-4">
+            <form onSubmit={(e) => void handleSubmitTeacherInvite(e)} className="p-5 space-y-4 overflow-y-auto">
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 text-xs space-y-1">
                 <p className="font-bold text-[var(--color-text-title)]">{inviteModalTeacher.fullNameTh}</p>
                 <p className="text-[11px] text-[var(--color-text-muted)]">
@@ -2557,39 +2644,152 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </div>
               )}
 
-              <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
-                <span>อีเมลของคุณครูสำหรับรับลิงก์ตั้งรหัสผ่าน</span>
-                <input
-                  type="email"
-                  required
-                  value={inviteEmailInput}
-                  onChange={(e) => setInviteEmailInput(e.target.value)}
-                  placeholder="teacher@school.ac.th"
-                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                />
-              </label>
+              {inviteResult && inviteResult.deliveryMethod === 'invite_link_rpc' ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 p-3 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>สร้างลิงก์คำเชิญสำเร็จ (พร้อมส่งให้คุณครูตั้งรหัสผ่าน)</span>
+                    </p>
+                    <p className="text-[11px] leading-relaxed">
+                      ส่งลิงก์ด้านล่างให้ <span className="font-semibold">{inviteModalTeacher.fullNameTh}</span> ({inviteResult.email}) ทาง LINE, แชต หรืออีเมล เพื่อให้คุณครูกดตั้งรหัสผ่านและเข้าสู่ระบบในสิทธิ์ครูผู้สอนได้ทันที
+                    </p>
+                  </div>
 
-              <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
-                ระบบจะส่งลิงก์เชิญผ่าน Supabase Auth ให้คุณครูตั้งรหัสผ่านและเข้าสู่ระบบในสิทธิ์ <strong className="text-[var(--color-text-title)]">ครูผู้สอน (teacher)</strong> ของโรงเรียนนี้โดยอัตโนมัติ
-              </p>
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-[var(--color-text-title)] flex items-center gap-1">
+                      <Link2 className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                      <span>ลิงก์คำเชิญสำหรับตั้งรหัสผ่าน (ใช้ได้ 7 วัน)</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={inviteResult.inviteUrl}
+                        onFocus={(e) => e.currentTarget.select()}
+                        className="flex-1 min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[11px] font-mono text-[var(--color-text-title)] outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyInviteText(inviteResult.inviteUrl, 'link')}
+                        className="shrink-0 px-3 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {copiedInviteField === 'link' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedInviteField === 'link' ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์'}</span>
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setInviteModalTeacher(null)}
-                  className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={inviteSubmitting}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{inviteSubmitting ? 'กำลังส่งคำเชิญ...' : 'ส่งคำเชิญเข้าสู่ระบบ'}</span>
-                </button>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const inviteMessage = `เรียนคุณครู ${inviteModalTeacher.fullNameTh}\nขอเชิญเข้าใช้งานระบบโรงเรียนบ้านพักครู (BaanPakKru)\nอีเมลบัญชี: ${inviteResult.email}\nกรุณาเปิดลิงก์ด้านล่างเพื่อตั้งรหัสผ่านและเข้าสู่ระบบ:\n${inviteResult.inviteUrl}`;
+                        void handleCopyInviteText(inviteMessage, 'message');
+                      }}
+                      className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedInviteField === 'message' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                      <span>{copiedInviteField === 'message' ? 'คัดลอกข้อความแล้ว' : 'คัดลอกข้อความส่ง LINE/แชต'}</span>
+                    </button>
+
+                    <a
+                      href={`mailto:${encodeURIComponent(inviteResult.email)}?subject=${encodeURIComponent('เชิญเข้าสู่ระบบโรงเรียน BaanPakKru (บ้านพักครู)')}&body=${encodeURIComponent(`เรียนคุณครู ${inviteModalTeacher.fullNameTh}\n\nกรุณาเปิดลิงก์ด้านล่างเพื่อตั้งรหัสผ่านและเข้าใช้งานระบบ:\n${inviteResult.inviteUrl}`)}`}
+                      className="px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-center gap-1.5"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>เปิดแอปอีเมลส่งให้ครู</span>
+                    </a>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                    <button
+                      type="button"
+                      onClick={() => setInviteModalTeacher(null)}
+                      className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
+                    >
+                      เสร็จสิ้น
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {inviteNeedsBackendSql && (
+                    <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 p-3.5 space-y-2.5 text-xs text-amber-950 dark:text-amber-100">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <div className="space-y-1 min-w-0">
+                          <p className="font-bold">ต้องติดตั้งฟังก์ชันสร้างคำเชิญใน Supabase ก่อน (ทำครั้งเดียว)</p>
+                          <p className="text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
+                            {inviteNeedsBackendSql.message} — กดปุ่มด้านล่างเพื่อคัดลอก SQL แล้วนำไปวางรันใน Supabase Dashboard → SQL Editor จากนั้นกดลองส่งคำเชิญอีกครั้ง
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleCopyInviteText(STAFF_INVITE_RPC_SQL, 'sql')}
+                          className="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          {copiedInviteField === 'sql' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedInviteField === 'sql' ? 'คัดลอก SQL แล้ว' : '1. คัดลอก SQL ติดตั้งระบบคำเชิญ'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={inviteSubmitting}
+                          onClick={() => void submitTeacherInvite()}
+                          className="px-3 py-1.5 rounded-lg border border-amber-400 dark:border-amber-600 bg-white/80 dark:bg-slate-900/60 hover:bg-white text-[11px] font-bold text-amber-900 dark:text-amber-100 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${inviteSubmitting ? 'animate-spin' : ''}`} />
+                          <span>ลองส่งคำเชิญอีกครั้ง</span>
+                        </button>
+                      </div>
+                      <details className="text-[11px]">
+                        <summary className="cursor-pointer font-semibold text-amber-800 dark:text-amber-300">
+                          ดูโค้ด SQL ที่ใช้ติดตั้ง (20261124_staff_invite_link_rpc.sql)
+                        </summary>
+                        <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2.5 text-[10px] font-mono text-slate-100 whitespace-pre-wrap">
+                          {STAFF_INVITE_RPC_SQL}
+                        </pre>
+                      </details>
+                    </div>
+                  )}
+
+                  <label className="block text-xs font-bold text-[var(--color-text-title)] space-y-1">
+                    <span>อีเมลของคุณครูสำหรับรับลิงก์ตั้งรหัสผ่าน</span>
+                    <input
+                      type="email"
+                      required
+                      value={inviteEmailInput}
+                      onChange={(e) => setInviteEmailInput(e.target.value)}
+                      placeholder="teacher@school.ac.th"
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2.5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
+                    />
+                  </label>
+
+                  <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+                    ระบบจะส่งอีเมลเชิญผ่าน Supabase Edge Function หรือสร้างลิงก์เชิญตรงให้คุณครูตั้งรหัสผ่านและเข้าสู่ระบบในสิทธิ์ <strong className="text-[var(--color-text-title)]">ครูผู้สอน (teacher)</strong> ของโรงเรียนนี้โดยอัตโนมัติ
+                  </p>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
+                    <button
+                      type="button"
+                      onClick={() => setInviteModalTeacher(null)}
+                      className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={inviteSubmitting}
+                      className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{inviteSubmitting ? 'กำลังส่งคำเชิญ...' : 'ส่งคำเชิญเข้าสู่ระบบ'}</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </form>
           </div>
         </div>

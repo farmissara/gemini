@@ -18,6 +18,7 @@ import {
 } from '../types';
 import schemaSql from '../../supabase/schema.sql?raw';
 import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
+import staffInviteRpcSql from '../../supabase/migrations/20261124_staff_invite_link_rpc.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
 import { parseSlotTeachersFromRaw, serializeSlotTeacherForDb } from './timetableTeachers';
@@ -96,6 +97,7 @@ export function clearCustomSupabaseCredentials() {
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
 export const SUPABASE_PATCH_MIGRATION_SQL = patchMigrationSql;
+export const STAFF_INVITE_RPC_SQL = staffInviteRpcSql;
 
 function isMissingTableError(error: { code?: string; message: string }): boolean {
   return error.code === 'PGRST205' || error.code === '42P01' || /schema cache|could not find the table/i.test(error.message);
