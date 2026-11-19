@@ -74,6 +74,7 @@ import {
   courseMatchesTeacherFilter,
   resolveTeacherFilterKeyForUser,
 } from '../lib/courseTeacherFilter';
+import { LearningIndicatorAssessmentPanel } from '../components/LearningIndicatorAssessmentPanel';
 
 interface GradebookViewProps {
   students: Student[];
@@ -131,7 +132,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       : ['super_admin', 'admin', 'teacher'].includes(currentRole);
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'gradebook' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>(
+  const [activeTab, setActiveTab] = useState<'gradebook' | 'indicators' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>(
     isPersonalGradeViewer ? 'pp6' : 'gradebook'
   );
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
@@ -1288,6 +1289,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           <>
             <button
               type="button"
+              data-active={activeTab === 'indicators'}
+              onClick={() => setActiveTab('indicators')}
+              className="seg-tab-btn"
+            >
+              ตัวชี้วัด
+            </button>
+
+            <button
+              type="button"
               data-active={activeTab === 'pp5'}
               onClick={() => setActiveTab('pp5')}
               className="seg-tab-btn"
@@ -2373,6 +2383,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           searchQuery={studentSearchTerm}
           renderPageControls={renderPageControls}
         />
+      )}
+
+      {/* ========================================================
+          TAB: ตัวชี้วัดตามมาตรฐานการเรียนรู้
+          ======================================================== */}
+      {activeTab === 'indicators' && selectedCourse && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 print:overflow-visible">
+          <LearningIndicatorAssessmentPanel
+            course={selectedCourse}
+            students={students}
+            school={school}
+            systemConfig={systemConfig}
+            currentRole={currentRole}
+            currentUserName={currentUser?.fullNameTh}
+          />
+        </div>
       )}
 
       {/* ========================================================

@@ -447,6 +447,47 @@ export interface GradeRecord {
   gradePoint: number; // 4.0, 3.5, etc.
 }
 
+export interface LearningIndicator {
+  id: string;
+  schoolId: string;
+  courseId: string;
+  setId: string;
+  code: string;
+  title: string;
+  description?: string;
+  maxScore: number;
+  sortOrder: number;
+  academicYear: string;
+  semester: string;
+}
+
+export interface LearningIndicatorSet {
+  id: string;
+  schoolId: string;
+  courseId: string;
+  title: string;
+  standardCode?: string;
+  academicYear: string;
+  semester: string;
+  indicators: LearningIndicator[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LearningIndicatorScore {
+  id: string;
+  schoolId: string;
+  setId: string;
+  indicatorId: string;
+  studentId: string;
+  score: number;
+  result: 'pass' | 'not_pass';
+  evidence?: string;
+  assessedBy?: string;
+  assessedAt: string;
+  updatedAt: string;
+}
+
 export interface InvoiceItem {
   id: string;
   title: string;
