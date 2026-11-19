@@ -24,6 +24,7 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   // tone-2: Assessment, Attendance & Tasks
   gradebook: 'tone-2',
   student_development_book: 'tone-2',
+  qualitative_summary: 'tone-2',
   attendance: 'tone-2',
   mobile_checkin: 'tone-2',
   homework: 'tone-2',

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   Clock,
   Download,
   FileText,
@@ -90,6 +91,8 @@ interface StudentQualityDevelopmentBookViewProps {
   initialStudentId?: string;
   onAddBehaviorRecord?: (record: BehaviorRecord) => void;
   onOpenReportCard?: (student: Student) => void;
+  onOpenCoreReportCard?: (studentId: string) => void;
+  onOpenQualitativeSummary?: () => void;
   onOpenCourseIndicators?: (courseId: string) => void;
   onOpenBehaviorSdq?: () => void;
   lang?: AppLanguage;
@@ -133,6 +136,8 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
   initialStudentId,
   onAddBehaviorRecord,
   onOpenReportCard,
+  onOpenCoreReportCard,
+  onOpenQualitativeSummary,
   onOpenCourseIndicators,
   onOpenBehaviorSdq,
   lang = 'th',
@@ -812,6 +817,26 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
             >
               <Plus className="w-3.5 h-3.5 tone-text" />
               <span>บันทึกพฤติกรรม</span>
+            </button>
+          )}
+          {onOpenCoreReportCard && (
+            <button
+              type="button"
+              onClick={() => onOpenCoreReportCard(selectedStudent.id)}
+              className="btn-tool-tone px-2.5 py-1.5 text-xs whitespace-nowrap"
+            >
+              <Award className="w-3.5 h-3.5 tone-text" />
+              <span>Report Card วิชาพื้นฐาน</span>
+            </button>
+          )}
+          {onOpenQualitativeSummary && (
+            <button
+              type="button"
+              onClick={onOpenQualitativeSummary}
+              className="btn-tool-neutral px-2.5 py-1.5 text-xs whitespace-nowrap"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              <span>สรุปคุณลักษณะฯ รายชั้น</span>
             </button>
           )}
           {onOpenReportCard && (

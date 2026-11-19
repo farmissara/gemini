@@ -5,12 +5,14 @@ import {
   Assignment,
   AttendanceRecord,
   AuthUser,
+  BehaviorRecord,
   Course,
   GradeRecord,
   GradingSystem,
   HomeworkSubmission,
   PeriodAttendanceRecord,
   School,
+  SdqAssessment,
   Student,
   SystemConfig,
   Teacher,
@@ -82,6 +84,8 @@ import {
   loadQualitativeAssessments,
   summarizeStudentQualitative,
 } from '../lib/moeQualitativeStore';
+import { GradeLevelQualitativeSummaryView } from '../components/GradeLevelQualitativeSummaryView';
+import { CoreSubjectsReportCardView } from '../components/CoreSubjectsReportCardView';
 
 interface GradebookViewProps {
   students: Student[];
@@ -100,13 +104,25 @@ interface GradebookViewProps {
   timetableSlots?: TimetableSlot[];
   attendance?: AttendanceRecord[];
   periodAttendance?: PeriodAttendanceRecord[];
+  behaviorRecords?: BehaviorRecord[];
+  sdqAssessments?: SdqAssessment[];
   homeworkSubmissions?: HomeworkSubmission[];
   assignments?: Assignment[];
   onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
   onOpenImportExport?: () => void;
+  onOpenStudentDevBook?: (studentId: string) => void;
   canEditGrades?: boolean;
   initialCourseId?: string;
-  initialTab?: 'gradebook' | 'indicators' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets';
+  initialStudentId?: string;
+  initialTab?:
+    | 'gradebook'
+    | 'indicators'
+    | 'pp5'
+    | 'pp6'
+    | 'core_report_card'
+    | 'qualitative_summary'
+    | 'pp3_online'
+    | 'onet_niets';
   lang?: AppLanguage;
 }
 
@@ -127,12 +143,16 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   timetableSlots = [],
   attendance = [],
   periodAttendance = [],
+  behaviorRecords = [],
+  sdqAssessments = [],
   homeworkSubmissions = [],
   assignments = [],
   onPracticeInAi,
   onOpenImportExport,
+  onOpenStudentDevBook,
   canEditGrades,
   initialCourseId,
+  initialStudentId,
   initialTab,
   lang = 'th',
 }) => {
@@ -146,9 +166,16 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     return courses[0]?.id || '';
   });
   const [isUpdatingGradingMode, setIsUpdatingGradingMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'gradebook' | 'indicators' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets'>(
-    isPersonalGradeViewer ? 'pp6' : (initialTab || 'gradebook')
-  );
+  const [activeTab, setActiveTab] = useState<
+    | 'gradebook'
+    | 'indicators'
+    | 'pp5'
+    | 'pp6'
+    | 'core_report_card'
+    | 'qualitative_summary'
+    | 'pp3_online'
+    | 'onet_niets'
+  >(isPersonalGradeViewer ? 'pp6' : (initialTab || 'gradebook'));
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [courseTeacherFilter, setCourseTeacherFilter] = useState<string>('all');
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
@@ -196,6 +223,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab, isPersonalGradeViewer]);
+
+  useEffect(() => {
+    if (initialStudentId && students.some((s) => s.id === initialStudentId)) {
+      setSelectedStudentIdForPp6(initialStudentId);
+    }
+  }, [initialStudentId, students]);
 
   useEffect(() => {
     if (isPersonalGradeViewer && activeTab !== 'gradebook' && activeTab !== 'pp6') {
@@ -1370,6 +1403,24 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
             <button
               type="button"
+              data-active={activeTab === 'core_report_card'}
+              onClick={() => setActiveTab('core_report_card')}
+              className="seg-tab-btn"
+            >
+              Report Card วิชาพื้นฐาน (ปพ.5/6)
+            </button>
+
+            <button
+              type="button"
+              data-active={activeTab === 'qualitative_summary'}
+              onClick={() => setActiveTab('qualitative_summary')}
+              className="seg-tab-btn"
+            >
+              สรุปคุณลักษณะฯ &amp; อ่านเขียน
+            </button>
+
+            <button
+              type="button"
               data-active={activeTab === 'pp3_online'}
               onClick={() => setActiveTab('pp3_online')}
               className="seg-tab-btn"
@@ -2482,6 +2533,46 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           pp6CoursePageSize={pp6CoursePageSize}
           setPp6CoursePage={setPp6CoursePage}
           renderPageControls={renderPageControls}
+        />
+      )}
+
+      {/* ========================================================
+          TAB: Report Card วิชาพื้นฐาน (เชื่อมสมุดพัฒนาฯ & ปพ.5/6)
+          ======================================================== */}
+      {activeTab === 'core_report_card' && !isPersonalGradeViewer && (
+        <CoreSubjectsReportCardView
+          students={students}
+          courses={courses}
+          grades={grades}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          timetableSlots={timetableSlots}
+          behaviorRecords={behaviorRecords}
+          sdqAssessments={sdqAssessments}
+          systemConfig={systemConfig}
+          school={school}
+          initialStudentId={initialStudentId || selectedStudentIdForPp6}
+          lang={lang}
+          onOpenStudentDevBook={onOpenStudentDevBook}
+        />
+      )}
+
+      {/* ========================================================
+          TAB: สรุปคุณลักษณะอันพึงประสงค์ & การอ่าน คิดวิเคราะห์ เขียน รายชั้นปี
+          ======================================================== */}
+      {activeTab === 'qualitative_summary' && !isPersonalGradeViewer && (
+        <GradeLevelQualitativeSummaryView
+          students={students}
+          systemConfig={systemConfig}
+          school={school}
+          currentRole={currentRole}
+          currentUser={currentUser}
+          lang={lang}
+          onOpenStudentDevBook={onOpenStudentDevBook}
+          onOpenStudentPp6={(studentId) => {
+            setSelectedStudentIdForPp6(studentId);
+            setActiveTab('pp6');
+          }}
         />
       )}
 

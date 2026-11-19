@@ -40,6 +40,7 @@ import {
   Compass,
   BarChart3,
   BookMarked,
+  ClipboardCheck,
   LucideIcon
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -79,6 +80,7 @@ export type NavTab =
   | 'portfolio'
   | 'gradebook' 
   | 'student_development_book'
+  | 'qualitative_summary'
   | 'central_exam_hub'
   | 'billing' 
   | 'announcements';
@@ -135,6 +137,7 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'homework',
   'gradebook',
   'student_development_book',
+  'qualitative_summary',
   'timetable',
   'students',
   'behavior_sdq',
@@ -320,6 +323,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'สมุดบันทึกพัฒนาคุณภาพผู้เรียน',
           labelEn: 'Student Development Book',
           icon: BookMarked,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'qualitative_summary',
+          labelTh: 'สรุปคุณลักษณะฯ & อ่านคิดวิเคราะห์',
+          labelEn: 'Qualitative & Reading Analytics',
+          icon: ClipboardCheck,
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {

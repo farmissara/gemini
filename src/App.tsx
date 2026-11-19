@@ -136,6 +136,7 @@ import { EduBattleGameView } from './views/EduBattleGameView';
 import { PortfolioView } from './views/PortfolioView';
 import { GradebookView } from './views/GradebookView';
 import { StudentQualityDevelopmentBookView } from './views/StudentQualityDevelopmentBookView';
+import { GradeLevelQualitativeSummaryView } from './components/GradeLevelQualitativeSummaryView';
 import { BillingView } from './views/BillingView';
 import { AnnouncementsView } from './views/AnnouncementsView';
 import { LmsClassroomView } from './views/LmsClassroomView';
@@ -436,7 +437,16 @@ export const App: React.FC = () => {
   const [devBookTargetStudentId, setDevBookTargetStudentId] = useState<string | undefined>(undefined);
   const [gradebookJumpTarget, setGradebookJumpTarget] = useState<{
     courseId?: string;
-    tab?: 'gradebook' | 'indicators' | 'pp5' | 'pp6' | 'pp3_online' | 'onet_niets';
+    studentId?: string;
+    tab?:
+      | 'gradebook'
+      | 'indicators'
+      | 'pp5'
+      | 'pp6'
+      | 'core_report_card'
+      | 'qualitative_summary'
+      | 'pp3_online'
+      | 'onet_niets';
   } | null>(null);
   const [featureFlagsBySchool, setFeatureFlagsBySchool] = useState<Record<string, SchoolFeatureFlags>>({});
 
@@ -1178,6 +1188,7 @@ export const App: React.FC = () => {
       'attendance',
       'obec_executive_dashboard',
       'student_development_book',
+      'qualitative_summary',
       'system_settings',
       'admin_superadmin_desk',
       'super_admin_console',
@@ -4965,6 +4976,8 @@ export const App: React.FC = () => {
                     timetableSlots={viewTimetableSlots}
                     attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
+                    behaviorRecords={viewBehaviorRecords}
+                    sdqAssessments={viewSdqAssessments}
                     homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={viewAssignments}
                     onPracticeInAi={
@@ -4977,7 +4990,14 @@ export const App: React.FC = () => {
                     }
                     canEditGrades={canEditGradesInSchool}
                     initialCourseId={gradebookJumpTarget?.courseId}
+                    initialStudentId={gradebookJumpTarget?.studentId}
                     initialTab={gradebookJumpTarget?.tab}
+                    onOpenStudentDevBook={(studentId) => {
+                      setIsGamePlaying(false);
+                      setDevBookTargetStudentId(studentId);
+                      setProgramMode('school_erp');
+                      setCurrentTab('student_development_book');
+                    }}
                     lang={lang}
                     onOpenImportExport={['super_admin', 'admin', 'teacher'].includes(currentRole) ? () => {
                       setImportExportInitialTab('grades');
@@ -5005,6 +5025,13 @@ export const App: React.FC = () => {
                     initialStudentId={devBookTargetStudentId}
                     onAddBehaviorRecord={handleAddBehaviorRecord}
                     onOpenReportCard={setSelectedStudentForReport}
+                    onOpenCoreReportCard={(studentId) => {
+                      setIsGamePlaying(false);
+                      setGradebookJumpTarget({ studentId, tab: 'core_report_card' });
+                      setProgramMode('school_erp');
+                      setCurrentTab('gradebook');
+                    }}
+                    onOpenQualitativeSummary={() => navigateToAppTab('qualitative_summary')}
                     onOpenCourseIndicators={(courseId) => {
                       setIsGamePlaying(false);
                       setGradebookJumpTarget({ courseId, tab: 'indicators' });
@@ -5013,6 +5040,29 @@ export const App: React.FC = () => {
                     }}
                     onOpenBehaviorSdq={() => navigateToAppTab('behavior_sdq')}
                     lang={lang}
+                  />
+                )}
+
+                {currentTab === 'qualitative_summary' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+                  <GradeLevelQualitativeSummaryView
+                    students={viewStudents}
+                    systemConfig={systemConfig}
+                    school={activeSchool}
+                    currentRole={currentRole}
+                    currentUser={currentUser}
+                    lang={lang}
+                    onOpenStudentDevBook={(studentId) => {
+                      setIsGamePlaying(false);
+                      setDevBookTargetStudentId(studentId);
+                      setProgramMode('school_erp');
+                      setCurrentTab('student_development_book');
+                    }}
+                    onOpenStudentPp6={(studentId) => {
+                      setIsGamePlaying(false);
+                      setGradebookJumpTarget({ studentId, tab: 'pp6' });
+                      setProgramMode('school_erp');
+                      setCurrentTab('gradebook');
+                    }}
                   />
                 )}
 

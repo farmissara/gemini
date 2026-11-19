@@ -88,7 +88,7 @@ export const FEATURE_FLAG_LABELS: FeatureFlagDescriptor[] = [
     labelTh: 'บันทึกคะแนน ปพ.5 & ตัดเกรด ปพ.1',
     labelEn: 'Gradebook & Transcripts',
     descTh: 'กรอกคะแนน เกรดเฉลี่ย GPA/GPAX เอกสาร ปพ. และสมุดบันทึกพัฒนาคุณภาพผู้เรียน',
-    tabIds: ['gradebook', 'student_development_book'],
+    tabIds: ['gradebook', 'student_development_book', 'qualitative_summary'],
   },
   {
     key: 'homework',
