@@ -1023,7 +1023,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       )}
       {/* Compact Single-Row Header */}
-      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-2">
+      <div className="shrink-0 px-3.5 py-2.5 sm:px-4 app-page-header flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <span className="tone-chip w-6 h-6 rounded-lg">
             <Users className="w-3.5 h-3.5" />
@@ -1257,7 +1257,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {activeTab === 'roster' && (
         <>
           {/* Compact Filter and Search Bar */}
-          <div data-guide-id="students-search-bar" className="shrink-0 toolbar-filter-zone flex flex-wrap items-center justify-between gap-2">
+          <div data-guide-id="students-search-bar" className="shrink-0 toolbar-filter-zone app-filter-bar flex flex-wrap items-center justify-between gap-2">
             <div className="fn-group-tone w-full md:w-auto">
               <span className="fn-group-label">ค้นหา</span>
               <div className="relative flex-1 md:w-64 min-w-[180px]">

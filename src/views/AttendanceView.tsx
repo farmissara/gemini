@@ -714,7 +714,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   return (
     <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-1.5`}>
       {/* Compact SaaS Top Header */}
-      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-1.5 text-[var(--color-text-body)]">
+      <div className="shrink-0 px-3 py-2.5 sm:px-4 app-page-header flex flex-wrap items-center justify-between gap-2.5 text-[var(--color-text-body)]">
         <div className="min-w-0 flex items-center gap-2.5">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <QrCode className="w-4 h-4 shrink-0" />
@@ -1136,7 +1136,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               )}
 
               {/* Clean Filter Component: Primary presets + Room + Expandable Advanced Filters */}
-              <div className="space-y-2 pb-3 border-b border-[var(--color-border)]">
+              <div className="app-filter-bar space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="saas-control-group">
