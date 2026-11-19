@@ -116,6 +116,14 @@
     padding-block: 0.55rem !important;
   }
 
+  .gradebook-score-table thead > tr > th {
+    padding-block: 0.75rem !important;
+  }
+
+  .gradebook-score-table tbody > tr > td {
+    padding-block: 0.875rem !important;
+  }
+
   .table-comfortable tbody > tr > td button {
     min-width: 1.75rem;
     min-height: 1.75rem;
