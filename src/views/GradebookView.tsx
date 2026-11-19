@@ -50,7 +50,7 @@ import {
 } from 'lucide-react';
 import { Pp5OfficialForm, Pp6OfficialForm } from '../components/OfficialMoeForms';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
+import { getModuleTone } from '../lib/moduleTheme';
 import {
   ChartViewMode,
   GradeDistributionHistogram,
@@ -233,7 +233,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [histogramScope, setHistogramScope] = useState<HistogramScope>('course');
   const [histogramChartMode, setHistogramChartMode] = useState<ChartViewMode>('score_bins');
   const [histogramDeptFilter, setHistogramDeptFilter] = useState<string>('all');
-  const [showWeightConfigPanel, setShowWeightConfigPanel] = useState<boolean>(true);
+  const [showWeightConfigPanel, setShowWeightConfigPanel] = useState<boolean>(false);
+  const [showMoreFilters, setShowMoreFilters] = useState<boolean>(false);
   const weightStorageKey = `eduverse_obec_weights_v1_${school?.id || 'default'}`;
   const [courseWeightsMap, setCourseWeightsMap] = useState<Record<string, CourseScoreWeights>>(() => {
     try {
@@ -1415,31 +1416,69 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     studentSearchTerm.trim().length > 0 ||
     courseSearchTerm.trim().length > 0;
 
-  const moduleGroup = getModuleGroupMeta('gradebook');
   const isMyCoursesFilterActive = Boolean(
     loggedInTeacherFilterKey && courseTeacherFilter === loggedInTeacherFilterKey
   );
 
+  const GRADEBOOK_GROUPS: Array<{
+    id: 'scoring' | 'pp_docs' | 'registry';
+    labelTh: string;
+    labelEn: string;
+    tabs: Array<{
+      id: typeof activeTab;
+      labelTh: string;
+      labelEn: string;
+    }>;
+  }> = [
+    {
+      id: 'scoring',
+      labelTh: '1. บันทึกคะแนน & ตัวชี้วัด',
+      labelEn: '1. Scoring & Indicators',
+      tabs: [
+        { id: 'gradebook', labelTh: 'สมุดบันทึกคะแนน (Gradebook)', labelEn: 'Gradebook' },
+        { id: 'indicators', labelTh: 'ตัวชี้วัด & หน่วย 1–3', labelEn: 'Indicators & Units' },
+      ],
+    },
+    {
+      id: 'pp_docs',
+      labelTh: '2. เอกสาร ปพ. (รายวิชา / บุคคล)',
+      labelEn: '2. Pp.5 / Pp.6 Records',
+      tabs: [
+        { id: 'pp5', labelTh: 'ปพ.5 (ประจำวิชา)', labelEn: 'Pp.5 (Course)' },
+        { id: 'pp6', labelTh: 'ปพ.6 (รายบุคคล)', labelEn: 'Pp.6 (Student)' },
+        { id: 'core_report_card', labelTh: 'Report Card วิชาพื้นฐาน (ปพ.5/6)', labelEn: 'Core Report Card' },
+      ],
+    },
+    {
+      id: 'registry',
+      labelTh: '3. สรุปผล & งานทะเบียนจบชั้น',
+      labelEn: '3. Summaries & Graduation Registry',
+      tabs: [
+        { id: 'pp5_core_summary', labelTh: 'สรุป ปพ.5 ทั้งห้อง & ตัวชี้วัด', labelEn: 'Pp.5 Room Summary' },
+        { id: 'qualitative_summary', labelTh: 'สรุปคุณลักษณะฯ & อ่านเขียน', labelEn: 'Qualitative Summary' },
+        { id: 'pp3_online', labelTh: 'ปพ.3 จบชั้น (ป.6/ม.3/ม.6)', labelEn: 'Pp.3 Graduation' },
+        { id: 'onet_niets', labelTh: 'สทศ. O-NET', labelEn: 'NIETS O-NET' },
+      ],
+    },
+  ];
+  const currentGradebookGroup =
+    GRADEBOOK_GROUPS.find((g) => g.tabs.some((t) => t.id === activeTab)) || GRADEBOOK_GROUPS[0];
+
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
-      {/* Compact Header Bar */}
+      {/* Ultra-Compact Single-Row Header + Dropdown Workspace Menu */}
       <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <span className="tone-chip w-6 h-6 rounded-lg">
+          <span className="tone-chip w-6 h-6 rounded-lg shrink-0">
             <Award className="w-3.5 h-3.5" />
           </span>
-          <div className="min-w-0 flex items-baseline gap-2">
-            <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
-              {isPersonalGradeViewer
-                ? 'ผลการเรียน & ใบ ปพ.6'
-                : 'บันทึกคะแนน & งานทะเบียน (Gradebook & Registry)'}
-            </h1>
-            <span className="hidden xl:inline module-category-kicker">
-              {lang === 'th' ? moduleGroup.labelTh : moduleGroup.labelEn}
-            </span>
-          </div>
+          <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
+            {isPersonalGradeViewer
+              ? 'ผลการเรียน & ใบ ปพ.6'
+              : 'บันทึกคะแนน & งานทะเบียน'}
+          </h1>
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
-            <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-[11px]">
+            <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-[11px] shrink-0">
               <button
                 type="button"
                 disabled={isUpdatingGradingMode}
@@ -1468,9 +1507,68 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             </div>
           ) : (
-            <span className="px-2 py-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold text-[var(--color-text-muted)]">
+            <span className="px-2 py-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold text-[var(--color-text-muted)] shrink-0">
               {systemConfig.gradingSystem === 'international' ? 'A–F' : '0–4'}
             </span>
+          )}
+
+          {/* Compact Integrated Menu Dropdowns (Replaces 2-row tab stack) */}
+          {isPersonalGradeViewer ? (
+            <div data-guide-id="gradebook-tabs" className="seg-tab-group text-[11px]">
+              <button
+                type="button"
+                data-active={activeTab === 'pp6'}
+                onClick={() => setActiveTab('pp6')}
+                className="seg-tab-btn py-0.5"
+              >
+                ใบรายงานผล (ปพ.6)
+              </button>
+              <button
+                type="button"
+                data-active={activeTab === 'gradebook'}
+                onClick={() => setActiveTab('gradebook')}
+                className="seg-tab-btn py-0.5"
+              >
+                คะแนนรายวิชา
+              </button>
+            </div>
+          ) : (
+            <div data-guide-id="gradebook-tabs" className="flex flex-wrap items-center gap-1.5">
+              <select
+                aria-label={lang === 'th' ? 'เลือกหมวดงาน' : 'Select workspace'}
+                value={currentGradebookGroup.id}
+                onChange={(e) => {
+                  const nextGroup = GRADEBOOK_GROUPS.find((g) => g.id === e.target.value);
+                  if (nextGroup && nextGroup.tabs[0]) {
+                    setActiveTab(nextGroup.tabs[0].id);
+                  }
+                }}
+                className="h-8 rounded-lg border border-[color-mix(in_srgb,var(--tone)_35%,var(--color-border))] bg-[var(--tone-soft)] px-2 text-xs font-bold text-[var(--tone)] outline-none cursor-pointer"
+              >
+                {GRADEBOOK_GROUPS.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {lang === 'th' ? group.labelTh : group.labelEn}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label={lang === 'th' ? 'เลือกเมนูย่อย' : 'Select section'}
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
+                className="h-8 max-w-[240px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs font-bold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
+              >
+                {GRADEBOOK_GROUPS.map((group) => (
+                  <optgroup key={group.id} label={lang === 'th' ? group.labelTh : group.labelEn}>
+                    {group.tabs.map((tab) => (
+                      <option key={tab.id} value={tab.id}>
+                        {lang === 'th' ? tab.labelTh : tab.labelEn}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
           )}
         </div>
 
@@ -1515,7 +1613,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           <details className="relative group">
             <summary className="btn-tool-tone list-none px-2.5 py-1.5">
               <FileSpreadsheet className="w-3.5 h-3.5 tone-text" />
-              <span>ส่งออก &amp; เครื่องมือ</span>
+              <span className="hidden sm:inline">ส่งออก &amp; เครื่องมือ</span>
               <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
             </summary>
             <div className="absolute right-0 mt-1 w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
@@ -1603,385 +1701,286 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         </div>
       </div>
 
-      {/* Organized Workspace Navigation */}
-      {isPersonalGradeViewer ? (
-        <div data-guide-id="gradebook-tabs" className="shrink-0 seg-tab-group w-full sm:w-fit overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            data-active={activeTab === 'pp6'}
-            onClick={() => setActiveTab('pp6')}
-            className="seg-tab-btn"
-          >
-            ใบรายงานผลการเรียน (ปพ.6)
-          </button>
-          <button
-            type="button"
-            data-active={activeTab === 'gradebook'}
-            onClick={() => setActiveTab('gradebook')}
-            className="seg-tab-btn"
-          >
-            คะแนนแยกแต่ละรายวิชา
-          </button>
-        </div>
-      ) : (() => {
-        const GRADEBOOK_GROUPS: Array<{
-          id: 'scoring' | 'pp_docs' | 'registry';
-          labelTh: string;
-          labelEn: string;
-          tabs: Array<{
-            id: typeof activeTab;
-            labelTh: string;
-            labelEn: string;
-          }>;
-        }> = [
-          {
-            id: 'scoring',
-            labelTh: '1. บันทึกคะแนน & ตัวชี้วัด',
-            labelEn: '1. Scoring & Indicators',
-            tabs: [
-              { id: 'gradebook', labelTh: 'สมุดบันทึกคะแนน (Gradebook)', labelEn: 'Gradebook' },
-              { id: 'indicators', labelTh: 'ตัวชี้วัด & หน่วย 1–3', labelEn: 'Indicators & Units' },
-            ],
-          },
-          {
-            id: 'pp_docs',
-            labelTh: '2. เอกสาร ปพ. (รายวิชา / บุคคล)',
-            labelEn: '2. Pp.5 / Pp.6 Records',
-            tabs: [
-              { id: 'pp5', labelTh: 'ปพ.5 (ประจำวิชา)', labelEn: 'Pp.5 (Course)' },
-              { id: 'pp6', labelTh: 'ปพ.6 (รายบุคคล)', labelEn: 'Pp.6 (Student)' },
-              { id: 'core_report_card', labelTh: 'Report Card วิชาพื้นฐาน (ปพ.5/6)', labelEn: 'Core Report Card' },
-            ],
-          },
-          {
-            id: 'registry',
-            labelTh: '3. สรุปผล & งานทะเบียนจบชั้น',
-            labelEn: '3. Summaries & Graduation Registry',
-            tabs: [
-              { id: 'pp5_core_summary', labelTh: 'สรุป ปพ.5 ทั้งห้อง & ตัวชี้วัด', labelEn: 'Pp.5 Room Summary' },
-              { id: 'qualitative_summary', labelTh: 'สรุปคุณลักษณะฯ & อ่านเขียน', labelEn: 'Qualitative Summary' },
-              { id: 'pp3_online', labelTh: 'ปพ.3 จบชั้น (ป.6/ม.3/ม.6)', labelEn: 'Pp.3 Graduation' },
-              { id: 'onet_niets', labelTh: 'สทศ. O-NET', labelEn: 'NIETS O-NET' },
-            ],
-          },
-        ];
-        const currentGroup =
-          GRADEBOOK_GROUPS.find((g) => g.tabs.some((t) => t.id === activeTab)) || GRADEBOOK_GROUPS[0];
+      {/* Single-Row Slim Course & Student Search / Collapsible Filter Toolbar */}
+      {(activeTab === 'gradebook' || activeTab === 'indicators' || activeTab === 'pp5') && (() => {
+        const extraFilterCount =
+          (courseSearchTerm.trim() ? 1 : 0) +
+          (courseTeacherFilter !== 'all' ? 1 : 0) +
+          (gradeLevelFilter !== 'all' ? 1 : 0) +
+          (gradeRoomFilter !== 'all' ? 1 : 0) +
+          (gradeStatusFilter !== 'all' ? 1 : 0) +
+          (gradeEligibilityFilter !== 'all' ? 1 : 0);
+
         return (
-          <div
-            data-guide-id="gradebook-tabs"
-            className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 flex flex-col gap-2 print:hidden"
-          >
+          <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden space-y-1.5 py-1.5 px-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold text-[var(--color-text-muted)] px-1 shrink-0">
-                {lang === 'th' ? 'หมวดงาน:' : 'Workspace:'}
-              </span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {GRADEBOOK_GROUPS.map((group) => {
-                  const isActiveGroup = group.id === currentGroup.id;
-                  return (
-                    <button
-                      key={group.id}
-                      type="button"
-                      onClick={() => {
-                        if (!isActiveGroup) {
-                          setActiveTab(group.tabs[0].id);
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border whitespace-nowrap ${
-                        isActiveGroup
-                          ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_35%,transparent)] shadow-xs'
-                          : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
-                      }`}
-                    >
-                      <span>{lang === 'th' ? group.labelTh : group.labelEn}</span>
-                      <span className="ml-1.5 text-[10px] opacity-75 tabular-nums">({group.tabs.length})</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-[var(--color-border)]">
-              <span className="text-[11px] font-semibold text-[var(--color-text-muted)] px-1 shrink-0">
-                {lang === 'th' ? 'เมนูย่อย:' : 'Section:'}
-              </span>
-              <div className="seg-tab-group flex-wrap">
-                {currentGroup.tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    data-active={activeTab === tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="seg-tab-btn"
-                  >
-                    {lang === 'th' ? tab.labelTh : tab.labelEn}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Unified Functionally-Grouped Course & Student Search / Filter Toolbar (Gradebook, Indicators & ปพ.5) */}
-      {(activeTab === 'gradebook' || activeTab === 'indicators' || activeTab === 'pp5') && (
-        <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden flex flex-wrap items-center gap-2">
-          {/* Functional Group 1: ขอบเขตวิชาและผู้สอน */}
-          <div className="fn-group-tone flex-1 min-w-[280px]">
-            <span className="fn-group-label">
-              <BookOpen className="w-3 h-3" />
-              <span>วิชา &amp; ผู้สอน</span>
-            </span>
-
-            {loggedInTeacherFilterKey && (
-              <button
-                type="button"
-                onClick={() => {
-                  const nextKey = isMyCoursesFilterActive ? 'all' : loggedInTeacherFilterKey;
-                  setCourseTeacherFilter(nextKey);
-                  const matchingCourses = courses.filter((course) =>
-                    courseMatchesTeacherFilter(course, nextKey, courseTeacherOptions)
-                  );
-                  if (matchingCourses.length > 0 && !matchingCourses.some((c) => c.id === selectedCourseId)) {
-                    setSelectedCourseId(matchingCourses[0].id);
-                  }
-                  setGradePage(0);
-                  setPp5Page(0);
-                }}
-                data-active={isMyCoursesFilterActive}
-                className="btn-tool-neutral px-2 py-1 text-[11px]"
-                title={
-                  isMyCoursesFilterActive
-                    ? 'คลิกเพื่อดูรายวิชาของครูทุกคนในโรงเรียน'
-                    : 'คลิกเพื่อกรองเฉพาะรายวิชาที่คุณสอน'
-                }
-              >
-                <UserCheck className="w-3 h-3" />
-                <span>
-                  {isMyCoursesFilterActive
-                    ? `เฉพาะวิชาที่ฉันสอน (${loggedInTeacherOption?.count ?? filteredCourses.length})`
-                    : `วิชาของฉัน (${loggedInTeacherOption?.count ?? 0})`}
-                </span>
-              </button>
-            )}
-
-            {/* Course Search */}
-            <div className="relative w-full sm:w-36 shrink-0">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="text"
-                value={courseSearchTerm}
-                onChange={(event) => setCourseSearchTerm(event.target.value)}
-                placeholder={`กรองวิชา (${courses.length})...`}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] py-1 pl-7 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
-              />
-              {courseSearchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setCourseSearchTerm('')}
-                  aria-label="ล้างคำค้นหารายวิชา"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-
-            {/* Course Filter by Teacher */}
-            {courseTeacherOptions.length > 0 && (
-              <select
-                aria-label="กรองวิชาตามรายชื่อครู"
-                value={courseTeacherFilter}
-                onChange={(event) => {
-                  const nextTeacher = event.target.value;
-                  setCourseTeacherFilter(nextTeacher);
-                  const matchingCourses = courses.filter((course) => {
-                    if (!courseMatchesTeacherFilter(course, nextTeacher, courseTeacherOptions)) return false;
-                    const search = courseSearchTerm.trim().toLocaleLowerCase();
-                    return !search || [course.code, course.titleTh, course.titleEn, course.teacherName, course.department, course.room]
-                      .some((value) => value?.toLocaleLowerCase().includes(search));
-                  });
-                  if (matchingCourses.length > 0 && !matchingCourses.some((c) => c.id === selectedCourseId)) {
-                    setSelectedCourseId(matchingCourses[0].id);
-                  }
-                  setGradePage(0);
-                  setPp5Page(0);
-                  setGradeRoomFilter('all');
-                  setGradeLevelFilter('all');
-                  setGradeEligibilityFilter('all');
-                  setGradeStatusFilter('all');
-                }}
-                className="w-full sm:w-40 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
-              >
-                <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
-                {courseTeacherOptions.map((opt) => (
-                  <option key={opt.key} value={opt.key}>
-                    {opt.label} ({opt.count})
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Course Select */}
-            <select
-              value={selectedCourseId}
-              onChange={(event) => {
-                setSelectedCourseId(event.target.value);
-                setGradePage(0);
-                setPp5Page(0);
-                setGradeRoomFilter('all');
-                setGradeLevelFilter('all');
-                setGradeEligibilityFilter('all');
-                setGradeStatusFilter('all');
-              }}
-              disabled={courseSelectOptions.length === 0}
-              className="flex-1 min-w-40 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] disabled:opacity-60"
-            >
-              {courseSelectOptions.length === 0 ? (
-                <option value="">ไม่พบรายวิชาที่ตรงกับตัวกรอง</option>
-              ) : (
-                courseSelectOptions.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {[course.code, course.titleTh || course.titleEn, course.teacherName]
-                      .filter(Boolean)
-                      .join(' — ')}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-
-          {/* Functional Group 2: กรองนักเรียน & เกณฑ์ประเมิน (Staff only) */}
-          {!isPersonalGradeViewer && (
-          <div className="fn-group flex-wrap">
-            <span className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1 px-0.5 whitespace-nowrap">
-              <Filter className="w-3 h-3" />
-              <span>นักเรียน</span>
-            </span>
-
-            {/* Student Live Search */}
-            <div className="relative w-full sm:w-44 shrink-0">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="text"
-                value={studentSearchTerm}
-                onChange={(event) => {
-                  setStudentSearchTerm(event.target.value);
-                  setGradePage(0);
-                  setPp5Page(0);
-                }}
-                placeholder="ชื่อ / รหัส / ห้อง..."
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] py-1 pl-7 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
-              />
-              {studentSearchTerm && (
+              {loggedInTeacherFilterKey && (
                 <button
                   type="button"
                   onClick={() => {
-                    setStudentSearchTerm('');
+                    const nextKey = isMyCoursesFilterActive ? 'all' : loggedInTeacherFilterKey;
+                    setCourseTeacherFilter(nextKey);
+                    const matchingCourses = courses.filter((course) =>
+                      courseMatchesTeacherFilter(course, nextKey, courseTeacherOptions)
+                    );
+                    if (matchingCourses.length > 0 && !matchingCourses.some((c) => c.id === selectedCourseId)) {
+                      setSelectedCourseId(matchingCourses[0].id);
+                    }
                     setGradePage(0);
                     setPp5Page(0);
                   }}
-                  aria-label="ล้างคำค้นหานักเรียน"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                  data-active={isMyCoursesFilterActive}
+                  className="btn-tool-neutral px-2 py-1 text-[11px] shrink-0"
+                  title={
+                    isMyCoursesFilterActive
+                      ? 'คลิกเพื่อดูรายวิชาของครูทุกคนในโรงเรียน'
+                      : 'คลิกเพื่อกรองเฉพาะรายวิชาที่คุณสอน'
+                  }
                 >
-                  <X className="w-3 h-3" />
+                  <UserCheck className="w-3 h-3" />
+                  <span>
+                    {isMyCoursesFilterActive
+                      ? `วิชาของฉัน (${loggedInTeacherOption?.count ?? filteredCourses.length})`
+                      : `วิชาของฉัน (${loggedInTeacherOption?.count ?? 0})`}
+                  </span>
+                </button>
+              )}
+
+              {/* Primary Course Select */}
+              <div className="flex items-center gap-1.5 flex-1 min-w-[220px]">
+                <BookOpen className="w-3.5 h-3.5 text-[var(--tone)] shrink-0" />
+                <select
+                  aria-label="เลือกรายวิชา"
+                  value={selectedCourseId}
+                  onChange={(event) => {
+                    setSelectedCourseId(event.target.value);
+                    setGradePage(0);
+                    setPp5Page(0);
+                    setGradeRoomFilter('all');
+                    setGradeLevelFilter('all');
+                    setGradeEligibilityFilter('all');
+                    setGradeStatusFilter('all');
+                  }}
+                  disabled={courseSelectOptions.length === 0}
+                  className="w-full h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] disabled:opacity-60"
+                >
+                  {courseSelectOptions.length === 0 ? (
+                    <option value="">ไม่พบรายวิชาที่ตรงกับตัวกรอง</option>
+                  ) : (
+                    courseSelectOptions.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {[course.code, course.titleTh || course.titleEn, course.teacherName]
+                          .filter(Boolean)
+                          .join(' — ')}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Student Live Search */}
+              {!isPersonalGradeViewer && (
+                <div className="relative w-full sm:w-44 shrink-0">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                  <input
+                    type="text"
+                    value={studentSearchTerm}
+                    onChange={(event) => {
+                      setStudentSearchTerm(event.target.value);
+                      setGradePage(0);
+                      setPp5Page(0);
+                    }}
+                    placeholder="ค้นหานักเรียน / ห้อง..."
+                    className="w-full h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] pl-7 pr-6 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
+                  />
+                  {studentSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStudentSearchTerm('');
+                        setGradePage(0);
+                        setPp5Page(0);
+                      }}
+                      aria-label="ล้างคำค้นหานักเรียน"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Collapsible Extra Filters Toggle */}
+              {!isPersonalGradeViewer && (
+                <button
+                  type="button"
+                  onClick={() => setShowMoreFilters((prev) => !prev)}
+                  className={`h-8 inline-flex items-center gap-1 px-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition shrink-0 ${
+                    showMoreFilters || extraFilterCount > 0
+                      ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <Filter className="w-3 h-3" />
+                  <span>ตัวกรอง{extraFilterCount > 0 ? ` (${extraFilterCount})` : ''}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showMoreFilters ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+
+              {!isPersonalGradeViewer && (
+                <span className="h-8 inline-flex items-center px-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[11px] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+                  {activeTab === 'gradebook' ? `${filteredGradebookRows.length}/${gradebookRows.length}` : `${courseGrades.length} คน`}
+                </span>
+              )}
+
+              {hasActiveGradeFilters && !isPersonalGradeViewer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCourseSearchTerm('');
+                    setCourseTeacherFilter('all');
+                    setStudentSearchTerm('');
+                    setGradeRoomFilter('all');
+                    setGradeLevelFilter('all');
+                    setGradeEligibilityFilter('all');
+                    setGradeStatusFilter('all');
+                    setGradePage(0);
+                    setPp5Page(0);
+                  }}
+                  className="h-8 px-2 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer whitespace-nowrap"
+                >
+                  ล้าง
                 </button>
               )}
             </div>
 
-            {activeTab === 'gradebook' && (
-              <>
-                <select
-                  aria-label="กรองระดับชั้น"
-                  value={gradeLevelFilter}
-                  onChange={(event) => {
-                    setGradeLevelFilter(event.target.value);
-                    setGradePage(0);
-                  }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
-                >
-                  <option value="all">ทุกชั้น</option>
-                  {gradeLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
-                </select>
+            {/* Expandable Secondary Filters Drawer */}
+            {showMoreFilters && !isPersonalGradeViewer && (
+              <div className="pt-1.5 border-t border-[var(--color-border)] flex flex-wrap items-center gap-1.5">
+                <div className="relative w-full sm:w-40 shrink-0">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                  <input
+                    type="text"
+                    value={courseSearchTerm}
+                    onChange={(event) => setCourseSearchTerm(event.target.value)}
+                    placeholder={`กรองชื่อวิชา (${courses.length})...`}
+                    className="w-full h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] pl-6 pr-5 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
+                  />
+                  {courseSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setCourseSearchTerm('')}
+                      aria-label="ล้างคำค้นหารายวิชา"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
 
-                <select
-                  aria-label="กรองห้องเรียน"
-                  value={gradeRoomFilter}
-                  onChange={(event) => {
-                    setGradeRoomFilter(event.target.value);
-                    setGradePage(0);
-                  }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
-                >
-                  <option value="all">ทุกห้อง</option>
-                  {gradeRoomOptions.map((room) => <option key={room} value={room}>{room}</option>)}
-                </select>
+                {courseTeacherOptions.length > 0 && (
+                  <select
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={courseTeacherFilter}
+                    onChange={(event) => {
+                      const nextTeacher = event.target.value;
+                      setCourseTeacherFilter(nextTeacher);
+                      const matchingCourses = courses.filter((course) => {
+                        if (!courseMatchesTeacherFilter(course, nextTeacher, courseTeacherOptions)) return false;
+                        const search = courseSearchTerm.trim().toLocaleLowerCase();
+                        return !search || [course.code, course.titleTh, course.titleEn, course.teacherName, course.department, course.room]
+                          .some((value) => value?.toLocaleLowerCase().includes(search));
+                      });
+                      if (matchingCourses.length > 0 && !matchingCourses.some((c) => c.id === selectedCourseId)) {
+                        setSelectedCourseId(matchingCourses[0].id);
+                      }
+                      setGradePage(0);
+                      setPp5Page(0);
+                      setGradeRoomFilter('all');
+                      setGradeLevelFilter('all');
+                      setGradeEligibilityFilter('all');
+                      setGradeStatusFilter('all');
+                    }}
+                    className="h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
+                  >
+                    <option value="all">ครูผู้สอนทุกคน ({courseTeacherOptions.length})</option>
+                    {courseTeacherOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count})
+                      </option>
+                    ))}
+                  </select>
+                )}
 
-                <select
-                  aria-label="กรองกลุ่มผลการเรียน"
-                  value={gradeStatusFilter}
-                  onChange={(event) => {
-                    const v = event.target.value;
-                    if (v === 'all' || v === 'excellent' || v === 'pass' || v === 'at_risk') {
-                      setGradeStatusFilter(v);
-                    }
-                    setGradePage(0);
-                  }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
-                >
-                  <option value="all">ทุกเกรด</option>
-                  <option value="excellent">ดีเยี่ยม (3.5–4)</option>
-                  <option value="pass">ผ่านเกณฑ์</option>
-                  <option value="at_risk">กลุ่มเสี่ยง (0, ร, มส.)</option>
-                </select>
+                {activeTab === 'gradebook' && (
+                  <>
+                    <select
+                      aria-label="กรองระดับชั้น"
+                      value={gradeLevelFilter}
+                      onChange={(event) => {
+                        setGradeLevelFilter(event.target.value);
+                        setGradePage(0);
+                      }}
+                      className="h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกชั้น</option>
+                      {gradeLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
+                    </select>
 
-                <select
-                  aria-label="กรองสิทธิ์สอบเวลาเรียน"
-                  value={gradeEligibilityFilter}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (value === 'all' || value === 'eligible' || value === 'at_risk') {
-                      setGradeEligibilityFilter(value);
-                    }
-                    setGradePage(0);
-                  }}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
-                >
-                  <option value="all">เวลาเรียนทั้งหมด</option>
-                  <option value="eligible">มีสิทธิ์สอบ (≥80%)</option>
-                  <option value="at_risk">เสี่ยง มส. (&lt;80%)</option>
-                </select>
-              </>
-            )}
+                    <select
+                      aria-label="กรองห้องเรียน"
+                      value={gradeRoomFilter}
+                      onChange={(event) => {
+                        setGradeRoomFilter(event.target.value);
+                        setGradePage(0);
+                      }}
+                      className="h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกห้อง</option>
+                      {gradeRoomOptions.map((room) => <option key={room} value={room}>{room}</option>)}
+                    </select>
 
-            <span className="px-2 py-0.5 rounded-md bg-[var(--color-card)] border border-[var(--color-border)] text-[11px] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
-              {activeTab === 'gradebook' ? `${filteredGradebookRows.length}/${gradebookRows.length}` : `${courseGrades.length} คน`}
-            </span>
+                    <select
+                      aria-label="กรองกลุ่มผลการเรียน"
+                      value={gradeStatusFilter}
+                      onChange={(event) => {
+                        const v = event.target.value;
+                        if (v === 'all' || v === 'excellent' || v === 'pass' || v === 'at_risk') {
+                          setGradeStatusFilter(v);
+                        }
+                        setGradePage(0);
+                      }}
+                      className="h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกเกรด</option>
+                      <option value="excellent">ดีเยี่ยม (3.5–4)</option>
+                      <option value="pass">ผ่านเกณฑ์</option>
+                      <option value="at_risk">กลุ่มเสี่ยง (0, ร, มส.)</option>
+                    </select>
 
-            {hasActiveGradeFilters && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCourseSearchTerm('');
-                  setCourseTeacherFilter('all');
-                  setStudentSearchTerm('');
-                  setGradeRoomFilter('all');
-                  setGradeLevelFilter('all');
-                  setGradeEligibilityFilter('all');
-                  setGradeStatusFilter('all');
-                  setGradePage(0);
-                  setPp5Page(0);
-                }}
-                className="px-2 py-1 rounded-md text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer whitespace-nowrap"
-              >
-                ล้างตัวกรอง
-              </button>
+                    <select
+                      aria-label="กรองสิทธิ์สอบเวลาเรียน"
+                      value={gradeEligibilityFilter}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === 'all' || value === 'eligible' || value === 'at_risk') {
+                          setGradeEligibilityFilter(value);
+                        }
+                        setGradePage(0);
+                      }}
+                      className="h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">เวลาเรียนทั้งหมด</option>
+                      <option value="eligible">มีสิทธิ์สอบ (≥80%)</option>
+                      <option value="at_risk">เสี่ยง มส. (&lt;80%)</option>
+                    </select>
+                  </>
+                )}
+              </div>
             )}
           </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tab Panels Scroll Container */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-2 print:overflow-visible">
