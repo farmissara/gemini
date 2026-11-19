@@ -712,9 +712,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const pendingLeaveCount = scopedLeaveRequests.filter((r) => r.status === 'pending').length;
 
   return (
-    <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3`}>
+    <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-1.5`}>
       {/* Compact SaaS Top Header */}
-      <div className="shrink-0 px-3.5 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 text-[var(--color-text-body)]">
+      <div className="shrink-0 px-3 py-1.5 app-page-header flex flex-wrap items-center justify-between gap-1.5 text-[var(--color-text-body)]">
         <div className="min-w-0 flex items-center gap-2.5">
           <span className="tone-chip w-7 h-7 rounded-lg">
             <QrCode className="w-4 h-4 shrink-0" />

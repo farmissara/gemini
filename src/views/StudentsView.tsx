@@ -1011,7 +1011,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const studentsGroup = getModuleGroupMeta('students');
 
   return (
-    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
+    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
       {accountsError && (
         <div role="alert" className="shrink-0 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium">
           {accountsError}
@@ -1207,7 +1207,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       </div>
 
       {/* View Tabs */}
-      <div data-guide-id="students-tabs" className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1.5">
+      <div data-guide-id="students-tabs" className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1">
         <div className="seg-tab-group overflow-x-auto no-scrollbar">
           <button
             type="button"
