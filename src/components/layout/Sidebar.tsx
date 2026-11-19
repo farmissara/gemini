@@ -146,20 +146,16 @@ export interface NavCategoryDef {
 
 const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'dashboard',
+  'timetable',
+  'courses',
+  'students',
   'attendance',
   'mobile_checkin',
   'homework',
   'gradebook',
   'student_development_book',
-  'qualitative_summary',
-  'obec_executive_dashboard',
-  'pp6_executive_dashboard',
-  'executive_monitor',
-  'report_insights',
-  'timetable',
-  'students',
+  'central_exam_hub',
   'behavior_sdq',
-  'career_quest',
   'announcements',
 ]);
 
@@ -185,8 +181,8 @@ const ADMIN_FOCUS_TABS = new Set<NavTab>([
   'billing',
   'announcements',
   'system_settings',
-  'school_permissions',
   'school_gps',
+  'admin_superadmin_desk',
 ]);
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -720,36 +716,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return 'system_settings';
   }, [currentTab, activeSettingsSubTab, activeDashboardSubTab]);
 
-  // Dashboard standalone entry + quick shortcuts (keep items inside their true categories too!)
+  // Dashboard standalone entry
   const dashboardItem: NavItemDef = useMemo(() => ({
     id: 'dashboard',
-    labelTh: 'แดชบอร์ดหลักรวมศูนย์',
-    labelEn: 'Unified Dashboard',
+    labelTh: currentRole === 'teacher' ? 'โต๊ะทำงานครูวันนี้' : 'แดชบอร์ดหลักรวมศูนย์',
+    labelEn: currentRole === 'teacher' ? "Teacher's Today Desk" : 'Unified Dashboard',
     icon: LayoutDashboard,
     roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-  }), []);
-
-  const quickShortcuts = useMemo(() => {
-    const ids: NavTab[] = currentRole === 'student'
-      ? ['career_quest', 'timetable', 'homework']
-      : currentRole === 'parent'
-      ? ['student_id_cards', 'billing', 'announcements']
-      : currentRole === 'admin'
-      ? ['attendance', 'teachers', 'system_settings']
-      : ['attendance', 'students', 'gradebook'];
-    const all = categories.flatMap((c) => c.items);
-    return ids
-      .map((id) =>
-        all.find(
-          (i) =>
-            i.id === id &&
-            i.roles.includes(currentRole) &&
-            isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
-            isAllowedBySchoolPolicy(i.id)
-        )
-      )
-      .filter((i): i is NavItemDef => Boolean(i));
-  }, [categories, currentRole, featureFlags, schoolPermissions]);
+  }), [currentRole]);
 
   // Visible items per category
   const visibleCategories = useMemo(() => {
@@ -863,12 +837,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </span>
         {item.badge && (
           <span
-            className={`shrink-0 tabular-nums rounded-full px-1.5 py-0.5 leading-none ${
+            className={`shrink-0 tabular-nums text-[11px] leading-none ${
               isNumericBadge
-                ? 'text-[11px] font-medium text-[var(--color-text-muted)] bg-[var(--color-card-subtle)]'
+                ? 'font-medium text-[var(--color-text-muted)]'
                 : isAiBadge
-                  ? 'text-[10px] font-bold text-[var(--tone)] bg-[var(--tone-soft)]'
-                  : 'text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50'
+                  ? 'font-bold text-[var(--tone)]'
+                  : 'font-semibold text-rose-600 dark:text-rose-400'
             }`}
           >
             {item.badge}
@@ -1133,8 +1107,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         ) : (
           <>
-            {/* Primary Overview + Compact 1-Row Quick Shortcuts */}
-            <div className="space-y-2">
+            {/* Primary Overview */}
+            <div>
               <button
                 type="button"
                 data-nav-tab={dashboardItem.id}
@@ -1150,39 +1124,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
                 <span className="truncate">{lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}</span>
               </button>
-
-              {quickShortcuts.length > 0 && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {quickShortcuts.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = resolvedSidebarActiveTab === item.id;
-                    return (
-                      <button
-                        key={`quick-${item.id}`}
-                        type="button"
-                        onClick={() => setCurrentTab(item.id)}
-                        title={lang === 'th' ? item.labelTh : item.labelEn}
-                        className={`${getModuleTone(item.id)} flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-xl text-[11px] font-semibold transition cursor-pointer border ${
-                          isActive
-                            ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_35%,transparent)]'
-                            : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4 shrink-0 text-[var(--tone)]" />
-                        <span className="w-full truncate text-center">
-                          {lang === 'th' ? item.shortLabelTh || item.labelTh : item.shortLabelEn || item.labelEn}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
             </div>
 
             {/* Section Header + Expand/Collapse All */}
             <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between px-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'กลุ่มงานตามฝ่าย' : 'Workspaces'}
+              <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'หมวดงานตามฝ่าย' : 'Workspaces'}
               </span>
               <button
                 type="button"
@@ -1203,7 +1150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Color-Coded Work Groups */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {visibleCategories.map((cat) => {
                 const isCollapsed = collapsed[cat.id] ?? cat.id !== activeCatId;
                 const CategoryIcon = cat.icon;
@@ -1241,11 +1188,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </span>
                       <span className="flex items-center gap-1.5 shrink-0">
                         {isCollapsed && alertBadge && (
-                          <span className="rounded-full bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-rose-600 dark:text-rose-400">
+                          <span className="text-[11px] font-semibold leading-none text-rose-600 dark:text-rose-400">
                             {alertBadge}
                           </span>
                         )}
-                        <span className="rounded-full bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums text-[var(--color-text-muted)]">
+                        <span className="text-[11px] font-medium leading-none tabular-nums text-[var(--color-text-muted)]">
                           {cat.items.length}
                         </span>
                         {isCollapsed ? (

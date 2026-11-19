@@ -1197,6 +1197,42 @@ export const App: React.FC = () => {
       return;
     }
 
+    if (tab === 'admin_line_control') {
+      if (['super_admin', 'admin'].includes(currentRole)) {
+        setSystemSettingsInitialTab('line_events');
+        setProgramMode('school_erp');
+        setCurrentTab('system_settings');
+      }
+      return;
+    }
+
+    if (tab === 'admin_student_accounts') {
+      if (['super_admin', 'admin'].includes(currentRole)) {
+        setSystemSettingsInitialTab('student_accounts');
+        setProgramMode('school_erp');
+        setCurrentTab('system_settings');
+      }
+      return;
+    }
+
+    if (tab === 'admin_saas_audit') {
+      if (['super_admin', 'admin'].includes(currentRole)) {
+        setSystemSettingsInitialTab('saas_audit');
+        setProgramMode('school_erp');
+        setCurrentTab('system_settings');
+      }
+      return;
+    }
+
+    if (tab === 'system_settings') {
+      if (['super_admin', 'admin'].includes(currentRole)) {
+        setSystemSettingsInitialTab('control_overview');
+        setProgramMode('school_erp');
+        setCurrentTab('system_settings');
+      }
+      return;
+    }
+
     const staffOnlyTabs: NavTab[] = [
       'students',
       'teachers',
@@ -4531,6 +4567,7 @@ export const App: React.FC = () => {
                     featureFlags={activeFeatureFlags}
                     onUpdateFeatureFlags={(flags) => handleUpdateSchoolFeatureFlags(activeSchool.id, flags)}
                     initialTab={systemSettingsInitialTab}
+                    onTabChange={setSystemSettingsInitialTab}
                   />
                 )}
 
@@ -4564,6 +4601,12 @@ export const App: React.FC = () => {
                     infirmaryVisits={viewInfirmaryVisits}
                     schoolPermissions={schoolPermissions}
                     featureFlags={activeFeatureFlags}
+                    campusGates={campusGates}
+                    onOpenSystemSettingsTab={(subTab) => {
+                      setSystemSettingsInitialTab(subTab);
+                      setProgramMode('school_erp');
+                      setCurrentTab('system_settings');
+                    }}
                     initialSubTab={dashboardInitialSubTab}
                     onSelectStudent={setSelectedStudentForProfile}
                     onOpenGradebookCourse={(courseId) => {
