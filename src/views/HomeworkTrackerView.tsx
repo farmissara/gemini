@@ -36,6 +36,7 @@ import { TableActionMenu, TableActionItem } from '../components/common/TableActi
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
+import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -45,8 +46,10 @@ interface HomeworkTrackerViewProps {
   assignments?: Assignment[];
   schoolId?: string;
   schoolName?: string;
-  onAddSubmission: (sub: HomeworkSubmission) => void;
-  onGradeSubmission: (id: string, score: number, feedback: string) => void;
+  schoolPermissions?: Record<SchoolPolicyId, boolean>;
+  onCreateAssignment: (assignment: Assignment) => void | Promise<void>;
+  onAddSubmission: (sub: HomeworkSubmission) => void | Promise<void>;
+  onGradeSubmission: (id: string, score: number, feedback: string) => void | Promise<void>;
   lang: AppLanguage;
   currentRole: UserRole;
 }
@@ -59,6 +62,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   assignments = [],
   schoolId = 'sch-bkk-01',
   schoolName = 'EduVerse School',
+  schoolPermissions,
+  onCreateAssignment,
   onAddSubmission,
   onGradeSubmission,
   lang,
@@ -72,27 +77,45 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   
   // Modals
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
   const [selectedSubForGrading, setSelectedSubForGrading] = useState<HomeworkSubmission | null>(null);
   const calendarWeekStart = getCalendarWeekStart(getBangkokDateInputValue());
+  const [isSavingAssignment, setIsSavingAssignment] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [isSubmittingHomework, setIsSubmittingHomework] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSavingGrade, setIsSavingGrade] = useState(false);
+  const [gradeError, setGradeError] = useState<string | null>(null);
 
-  // Submit modal form
+  // Student submission form
   const [submitStudentId, setSubmitStudentId] = useState<string>(students[0]?.id || '');
-  const [submitAssignmentId, setSubmitAssignmentId] = useState<string>('asg-2');
-  const [submitTitle, setSubmitTitle] = useState('โครงงานวิเคราะห์อนุพันธ์และอินทิกรัลในชีวิตประจำวัน');
-  const [submitCourseCode, setSubmitCourseCode] = useState('MA201');
+  const [submitAssignmentId, setSubmitAssignmentId] = useState<string>('');
   const [submitText, setSubmitText] = useState('');
-  const [submitFileName, setSubmitFileName] = useState('My_Calculus_Project.pdf');
   const [allowDuplicateConfirm, setAllowDuplicateConfirm] = useState(false);
 
+  // Teacher assignment form
+  const [assignmentCourseId, setAssignmentCourseId] = useState('');
+  const [assignmentTitleTh, setAssignmentTitleTh] = useState('');
+  const [assignmentTitleEn, setAssignmentTitleEn] = useState('');
+  const [assignmentDescription, setAssignmentDescription] = useState('');
+  const [assignmentDueDate, setAssignmentDueDate] = useState('');
+  const [assignmentPoints, setAssignmentPoints] = useState('');
+
   // Grading form
-  const [gradingScore, setGradingScore] = useState<number>(18);
-  const [gradingFeedback, setGradingFeedback] = useState('ทำได้ดีมากครับ ครบถ้วนตามตัวชี้วัด');
+  const [gradingScore, setGradingScore] = useState<number>(0);
+  const [gradingFeedback, setGradingFeedback] = useState('');
 
   const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
   const teacherFilteredCourses = courses.filter((c) =>
     courseMatchesTeacherFilter(c, teacherFilter, teacherFilterOptions)
   );
+  const canManageAssignments =
+    currentRole === 'admin' ||
+    currentRole === 'super_admin' ||
+    (currentRole === 'teacher' && isSchoolPolicyEnabled(schoolPermissions, 'teacher_homework'));
+  const canStudentSubmit = currentRole === 'student' && isSchoolPolicyEnabled(schoolPermissions, 'student_submit_homework');
+  const activeAssignments = assignments.filter((assignment) => assignment.status === 'active');
 
   const matchesTeacherAndCourse = (courseCode?: string, courseId?: string) => {
     const normalizedCode = (courseCode || '').trim().toLowerCase();
@@ -147,52 +170,115 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
     )
   );
 
-  const submitDupReasons = showSubmitModal
+  const selectedSubmitAssignment = assignments.find((assignment) => assignment.id === submitAssignmentId);
+  const submitDupReasons = showSubmitModal && selectedSubmitAssignment
     ? getHomeworkDuplicateReasons(
-        { studentId: submitStudentId, assignmentId: submitAssignmentId, courseCode: submitCourseCode },
+        {
+          studentId: submitStudentId,
+          assignmentId: selectedSubmitAssignment.id,
+          courseCode: selectedSubmitAssignment.courseCode || '',
+        },
         submissions
       )
     : [];
 
-  const handleSubmitHomework = (e: React.FormEvent) => {
+  const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const student = students.find((s) => s.id === submitStudentId);
-    if (!student) return;
-    if (submitDupReasons.length > 0 && !allowDuplicateConfirm) return;
-
-    const newSub: HomeworkSubmission = {
-      id: `sub-${Date.now()}`,
-      schoolId: student.schoolId,
-      assignmentId: submitAssignmentId,
-      assignmentTitle: submitTitle,
-      courseCode: submitCourseCode,
-      courseTitleTh: 'คณิตศาสตร์เพิ่มเติม (แคลคูลัส)',
-      studentId: student.id,
-      studentName: `${student.firstNameTh} ${student.lastNameTh}`,
-      studentRoom: student.room,
-      dueDate: '2026-11-15',
-      submittedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-      status: 'submitted',
-      fileAttachment: {
-        name: submitFileName || 'Submission_File.pdf',
-        size: '3.2 MB',
-        type: 'PDF Document'
-      },
-      textSubmission: submitText || 'ส่งงานการบ้านเรียบร้อยแล้วครับ',
-      maxScore: 30
-    };
-
-    onAddSubmission(newSub);
-    setAllowDuplicateConfirm(false);
-    setShowSubmitModal(false);
-    setSubmitText('');
+    const course = courses.find((item) => item.id === assignmentCourseId);
+    const points = Number(assignmentPoints);
+    if (!course) {
+      setAssignmentError(lang === 'th' ? 'กรุณาเลือกรายวิชา' : 'Select a course.');
+      return;
+    }
+    if (!assignmentTitleTh.trim() || !assignmentDueDate || !Number.isFinite(points) || points <= 0) {
+      setAssignmentError(lang === 'th' ? 'กรุณากรอกชื่อ งานกำหนดส่ง และคะแนนเต็มให้ถูกต้อง' : 'Enter a title, due date, and a valid maximum score.');
+      return;
+    }
+    setIsSavingAssignment(true);
+    setAssignmentError(null);
+    try {
+      await onCreateAssignment({
+        id: `assignment-${crypto.randomUUID()}`,
+        schoolId,
+        courseId: course.id,
+        courseCode: course.code,
+        titleTh: assignmentTitleTh.trim(),
+        titleEn: assignmentTitleEn.trim() || assignmentTitleTh.trim(),
+        description: assignmentDescription.trim(),
+        dueDate: assignmentDueDate,
+        points,
+        maxScore: points,
+        submittedStudentIds: [],
+        status: 'active',
+      });
+      setShowAssignmentModal(false);
+      setHwTab('assignments');
+      setAssignmentTitleTh('');
+      setAssignmentTitleEn('');
+      setAssignmentDescription('');
+      setAssignmentDueDate('');
+      setAssignmentPoints('');
+    } catch (error) {
+      setAssignmentError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSavingAssignment(false);
+    }
   };
 
-  const handleSaveGrading = (e: React.FormEvent) => {
+  const handleSubmitHomework = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const student = students.find((s) => s.id === submitStudentId);
+    const assignment = selectedSubmitAssignment;
+    if (!student || !assignment) {
+      setSubmitError(lang === 'th' ? 'กรุณาเลือกนักเรียนและงานที่ต้องการส่ง' : 'Select a student and assignment.');
+      return;
+    }
+    if (submitDupReasons.length > 0 && !allowDuplicateConfirm) return;
+
+    setIsSubmittingHomework(true);
+    setSubmitError(null);
+    try {
+      const course = courses.find((item) => item.id === assignment.courseId);
+      const submittedAt = new Date().toISOString();
+      await onAddSubmission({
+        id: `submission-${crypto.randomUUID()}`,
+        schoolId: student.schoolId,
+        assignmentId: assignment.id,
+        assignmentTitle: assignment.titleTh,
+        courseCode: assignment.courseCode || course?.code || '',
+        courseTitleTh: course?.titleTh || '',
+        studentId: student.id,
+        studentName: `${student.firstNameTh} ${student.lastNameTh}`.trim(),
+        studentRoom: student.room,
+        dueDate: assignment.dueDate,
+        submittedAt,
+        status: getBangkokDateInputValue() <= assignment.dueDate ? 'submitted' : 'late',
+        textSubmission: submitText.trim() || undefined,
+        maxScore: assignment.maxScore ?? assignment.points,
+      });
+      setAllowDuplicateConfirm(false);
+      setShowSubmitModal(false);
+      setSubmitText('');
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSubmittingHomework(false);
+    }
+  };
+
+  const handleSaveGrading = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSubForGrading) return;
-    onGradeSubmission(selectedSubForGrading.id, gradingScore, gradingFeedback);
-    setSelectedSubForGrading(null);
+    setIsSavingGrade(true);
+    setGradeError(null);
+    try {
+      await onGradeSubmission(selectedSubForGrading.id, gradingScore, gradingFeedback);
+      setSelectedSubForGrading(null);
+    } catch (error) {
+      setGradeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSavingGrade(false);
+    }
   };
 
   const getStatusBadge = (status: HomeworkSubmission['status']) => {
@@ -261,18 +347,41 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             <span>{lang === 'th' ? 'ซิงค์ Calendar' : 'Calendar'}</span>
           </button>
 
-          <button
-            type="button"
-            data-guide-id="homework-submit-btn"
-            onClick={() => {
-              setAllowDuplicateConfirm(false);
-              setShowSubmitModal(true);
-            }}
-            className="btn-action-primary px-3 py-1.5"
-          >
-            <UploadCloud className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'ส่งการบ้านใหม่' : 'Submit'}</span>
-          </button>
+          {canManageAssignments ? (
+            <button
+              type="button"
+              data-guide-id="homework-create-assignment-btn"
+              onClick={() => {
+                const selectedCourse = courses.find((course) => course.id === courseFilter || course.code === courseFilter);
+                setAssignmentCourseId(selectedCourse?.id || teacherFilteredCourses[0]?.id || '');
+                setAssignmentError(null);
+                setShowAssignmentModal(true);
+              }}
+              className="btn-action-primary px-3 py-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'สร้างงานใหม่' : 'Create Assignment'}</span>
+            </button>
+          ) : currentRole === 'student' ? (
+            <button
+              type="button"
+              data-guide-id="homework-submit-btn"
+              onClick={() => {
+                setSubmitStudentId(students[0]?.id || '');
+                setSubmitAssignmentId(activeAssignments[0]?.id || '');
+                setSubmitError(null);
+                setAllowDuplicateConfirm(false);
+                setShowSubmitModal(true);
+              }}
+              disabled={!canStudentSubmit || activeAssignments.length === 0 || students.length === 0}
+              className="btn-action-primary px-3 py-1.5 disabled:opacity-50"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>{canStudentSubmit
+                ? (lang === 'th' ? 'ส่งการบ้าน' : 'Submit Homework')
+                : (lang === 'th' ? 'ปิดรับส่งงานออนไลน์' : 'Online submission paused')}</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -450,9 +559,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
                       <td className="p-2.5 text-right">
                         {(() => {
-                          const canGrade = currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
                           const actionItems: TableActionItem[] = [
-                            ...(canGrade
+                            ...(canManageAssignments
                               ? [
                                   {
                                     id: 'grade',
@@ -461,8 +569,9 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                                     variant: 'warning' as const,
                                     onClick: () => {
                                       setSelectedSubForGrading(sub);
-                                      setGradingScore(sub.score ?? 18);
-                                      setGradingFeedback(sub.teacherFeedback ?? 'ผลงานดีมาก มีความตั้งใจ');
+                                      setGradingScore(sub.score ?? 0);
+                                      setGradingFeedback(sub.teacherFeedback ?? '');
+                                      setGradeError(null);
                                     },
                                   },
                                 ]
@@ -509,7 +618,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-mono text-[10px] font-bold">
-                      {asg.courseCode || 'GEN-101'}
+                      {asg.courseCode || '—'}
                     </span>
                     <span className="text-[10px] text-amber-800 dark:text-amber-300 font-mono font-semibold">
                       กำหนดส่ง: {asg.dueDate}
@@ -522,7 +631,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
 
                 <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px]">
                   <span className="text-[var(--color-text-muted)]">
-                    คะแนนเต็ม: <strong className="text-[var(--color-text-title)]">{asg.maxScore ?? asg.points ?? 20}</strong> แต้ม
+                    คะแนนเต็ม: <strong className="text-[var(--color-text-title)]">{asg.maxScore ?? asg.points}</strong> แต้ม
                   </span>
                   <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
                     ส่งแล้ว: {submissions.filter(s => s.assignmentId === asg.id && s.status !== 'pending').length} คน
@@ -593,6 +702,145 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
         </div>
       )}
 
+      {/* Teacher Assignment Modal */}
+      {showAssignmentModal && canManageAssignments && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-amber-700 dark:text-amber-300" />
+                {lang === 'th' ? 'สร้างและมอบหมายงาน' : 'Create Assignment'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAssignmentModal(false)}
+                aria-label={lang === 'th' ? 'ปิดฟอร์ม' : 'Close form'}
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAssignment} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                  {lang === 'th' ? 'รายวิชา' : 'Course'}
+                </label>
+                <select
+                  required
+                  value={assignmentCourseId}
+                  onChange={(e) => setAssignmentCourseId(e.target.value)}
+                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                >
+                  <option value="">{lang === 'th' ? 'เลือกรายวิชา' : 'Select a course'}</option>
+                  {teacherFilteredCourses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.code} — {lang === 'th' ? course.titleTh : course.titleEn}
+                    </option>
+                  ))}
+                </select>
+                {teacherFilteredCourses.length === 0 && (
+                  <p className="mt-1 text-amber-800 dark:text-amber-300">
+                    {lang === 'th' ? 'ไม่พบรายวิชาที่ครูสามารถมอบหมายงานได้' : 'No courses are available for assignment.'}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                    {lang === 'th' ? 'ชื่องาน (ภาษาไทย)' : 'Assignment title'}
+                  </label>
+                  <input
+                    required
+                    value={assignmentTitleTh}
+                    onChange={(e) => setAssignmentTitleTh(e.target.value)}
+                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                    {lang === 'th' ? 'ชื่องาน (ภาษาอังกฤษ)' : 'English title (optional)'}
+                  </label>
+                  <input
+                    value={assignmentTitleEn}
+                    onChange={(e) => setAssignmentTitleEn(e.target.value)}
+                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                    {lang === 'th' ? 'กำหนดส่ง' : 'Due date'}
+                  </label>
+                  <input
+                    required
+                    type="date"
+                    value={assignmentDueDate}
+                    onChange={(e) => setAssignmentDueDate(e.target.value)}
+                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                    {lang === 'th' ? 'คะแนนเต็ม' : 'Maximum score'}
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    min="0.01"
+                    step="0.5"
+                    value={assignmentPoints}
+                    onChange={(e) => setAssignmentPoints(e.target.value)}
+                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                  {lang === 'th' ? 'รายละเอียด / คำชี้แจง' : 'Instructions (optional)'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={assignmentDescription}
+                  onChange={(e) => setAssignmentDescription(e.target.value)}
+                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
+                />
+              </div>
+
+              {assignmentError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-rose-800 dark:text-rose-200">
+                  {assignmentError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+                <button
+                  type="button"
+                  disabled={isSavingAssignment}
+                  onClick={() => setShowAssignmentModal(false)}
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-50 cursor-pointer"
+                >
+                  {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAssignment || teacherFilteredCourses.length === 0}
+                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold shadow-sm cursor-pointer"
+                >
+                  {isSavingAssignment
+                    ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
+                    : (lang === 'th' ? 'บันทึกและมอบหมาย' : 'Save Assignment')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Teacher Grading Modal */}
       {selectedSubForGrading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
@@ -629,6 +877,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                   type="number"
                   min="0"
                   max={selectedSubForGrading.maxScore}
+                  required
                   value={gradingScore}
                   onChange={(e) => setGradingScore(Number(e.target.value))}
                   className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)] font-mono"
@@ -646,19 +895,29 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 />
               </div>
 
+              {gradeError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-rose-800 dark:text-rose-200">
+                  {gradeError}
+                </p>
+              )}
+
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
+                  disabled={isSavingGrade}
                   onClick={() => setSelectedSubForGrading(null)}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-50 cursor-pointer"
                 >
                   {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold shadow-sm cursor-pointer"
+                  disabled={isSavingGrade}
+                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold shadow-sm cursor-pointer"
                 >
-                  {lang === 'th' ? 'บันทึกคะแนนและคำแนะนำ' : 'Save Grade'}
+                  {isSavingGrade
+                    ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
+                    : (lang === 'th' ? 'บันทึกคะแนนและคำแนะนำ' : 'Save Grade')}
                 </button>
               </div>
             </form>
@@ -667,7 +926,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
       )}
 
       {/* Student Submit Modal */}
-      {showSubmitModal && (
+      {showSubmitModal && canStudentSubmit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
@@ -675,55 +934,49 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 <UploadCloud className="w-5 h-5 text-amber-700 dark:text-amber-300" />
                 {lang === 'th' ? 'ส่งการบ้านออนไลน์' : 'Submit Homework'}
               </h3>
-              <button onClick={() => setShowSubmitModal(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
+              <button
+                type="button"
+                onClick={() => setShowSubmitModal(false)}
+                aria-label={lang === 'th' ? 'ปิดฟอร์ม' : 'Close form'}
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleSubmitHomework} className="space-y-4 text-xs">
               <div>
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'เลือกนักเรียนผู้ส่ง' : 'Student'}</label>
+                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                  {lang === 'th' ? 'งานที่ต้องการส่ง' : 'Assignment'}
+                </label>
                 <select
-                  value={submitStudentId}
-                  onChange={(e) => setSubmitStudentId(e.target.value)}
+                  required
+                  value={submitAssignmentId}
+                  onChange={(e) => setSubmitAssignmentId(e.target.value)}
                   className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                 >
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.firstNameTh} {s.lastNameTh} ({s.room})
+                  <option value="">{lang === 'th' ? 'เลือกงานที่มอบหมาย' : 'Select an assignment'}</option>
+                  {activeAssignments.map((assignment) => (
+                    <option key={assignment.id} value={assignment.id}>
+                      {assignment.courseCode ? `${assignment.courseCode} — ` : ''}{assignment.titleTh}
                     </option>
                   ))}
                 </select>
+                {activeAssignments.length === 0 && (
+                  <p className="mt-1 text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'ยังไม่มีงานที่เปิดรับส่ง' : 'There are no open assignments.'}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'การบ้านที่ต้องการส่ง' : 'Assignment'}</label>
-                <input
-                  type="text"
-                  required
-                  value={submitTitle}
-                  onChange={(e) => setSubmitTitle(e.target.value)}
-                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'ชื่อไฟล์ที่แนบ' : 'Attached File Name'}</label>
-                <input
-                  type="text"
-                  required
-                  value={submitFileName}
-                  onChange={(e) => setSubmitFileName(e.target.value)}
-                  placeholder="เช่น Report_Assignment.pdf"
-                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'คำอธิบายหรือข้อความถึงอาจารย์' : 'Notes / Submission Text'}</label>
+                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
+                  {lang === 'th' ? 'ข้อความถึงอาจารย์ (ไม่บังคับ)' : 'Note to teacher (optional)'}
+                </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={submitText}
                   onChange={(e) => setSubmitText(e.target.value)}
-                  placeholder="ระบุข้อความหรือลิงก์ส่งงานเพิ่มเติม..."
                   className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
                 />
               </div>
@@ -741,25 +994,34 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                       onChange={(e) => setAllowDuplicateConfirm(e.target.checked)}
                       className="rounded accent-amber-600"
                     />
-                    <span>ยืนยันต้องการส่งการบ้านซ้ำอีกครั้ง</span>
+                    <span>{lang === 'th' ? 'ยืนยันว่าต้องการส่งงานนี้อีกครั้ง' : 'Confirm another submission'}</span>
                   </label>
                 </div>
+              )}
+
+              {submitError && (
+                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-rose-800 dark:text-rose-200">
+                  {submitError}
+                </p>
               )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"
+                  disabled={isSubmittingHomework}
                   onClick={() => setShowSubmitModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-50 cursor-pointer"
                 >
                   {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  disabled={submitDupReasons.length > 0 && !allowDuplicateConfirm}
+                  disabled={!canStudentSubmit || isSubmittingHomework || activeAssignments.length === 0 || (submitDupReasons.length > 0 && !allowDuplicateConfirm)}
                   className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold shadow-sm cursor-pointer"
                 >
-                  {lang === 'th' ? 'ยืนยันการส่งการบ้าน' : 'Submit Now'}
+                  {isSubmittingHomework
+                    ? (lang === 'th' ? 'กำลังส่ง...' : 'Submitting...')
+                    : (lang === 'th' ? 'ยืนยันการส่งการบ้าน' : 'Submit Now')}
                 </button>
               </div>
             </form>

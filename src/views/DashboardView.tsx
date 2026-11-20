@@ -626,37 +626,80 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   const teacherNextSlot = todayScheduledSlots[0] || null;
+  const teacherAttendanceTab: NavTab | null =
+    schoolPermissions?.teacher_attendance !== false && isModuleEnabled('attendance')
+      ? 'attendance'
+      : isModuleEnabled('mobile_checkin')
+        ? 'mobile_checkin'
+        : null;
+  const teacherLeaveTab: NavTab | null = isModuleEnabled('mobile_checkin')
+    ? 'mobile_checkin'
+    : isModuleEnabled('attendance')
+      ? 'attendance'
+      : null;
+  const teacherPendingActionTab: NavTab | null = pendingLeaveCount > 0 && teacherLeaveTab
+    ? teacherLeaveTab
+    : ungradedHomeworkCount > 0 && isModuleEnabled('homework')
+      ? 'homework'
+      : null;
   const studentCanSelfCheckin = schoolPermissions?.student_self_checkin !== false && isModuleEnabled('mobile_checkin');
   const studentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
   const parentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
   const parentCanPayTuition = schoolPermissions?.parent_promptpay_tuition !== false && isModuleEnabled('billing');
 
-  const morningQuickActions: Array<{ id: string; label: string; tab: NavTab; primary?: boolean }> = [];
+  const morningQuickActions: Array<{
+    id: string;
+    label: string;
+    tab: NavTab;
+    icon?: React.ComponentType<{ className?: string }>;
+    primary?: boolean;
+  }> = [];
   if (currentRole === 'admin' || currentRole === 'super_admin') {
-    if (isModuleEnabled('attendance')) {
-      morningQuickActions.push({ id: 'att', label: lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance', tab: 'attendance', primary: true });
-    }
     if (isModuleEnabled('timetable')) {
-      morningQuickActions.push({ id: 'tt', label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable', tab: 'timetable' });
-    }
-  } else if (currentRole === 'teacher') {
-    if (schoolPermissions?.teacher_attendance !== false && isModuleEnabled('attendance')) {
       morningQuickActions.push({
-        id: 'att',
-        label: lang === 'th' ? 'เช็คชื่อประจำวัน/คาบ' : 'Take Attendance',
-        tab: 'attendance',
+        id: 'tt',
+        label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable',
+        tab: 'timetable',
+        icon: Calendar,
         primary: true,
       });
-    } else if (isModuleEnabled('mobile_checkin')) {
+    }
+    if (isModuleEnabled('attendance')) {
+      morningQuickActions.push({
+        id: 'att',
+        label: lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance',
+        tab: 'attendance',
+        icon: UserCheck,
+        primary: morningQuickActions.length === 0,
+      });
+    }
+  } else if (currentRole === 'teacher') {
+    if (isModuleEnabled('timetable')) {
+      morningQuickActions.push({
+        id: 'tt',
+        label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable',
+        tab: 'timetable',
+        icon: Calendar,
+        primary: true,
+      });
+    }
+    if (teacherAttendanceTab) {
       morningQuickActions.push({
         id: 'att',
         label: lang === 'th' ? 'เช็คชื่อประจำวัน/คาบ' : 'Take Attendance',
-        tab: 'mobile_checkin',
-        primary: true,
+        tab: teacherAttendanceTab,
+        icon: UserCheck,
+        primary: morningQuickActions.length === 0,
       });
     }
     if (isModuleEnabled('gradebook')) {
-      morningQuickActions.push({ id: 'gb', label: lang === 'th' ? 'บันทึกคะแนน' : 'Record Grades', tab: 'gradebook' });
+      morningQuickActions.push({
+        id: 'gb',
+        label: lang === 'th' ? 'บันทึกคะแนน' : 'Record Grades',
+        tab: 'gradebook',
+        icon: Award,
+        primary: morningQuickActions.length === 0,
+      });
     }
   } else if (currentRole === 'student') {
     if (studentCanSelfCheckin) {
@@ -664,6 +707,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'checkin',
         label: lang === 'th' ? 'เช็คชื่อเข้าเรียน' : 'Check-in Now',
         tab: 'mobile_checkin',
+        icon: UserCheck,
         primary: true,
       });
     }
@@ -672,6 +716,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'tt',
         label: lang === 'th' ? 'ตารางเรียนวันนี้' : 'My Timetable',
         tab: 'timetable',
+        icon: Calendar,
         primary: !studentCanSelfCheckin,
       });
     }
@@ -680,6 +725,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'gb',
         label: lang === 'th' ? 'ผลการเรียน' : 'My Grades',
         tab: 'gradebook',
+        icon: Award,
       });
     }
   } else if (currentRole === 'parent') {
@@ -688,6 +734,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'gb',
         label: lang === 'th' ? 'ผลการเรียนบุตรหลาน' : 'Child Grades',
         tab: 'gradebook',
+        icon: Award,
         primary: true,
       });
     } else if (isModuleEnabled('timetable')) {
@@ -695,6 +742,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'gb',
         label: lang === 'th' ? 'ตารางเรียนบุตรหลาน' : 'Class Schedule',
         tab: 'timetable',
+        icon: Calendar,
         primary: true,
       });
     }
@@ -703,12 +751,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         id: 'bill',
         label: lang === 'th' ? 'ค่าเล่าเรียน & ใบเสร็จ' : 'Tuition & Receipts',
         tab: 'billing',
+        icon: Receipt,
       });
     } else if (isModuleEnabled('announcements')) {
       morningQuickActions.push({
         id: 'ann',
         label: lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements',
         tab: 'announcements',
+        icon: BellRing,
       });
     }
   }
@@ -1086,17 +1136,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                {morningQuickActions.slice(0, 2).map((act) => (
-                  <button
-                    key={act.id}
-                    type="button"
-                    onClick={() => onNavigate(act.tab)}
-                    className={act.primary ? 'btn-action-primary px-3.5 py-2' : 'btn-tool-neutral px-3.5 py-2'}
-                  >
-                    <span>{act.label}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-                ))}
+                {morningQuickActions.slice(0, 2).map((act) => {
+                  const ActionIcon = act.icon;
+                  return (
+                    <button
+                      key={act.id}
+                      type="button"
+                      onClick={() => onNavigate(act.tab)}
+                      className={act.primary ? 'btn-action-primary px-3.5 py-2' : 'btn-tool-neutral px-3.5 py-2'}
+                    >
+                      {ActionIcon && <ActionIcon className="w-3.5 h-3.5" />}
+                      <span>{act.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
@@ -1132,8 +1185,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Teacher KPI 2: Today Attendance */}
                     <button
                       type="button"
-                      onClick={() => onNavigate(schoolPermissions?.teacher_attendance !== false ? 'attendance' : 'mobile_checkin')}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      onClick={() => teacherAttendanceTab && onNavigate(teacherAttendanceTab)}
+                      disabled={!teacherAttendanceTab}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="type-meta">{lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}</span>
@@ -1150,8 +1204,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Teacher KPI 3: Homework & Leaves */}
                     <button
                       type="button"
-                      onClick={() => onNavigate(ungradedHomeworkCount > 0 ? 'homework' : 'attendance')}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      onClick={() => teacherPendingActionTab && onNavigate(teacherPendingActionTab)}
+                      disabled={!teacherPendingActionTab}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="type-meta">{lang === 'th' ? 'งานรอตรวจ & ใบลา' : 'Pending Review'}</span>
@@ -1354,9 +1409,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 >
                   <div>
                     <div className="saas-card-header">
-                      <h2 className="type-section-title truncate">
-                        {lang === 'th' ? 'ตารางสอนวันนี้ของฉัน' : "Today's Teaching Schedule"}
-                      </h2>
+                      <div className="min-w-0">
+                        <p className="type-meta font-semibold text-[var(--color-primary-text)]">
+                          {lang === 'th' ? '01 · เตรียมก่อนสอน' : '01 · Prepare'}
+                        </p>
+                        <h2 className="type-section-title truncate">
+                          {lang === 'th' ? 'ตารางสอนวันนี้ของฉัน' : "Today's Teaching Schedule"}
+                        </h2>
+                      </div>
                       <button
                         type="button"
                         onClick={() => onNavigate('timetable')}
@@ -1438,16 +1498,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                       onClick={() => onOpenGradebookCourse ? onOpenGradebookCourse(slot.courseId) : onNavigate('gradebook')}
                                       className="btn-tool-neutral px-2.5 py-1.5 text-[11px]"
                                     >
+                                      <Award className="w-3.5 h-3.5" />
                                       <span>{lang === 'th' ? 'บันทึกคะแนน' : 'Record Grades'}</span>
                                     </button>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={() => onNavigate('timetable')}
-                                    className="btn-tool-tone px-2.5 py-1.5 text-[11px]"
-                                  >
-                                    <span>{lang === 'th' ? 'เช็คชื่อ' : 'Check-in'}</span>
-                                  </button>
+                                  {teacherAttendanceTab && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onNavigate(teacherAttendanceTab)}
+                                      className="btn-tool-tone px-2.5 py-1.5 text-[11px]"
+                                    >
+                                      <UserCheck className="w-3.5 h-3.5" />
+                                      <span>
+                                        {teacherAttendanceTab === 'attendance'
+                                          ? (lang === 'th' ? 'เช็คชื่อ' : 'Take Attendance')
+                                          : (lang === 'th' ? 'เช็คชื่อมือถือ' : 'Mobile Check-in')}
+                                      </span>
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1465,23 +1533,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 >
                   <div>
                     <div className="saas-card-header">
-                      <div className="seg-tab-group">
-                        <button
-                          type="button"
-                          data-active={teacherDeskTab === 'actions'}
-                          onClick={() => setTeacherDeskTab('actions')}
-                          className="seg-tab-btn text-xs py-1 px-2.5"
-                        >
-                          {lang === 'th' ? 'งานที่ต้องจัดการ' : 'Action Items'}
-                        </button>
-                        <button
-                          type="button"
-                          data-active={teacherDeskTab === 'checkins'}
-                          onClick={() => setTeacherDeskTab('checkins')}
-                          className="seg-tab-btn text-xs py-1 px-2.5"
-                        >
-                          {lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins'}
-                        </button>
+                      <div className="min-w-0">
+                        <p className="type-meta font-semibold text-[var(--color-primary-text)] mb-1">
+                          {lang === 'th' ? '02 · เช็คชื่อและติดตามงาน' : '02 · Attendance & follow-up'}
+                        </p>
+                        <div className="seg-tab-group">
+                          <button
+                            type="button"
+                            data-active={teacherDeskTab === 'actions'}
+                            onClick={() => setTeacherDeskTab('actions')}
+                            className="seg-tab-btn text-xs py-1 px-2.5"
+                          >
+                            {lang === 'th' ? 'งานที่ต้องจัดการ' : 'Action Items'}
+                          </button>
+                          <button
+                            type="button"
+                            data-active={teacherDeskTab === 'checkins'}
+                            onClick={() => setTeacherDeskTab('checkins')}
+                            className="seg-tab-btn text-xs py-1 px-2.5"
+                          >
+                            {lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins'}
+                          </button>
+                        </div>
                       </div>
 
                       {teacherDeskTab === 'actions' ? (
@@ -1512,17 +1585,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             id: string;
                             label: string;
                             value: string;
+                            icon: React.ComponentType<{ className?: string }>;
                             urgent?: boolean;
                             onClick: () => void;
                           }> = [];
 
-                          if (pendingLeaveCount > 0 && isModuleEnabled('attendance')) {
+                          if (uncheckedTodayCount > 0 && !todayHoliday && !isTodayWeekend && teacherAttendanceTab === 'attendance') {
+                            actionRows.push({
+                              id: 'unchecked',
+                              label: lang === 'th' ? 'นักเรียนยังไม่เช็คชื่อวันนี้' : 'Unchecked Students Today',
+                              value: `${uncheckedTodayCount} ${lang === 'th' ? 'คน' : 'students'}`,
+                              icon: UserCheck,
+                              urgent: true,
+                              onClick: () => onNavigate('attendance'),
+                            });
+                          }
+                          if (pendingLeaveCount > 0 && teacherLeaveTab) {
                             actionRows.push({
                               id: 'leaves',
                               label: lang === 'th' ? 'ใบลารอรับทราบ / อนุมัติ' : 'Pending Leaves',
                               value: `${pendingLeaveCount} ${lang === 'th' ? 'รายการ' : 'items'}`,
+                              icon: FileCheck2,
                               urgent: true,
-                              onClick: () => onNavigate('mobile_checkin'),
+                              onClick: () => onNavigate(teacherLeaveTab),
                             });
                           }
                           if (ungradedHomeworkCount > 0 && isModuleEnabled('homework')) {
@@ -1530,16 +1615,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               id: 'homework',
                               label: lang === 'th' ? 'การบ้านรอตรวจให้คะแนน' : 'Homework to Grade',
                               value: `${ungradedHomeworkCount} ${lang === 'th' ? 'ชิ้น' : 'items'}`,
+                              icon: FileCheck2,
                               urgent: true,
                               onClick: () => onNavigate('homework'),
-                            });
-                          }
-                          if (uncheckedTodayCount > 0 && !todayHoliday && !isTodayWeekend && schoolPermissions?.teacher_attendance !== false && isModuleEnabled('attendance')) {
-                            actionRows.push({
-                              id: 'unchecked',
-                              label: lang === 'th' ? 'นักเรียนยังไม่เช็คชื่อวันนี้' : 'Unchecked Students Today',
-                              value: `${uncheckedTodayCount} ${lang === 'th' ? 'คน' : 'students'}`,
-                              onClick: () => onNavigate('attendance'),
                             });
                           }
                           return actionRows.length === 0 ? (
@@ -1548,20 +1626,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             </div>
                           ) : (
                             <div className="divide-y divide-[var(--color-border)]">
-                              {actionRows.slice(0, 5).map((row) => (
-                                <button
-                                  key={row.id}
-                                  type="button"
-                                  onClick={row.onClick}
-                                  className="print-keep w-full py-3.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 cursor-pointer transition"
-                                >
-                                  <span className="type-card-title truncate">{row.label}</span>
-                                  <span className={`type-meta font-semibold tabular-nums shrink-0 inline-flex items-center gap-1.5 ${row.urgent ? 'text-amber-700 dark:text-amber-300' : ''}`}>
-                                    {row.value}
-                                    <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                                  </span>
-                                </button>
-                              ))}
+                              {actionRows.slice(0, 5).map((row) => {
+                                const RowIcon = row.icon;
+                                return (
+                                  <button
+                                    key={row.id}
+                                    type="button"
+                                    onClick={row.onClick}
+                                    className="print-keep w-full py-3.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 cursor-pointer transition"
+                                  >
+                                    <span className="type-card-title min-w-0 truncate inline-flex items-center gap-2">
+                                      <RowIcon className="w-4 h-4 shrink-0 text-[var(--color-primary-text)]" />
+                                      <span className="truncate">{row.label}</span>
+                                    </span>
+                                    <span className={`type-meta font-semibold tabular-nums shrink-0 inline-flex items-center gap-1.5 ${row.urgent ? 'text-amber-700 dark:text-amber-300' : ''}`}>
+                                      {row.value}
+                                      <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                                    </span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           );
                         })()

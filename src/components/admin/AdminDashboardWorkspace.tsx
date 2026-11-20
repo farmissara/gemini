@@ -4,11 +4,10 @@ import {
   ArrowUpRight,
   Award,
   BellRing,
-  BookOpen,
   Calendar,
   ChevronRight,
   Download,
-  GraduationCap,
+  FileCheck2,
   Layers,
   ListChecks,
   QrCode,
@@ -168,7 +167,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   onToggleSimplifiedView,
 }) => {
   const totalPendingActions = pendingLeaveCount + ungradedHomeworkCount + pendingSlipCount;
-  const activeGatesCount = campusGates.filter((g) => g.isActive !== false).length;
+  const activeGatesCount = campusGates.filter((gate) => gate.isActive !== false).length;
   const hasGpsConfigured = Boolean(school?.latitude && school?.longitude) || activeGatesCount > 0;
   const enabledPoliciesCount = schoolPermissions
     ? Object.values(schoolPermissions).filter(Boolean).length
@@ -177,7 +176,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     ? Object.keys(schoolPermissions).length
     : 12;
   const lateCutoffTime = systemConfig.lineNotificationSettings?.lateCutoffTime || '08:00';
-
   const openControlTab = (subTab: SystemSettingsTab, fallbackNav: NavTab) => {
     if (onOpenSystemSettingsTab) {
       onOpenSystemSettingsTab(subTab);
@@ -280,7 +278,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         onClick: () => onNavigate('attendance'),
       });
     }
-    if (rows.length < 5 && isModuleEnabled('timetable')) {
+    if (isModuleEnabled('timetable') && !rows.some((row) => row.id === 'timetable')) {
       rows.push({
         id: 'timetable',
         groupLabel: lang === 'th' ? 'วิชาการ' : 'Academics',
@@ -290,6 +288,8 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         onClick: () => onNavigate('timetable'),
       });
     }
+    const rowOrder = ['timetable', 'unchecked', 'staff-leave', 'leaves', 'homework', 'slips', 'central-exam', 'onboarding'];
+    rows.sort((a, b) => rowOrder.indexOf(a.id) - rowOrder.indexOf(b.id));
     return rows.slice(0, 6);
   }, [
     simplifiedView,
@@ -313,23 +313,16 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     todayScheduledSlots.length,
   ]);
 
-  // 6 High-Frequency Admin Department Shortcuts (In Simplified View, hides technical/admin-system cards & keeps core ops)
+  // Keep the most frequent operational shortcuts first; setup records remain in the sidebar.
   const quickDepartments: AdminCategoryActionItem[] = useMemo(() => {
     const list: Array<AdminCategoryActionItem | false> = simplifiedView
       ? [
-          isModuleEnabled('students') && {
-            id: 'students',
-            label: lang === 'th' ? 'ทะเบียนนักเรียน' : 'Students',
-            meta: lang === 'th' ? `${totalStudents} คน · กำลังเรียน ${activeStudents}` : `${totalStudents} total · ${activeStudents} active`,
-            icon: Users,
-            onClick: () => onNavigate('students'),
-          },
-          isModuleEnabled('courses') && {
-            id: 'courses',
-            label: lang === 'th' ? 'รายวิชา & หลักสูตร' : 'Courses',
-            meta: lang === 'th' ? `${coursesCount} รายวิชา · ครู ${teachersCount} คน` : `${coursesCount} courses · ${teachersCount} staff`,
-            icon: BookOpen,
-            onClick: () => onNavigate('courses'),
+          isModuleEnabled('timetable') && {
+            id: 'timetable',
+            label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable',
+            meta: lang === 'th' ? `${todayScheduledSlots.length} คาบเรียนวันนี้` : `${todayScheduledSlots.length} slots today`,
+            icon: Calendar,
+            onClick: () => onNavigate('timetable'),
           },
           isModuleEnabled('attendance') && {
             id: 'attendance',
@@ -338,19 +331,19 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             icon: QrCode,
             onClick: () => onNavigate('attendance'),
           },
-          isModuleEnabled('timetable') && {
-            id: 'timetable',
-            label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Timetable',
-            meta: lang === 'th' ? `${todayScheduledSlots.length} คาบเรียนวันนี้` : `${todayScheduledSlots.length} slots today`,
-            icon: Calendar,
-            onClick: () => onNavigate('timetable'),
-          },
           isModuleEnabled('gradebook') && {
             id: 'gradebook',
             label: lang === 'th' ? 'บันทึกคะแนน' : 'Gradebook',
             meta: lang === 'th' ? `${gradesCount} รายการคะแนน` : `${gradesCount} grade records`,
             icon: Award,
             onClick: () => onNavigate('gradebook'),
+          },
+          isModuleEnabled('homework') && {
+            id: 'homework',
+            label: lang === 'th' ? 'ตรวจการบ้าน & ภาระงาน' : 'Homework & Tasks',
+            meta: lang === 'th' ? `รอตรวจ ${ungradedHomeworkCount} ชิ้น` : `${ungradedHomeworkCount} to review`,
+            icon: FileCheck2,
+            onClick: () => onNavigate('homework'),
           },
           isModuleEnabled('announcements') && {
             id: 'announcements',
@@ -359,31 +352,28 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             icon: BellRing,
             onClick: () => onNavigate('announcements'),
           },
-        ]
-      : [
           isModuleEnabled('students') && {
             id: 'students',
-            label: lang === 'th' ? 'ทะเบียนนักเรียน & บัญชี' : 'Students & Accounts',
+            label: lang === 'th' ? 'ค้นทะเบียนนักเรียน' : 'Student Registry',
             meta: lang === 'th' ? `${totalStudents} คน · กำลังเรียน ${activeStudents}` : `${totalStudents} total · ${activeStudents} active`,
             icon: Users,
             onClick: () => onNavigate('students'),
           },
-          isModuleEnabled('teachers') && {
-            id: 'teachers',
-            label: lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff',
-            meta: lang === 'th'
-              ? `${teachersCount} คน${teacherLeavesTodayCount > 0 ? ` · ลาวันนี้ ${teacherLeavesTodayCount}` : ''}`
-              : `${teachersCount} staff`,
-            icon: GraduationCap,
-            urgent: teacherLeavesTodayCount > 0,
-            onClick: () => onNavigate('teachers'),
-          },
+        ]
+      : [
           isModuleEnabled('timetable') && {
             id: 'timetable',
-            label: lang === 'th' ? 'ตารางสอน & รายวิชา' : 'Timetable & Courses',
-            meta: lang === 'th' ? `วันนี้ ${todayScheduledSlots.length} คาบ · ${coursesCount} วิชา` : `${todayScheduledSlots.length} slots · ${coursesCount} courses`,
+            label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable',
+            meta: lang === 'th' ? `${todayScheduledSlots.length} คาบเรียนวันนี้` : `${todayScheduledSlots.length} slots today`,
             icon: Calendar,
             onClick: () => onNavigate('timetable'),
+          },
+          isModuleEnabled('attendance') && {
+            id: 'attendance',
+            label: lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance',
+            meta: lang === 'th' ? `เช็คแล้ว ${totalForDate} · มาตรงเวลา ${onTimePercent}%` : `${totalForDate} checked · ${onTimePercent}% on-time`,
+            icon: QrCode,
+            onClick: () => onNavigate('attendance'),
           },
           isModuleEnabled('gradebook') && {
             id: 'gradebook',
@@ -395,7 +385,14 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             urgent: unclaimedCentralPacksCount > 0,
             onClick: () => onNavigate('gradebook'),
           },
-          canViewFinancials
+          isModuleEnabled('homework') && {
+            id: 'homework',
+            label: lang === 'th' ? 'ตรวจการบ้าน & ภาระงาน' : 'Homework & Tasks',
+            meta: lang === 'th' ? `รอตรวจ ${ungradedHomeworkCount} ชิ้น` : `${ungradedHomeworkCount} to review`,
+            icon: FileCheck2,
+            onClick: () => onNavigate('homework'),
+          },
+          canViewFinancials && isModuleEnabled('billing')
             ? {
                 id: 'billing',
                 label: lang === 'th' ? 'ค่าเทอม & ตรวจสอบสลิป' : 'Tuition & Slips',
@@ -413,14 +410,12 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
                 icon: BellRing,
                 onClick: () => onNavigate('announcements'),
               },
-          {
-            id: 'system_settings',
-            label: lang === 'th' ? 'ตั้งค่าระบบ สิทธิ์ & GPS' : 'System, Permissions & GPS',
-            meta: hasGpsConfigured
-              ? (lang === 'th' ? `GPS ${activeGatesCount || 1} จุด · ตัดสาย ${lateCutoffTime} · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `GPS ready · Late ${lateCutoffTime}`)
-              : (lang === 'th' ? `ยังไม่ปักพิกัด · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `No GPS · ${enabledPoliciesCount}/${totalPoliciesCount} rules`),
-            icon: SlidersHorizontal,
-            onClick: () => openControlTab('control_overview', 'system_settings'),
+          isModuleEnabled('students') && {
+            id: 'students',
+            label: lang === 'th' ? 'ทะเบียนนักเรียน' : 'Student Registry',
+            meta: lang === 'th' ? `${totalStudents} คน · กำลังเรียน ${activeStudents}` : `${totalStudents} total · ${activeStudents} active`,
+            icon: Users,
+            onClick: () => onNavigate('students'),
           },
         ];
 
@@ -433,11 +428,9 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     activeStudents,
     totalForDate,
     onTimePercent,
-    teachersCount,
-    teacherLeavesTodayCount,
     todayScheduledSlots.length,
-    coursesCount,
     gradesCount,
+    ungradedHomeworkCount,
     unclaimedCentralPacksCount,
     canViewFinancials,
     pendingSlipCount,
@@ -856,17 +849,31 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
       <section aria-label={lang === 'th' ? 'ทางลัดงานประจำฝ่าย' : 'Department Shortcuts'} className="no-print saas-card overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
           <h3 className="text-[13px] font-bold text-[var(--color-text-title)]">
-            {lang === 'th' ? 'ทางลัดงานหลัก' : 'Quick Access'}
+            {lang === 'th' ? 'งานประจำ: ทำตามลำดับ' : 'Daily Work, In Order'}
           </h3>
           <div className="flex items-center gap-3 text-xs">
             {!simplifiedView && showOnboardingCard && (
               <button
                 type="button"
                 onClick={() => onOpenDrawer('onboarding')}
+                title={lang === 'th' ? 'ทำครั้งแรกหรือเมื่อมีการเปลี่ยนแปลงข้อมูลโรงเรียน' : 'Use during initial setup or when school records change'}
                 className="font-semibold text-amber-700 dark:text-amber-300 hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
               >
                 <ListChecks className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? `ตั้งค่าเริ่มต้น (${completedOnboardingCount}/3)` : `Setup (${completedOnboardingCount}/3)`}</span>
+                <span>{lang === 'th' ? `ตั้งค่าเริ่มต้น · ${completedOnboardingCount}/3` : `Initial setup · ${completedOnboardingCount}/3`}</span>
+              </button>
+            )}
+            {!simplifiedView && (
+              <button
+                type="button"
+                onClick={() => openControlTab('control_overview', 'system_settings')}
+                title={hasGpsConfigured
+                  ? (lang === 'th' ? `ตั้งค่าระบบตามความจำเป็น · GPS ${activeGatesCount || 1} จุด · ตัดสาย ${lateCutoffTime} · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `System settings as needed · GPS ready · Late ${lateCutoffTime}`)
+                  : (lang === 'th' ? `ตั้งค่าระบบตามความจำเป็น · ยังไม่ปักพิกัด · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `System settings as needed · No GPS · ${enabledPoliciesCount}/${totalPoliciesCount} rules`)}
+                className="font-semibold text-[var(--color-text-muted)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'ตั้งค่าระบบ · เป็นครั้งคราว' : 'System settings · As needed'}</span>
               </button>
             )}
             {!simplifiedView && currentUser?.role === 'admin' && (

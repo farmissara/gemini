@@ -27,7 +27,7 @@ interface LmsClassroomViewProps {
   currentUser?: AuthUser | null;
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
   onCompleteLesson: (lessonId: string) => void;
-  onSubmitAssignment: (assignmentId: string) => void;
+  onSubmitAssignment: (assignmentId: string) => void | Promise<void>;
 }
 
 export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
@@ -47,6 +47,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const [selectedLessonId, setSelectedLessonId] = useState<string>(lessons[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'lessons' | 'assignments' | 'discussion'>('lessons');
   const [submittedAlert, setSubmittedAlert] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
 
   const currentStudentId = useMemo(() => {
     if (!currentUser || currentUser.role !== 'student') return '';
@@ -55,7 +57,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   }, [currentUser, students]);
   const isStudentUser = currentUser?.role === 'student';
   const canSubmitHomework =
-    !isStudentUser || isSchoolPolicyEnabled(schoolPermissions, 'student_submit_homework');
+    isStudentUser && Boolean(currentStudentId) && isSchoolPolicyEnabled(schoolPermissions, 'student_submit_homework');
 
   const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
   const filteredCourses = courses.filter((c) =>
@@ -68,7 +70,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
     courses[0];
   const activeCourseIdResolved = activeCourse?.id || selectedCourseId;
   const courseLessons = lessons.filter((l) => l.courseId === activeCourseIdResolved);
-  const courseAssignments = assignments.filter((a) => a.courseId === activeCourseIdResolved);
+  const courseAssignments = assignments.filter((a) => a.courseId === activeCourseIdResolved && a.status === 'active');
   const activeLesson = courseLessons.find((l) => l.id === selectedLessonId) || courseLessons[0];
 
   const handleLessonComplete = (id: string) => {
@@ -81,14 +83,24 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
     setTimeout(() => setSubmittedAlert(null), 3000);
   };
 
-  const handleAssignmentSubmit = (id: string) => {
-    onSubmitAssignment(id);
-    setSubmittedAlert(
-      lang === 'th'
-        ? 'ส่งการบ้านเรียบร้อยแล้ว! ระบบได้ส่งแจ้งเตือนให้อาจารย์ผู้สอนแล้ว'
-        : 'Assignment submitted successfully! Notification sent to instructor.'
-    );
-    setTimeout(() => setSubmittedAlert(null), 3000);
+  const handleAssignmentSubmit = async (id: string) => {
+    if (isSubmittingAssignment) return;
+    setIsSubmittingAssignment(true);
+    setSubmissionError(null);
+    setSubmittedAlert(null);
+    try {
+      await onSubmitAssignment(id);
+      setSubmittedAlert(
+        lang === 'th'
+          ? 'ส่งการบ้านเรียบร้อยแล้ว'
+          : 'Assignment submitted successfully.'
+      );
+      setTimeout(() => setSubmittedAlert(null), 3000);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSubmittingAssignment(false);
+    }
   };
 
   const completedCount = courseLessons.filter((l) =>
@@ -118,6 +130,11 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
             <div className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>{submittedAlert}</span>
+            </div>
+          )}
+          {submissionError && (
+            <div role="alert" className="px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs">
+              {submissionError}
             </div>
           )}
           <div className="px-2.5 py-1 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs flex items-center gap-1.5">
@@ -341,7 +358,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PagedList items={courseAssignments} pageSize={2} renderItem={(asg) => {
               const isSubmitted = currentStudentId
-                ? asg.submittedStudentIds.includes(currentStudentId)
+                ? (asg.submittedStudentIds || []).includes(currentStudentId)
                 : false;
               return (
                 <div
@@ -351,7 +368,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)]">
-                        {asg.points} {lang === 'th' ? 'คะแนนเต็ม' : 'Points'}
+                        {asg.maxScore ?? asg.points} {lang === 'th' ? 'คะแนนเต็ม' : 'Points'}
                       </span>
                       <h3 className="text-sm font-bold text-[var(--color-text-title)] mt-2">
                         {lang === 'th' ? asg.titleTh : asg.titleEn}
@@ -380,24 +397,29 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
 
                   <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
                     <span className="text-xs text-[var(--color-text-muted)]">
-                      {asg.submittedStudentIds.length} {lang === 'th' ? 'คนส่งแล้วในชั้นเรียน' : 'submissions'}
+                      {(asg.submittedStudentIds || []).length} {lang === 'th' ? 'คนส่งแล้วในชั้นเรียน' : 'submissions'}
                     </span>
 
-                    {!isSubmitted ? (
+                    {isStudentUser && !isSubmitted && (
                       canSubmitHomework ? (
                         <button
-                          onClick={() => handleAssignmentSubmit(asg.id)}
-                          className="px-3.5 py-1.5 rounded-lg bg-[var(--tone-solid)] hover:opacity-90 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          type="button"
+                          disabled={isSubmittingAssignment}
+                          onClick={() => void handleAssignmentSubmit(asg.id)}
+                          className="px-3.5 py-1.5 rounded-lg bg-[var(--tone-solid)] hover:opacity-90 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                         >
                           <Upload className="w-3.5 h-3.5" />
-                          <span>{lang === 'th' ? 'อัปโหลดงานส่งอาจารย์' : 'Submit Homework'}</span>
+                          <span>{isSubmittingAssignment
+                            ? (lang === 'th' ? 'กำลังส่ง...' : 'Submitting...')
+                            : (lang === 'th' ? 'ส่งงานให้อาจารย์' : 'Submit Homework')}</span>
                         </button>
                       ) : (
                         <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
                           {lang === 'th' ? 'โรงเรียนปิดการส่งงานออนไลน์ชั่วคราว' : 'Online submission paused'}
                         </span>
                       )
-                    ) : (
+                    )}
+                    {isStudentUser && isSubmitted && (
                       <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         {lang === 'th' ? 'ส่งงานเรียบร้อย' : 'Turned In'}

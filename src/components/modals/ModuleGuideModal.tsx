@@ -109,8 +109,8 @@ export const MODULE_GUIDES: GuideItem[] = [
       {
         titleTh: 'การตั้งค่าฐานข้อมูล Supabase ด่วน',
         titleEn: 'Quick Supabase Setup',
-        descTh: 'มีกล่องกรอก VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY บนหน้าแดชบอร์ดเพื่อเชื่อมต่อฐานข้อมูลจริงทันที',
-        descEn: 'Direct input box for Supabase credentials right on the dashboard for instant live PostgreSQL synchronization.'
+        descTh: 'ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_PUBLISHABLE_KEY ใน .env.local แล้วรีสตาร์ตแอปเพื่อเชื่อมฐานข้อมูลจริง',
+        descEn: 'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local, then restart the app to connect PostgreSQL.'
       }
     ],
     steps: [

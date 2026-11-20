@@ -114,8 +114,8 @@ export const TONE_GROUP_META: Record<ModuleTone, ModuleGroupMeta> = {
 
 export const CATEGORY_TONE_MAP: Record<NavCategoryId, ModuleTone> = {
   super_admin: 'tone-3',
-  academics: 'tone-1',
-  assessment: 'tone-2',
+  daily_work: 'tone-2',
+  academic_setup: 'tone-1',
   report_monitor: 'tone-1',
   student_care: 'tone-4',
   innovation: 'tone-5',

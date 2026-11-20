@@ -92,8 +92,8 @@ export type NavTab =
 
 export type NavCategoryId =
   | 'super_admin'
-  | 'academics'
-  | 'assessment'
+  | 'daily_work'
+  | 'academic_setup'
   | 'report_monitor'
   | 'student_care'
   | 'innovation'
@@ -138,6 +138,8 @@ export interface NavCategoryDef {
   id: NavCategoryId;
   labelTh: string;
   labelEn: string;
+  helperTh?: string;
+  helperEn?: string;
   shortLabelTh: string;
   shortLabelEn: string;
   icon: LucideIcon;
@@ -321,11 +323,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // Category 1: Student registry, staff, and academic setup
+    // Setup and registry work is usually done at the start of a term or when records change.
     list.push({
-      id: 'academics',
-      labelTh: 'ทะเบียนและวิชาการ',
-      labelEn: 'Registry & Academics',
+      id: 'academic_setup',
+      labelTh: 'ทะเบียนและเตรียมภาคเรียน',
+      labelEn: 'Registry & Term Setup',
+      helperTh: 'ทำตอนเปิดเทอม หรือเมื่อข้อมูลเปลี่ยน',
+      helperEn: 'Start of term or when records change',
       shortLabelTh: 'ทะเบียน',
       shortLabelEn: 'Registry',
       icon: Users,
@@ -361,26 +365,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {
+          id: 'central_exam_hub',
+          labelTh: 'คลังข้อสอบกลาง (ตามรอบ)',
+          labelEn: 'Central Exam Hub',
+          icon: BookOpen,
+          badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : null,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+      ],
+    });
+
+    // Daily workflow, ordered from preparing the day through attendance and follow-up.
+    list.push({
+      id: 'daily_work',
+      labelTh: 'งานประจำวัน',
+      labelEn: 'Daily Work',
+      helperTh: 'ดูตาราง → เช็คชื่อ → บันทึก/ติดตามงาน',
+      helperEn: 'Schedule → attendance → grades and follow-up',
+      shortLabelTh: 'งานประจำ',
+      shortLabelEn: 'Daily',
+      icon: Award,
+      items: [
+        {
           id: 'timetable',
-          labelTh: 'ตารางเรียน & ตารางสอน',
-          labelEn: 'Timetable & Schedule',
+          labelTh: 'ตารางเรียน & ตารางสอนวันนี้',
+          labelEn: 'Today’s Timetable',
           shortLabelTh: 'ตาราง',
           shortLabelEn: 'Schedule',
           icon: Calendar,
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
-      ],
-    });
-
-    // Category 2: Teaching and assessment
-    list.push({
-      id: 'assessment',
-      labelTh: 'การสอนและวัดผล',
-      labelEn: 'Teaching & Assessment',
-      shortLabelTh: 'วัดผล',
-      shortLabelEn: 'Grading',
-      icon: Award,
-      items: [
+        {
+          id: 'attendance',
+          labelTh: 'เช็คชื่อหน้าประตู / QR',
+          labelEn: 'Gate & QR Check-in',
+          shortLabelTh: 'เช็กชื่อ',
+          shortLabelEn: 'Check-in',
+          icon: QrCode,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'mobile_checkin',
+          labelTh: 'เช็คชื่อมือถือ & ใบลา',
+          labelEn: 'Mobile Check-in & Leaves',
+          icon: Smartphone,
+          roles: ['super_admin', 'admin', 'teacher', 'student'],
+        },
         {
           id: 'gradebook',
           labelTh: 'บันทึกคะแนน & ตัวชี้วัด',
@@ -400,41 +430,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
           roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
         {
-          id: 'central_exam_hub',
-          labelTh: 'คลังข้อสอบกลางมาตรฐาน',
-          labelEn: 'Central Exam Hub',
-          icon: BookOpen,
-          badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : null,
-          roles: ['super_admin', 'admin', 'teacher'],
+          id: 'announcements',
+          labelTh: 'ข่าวสาร & ประกาศโรงเรียน',
+          labelEn: 'Announcements & News',
+          shortLabelTh: 'ประกาศ',
+          shortLabelEn: 'News',
+          icon: BellRing,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
         },
       ],
     });
 
-    // Category 3: Student support, attendance, and health
+    // Student care tools are for cases, reviews, and periodic screening.
     list.push({
       id: 'student_care',
       labelTh: 'ดูแลช่วยเหลือนักเรียน',
       labelEn: 'Student Support',
-      shortLabelTh: 'เช็กชื่อ',
+      helperTh: 'ใช้เมื่อมีเคส หรือถึงรอบคัดกรอง',
+      helperEn: 'As cases arise or during screening periods',
+      shortLabelTh: 'ดูแล',
       shortLabelEn: 'Care',
       icon: HeartPulse,
       items: [
-        {
-          id: 'attendance',
-          labelTh: 'เช็คชื่อหน้าประตู / QR',
-          labelEn: 'Gate & QR Check-in',
-          shortLabelTh: 'เช็กชื่อ',
-          shortLabelEn: 'Check-in',
-          icon: QrCode,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'mobile_checkin',
-          labelTh: 'เช็คชื่อมือถือ & ใบลา',
-          labelEn: 'Mobile Check-in & Leaves',
-          icon: Smartphone,
-          roles: ['super_admin', 'admin', 'teacher', 'student'],
-        },
         {
           id: 'behavior_sdq',
           labelTh: 'ดูแลช่วยเหลือนักเรียน & SDQ',
@@ -461,24 +478,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 4: School communication and finance
+    // Billing is used by payment cycle; announcements stay with daily work.
     list.push({
       id: 'finance',
-      labelTh: 'สื่อสารและการเงิน',
-      labelEn: 'Communication & Finance',
+      labelTh: 'การเงินตามรอบชำระ',
+      labelEn: 'Billing Cycle',
+      helperTh: 'ตรวจเมื่อถึงรอบชำระ หรือมีรายการรอตรวจ',
+      helperEn: 'Check during billing cycles or when items are pending',
       shortLabelTh: 'การเงิน',
       shortLabelEn: 'Finance',
       icon: Receipt,
       items: [
-        {
-          id: 'announcements',
-          labelTh: 'ข่าวสาร & ประกาศโรงเรียน',
-          labelEn: 'Announcements & News',
-          shortLabelTh: 'ประกาศ',
-          shortLabelEn: 'News',
-          icon: BellRing,
-          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-        },
         {
           id: 'billing',
           labelTh: 'ค่าเทอม & ใบเสร็จรับเงิน',
@@ -491,11 +501,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 5: System administration
+    // System administration is intentionally kept below everyday workflows.
     list.push({
       id: 'administration',
       labelTh: 'ตั้งค่าและควบคุมระบบ',
       labelEn: 'System Administration',
+      helperTh: 'ตั้งครั้งแรก หรือเมื่อมีการเปลี่ยนแปลง',
+      helperEn: 'Initial setup or when configuration changes',
       shortLabelTh: 'ตั้งค่า',
       shortLabelEn: 'Admin',
       icon: SlidersHorizontal,
@@ -556,11 +568,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 6: Reports and student quality monitoring
+    // Periodic reports and quality monitoring.
     list.push({
       id: 'report_monitor',
       labelTh: 'รายงานและติดตามคุณภาพ',
       labelEn: 'Reports & Quality Monitoring',
+      helperTh: 'ทบทวนรายเดือน / รายภาคเรียน',
+      helperEn: 'Review monthly or each term',
       shortLabelTh: 'รายงาน',
       shortLabelEn: 'Reports',
       icon: BarChart3,
@@ -603,11 +617,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 7: Optional enrichment and AI modules
+    // Optional enrichment and AI modules.
     list.push({
       id: 'innovation',
       labelTh: 'กิจกรรมเสริมและ AI',
       labelEn: 'Enrichment & AI',
+      helperTh: 'ใช้เสริมตามแผนการเรียนรู้',
+      helperEn: 'Use as learning extensions',
       shortLabelTh: 'กิจกรรม',
       shortLabelEn: 'Arcade',
       icon: Sparkles,
@@ -688,7 +704,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    return list;
+    const categoryOrder: NavCategoryId[] = [
+      'super_admin',
+      'daily_work',
+      'academic_setup',
+      'student_care',
+      'finance',
+      'report_monitor',
+      'administration',
+      'innovation',
+    ];
+    return list.sort((a, b) => categoryOrder.indexOf(a.id) - categoryOrder.indexOf(b.id));
   }, [
     currentRole,
     isSuperAdminSchoolView,
@@ -1095,8 +1121,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }}
                       className="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-left transition cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40"
                     >
-                      <span className="truncate text-[11px] font-bold tracking-tight">
-                        {lang === 'th' ? cat.labelTh : cat.labelEn}
+                      <span className="block min-w-0">
+                        <span className="block truncate text-[11px] font-bold tracking-tight">
+                          {lang === 'th' ? cat.labelTh : cat.labelEn}
+                        </span>
+                        {(lang === 'th' ? cat.helperTh : cat.helperEn) && (
+                          <span className="block truncate text-[9px] leading-tight font-medium text-[var(--color-text-muted)]">
+                            {lang === 'th' ? cat.helperTh : cat.helperEn}
+                          </span>
+                        )}
                       </span>
                       <span className="flex items-center gap-1.5 shrink-0">
                         {isCollapsed && alertBadge && (

@@ -96,10 +96,18 @@ import {
   saveLeaveRequestToDb,
   updateLeaveRequestStatusInDb,
   savePeriodAttendanceBatchToDb,
-  submitInvoiceSlipToDb
+  submitInvoiceSlipToDb,
+  saveSchoolAssignmentToDb,
+  saveHomeworkSubmissionToDb,
+  saveHomeworkGradeToDb,
 } from './lib/supabase';
 import { cleanupStudentCampusData } from './lib/campusDataStore';
 import { hydrateSchoolRegistryFromSupabase } from './lib/studentRegistryStore';
+import {
+  deleteSchoolStudentRecord,
+  loadSchoolStudentRecords,
+  saveSchoolStudentRecord,
+} from './lib/studentRecordsPersistence';
 import { DEFAULT_SCHOOL_PERIODS } from './lib/schoolPeriods';
 import {
   buildPrimaryGateFromSchool,
@@ -1662,7 +1670,7 @@ export const App: React.FC = () => {
         }
         // Real schools keep only their own school-scoped items (no sample data)
         setLessons(prev => prev.length > 0 ? prev.filter(l => l.schoolId === activeSchool.id) : []);
-        setAssignments(prev => prev.length > 0 ? prev.filter(a => a.schoolId === activeSchool.id) : []);
+        setAssignments(data.assignments || []);
         setQuestions(prev => prev.length > 0 ? prev.filter(q => q.schoolId === activeSchool.id) : []);
         setPlayerScores(prev => prev);
         setRewardItems(prev => (prev.length > 0 ? prev : DEFAULT_ARCADE_REWARDS));
@@ -1682,7 +1690,7 @@ export const App: React.FC = () => {
         setBehaviorRecords(prev => prev.length > 0 ? prev.filter(b => b.schoolId === activeSchool.id) : []);
         setSdqAssessments(prev => prev.length > 0 ? prev.filter(s => s.schoolId === activeSchool.id) : []);
         setInfirmaryVisits(prev => prev.length > 0 ? prev.filter(i => i.schoolId === activeSchool.id) : []);
-        setHomeworkSubmissions(prev => prev.length > 0 ? prev.filter(h => h.schoolId === activeSchool.id) : []);
+        setHomeworkSubmissions(data.homeworkSubmissions || []);
         setLeaveRequests(data.leaveRequests || []);
         setIsDataReady(true);
         setLoadedSchoolId(activeSchool.id);
@@ -1695,6 +1703,88 @@ export const App: React.FC = () => {
       active = false;
     };
   }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView]);
+
+  useEffect(() => {
+    if (!activeSchool.id || !currentUser || !isDataReady || isDemoMode) return;
+    let active = true;
+
+    const loadStudentRecords = async () => {
+      const [portfolioResult, behaviorResult, sdqResult, infirmaryResult] = await Promise.allSettled([
+        loadSchoolStudentRecords<PortfolioItem>(activeSchool.id, 'portfolio'),
+        loadSchoolStudentRecords<BehaviorRecord>(activeSchool.id, 'behavior'),
+        loadSchoolStudentRecords<SdqAssessment>(activeSchool.id, 'sdq'),
+        loadSchoolStudentRecords<InfirmaryVisit>(activeSchool.id, 'infirmary'),
+      ]);
+      if (!active) return;
+
+      const failures = [portfolioResult, behaviorResult, sdqResult, infirmaryResult]
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
+      if (failures.length > 0) {
+        setDataSyncError(failures[0]);
+        setDataSyncWarnings((prev) => [...new Set([...prev, ...failures])]);
+      }
+
+      if (portfolioResult.status === 'fulfilled') {
+        let cachedItems: PortfolioItem[] = [];
+        try {
+          const raw = localStorage.getItem(`eduverse_portfolio_items_${activeSchool.id}`);
+          const parsed: unknown = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(parsed)) {
+            cachedItems = (parsed as PortfolioItem[]).filter((item) => !item.schoolId || item.schoolId === activeSchool.id);
+          }
+        } catch {
+          // Keep remote portfolio records if a legacy local cache is invalid.
+        }
+        const byId = new Map<string, PortfolioItem>();
+        cachedItems.forEach((item) => byId.set(item.id, { ...item, schoolId: activeSchool.id }));
+        portfolioResult.value.forEach((item) => byId.set(item.id, { ...item, schoolId: activeSchool.id }));
+        setPortfolioItems([...byId.values()]);
+
+        const remoteIds = new Set(portfolioResult.value.map((item) => item.id));
+        const localItemsToMigrate = cachedItems.filter((item) => !remoteIds.has(item.id));
+        if (localItemsToMigrate.length > 0) {
+          const migrationResults = await Promise.allSettled(localItemsToMigrate.map((item) => {
+            const student = item.ownerRole === 'student'
+              ? schoolStudents.find((candidate) => candidate.id === item.ownerId)
+                || (item.ownerId === currentUser.id && currentUser.studentRecordId
+                  ? schoolStudents.find((candidate) => candidate.id === currentUser.studentRecordId)
+                  : undefined)
+              : undefined;
+            return saveSchoolStudentRecord({
+              schoolId: activeSchool.id,
+              recordKind: 'portfolio',
+              recordId: item.id,
+              studentId: student?.id,
+              ownerUserId: item.ownerId === currentUser.id ? currentUser.id : undefined,
+              record: { ...item, schoolId: activeSchool.id },
+            });
+          }));
+          const migrationFailures = migrationResults
+            .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+            .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
+          if (active && migrationFailures.length > 0) {
+            setDataSyncError(migrationFailures[0]);
+            setDataSyncWarnings((prev) => [...new Set([...prev, ...migrationFailures])]);
+          }
+        }
+      }
+      if (behaviorResult.status === 'fulfilled') setBehaviorRecords(behaviorResult.value);
+      if (sdqResult.status === 'fulfilled') setSdqAssessments(sdqResult.value);
+      if (infirmaryResult.status === 'fulfilled') setInfirmaryVisits(infirmaryResult.value);
+    };
+
+    void loadStudentRecords().catch((error: unknown) => {
+      if (active) {
+        const message = error instanceof Error ? error.message : String(error);
+        setDataSyncError(message);
+        setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [activeSchool.id, currentUser?.id, loadedSchoolId, isDataReady, isDemoMode]);
 
   // Load real school-scoped Arcade Profiles, Rewards Catalog & Teacher Perk Redemptions from Supabase + local cache
   useEffect(() => {
@@ -3336,22 +3426,54 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleSubmitAssignment = (assignmentId: string) => {
-    const actorStudentId =
-      currentUser?.role === 'student'
-        ? resolveLinkedStudentsForUser(currentUser, schoolStudents)[0]?.id ||
-          currentUser.studentRecordId ||
-          currentUser.id
-        : undefined;
-    setAssignments((prev) =>
-      prev.map((a) => {
-        if (a.id !== assignmentId) return a;
-        const submittedStudentIds = actorStudentId
-          ? Array.from(new Set([...(a.submittedStudentIds || []), actorStudentId]))
-          : a.submittedStudentIds;
-        return { ...a, submitted: true, submittedStudentIds };
-      })
+  const handleSubmitAssignment = async (assignmentId: string) => {
+    if (currentUser?.role !== 'student') throw new Error('Only students can submit an assignment.');
+    if (schoolPermissions.student_submit_homework === false) {
+      throw new Error('Online homework submission is disabled by the school.');
+    }
+    const assignment = schoolAssignments.find((item) => item.id === assignmentId);
+    if (!assignment || assignment.status !== 'active') throw new Error('The selected assignment is no longer available.');
+    const enrolledCourseIds = new Set(
+      filterCoursesForPersonalRole(schoolCourses, currentUser, schoolStudents).map((course) => course.id)
     );
+    if (!enrolledCourseIds.has(assignment.courseId)) {
+      throw new Error('This assignment is not available for your enrolled courses.');
+    }
+    const linkedStudent = resolveLinkedStudentsForUser(currentUser, schoolStudents)[0];
+    const student = schoolStudents.find((item) => item.id === (linkedStudent?.id || currentUser.studentRecordId));
+    if (!student) throw new Error('Your student record could not be found.');
+    const alreadySubmitted = schoolHomeworkSubmissions.some(
+      (submission) =>
+        submission.assignmentId === assignment.id &&
+        submission.studentId === student.id &&
+        submission.status !== 'pending'
+    );
+    if (alreadySubmitted) throw new Error('You have already submitted this assignment.');
+
+    const course = schoolCourses.find((item) => item.id === assignment.courseId);
+    const submittedAt = new Date().toISOString();
+    const submission: HomeworkSubmission = {
+      id: `submission-${crypto.randomUUID()}`,
+      schoolId: activeSchool.id,
+      assignmentId: assignment.id,
+      assignmentTitle: assignment.titleTh,
+      courseCode: assignment.courseCode || course?.code || '',
+      courseTitleTh: course?.titleTh || '',
+      studentId: student.id,
+      studentName: `${student.firstNameTh} ${student.lastNameTh}`.trim(),
+      studentRoom: student.room,
+      dueDate: assignment.dueDate,
+      submittedAt,
+      status: getLocalDateString() <= assignment.dueDate ? 'submitted' : 'late',
+      maxScore: assignment.maxScore ?? assignment.points,
+    };
+    if (!isDemoMode) await saveHomeworkSubmissionToDb(activeSchool.id, submission);
+    setHomeworkSubmissions((prev) => [submission, ...prev]);
+    setAssignments((prev) => prev.map((item) => (
+      item.id === assignment.id
+        ? { ...item, submittedStudentIds: Array.from(new Set([...(item.submittedStudentIds || []), student.id])) }
+        : item
+    )));
   };
 
   const handleAddQuestion = (question: QuizQuestion) => {
@@ -3670,8 +3792,9 @@ export const App: React.FC = () => {
   };
 
   const handleAddPortfolioItem = (item: PortfolioItem) => {
+    const taggedItem = { ...item, schoolId: activeSchool.id };
     setPortfolioItems((prev) => {
-      const next = [{ ...item, schoolId: activeSchool.id }, ...prev];
+      const next = [taggedItem, ...prev];
       try {
         if (activeSchool.id) {
           localStorage.setItem(
@@ -3684,6 +3807,26 @@ export const App: React.FC = () => {
       }
       return next;
     });
+    if (activeSchool.id && !isDemoMode) {
+      const student = item.ownerRole === 'student'
+        ? schoolStudents.find((candidate) => candidate.id === item.ownerId)
+          || (currentUser && item.ownerId === currentUser.id && currentUser.studentRecordId
+            ? schoolStudents.find((candidate) => candidate.id === currentUser.studentRecordId)
+            : undefined)
+        : undefined;
+      void saveSchoolStudentRecord({
+        schoolId: activeSchool.id,
+        recordKind: 'portfolio',
+        recordId: item.id,
+        studentId: student?.id,
+        ownerUserId: currentUser && item.ownerId === currentUser.id ? currentUser.id : undefined,
+        record: taggedItem,
+      }).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setDataSyncError(message);
+        setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+      });
+    }
   };
 
   const handleDeletePortfolioItem = (itemId: string) => {
@@ -3701,6 +3844,13 @@ export const App: React.FC = () => {
       }
       return next;
     });
+    if (activeSchool.id && !isDemoMode) {
+      void deleteSchoolStudentRecord(activeSchool.id, 'portfolio', itemId).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setDataSyncError(message);
+        setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+      });
+    }
   };
 
   const handleUpdateUserProfile = async (updatedUser: AuthUser) => {
@@ -3827,24 +3977,138 @@ export const App: React.FC = () => {
   };
 
   const handleAddBehaviorRecord = (record: BehaviorRecord) => {
-    setBehaviorRecords((prev) => [{ ...record, schoolId: activeSchool.id }, ...prev]);
+    const taggedRecord = { ...record, schoolId: activeSchool.id };
+    setBehaviorRecords((prev) => [taggedRecord, ...prev]);
+    if (activeSchool.id && !isDemoMode) {
+      void saveSchoolStudentRecord({
+        schoolId: activeSchool.id,
+        recordKind: 'behavior',
+        recordId: record.id,
+        studentId: record.studentId,
+        record: taggedRecord,
+      }).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setDataSyncError(message);
+        setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+      });
+    }
   };
 
   const handleAddSdqAssessment = (sdq: SdqAssessment) => {
-    setSdqAssessments((prev) => [{ ...sdq, schoolId: activeSchool.id }, ...prev]);
+    const taggedAssessment = { ...sdq, schoolId: activeSchool.id };
+    setSdqAssessments((prev) => [taggedAssessment, ...prev]);
+    if (activeSchool.id && !isDemoMode) {
+      void saveSchoolStudentRecord({
+        schoolId: activeSchool.id,
+        recordKind: 'sdq',
+        recordId: sdq.id,
+        studentId: sdq.studentId,
+        ownerUserId: currentUser?.id,
+        record: taggedAssessment,
+      }).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setDataSyncError(message);
+        setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+      });
+    }
   };
 
   const handleAddInfirmaryVisit = (visit: InfirmaryVisit) => {
-    setInfirmaryVisits((prev) => [{ ...visit, schoolId: activeSchool.id }, ...prev]);
+    const taggedVisit = { ...visit, schoolId: activeSchool.id };
+    setInfirmaryVisits((prev) => [taggedVisit, ...prev]);
+    if (activeSchool.id && !isDemoMode) {
+      void saveSchoolStudentRecord({
+        schoolId: activeSchool.id,
+        recordKind: 'infirmary',
+        recordId: visit.id,
+        studentId: visit.studentId,
+        record: taggedVisit,
+      }).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setDataSyncError(message);
+        setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+      });
+    }
   };
 
-  const handleAddHomeworkSubmission = (sub: HomeworkSubmission) => {
-    setHomeworkSubmissions((prev) => [{ ...sub, schoolId: activeSchool.id }, ...prev]);
+  const handleAddHomeworkAssignment = async (assignment: Assignment) => {
+    if (!['teacher', 'admin', 'super_admin'].includes(currentRole)) {
+      throw new Error('You do not have permission to create assignments.');
+    }
+    if (currentRole === 'teacher' && schoolPermissions.teacher_homework === false) {
+      throw new Error('Homework management is disabled for teachers by the school.');
+    }
+    const course = schoolCourses.find((item) => item.id === assignment.courseId);
+    if (!course) throw new Error('Select a course from this school before creating an assignment.');
+    const taggedAssignment: Assignment = {
+      ...assignment,
+      schoolId: activeSchool.id,
+      courseCode: course.code,
+    };
+    if (!isDemoMode) {
+      await saveSchoolAssignmentToDb(activeSchool.id, taggedAssignment, currentUser?.id);
+    }
+    setAssignments((prev) => [taggedAssignment, ...prev.filter((item) => item.id !== taggedAssignment.id)]);
   };
 
-  const handleGradeHomeworkSubmission = (id: string, score: number, feedback: string) => {
+  const handleAddHomeworkSubmission = async (sub: HomeworkSubmission) => {
+    if (currentUser?.role !== 'student') throw new Error('Only students can submit an assignment.');
+    if (schoolPermissions.student_submit_homework === false) {
+      throw new Error('Online homework submission is disabled by the school.');
+    }
+    const linkedStudentIds = resolveLinkedStudentsForUser(currentUser, schoolStudents).map((student) => student.id);
+    if (!linkedStudentIds.includes(sub.studentId) && currentUser.studentRecordId !== sub.studentId) {
+      throw new Error('You can only submit work for your own student account.');
+    }
+    const assignment = schoolAssignments.find((item) => item.id === sub.assignmentId);
+    const student = schoolStudents.find((item) => item.id === sub.studentId);
+    if (!assignment || assignment.status !== 'active') throw new Error('The selected assignment is no longer available.');
+    const enrolledCourseIds = new Set(
+      filterCoursesForPersonalRole(schoolCourses, currentUser, schoolStudents).map((course) => course.id)
+    );
+    if (!enrolledCourseIds.has(assignment.courseId)) {
+      throw new Error('This assignment is not available for your enrolled courses.');
+    }
+    if (!student) throw new Error('The selected student is not in this school roster.');
+    const taggedSubmission: HomeworkSubmission = {
+      ...sub,
+      schoolId: activeSchool.id,
+      assignmentTitle: assignment.titleTh,
+      courseCode: assignment.courseCode || '',
+      dueDate: assignment.dueDate,
+      maxScore: assignment.maxScore ?? assignment.points,
+    };
+    if (!isDemoMode) {
+      await saveHomeworkSubmissionToDb(activeSchool.id, taggedSubmission);
+    }
+    setHomeworkSubmissions((prev) => [taggedSubmission, ...prev]);
+    setAssignments((prev) => prev.map((item) => (
+      item.id === assignment.id
+        ? { ...item, submittedStudentIds: Array.from(new Set([...(item.submittedStudentIds || []), student.id])) }
+        : item
+    )));
+  };
+
+  const handleGradeHomeworkSubmission = async (id: string, score: number, feedback: string) => {
+    if (!['teacher', 'admin', 'super_admin'].includes(currentRole)) {
+      throw new Error('You do not have permission to grade assignments.');
+    }
+    if (currentRole === 'teacher' && schoolPermissions.teacher_homework === false) {
+      throw new Error('Homework grading is disabled for teachers by the school.');
+    }
+    const submission = schoolHomeworkSubmissions.find((item) => item.id === id);
+    if (!submission) throw new Error('Homework submission not found.');
+    if (!Number.isFinite(score) || score < 0 || score > submission.maxScore) {
+      throw new Error(`Score must be between 0 and ${submission.maxScore}.`);
+    }
+    const gradedBy = currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email || 'ครูผู้สอน';
+    if (!isDemoMode) {
+      await saveHomeworkGradeToDb(activeSchool.id, id, score, feedback, gradedBy);
+    }
     setHomeworkSubmissions((prev) =>
-      prev.map((s) => s.id === id ? { ...s, score, teacherFeedback: feedback, status: 'graded' } : s)
+      prev.map((item) => item.id === id
+        ? { ...item, score, teacherFeedback: feedback, gradedAt: new Date().toISOString(), gradedBy, status: 'graded' }
+        : item)
     );
   };
 
@@ -5159,6 +5423,8 @@ export const App: React.FC = () => {
                     assignments={viewAssignments}
                     schoolId={activeSchool.id}
                     schoolName={activeSchool.nameTh}
+                    schoolPermissions={schoolPermissions}
+                    onCreateAssignment={handleAddHomeworkAssignment}
                     onAddSubmission={handleAddHomeworkSubmission}
                     onGradeSubmission={handleGradeHomeworkSubmission}
                     lang={lang}

@@ -12,6 +12,29 @@ import { POPULAR_CAREERS } from '../data/careerQuestData';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'baanpakkru_career_quest_v1_';
 
+async function postCareerQuestAi<T>(path: string, payload: unknown): Promise<T> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+
+  const { data, error } = await client.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (error || !accessToken) throw new Error('กรุณาเข้าสู่ระบบก่อนใช้งาน AI');
+
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.message || `ไม่สามารถเรียกใช้ AI ได้ (${response.status})`);
+  }
+  return result as T;
+}
+
 function storageKey(schoolId: string, userId: string): string {
   return `${LOCAL_STORAGE_KEY_PREFIX}${schoolId}_${userId}`;
 }
@@ -371,15 +394,10 @@ export async function analyzeCareerWithGemini(
   careerQuery: string,
   studentContext: StudentAiContextPayload
 ): Promise<CareerProfile> {
-  const res = await fetch('/api/career-quest/analyze-career', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ careerQuery, studentContext }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || `ไม่สามารถวิเคราะห์อาชีพด้วย AI ได้ (${res.status})`);
-  }
+  const data = await postCareerQuestAi<{ career?: Record<string, unknown> }>(
+    '/api/career-quest/analyze-career',
+    { careerQuery, studentContext }
+  );
   return normalizeAiCareer(data.career || {}, careerQuery);
 }
 
@@ -387,15 +405,10 @@ export async function runVibeQuizWithGemini(
   quizAnswers: CareerVibeQuizAnswer[],
   studentContext: StudentAiContextPayload
 ): Promise<CareerVibeMatch[]> {
-  const res = await fetch('/api/career-quest/vibe-quiz', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ quizAnswers, studentContext }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || `ไม่สามารถประมวลผล Vibe Quiz ด้วย AI ได้ (${res.status})`);
-  }
+  const data = await postCareerQuestAi<{ matches?: Array<Record<string, unknown>> }>(
+    '/api/career-quest/vibe-quiz',
+    { quizAnswers, studentContext }
+  );
   const rawMatches = Array.isArray(data.matches) ? data.matches : [];
   return rawMatches.slice(0, 3).map((m: Record<string, unknown>, idx: number) => {
     const matchedPreset = POPULAR_CAREERS.find(
@@ -425,15 +438,10 @@ export async function generateQuestsWithGemini(
   careerTitleTh: string,
   studentContext: StudentAiContextPayload
 ) {
-  const res = await fetch('/api/career-quest/generate-quests', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ careerTitleTh, studentContext }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || `ไม่สามารถสร้างภารกิจใหม่ด้วย AI ได้ (${res.status})`);
-  }
+  const data = await postCareerQuestAi<{ quests?: Array<Record<string, unknown>> }>(
+    '/api/career-quest/generate-quests',
+    { careerTitleTh, studentContext }
+  );
   const list = Array.isArray(data.quests) ? data.quests : [];
   return list.map((q: Record<string, unknown>, idx: number) => ({
     id: String(q.id || `ai-q-${Date.now()}-${idx}`),
@@ -457,15 +465,10 @@ export async function nextRoleplayTurnWithGemini(params: {
   history: { role: string; text: string }[];
   chosenOptionText?: string;
 }): Promise<CareerRoleplayTurn> {
-  const res = await fetch('/api/career-quest/roleplay', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || `ไม่สามารถสร้างสถานการณ์จำลองด้วย AI ได้ (${res.status})`);
-  }
+  const data = await postCareerQuestAi<{ roleplay?: Record<string, unknown> }>(
+    '/api/career-quest/roleplay',
+    params
+  );
   const rp = (data.roleplay || {}) as Record<string, unknown>;
   return {
     turnNumber: params.turnNumber,
@@ -494,10 +497,9 @@ export async function askCareerCoachWithGemini(params: {
   studentContext: StudentAiContextPayload;
   chatHistory: CareerCoachMessage[];
 }): Promise<{ replyTh: string; actionStepsTh: string[]; encouragedTab?: string }> {
-  const res = await fetch('/api/career-quest/coach', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const data = await postCareerQuestAi<{ coach?: Record<string, unknown> }>(
+    '/api/career-quest/coach',
+    {
       message: params.message,
       careerTitleTh: params.careerTitleTh,
       targetGpax: params.targetGpax,
@@ -506,12 +508,8 @@ export async function askCareerCoachWithGemini(params: {
         sender: m.sender,
         text: m.textTh,
       })),
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || `ไม่สามารถติดต่อ AI พี่เลี้ยงอาชีพได้ (${res.status})`);
-  }
+    }
+  );
   const coach = (data.coach || {}) as Record<string, unknown>;
   return {
     replyTh: String(coach.replyTh || 'สู้ๆ นะครับ ค่อยๆ พัฒนาทีละวิชาไปพร้อมกัน!'),

@@ -15,10 +15,14 @@ import {
   LeaveStatus,
   PeriodAttendanceRecord,
   UserRole,
+  Assignment,
+  HomeworkSubmission,
 } from '../types';
 import schemaSql from '../../supabase/schema.sql?raw';
 import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
 import courseClassificationMigrationSql from '../../supabase/migrations/20261125_course_classification.sql?raw';
+import homeworkWorkflowMigrationSql from '../../supabase/migrations/20261120_teacher_homework_workflow.sql?raw';
+import studentRecordsMigrationSql from '../../supabase/migrations/20261120_school_student_records.sql?raw';
 import staffInviteRpcSql from '../../supabase/migrations/20261124_staff_invite_link_rpc.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
@@ -98,11 +102,21 @@ export function clearCustomSupabaseCredentials() {
 }
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
-export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}`;
+export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}\n\n${homeworkWorkflowMigrationSql}\n\n${studentRecordsMigrationSql}`;
 export const STAFF_INVITE_RPC_SQL = staffInviteRpcSql;
 
 function isMissingTableError(error: { code?: string; message: string }): boolean {
   return error.code === 'PGRST205' || error.code === '42P01' || /schema cache|could not find the table/i.test(error.message);
+}
+
+function parseAssignmentStatus(value: unknown): Assignment['status'] {
+  if (value === 'active' || value === 'closed') return value;
+  throw new Error('Invalid assignment status returned from Supabase.');
+}
+
+function parseHomeworkStatus(value: unknown): HomeworkSubmission['status'] {
+  if (value === 'submitted' || value === 'late' || value === 'pending' || value === 'graded') return value;
+  throw new Error('Invalid homework submission status returned from Supabase.');
 }
 
 export async function testSupabaseConnection(): Promise<{
@@ -174,6 +188,8 @@ export interface SchoolData {
   students: Student[];
   teachers: Teacher[];
   courses: Course[];
+  assignments: Assignment[];
+  homeworkSubmissions: HomeworkSubmission[];
   grades: GradeRecord[];
   attendance: AttendanceRecord[];
   invoices: TuitionInvoice[];
@@ -192,6 +208,8 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
       students: [],
       teachers: [],
       courses: [],
+      assignments: [],
+      homeworkSubmissions: [],
       grades: [],
       attendance: [],
       invoices: [],
@@ -216,6 +234,8 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
         students: [],
         teachers: [],
         courses: [],
+        assignments: [],
+        homeworkSubmissions: [],
         grades: [],
         attendance: [],
         invoices: [],
@@ -481,6 +501,19 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   if (periodAttResult.error && !isMissingTableError(periodAttResult.error)) {
     throw new Error(`Could not load period attendance: ${periodAttResult.error.message}`);
   }
+  const [assignmentResult, submissionResult] = await Promise.all([
+    client.from('school_assignments').select('*').eq('school_id', schoolId).order('due_date'),
+    client.from('homework_submissions').select('*').eq('school_id', schoolId).order('submitted_at', { ascending: false }),
+  ]);
+  if (assignmentResult.error && !isMissingTableError(assignmentResult.error)) {
+    throw new Error(`Could not load assignments: ${assignmentResult.error.message}`);
+  }
+  if (submissionResult.error && !isMissingTableError(submissionResult.error)) {
+    throw new Error(`Could not load homework submissions: ${submissionResult.error.message}`);
+  }
+  if (assignmentResult.error || submissionResult.error) {
+    console.warn('Homework tables are not installed yet; assignments and submissions are unavailable until the migration is applied.');
+  }
   const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => {
     const parsedTeachers = parseSlotTeachersFromRaw(row.teacher_name || '');
     return {
@@ -550,11 +583,73 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
         : 'teacher_proxy',
     remarks: row.notes || undefined,
   }));
+  const homeworkSubmissions: HomeworkSubmission[] = (submissionResult.data || []).map((row) => {
+    const rawAttachment: unknown = row.file_attachment;
+    let fileAttachment: HomeworkSubmission['fileAttachment'];
+    if (rawAttachment && typeof rawAttachment === 'object' && !Array.isArray(rawAttachment)) {
+      const attachment = rawAttachment as Record<string, unknown>;
+      if (
+        typeof attachment.name === 'string' &&
+        typeof attachment.size === 'string' &&
+        typeof attachment.type === 'string'
+      ) {
+        fileAttachment = {
+          name: attachment.name,
+          size: attachment.size,
+          type: attachment.type,
+        };
+      }
+    }
+    return {
+      id: row.id,
+      schoolId: row.school_id,
+      assignmentId: row.assignment_id,
+      assignmentTitle: row.assignment_title,
+      courseCode: row.course_code || '',
+      courseTitleTh: row.course_title_th || '',
+      studentId: row.student_id,
+      studentName: row.student_name || '',
+      studentRoom: row.student_room || '',
+      dueDate: row.due_date,
+      submittedAt: row.submitted_at || undefined,
+      status: parseHomeworkStatus(row.status),
+      ...(fileAttachment ? { fileAttachment } : {}),
+      textSubmission: row.text_submission || undefined,
+      score: row.score == null ? undefined : Number(row.score),
+      maxScore: Number(row.max_score || 0),
+      teacherFeedback: row.teacher_feedback || undefined,
+      gradedAt: row.graded_at || undefined,
+      gradedBy: row.graded_by || undefined,
+    };
+  });
+  const submittedStudentIdsByAssignment = new Map<string, Set<string>>();
+  homeworkSubmissions.forEach((submission) => {
+    if (submission.status === 'pending') return;
+    const studentIds = submittedStudentIdsByAssignment.get(submission.assignmentId) || new Set<string>();
+    studentIds.add(submission.studentId);
+    submittedStudentIdsByAssignment.set(submission.assignmentId, studentIds);
+  });
+  const assignments: Assignment[] = (assignmentResult.data || []).map((row) => ({
+    id: row.id,
+    schoolId: row.school_id,
+    courseId: row.course_id,
+    courseCode: row.course_code || '',
+    titleTh: row.title_th,
+    titleEn: row.title_en || '',
+    description: row.description || '',
+    dueDate: row.due_date,
+    points: Number(row.points || 0),
+    maxScore: Number(row.points || 0),
+    status: parseAssignmentStatus(row.status),
+    submittedStudentIds: [...(submittedStudentIdsByAssignment.get(row.id) || [])],
+  }));
 
   return {
     students,
     teachers,
     courses,
+    assignments,
+    homeworkSubmissions,
     grades,
     attendance,
     invoices,
@@ -565,6 +660,105 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     leaveRequests,
     periodAttendance,
   };
+}
+
+export async function saveSchoolAssignmentToDb(
+  schoolId: string,
+  assignment: Assignment,
+  createdBy?: string
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Cannot save assignment: Supabase is not configured.');
+
+  const { error } = await client.from('school_assignments').upsert({
+    id: assignment.id,
+    school_id: schoolId,
+    course_id: assignment.courseId,
+    course_code: assignment.courseCode || '',
+    title_th: assignment.titleTh,
+    title_en: assignment.titleEn,
+    description: assignment.description || '',
+    due_date: assignment.dueDate,
+    points: assignment.maxScore ?? assignment.points,
+    status: assignment.status,
+    created_by: createdBy || null,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) {
+    const detail = isMissingTableError(error)
+      ? 'Run the teacher homework workflow migration before creating assignments.'
+      : error.message;
+    throw new Error(`Could not save assignment: ${detail}`);
+  }
+}
+
+export async function saveHomeworkSubmissionToDb(
+  schoolId: string,
+  submission: HomeworkSubmission
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Cannot submit homework: Supabase is not configured.');
+
+  const { error } = await client.from('homework_submissions').insert({
+    id: submission.id,
+    school_id: schoolId,
+    assignment_id: submission.assignmentId,
+    student_id: submission.studentId,
+    assignment_title: submission.assignmentTitle,
+    course_code: submission.courseCode,
+    course_title_th: submission.courseTitleTh,
+    student_name: submission.studentName,
+    student_room: submission.studentRoom,
+    due_date: submission.dueDate,
+    submitted_at: submission.submittedAt || new Date().toISOString(),
+    status: submission.status,
+    file_attachment: submission.fileAttachment || null,
+    text_submission: submission.textSubmission || null,
+    score: submission.score ?? null,
+    max_score: submission.maxScore,
+    teacher_feedback: submission.teacherFeedback || null,
+    graded_at: submission.gradedAt || null,
+    graded_by: submission.gradedBy || null,
+  });
+  if (error) {
+    const detail = isMissingTableError(error)
+      ? 'Run the teacher homework workflow migration before submitting homework.'
+      : error.message;
+    throw new Error(`Could not save homework submission: ${detail}`);
+  }
+}
+
+export async function saveHomeworkGradeToDb(
+  schoolId: string,
+  submissionId: string,
+  score: number,
+  feedback: string,
+  gradedBy: string
+): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Cannot save grade: Supabase is not configured.');
+
+  const { data, error } = await client
+    .from('homework_submissions')
+    .update({
+      score,
+      teacher_feedback: feedback,
+      status: 'graded',
+      graded_at: new Date().toISOString(),
+      graded_by: gradedBy,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('school_id', schoolId)
+    .eq('id', submissionId)
+    .select('id')
+    .maybeSingle();
+  if (error) {
+    const detail = isMissingTableError(error)
+      ? 'Run the teacher homework workflow migration before grading submissions.'
+      : error.message;
+    throw new Error(`Could not save homework grade: ${detail}`);
+  }
+  if (!data) throw new Error('Could not save homework grade: submission not found or access denied.');
 }
 
 export async function saveSchoolPeriodTimes(

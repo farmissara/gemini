@@ -1,9 +1,13 @@
 import express from 'express';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { createClient } from '@supabase/supabase-js';
+import { loadEnv } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+
+const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
@@ -62,9 +66,108 @@ function handleGeminiError(res: Response, err: unknown) {
   });
 }
 
+function getServerEnv(name: string): string {
+  return (process.env[name] || viteEnv[name] || '').trim();
+}
+
+const AI_CALL_WINDOW_MS = 5 * 60 * 1000;
+const AI_CALL_LIMIT = 30;
+const aiCallWindows = new Map<string, { startedAt: number; count: number }>();
+
+async function requireActiveSupabaseUser(req: Request, res: Response, next: NextFunction) {
+  const authorization = req.get('authorization') || '';
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    res.status(401).json({ error: 'AUTH_REQUIRED', message: 'กรุณาเข้าสู่ระบบก่อนใช้งาน AI' });
+    return;
+  }
+
+  const supabaseUrl = getServerEnv('SUPABASE_URL') || getServerEnv('VITE_SUPABASE_URL');
+  const supabaseKey =
+    getServerEnv('SUPABASE_ANON_KEY') ||
+    getServerEnv('SUPABASE_PUBLISHABLE_KEY') ||
+    getServerEnv('VITE_SUPABASE_ANON_KEY') ||
+    getServerEnv('VITE_SUPABASE_PUBLISHABLE_KEY');
+  if (!supabaseUrl || !supabaseKey) {
+    res.status(503).json({ error: 'SUPABASE_AUTH_NOT_CONFIGURED', message: 'ระบบยืนยันตัวตนยังตั้งค่าไม่ครบ' });
+    return;
+  }
+
+  try {
+    const token = match[1];
+    const client = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: authData, error: authError } = await client.auth.getUser(token);
+    if (authError || !authData.user) {
+      res.status(401).json({ error: 'INVALID_SESSION', message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' });
+      return;
+    }
+
+    const { data: profile, error: profileError } = await client
+      .from('user_profiles')
+      .select('status, role, school_id')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+    if (profileError) {
+      console.error('[Career Quest AI] Could not verify user profile:', profileError.message);
+      res.status(503).json({ error: 'PROFILE_CHECK_FAILED', message: 'ไม่สามารถตรวจสอบสถานะบัญชีได้' });
+      return;
+    }
+    if (!profile || profile.status !== 'active') {
+      res.status(403).json({ error: 'ACCOUNT_INACTIVE', message: 'บัญชีนี้ยังไม่ได้เปิดใช้งาน' });
+      return;
+    }
+    if (profile.role === 'student') {
+      if (!profile.school_id) {
+        res.status(403).json({ error: 'SCHOOL_REQUIRED', message: 'บัญชีนักเรียนยังไม่ได้ผูกกับโรงเรียน' });
+        return;
+      }
+      const { data: school, error: schoolError } = await client
+        .from('schools')
+        .select('ai_student_enabled')
+        .eq('id', profile.school_id)
+        .maybeSingle();
+      if (schoolError) {
+        console.error('[Career Quest AI] Could not verify school AI access:', schoolError.message);
+        res.status(503).json({ error: 'AI_ACCESS_CHECK_FAILED', message: 'ไม่สามารถตรวจสอบสิทธิ์ AI ของโรงเรียนได้' });
+        return;
+      }
+      if (!school?.ai_student_enabled) {
+        res.status(403).json({ error: 'STUDENT_AI_DISABLED', message: 'โรงเรียนยังไม่ได้เปิดสิทธิ์ใช้งาน AI สำหรับนักเรียน' });
+        return;
+      }
+    }
+
+    const now = Date.now();
+    const current = aiCallWindows.get(authData.user.id);
+    if (!current || now - current.startedAt >= AI_CALL_WINDOW_MS) {
+      aiCallWindows.set(authData.user.id, { startedAt: now, count: 1 });
+    } else if (current.count >= AI_CALL_LIMIT) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((AI_CALL_WINDOW_MS - (now - current.startedAt)) / 1000));
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      res.status(429).json({ error: 'AI_RATE_LIMITED', message: 'ใช้ AI ครบจำนวนชั่วคราวแล้ว กรุณาลองใหม่ภายหลัง' });
+      return;
+    } else {
+      current.count += 1;
+    }
+
+    if (aiCallWindows.size > 5000) {
+      for (const [userId, window] of aiCallWindows) {
+        if (now - window.startedAt >= AI_CALL_WINDOW_MS) aiCallWindows.delete(userId);
+      }
+    }
+    next();
+  } catch (err) {
+    console.error('[Career Quest AI] Authentication error:', err instanceof Error ? err.message : String(err));
+    res.status(503).json({ error: 'AUTH_CHECK_FAILED', message: 'ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ' });
+  }
+}
+
 async function createApp() {
   const app = express();
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '64kb' }));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({
@@ -72,6 +175,8 @@ async function createApp() {
       geminiConfigured: Boolean((process.env.GEMINI_API_KEY || '').trim()),
     });
   });
+
+  app.use('/api/career-quest', requireActiveSupabaseUser);
 
   // 1. Analyze any direct or custom dream career for the student
   app.post('/api/career-quest/analyze-career', async (req: Request, res: Response) => {
