@@ -4790,7 +4790,7 @@ export const App: React.FC = () => {
                     onSelectStudent={setSelectedStudentForProfile}
                     onOpenGradebookCourse={(courseId) => {
                       setIsGamePlaying(false);
-                      setGradebookJumpTarget({ courseId, tab: 'pp5' });
+                      setGradebookJumpTarget({ courseId, tab: 'gradebook' });
                       setStudentsSubTab('gradebook');
                       setProgramMode('school_erp');
                       setCurrentTab('students');

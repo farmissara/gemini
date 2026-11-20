@@ -656,7 +656,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     }
     if (isModuleEnabled('gradebook')) {
-      morningQuickActions.push({ id: 'gb', label: lang === 'th' ? 'สมุดคะแนน ปพ.5' : 'Gradebook ปพ.5', tab: 'gradebook' });
+      morningQuickActions.push({ id: 'gb', label: lang === 'th' ? 'บันทึกคะแนน' : 'Record Grades', tab: 'gradebook' });
     }
   } else if (currentRole === 'student') {
     if (studentCanSelfCheckin) {
@@ -1438,7 +1438,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                       onClick={() => onOpenGradebookCourse ? onOpenGradebookCourse(slot.courseId) : onNavigate('gradebook')}
                                       className="btn-tool-neutral px-2.5 py-1.5 text-[11px]"
                                     >
-                                      <span>{lang === 'th' ? 'ปพ.5' : 'Grades'}</span>
+                                      <span>{lang === 'th' ? 'บันทึกคะแนน' : 'Record Grades'}</span>
                                     </button>
                                   )}
                                   <button
@@ -1542,23 +1542,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               onClick: () => onNavigate('attendance'),
                             });
                           }
-                          if (isModuleEnabled('gradebook')) {
-                            actionRows.push({
-                              id: 'gradebook',
-                              label: lang === 'th' ? 'สมุดบันทึกคะแนน ปพ.5' : 'Gradebook ปพ.5',
-                              value: `${scopedCourses.length} ${lang === 'th' ? 'วิชา' : 'courses'}`,
-                              onClick: () => onNavigate('gradebook'),
-                            });
-                          }
-                          if (isModuleEnabled('student_development_book') && actionRows.length < 5) {
-                            actionRows.push({
-                              id: 'devbook',
-                              label: lang === 'th' ? 'สมุดพัฒนาคุณภาพผู้เรียน' : 'Student Development Book',
-                              value: `${scopedStudents.length} ${lang === 'th' ? 'คน' : 'students'}`,
-                              onClick: () => onNavigate('student_development_book'),
-                            });
-                          }
-
                           return actionRows.length === 0 ? (
                             <div className="py-8 text-center text-xs text-[var(--color-text-muted)]">
                               {lang === 'th' ? 'ไม่มีรายการค้างดำเนินการในขณะนี้' : 'No pending tasks right now'}

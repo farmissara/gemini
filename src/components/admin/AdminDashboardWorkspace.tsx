@@ -290,17 +290,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         onClick: () => onNavigate('timetable'),
       });
     }
-    if (rows.length < 5 && isModuleEnabled('gradebook')) {
-      rows.push({
-        id: 'gradebook',
-        groupLabel: lang === 'th' ? 'วิชาการ' : 'Academics',
-        groupColorClass: 'text-blue-700 dark:text-blue-300',
-        label: lang === 'th' ? 'บันทึกคะแนน ปพ.5' : 'Gradebook ปพ.5',
-        value: `${coursesCount} ${lang === 'th' ? 'วิชา' : 'courses'}`,
-        onClick: () => onNavigate('gradebook'),
-      });
-    }
-
     return rows.slice(0, 6);
   }, [
     simplifiedView,
@@ -322,7 +311,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     todayHoliday,
     isTodayWeekend,
     todayScheduledSlots.length,
-    coursesCount,
   ]);
 
   // 6 High-Frequency Admin Department Shortcuts (In Simplified View, hides technical/admin-system cards & keeps core ops)
