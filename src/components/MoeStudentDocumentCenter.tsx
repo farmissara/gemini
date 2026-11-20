@@ -104,6 +104,9 @@ interface MoeStudentDocumentCenterProps {
   onDeleteGrade?: (gradeId: string) => Promise<void> | void;
   onOpenStudentDevBook?: (studentId: string) => void;
   initialDocView?: MoeDocViewSelection;
+  initialWorkspaceMode?: 'docs' | 'database';
+  initialEditorSectionTab?: 'profile' | 'grades' | 'qualitative';
+  jumpRequestKey?: number;
   canEdit?: boolean;
   lang?: AppLanguage;
 }
@@ -141,6 +144,9 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
   onDeleteGrade,
   onOpenStudentDevBook,
   initialDocView,
+  initialWorkspaceMode,
+  initialEditorSectionTab,
+  jumpRequestKey,
   canEdit = true,
   lang = 'th',
 }) => {
@@ -157,8 +163,10 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
   );
   const activeStudentId = controlledStudentId || internalStudentId || students[0]?.id || '';
 
-  const [workspaceMode, setWorkspaceMode] = useState<'docs' | 'database'>('docs');
-  const [editorSectionTab, setEditorSectionTab] = useState<'profile' | 'grades' | 'qualitative'>('profile');
+  const [workspaceMode, setWorkspaceMode] = useState<'docs' | 'database'>(initialWorkspaceMode || 'docs');
+  const [editorSectionTab, setEditorSectionTab] = useState<'profile' | 'grades' | 'qualitative'>(
+    initialEditorSectionTab || 'profile'
+  );
   const [activeDocView, setActiveDocView] = useState<MoeDocViewSelection>(initialDocView || 'pp1');
   const [pp7Purpose, setPp7Purpose] = useState<string>(PP7_PURPOSE_OPTIONS[0]);
   const [customPp7Purpose, setCustomPp7Purpose] = useState<string>('');
@@ -225,9 +233,20 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
   useEffect(() => {
     if (initialDocView) {
       setActiveDocView(initialDocView);
-      setWorkspaceMode('docs');
+      if (!initialWorkspaceMode) {
+        setWorkspaceMode('docs');
+      }
     }
-  }, [initialDocView]);
+  }, [initialDocView, initialWorkspaceMode, jumpRequestKey]);
+
+  useEffect(() => {
+    if (initialWorkspaceMode) {
+      setWorkspaceMode(initialWorkspaceMode);
+    }
+    if (initialEditorSectionTab) {
+      setEditorSectionTab(initialEditorSectionTab);
+    }
+  }, [initialWorkspaceMode, initialEditorSectionTab, jumpRequestKey]);
 
   const handleChooseStudent = (id: string) => {
     setInternalStudentId(id);

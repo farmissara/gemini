@@ -154,8 +154,6 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'attendance',
   'mobile_checkin',
   'homework',
-  'gradebook',
-  'student_development_book',
   'central_exam_hub',
   'behavior_sdq',
   'announcements',
@@ -168,10 +166,8 @@ const ADMIN_FOCUS_TABS = new Set<NavTab>([
   'teachers',
   'courses',
   'timetable',
-  'gradebook',
   'homework',
   'central_exam_hub',
-  'student_development_book',
   'executive_monitor',
   'executive_warning',
   'attendance',
@@ -194,7 +190,6 @@ const ADMIN_SIMPLIFIED_TABS = new Set<NavTab>([
   'attendance',
   'mobile_checkin',
   'homework',
-  'gradebook',
   'announcements',
 ]);
 
@@ -334,9 +329,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'students',
-          labelTh: 'ทะเบียนนักเรียน',
-          labelEn: 'Student Directory',
-          shortLabelTh: 'นักเรียน',
+          labelTh: 'ทะเบียนนักเรียน · คะแนน & ปพ.',
+          labelEn: 'Students, Grades & Docs',
+          shortLabelTh: 'นักเรียน/ปพ.',
           shortLabelEn: 'Students',
           icon: Users,
           badge: studentsCount > 0 ? `${studentsCount}` : null,
@@ -384,15 +379,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Award,
       items: [
         {
-          id: 'gradebook',
-          labelTh: 'บันทึกคะแนน & งานทะเบียน (ปพ.)',
-          labelEn: 'Gradebook & Registration',
-          shortLabelTh: 'คะแนน/ปพ.',
-          shortLabelEn: 'Grades',
-          icon: Award,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
           id: 'homework',
           labelTh: 'การบ้าน & ภาระงาน',
           labelEn: 'Homework & Tasks',
@@ -407,13 +393,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelEn: 'Central Exam Hub',
           icon: BookOpen,
           badge: unclaimedCentralPacksCount > 0 ? `${unclaimedCentralPacksCount} ใหม่` : null,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'student_development_book',
-          labelTh: 'สมุดพัฒนาคุณภาพผู้เรียน',
-          labelEn: 'Student Development Book',
-          icon: BookMarked,
           roles: ['super_admin', 'admin', 'teacher'],
         },
       ],
@@ -600,13 +579,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'ภาพรวมคุณภาพ ปพ.6 (ผู้บริหาร)',
           labelEn: 'OBEC Pp.6 Executive',
           icon: GraduationCap,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'qualitative_summary',
-          labelTh: 'สรุปคุณลักษณะฯ & อ่านคิดวิเคราะห์',
-          labelEn: 'Qualitative & Reading Analytics',
-          icon: ClipboardCheck,
           roles: ['super_admin', 'admin', 'teacher'],
         },
         {

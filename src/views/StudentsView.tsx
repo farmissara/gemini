@@ -1,5 +1,27 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Student, StudentStatus, GuardianInfo, School, UserRole, Course, GradeRecord, GradingSystem } from '../types';
+import {
+  AdaptivePracticeTopic,
+  AppLanguage,
+  Assignment,
+  AttendanceRecord,
+  AuthUser,
+  BehaviorRecord,
+  Course,
+  GradeRecord,
+  GradingSystem,
+  GuardianInfo,
+  HomeworkSubmission,
+  InfirmaryVisit,
+  PeriodAttendanceRecord,
+  School,
+  SdqAssessment,
+  Student,
+  StudentStatus,
+  SystemConfig,
+  Teacher,
+  TimetableSlot,
+  UserRole,
+} from '../types';
 import { 
   Users, 
   Search, 
@@ -34,6 +56,8 @@ import {
   Link2,
   AlertTriangle,
   CheckCircle2,
+  BookMarked,
+  Printer,
 } from 'lucide-react';
 import { STAFF_INVITE_RPC_SQL } from '../lib/supabase';
 import {
@@ -67,14 +91,62 @@ import { calculateStudentAcademicSummary, getRawScoreFeedback, isPrimaryGradeLev
 import { downloadBatchStudentQrCodesPdf } from '../lib/moeReportPdf';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
+import { GradebookView } from './GradebookView';
+import { StudentQualityDevelopmentBookView } from './StudentQualityDevelopmentBookView';
+import { MoeDocViewSelection, MoeStudentDocumentCenter } from '../components/MoeStudentDocumentCenter';
+import { GradeAlertRecord } from '../lib/gradeNotifications';
+
+export type StudentsViewSubTab =
+  | 'roster'
+  | 'gradebook'
+  | 'moe_registry'
+  | 'dev_book'
+  | 'analytics'
+  | 'approvals';
+
+export interface StudentsGradebookJumpTarget {
+  courseId?: string;
+  studentId?: string;
+  tab?:
+    | 'gradebook'
+    | 'indicators'
+    | 'pp5'
+    | 'pp5_core_summary'
+    | 'pp6'
+    | 'core_report_card'
+    | 'qualitative_summary'
+    | 'pp3_online'
+    | 'moe_student_hub'
+    | 'onet_niets';
+}
+
+export interface StudentsMoeJumpTarget {
+  mode: 'docs' | 'database';
+  section?: 'profile' | 'grades' | 'qualitative';
+  docView?: MoeDocViewSelection;
+  nonce: number;
+}
 
 interface StudentsViewProps {
   students: Student[];
+  teachers?: Teacher[];
   courses?: Course[];
   grades?: GradeRecord[];
   gradingSystem?: GradingSystem;
+  systemConfig?: SystemConfig;
   activeSchool?: School;
   currentRole?: UserRole;
+  currentUser?: AuthUser | null;
+  attendance?: AttendanceRecord[];
+  periodAttendance?: PeriodAttendanceRecord[];
+  timetableSlots?: TimetableSlot[];
+  behaviorRecords?: BehaviorRecord[];
+  sdqAssessments?: SdqAssessment[];
+  infirmaryVisits?: InfirmaryVisit[];
+  homeworkSubmissions?: HomeworkSubmission[];
+  assignments?: Assignment[];
+  canEditGrades?: boolean;
+  lang?: AppLanguage;
   onSelectStudent: (student: Student) => void;
   onOpenReportCard: (student: Student) => void;
   onOpenMoeDocumentCenter?: (student: Student) => void;
@@ -85,18 +157,46 @@ interface StudentsViewProps {
   onDeleteStudent?: (studentId: string) => Promise<void> | void;
   onPurgeSampleStudents?: () => Promise<void> | void;
   onOpenImportExport?: () => void;
+  onOpenGradeImportExport?: () => void;
   onBatchUpdateStudents?: (updatedStudents: Student[]) => void;
   onUpdateRoomOptions?: (roomOptions: string[]) => Promise<void>;
   onOpenStudentAccountsSettings?: () => void;
+  onChangeGradingSystem?: (mode: GradingSystem) => Promise<void> | void;
+  onUpdateGrade?: (gradeId: string, updates: Partial<GradeRecord>) => void;
+  onAddGrade?: (grade: GradeRecord, options?: { notify?: boolean }) => void;
+  onDeleteGrade?: (gradeId: string) => Promise<void> | void;
+  onNotifyGradeChange?: (grade: GradeRecord, isNewRecord?: boolean) => Promise<GradeAlertRecord | void> | GradeAlertRecord | void;
+  onAddBehaviorRecord?: (record: BehaviorRecord) => void;
+  onPracticeInAi?: (topic: AdaptivePracticeTopic) => void;
+  onOpenBehaviorSdq?: () => void;
+  externalSubTab?: StudentsViewSubTab;
+  onSubTabChange?: (tab: StudentsViewSubTab) => void;
+  targetStudentId?: string;
+  onTargetStudentChange?: (studentId: string | undefined) => void;
+  gradebookJumpTarget?: StudentsGradebookJumpTarget | null;
+  moeJumpTarget?: StudentsMoeJumpTarget | null;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
   students,
+  teachers = [],
   courses = [],
   grades = [],
   gradingSystem = 'thai',
+  systemConfig,
   activeSchool,
   currentRole = 'admin',
+  currentUser,
+  attendance = [],
+  periodAttendance = [],
+  timetableSlots = [],
+  behaviorRecords = [],
+  sdqAssessments = [],
+  infirmaryVisits = [],
+  homeworkSubmissions = [],
+  assignments = [],
+  canEditGrades,
+  lang = 'th',
   onSelectStudent,
   onOpenReportCard,
   onOpenMoeDocumentCenter,
@@ -107,9 +207,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onDeleteStudent,
   onPurgeSampleStudents,
   onOpenImportExport,
+  onOpenGradeImportExport,
   onBatchUpdateStudents,
   onUpdateRoomOptions,
   onOpenStudentAccountsSettings,
+  onChangeGradingSystem,
+  onUpdateGrade,
+  onAddGrade,
+  onDeleteGrade,
+  onNotifyGradeChange,
+  onAddBehaviorRecord,
+  onPracticeInAi,
+  onOpenBehaviorSdq,
+  externalSubTab,
+  onSubTabChange,
+  targetStudentId,
+  onTargetStudentChange,
+  gradebookJumpTarget,
+  moeJumpTarget,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
@@ -117,7 +232,83 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [sortBy, setSortBy] = useState<'default' | 'id_asc' | 'id_desc' | 'last_name_asc' | 'grade_level'>('default');
   const [showQuickSortMenu, setShowQuickSortMenu] = useState(false);
   const quickSortMenuRef = useRef<HTMLDivElement | null>(null);
-  const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'approvals'>('roster');
+  const [activeTab, setActiveTabState] = useState<StudentsViewSubTab>(externalSubTab || 'roster');
+  const [focusedStudentId, setFocusedStudentId] = useState<string | undefined>(targetStudentId || students[0]?.id);
+  const [localGradebookJump, setLocalGradebookJump] = useState<StudentsGradebookJumpTarget | null>(gradebookJumpTarget || null);
+  const [localMoeJump, setLocalMoeJump] = useState<StudentsMoeJumpTarget | null>(moeJumpTarget || null);
+
+  const setActiveTab = useCallback((nextTab: StudentsViewSubTab) => {
+    setActiveTabState(nextTab);
+    onSubTabChange?.(nextTab);
+  }, [onSubTabChange]);
+
+  useEffect(() => {
+    if (externalSubTab && externalSubTab !== activeTab) {
+      setActiveTabState(externalSubTab);
+    }
+  }, [externalSubTab, activeTab]);
+
+  useEffect(() => {
+    if (targetStudentId) {
+      setFocusedStudentId(targetStudentId);
+    }
+  }, [targetStudentId]);
+
+  useEffect(() => {
+    if (gradebookJumpTarget) {
+      setLocalGradebookJump(gradebookJumpTarget);
+    }
+  }, [gradebookJumpTarget]);
+
+  useEffect(() => {
+    if (moeJumpTarget) {
+      setLocalMoeJump(moeJumpTarget);
+    }
+  }, [moeJumpTarget]);
+
+  const effectiveSystemConfig: SystemConfig = useMemo(() => (
+    systemConfig || {
+      schoolNameEn: activeSchool?.nameEn || 'School',
+      schoolNameTh: activeSchool?.nameTh || 'โรงเรียน',
+      academicYear: activeSchool?.academicYear || '2569',
+      currentSemester: activeSchool?.currentSemester || '1',
+      semesterOptions: activeSchool?.semesterOptions || ['1', '2'],
+      gradingSystem,
+      lineNotifyEnabled: false,
+      autoAlertAbsences: false,
+      themePalette: 'indigo',
+      lateCutoffTime: '08:15',
+      absentCutoffTime: '09:00',
+    }
+  ), [systemConfig, activeSchool, gradingSystem]);
+
+  const openStudentInRegistryWorkspace = useCallback((
+    student: Student,
+    mode: 'docs' | 'database',
+    section: 'profile' | 'grades' | 'qualitative' = 'profile',
+    docView: MoeDocViewSelection = 'pp1'
+  ) => {
+    setFocusedStudentId(student.id);
+    onTargetStudentChange?.(student.id);
+    setLocalMoeJump({ mode, section, docView, nonce: Date.now() });
+    setActiveTab('moe_registry');
+  }, [onTargetStudentChange, setActiveTab]);
+
+  const openStudentInDevBook = useCallback((student: Student) => {
+    setFocusedStudentId(student.id);
+    onTargetStudentChange?.(student.id);
+    setActiveTab('dev_book');
+  }, [onTargetStudentChange, setActiveTab]);
+
+  const openStudentInCourseGradebook = useCallback((studentId?: string, courseId?: string, tab: StudentsGradebookJumpTarget['tab'] = 'gradebook') => {
+    if (studentId) {
+      setFocusedStudentId(studentId);
+      onTargetStudentChange?.(studentId);
+    }
+    setLocalGradebookJump({ studentId, courseId, tab });
+    setActiveTab('gradebook');
+  }, [onTargetStudentChange, setActiveTab]);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
   const [bulkMode, setBulkMode] = useState<'table' | 'paste'>('table');
@@ -1043,182 +1234,211 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          <ModuleTourTrigger moduleId="students" lang="th" />
-          <div ref={quickSortMenuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setShowQuickSortMenu((prev) => !prev)}
-              aria-haspopup="menu"
-              aria-expanded={showQuickSortMenu}
-              data-active={sortBy !== 'default'}
-              className="btn-tool-neutral px-2.5 py-1.5"
-            >
-              <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
-              <span>Quick Sort{sortBy !== 'default' ? `: ${activeQuickSortLabel}` : ''}</span>
-              <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-            </button>
-            {showQuickSortMenu && (
-              <div
-                role="menu"
-                aria-label="Quick Sort Students"
-                className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5"
-              >
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                  จัดเรียงข้อมูลนักเรียน (Quick Sort)
-                </div>
-                {quickSortOptions.map((opt) => {
-                  const isActive = sortBy === opt.key;
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={isActive}
-                      onClick={() => {
-                        setSortBy((prev) => (prev === opt.key && opt.key !== 'default' ? 'default' : opt.key));
-                        if (activeTab !== 'roster') setActiveTab('roster');
-                        setShowQuickSortMenu(false);
-                      }}
-                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition cursor-pointer ${
-                        isActive
-                          ? 'tone-active font-bold'
-                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate">{opt.label}</div>
-                        <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate">
-                          {opt.subtitle}
-                        </div>
-                      </div>
-                      {isActive && <Check className="w-3.5 h-3.5 shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          <details className="relative" data-guide-id="students-import-export">
-            <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-              <span>เครื่องมือ / นำเข้าชุด</span>
-              {selectedQrStudentIds.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-[var(--tone-solid)] text-white text-[10px] font-bold tabular-nums">
-                  {selectedQrStudentIds.length}
-                </span>
-              )}
-              <ChevronDown className="h-3.5 w-3.5" />
-            </summary>
-            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-              {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
-                <button
-                  type="button"
-                  data-guide-id="students-add-bulk"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    handleOpenBulkModal();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
-                >
-                  <Users className="w-3.5 h-3.5 shrink-0" />
-                  <span>เพิ่มนักเรียนทั้งห้อง (Batch)</span>
-                </button>
-              )}
-
+        {activeTab === 'roster' && (
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+            <ModuleTourTrigger moduleId="students" lang="th" />
+            <div ref={quickSortMenuRef} className="relative">
               <button
                 type="button"
-                onClick={(event) => {
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                  setShowBatchQrModal(true);
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                onClick={() => setShowQuickSortMenu((prev) => !prev)}
+                aria-haspopup="menu"
+                aria-expanded={showQuickSortMenu}
+                data-active={sortBy !== 'default'}
+                className="btn-tool-neutral px-2.5 py-1.5"
               >
-                <QrCode className="w-3.5 h-3.5 tone-text shrink-0" />
-                <span>
-                  พิมพ์ QR ชุด (PDF)
-                  {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
-                </span>
+                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
+                <span>Quick Sort{sortBy !== 'default' ? `: ${activeQuickSortLabel}` : ''}</span>
+                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
               </button>
+              {showQuickSortMenu && (
+                <div
+                  role="menu"
+                  aria-label="Quick Sort Students"
+                  className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5"
+                >
+                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    จัดเรียงข้อมูลนักเรียน (Quick Sort)
+                  </div>
+                  {quickSortOptions.map((opt) => {
+                    const isActive = sortBy === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={isActive}
+                        onClick={() => {
+                          setSortBy((prev) => (prev === opt.key && opt.key !== 'default' ? 'default' : opt.key));
+                          if (activeTab !== 'roster') setActiveTab('roster');
+                          setShowQuickSortMenu(false);
+                        }}
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition cursor-pointer ${
+                          isActive
+                            ? 'tone-active font-bold'
+                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate">{opt.label}</div>
+                          <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate">
+                            {opt.subtitle}
+                          </div>
+                        </div>
+                        {isActive && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <details className="relative" data-guide-id="students-import-export">
+              <summary className="btn-tool-tone list-none px-2.5 py-1.5">
+                <span>เครื่องมือ / นำเข้าชุด</span>
+                {selectedQrStudentIds.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded bg-[var(--tone-solid)] text-white text-[10px] font-bold tabular-nums">
+                    {selectedQrStudentIds.length}
+                  </span>
+                )}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </summary>
+              <div className="absolute right-0 top-full z-30 mt-1.5 min-w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+                {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
+                  <button
+                    type="button"
+                    data-guide-id="students-add-bulk"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      handleOpenBulkModal();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                  >
+                    <Users className="w-3.5 h-3.5 shrink-0" />
+                    <span>เพิ่มนักเรียนทั้งห้อง (Batch)</span>
+                  </button>
+                )}
 
-              {onOpenImportExport && (
                 <button
                   type="button"
                   onClick={(event) => {
                     event.currentTarget.closest('details')?.removeAttribute('open');
-                    onOpenImportExport();
+                    setShowBatchQrModal(true);
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                  <span>นำเข้า/ส่งออก Excel</span>
+                  <QrCode className="w-3.5 h-3.5 tone-text shrink-0" />
+                  <span>
+                    พิมพ์ QR ชุด (PDF)
+                    {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
+                  </span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                  setShowPromotionModal(true);
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
-                <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
-              </button>
+                {onOpenImportExport && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      onOpenImportExport();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                    <span>นำเข้า/ส่งออก Excel</span>
+                  </button>
+                )}
 
-              {['admin', 'super_admin'].includes(currentRole) && (
                 <button
                   type="button"
                   onClick={(event) => {
                     event.currentTarget.closest('details')?.removeAttribute('open');
-                    setShowRoomPresetModal(true);
+                    setShowPromotionModal(true);
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
                   <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
-                  <span>ตั้งค่าระดับชั้น/ห้องเรียน</span>
+                  <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
                 </button>
-              )}
 
-              {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    handleRequestPurgeSampleStudents();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>ล้างข้อมูลตัวอย่าง</span>
-                </button>
-              )}
-            </div>
-          </details>
+                {['admin', 'super_admin'].includes(currentRole) && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      setShowRoomPresetModal(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
+                    <span>ตั้งค่าระดับชั้น/ห้องเรียน</span>
+                  </button>
+                )}
 
-          <button
-            type="button"
-            data-guide-id="students-add-single"
-            onClick={handleOpenAdd}
-            className="btn-action-primary px-3 py-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>เพิ่มนักเรียน</span>
-          </button>
-        </div>
+                {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      handleRequestPurgeSampleStudents();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>ล้างข้อมูลตัวอย่าง</span>
+                  </button>
+                )}
+              </div>
+            </details>
+
+            <button
+              type="button"
+              data-guide-id="students-add-single"
+              onClick={handleOpenAdd}
+              className="btn-action-primary px-3 py-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>เพิ่มนักเรียน</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* View Tabs */}
-      <div data-guide-id="students-tabs" className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1">
+      {/* Unified Student Management Tabs (Includes Roster, Grading, MOE Registrar Docs & Student Dev Book) */}
+      <div data-guide-id="students-tabs" className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1 print:hidden">
         <div className="seg-tab-group overflow-x-auto no-scrollbar">
           <button
             type="button"
             data-active={activeTab === 'roster'}
             onClick={() => setActiveTab('roster')}
-            className="seg-tab-btn flex items-center gap-1.5"
+            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
           >
             <Users className="w-3.5 h-3.5" />
-            <span>ทะเบียนรายชื่อ ({filteredStudents.length} คน)</span>
+            <span>รายชื่อนักเรียน ({filteredStudents.length})</span>
+          </button>
+          <button
+            type="button"
+            data-active={activeTab === 'gradebook'}
+            onClick={() => setActiveTab('gradebook')}
+            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>บันทึกคะแนน &amp; รายงาน (ปพ.)</span>
+          </button>
+          <button
+            type="button"
+            data-active={activeTab === 'moe_registry'}
+            onClick={() => setActiveTab('moe_registry')}
+            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>งานทะเบียน &amp; เอกสาร (ปพ.1–8)</span>
+          </button>
+          <button
+            type="button"
+            data-active={activeTab === 'dev_book'}
+            onClick={() => setActiveTab('dev_book')}
+            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <BookMarked className="w-3.5 h-3.5" />
+            <span>สมุดคุณภาพผู้เรียน</span>
           </button>
           {canManageApprovals && (
             <button
@@ -1226,10 +1446,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               data-guide-id="students-approvals-tab"
               data-active={activeTab === 'approvals'}
               onClick={() => setActiveTab('approvals')}
-              className="seg-tab-btn flex items-center gap-1.5"
+              className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
             >
               <UserCheck className="w-3.5 h-3.5" />
-              <span>คำขอสมัครเข้าโรงเรียน / อนุมัติบัญชี</span>
+              <span>อนุมัติบัญชี</span>
               {pendingAccountsCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
                   {pendingAccountsCount}
@@ -1241,10 +1461,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             type="button"
             data-active={activeTab === 'analytics'}
             onClick={() => setActiveTab('analytics')}
-            className="seg-tab-btn flex items-center gap-1.5"
+            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
           >
-            <Award className="w-3.5 h-3.5" />
-            <span>สถิติระดับชั้น &amp; สถานะนักเรียน</span>
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>สถิติระดับชั้น</span>
           </button>
         </div>
       </div>
@@ -1540,32 +1760,44 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         {(() => {
                           const actionItems: TableActionItem[] = [
                             {
-                              id: 'profile',
-                              label: 'ดูโปรไฟล์ / ประวัตินักเรียน',
-                              icon: <UserCheck className="w-3.5 h-3.5" />,
+                              id: 'edit_student_grades',
+                              label: 'บันทึกคะแนนรายบุคคล (ปพ.5 / รายวิชา)',
+                              icon: <Award className="w-3.5 h-3.5" />,
                               variant: 'primary',
-                              onClick: () => onSelectStudent(student),
+                              onClick: () => openStudentInRegistryWorkspace(student, 'database', 'grades'),
+                            },
+                            {
+                              id: 'moe_docs',
+                              label: 'งานทะเบียน & ออกเอกสาร สพฐ. (ปพ.1–8)',
+                              icon: <FileText className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => {
+                                openStudentInRegistryWorkspace(student, 'docs', 'profile', 'pp1');
+                                onOpenMoeDocumentCenter?.(student);
+                              },
+                            },
+                            {
+                              id: 'dev_book',
+                              label: 'สมุดคุณภาพผู้เรียน',
+                              icon: <BookMarked className="w-3.5 h-3.5" />,
+                              onClick: () => openStudentInDevBook(student),
                             },
                             {
                               id: 'report_card',
-                              label: 'ดูใบรายงานผล (ปพ.1 / ปพ.6)',
-                              icon: <Award className="w-3.5 h-3.5" />,
+                              label: 'ดู / พิมพ์ใบรายงานผล (ปพ.1 / ปพ.6)',
+                              icon: <Printer className="w-3.5 h-3.5" />,
                               onClick: () => onOpenReportCard(student),
                             },
-                            ...(onOpenMoeDocumentCenter
-                              ? [
-                                  {
-                                    id: 'moe_docs',
-                                    label: 'ศูนย์งานทะเบียน & ออกเอกสาร สพฐ. (ปพ.1–8)',
-                                    icon: <FileText className="w-3.5 h-3.5" />,
-                                    variant: 'primary' as const,
-                                    onClick: () => onOpenMoeDocumentCenter(student),
-                                  },
-                                ]
-                              : []),
+                            {
+                              id: 'profile',
+                              label: 'ดูโปรไฟล์ / ประวัตินักเรียน',
+                              icon: <UserCheck className="w-3.5 h-3.5" />,
+                              dividerBefore: true,
+                              onClick: () => onSelectStudent(student),
+                            },
                             {
                               id: 'edit',
-                              label: 'แก้ไขข้อมูล / ห้อง / สถานะ',
+                              label: 'แก้ไขข้อมูลพื้นฐาน / ห้อง / สถานะ',
                               icon: <Edit3 className="w-3.5 h-3.5" />,
                               onClick: () => handleOpenEdit(student),
                             },
@@ -1935,6 +2167,130 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'gradebook' && (
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <GradebookView
+            students={students}
+            teachers={teachers}
+            courses={courses}
+            grades={grades}
+            systemConfig={effectiveSystemConfig}
+            school={activeSchool}
+            currentRole={currentRole}
+            currentUser={currentUser}
+            onChangeGradingSystem={onChangeGradingSystem}
+            onUpdateGrade={onUpdateGrade || (() => {})}
+            onAddGrade={onAddGrade}
+            onDeleteGrade={onDeleteGrade}
+            onNotifyGradeChange={onNotifyGradeChange}
+            onOpenReportCard={onOpenReportCard}
+            timetableSlots={timetableSlots}
+            attendance={attendance}
+            periodAttendance={periodAttendance}
+            behaviorRecords={behaviorRecords}
+            sdqAssessments={sdqAssessments}
+            infirmaryVisits={infirmaryVisits}
+            homeworkSubmissions={homeworkSubmissions}
+            assignments={assignments}
+            onAddStudent={onAddStudent}
+            onUpdateStudent={onUpdateStudent}
+            onDeleteStudent={onDeleteStudent}
+            onPracticeInAi={onPracticeInAi}
+            canEditGrades={canEditGrades}
+            initialCourseId={localGradebookJump?.courseId}
+            initialStudentId={localGradebookJump?.studentId || focusedStudentId}
+            initialTab={localGradebookJump?.tab}
+            onOpenStudentDevBook={(studentId) => {
+              setFocusedStudentId(studentId);
+              onTargetStudentChange?.(studentId);
+              setActiveTab('dev_book');
+            }}
+            onOpenImportExport={onOpenGradeImportExport}
+            lang={lang}
+          />
+        </div>
+      )}
+
+      {activeTab === 'moe_registry' && (
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <MoeStudentDocumentCenter
+            students={students}
+            courses={courses}
+            grades={grades}
+            attendance={attendance}
+            periodAttendance={periodAttendance}
+            timetableSlots={timetableSlots}
+            behaviorRecords={behaviorRecords}
+            sdqAssessments={sdqAssessments}
+            infirmaryVisits={infirmaryVisits}
+            systemConfig={effectiveSystemConfig}
+            school={activeSchool}
+            currentRole={currentRole}
+            currentUser={currentUser}
+            selectedStudentId={focusedStudentId}
+            onSelectStudentId={(studentId) => {
+              setFocusedStudentId(studentId);
+              onTargetStudentChange?.(studentId);
+            }}
+            onAddStudent={onAddStudent}
+            onUpdateStudent={onUpdateStudent}
+            onDeleteStudent={onDeleteStudent}
+            onUpdateGrade={onUpdateGrade}
+            onAddGrade={onAddGrade}
+            onDeleteGrade={onDeleteGrade}
+            onOpenStudentDevBook={(studentId) => {
+              setFocusedStudentId(studentId);
+              onTargetStudentChange?.(studentId);
+              setActiveTab('dev_book');
+            }}
+            initialDocView={localMoeJump?.docView || 'pp1'}
+            initialWorkspaceMode={localMoeJump?.mode}
+            initialEditorSectionTab={localMoeJump?.section}
+            jumpRequestKey={localMoeJump?.nonce}
+            canEdit={
+              typeof canEditGrades === 'boolean'
+                ? canEditGrades
+                : ['super_admin', 'admin', 'teacher'].includes(currentRole)
+            }
+            lang={lang}
+          />
+        </div>
+      )}
+
+      {activeTab === 'dev_book' && (
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <StudentQualityDevelopmentBookView
+            students={students}
+            courses={courses}
+            grades={grades}
+            attendance={attendance}
+            periodAttendance={periodAttendance}
+            timetableSlots={timetableSlots}
+            behaviorRecords={behaviorRecords}
+            sdqAssessments={sdqAssessments}
+            infirmaryVisits={infirmaryVisits}
+            homeworkSubmissions={homeworkSubmissions}
+            systemConfig={effectiveSystemConfig}
+            school={activeSchool}
+            currentRole={currentRole}
+            currentUser={currentUser}
+            initialStudentId={focusedStudentId}
+            onAddBehaviorRecord={onAddBehaviorRecord}
+            onOpenReportCard={onOpenReportCard}
+            onOpenCoreReportCard={(studentId) => {
+              setFocusedStudentId(studentId);
+              onTargetStudentChange?.(studentId);
+              setLocalMoeJump({ mode: 'docs', section: 'profile', docView: 'core_report_card', nonce: Date.now() });
+              setActiveTab('moe_registry');
+            }}
+            onOpenQualitativeSummary={() => openStudentInCourseGradebook(focusedStudentId, undefined, 'qualitative_summary')}
+            onOpenCourseIndicators={(courseId) => openStudentInCourseGradebook(focusedStudentId, courseId, 'indicators')}
+            onOpenBehaviorSdq={onOpenBehaviorSdq}
+            lang={lang}
+          />
         </div>
       )}
 

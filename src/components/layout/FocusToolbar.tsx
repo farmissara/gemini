@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Award,
   BellRing,
-  BookMarked,
   BookOpen,
   Calendar,
   FileCheck2,
@@ -95,17 +94,10 @@ const TOOL_CATALOG: Record<string, FocusToolMeta> = {
   },
   gradebook: {
     id: 'gradebook',
-    labelTh: 'คะแนน & ปพ.',
-    labelEn: 'Gradebook',
+    labelTh: 'ผลการเรียน',
+    labelEn: 'Grades',
     icon: Award,
-    roles: ['super_admin', 'admin', 'teacher', 'student'],
-  },
-  student_development_book: {
-    id: 'student_development_book',
-    labelTh: 'สมุดพัฒนาผู้เรียน',
-    labelEn: 'Dev Book',
-    icon: BookMarked,
-    roles: ['super_admin', 'admin', 'teacher'],
+    roles: ['student', 'parent'],
   },
   central_exam_hub: {
     id: 'central_exam_hub',
@@ -116,8 +108,8 @@ const TOOL_CATALOG: Record<string, FocusToolMeta> = {
   },
   students: {
     id: 'students',
-    labelTh: 'ทะเบียนนักเรียน',
-    labelEn: 'Students',
+    labelTh: 'นักเรียน · คะแนน & ปพ.',
+    labelEn: 'Students & Grades',
     icon: Users,
     roles: ['super_admin', 'admin', 'teacher'],
   },
@@ -211,13 +203,13 @@ const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> =
 };
 
 const CONTEXTUAL_CLUSTERS: Record<string, NavTab[]> = {
-  teaching: ['timetable', 'courses', 'attendance', 'homework', 'gradebook'],
+  teaching: ['timetable', 'courses', 'attendance', 'homework', 'students'],
   attendance: ['attendance', 'mobile_checkin', 'timetable', 'behavior_sdq', 'students'],
-  grading: ['gradebook', 'student_development_book', 'homework', 'central_exam_hub', 'students'],
-  directory: ['students', 'teachers', 'timetable', 'courses', 'gradebook'],
+  grading: ['students', 'homework', 'central_exam_hub', 'courses', 'timetable'],
+  directory: ['students', 'teachers', 'timetable', 'courses', 'attendance'],
   care_ops: ['behavior_sdq', 'infirmary', 'attendance', 'announcements', 'billing'],
   executive_admin: ['dashboard', 'executive_monitor', 'executive_warning', 'attendance', 'system_settings'],
-  executive_teacher: ['dashboard', 'timetable', 'attendance', 'homework', 'gradebook'],
+  executive_teacher: ['dashboard', 'timetable', 'attendance', 'homework', 'students'],
   student_parent_home: ['dashboard', 'timetable', 'homework', 'gradebook', 'announcements'],
   settings: ['system_settings', 'students', 'teachers', 'admin_superadmin_desk', 'dashboard'],
 };
@@ -231,7 +223,6 @@ const ADMIN_SIMPLIFIED_CORE_TABS = new Set<NavTab>([
   'attendance',
   'mobile_checkin',
   'homework',
-  'gradebook',
   'announcements',
 ]);
 
@@ -239,7 +230,7 @@ function getContextualClusterIds(tab: NavTab, role: UserRole): NavTab[] {
   if (tab === 'attendance' || tab === 'mobile_checkin') return CONTEXTUAL_CLUSTERS.attendance;
   if (tab === 'timetable' || tab === 'courses') return CONTEXTUAL_CLUSTERS.teaching;
   if (tab === 'homework' || tab === 'central_exam_hub' || tab === 'gradebook' || tab === 'student_development_book' || tab === 'qualitative_summary') {
-    return CONTEXTUAL_CLUSTERS.grading;
+    return role === 'student' || role === 'parent' ? CONTEXTUAL_CLUSTERS.student_parent_home : CONTEXTUAL_CLUSTERS.grading;
   }
   if (tab === 'students' || tab === 'teachers') return CONTEXTUAL_CLUSTERS.directory;
   if (tab === 'behavior_sdq' || tab === 'infirmary' || tab === 'billing' || tab === 'announcements') {

@@ -165,6 +165,8 @@ interface GradebookViewProps {
     | 'qualitative_summary'
     | 'pp3_online'
     | 'onet_niets';
+  embeddedInStudentManagement?: boolean;
+  onSwitchToStudentRegistry?: (studentId?: string, docView?: MoeDocViewSelection) => void;
   lang?: AppLanguage;
 }
 
@@ -201,6 +203,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   initialCourseId,
   initialStudentId,
   initialTab,
+  embeddedInStudentManagement = false,
+  onSwitchToStudentRegistry,
   lang = 'th',
 }) => {
   const isPersonalGradeViewer = currentRole === 'student' || currentRole === 'parent';
@@ -1485,6 +1489,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   ];
 
   const openStudentInRegistry = (studentId: string, docView: MoeDocViewSelection = 'pp1') => {
+    if (embeddedInStudentManagement && onSwitchToStudentRegistry) {
+      onSwitchToStudentRegistry(studentId, docView);
+      return;
+    }
     setSelectedStudentIdForPp6(studentId);
     setHubDocViewOverride(docView);
     setActiveTab('moe_student_hub');
@@ -1492,17 +1500,21 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
-      {/* Gradebook title, clean 3-tab switcher, and actions */}
-      <div className="shrink-0 px-4 py-3 app-page-header flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 print:hidden">
+      {/* Gradebook title, clean tab switcher, and actions */}
+      <div className="shrink-0 px-4 py-2.5 app-page-header flex flex-wrap items-center justify-between gap-x-4 gap-y-2 print:hidden">
         <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
-          <span className="tone-chip w-10 h-10 rounded-xl shrink-0">
-            <Award className="w-5 h-5" />
-          </span>
-          <h1 className="text-base md:text-xl font-bold text-[var(--color-text-title)] leading-tight truncate">
-            {isPersonalGradeViewer
-              ? 'ผลการเรียน & ใบ ปพ.6'
-              : 'บันทึกคะแนน & งานทะเบียน'}
-          </h1>
+          {!embeddedInStudentManagement && (
+            <>
+              <span className="tone-chip w-10 h-10 rounded-xl shrink-0">
+                <Award className="w-5 h-5" />
+              </span>
+              <h1 className="text-base md:text-xl font-bold text-[var(--color-text-title)] leading-tight truncate">
+                {isPersonalGradeViewer
+                  ? 'ผลการเรียน & ใบ ปพ.6'
+                  : 'บันทึกคะแนน & งานทะเบียน'}
+              </h1>
+            </>
+          )}
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
             <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-sm shrink-0">
               <button
@@ -1538,7 +1550,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </span>
           )}
 
-          {/* Clean Top-Level Tabs (Replaces cluttered 2-dropdown / 10-subtab stack) */}
+          {/* Clean Top-Level Tabs */}
           {isPersonalGradeViewer ? (
             <div data-guide-id="gradebook-tabs" className="seg-tab-group text-[11px]">
               <button
@@ -1559,7 +1571,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </button>
             </div>
           ) : (
-            <div data-guide-id="gradebook-tabs" className="w-full basis-full flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]/70">
+            <div
+              data-guide-id="gradebook-tabs"
+              className={`flex flex-wrap items-center justify-between gap-2 ${
+                embeddedInStudentManagement
+                  ? ''
+                  : 'w-full basis-full pt-1 border-t border-[var(--color-border)]/70'
+              }`}
+            >
               <div className="seg-tab-group overflow-x-auto no-scrollbar">
                 <button
                   type="button"
@@ -1569,16 +1588,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   }}
                   className="seg-tab-btn whitespace-nowrap"
                 >
-                  {lang === 'th' ? '1. บันทึกคะแนนรายวิชา' : '1. Course Grading'}
+                  {lang === 'th' ? 'บันทึกคะแนนรายวิชา' : 'Course Grading'}
                 </button>
-                <button
-                  type="button"
-                  data-active={primarySection === 'registry'}
-                  onClick={() => setActiveTab('moe_student_hub')}
-                  className="seg-tab-btn whitespace-nowrap"
-                >
-                  {lang === 'th' ? '2. รายชื่อเด็ก & งานทะเบียน (ปพ.1–8)' : '2. Student Registry & Docs'}
-                </button>
+                {!embeddedInStudentManagement && (
+                  <button
+                    type="button"
+                    data-active={primarySection === 'registry'}
+                    onClick={() => setActiveTab('moe_student_hub')}
+                    className="seg-tab-btn whitespace-nowrap"
+                  >
+                    {lang === 'th' ? 'รายชื่อเด็ก & งานทะเบียน (ปพ.1–8)' : 'Student Registry & Docs'}
+                  </button>
+                )}
                 <button
                   type="button"
                   data-active={primarySection === 'reports'}
@@ -1587,7 +1608,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   }}
                   className="seg-tab-btn whitespace-nowrap"
                 >
-                  {lang === 'th' ? '3. รายงานสรุป & ส่งออก สพฐ.' : '3. Reports & OBEC Export'}
+                  {lang === 'th' ? 'รายงานสรุป & ส่งออก สพฐ.' : 'Reports & OBEC Export'}
                 </button>
               </div>
 

@@ -129,7 +129,11 @@ import { AuthLayout } from './components/layout/AuthLayout';
 import { ViewErrorBoundary } from './components/common/ViewErrorBoundary';
 import { SchoolSwitcherModal } from './components/modals/SchoolSwitcherModal';
 import { DashboardView, type DashboardSubTab } from './views/DashboardView';
-import { StudentsView } from './views/StudentsView';
+import {
+  StudentsView,
+  type StudentsViewSubTab,
+  type StudentsMoeJumpTarget,
+} from './views/StudentsView';
 import { TeachersView } from './views/TeachersView';
 import { CoursesView } from './views/CoursesView';
 import { AttendanceView } from './views/AttendanceView';
@@ -456,6 +460,9 @@ export const App: React.FC = () => {
   const [showDuplicateDetails, setShowDuplicateDetails] = useState(false);
   const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
   const [devBookTargetStudentId, setDevBookTargetStudentId] = useState<string | undefined>(undefined);
+  const [studentsSubTab, setStudentsSubTab] = useState<StudentsViewSubTab>('roster');
+  const [studentsTargetStudentId, setStudentsTargetStudentId] = useState<string | undefined>(undefined);
+  const [studentsMoeJumpTarget, setStudentsMoeJumpTarget] = useState<StudentsMoeJumpTarget | null>(null);
   const [gradebookJumpTarget, setGradebookJumpTarget] = useState<{
     courseId?: string;
     studentId?: string;
@@ -1379,11 +1386,31 @@ export const App: React.FC = () => {
     if (tab === 'dashboard') {
       setDashboardInitialSubTab('overview');
     }
+    if (tab === 'students' && ['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+      setStudentsSubTab('roster');
+      setCurrentTab('students');
+      return;
+    }
     if (tab === 'gradebook') {
       setGradebookJumpTarget(null);
+      if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+        setStudentsSubTab('gradebook');
+        setCurrentTab('students');
+        return;
+      }
     }
-    if (tab === 'student_development_book') {
+    if (tab === 'student_development_book' && ['super_admin', 'admin', 'teacher'].includes(currentRole)) {
       setDevBookTargetStudentId(undefined);
+      setStudentsTargetStudentId(undefined);
+      setStudentsSubTab('dev_book');
+      setCurrentTab('students');
+      return;
+    }
+    if (tab === 'qualitative_summary' && ['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+      setGradebookJumpTarget({ tab: 'qualitative_summary' });
+      setStudentsSubTab('gradebook');
+      setCurrentTab('students');
+      return;
     }
     setCurrentTab(tab);
   };
@@ -1806,9 +1833,16 @@ export const App: React.FC = () => {
 
   const handleOpenStudentMoeDocs = (student: Student) => {
     setIsGamePlaying(false);
-    setGradebookJumpTarget({ studentId: student.id, tab: 'moe_student_hub' });
+    setStudentsTargetStudentId(student.id);
+    setStudentsMoeJumpTarget({
+      mode: 'docs',
+      section: 'profile',
+      docView: 'pp1',
+      nonce: Date.now(),
+    });
+    setStudentsSubTab('moe_registry');
     setProgramMode('school_erp');
-    setCurrentTab('gradebook');
+    setCurrentTab('students');
   };
 
   const handleCleanupOrphanGrades = () => {
@@ -4757,26 +4791,32 @@ export const App: React.FC = () => {
                     onOpenGradebookCourse={(courseId) => {
                       setIsGamePlaying(false);
                       setGradebookJumpTarget({ courseId, tab: 'pp5' });
+                      setStudentsSubTab('gradebook');
                       setProgramMode('school_erp');
-                      setCurrentTab('gradebook');
+                      setCurrentTab('students');
                     }}
                     onOpenStudentDevBook={(studentId) => {
                       setIsGamePlaying(false);
                       setDevBookTargetStudentId(studentId);
+                      setStudentsTargetStudentId(studentId);
+                      setStudentsSubTab('dev_book');
                       setProgramMode('school_erp');
-                      setCurrentTab('student_development_book');
+                      setCurrentTab('students');
                     }}
                     onOpenStudentPp6={(studentId) => {
                       setIsGamePlaying(false);
-                      setGradebookJumpTarget({ studentId, tab: 'pp6' });
+                      setStudentsTargetStudentId(studentId);
+                      setStudentsMoeJumpTarget({ mode: 'docs', docView: 'pp6', nonce: Date.now() });
+                      setStudentsSubTab('moe_registry');
                       setProgramMode('school_erp');
-                      setCurrentTab('gradebook');
+                      setCurrentTab('students');
                     }}
                     onOpenPp5Summary={() => {
                       setIsGamePlaying(false);
                       setGradebookJumpTarget({ tab: 'pp5_core_summary' });
+                      setStudentsSubTab('gradebook');
                       setProgramMode('school_erp');
-                      setCurrentTab('gradebook');
+                      setCurrentTab('students');
                     }}
                     focusMode={focusMode}
                     onToggleFocusMode={() => setFocusMode((prev) => !prev)}
@@ -4788,14 +4828,26 @@ export const App: React.FC = () => {
                 {currentTab === 'students' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <StudentsView
                     students={schoolStudents}
+                    teachers={schoolTeachers}
                     courses={schoolCourses}
                     grades={schoolGrades}
                     gradingSystem={systemConfig.gradingSystem}
+                    systemConfig={systemConfig}
                     activeSchool={activeSchool}
                     currentRole={currentRole}
+                    currentUser={currentUser}
+                    attendance={viewAttendance}
+                    periodAttendance={viewPeriodAttendance}
+                    timetableSlots={viewTimetableSlots}
+                    behaviorRecords={viewBehaviorRecords}
+                    sdqAssessments={viewSdqAssessments}
+                    infirmaryVisits={viewInfirmaryVisits}
+                    homeworkSubmissions={viewHomeworkSubmissions}
+                    assignments={viewAssignments}
+                    canEditGrades={canEditGradesInSchool}
+                    lang={lang}
                     onSelectStudent={setSelectedStudentForProfile}
                     onOpenReportCard={setSelectedStudentForReport}
-                    onOpenMoeDocumentCenter={handleOpenStudentMoeDocs}
                     onToggleLineSync={handleToggleLineSync}
                     onAddStudent={handleAddStudent}
                     onAddStudents={handleAddStudents}
@@ -4811,11 +4863,36 @@ export const App: React.FC = () => {
                       setImportExportInitialTab('students');
                       setShowImportExportModal(true);
                     }}
+                    onOpenGradeImportExport={() => {
+                      setImportExportInitialTab('grades');
+                      setShowImportExportModal(true);
+                    }}
                     onOpenStudentAccountsSettings={() => {
                       setSystemSettingsInitialTab('student_accounts');
                       setProgramMode('school_erp');
                       setCurrentTab('system_settings');
                     }}
+                    onChangeGradingSystem={(mode) => handleUpdateSchool({ gradingSystem: mode })}
+                    onUpdateGrade={handleUpdateGrade}
+                    onAddGrade={handleAddGrade}
+                    onDeleteGrade={handleDeleteGrade}
+                    onNotifyGradeChange={handleNotifyGradeChange}
+                    onAddBehaviorRecord={handleAddBehaviorRecord}
+                    onPracticeInAi={
+                      isTabEnabledByFeatureFlags('socratic_tutor', activeFeatureFlags, currentRole)
+                        ? (topic) => {
+                            setAdaptivePracticeTopic(topic);
+                            navigateToAppTab('socratic_tutor');
+                          }
+                        : undefined
+                    }
+                    onOpenBehaviorSdq={() => navigateToAppTab('behavior_sdq')}
+                    externalSubTab={studentsSubTab}
+                    onSubTabChange={setStudentsSubTab}
+                    targetStudentId={studentsTargetStudentId}
+                    onTargetStudentChange={setStudentsTargetStudentId}
+                    gradebookJumpTarget={gradebookJumpTarget}
+                    moeJumpTarget={studentsMoeJumpTarget}
                   />
                 )}
 
@@ -5581,8 +5658,10 @@ export const App: React.FC = () => {
               ? (stu) => {
                   setSelectedStudentForProfile(null);
                   setDevBookTargetStudentId(stu.id);
+                  setStudentsTargetStudentId(stu.id);
+                  setStudentsSubTab('dev_book');
                   setProgramMode('school_erp');
-                  setCurrentTab('student_development_book');
+                  setCurrentTab('students');
                 }
               : undefined
           }
