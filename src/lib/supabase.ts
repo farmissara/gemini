@@ -6,6 +6,8 @@ import {
   Course, 
   GradeRecord, 
   AttendanceRecord, 
+  AttendanceStatus,
+  AttendanceCheckType,
   TuitionInvoice, 
   Announcement,
   CampusGateGeofence,
@@ -24,12 +26,14 @@ import courseClassificationMigrationSql from '../../supabase/migrations/20261125
 import homeworkWorkflowMigrationSql from '../../supabase/migrations/20261120_teacher_homework_workflow.sql?raw';
 import studentRecordsMigrationSql from '../../supabase/migrations/20261120_school_student_records.sql?raw';
 import schoolLmsLessonsMigrationSql from '../../supabase/migrations/20261120_school_lms_lessons.sql?raw';
+import schoolLmsTeacherCourseRlsMigrationSql from '../../supabase/migrations/20261120_school_lms_teacher_course_rls.sql?raw';
 import staffInviteRpcSql from '../../supabase/migrations/20261124_staff_invite_link_rpc.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
 import { parseSlotTeachersFromRaw, serializeSlotTeacherForDb } from './timetableTeachers';
 import { sanitizeSchoolCampusGates } from './schoolGps';
 import { getCourseType, inferCourseLearningArea } from './courseClassification';
+import { loadSchoolSnapshot, saveSchoolSnapshot } from './offlineSchoolCache';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -109,7 +113,7 @@ export function clearCustomSupabaseCredentials() {
 }
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
-export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}\n\n${homeworkWorkflowMigrationSql}\n\n${studentRecordsMigrationSql}\n\n${schoolLmsLessonsMigrationSql}`;
+export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}\n\n${homeworkWorkflowMigrationSql}\n\n${studentRecordsMigrationSql}\n\n${schoolLmsLessonsMigrationSql}\n\n${schoolLmsTeacherCourseRlsMigrationSql}`;
 export const STAFF_INVITE_RPC_SQL = staffInviteRpcSql;
 
 function isMissingTableError(error: { code?: string; message: string }): boolean {
@@ -206,32 +210,63 @@ export interface SchoolData {
   timetableSlots: TimetableSlot[];
   leaveRequests: LeaveRequest[];
   periodAttendance: PeriodAttendanceRecord[];
+  loadedFromCache?: boolean;
 }
 
-export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
+export async function loadSchoolData(schoolId: string, userId: string): Promise<SchoolData> {
+  try {
+    const data = await loadSchoolDataFromSupabase(schoolId);
+    try {
+      await saveSchoolSnapshot(userId, schoolId, data);
+    } catch (cacheError) {
+      console.warn('Could not update the local school data snapshot:', cacheError);
+    }
+    return data;
+  } catch (remoteError) {
+    try {
+      const snapshot = await loadSchoolSnapshot(userId, schoolId);
+      if (snapshot) {
+        console.warn('Supabase is unavailable; opening the last saved local school snapshot.');
+        return { ...snapshot.data, loadedFromCache: true };
+      }
+    } catch (cacheError) {
+      console.warn('Could not read the local school data snapshot:', cacheError);
+    }
+    throw remoteError;
+  }
+}
+
+async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData> {
   const client = getSupabaseClient();
   if (!client) {
-    return {
-      students: [],
-      teachers: [],
-      courses: [],
-      assignments: [],
-      homeworkSubmissions: [],
-      grades: [],
-      attendance: [],
-      invoices: [],
-      announcements: [],
-      schoolPeriods: DEFAULT_SCHOOL_PERIODS,
-      campusGates: [],
-      timetableSlots: [],
-      leaveRequests: [],
-      periodAttendance: [],
-    };
+    throw new Error('Supabase ยังเชื่อมต่อไม่ได้ จึงกำลังลองเปิดข้อมูลสำรองในเครื่อง');
   }
 
-  const tableNames = ['students', 'courses', 'grades', 'attendance', 'invoices', 'announcements'] as const;
+  // Keep these projections aligned with the row mappings below. A number of
+  // school tables have grown optional/profile fields over time, and selecting
+  // every column sends those fields to every user on every school load.
+  const schoolDataQueries = [
+    client.from('students')
+      .select('id, school_id, student_id_number, national_id, first_name_en, last_name_en, first_name_th, last_name_th, gender, date_of_birth, grade_level, room, status, avatar_url, gpa, guardian_name, guardian_relation, guardian_phone, guardian_email, line_user_id, line_linked, line_notify_enabled, enrolled_date')
+      .eq('school_id', schoolId),
+    client.from('courses')
+      .select('id, school_id, code, title_en, title_th, category, course_type, learning_area, credits, weekly_hours, total_hours, min_attendance_hours, teacher_name, teacher_email, department, schedule, room, academic_year, semester, enrolled_student_ids, description, cover_image')
+      .eq('school_id', schoolId),
+    client.from('grades')
+      .select('id, school_id, student_id, course_id, academic_year, semester, midterm_score, final_score, assignment_score, quiz_score, total_score, letter_grade, grade_point')
+      .eq('school_id', schoolId),
+    client.from('attendance')
+      .select('id, school_id, student_id, user_name, record_type, date, time, status, checkin_method, photo_url, remarks, line_notification_sent')
+      .eq('school_id', schoolId),
+    client.from('invoices')
+      .select('id, school_id, invoice_number, student_id, semester, academic_year, issue_date, due_date, total_amount, status, items, payment_method, paid_at, receipt_number, slip_image_url, slip_submitted_at, slip_status, slip_reject_reason, slip_amount, slip_reference_note')
+      .eq('school_id', schoolId),
+    client.from('announcements')
+      .select('id, school_id, title, content, category, target_audience, published_at, author, author_role, pinned, line_broadcast_sent, resend_email_sent')
+      .eq('school_id', schoolId),
+  ] as const;
   const results = await Promise.all(
-    tableNames.map((table) => client.from(table).select('*').eq('school_id', schoolId))
+    schoolDataQueries
   );
   const failedQuery = results.find((result) => result.error);
   if (failedQuery?.error) {
@@ -257,7 +292,9 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);
   }
 
-  const teacherResult = await client.from('teachers').select('*').eq('school_id', schoolId);
+  const teacherResult = await client.from('teachers')
+    .select('id, school_id, teacher_id_number, full_name_th, full_name_en, gender, email, phone, avatar_url, academic_degree, major, minor, academic_standing, position_title, reports_to_teacher_id, department, teacher_license_no, teaching_subjects, homeroom_classes, teaching_grades, is_school_admin, line_user_id, line_linked, other_skills, certifications, teaching_experience_years, pa_score, self_development_plan, pa_portfolio')
+    .eq('school_id', schoolId);
   if (teacherResult.error) {
     if (!isMissingTableError(teacherResult.error)) {
       throw new Error(`Could not load teachers: ${teacherResult.error.message}`);
@@ -492,9 +529,17 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
   }));
 
   const [timetableResult, leaveResult, periodAttResult] = await Promise.all([
-    client.from('timetable_slots').select('*').eq('school_id', schoolId),
-    client.from('leave_requests').select('*').eq('school_id', schoolId).order('created_at', { ascending: false }),
-    client.from('period_attendance').select('*').eq('school_id', schoolId).order('date', { ascending: false }),
+    client.from('timetable_slots')
+      .select('id, school_id, academic_year, semester, day_of_week, period_number, start_time, end_time, course_id, course_code, course_title_th, course_title_en, teacher_name, room, classroom, color_tag, credits, total_semester_hours')
+      .eq('school_id', schoolId),
+    client.from('leave_requests')
+      .select('id, school_id, user_id, user_name, user_role, grade_level_or_department, leave_scope, period_number, course_id, course_code, course_title, substitute_teacher_id, substitute_teacher_name, cc_emails_or_roles, leave_type, start_date, end_date, reason, attachment_url, status, approved_by, approval_remarks, created_at, updated_at')
+      .eq('school_id', schoolId)
+      .order('created_at', { ascending: false }),
+    client.from('period_attendance')
+      .select('id, school_id, course_id, course_code, period_number, time_slot, date, student_id, status, record_type, recorded_by, check_method, notes')
+      .eq('school_id', schoolId)
+      .order('date', { ascending: false }),
   ]);
   if (timetableResult.error) {
     if (!isMissingTableError(timetableResult.error)) {
@@ -509,8 +554,14 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     throw new Error(`Could not load period attendance: ${periodAttResult.error.message}`);
   }
   const [assignmentResult, submissionResult] = await Promise.all([
-    client.from('school_assignments').select('*').eq('school_id', schoolId).order('due_date'),
-    client.from('homework_submissions').select('*').eq('school_id', schoolId).order('submitted_at', { ascending: false }),
+    client.from('school_assignments')
+      .select('id, school_id, course_id, course_code, title_th, title_en, description, due_date, points, status')
+      .eq('school_id', schoolId)
+      .order('due_date'),
+    client.from('homework_submissions')
+      .select('id, school_id, assignment_id, assignment_title, course_code, course_title_th, student_id, student_name, student_room, due_date, submitted_at, status, file_attachment, text_submission, score, max_score, teacher_feedback, graded_at, graded_by')
+      .eq('school_id', schoolId)
+      .order('submitted_at', { ascending: false }),
   ]);
   if (assignmentResult.error && !isMissingTableError(assignmentResult.error)) {
     throw new Error(`Could not load assignments: ${assignmentResult.error.message}`);
@@ -943,6 +994,48 @@ export async function saveStudentSelfAttendance(record: AttendanceRecord, userId
   }
 
   return photoStoragePath;
+}
+
+export async function saveQueuedAttendanceToDb(record: {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  date: string;
+  time: string;
+  status: AttendanceStatus;
+  checkinMethod: AttendanceRecord['checkinMethod'];
+  remarks?: string;
+  recordType?: AttendanceCheckType;
+  userName?: string;
+}): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is unavailable.');
+  const baseRow = {
+    id: record.id,
+    school_id: record.schoolId,
+    student_id: record.studentId,
+    date: record.date,
+    time: record.time,
+    status: record.status,
+    checkin_method: record.checkinMethod,
+    remarks: record.remarks || null,
+    line_notification_sent: false,
+  };
+  const { error } = await client.from('attendance').upsert({
+    ...baseRow,
+    record_type: record.recordType || 'check_in',
+    user_name: record.userName || null,
+  });
+  if (!error) return;
+  if (
+    error.code === 'PGRST204' || error.code === '42703' ||
+    /record_type|user_name|schema cache|could not find the '.*' column/i.test(error.message)
+  ) {
+    const fallback = await client.from('attendance').upsert(baseRow);
+    if (!fallback.error) return;
+    throw new Error(`Attendance sync failed: ${fallback.error.message}`);
+  }
+  throw new Error(`Attendance sync failed: ${error.message}`);
 }
 
 function mapTeacherToDb(teacher: Teacher, schoolId: string) {

@@ -44,6 +44,7 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 15. รัน `supabase/migrations/20261120_teacher_homework_workflow.sql` เพื่อบันทึกงานที่สั่งและการส่ง/ตรวจการบ้านลง Supabase
 16. รัน `supabase/migrations/20261120_school_student_records.sql` เพื่อบันทึกแฟ้มผลงาน ข้อมูลพฤติกรรม SDQ และการเข้าห้องพยาบาล พร้อม RLS แยกโรงเรียนและนักเรียน
 17. รัน `supabase/migrations/20261120_school_lms_lessons.sql` เพื่อบันทึกบทเรียน LMS และสถานะเรียนจบรายบท พร้อม RLS แยกโรงเรียน/นักเรียน
+18. รัน `supabase/migrations/20261120_school_lms_teacher_course_rls.sql` เพื่อจำกัดการเพิ่ม/แก้ไขบทเรียนของครูให้ทำได้เฉพาะรายวิชาที่ได้รับมอบหมาย (ผู้ดูแลยังจัดการได้ทุกวิชา)
 
 หากต้องการเปิดใช้คิวอนุมัติการสมัครโรงเรียนในหน้า Super Admin ให้รัน `supabase/super_admin_registration_approval_migration.sql` เพิ่มใน SQL Editor ด้วย Migration นี้จำกัดสิทธิ์แก้ไขโปรไฟล์ไม่ให้ผู้ใช้เปลี่ยน role/สถานะของตนเอง และสร้าง RPC ที่ตรวจ role `super_admin` ฝั่งฐานข้อมูลก่อนอ่านหรืออนุมัติคำขอ
 

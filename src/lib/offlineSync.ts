@@ -50,12 +50,28 @@ export function enqueueOfflineAction(params: {
   description: string;
   payload: any;
 }): OfflineQueueItem {
+  const payload = params.payload;
+  const existing = getOfflineQueue().find((item) => {
+    if (item.actionType !== params.actionType || item.schoolId !== params.schoolId) return false;
+    if (params.actionType === 'attendance') {
+      const queuedDate = item.payload?.extra?.date || new Date(item.createdAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+      return Date.now() - new Date(item.createdAt).getTime() < 10_000 &&
+        item.payload?.studentId === payload?.studentId &&
+        item.payload?.status === payload?.status &&
+        item.payload?.extra?.recordType === payload?.extra?.recordType &&
+        queuedDate === (payload?.extra?.date || queuedDate) &&
+        item.payload?.remarks === payload?.remarks;
+    }
+    return params.actionType === 'health_visit' && item.payload?.id === payload?.id;
+  });
+  if (existing) return existing;
+
   const item: OfflineQueueItem = {
     id: `off-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     actionType: params.actionType,
     schoolId: params.schoolId,
     description: params.description,
-    payload: params.payload,
+    payload,
     createdAt: new Date().toISOString(),
     retryCount: 0,
     status: 'pending',
@@ -89,34 +105,33 @@ export async function flushOfflineQueue(
 
   let syncedCount = 0;
   let failedCount = 0;
-  const updatedQueue = [...getOfflineQueue()];
-
   for (const item of queue) {
-    const idx = updatedQueue.findIndex(q => q.id === item.id);
+    const currentQueue = getOfflineQueue();
+    const idx = currentQueue.findIndex(q => q.id === item.id);
     if (idx < 0) continue;
 
     try {
-      updatedQueue[idx].status = 'syncing';
-      saveOfflineQueue(updatedQueue);
+      currentQueue[idx] = { ...currentQueue[idx], status: 'syncing' };
+      saveOfflineQueue(currentQueue);
 
       const success = await handler(item);
       if (success) {
         syncedCount++;
-        // Remove successfully synced item from queue
-        const fresh = getOfflineQueue().filter(q => q.id !== item.id);
-        saveOfflineQueue(fresh);
+        // Read the latest queue before changing it so concurrent updates and
+        // previous successful removals are not accidentally overwritten.
+        saveOfflineQueue(getOfflineQueue().filter(q => q.id !== item.id));
       } else {
         failedCount++;
-        updatedQueue[idx].status = 'failed';
-        updatedQueue[idx].retryCount += 1;
-        saveOfflineQueue(updatedQueue);
+        saveOfflineQueue(getOfflineQueue().map((queued) => queued.id === item.id
+          ? { ...queued, status: 'failed', retryCount: queued.retryCount + 1 }
+          : queued));
       }
     } catch (err) {
       failedCount++;
-      updatedQueue[idx].status = 'failed';
-      updatedQueue[idx].retryCount += 1;
-      updatedQueue[idx].lastError = err instanceof Error ? err.message : String(err);
-      saveOfflineQueue(updatedQueue);
+      const message = err instanceof Error ? err.message : String(err);
+      saveOfflineQueue(getOfflineQueue().map((queued) => queued.id === item.id
+        ? { ...queued, status: 'failed', retryCount: queued.retryCount + 1, lastError: message }
+        : queued));
     }
   }
 

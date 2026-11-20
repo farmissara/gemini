@@ -7,11 +7,13 @@ import { AppLanguage } from '../../types';
 interface OfflineIndicatorProps {
   lang?: AppLanguage;
   onSyncItem?: (item: OfflineQueueItem) => Promise<boolean>;
+  isUsingCachedData?: boolean;
 }
 
 export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({ 
   lang = 'th',
-  onSyncItem
+  onSyncItem,
+  isUsingCachedData = false,
 }) => {
   const isOnline = useOnlineStatus();
   const [queue, setQueue] = useState<OfflineQueueItem[]>([]);
@@ -35,6 +37,16 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
       handleSyncNow();
     }
   }, [isOnline]);
+
+  // Retry queued writes periodically even when the browser stayed online but
+  // the Supabase service itself was temporarily unavailable.
+  useEffect(() => {
+    if (!isOnline || !queue.some((item) => item.status === 'pending' || item.status === 'failed')) return;
+    const intervalId = window.setInterval(() => {
+      void handleSyncNow();
+    }, 5 * 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [isOnline, queue, isSyncing]);
 
   const handleSyncNow = async () => {
     if (queue.length === 0 || isSyncing) return;
@@ -73,9 +85,14 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
       )}
 
       {/* Floating Indicator Banner: Offline or Pending Queue */}
-      {(!isOnline || pendingCount > 0) && (
+      {(!isOnline || pendingCount > 0 || isUsingCachedData) && (
         <div className="no-print fixed bottom-4 left-4 z-50 flex items-center gap-2.5 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white border border-slate-700 p-2 sm:px-3 sm:py-2 text-xs font-semibold shadow-2xl">
-          {!isOnline ? (
+          {isUsingCachedData ? (
+            <div className="flex items-center gap-2 text-amber-300">
+              <Database className="w-4 h-4 shrink-0" />
+              <span>{lang === 'th' ? 'กำลังใช้ข้อมูลสำรองในเครื่อง · ข้อมูลอาจไม่ล่าสุด' : 'Using local backup · data may be stale'}</span>
+            </div>
+          ) : !isOnline ? (
             <div className="flex items-center gap-2 text-amber-400">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
               <WifiOff className="w-4 h-4 shrink-0" />

@@ -100,6 +100,7 @@ import {
   saveSchoolAssignmentToDb,
   saveHomeworkSubmissionToDb,
   saveHomeworkGradeToDb,
+  saveQueuedAttendanceToDb,
 } from './lib/supabase';
 import { cleanupStudentCampusData } from './lib/campusDataStore';
 import { hydrateSchoolRegistryFromSupabase } from './lib/studentRegistryStore';
@@ -207,7 +208,7 @@ import { dispatchGradeAlert } from './lib/gradeNotifications';
 import { getLocalDateString } from './lib/date';
 import { getHolidayForDate, isWeekendDate, syncPublicHolidaysFromApi } from './lib/thaiHolidays';
 import { slotHasTeacher } from './lib/timetableTeachers';
-import type { OfflineQueueItem } from './lib/offlineSync';
+import { enqueueOfflineAction, isOnlineNow, type OfflineQueueItem } from './lib/offlineSync';
 import { appendAuditLog } from './lib/auditLog';
 import {
   getSchoolFeatureFlags,
@@ -279,6 +280,7 @@ export const App: React.FC = () => {
   const [isDataReady, setIsDataReady] = useState(false);
   const [loadedSchoolId, setLoadedSchoolId] = useState<string | null>(null);
   const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+  const [isUsingCachedSchoolData, setIsUsingCachedSchoolData] = useState(false);
   const [dataSyncError, setDataSyncError] = useState<string | null>(null);
   const [dataSyncWarnings, setDataSyncWarnings] = useState<string[]>([]);
   const [dataSyncSummary, setDataSyncSummary] = useState<string | null>(null);
@@ -290,6 +292,7 @@ export const App: React.FC = () => {
   const [isUnlockingBiometrics, setIsUnlockingBiometrics] = useState(false);
   const [biometricLockError, setBiometricLockError] = useState<string | null>(null);
   const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const skipNextOfflineRowSyncRef = useRef(false);
 
   const handleCopyMigrationSql = async () => {
     try {
@@ -1504,10 +1507,12 @@ export const App: React.FC = () => {
     setIsDataReady(false);
     setLoadedSchoolId(null);
     setDataLoadError(null);
+    setIsUsingCachedSchoolData(false);
     setOrphanedGrades([]);
-    loadSchoolData(activeSchool.id)
+    loadSchoolData(activeSchool.id, currentUser.id)
       .then((data) => {
         if (!active) return;
+        setIsUsingCachedSchoolData(Boolean(data.loadedFromCache));
         if (currentUser.role === 'super_admin') {
           skipNextSuperAdminSyncRef.current = true;
         }
@@ -1878,6 +1883,10 @@ export const App: React.FC = () => {
       !isDataReady ||
       loadedSchoolId !== activeSchool.id
     ) return;
+    if (skipNextOfflineRowSyncRef.current) {
+      skipNextOfflineRowSyncRef.current = false;
+      return;
+    }
     if (currentUser.role === 'super_admin' && skipNextSuperAdminSyncRef.current) {
       skipNextSuperAdminSyncRef.current = false;
       return;
@@ -2598,7 +2607,7 @@ export const App: React.FC = () => {
     const todayStr = extra?.date || getLocalDateString();
     const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const attendanceRecordId = extra?.recordId || `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    
+    skipNextOfflineRowSyncRef.current = !isDemoMode && ['super_admin', 'admin', 'teacher'].includes(currentUser?.role || '');
     setAttendance((prev) => {
       const isCheckOut = extra?.recordType === 'check_out';
       const isCurrentUser = currentUser && (currentUser.id === studentId || currentUser.studentRecordId === studentId);
@@ -2656,6 +2665,35 @@ export const App: React.FC = () => {
     const st = schoolStudents.find(s => s.id === studentId);
     const tc = schoolTeachers.find(t => t.id === studentId || t.id === extra?.teacherId);
     const personName = extra?.userName || (st ? `${st.firstNameTh} ${st.lastNameTh}` : (tc ? tc.fullNameTh : 'นักเรียน/บุคลากร'));
+    if (!isDemoMode) {
+      const queuedRecord = {
+        id: attendanceRecordId,
+        schoolId: activeSchool.id,
+        studentId,
+        date: todayStr,
+        time: nowTime,
+        status,
+        checkinMethod: method || (extra?.photoUrl ? 'selfie_geofence' : 'qr_scanner'),
+        remarks,
+        recordType: extra?.recordType || 'check_in',
+        userName: personName,
+      };
+      void saveQueuedAttendanceToDb(queuedRecord).catch((error: unknown) => {
+        enqueueOfflineAction({
+          actionType: 'attendance',
+          schoolId: activeSchool.id,
+          description: `เช็คชื่อรอซิงค์: ${personName}`,
+          payload: {
+            studentId,
+            status,
+            remarks,
+            method: queuedRecord.checkinMethod,
+            extra: { ...extra, date: todayStr, recordId: attendanceRecordId, userName: personName },
+          },
+        });
+        setDataSyncError(error instanceof Error ? error.message : String(error));
+      });
+    }
     const statusLabel = status === 'present' ? 'มาเรียน (ตรงเวลา)' : status === 'late' ? 'มาสาย' : 'ลา';
 
     const isCurrentActor = currentUser && (currentUser.id === studentId || currentUser.studentRecordId === studentId);
@@ -4070,6 +4108,12 @@ export const App: React.FC = () => {
         const message = error instanceof Error ? error.message : String(error);
         setDataSyncError(message);
         setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+        enqueueOfflineAction({
+          actionType: 'health_visit',
+          schoolId: activeSchool.id,
+          description: `ห้องพยาบาลรอซิงค์: ${taggedVisit.studentName}`,
+          payload: taggedVisit,
+        });
       });
     }
   };
@@ -4359,17 +4403,64 @@ export const App: React.FC = () => {
         return false;
       }
       if (item.actionType === 'attendance' && payload.studentId) {
-        handleRecordAttendance(
-          String(payload.studentId),
-          (payload.status as AttendanceStatus) || 'present',
-          String(payload.remarks || 'ซิงก์จากโหมดออฟไลน์'),
-          (payload.method as AttendanceRecord['checkinMethod']) || 'qr_scanner',
-          payload.extra as Parameters<typeof handleRecordAttendance>[4]
-        );
+        const extra = (payload.extra || {}) as Parameters<typeof handleRecordAttendance>[4];
+        const createdAt = new Date(item.createdAt);
+        const date = extra?.date || createdAt.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+        const time = createdAt.toLocaleTimeString('th-TH', {
+          timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+        });
+        const status = (payload.status as AttendanceStatus) || 'present';
+        const checkinMethod = (payload.method as AttendanceRecord['checkinMethod']) || 'qr_scanner';
+        const remarks = String(payload.remarks || 'ซิงก์จากโหมดออฟไลน์');
+        const recordType = extra?.recordType || 'check_in';
+        const userName = extra?.userName || extra?.recordedBy || currentUser?.fullNameTh || '';
+        await saveQueuedAttendanceToDb({
+          id: item.id,
+          schoolId: item.schoolId,
+          studentId: String(payload.studentId),
+          date,
+          time,
+          status,
+          checkinMethod,
+          remarks,
+          recordType,
+          userName,
+        });
+        // The queued row is already persisted. Avoid triggering the broad
+        // school snapshot upsert effect just to reflect it in the UI.
+        skipNextOfflineRowSyncRef.current = ['super_admin', 'admin', 'teacher'].includes(currentUser?.role || '');
+        setAttendance((previous) => [
+          {
+            id: item.id,
+            schoolId: item.schoolId,
+            studentId: String(payload.studentId),
+            date,
+            time,
+            status,
+            checkinMethod,
+            remarks,
+            recordType,
+            userName,
+            lineNotificationSent: false,
+          },
+          ...previous.filter((record) => record.id !== item.id),
+        ]);
         return true;
       }
       if (item.actionType === 'health_visit') {
-        handleAddInfirmaryVisit(payload as unknown as InfirmaryVisit);
+        const visit = payload as unknown as InfirmaryVisit;
+        await saveSchoolStudentRecord({
+          schoolId: item.schoolId,
+          recordKind: 'infirmary',
+          recordId: visit.id,
+          studentId: visit.studentId,
+          ownerUserId: currentUser?.id,
+          record: { ...visit, schoolId: item.schoolId },
+        });
+        setInfirmaryVisits((previous) => [
+          { ...visit, schoolId: item.schoolId },
+          ...previous.filter((record) => record.id !== visit.id),
+        ]);
         void sendEduVerseNotification({
           title: 'ซิงค์ข้อมูลห้องพยาบาลแล้ว',
           body: 'นำเข้ารายการห้องพยาบาลจากโหมดออฟไลน์สำเร็จ',
@@ -4764,7 +4855,7 @@ export const App: React.FC = () => {
         />
 
         {/* Offline Status Connectivity Banner */}
-        <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />
+        <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} isUsingCachedData={isUsingCachedSchoolData} />
         </ViewErrorBoundary>
       </div>
     );
@@ -6234,7 +6325,7 @@ export const App: React.FC = () => {
       />
 
       {/* Offline Status Connectivity Banner */}
-      <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} />
+      <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} isUsingCachedData={isUsingCachedSchoolData} />
     </div>
     </GuideTourProvider>
   );
