@@ -1,5 +1,6 @@
 import { Course, GradeRecord, GradingSystem, Student } from '../types';
 import { calculateGrade } from './schoolSettings';
+import { getCourseType } from './courseClassification';
 
 export type EducationStage =
   | 'kindergarten'
@@ -208,9 +209,9 @@ export function getStudentShortPrefixTh(student: Pick<Student, 'gender' | 'grade
   return student.gender === 'female' ? 'ด.ญ.' : 'ด.ช.';
 }
 
-export function isActivityCourse(course?: Pick<Course, 'category' | 'titleTh' | 'department'> | null): boolean {
+export function isActivityCourse(course?: Pick<Course, 'courseType' | 'category' | 'titleTh' | 'department'> | null): boolean {
   if (!course) return false;
-  if (course.category === 'activities') return true;
+  if (getCourseType(course) === 'activities') return true;
   const text = `${course.titleTh || ''} ${course.department || ''}`.toLowerCase();
   return text.includes('กิจกรรมพัฒนาผู้เรียน');
 }

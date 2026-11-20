@@ -4924,6 +4924,7 @@ export const App: React.FC = () => {
                     grades={viewGrades}
                     gradingSystem={systemConfig.gradingSystem}
                     currentRole={currentRole}
+                    currentUser={currentUser}
                     schoolId={activeSchool.id}
                     onAddCourse={handleAddCourse}
                     onUpdateCourse={handleUpdateCourse}
@@ -5847,7 +5848,7 @@ export const App: React.FC = () => {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-[var(--color-text-muted)]">
-                    supabase/migrations/20261111_patch_all_latest_migrations.sql
+                    supabase/migrations/20261111_patch_all_latest_migrations.sql + course classification migration
                   </span>
                   <button
                     type="button"

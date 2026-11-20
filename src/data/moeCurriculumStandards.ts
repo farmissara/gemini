@@ -1,4 +1,5 @@
 import type { Course, LearningIndicator, LearningIndicatorSet, LearningStrandId } from '../types';
+import { getCourseType, inferCourseLearningArea } from '../lib/courseClassification';
 
 export interface MoeLearningAreaMeta {
   id: LearningStrandId | 'activities';
@@ -20,9 +21,14 @@ export const MOE_LEARNING_AREAS: MoeLearningAreaMeta[] = [
   { id: 'activities', codePrefix: 'ก', nameTh: 'กิจกรรมพัฒนาผู้เรียน', nameEn: 'Learner Development Activities', shortTh: 'กิจกรรมฯ' },
 ];
 
-export function resolveMoeLearningArea(course?: Pick<Course, 'code' | 'titleTh' | 'titleEn' | 'department' | 'category'> | null): MoeLearningAreaMeta {
+export function resolveMoeLearningArea(
+  course?: Pick<Course, 'code' | 'titleTh' | 'titleEn' | 'department' | 'category' | 'courseType' | 'learningArea'> | null
+): MoeLearningAreaMeta {
   if (!course) return MOE_LEARNING_AREAS[2];
-  if (course.category === 'activities') return MOE_LEARNING_AREAS[8];
+  if (getCourseType(course) === 'activities') return MOE_LEARNING_AREAS[8];
+  const learningArea = inferCourseLearningArea(course);
+  const matchedArea = MOE_LEARNING_AREAS.find((area) => area.id === learningArea);
+  if (matchedArea) return matchedArea;
 
   const text = `${course.department || ''} ${course.titleTh || ''} ${course.titleEn || ''}`.toLowerCase();
   const code = (course.code || '').trim().toUpperCase();

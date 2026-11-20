@@ -457,12 +457,17 @@ export interface Assignment {
   maxScore?: number;
 }
 
+export type CourseType = 'core' | 'elective' | 'activities';
+
 export interface Course {
   id: string;
   schoolId?: string;
   code: string; // e.g. "CS301", "MA201"
   titleEn: string;
   titleTh: string;
+  courseType?: CourseType;
+  learningArea?: LearningStrandId;
+  /** Legacy classification retained for existing reports and imports. */
   category: 'core' | 'elective' | 'stem' | 'language' | 'arts' | 'social' | 'pe' | 'career' | 'activities' | string;
   credits: number;
   weeklyHours?: number;

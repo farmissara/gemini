@@ -53,6 +53,7 @@ import {
   MOE_LEARNING_AREAS,
   resolveMoeLearningArea,
 } from '../data/moeCurriculumStandards';
+import { getCourseType } from '../lib/courseClassification';
 import { calculateGrade } from '../lib/schoolSettings';
 import { getRawScoreFeedback, getStudentShortPrefixTh, isSpecialMoeGrade } from '../lib/moeGrading';
 import { printHtmlElementInIsolatedFrame } from '../lib/moeReportPdf';
@@ -95,10 +96,11 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
 }) => {
   const schoolId = school?.id || course.schoolId || '';
   const learningArea = useMemo(() => resolveMoeLearningArea(course), [course]);
+  const courseType = getCourseType(course);
   const courseTypeLabel =
-    course.category === 'core'
+    courseType === 'core'
       ? 'รายวิชาพื้นฐาน'
-      : course.category === 'activities'
+      : courseType === 'activities'
       ? 'กิจกรรมพัฒนาผู้เรียน'
       : 'รายวิชาเพิ่มเติม';
 

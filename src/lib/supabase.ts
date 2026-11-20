@@ -18,11 +18,13 @@ import {
 } from '../types';
 import schemaSql from '../../supabase/schema.sql?raw';
 import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
+import courseClassificationMigrationSql from '../../supabase/migrations/20261125_course_classification.sql?raw';
 import staffInviteRpcSql from '../../supabase/migrations/20261124_staff_invite_link_rpc.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
 import { parseSlotTeachersFromRaw, serializeSlotTeacherForDb } from './timetableTeachers';
 import { sanitizeSchoolCampusGates } from './schoolGps';
+import { getCourseType, inferCourseLearningArea } from './courseClassification';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -96,7 +98,7 @@ export function clearCustomSupabaseCredentials() {
 }
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
-export const SUPABASE_PATCH_MIGRATION_SQL = patchMigrationSql;
+export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}`;
 export const STAFF_INVITE_RPC_SQL = staffInviteRpcSql;
 
 function isMissingTableError(error: { code?: string; message: string }): boolean {
@@ -359,6 +361,15 @@ export async function loadSchoolData(schoolId: string): Promise<SchoolData> {
     titleEn: row.title_en,
     titleTh: row.title_th,
     category: row.category,
+    courseType: getCourseType({ courseType: row.course_type, category: row.category }),
+    learningArea: inferCourseLearningArea({
+      learningArea: row.learning_area,
+      category: row.category,
+      department: row.department || '',
+      code: row.code || '',
+      titleTh: row.title_th || '',
+      titleEn: row.title_en || '',
+    }),
     credits: Number(row.credits || 0),
     weeklyHours: row.weekly_hours == null ? undefined : Number(row.weekly_hours),
     totalHours: row.total_hours == null ? undefined : Number(row.total_hours),
@@ -942,6 +953,8 @@ export async function syncDataToSupabase(payload: {
         title_en: c.titleEn,
         title_th: c.titleTh,
         category: c.category,
+        course_type: getCourseType(c) || null,
+        learning_area: inferCourseLearningArea(c) || null,
         credits: c.credits,
         weekly_hours: c.weeklyHours ?? null,
         total_hours: c.totalHours ?? null,

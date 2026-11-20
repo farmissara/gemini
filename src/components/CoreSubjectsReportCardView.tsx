@@ -46,6 +46,7 @@ import {
   isActivityCourse,
   resolveEffectiveGrade,
 } from '../lib/moeGrading';
+import { getCourseType } from '../lib/courseClassification';
 import {
   loadLearningIndicatorScores,
   loadLearningIndicatorSets,
@@ -88,17 +89,19 @@ const QUALITY_TEXT: Record<number, string> = {
 
 /**
  * Determine if a course belongs to Basic/Core Curriculum Subjects (รายวิชาพื้นฐาน)
- * matching OBEC course structure: category === 'core', explicit 'พื้นฐาน',
+ * matching OBEC course structure: course type 'core', explicit 'พื้นฐาน',
  * OBEC code digit `1xx` (e.g. ท21101, ค31101), or standard 8-strand subjects not marked elective/activity.
  */
 function isCoreBasicCourse(course: Course): boolean {
   if (isActivityCourse(course)) return false;
+  const courseType = getCourseType(course);
+  if (courseType === 'core') return true;
+  if (courseType === 'elective' || courseType === 'activities') return false;
   const title = (course.titleTh || '').trim();
   const dept = (course.department || '').trim();
-  const cat = (course.category || '').trim().toLowerCase();
 
-  if (cat === 'core' || title.includes('พื้นฐาน') || dept.includes('พื้นฐาน')) return true;
-  if (cat === 'elective' || title.includes('เพิ่มเติม') || dept.includes('เพิ่มเติม')) return false;
+  if (title.includes('พื้นฐาน') || dept.includes('พื้นฐาน')) return true;
+  if (title.includes('เพิ่มเติม') || dept.includes('เพิ่มเติม')) return false;
 
   const normalizedCode = (course.code || '').trim().replace(/\s+/g, '');
   if (/^[ก-ฮ]\d{2}2\d{2}$/.test(normalizedCode)) return false; // รายวิชาเพิ่มเติม (รหัส x2xx)

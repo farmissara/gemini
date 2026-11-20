@@ -11,6 +11,7 @@ import {
   Student,
 } from '../types';
 import { calculateStudentAcademicSummary } from './moeGrading';
+import { inferCourseLearningArea } from './courseClassification';
 
 export interface SubjectReadinessItem {
   req: CareerKeySubjectReq;
@@ -95,11 +96,12 @@ export function inferSubjectKeyFromCourse(course?: Course): CareerSubjectKey | n
       return key;
     }
   }
-  if (course.category === 'stem') return 'science';
-  if (course.category === 'language') return 'english';
-  if (course.category === 'arts') return 'arts';
-  if (course.category === 'social') return 'social';
-  if (course.category === 'pe') return 'health';
+  const learningArea = inferCourseLearningArea(course);
+  if (learningArea === 'science_tech' || learningArea === 'math') return 'science';
+  if (learningArea === 'foreign_lang' || learningArea === 'thai') return 'english';
+  if (learningArea === 'arts') return 'arts';
+  if (learningArea === 'social') return 'social';
+  if (learningArea === 'health_pe') return 'health';
   return null;
 }
 

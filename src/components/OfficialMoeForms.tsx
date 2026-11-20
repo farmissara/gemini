@@ -35,6 +35,7 @@ import {
   MOE_STUDENT_ACTIVITIES,
   resolveMoeLearningArea,
 } from '../data/moeCurriculumStandards';
+import { getCourseType } from '../lib/courseClassification';
 import {
   loadLearningIndicatorScores,
   loadLearningIndicatorSets,
@@ -686,7 +687,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                 สมุดบันทึกผลการพัฒนาคุณภาพผู้เรียน (ปพ.๕ ฉบับ สพฐ.) · {selectedCourse.code} {selectedCourse.titleTh}
               </div>
               <div className="text-[11px] text-[var(--color-text-muted)]">
-                {learningArea.nameTh} · {getCategoryTypeLabel(selectedCourse.category)}
+                {learningArea.nameTh} · {getCategoryTypeLabel(getCourseType(selectedCourse) || 'elective')}
               </div>
             </div>
           </div>
@@ -880,7 +881,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
               </tr>
               <tr>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold">ประเภทวิชา</td>
-                <td className="border border-slate-500 px-3 py-1.5">{getCategoryTypeLabel(selectedCourse.category)}</td>
+                <td className="border border-slate-500 px-3 py-1.5">{getCategoryTypeLabel(getCourseType(selectedCourse) || 'elective')}</td>
                 <td className="border border-slate-500 px-3 py-1.5 bg-slate-100 font-bold w-40">กลุ่มสาระการเรียนรู้</td>
                 <td className="border border-slate-500 px-3 py-1.5 font-medium">{learningArea.nameTh}</td>
               </tr>
@@ -1306,7 +1307,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
               <div>
                 <h3 className="text-xs font-extrabold text-slate-950 flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-slate-800" />
-                  <span>มาตรฐานตัวชี้วัด หน่วยที่ ๑–๓, คะแนนตามตัวชี้วัด ({learningArea.nameTh}) และการประเมินหน่วยการเรียนรู้ ({getCategoryTypeLabel(selectedCourse.category)})</span>
+                  <span>มาตรฐานตัวชี้วัด หน่วยที่ ๑–๓, คะแนนตามตัวชี้วัด ({learningArea.nameTh}) และการประเมินหน่วยการเรียนรู้ ({getCategoryTypeLabel(getCourseType(selectedCourse) || 'elective')})</span>
                 </h3>
               </div>
               {indicatorSets.length === 0 && (
@@ -1385,7 +1386,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
                 {/* Table B: การประเมินหน่วยการเรียนรู้...(วิชา)...พื้นฐาน/เพิ่มเติม และคะแนนตามตัวชี้วัด */}
                 <div className="space-y-1.5">
                   <h4 className="text-xs font-bold text-slate-900">
-                    ๓.๒ การประเมินหน่วยการเรียนรู้ รายวิชา {selectedCourse.titleTh} ({getCategoryTypeLabel(selectedCourse.category)}) — คะแนนตามตัวชี้วัด
+                    ๓.๒ การประเมินหน่วยการเรียนรู้ รายวิชา {selectedCourse.titleTh} ({getCategoryTypeLabel(getCourseType(selectedCourse) || 'elective')}) — คะแนนตามตัวชี้วัด
                   </h4>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse border border-slate-700 text-center tabular-nums">
@@ -2311,7 +2312,7 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
                           {area.shortTh}
                         </td>
                         <td className="border border-slate-400 py-1.5 text-[11px] text-slate-600">
-                          {getCategoryTypeLabel(course.category)}
+                          {getCategoryTypeLabel(getCourseType(course) || 'elective')}
                         </td>
                         <td className="border border-slate-400 py-1.5 font-mono">
                           {resolved.isActivity || course.credits <= 0 ? '-' : course.credits.toFixed(1)}

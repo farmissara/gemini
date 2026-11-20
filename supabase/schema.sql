@@ -113,6 +113,8 @@ CREATE TABLE IF NOT EXISTS public.courses (
     title_en TEXT NOT NULL,
     title_th TEXT NOT NULL,
     category TEXT DEFAULT 'core',
+    course_type TEXT,
+    learning_area TEXT,
     credits NUMERIC(3,1) DEFAULT 1.0,
     weekly_hours NUMERIC(5,2),
     total_hours NUMERIC(7,2),

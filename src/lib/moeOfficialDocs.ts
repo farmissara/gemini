@@ -20,6 +20,7 @@ import {
   getStudentPrefixTh,
   StudentAcademicSummary,
 } from './moeGrading';
+import { getCourseType } from './courseClassification';
 import {
   calculateDetailedCourseAttendance,
   DetailedStudentCourseAttendance,
@@ -386,8 +387,9 @@ export function buildMoeDocumentHtml(docType: MoeDocumentType, dossier: StudentM
         : cycleEntries
             .map((entry, idx) => {
               const { grade, course, resolved, cycleLabelTh } = entry;
+              const courseType = getCourseType(course);
               const categoryLabel =
-                course?.category === 'core' ? 'พื้นฐาน' : course?.category === 'activities' ? 'กิจกรรม' : 'เพิ่มเติม';
+                courseType === 'core' ? 'พื้นฐาน' : courseType === 'activities' ? 'กิจกรรม' : 'เพิ่มเติม';
               const fb = getRawScoreFeedback(grade.totalScore);
               return `
                 <tr style="background:${idx % 2 === 1 ? '#f8fafc' : '#ffffff'};">

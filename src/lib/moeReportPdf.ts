@@ -12,6 +12,7 @@ import {
 import { formatSemesterLabel } from './schoolSettings';
 import { generateQrMatrix } from './qrCode';
 import { resolveMoeLearningArea } from '../data/moeCurriculumStandards';
+import { getCourseType } from './courseClassification';
 
 export interface MoeSummaryPdfPayload {
   student: Student;
@@ -409,7 +410,7 @@ function renderMoePageCanvas({
             String(startRowIndex + idx + 1),
             course?.code || '-',
             course?.titleTh || course?.titleEn || '-',
-            getCourseCategoryTh(course?.category || 'core'),
+            getCourseCategoryTh(getCourseType(course) || 'core'),
             resolved.isActivity ? 'กิจกรรม (รายปี)' : cycleLabelTh,
             `${grade.totalScore}% (${grade.totalScore}/100)`,
             resolved.isSpecial ? resolved.letter : `${feedback.labelTh} (ผล ${resolved.letter})`,
@@ -418,7 +419,7 @@ function renderMoePageCanvas({
             String(startRowIndex + idx + 1),
             course?.code || '-',
             course?.titleTh || course?.titleEn || '-',
-            getCourseCategoryTh(course?.category || 'core'),
+            getCourseCategoryTh(getCourseType(course) || 'core'),
             resolved.isActivity || (course && course.credits <= 0) ? '-' : (course?.credits ?? 1).toFixed(1),
             `${grade.totalScore}`,
             resolved.letter,

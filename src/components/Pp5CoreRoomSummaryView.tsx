@@ -32,6 +32,7 @@ import {
 } from '../types';
 import { resolveMoeLearningArea } from '../data/moeCurriculumStandards';
 import { isActivityCourse, resolveEffectiveGrade } from '../lib/moeGrading';
+import { getCourseType } from '../lib/courseClassification';
 import {
   readLocalIndicatorScores,
   readLocalIndicatorSets,
@@ -119,12 +120,14 @@ interface RoomAggregateSummary {
 
 function classifyCourseType(course: Course): 'core' | 'elective' | 'activity' {
   if (isActivityCourse(course)) return 'activity';
+  const courseType = getCourseType(course);
+  if (courseType === 'core') return 'core';
+  if (courseType === 'elective') return 'elective';
   const title = (course.titleTh || '').trim();
   const dept = (course.department || '').trim();
-  const cat = (course.category || '').trim().toLowerCase();
 
-  if (cat === 'core' || title.includes('พื้นฐาน') || dept.includes('พื้นฐาน')) return 'core';
-  if (cat === 'elective' || title.includes('เพิ่มเติม') || dept.includes('เพิ่มเติม')) return 'elective';
+  if (title.includes('พื้นฐาน') || dept.includes('พื้นฐาน')) return 'core';
+  if (title.includes('เพิ่มเติม') || dept.includes('เพิ่มเติม')) return 'elective';
 
   const normalizedCode = (course.code || '').trim().replace(/\s+/g, '');
   if (/^[ก-ฮ]\d{2}2\d{2}$/.test(normalizedCode)) return 'elective';

@@ -14,6 +14,12 @@ import { getLocalDateString } from './date';
 import { calculateGrade } from './schoolSettings';
 import { isSpecialMoeGrade } from './moeGrading';
 import { formatSlotTeachersDisplay, parseSlotTeachersFromRaw } from './timetableTeachers';
+import {
+  COURSE_LEARNING_AREA_OPTIONS,
+  COURSE_TYPE_OPTIONS,
+  getCourseType,
+  inferCourseLearningArea,
+} from './courseClassification';
 
 export type ManagedImportEntity =
   | 'students'
@@ -178,7 +184,9 @@ export const ENTITY_IMPORT_SCHEMAS: Record<ManagedImportEntity, EntityImportSche
       { key: 'code', labelTh: 'รหัสวิชา', labelEn: 'Course Code', required: true, aliases: ['code', 'coursecode', 'รหัสวิชา'], example: 'ว30101' },
       { key: 'titleTh', labelTh: 'ชื่อรายวิชา (ไทย)', labelEn: 'Title (TH)', required: true, aliases: ['titleth', 'coursetitleth', 'ชื่อวิชาไทย', 'ชื่อวิชา', 'ชื่อรายวิชา'], example: 'วิทยาศาสตร์พื้นฐาน' },
       { key: 'titleEn', labelTh: 'ชื่อรายวิชา (EN)', labelEn: 'Title (EN)', aliases: ['titleen', 'coursetitleen', 'ชื่อวิชาen', 'ชื่อวิชาอังกฤษ'], example: 'Core Science' },
-      { key: 'category', labelTh: 'กลุ่มสาระฯ / หมวด', labelEn: 'Category', aliases: ['category', 'กลุ่มสาระ', 'หมวดวิชา'], example: 'stem' },
+      { key: 'courseType', labelTh: 'ประเภทวิชา', labelEn: 'Course Type', aliases: ['coursetype', 'course_type', 'ประเภทวิชา'], example: 'core' },
+      { key: 'learningArea', labelTh: 'กลุ่มสาระการเรียนรู้', labelEn: 'Learning Area', aliases: ['learningarea', 'learning_area', 'กลุ่มสาระ', 'กลุ่มสาระการเรียนรู้'], example: 'science_tech' },
+      { key: 'category', labelTh: 'หมวดเดิม (ข้อมูลเก่า)', labelEn: 'Legacy Category', aliases: ['category', 'หมวดวิชา'], example: 'core' },
       { key: 'credits', labelTh: 'หน่วยกิต', labelEn: 'Credits', aliases: ['credits', 'credit', 'หน่วยกิต'], example: '1.5' },
       { key: 'weeklyHours', labelTh: 'ชั่วโมง/สัปดาห์', labelEn: 'Weekly Hours', aliases: ['weeklyhours', 'ชั่วโมงสัปดาห์', 'คาบต่อสัปดาห์'], example: '3' },
       { key: 'totalHours', labelTh: 'ชั่วโมงรวม/เทอม', labelEn: 'Total Hours', aliases: ['totalhours', 'ชั่วโมงรวม', 'เวลาเรียนทั้งหมด'], example: '60' },
@@ -801,6 +809,9 @@ export function validateAndParseMappedRows(
       const weeklyHours = Number.isFinite(rawWeekly) && rawWeekly > 0 ? rawWeekly : Math.max(1, Math.round(credits * 2));
       const rawTotal = Number(getVal(row, 'totalHours'));
       const totalHours = Number.isFinite(rawTotal) && rawTotal > 0 ? rawTotal : weeklyHours * 20;
+      const importedCourseType = COURSE_TYPE_OPTIONS.find((option) => option.id === getVal(row, 'courseType'))?.id;
+      const importedLearningArea = COURSE_LEARNING_AREA_OPTIONS.find((option) => option.id === getVal(row, 'learningArea'))?.id;
+      const category = getVal(row, 'category') || importedCourseType || 'core';
 
       const record: Course = {
         id: `crs-imp-${Date.now()}-${idx}`,
@@ -808,7 +819,15 @@ export function validateAndParseMappedRows(
         code,
         titleTh,
         titleEn: getVal(row, 'titleEn') || titleTh,
-        category: getVal(row, 'category') || 'core',
+        category,
+        courseType: importedCourseType || getCourseType({ category }),
+        learningArea: importedLearningArea || inferCourseLearningArea({
+          category,
+          department: getVal(row, 'department'),
+          code,
+          titleTh,
+          titleEn: getVal(row, 'titleEn') || titleTh,
+        }),
         credits,
         weeklyHours,
         totalHours,
@@ -1184,6 +1203,8 @@ function buildRowsForEntityExport(
       code: c.code,
       titleTh: c.titleTh,
       titleEn: c.titleEn,
+      courseType: getCourseType(c) || '',
+      learningArea: inferCourseLearningArea(c) || '',
       category: c.category,
       credits: c.credits,
       weeklyHours: c.weeklyHours ?? Math.round(c.credits * 2),

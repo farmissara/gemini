@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { Assignment, AttendanceRecord, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest, PeriodAttendanceRecord } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
+import { getCourseType, inferCourseLearningArea } from '../lib/courseClassification';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
   addCalendarDays,
@@ -1281,12 +1282,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       setNewRoom(c.room || '');
       setNewCredits(c.credits ?? 1.5);
 
-      // Recommend color tag by category
-      if (c.category === 'stem') setNewColor('emerald');
-      else if (c.category === 'core') setNewColor('sky');
-      else if (c.category === 'language') setNewColor('amber');
-      else if (c.category === 'arts') setNewColor('rose');
-      else if (c.category === 'social') setNewColor('indigo');
+      const learningArea = inferCourseLearningArea(c);
+      if (learningArea === 'science_tech') setNewColor('emerald');
+      else if (learningArea === 'math' || getCourseType(c) === 'core') setNewColor('sky');
+      else if (learningArea === 'foreign_lang' || learningArea === 'thai') setNewColor('amber');
+      else if (learningArea === 'arts') setNewColor('rose');
+      else if (learningArea === 'social') setNewColor('indigo');
       else setNewColor('purple');
     }
   };

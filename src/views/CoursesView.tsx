@@ -21,9 +21,10 @@ import {
   UserMinus,
   UserPlus,
   ChevronDown,
+  Filter,
   X
 } from 'lucide-react';
-import { Course, GradeRecord, GradingSystem, Student, Teacher, UserRole } from '../types';
+import { AuthUser, Course, CourseType, GradeRecord, GradingSystem, LearningStrandId, Student, Teacher, UserRole } from '../types';
 import { PagedList } from '../components/PagedList';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import {
@@ -36,6 +37,12 @@ import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { calculateStudentAcademicSummary, isPrimaryGradeLevel, shouldShowCourseCredits } from '../lib/moeGrading';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import {
+  COURSE_LEARNING_AREA_OPTIONS,
+  COURSE_TYPE_OPTIONS,
+  getCourseType,
+  inferCourseLearningArea,
+} from '../lib/courseClassification';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -44,6 +51,7 @@ interface CoursesViewProps {
   grades?: GradeRecord[];
   gradingSystem?: GradingSystem;
   currentRole?: UserRole;
+  currentUser?: AuthUser | null;
   schoolId?: string;
   onAddCourse: (newCourse: Course) => void;
   onUpdateCourse?: (updatedCourse: Course) => void;
@@ -59,18 +67,6 @@ interface CoursesViewProps {
   currentSemester?: string;
   showPrimaryCourseCredits?: boolean;
 }
-
-export const STANDARD_CATEGORIES: { key: string; th: string; en: string; defaultColor: string }[] = [
-  { key: 'core', th: 'รายวิชาพื้นฐาน', en: 'Core Requirement', defaultColor: 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-200' },
-  { key: 'elective', th: 'รายวิชาเพิ่มเติม', en: 'Elective Requirement', defaultColor: 'border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950 text-purple-900 dark:text-purple-200' },
-  { key: 'stem', th: 'วิทยาศาสตร์และเทคโนโลยี (STEM)', en: 'Science & Technology (STEM)', defaultColor: 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200' },
-  { key: 'language', th: 'ภาษาต่างประเทศและภาษาไทย', en: 'Foreign & Thai Languages', defaultColor: 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200' },
-  { key: 'arts', th: 'ศิลปะ ดนตรี และนาฏศิลป์', en: 'Arts & Humanities', defaultColor: 'border-pink-300 dark:border-pink-700 bg-pink-50 dark:bg-pink-950 text-pink-900 dark:text-pink-200' },
-  { key: 'social', th: 'สังคมศึกษา ศาสนา และวัฒนธรรม', en: 'Social Studies', defaultColor: 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950 text-orange-900 dark:text-orange-200' },
-  { key: 'pe', th: 'สุขศึกษาและพลศึกษา', en: 'Health & Physical Education', defaultColor: 'border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-900 dark:text-rose-200' },
-  { key: 'career', th: 'การงานอาชีพและเทคโนโลยี', en: 'Career & Vocational', defaultColor: 'border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-200' },
-  { key: 'activities', th: 'กิจกรรมพัฒนาผู้เรียน / แนะแนว', en: 'Student Development Activities', defaultColor: 'border-cyan-300 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-950 text-cyan-900 dark:text-cyan-200' },
-];
 
 const DEPARTMENTS = [
   'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
@@ -93,6 +89,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   grades = [],
   gradingSystem = 'thai',
   currentRole = 'admin',
+  currentUser,
   schoolId = 'default-school',
   onAddCourse,
   onUpdateCourse,
@@ -113,7 +110,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const availableDepartments = Array.from(new Set([...DEPARTMENTS, ...presets.departments]));
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCourseType, setSelectedCourseType] = useState<CourseType | 'all'>('all');
+  const [selectedLearningArea, setSelectedLearningArea] = useState<LearningStrandId | 'all'>('all');
+  const [showCourseFilters, setShowCourseFilters] = useState(false);
   const [selectedTeacherFilter, setSelectedTeacherFilter] = useState<string>('all');
   const [selectedTermFilter, setSelectedTermFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -134,13 +133,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   } | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [activeCourseId, setActiveCourseId] = useState<string>(courses[0]?.id || '');
+  const [activeCourseDetailTab, setActiveCourseDetailTab] = useState<'overview' | 'students'>('overview');
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [courseDeleteError, setCourseDeleteError] = useState<string | null>(null);
   const [isDeletingCourses, setIsDeletingCourses] = useState(false);
-
-  // Category selection mode in form: 'preset' or 'custom'
-  const [categoryMode, setCategoryMode] = useState<'preset' | 'custom'>('preset');
-  const [customCategoryText, setCustomCategoryText] = useState('');
 
   // Credits selection mode in form: 'preset' or 'custom'
   const [creditMode, setCreditMode] = useState<'preset' | 'custom'>('preset');
@@ -151,7 +147,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     code: string;
     titleEn: string;
     titleTh: string;
-    category: string;
+    courseType: CourseType | '';
+    learningArea: LearningStrandId | '';
     credits: number;
     weeklyHours: number;
     totalHours: number;
@@ -168,16 +165,17 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     code: '',
     titleEn: '',
     titleTh: '',
-    category: 'core',
+    courseType: 'core',
+    learningArea: '',
     credits: 1.5,
     weeklyHours: 3,
     totalHours: 60,
     minAttendanceHours: 48,
     teacherName: '',
     teacherEmail: '',
-    department: DEPARTMENTS[0],
-    schedule: 'จันทร์, พุธ 09:00 - 10:30',
-    room: 'ห้อง 401',
+    department: '',
+    schedule: '',
+    room: '',
     academicYear,
     semester: currentSemester,
     description: '',
@@ -199,38 +197,81 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     )
   ).sort((a, b) => b.localeCompare(a));
 
-  // Filter courses by search, teacher, term, and category
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase();
+
+  // Filter courses by search, course type, learning area, teacher, and term.
   const filteredCourses = courses.filter((c) => {
-    const matchesSearch =
-      c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.titleEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.titleTh.includes(searchTerm) ||
-      c.teacherName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = selectedCategory === 'all' || c.category === selectedCategory;
+    const matchesSearch = !normalizedSearch || [
+      c.code,
+      c.titleEn,
+      c.titleTh,
+      c.teacherName,
+      c.department,
+      c.room,
+    ].some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
+    const matchesCourseType = selectedCourseType === 'all' || getCourseType(c) === selectedCourseType;
+    const matchesLearningArea =
+      selectedLearningArea === 'all' || inferCourseLearningArea(c) === selectedLearningArea;
     const matchesTeacher = courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions);
     const matchesTerm =
       selectedTermFilter === 'all' || `${c.academicYear}::${c.semester}` === selectedTermFilter;
-    return matchesSearch && matchesCat && matchesTeacher && matchesTerm;
+    return matchesSearch && matchesCourseType && matchesLearningArea && matchesTeacher && matchesTerm;
   });
-
-  // Helper to get category Thai label
-  const getCategoryLabel = (catKey: string) => {
-    const found = STANDARD_CATEGORIES.find((sc) => sc.key === catKey);
-    return found ? `${found.th} (${found.en})` : catKey;
+  const hasActiveCourseFilters =
+    normalizedSearch.length > 0 ||
+    selectedCourseType !== 'all' ||
+    selectedLearningArea !== 'all' ||
+    selectedTeacherFilter !== 'all' ||
+    selectedTermFilter !== 'all';
+  const activeCourseFilterCount = [
+    selectedCourseType !== 'all',
+    selectedLearningArea !== 'all',
+    selectedTeacherFilter !== 'all',
+    selectedTermFilter !== 'all',
+  ].filter(Boolean).length;
+  const clearCourseFilters = () => {
+    setSearchTerm('');
+    setSelectedCourseType('all');
+    setSelectedLearningArea('all');
+    setSelectedTeacherFilter('all');
+    setSelectedTermFilter('all');
   };
 
-  const getCategoryBadgeClass = (catKey: string) => {
-    const found = STANDARD_CATEGORIES.find((sc) => sc.key === catKey);
-    return found ? found.defaultColor : 'border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200';
+  const getCourseTypeLabel = (course: Course) => {
+    const courseType = getCourseType(course);
+    return COURSE_TYPE_OPTIONS.find((option) => option.id === courseType)?.labelTh || 'ยังไม่ระบุประเภท';
   };
+
+  const getCourseTypeBadgeClass = (course: Course) => {
+    const courseType = getCourseType(course);
+    if (courseType === 'core') return 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-200';
+    if (courseType === 'activities') return 'border-cyan-300 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-950 text-cyan-900 dark:text-cyan-200';
+    if (courseType === 'elective') return 'border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950 text-purple-900 dark:text-purple-200';
+    return 'border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200';
+  };
+
+  const getLearningAreaLabel = (course: Course) => {
+    const learningArea = inferCourseLearningArea(course);
+    return COURSE_LEARNING_AREA_OPTIONS.find((option) => option.id === learningArea)?.labelTh || 'ยังไม่ระบุกลุ่มสาระ';
+  };
+
+  const getLearningAreaLabelById = (learningArea: LearningStrandId | '') =>
+    COURSE_LEARNING_AREA_OPTIONS.find((option) => option.id === learningArea)?.labelTh || '';
 
   // Open modal for creating a new course (RESET all states cleanly)
   const handleOpenAddCourse = () => {
     setEditingCourse(null);
-    setCategoryMode('preset');
-    setCustomCategoryText('');
     setCreditMode('preset');
     setCustomCreditsInput('1.5');
+    const currentTeacher = currentRole === 'teacher'
+      ? teachers.find((teacher) => teacher.id === currentUser?.teacherRecordId)
+      : undefined;
+    const defaultTeacherName = currentRole === 'teacher'
+      ? currentTeacher?.fullNameTh || (currentUser?.role === 'teacher' ? currentUser.fullNameTh : '')
+      : '';
+    const defaultTeacherEmail = currentRole === 'teacher'
+      ? currentTeacher?.email || (currentUser?.role === 'teacher' ? currentUser.email : '')
+      : '';
     
     // Suggest code based on existing count
     const nextCode = `ว${30200 + courses.length + 1}`;
@@ -238,19 +279,20 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       code: nextCode,
       titleEn: '',
       titleTh: '',
-      category: 'core',
+      courseType: 'core',
+      learningArea: '',
       credits: 1.5,
       weeklyHours: 3,
       totalHours: 60,
       minAttendanceHours: 48,
-      teacherName: 'อ.ดร.ประเสริฐ ถาวร',
-      teacherEmail: 'prasert.t@eduverse.ac.th',
-      department: DEPARTMENTS[0],
-      schedule: 'จันทร์, พุธ 09:00 - 10:30',
-      room: 'ห้องปฏิบัติการ 401',
+      teacherName: defaultTeacherName,
+      teacherEmail: defaultTeacherEmail,
+      department: '',
+      schedule: '',
+      room: '',
       academicYear,
       semester: currentSemester,
-      description: 'คำอธิบายรายวิชาและจุดประสงค์การเรียนรู้ตามหลักสูตรแกนกลาง',
+      description: '',
     });
     setShowAddModal(true);
   };
@@ -258,15 +300,6 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   // Open modal for editing an existing course
   const handleOpenEditCourse = (course: Course) => {
     setEditingCourse(course);
-    const isStandard = STANDARD_CATEGORIES.some((sc) => sc.key === course.category);
-    if (isStandard) {
-      setCategoryMode('preset');
-      setCustomCategoryText('');
-    } else {
-      setCategoryMode('custom');
-      setCustomCategoryText(course.category);
-    }
-
     const calculatedCredits = Number.isFinite(Number(course.credits)) ? Number(course.credits) : 1.5;
     const isPresetCredit = CREDIT_PRESET_VALUES.includes(calculatedCredits);
     setCreditMode(isPresetCredit ? 'preset' : 'custom');
@@ -281,14 +314,15 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       code: course.code,
       titleEn: course.titleEn,
       titleTh: course.titleTh,
-      category: course.category,
+      courseType: getCourseType(course) || '',
+      learningArea: inferCourseLearningArea(course) || '',
       credits: calculatedCredits,
       weeklyHours: calculatedWeekly,
       totalHours: calculatedTotal,
       minAttendanceHours: calculatedMin,
       teacherName: course.teacherName,
       teacherEmail: course.teacherEmail,
-      department: course.department || DEPARTMENTS[0],
+      department: course.department || '',
       schedule: course.schedule,
       room: course.room,
       academicYear: course.academicYear || academicYear,
@@ -316,9 +350,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   const handleCreateOrUpdateCourse = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const finalCategory = categoryMode === 'custom' && customCategoryText.trim()
-      ? customCategoryText.trim()
-      : formData.category || 'core';
+    const finalCourseType = formData.courseType || (editingCourse ? getCourseType(editingCourse) : undefined);
+    const finalLearningArea = formData.learningArea || (editingCourse ? inferCourseLearningArea(editingCourse) : undefined);
+    const department = formData.department.trim() || getLearningAreaLabelById(finalLearningArea || '');
 
     const resolvedCredits =
       creditMode === 'custom'
@@ -331,14 +365,16 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
         code: formData.code.trim(),
         titleEn: formData.titleEn.trim(),
         titleTh: formData.titleTh.trim(),
-        category: finalCategory,
+        category: finalCourseType || editingCourse.category,
+        courseType: finalCourseType,
+        learningArea: finalLearningArea,
         credits: resolvedCredits,
         weeklyHours: Number(formData.weeklyHours),
         totalHours: Number(formData.totalHours),
         minAttendanceHours: Number(formData.minAttendanceHours),
         teacherName: formData.teacherName.trim(),
         teacherEmail: formData.teacherEmail.trim(),
-        department: formData.department.trim(),
+        department: department || editingCourse.department,
         schedule: formData.schedule.trim(),
         room: formData.room.trim(),
         academicYear: formData.academicYear.trim(),
@@ -373,14 +409,16 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       code: formData.code.trim(),
       titleEn: formData.titleEn.trim(),
       titleTh: formData.titleTh.trim(),
-      category: finalCategory,
+      category: finalCourseType || 'core',
+      courseType: finalCourseType || 'core',
+      learningArea: finalLearningArea,
       credits: resolvedCredits,
       weeklyHours: Number(formData.weeklyHours),
       totalHours: Number(formData.totalHours),
       minAttendanceHours: Number(formData.minAttendanceHours),
       teacherName: formData.teacherName.trim(),
       teacherEmail: formData.teacherEmail.trim(),
-      department: formData.department.trim(),
+      department,
       schedule: formData.schedule.trim(),
       room: formData.room.trim(),
       academicYear: formData.academicYear.trim(),
@@ -392,6 +430,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
     const applyAddCourse = () => {
       onAddCourse(newCourse);
       setActiveCourseId(newCourse.id);
+      setActiveCourseDetailTab('overview');
       setShowAddModal(false);
     };
     if (duplicateReasons.length > 0) {
@@ -408,9 +447,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
 
   const activeCourse =
     filteredCourses.find((c) => c.id === activeCourseId) ||
-    filteredCourses[0] ||
-    courses.find((c) => c.id === activeCourseId) ||
-    courses[0];
+    filteredCourses[0];
   const availableRoomsForEnroll = Array.from(
     new Set(students.map((s) => s.room).filter(Boolean))
   );
@@ -618,105 +655,131 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           {courseDeleteError}
         </p>
       )}
-      <div className="shrink-0 toolbar-filter-zone flex flex-col lg:flex-row lg:items-center justify-between gap-2 shadow-xs">
-        <div className="fn-group-tone w-full lg:w-auto">
-          <span className="fn-group-label">ค้นหา &amp; ผู้สอน</span>
-          <div className="relative flex-1 sm:w-64 min-w-[180px]">
+      <div className="shrink-0 toolbar-filter-zone space-y-2 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative min-w-0 flex-1">
             <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="ค้นหารหัสวิชา, ชื่อวิชา หรือครู..."
+              placeholder="ค้นหารหัสวิชา ชื่อวิชา ครู หรือกลุ่มสาระ..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+              className="w-full pl-8 pr-3 py-2 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
             />
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <select
-              aria-label="กรองวิชาตามรายชื่อครู"
-              value={selectedTeacherFilter}
-              onChange={(e) => setSelectedTeacherFilter(e.target.value)}
-              className="w-full sm:w-52 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-expanded={showCourseFilters}
+              onClick={() => setShowCourseFilters((shown) => !shown)}
+              className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
             >
-              <option value="all">ครูผู้สอนทุกคน ({teacherFilterOptions.length} ท่าน)</option>
-              {teacherFilterOptions.map((opt) => (
-                <option key={opt.key} value={opt.key}>
-                  {opt.label} ({opt.count} วิชา)
-                </option>
-              ))}
-            </select>
-            {selectedTeacherFilter !== 'all' && (
+              <Filter className="w-3.5 h-3.5" />
+              ตัวกรอง{activeCourseFilterCount > 0 ? ` (${activeCourseFilterCount})` : ''}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showCourseFilters ? 'rotate-180' : ''}`} />
+            </button>
+            <span className="shrink-0 text-xs text-[var(--color-text-muted)] tabular-nums">
+              {filteredCourses.length} / {courses.length} วิชา
+            </span>
+            {hasActiveCourseFilters && (
               <button
                 type="button"
-                onClick={() => setSelectedTeacherFilter('all')}
-                aria-label="ล้างตัวกรองครูผู้สอน"
-                className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap cursor-pointer"
+                onClick={clearCourseFilters}
+                className="px-2 py-1.5 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 whitespace-nowrap cursor-pointer"
               >
                 ล้าง
               </button>
             )}
           </div>
-
-          {availableTermKeys.length > 1 && (
+        </div>
+        {showCourseFilters && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 pt-2 border-t border-[var(--color-border)]">
             <select
-              aria-label="กรองตามปีการศึกษาและภาคเรียน"
-              value={selectedTermFilter}
-              onChange={(e) => setSelectedTermFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+              aria-label="กรองตามประเภทวิชา"
+              value={selectedCourseType}
+              onChange={(e) => setSelectedCourseType(e.target.value as CourseType | 'all')}
+              className="w-full px-2.5 py-2 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
             >
-              <option value="all">ทุกปี/เทอม ({courses.length})</option>
-              {availableTermKeys.map((key) => {
-                const [yr, sem] = key.split('::');
-                const cnt = courses.filter((c) => `${c.academicYear}::${c.semester}` === key).length;
-                return (
-                  <option key={key} value={key}>
-                    ปี {yr} · {formatSemesterLabel(sem)} ({cnt})
-                  </option>
-                );
-              })}
+              <option value="all">ทุกประเภทวิชา</option>
+              {COURSE_TYPE_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>{option.labelTh}</option>
+              ))}
             </select>
-          )}
-        </div>
-
-        <div className="fn-divider" />
-
-        <div className="flex items-center gap-2 min-w-0 max-w-full">
-          <span className="fn-group-label text-[var(--color-text-muted)] hidden sm:inline-flex">หมวดวิชา</span>
-          <div className="seg-tab-group overflow-x-auto max-w-full no-scrollbar">
-            <button
-              type="button"
-              data-active={selectedCategory === 'all'}
-              onClick={() => setSelectedCategory('all')}
-              className="seg-tab-btn"
+            <select
+              aria-label="กรองตามกลุ่มสาระการเรียนรู้"
+              value={selectedLearningArea}
+              onChange={(e) => setSelectedLearningArea(e.target.value as LearningStrandId | 'all')}
+              className="w-full px-2.5 py-2 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
             >
-              ทุกหมวดวิชา ({courses.filter((c) => courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions)).length})
-            </button>
-          {STANDARD_CATEGORIES.map((cat) => {
-            const count = courses.filter(
-              (c) => c.category === cat.key && courseMatchesTeacherFilter(c, selectedTeacherFilter, teacherFilterOptions)
-            ).length;
-            return (
-              <button
-                key={cat.key}
-                type="button"
-                data-active={selectedCategory === cat.key}
-                onClick={() => setSelectedCategory(cat.key)}
-                className="seg-tab-btn"
+              <option value="all">ทุกกลุ่มสาระ</option>
+              {COURSE_LEARNING_AREA_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>{option.labelTh}</option>
+              ))}
+            </select>
+            <select
+              aria-label="กรองวิชาตามรายชื่อครู"
+              value={selectedTeacherFilter}
+              onChange={(e) => setSelectedTeacherFilter(e.target.value)}
+              className="w-full px-2.5 py-2 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+            >
+              <option value="all">ครูผู้สอนทุกคน ({teacherFilterOptions.length} ท่าน)</option>
+              {teacherFilterOptions.map((option) => (
+                <option key={option.key} value={option.key}>{option.label} ({option.count} วิชา)</option>
+              ))}
+            </select>
+            {availableTermKeys.length > 1 ? (
+              <select
+                aria-label="กรองตามปีการศึกษาและภาคเรียน"
+                value={selectedTermFilter}
+                onChange={(e) => setSelectedTermFilter(e.target.value)}
+                className="w-full px-2.5 py-2 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
               >
-                {cat.th} ({count})
-              </button>
-            );
-          })}
+                <option value="all">ทุกปีการศึกษา / ภาคเรียน</option>
+                {availableTermKeys.map((key) => {
+                  const [year, semester] = key.split('::');
+                  return (
+                    <option key={key} value={key}>
+                      ปี {year} · {formatSemesterLabel(semester)}
+                    </option>
+                  );
+                })}
+              </select>
+            ) : (
+              <div className="flex items-center px-2.5 py-2 text-xs text-[var(--color-text-muted)]">
+                ปี {academicYear} · ภาคเรียน {formatSemesterLabel(currentSemester)}
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Main Grid: Course Catalog & Active Course Detail */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Course Cards (7 cols) */}
         <div className="lg:col-span-7 h-full min-h-0 overflow-hidden pr-1">
-          <PagedList items={filteredCourses} pageSize={3} renderItem={(course) => {
+          <PagedList
+            items={filteredCourses}
+            pageSize={3}
+            emptyState={(
+              <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-8 text-center">
+                <p className="text-sm font-semibold text-[var(--color-text-title)]">
+                  {courses.length === 0 ? 'ยังไม่มีรายวิชาในหลักสูตร' : 'ไม่พบรายวิชาที่ตรงกับตัวกรอง'}
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  {courses.length === 0 ? 'เพิ่มรายวิชาใหม่เพื่อเริ่มจัดการหลักสูตร' : 'ลองปรับคำค้นหาหรือล้างตัวกรอง'}
+                </p>
+                {hasActiveCourseFilters && (
+                  <button
+                    type="button"
+                    onClick={clearCourseFilters}
+                    className="mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    ล้างตัวกรอง
+                  </button>
+                )}
+              </div>
+            )}
+            renderItem={(course) => {
             const isSelected = activeCourse?.id === course.id;
             const credits = Number.isFinite(Number(course.credits)) ? Number(course.credits) : 1.5;
             const weeklyHours = course.weeklyHours ?? (credits > 0 ? Math.round(credits * 2) : 1);
@@ -726,7 +789,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
             return (
               <div
                 key={course.id}
-                onClick={() => setActiveCourseId(course.id)}
+                onClick={() => {
+                  setActiveCourseId(course.id);
+                  setActiveCourseDetailTab('overview');
+                }}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
                   isSelected
                     ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-sm'
@@ -752,6 +818,12 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                       )}
                       <span className="font-mono font-bold text-sm text-indigo-800 dark:text-indigo-200 bg-indigo-100 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-300 dark:border-indigo-700">
                         {course.code}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${getCourseTypeBadgeClass(course)}`}>
+                        {getCourseTypeLabel(course)}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]">
+                        {getLearningAreaLabel(course)}
                       </span>
                       {isDuplicateCourse(course) && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold">
@@ -798,13 +870,35 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
               </div>
             );
-          }} />
+            }}
+          />
         </div>
 
         {/* Right: Enrolled Students & Syllabus Detail (5 cols) */}
         <div className="lg:col-span-5 h-full min-h-0 overflow-y-auto rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 sm:p-5 space-y-4 shadow-xs">
           {activeCourse ? (
             <>
+              <div role="tablist" aria-label="รายละเอียดรายวิชา" className="grid grid-cols-2 gap-1 rounded-lg bg-[var(--color-card-subtle)] p-1">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCourseDetailTab === 'overview'}
+                  onClick={() => setActiveCourseDetailTab('overview')}
+                  className={`rounded-md px-3 py-2 text-xs font-semibold transition ${activeCourseDetailTab === 'overview' ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'}`}
+                >
+                  ข้อมูลรายวิชา
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCourseDetailTab === 'students'}
+                  onClick={() => setActiveCourseDetailTab('students')}
+                  className={`rounded-md px-3 py-2 text-xs font-semibold transition ${activeCourseDetailTab === 'students' ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'}`}
+                >
+                  นักเรียน ({activeCourse.enrolledStudentIds?.length || 0})
+                </button>
+              </div>
+              {activeCourseDetailTab === 'overview' && (
               <div className="border-b border-[var(--color-border)] pb-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold text-[var(--color-primary-text)]">
@@ -838,8 +932,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
 
                 <div>
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${getCategoryBadgeClass(activeCourse.category)}`}>
-                      {getCategoryLabel(activeCourse.category)}
+                    <span className={`text-xs px-2 py-0.5 rounded border font-semibold ${getCourseTypeBadgeClass(activeCourse)}`}>
+                      {getCourseTypeLabel(activeCourse)}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]">
+                      {getLearningAreaLabel(activeCourse)}
                     </span>
                     <span className="text-xs text-[var(--color-text-muted)] font-medium">
                       {formatSemesterLabel(activeCourse.semester || '1')} / {activeCourse.academicYear || academicYear}
@@ -890,7 +987,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
 
                 <div className="text-xs text-[var(--color-text-body)] space-y-1">
-                  <p><strong className="text-[var(--color-text-title)]">กลุ่มสาระการเรียนรู้:</strong> {activeCourse.department || 'ไม่ระบุ'}</p>
+                  <p><strong className="text-[var(--color-text-title)]">หน่วยงาน/กลุ่มงาน:</strong> {activeCourse.department || 'ไม่ระบุ'}</p>
                   <p><strong className="text-[var(--color-text-title)]">ครูผู้สอน:</strong> {activeCourse.teacherName} ({activeCourse.teacherEmail})</p>
                   <p><strong className="text-[var(--color-text-title)]">เวลาและห้องเรียน:</strong> {activeCourse.schedule} @ {activeCourse.room}</p>
                 </div>
@@ -901,8 +998,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   </p>
                 )}
               </div>
+              )}
 
               {/* Enrolled Students Roster */}
+              {activeCourseDetailTab === 'students' && (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-title)] flex items-center gap-1.5">
@@ -1297,9 +1396,27 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   })()}
                 </div>
               </div>
+              )}
             </>
           ) : (
-            <p className="text-xs text-[var(--color-text-muted)] text-center py-10">เลือกรายวิชาเพื่อดูรายละเอียดหลักสูตร</p>
+            <div className="py-10 text-center">
+              <p className="text-sm font-semibold text-[var(--color-text-title)]">
+                {courses.length === 0
+                  ? 'ยังไม่มีรายวิชาในหลักสูตร'
+                  : filteredCourses.length === 0
+                    ? 'ไม่พบรายวิชาที่ตรงกับตัวกรอง'
+                    : 'เลือกรายวิชาเพื่อดูรายละเอียดหลักสูตร'}
+              </p>
+              {filteredCourses.length === 0 && hasActiveCourseFilters && (
+                <button
+                  type="button"
+                  onClick={clearCourseFilters}
+                  className="mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  ล้างตัวกรอง
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -1323,7 +1440,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
             </div>
 
             <form onSubmit={handleCreateOrUpdateCourse} className="space-y-4 text-xs">
-              {/* Row 1: Code and Category */}
+              <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-primary-light)] text-[10px] font-bold text-[var(--color-primary-text)]">1</span>
+                <h4 className="font-bold text-[var(--color-text-title)]">ข้อมูลรายวิชา</h4>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[var(--color-text-body)] font-medium mb-1">
@@ -1340,55 +1460,23 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[var(--color-text-body)] font-medium">
-                      หมวดหมู่วิชา (Category) <span className="text-rose-500">*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (categoryMode === 'preset') {
-                          setCategoryMode('custom');
-                          setCustomCategoryText(formData.category);
-                        } else {
-                          setCategoryMode('preset');
-                        }
-                      }}
-                      className="text-[11px] text-[var(--color-primary-text)] hover:underline font-semibold cursor-pointer"
-                    >
-                      {categoryMode === 'preset' ? '✎ พิมพ์หมวดหมู่อื่นเอง' : 'เลือกจากรายการมาตรฐาน'}
-                    </button>
-                  </div>
-
-                  {categoryMode === 'preset' ? (
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
-                    >
-                      {STANDARD_CATEGORIES.map((cat) => (
-                        <option key={cat.key} value={cat.key}>
-                          {cat.th} ({cat.en})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      required
-                      placeholder="เช่น วิชาชีพเฉพาะ, วิชาเลือกเสรี, กิจกรรมจิตอาสา"
-                      value={customCategoryText}
-                      onChange={(e) => {
-                        setCustomCategoryText(e.target.value);
-                        setFormData({ ...formData, category: e.target.value });
-                      }}
-                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
-                    />
-                  )}
+                  <label className="block text-[var(--color-text-body)] font-medium mb-1">
+                    ประเภทวิชา {editingCourse ? '' : <span className="text-rose-500">*</span>}
+                  </label>
+                  <select
+                    required={!editingCourse}
+                    value={formData.courseType}
+                    onChange={(e) => setFormData({ ...formData, courseType: e.target.value as CourseType | '' })}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
+                  >
+                    {editingCourse && <option value="">ไม่ระบุ (คงข้อมูลเดิม)</option>}
+                    {COURSE_TYPE_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>{option.labelTh}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* Row 2: Titles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[var(--color-text-body)] font-medium mb-1">
@@ -1418,7 +1506,32 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
               </div>
 
-              {/* Row 3: Credits and Academic Hours Criteria */}
+              <div>
+                <label className="block text-[var(--color-text-body)] font-medium mb-1">
+                  กลุ่มสาระการเรียนรู้ {editingCourse ? '' : <span className="text-rose-500">*</span>}
+                </label>
+                <select
+                  required={!editingCourse && formData.courseType !== 'activities'}
+                  value={formData.learningArea}
+                  onChange={(e) => setFormData({ ...formData, learningArea: e.target.value as LearningStrandId | '' })}
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium"
+                >
+                  <option value="">
+                    {editingCourse ? 'ไม่ระบุ (คงข้อมูลเดิม)' : formData.courseType === 'activities' ? 'ไม่ใช้กับกิจกรรม' : 'เลือกกลุ่มสาระการเรียนรู้'}
+                  </option>
+                  {COURSE_LEARNING_AREA_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>{option.labelTh}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+                  ใช้จัดกลุ่มหลักสูตรและเชื่อมโยงมาตรฐานการเรียนรู้
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-2 pt-1">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-primary-light)] text-[10px] font-bold text-[var(--color-primary-text)]">2</span>
+                <h4 className="font-bold text-[var(--color-text-title)]">หน่วยกิตและเกณฑ์การเรียน</h4>
+              </div>
               <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 space-y-2">
                 <div className="flex items-center gap-1.5 font-bold text-blue-900 dark:text-blue-100">
                   <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -1521,15 +1634,19 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
               </div>
 
-              {/* Row 4: Department and Instructor */}
+              <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-2 pt-1">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-primary-light)] text-[10px] font-bold text-[var(--color-primary-text)]">3</span>
+                <h4 className="font-bold text-[var(--color-text-title)]">ผู้สอนและการจัดการเรียน</h4>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[var(--color-text-body)] font-medium mb-1">กลุ่มสาระการเรียนรู้</label>
+                  <label className="block text-[var(--color-text-body)] font-medium mb-1">สังกัด / หน่วยงานเพิ่มเติม</label>
                   <select
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
+                    <option value="">ไม่ระบุหน่วยงานเพิ่มเติม</option>
                     {availableDepartments.map((d) => (
                       <option key={d} value={d}>{d}</option>
                     ))}
@@ -1566,7 +1683,6 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
               </div>
 
-              {/* Row 5: Schedule, Room, Academic Year, Semester */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block text-[var(--color-text-body)] font-medium mb-1">วันและเวลาเรียน (Schedule)</label>
@@ -1613,17 +1729,21 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
               </div>
 
-              {/* Row 6: Description */}
-              <div>
-                <label className="block text-[var(--color-text-body)] font-medium mb-1">คำอธิบายรายวิชา (Syllabus Description &amp; Objectives)</label>
-                <textarea
-                  rows={3}
-                  placeholder="ระบุจุดประสงค์การเรียนรู้ สาระสำคัญ และขอบเขตการวัดและประเมินผล..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                />
-              </div>
+              <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2">
+                <summary className="cursor-pointer text-xs font-semibold text-[var(--color-text-title)]">
+                  คำอธิบายรายวิชาและจุดประสงค์ (ไม่บังคับ)
+                </summary>
+                <div className="pt-3">
+                  <textarea
+                    rows={3}
+                    aria-label="คำอธิบายรายวิชาและจุดประสงค์"
+                    placeholder="ระบุจุดประสงค์การเรียนรู้ สาระสำคัญ และขอบเขตการวัดและประเมินผล..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                  />
+                </div>
+              </details>
 
               {/* Action buttons */}
               <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
