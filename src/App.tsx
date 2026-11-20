@@ -222,6 +222,8 @@ import {
   saveSchoolFeatureFlagsToDb,
 } from './lib/schoolPackageStore';
 import { useSchoolPermissions } from './lib/schoolPermissions';
+import { loadSchoolLessons, saveSchoolLessonCompletionToDb, saveSchoolLessonToDb } from './lib/lmsPersistence';
+import { teacherMatchesCourse } from './lib/courseTeacherFilter';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -1703,6 +1705,22 @@ export const App: React.FC = () => {
       active = false;
     };
   }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView]);
+
+  useEffect(() => {
+    if (!activeSchool.id || !currentUser || !isDataReady || loadedSchoolId !== activeSchool.id || isDemoMode) return;
+    let active = true;
+    void loadSchoolLessons(activeSchool.id)
+      .then((items) => {
+        if (active) setLessons(items);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : String(error);
+        setDataSyncError(message);
+        setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
+      });
+    return () => { active = false; };
+  }, [activeSchool.id, currentUser?.id, loadedSchoolId, isDataReady, isDemoMode]);
 
   useEffect(() => {
     if (!activeSchool.id || !currentUser || !isDataReady || isDemoMode) return;
@@ -3408,13 +3426,17 @@ export const App: React.FC = () => {
     setDataSyncError(null);
   };
 
-  const handleCompleteLesson = (lessonId: string) => {
-    const actorStudentId =
-      currentUser?.role === 'student'
-        ? resolveLinkedStudentsForUser(currentUser, schoolStudents)[0]?.id ||
-          currentUser.studentRecordId ||
-          currentUser.id
-        : undefined;
+  const handleCompleteLesson = async (lessonId: string) => {
+    if (currentUser?.role !== 'student') throw new Error('Only students can complete lessons.');
+    const lesson = schoolLessons.find((item) => item.id === lessonId && item.schoolId === activeSchool.id);
+    if (!lesson) throw new Error('The selected lesson is no longer available.');
+    const enrolledCourseIds = new Set(
+      filterCoursesForPersonalRole(schoolCourses, currentUser, schoolStudents).map((course) => course.id)
+    );
+    if (!enrolledCourseIds.has(lesson.courseId)) throw new Error('This lesson is not available for your enrolled courses.');
+    const actorStudentId = resolveLinkedStudentsForUser(currentUser, schoolStudents)[0]?.id || currentUser.studentRecordId;
+    if (!actorStudentId) throw new Error('Your student record could not be found.');
+    await saveSchoolLessonCompletionToDb(activeSchool.id, lesson.id, actorStudentId);
     setLessons((prev) =>
       prev.map((l) => {
         if (l.id !== lessonId) return l;
@@ -3424,6 +3446,27 @@ export const App: React.FC = () => {
         return { ...l, completed: true, completedByStudentIds };
       })
     );
+  };
+
+  const handleSaveSchoolLesson = async (lesson: Lesson) => {
+    if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
+      throw new Error('Only school staff can manage lessons.');
+    }
+    const course = schoolCourses.find((item) => item.id === lesson.courseId);
+    if (!course) throw new Error('Select a valid course in this school.');
+    if (currentUser.role === 'teacher') {
+      const teacher = schoolTeachers.find((item) =>
+        item.id === currentUser.teacherRecordId || item.email?.toLowerCase() === currentUser.email.toLowerCase()
+      );
+      if (!teacher || !teacherMatchesCourse(teacher, course)) {
+        throw new Error('You can only manage lessons for courses assigned to you.');
+      }
+    }
+    const schoolLesson = { ...lesson, schoolId: activeSchool.id };
+    await saveSchoolLessonToDb(activeSchool.id, schoolLesson, currentUser.id);
+    setLessons((prev) => [...prev.filter((item) => item.id !== schoolLesson.id), schoolLesson]
+      .sort((a, b) => a.courseId.localeCompare(b.courseId) || a.chapterNumber - b.chapterNumber));
+    setDataSyncError(null);
   };
 
   const handleSubmitAssignment = async (assignmentId: string) => {
@@ -5706,6 +5749,7 @@ export const App: React.FC = () => {
             {/* Mode 2: Virtual Classroom / LMS */}
             {programMode === 'lms_classroom' && (
               <LmsClassroomView
+                schoolId={activeSchool.id}
                 courses={viewCourses}
                 students={viewStudents}
                 teachers={isRestrictedViewer ? [] : schoolTeachers}
@@ -5715,6 +5759,7 @@ export const App: React.FC = () => {
                 currentUser={currentUser}
                 schoolPermissions={schoolPermissions}
                 onCompleteLesson={handleCompleteLesson}
+                onSaveLesson={handleSaveSchoolLesson}
                 onSubmitAssignment={handleSubmitAssignment}
               />
             )}

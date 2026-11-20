@@ -23,6 +23,7 @@ import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_late
 import courseClassificationMigrationSql from '../../supabase/migrations/20261125_course_classification.sql?raw';
 import homeworkWorkflowMigrationSql from '../../supabase/migrations/20261120_teacher_homework_workflow.sql?raw';
 import studentRecordsMigrationSql from '../../supabase/migrations/20261120_school_student_records.sql?raw';
+import schoolLmsLessonsMigrationSql from '../../supabase/migrations/20261120_school_lms_lessons.sql?raw';
 import staffInviteRpcSql from '../../supabase/migrations/20261124_staff_invite_link_rpc.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
@@ -108,7 +109,7 @@ export function clearCustomSupabaseCredentials() {
 }
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
-export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}\n\n${homeworkWorkflowMigrationSql}\n\n${studentRecordsMigrationSql}`;
+export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}\n\n${homeworkWorkflowMigrationSql}\n\n${studentRecordsMigrationSql}\n\n${schoolLmsLessonsMigrationSql}`;
 export const STAFF_INVITE_RPC_SQL = staffInviteRpcSql;
 
 function isMissingTableError(error: { code?: string; message: string }): boolean {

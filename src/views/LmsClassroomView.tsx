@@ -11,6 +11,8 @@ import {
   BookOpen, 
   Video, 
   Download,
+  Plus,
+  Pencil,
 } from 'lucide-react';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
@@ -18,6 +20,7 @@ import { resolveLinkedStudentsForUser } from '../lib/attendanceScope';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 
 interface LmsClassroomViewProps {
+  schoolId: string;
   courses: Course[];
   students: Student[];
   teachers?: Teacher[];
@@ -26,12 +29,14 @@ interface LmsClassroomViewProps {
   lang: AppLanguage;
   currentUser?: AuthUser | null;
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
-  onCompleteLesson: (lessonId: string) => void;
+  onCompleteLesson: (lessonId: string) => void | Promise<void>;
+  onSaveLesson: (lesson: Lesson) => Promise<void>;
   onSubmitAssignment: (assignmentId: string) => void | Promise<void>;
 }
 
 export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   courses,
+  schoolId,
   students,
   teachers = [],
   lessons,
@@ -40,6 +45,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   currentUser,
   schoolPermissions,
   onCompleteLesson,
+  onSaveLesson,
   onSubmitAssignment,
 }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
@@ -49,6 +55,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const [submittedAlert, setSubmittedAlert] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
+  const [lessonForm, setLessonForm] = useState<Lesson | null>(null);
+  const [isSavingLesson, setIsSavingLesson] = useState(false);
 
   const currentStudentId = useMemo(() => {
     if (!currentUser || currentUser.role !== 'student') return '';
@@ -58,6 +66,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const isStudentUser = currentUser?.role === 'student';
   const canSubmitHomework =
     isStudentUser && Boolean(currentStudentId) && isSchoolPolicyEnabled(schoolPermissions, 'student_submit_homework');
+  const canManageLessons = currentUser?.role === 'admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'teacher';
 
   const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
   const filteredCourses = courses.filter((c) =>
@@ -73,15 +82,46 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const courseAssignments = assignments.filter((a) => a.courseId === activeCourseIdResolved && a.status === 'active');
   const activeLesson = courseLessons.find((l) => l.id === selectedLessonId) || courseLessons[0];
 
-  const handleLessonComplete = (id: string) => {
-    onCompleteLesson(id);
-    setSubmittedAlert(
-      lang === 'th'
-        ? 'บันทึกความคืบหน้าการเรียนบทนี้เรียบร้อยแล้ว!'
-        : 'Lesson marked as completed!'
-    );
-    setTimeout(() => setSubmittedAlert(null), 3000);
+  const handleLessonComplete = async (id: string) => {
+    setSubmissionError(null);
+    try {
+      await onCompleteLesson(id);
+      setSubmittedAlert(lang === 'th' ? 'บันทึกความคืบหน้าการเรียนบทนี้เรียบร้อยแล้ว!' : 'Lesson marked as completed!');
+      setTimeout(() => setSubmittedAlert(null), 3000);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : String(error));
+    }
   };
+
+  const handleSaveLesson = async () => {
+    if (!lessonForm || isSavingLesson) return;
+    if (!lessonForm.titleTh.trim()) {
+      setSubmissionError(lang === 'th' ? 'กรุณาระบุชื่อบทเรียนภาษาไทย' : 'Enter a Thai lesson title.');
+      return;
+    }
+    setIsSavingLesson(true);
+    setSubmissionError(null);
+    try {
+      await onSaveLesson({ ...lessonForm, schoolId });
+      setSelectedCourseId(lessonForm.courseId);
+      setSelectedLessonId(lessonForm.id);
+      setLessonForm(null);
+      setSubmittedAlert(lang === 'th' ? 'บันทึกบทเรียนแล้ว' : 'Lesson saved.');
+      setTimeout(() => setSubmittedAlert(null), 3000);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsSavingLesson(false);
+    }
+  };
+
+  const startNewLesson = () => setLessonForm({
+    id: `lesson-${crypto.randomUUID()}`,
+    schoolId,
+    courseId: activeCourseIdResolved,
+    chapterNumber: Math.max(0, ...courseLessons.map((lesson) => lesson.chapterNumber)) + 1,
+    titleTh: '', titleEn: '', durationMinutes: 10, videoUrl: '', content: '', materials: [], completedByStudentIds: [],
+  });
 
   const handleAssignmentSubmit = async (id: string) => {
     if (isSubmittingAssignment) return;
@@ -126,6 +166,11 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
 
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <ModuleTourTrigger moduleId="lms_classroom" lang={lang} />
+          {canManageLessons && (
+            <button type="button" onClick={startNewLesson} className="px-2.5 py-1.5 rounded-lg bg-[var(--tone-solid)] text-white text-xs font-semibold flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5" />{lang === 'th' ? 'เพิ่มบทเรียน' : 'Add lesson'}
+            </button>
+          )}
           {submittedAlert && (
             <div className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -143,6 +188,43 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           </div>
         </div>
       </div>
+
+      {lessonForm && (
+        <section className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3" aria-label={lang === 'th' ? 'แบบฟอร์มบทเรียน' : 'Lesson editor'}>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-bold text-[var(--color-text-title)]">{lang === 'th' ? 'จัดการบทเรียน' : 'Lesson editor'}</h2>
+            <button type="button" onClick={() => setLessonForm(null)} className="text-sm text-[var(--color-text-muted)]">{lang === 'th' ? 'ปิด' : 'Cancel'}</button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="text-xs space-y-1">{lang === 'th' ? 'รายวิชา' : 'Course'}
+              <select value={lessonForm.courseId} onChange={(e) => setLessonForm({ ...lessonForm, courseId: e.target.value })} className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-sm">
+                {filteredCourses.map((course) => <option key={course.id} value={course.id}>{course.code} · {course.titleTh}</option>)}
+              </select>
+            </label>
+            <label className="text-xs space-y-1">{lang === 'th' ? 'บทที่' : 'Chapter'}
+              <input type="number" min="1" value={lessonForm.chapterNumber} onChange={(e) => setLessonForm({ ...lessonForm, chapterNumber: Math.max(1, Number(e.target.value)) })} className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-sm" />
+            </label>
+            <label className="text-xs space-y-1">{lang === 'th' ? 'ชื่อบทเรียน (ไทย)' : 'Title (Thai)'}
+              <input value={lessonForm.titleTh} onChange={(e) => setLessonForm({ ...lessonForm, titleTh: e.target.value })} className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-sm" />
+            </label>
+            <label className="text-xs space-y-1">{lang === 'th' ? 'ชื่อบทเรียน (อังกฤษ)' : 'Title (English)'}
+              <input value={lessonForm.titleEn} onChange={(e) => setLessonForm({ ...lessonForm, titleEn: e.target.value })} className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-sm" />
+            </label>
+            <label className="text-xs space-y-1">{lang === 'th' ? 'ระยะเวลา (นาที)' : 'Duration (minutes)'}
+              <input type="number" min="1" value={lessonForm.durationMinutes} onChange={(e) => setLessonForm({ ...lessonForm, durationMinutes: Math.max(1, Number(e.target.value)) })} className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-sm" />
+            </label>
+            <label className="text-xs space-y-1">Video URL
+              <input type="url" value={lessonForm.videoUrl || ''} onChange={(e) => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-sm" />
+            </label>
+            <label className="text-xs space-y-1 sm:col-span-2">{lang === 'th' ? 'เนื้อหา' : 'Content'}
+              <textarea rows={4} value={lessonForm.content} onChange={(e) => setLessonForm({ ...lessonForm, content: e.target.value })} className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-sm" />
+            </label>
+          </div>
+          <button type="button" disabled={isSavingLesson || filteredCourses.length === 0} onClick={() => void handleSaveLesson()} className="px-4 py-2 rounded-lg bg-[var(--tone-solid)] text-white text-sm font-semibold disabled:opacity-50">
+            {isSavingLesson ? (lang === 'th' ? 'กำลังบันทึก…' : 'Saving…') : (lang === 'th' ? 'บันทึกบทเรียน' : 'Save lesson')}
+          </button>
+        </section>
+      )}
 
       {/* Course Switcher Tabs with Teacher Filter */}
       <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--color-border)]">
@@ -254,13 +336,21 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                       </h2>
                     </div>
 
+                    {isStudentUser && (
                     <button
-                      onClick={() => handleLessonComplete(activeLesson.id)}
+                      disabled={Boolean(currentStudentId && activeLesson.completedByStudentIds.includes(currentStudentId))}
+                      onClick={() => void handleLessonComplete(activeLesson.id)}
                       className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all self-start sm:self-auto cursor-pointer"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>{lang === 'th' ? 'ทำเครื่องหมายว่าเรียนจบแล้ว' : 'Mark Lesson Complete'}</span>
+                      <span>{currentStudentId && activeLesson.completedByStudentIds.includes(currentStudentId) ? (lang === 'th' ? 'เรียนจบแล้ว' : 'Completed') : (lang === 'th' ? 'ทำเครื่องหมายว่าเรียนจบแล้ว' : 'Mark Lesson Complete')}</span>
                     </button>
+                    )}
+                    {canManageLessons && (
+                      <button type="button" onClick={() => setLessonForm({ ...activeLesson })} className="px-3 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold flex items-center gap-1.5">
+                        <Pencil className="w-3.5 h-3.5" />{lang === 'th' ? 'แก้ไขบทเรียน' : 'Edit lesson'}
+                      </button>
+                    )}
                   </div>
 
                   <p className="text-xs text-[var(--color-text-body)] leading-relaxed bg-[var(--color-card-subtle)] p-4 rounded-xl border border-[var(--color-border)]">
