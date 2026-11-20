@@ -399,7 +399,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
           },
           isModuleEnabled('gradebook') && {
             id: 'gradebook',
-            label: lang === 'th' ? 'วัดผล ปพ. & คลังข้อสอบ' : 'Grades & Exam Hub',
+            label: lang === 'th' ? 'บันทึกคะแนน & ตัวชี้วัด' : 'Grades & Indicators',
             meta: unclaimedCentralPacksCount > 0
               ? (lang === 'th' ? `${gradesCount} คะแนน · ข้อสอบใหม่ ${unclaimedCentralPacksCount}` : `${gradesCount} grades · ${unclaimedCentralPacksCount} new`)
               : (lang === 'th' ? `${gradesCount} รายการคะแนน` : `${gradesCount} grade records`),
@@ -868,7 +868,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
       <section aria-label={lang === 'th' ? 'ทางลัดงานประจำฝ่าย' : 'Department Shortcuts'} className="no-print saas-card overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
           <h3 className="text-[13px] font-bold text-[var(--color-text-title)]">
-            {lang === 'th' ? 'ทางลัดงานประจำฝ่าย' : 'Quick Department Access'}
+            {lang === 'th' ? 'ทางลัดงานหลัก' : 'Quick Access'}
           </h3>
           <div className="flex items-center gap-3 text-xs">
             {!simplifiedView && showOnboardingCard && (

@@ -148,6 +148,7 @@ export interface NavCategoryDef {
 // Focused daily teaching tools for Teachers (keeps student arcade & executive reports tucked away)
 const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'dashboard',
+  'gradebook',
   'timetable',
   'courses',
   'students',
@@ -162,6 +163,7 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
 // Focused school administration tools for Admins (removes duplicate sub-tab links & student arcade)
 const ADMIN_FOCUS_TABS = new Set<NavTab>([
   'dashboard',
+  'gradebook',
   'students',
   'teachers',
   'courses',
@@ -183,6 +185,7 @@ const ADMIN_FOCUS_TABS = new Set<NavTab>([
 // Simplified View tabs for Admin dashboard (hides technical settings & executive tools, keeping core operations)
 const ADMIN_SIMPLIFIED_TABS = new Set<NavTab>([
   'dashboard',
+  'gradebook',
   'students',
   'teachers',
   'courses',
@@ -318,20 +321,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // Category 1: Directory & Schedule
+    // Category 1: Student registry, staff, and academic setup
     list.push({
       id: 'academics',
-      labelTh: 'ทะเบียน & ตารางเรียน',
-      labelEn: 'Directory & Schedule',
+      labelTh: 'ทะเบียนและวิชาการ',
+      labelEn: 'Registry & Academics',
       shortLabelTh: 'ทะเบียน',
-      shortLabelEn: 'Directory',
+      shortLabelEn: 'Registry',
       icon: Users,
       items: [
         {
           id: 'students',
-          labelTh: 'ทะเบียนนักเรียน · คะแนน & ปพ.',
-          labelEn: 'Students, Grades & Docs',
-          shortLabelTh: 'นักเรียน/ปพ.',
+          labelTh: 'ทะเบียนนักเรียน',
+          labelEn: 'Student Registry',
+          shortLabelTh: 'นักเรียน',
           shortLabelEn: 'Students',
           icon: Users,
           badge: studentsCount > 0 ? `${studentsCount}` : null,
@@ -369,15 +372,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 2: Assessment & Teaching
+    // Category 2: Teaching and assessment
     list.push({
       id: 'assessment',
-      labelTh: 'วัดผล & การสอน',
-      labelEn: 'Assessment & Teaching',
+      labelTh: 'การสอนและวัดผล',
+      labelEn: 'Teaching & Assessment',
       shortLabelTh: 'วัดผล',
       shortLabelEn: 'Grading',
       icon: Award,
       items: [
+        {
+          id: 'gradebook',
+          labelTh: 'บันทึกคะแนน & ตัวชี้วัด',
+          labelEn: 'Grades & Learning Indicators',
+          shortLabelTh: 'คะแนน',
+          shortLabelEn: 'Grades',
+          icon: Award,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        },
         {
           id: 'homework',
           labelTh: 'การบ้าน & ภาระงาน',
@@ -398,11 +410,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 3: Student Care, Attendance & Health
+    // Category 3: Student support, attendance, and health
     list.push({
       id: 'student_care',
-      labelTh: 'เช็กชื่อ กิจการ & สุขภาพ',
-      labelEn: 'Attendance & Care',
+      labelTh: 'ดูแลช่วยเหลือนักเรียน',
+      labelEn: 'Student Support',
       shortLabelTh: 'เช็กชื่อ',
       shortLabelEn: 'Care',
       icon: HeartPulse,
@@ -449,11 +461,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 4: Finance & Announcements
+    // Category 4: School communication and finance
     list.push({
       id: 'finance',
-      labelTh: 'การเงิน & ประชาสัมพันธ์',
-      labelEn: 'Finance & News',
+      labelTh: 'สื่อสารและการเงิน',
+      labelEn: 'Communication & Finance',
       shortLabelTh: 'การเงิน',
       shortLabelEn: 'Finance',
       icon: Receipt,
@@ -479,29 +491,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 5: Executive Reports & System Administration (Clean consolidated entries)
+    // Category 5: System administration
     list.push({
       id: 'administration',
-      labelTh: 'รายงานผู้บริหาร & ตั้งค่าระบบ',
-      labelEn: 'Reports & System Control',
+      labelTh: 'ตั้งค่าและควบคุมระบบ',
+      labelEn: 'System Administration',
       shortLabelTh: 'ตั้งค่า',
       shortLabelEn: 'Admin',
       icon: SlidersHorizontal,
       items: [
-        {
-          id: 'executive_monitor',
-          labelTh: focusMode && supportsFocusMode ? 'มอนิเตอร์ & รายงาน สพฐ.' : 'ศูนย์มอนิเตอร์รายงานผู้บริหาร',
-          labelEn: focusMode && supportsFocusMode ? 'Executive & OBEC Reports' : 'Executive Report Monitor',
-          icon: Monitor,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'executive_warning',
-          labelTh: 'เรดาร์เตือนภัยผู้เรียน (EWS)',
-          labelEn: 'Early Warning Radar',
-          icon: ShieldAlert,
-          roles: ['super_admin', 'admin'],
-        },
         {
           id: 'system_settings',
           labelTh: focusMode && supportsFocusMode ? 'ตั้งค่าระบบ (GPS · สิทธิ์ · LINE)' : 'ศูนย์ควบคุมระบบโรงเรียน',
@@ -558,15 +556,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 6: Secondary Report Lenses (Hidden in Focus Mode — already accessible inside Executive Monitor)
+    // Category 6: Reports and student quality monitoring
     list.push({
       id: 'report_monitor',
-      labelTh: 'รายงานวิเคราะห์เฉพาะทาง',
-      labelEn: 'Detailed Analytics',
+      labelTh: 'รายงานและติดตามคุณภาพ',
+      labelEn: 'Reports & Quality Monitoring',
       shortLabelTh: 'รายงาน',
       shortLabelEn: 'Reports',
       icon: BarChart3,
       items: [
+        {
+          id: 'executive_monitor',
+          labelTh: focusMode && supportsFocusMode ? 'รายงานผู้บริหาร & สพฐ.' : 'รายงานผู้บริหารและ สพฐ.',
+          labelEn: 'Executive & OBEC Reports',
+          icon: Monitor,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
+          id: 'executive_warning',
+          labelTh: 'ติดตามนักเรียนกลุ่มเสี่ยง (EWS)',
+          labelEn: 'At-Risk Student Monitor (EWS)',
+          icon: ShieldAlert,
+          roles: ['super_admin', 'admin'],
+        },
         {
           id: 'obec_executive_dashboard',
           labelTh: 'ประเมินผล 8 กลุ่มสาระฯ (สพฐ.)',
@@ -591,11 +603,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Category 7: Student Learning & Arcade Modules (Primary for Students, optional Extra for Admin/Teacher)
+    // Category 7: Optional enrichment and AI modules
     list.push({
       id: 'innovation',
-      labelTh: 'กิจกรรมผู้เรียน & AI',
-      labelEn: 'Student AI & Arcade',
+      labelTh: 'กิจกรรมเสริมและ AI',
+      labelEn: 'Enrichment & AI',
       shortLabelTh: 'กิจกรรม',
       shortLabelEn: 'Arcade',
       icon: Sparkles,
@@ -728,8 +740,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Dashboard standalone entry
   const dashboardItem: NavItemDef = useMemo(() => ({
     id: 'dashboard',
-    labelTh: currentRole === 'teacher' ? 'โต๊ะทำงานครูวันนี้' : 'แดชบอร์ดหลัก',
-    labelEn: currentRole === 'teacher' ? "Teacher's Desk" : 'Main Dashboard',
+    labelTh: currentRole === 'teacher'
+      ? 'โต๊ะทำงานครู'
+      : currentRole === 'admin' || currentRole === 'super_admin'
+        ? 'ภาพรวมโรงเรียน'
+        : currentRole === 'student'
+          ? 'หน้าหลักนักเรียน'
+          : 'ภาพรวมผู้ปกครอง',
+    labelEn: currentRole === 'teacher'
+      ? "Teacher's Desk"
+      : currentRole === 'admin' || currentRole === 'super_admin'
+        ? 'School Overview'
+        : currentRole === 'student'
+          ? 'Student Home'
+          : 'Parent Overview',
     icon: LayoutDashboard,
     roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
   }), [currentRole]);

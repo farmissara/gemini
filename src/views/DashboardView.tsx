@@ -754,8 +754,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {currentRole === 'teacher'
               ? (lang === 'th' ? 'โต๊ะทำงานครูวันนี้' : "Teacher's Desk")
               : (currentRole === 'admin' || currentRole === 'super_admin')
-                ? (lang === 'th' ? 'ศูนย์รวมการจัดการโรงเรียน' : 'School Operations Hub')
-                : (lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn)}
+                ? (lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview')
+                : currentRole === 'parent'
+                  ? (lang === 'th' ? 'ภาพรวมบุตรหลาน' : 'Parent Overview')
+                  : currentRole === 'student'
+                    ? (lang === 'th' ? 'ภาพรวมการเรียนของฉัน' : 'My Learning Overview')
+                    : (lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn)}
           </h1>
           {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
             <button
@@ -779,8 +783,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               {(currentRole === 'admin' || currentRole === 'super_admin')
-                ? (lang === 'th' ? 'ภาพรวมวันนี้' : 'Overview')
-                : (lang === 'th' ? 'ภาพรวมวันนี้' : 'Today')}
+                ? (lang === 'th' ? 'ภาพรวม' : 'Overview')
+                : (lang === 'th' ? 'วันนี้' : 'Today')}
             </button>
 
             <button
@@ -792,7 +796,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               {currentRole === 'student'
                 ? (lang === 'th' ? 'พัฒนาการของฉัน' : 'My Progress')
-                : (lang === 'th' ? 'รายงาน/กราฟ' : 'Reports & Charts')}
+                : (lang === 'th' ? 'สถิติและแนวโน้ม' : 'Insights')}
             </button>
 
             {canViewExecutiveMonitor && (
@@ -814,7 +818,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 }}
                 className="seg-tab-btn whitespace-nowrap shrink-0"
               >
-                {lang === 'th' ? 'มอนิเตอร์ & สพฐ.' : 'OBEC & Executive'}
+                {lang === 'th' ? 'รายงานผู้บริหาร' : 'Executive Reports'}
               </button>
             )}
 
@@ -825,7 +829,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => setDashboardTab('early_warning')}
                 className="seg-tab-btn whitespace-nowrap shrink-0"
               >
-                {lang === 'th' ? 'เตือนภัยผู้เรียน' : 'Early Warning'}
+                {lang === 'th' ? 'ติดตามกลุ่มเสี่ยง' : 'At-Risk Students'}
               </button>
             )}
 

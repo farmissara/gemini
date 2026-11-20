@@ -273,12 +273,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       academicYear: activeSchool?.academicYear || '2569',
       currentSemester: activeSchool?.currentSemester || '1',
       semesterOptions: activeSchool?.semesterOptions || ['1', '2'],
-      gradingSystem,
-      lineNotifyEnabled: false,
-      autoAlertAbsences: false,
-      themePalette: 'indigo',
-      lateCutoffTime: '08:15',
-      absentCutoffTime: '09:00',
+      gradingSystem: activeSchool?.gradingSystem || gradingSystem,
+      staffPositionOptions: activeSchool?.staffPositionOptions || [],
+      lineOaAddFriendUrl: '',
+      lineChannelId: '',
+      lineMessagingConfigured: false,
+      resendApiKeyConfigured: false,
+      resendFromEmail: '',
+      supabaseConnected: false,
+      thaiPdfFontEnabled: false,
+      backupBucket: '',
+      lastBackupDate: '',
     }
   ), [systemConfig, activeSchool, gradingSystem]);
 
