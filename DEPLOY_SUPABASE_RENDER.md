@@ -183,7 +183,7 @@ Render.com ให้บริการโฮสต์เว็บประเภ
 
 ## ส่วนที่ 3: ตั้งค่าแอปและการบันทึกข้อมูล
 
-ตั้งค่า `VITE_SUPABASE_URL` และ `VITE_SUPABASE_ANON_KEY` ใน environment ของ Render และไฟล์ `.env.local` สำหรับพัฒนาในเครื่อง ห้ามนำ `service_role` key หรือรหัสผ่านฐานข้อมูลมาใส่ใน `VITE_*` หรือ frontend
+ตั้งค่า `VITE_SUPABASE_URL` และ `VITE_SUPABASE_ANON_KEY` (หรือ `VITE_SUPABASE_PUBLISHABLE_KEY`) ใน environment ของ Render และไฟล์ `.env.local` สำหรับพัฒนาในเครื่อง สำหรับ AI endpoints ให้ตั้งค่า `SUPABASE_URL`/`SUPABASE_ANON_KEY` และ `REDIS_REST_URL`/`REDIS_REST_TOKEN` บน production server ด้วย หากไม่มี Redis ระบบจะปิด AI endpoints ใน production เพื่อไม่ให้การจำกัดการเรียกถูกข้ามได้ ห้ามนำ `service_role` key หรือรหัสผ่านฐานข้อมูลมาใส่ใน `VITE_*` หรือ frontend
 
 หลังเข้าสู่ระบบ แอปจะโหลดและบันทึกข้อมูลนักเรียน รายวิชา คะแนน การเข้าเรียน ใบแจ้งหนี้ และประกาศของโรงเรียนที่บัญชีมีสิทธิ์ใช้งานโดยอัตโนมัติ หากตั้งค่า RLS หรือโปรไฟล์ไม่ครบ แอปจะแสดงข้อผิดพลาดและไม่ใช้ข้อมูลจำลองแทน
 

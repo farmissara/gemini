@@ -74,6 +74,83 @@ const AI_CALL_WINDOW_MS = 5 * 60 * 1000;
 const AI_CALL_LIMIT = 30;
 const aiCallWindows = new Map<string, { startedAt: number; count: number }>();
 
+type AiRateLimitResult = {
+  available: boolean;
+  allowed: boolean;
+  retryAfterSeconds: number;
+};
+
+function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === 'production' || process.env.npm_lifecycle_event === 'start';
+}
+
+function consumeMemoryAiCall(userId: string, now: number): AiRateLimitResult {
+  const current = aiCallWindows.get(userId);
+  if (!current || now - current.startedAt >= AI_CALL_WINDOW_MS) {
+    aiCallWindows.set(userId, { startedAt: now, count: 1 });
+  } else if (current.count >= AI_CALL_LIMIT) {
+    return {
+      available: true,
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((AI_CALL_WINDOW_MS - (now - current.startedAt)) / 1000)),
+    };
+  } else {
+    current.count += 1;
+  }
+
+  if (aiCallWindows.size > 5000) {
+    for (const [key, window] of aiCallWindows) {
+      if (now - window.startedAt >= AI_CALL_WINDOW_MS) aiCallWindows.delete(key);
+    }
+  }
+  return { available: true, allowed: true, retryAfterSeconds: 0 };
+}
+
+async function consumeAiCall(userId: string): Promise<AiRateLimitResult> {
+  const redisUrl = getServerEnv('REDIS_REST_URL');
+  const redisToken = getServerEnv('REDIS_REST_TOKEN');
+  if (!redisUrl || !redisToken) {
+    if (isProductionRuntime()) {
+      return { available: false, allowed: false, retryAfterSeconds: 0 };
+    }
+    return consumeMemoryAiCall(userId, Date.now());
+  }
+
+  const key = `baanpakkru:ai:career:${userId}`;
+  const script = [
+    "local count = redis.call('INCR', KEYS[1])",
+    'if count == 1 then redis.call(\'PEXPIRE\', KEYS[1], ARGV[1]) end',
+    "local ttl = redis.call('PTTL', KEYS[1])",
+    'if ttl < 0 then redis.call(\'PEXPIRE\', KEYS[1], ARGV[1]); ttl = redis.call(\'PTTL\', KEYS[1]) end',
+    'return {count, ttl}',
+  ].join('\n');
+  const response = await fetch(`${redisUrl.replace(/\/+$/, '')}/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${redisToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(['EVAL', script, '1', key, String(AI_CALL_WINDOW_MS)]),
+    signal: AbortSignal.timeout(5000),
+  });
+  const payload = await response.json().catch(() => null) as { result?: unknown; error?: string } | null;
+  if (!response.ok || !payload || payload.error) {
+    throw new Error(payload?.error || `Redis rate limiter returned HTTP ${response.status}`);
+  }
+
+  const result = payload.result;
+  const count = Array.isArray(result) ? Number(result[0]) : NaN;
+  const ttlMs = Array.isArray(result) ? Number(result[1]) : NaN;
+  if (!Number.isSafeInteger(count) || count < 1 || !Number.isFinite(ttlMs) || ttlMs < 0) {
+    throw new Error('Redis rate limiter returned an invalid result.');
+  }
+  return {
+    available: true,
+    allowed: count <= AI_CALL_LIMIT,
+    retryAfterSeconds: Math.max(1, Math.ceil(ttlMs / 1000)),
+  };
+}
+
 async function requireActiveSupabaseUser(req: Request, res: Response, next: NextFunction) {
   const authorization = req.get('authorization') || '';
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -140,23 +217,18 @@ async function requireActiveSupabaseUser(req: Request, res: Response, next: Next
       }
     }
 
-    const now = Date.now();
-    const current = aiCallWindows.get(authData.user.id);
-    if (!current || now - current.startedAt >= AI_CALL_WINDOW_MS) {
-      aiCallWindows.set(authData.user.id, { startedAt: now, count: 1 });
-    } else if (current.count >= AI_CALL_LIMIT) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((AI_CALL_WINDOW_MS - (now - current.startedAt)) / 1000));
-      res.setHeader('Retry-After', String(retryAfterSeconds));
+    const rateLimit = await consumeAiCall(authData.user.id);
+    if (!rateLimit.available) {
+      res.status(503).json({
+        error: 'AI_RATE_LIMIT_NOT_CONFIGURED',
+        message: 'ระบบจำกัดการใช้ AI ยังไม่ได้ตั้งค่า Redis สำหรับ production',
+      });
+      return;
+    }
+    if (!rateLimit.allowed) {
+      res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds));
       res.status(429).json({ error: 'AI_RATE_LIMITED', message: 'ใช้ AI ครบจำนวนชั่วคราวแล้ว กรุณาลองใหม่ภายหลัง' });
       return;
-    } else {
-      current.count += 1;
-    }
-
-    if (aiCallWindows.size > 5000) {
-      for (const [userId, window] of aiCallWindows) {
-        if (now - window.startedAt >= AI_CALL_WINDOW_MS) aiCallWindows.delete(userId);
-      }
     }
     next();
   } catch (err) {
