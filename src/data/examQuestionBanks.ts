@@ -1,4 +1,8 @@
 import { CentralExamPack, LearningStrandId, QuizQuestion } from '../types';
+import { THAI_AND_MATH_EXTRA_PACKS } from './centralExamPacks/thaiMathPacks';
+import { SCIENCE_AND_SOCIAL_EXTRA_PACKS } from './centralExamPacks/scienceSocialPacks';
+import { HEALTH_AND_ARTS_EXTRA_PACKS } from './centralExamPacks/healthArtsPacks';
+import { CAREER_AND_LANG_EXTRA_PACKS } from './centralExamPacks/careerLangPacks';
 
 export interface LearningStrandMeta {
   id: LearningStrandId;
@@ -1154,11 +1158,11 @@ function buildPackQuestions(strand: LearningStrandId, packId: string): QuizQuest
     .map((q) => ({ ...q, packId }));
 }
 
-export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
+const BASE_SET01_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
   {
     id: 'pack-central-thai-2569',
-    titleTh: 'ชุดข้อสอบกลาง กลุ่มสาระฯ ภาษาไทย (ป.6 – ม.6)',
-    titleEn: 'Central Thai Language Exam Pack',
+    titleTh: 'ชุดที่ 1: ชุดข้อสอบกลาง กลุ่มสาระฯ ภาษาไทย มาตรฐานรวม (ป.6 – ม.6)',
+    titleEn: 'Central Thai Language Exam Pack (Set 1)',
     strand: 'thai',
     gradeLevel: 'ป.1 - ม.6',
     descriptionTh: 'ครอบคลุมหลักภาษา การสะกดคำ ชนิดของคำ สำนวน ระดับภาษา โคลงสี่สุภาพ รสวรรณคดี และการอ่านคิดวิเคราะห์ พร้อมเฉลยละเอียด',
@@ -1166,6 +1170,7 @@ export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
     priceThb: 0,
     status: 'published',
     questions: buildPackQuestions('thai', 'pack-central-thai-2569'),
+    questionCount: 8,
     createdBy: 'Super Admin',
     publishedAt: '2026-11-01T08:00:00.000Z',
     createdAt: '2026-11-01T08:00:00.000Z',
@@ -1173,8 +1178,8 @@ export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
   },
   {
     id: 'pack-central-math-2569',
-    titleTh: 'ชุดข้อสอบกลาง กลุ่มสาระฯ คณิตศาสตร์ (ป.6 – ม.6)',
-    titleEn: 'Central Mathematics Exam Pack',
+    titleTh: 'ชุดที่ 1: ชุดข้อสอบกลาง กลุ่มสาระฯ คณิตศาสตร์ มาตรฐานรวม (ป.6 – ม.6)',
+    titleEn: 'Central Mathematics Exam Pack (Set 1)',
     strand: 'math',
     gradeLevel: 'ป.1 - ม.6',
     descriptionTh: 'รวมโจทย์ห.ร.ม./ค.ร.น. ร้อยละ พีทาโกรัส สมการ ความน่าจะเป็น ตรรกศาสตร์ ลำดับอนุกรม และแคลคูลัส พร้อมวิธีทำครบทุกข้อ',
@@ -1182,6 +1187,7 @@ export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
     priceThb: 0,
     status: 'published',
     questions: buildPackQuestions('math', 'pack-central-math-2569'),
+    questionCount: 8,
     createdBy: 'Super Admin',
     publishedAt: '2026-11-01T08:00:00.000Z',
     createdAt: '2026-11-01T08:00:00.000Z',
@@ -1190,14 +1196,15 @@ export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
   {
     id: 'pack-central-sci-2569',
     strand: 'science_tech',
-    titleTh: 'ชุดข้อสอบกลาง วิทยาศาสตร์ เทคโนโลยี และ AI',
-    titleEn: 'Central Science, STEM & AI Exam Pack',
+    titleTh: 'ชุดที่ 1: ชุดข้อสอบกลาง วิทยาศาสตร์ เทคโนโลยี และ AI มาตรฐานรวม',
+    titleEn: 'Central Science, STEM & AI Exam Pack (Set 1)',
     gradeLevel: 'ป.1 - ม.6',
     descriptionTh: 'ครบทั้งฟิสิกส์ เคมี ชีววิทยา ดาราศาสตร์ ไฟฟ้า หุ่นยนต์ และปัญญาประดิษฐ์ (Machine Learning) พร้อมคำอธิบายหลักการ',
     pricingType: 'free',
     priceThb: 0,
     status: 'published',
     questions: buildPackQuestions('science_tech', 'pack-central-sci-2569'),
+    questionCount: 8,
     createdBy: 'Super Admin',
     publishedAt: '2026-11-01T08:00:00.000Z',
     createdAt: '2026-11-01T08:00:00.000Z',
@@ -1206,30 +1213,15 @@ export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
   {
     id: 'pack-central-soc-2569',
     strand: 'social',
-    titleTh: 'ชุดข้อสอบกลาง สังคมศึกษา ศาสนา และวัฒนธรรม',
-    titleEn: 'Central Social Studies & Civics Pack',
+    titleTh: 'ชุดที่ 1: ชุดข้อสอบกลาง สังคมศึกษา ศาสนา และวัฒนธรรม มาตรฐานรวม',
+    titleEn: 'Central Social Studies & Civics Pack (Set 1)',
     gradeLevel: 'ป.1 - ม.6',
     descriptionTh: 'รวมแนวข้อสอบภูมิศาสตร์ ประวัติศาสตร์ไทย ศาสนา หน้าที่พลเมือง อาเซียน และเศรษฐศาสตร์จุลภาค-มหภาค',
     pricingType: 'free',
     priceThb: 0,
     status: 'published',
     questions: buildPackQuestions('social', 'pack-central-soc-2569'),
-    createdBy: 'Super Admin',
-    publishedAt: '2026-11-01T08:00:00.000Z',
-    createdAt: '2026-11-01T08:00:00.000Z',
-    updatedAt: '2026-11-01T08:00:00.000Z',
-  },
-  {
-    id: 'pack-central-eng-2569',
-    strand: 'foreign_lang',
-    titleTh: 'ชุดข้อสอบกลาง ภาษาต่างประเทศ (English Mastery)',
-    titleEn: 'Central English Proficiency Exam Pack',
-    gradeLevel: 'ป.1 - ม.6',
-    descriptionTh: 'โจทย์ Grammar, Conversation, Passive Voice, Conditionals, Idioms และ Academic Vocabulary สำหรับใช้สอนและแข่งขัน 3D Arena',
-    pricingType: 'free',
-    priceThb: 0,
-    status: 'published',
-    questions: buildPackQuestions('foreign_lang', 'pack-central-eng-2569'),
+    questionCount: 8,
     createdBy: 'Super Admin',
     publishedAt: '2026-11-01T08:00:00.000Z',
     createdAt: '2026-11-01T08:00:00.000Z',
@@ -1238,49 +1230,94 @@ export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
   {
     id: 'pack-central-health-2569',
     strand: 'health_pe',
-    titleTh: 'แพ็กเกจพิเศษ: สุขศึกษา พลศึกษา & CPR มาตรฐานสากล',
-    titleEn: 'Premium Health, PE & First Aid Exam Pack',
+    titleTh: 'ชุดที่ 1 (พรีเมียม): สุขศึกษา พลศึกษา & CPR มาตรฐานสากล',
+    titleEn: 'Premium Health, PE & First Aid Exam Pack (Set 1)',
     gradeLevel: 'ป.1 - ม.6',
     descriptionTh: 'คลังข้อสอบด้านโภชนาการ สมรรถภาพทางกาย กติกากีฬาสากล การปฐมพยาบาล R.I.C.E. การทำ CPR 30:2 และสุขภาพจิตวัยเรียน',
     pricingType: 'paid',
     priceThb: 390,
     status: 'published',
     questions: buildPackQuestions('health_pe', 'pack-central-health-2569'),
+    questionCount: 8,
     createdBy: 'Super Admin',
-    publishedAt: '2026-11-05T09:00:00.000Z',
-    createdAt: '2026-11-05T09:00:00.000Z',
-    updatedAt: '2026-11-05T09:00:00.000Z',
+    publishedAt: '2026-11-01T09:00:00.000Z',
+    createdAt: '2026-11-01T09:00:00.000Z',
+    updatedAt: '2026-11-01T09:00:00.000Z',
   },
   {
     id: 'pack-central-arts-2569',
     strand: 'arts',
-    titleTh: 'แพ็กเกจพิเศษ: ศิลปะ ทัศนศิลป์ ดนตรี และนาฏศิลป์ไทย',
-    titleEn: 'Premium Arts, Music & Performing Arts Pack',
+    titleTh: 'ชุดที่ 1 (พรีเมียม): ศิลปะ ทัศนศิลป์ ดนตรี และนาฏศิลป์ไทย มาตรฐานรวม',
+    titleEn: 'Premium Arts, Music & Performing Arts Pack (Set 1)',
     gradeLevel: 'ป.1 - ม.6',
     descriptionTh: 'ชุดข้อสอบมาตรฐานครบทั้ง 3 แขนง: ทฤษฎีสี-องค์ประกอบศิลป์-Perspective, โน้ตดนตรีไทย/สากล และนาฏยศัพท์ไทย',
     pricingType: 'paid',
     priceThb: 490,
     status: 'published',
     questions: buildPackQuestions('arts', 'pack-central-arts-2569'),
+    questionCount: 8,
     createdBy: 'Super Admin',
-    publishedAt: '2026-11-06T09:00:00.000Z',
-    createdAt: '2026-11-06T09:00:00.000Z',
-    updatedAt: '2026-11-06T09:00:00.000Z',
+    publishedAt: '2026-11-01T09:00:00.000Z',
+    createdAt: '2026-11-01T09:00:00.000Z',
+    updatedAt: '2026-11-01T09:00:00.000Z',
   },
   {
     id: 'pack-central-career-2569',
     strand: 'career_tech',
-    titleTh: 'แพ็กเกจพิเศษ: การงานอาชีพ เกษตร คหกรรม และผู้ประกอบการ',
-    titleEn: 'Premium Occupations, Crafts & Entrepreneurship Pack',
+    titleTh: 'ชุดที่ 1 (พรีเมียม): การงานอาชีพ เกษตร คหกรรม และผู้ประกอบการ มาตรฐานรวม',
+    titleEn: 'Premium Occupations, Crafts & Entrepreneurship Pack (Set 1)',
     gradeLevel: 'ป.1 - ม.6',
     descriptionTh: 'ครอบคลุมการดูแลบ้าน เกษตรทฤษฎีใหม่ การถนอมอาหาร ความปลอดภัยงานช่าง การคำนวณต้นทุนกำไร และการเงินส่วนบุคคล',
     pricingType: 'paid',
     priceThb: 490,
     status: 'published',
     questions: buildPackQuestions('career_tech', 'pack-central-career-2569'),
+    questionCount: 8,
     createdBy: 'Super Admin',
-    publishedAt: '2026-11-07T09:00:00.000Z',
-    createdAt: '2026-11-07T09:00:00.000Z',
-    updatedAt: '2026-11-07T09:00:00.000Z',
+    publishedAt: '2026-11-01T09:00:00.000Z',
+    createdAt: '2026-11-01T09:00:00.000Z',
+    updatedAt: '2026-11-01T09:00:00.000Z',
+  },
+  {
+    id: 'pack-central-eng-2569',
+    strand: 'foreign_lang',
+    titleTh: 'ชุดที่ 1: ภาษาต่างประเทศ (English Mastery) มาตรฐานรวม',
+    titleEn: 'Central English Proficiency Exam Pack (Set 1)',
+    gradeLevel: 'ป.1 - ม.6',
+    descriptionTh: 'โจทย์ Grammar, Conversation, Passive Voice, Conditionals, Idioms และ Academic Vocabulary สำหรับใช้สอนและแข่งขัน 3D Arena',
+    pricingType: 'free',
+    priceThb: 0,
+    status: 'published',
+    questions: buildPackQuestions('foreign_lang', 'pack-central-eng-2569'),
+    questionCount: 8,
+    createdBy: 'Super Admin',
+    publishedAt: '2026-11-01T08:00:00.000Z',
+    createdAt: '2026-11-01T08:00:00.000Z',
+    updatedAt: '2026-11-01T08:00:00.000Z',
   },
 ];
+
+const EXTRA_PACKS_ALL: CentralExamPack[] = [
+  ...THAI_AND_MATH_EXTRA_PACKS,
+  ...SCIENCE_AND_SOCIAL_EXTRA_PACKS,
+  ...HEALTH_AND_ARTS_EXTRA_PACKS,
+  ...CAREER_AND_LANG_EXTRA_PACKS,
+];
+
+function extractSetNumber(pack: CentralExamPack): number {
+  const match = pack.id.match(/-set(\d+)-/i);
+  return match ? Number(match[1]) : 1;
+}
+
+const STRAND_ORDER = new Map<LearningStrandId, number>(
+  LEARNING_STRANDS.map((s, idx) => [s.id, idx])
+);
+
+export const DEFAULT_CENTRAL_EXAM_PACKS: CentralExamPack[] = [
+  ...BASE_SET01_CENTRAL_EXAM_PACKS,
+  ...EXTRA_PACKS_ALL,
+].sort((a, b) => {
+  const setDiff = extractSetNumber(a) - extractSetNumber(b);
+  if (setDiff !== 0) return setDiff;
+  return (STRAND_ORDER.get(a.strand) ?? 99) - (STRAND_ORDER.get(b.strand) ?? 99);
+});

@@ -69,6 +69,15 @@ function readLocalPacks(): CentralExamPack[] {
         merged.push(defPack);
       }
     }
+    const defaultIndexMap = new Map(DEFAULT_CENTRAL_EXAM_PACKS.map((p, idx) => [p.id, idx]));
+    merged.sort((a, b) => {
+      const idxA = defaultIndexMap.get(a.id);
+      const idxB = defaultIndexMap.get(b.id);
+      if (idxA === undefined && idxB === undefined) return 0;
+      if (idxA === undefined) return -1;
+      if (idxB === undefined) return 1;
+      return idxA - idxB;
+    });
     return merged;
   } catch {
     return DEFAULT_CENTRAL_EXAM_PACKS;

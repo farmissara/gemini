@@ -4,6 +4,8 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   CreditCard,
   Download,
@@ -55,6 +57,8 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   const [strandFilter, setStrandFilter] = useState<LearningStrandId | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [packPage, setPackPage] = useState(1);
+  const PACKS_PER_PAGE = 12;
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [inspectPackId, setInspectPackId] = useState<string | null>(null);
   const [pendingPackDeletion, setPendingPackDeletion] = useState<CentralExamPack | null>(null);
@@ -238,6 +242,17 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       return true;
     });
   }, [packs, strandFilter, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    setPackPage(1);
+  }, [strandFilter, statusFilter, searchQuery]);
+
+  const totalPackPages = Math.max(1, Math.ceil(filteredPacks.length / PACKS_PER_PAGE));
+  const safePackPage = Math.min(packPage, totalPackPages);
+  const paginatedPacks = useMemo(() => {
+    const start = (safePackPage - 1) * PACKS_PER_PAGE;
+    return filteredPacks.slice(start, start + PACKS_PER_PAGE);
+  }, [filteredPacks, safePackPage]);
 
   const filteredAuditList = useMemo(() => {
     return auditList.filter((item) => {
@@ -778,8 +793,9 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredPacks.map((pack) => {
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {paginatedPacks.map((pack) => {
             const strandMeta = getStrandMeta(pack.strand);
             const isInspecting = inspectPackId === pack.id;
             return (
@@ -935,6 +951,53 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
               </div>
             );
           })}
+          </div>
+
+          {filteredPacks.length > PACKS_PER_PAGE && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)] text-xs">
+              <span className="text-[var(--color-text-muted)] tabular-nums">
+                แสดงชุดที่ {((safePackPage - 1) * PACKS_PER_PAGE + 1).toLocaleString()}–
+                {Math.min(safePackPage * PACKS_PER_PAGE, filteredPacks.length).toLocaleString()} จาก{' '}
+                {filteredPacks.length.toLocaleString()} ชุด
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={safePackPage <= 1}
+                  onClick={() => setPackPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 font-semibold"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>ก่อนหน้า</span>
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPackPages }, (_, idx) => idx + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setPackPage(pageNum)}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold tabular-nums cursor-pointer transition ${
+                        pageNum === safePackPage
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  disabled={safePackPage >= totalPackPages}
+                  onClick={() => setPackPage((p) => Math.min(totalPackPages, p + 1))}
+                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 font-semibold"
+                >
+                  <span>ถัดไป</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

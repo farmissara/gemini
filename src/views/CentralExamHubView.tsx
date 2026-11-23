@@ -4,14 +4,16 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   Copy,
   CreditCard,
-  Download,
   Eye,
   FileText,
   Gift,
   Lock,
+  RotateCcw,
   Search,
   ShoppingBag,
   Sparkles,
@@ -19,7 +21,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { LEARNING_STRANDS } from '../data/examQuestionBanks';
+import { EXAM_GRADE_LEVELS, ExamGradeFilter, LEARNING_STRANDS } from '../data/examQuestionBanks';
 import {
   fetchCentralExamPaymentSettings,
   generatePromptPayPayload,
@@ -50,6 +52,17 @@ interface CentralExamPurchaseModalProps {
 }
 
 const getPackQuestionCount = (pack: CentralExamPack) => pack.questionCount ?? pack.questions.length;
+
+function matchesExamGradeFilter(gradeLevel: string, filter: ExamGradeFilter): boolean {
+  if (filter === 'all') return true;
+  const g = (gradeLevel || '').toLowerCase();
+  const isAllRange = /ป\.1\s*-\s*ม\.6|ป\.6\s*-\s*ม\.6/.test(g);
+  if (isAllRange) return true;
+  if (filter === 'primary') return /ป\.|ประถม/.test(g);
+  if (filter === 'm13') return /ม\.1|ม\.2|ม\.3|มัธยมศึกษาตอนต้น/.test(g);
+  if (filter === 'm46') return /ม\.4|ม\.5|ม\.6|มัธยมศึกษาตอนปลาย/.test(g);
+  return true;
+}
 
 const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
   pack,
@@ -406,8 +419,35 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
   const [processingPackId, setProcessingPackId] = useState<string | null>(null);
   const [previewPackId, setPreviewPackId] = useState<string | null>(null);
   const [checkoutPack, setCheckoutPack] = useState<CentralExamPack | null>(null);
+  const [popupStrandFilter, setPopupStrandFilter] = useState<LearningStrandId | 'all'>('all');
+  const [popupPage, setPopupPage] = useState(1);
+
+  useEffect(() => {
+    setPopupPage(1);
+  }, [popupStrandFilter, unclaimedPacks.length]);
+
+  const strandCounts = useMemo(() => {
+    const counts = new Map<LearningStrandId, number>();
+    for (const p of unclaimedPacks) {
+      counts.set(p.strand, (counts.get(p.strand) || 0) + 1);
+    }
+    return counts;
+  }, [unclaimedPacks]);
+
+  const visiblePopupPacks = useMemo(() => {
+    if (popupStrandFilter === 'all') return unclaimedPacks;
+    return unclaimedPacks.filter((p) => p.strand === popupStrandFilter);
+  }, [unclaimedPacks, popupStrandFilter]);
 
   if (!isOpen || unclaimedPacks.length === 0) return null;
+
+  const POPUP_PAGE_SIZE = 10;
+  const totalPopupPages = Math.max(1, Math.ceil(visiblePopupPacks.length / POPUP_PAGE_SIZE));
+  const safePopupPage = Math.min(popupPage, totalPopupPages);
+  const paginatedPopupPacks = visiblePopupPacks.slice(
+    (safePopupPage - 1) * POPUP_PAGE_SIZE,
+    safePopupPage * POPUP_PAGE_SIZE
+  );
 
   const freePacks = unclaimedPacks.filter((p) => p.pricingType === 'free');
   const paidPacks = unclaimedPacks.filter((p) => p.pricingType === 'paid');
@@ -443,7 +483,7 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
                 <span>แจ้งเตือนข้อสอบกลางชุดใหม่จากส่วนกลาง</span>
               </div>
               <h2 className="text-lg font-extrabold text-[var(--color-text-title)]">
-                มี {unclaimedPacks.length} ชุดข้อสอบใหม่ (รวม {totalNewQuestions} ข้อ) พร้อมใช้ใน {schoolName}
+                มี {unclaimedPacks.length} ชุดข้อสอบใหม่ (รวม {totalNewQuestions.toLocaleString()} ข้อ) พร้อมใช้ใน {schoolName}
               </h2>
               <p className="text-xs text-[var(--color-text-body)]">
                 ครอบคลุมคลังข้อสอบ 8 กลุ่มสาระการเรียนรู้ กดรับชุดฟรีได้ทันที หรือสั่งซื้อชุดเสริมเพื่อปลดล็อกให้ครูและนักเรียนใช้งาน
@@ -460,37 +500,72 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
           </div>
 
           {/* Summary Strip + Claim All Free */}
-          <div className="px-5 py-3 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex flex-wrap items-center gap-3 text-[var(--color-text-body)]">
-              <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
-                ชุดฟรี: {freePacks.length} ชุด
-              </span>
-              <span>·</span>
-              <span className="font-bold text-amber-700 dark:text-amber-300 tabular-nums">
-                ชุดแบบซื้อ: {paidPacks.length} ชุด
-              </span>
+          <div className="px-5 py-3 border-b border-[var(--color-border)] space-y-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-3 text-[var(--color-text-body)]">
+                <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                  ชุดฟรี: {freePacks.length} ชุด
+                </span>
+                <span aria-hidden="true">·</span>
+                <span className="font-bold text-amber-700 dark:text-amber-300 tabular-nums">
+                  ชุดแบบซื้อ: {paidPacks.length} ชุด
+                </span>
+              </div>
+
+              {freePacks.length > 0 && (
+                <button
+                  type="button"
+                  disabled={processingPackId !== null}
+                  onClick={() => void handleAllFree()}
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  <span>
+                    {processingPackId === 'all_free'
+                      ? 'กำลังเพิ่มเข้าโรงเรียน...'
+                      : `กดรับชุดฟรีทั้งหมด (${freePacks.length} ชุด)`}
+                  </span>
+                </button>
+              )}
             </div>
 
-            {freePacks.length > 0 && (
+            {/* Clean Strand Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-1 pt-1">
               <button
                 type="button"
-                disabled={processingPackId !== null}
-                onClick={() => void handleAllFree()}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold flex items-center gap-1.5 cursor-pointer"
+                onClick={() => setPopupStrandFilter('all')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer ${
+                  popupStrandFilter === 'all'
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                }`}
               >
-                <Gift className="w-3.5 h-3.5" />
-                <span>
-                  {processingPackId === 'all_free'
-                    ? 'กำลังเพิ่มเข้าโรงเรียน...'
-                    : `กดรับชุดฟรีทั้งหมด (${freePacks.length} ชุด)`}
-                </span>
+                ทั้งหมด ({unclaimedPacks.length})
               </button>
-            )}
+              {LEARNING_STRANDS.map((s) => {
+                const count = strandCounts.get(s.id) || 0;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setPopupStrandFilter(s.id)}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer tabular-nums ${
+                      popupStrandFilter === s.id
+                        ? 'bg-[var(--color-primary)] text-white'
+                        : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {s.code} · {s.nameTh} ({count})
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Scrollable List of New Packs */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-3">
-            {unclaimedPacks.map((pack) => {
+          <div className="flex-1 overflow-y-auto p-5 space-y-2.5">
+            {paginatedPopupPacks.map((pack) => {
               const strandMeta = getStrandMeta(pack.strand);
               const isFree = pack.pricingType === 'free';
               const isPreviewOpen = previewPackId === pack.id;
@@ -499,16 +574,18 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
               return (
                 <div
                   key={pack.id}
-                  className="p-4 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5"
+                  className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                        <span className="px-2 py-0.5 rounded bg-[var(--color-card)] border border-[var(--color-border)] font-bold text-[var(--color-text-title)]">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+                        <span className="font-bold text-[var(--color-text-title)]">
                           {strandMeta.code} · {strandMeta.nameTh}
                         </span>
-                        <span className="text-[var(--color-text-muted)]">· {pack.gradeLevel}</span>
-                        <span className="text-[var(--color-text-muted)] tabular-nums">· {getPackQuestionCount(pack)} ข้อ</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{pack.gradeLevel}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="tabular-nums">{getPackQuestionCount(pack)} ข้อ</span>
                       </div>
                       <h3 className="text-sm font-extrabold text-[var(--color-text-title)]">{pack.titleTh}</h3>
                       <p className="text-xs text-[var(--color-text-body)] line-clamp-2">{pack.descriptionTh}</p>
@@ -564,6 +641,34 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
                 </div>
               );
             })}
+
+            {totalPopupPages > 1 && (
+              <div className="pt-2 flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+                <span className="tabular-nums">
+                  หน้า {safePopupPage} / {totalPopupPages} (ทั้งหมด {visiblePopupPacks.length} ชุด)
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={safePopupPage <= 1}
+                    onClick={() => setPopupPage((p) => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>ก่อนหน้า</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={safePopupPage >= totalPopupPages}
+                    onClick={() => setPopupPage((p) => Math.min(totalPopupPages, p + 1))}
+                    className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                  >
+                    <span>ถัดไป</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -646,9 +751,11 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   onOpenCoordinationDesk,
 }) => {
   const [selectedStrand, setSelectedStrand] = useState<LearningStrandId | 'all'>('all');
+  const [gradeFilter, setGradeFilter] = useState<ExamGradeFilter>('all');
   const [pricingFilter, setPricingFilter] = useState<'all' | 'free' | 'paid'>('all');
   const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'unclaimed' | 'claimed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [previewPack, setPreviewPack] = useState<CentralExamPack | null>(null);
   const [checkoutPack, setCheckoutPack] = useState<CentralExamPack | null>(null);
   const [processingPackId, setProcessingPackId] = useState<string | null>(null);
@@ -657,6 +764,10 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   const [quizSyncTeacherFilter, setQuizSyncTeacherFilter] = useState<string>('all');
   const [quizSyncCourseId, setQuizSyncCourseId] = useState<string>('');
   const [quizScoreDrafts, setQuizScoreDrafts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStrand, gradeFilter, pricingFilter, ownershipFilter, searchQuery]);
 
   const quizSyncTeacherOptions = useMemo(
     () => buildCourseTeacherOptions(courses, teachers),
@@ -738,6 +849,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
     return publishedPacks.filter((p) => {
       const isClaimed = entitlementByPackId.has(p.id);
       if (selectedStrand !== 'all' && p.strand !== selectedStrand) return false;
+      if (!matchesExamGradeFilter(p.gradeLevel, gradeFilter)) return false;
       if (pricingFilter !== 'all' && p.pricingType !== pricingFilter) return false;
       if (ownershipFilter === 'claimed' && !isClaimed) return false;
       if (ownershipFilter === 'unclaimed' && isClaimed) return false;
@@ -745,19 +857,67 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
         const q = searchQuery.toLowerCase();
         return (
           p.titleTh.toLowerCase().includes(q) ||
+          p.titleEn.toLowerCase().includes(q) ||
           p.descriptionTh.toLowerCase().includes(q) ||
           p.gradeLevel.toLowerCase().includes(q)
         );
       }
       return true;
     });
-  }, [publishedPacks, entitlementByPackId, selectedStrand, pricingFilter, ownershipFilter, searchQuery]);
+  }, [publishedPacks, entitlementByPackId, selectedStrand, gradeFilter, pricingFilter, ownershipFilter, searchQuery]);
+
+  const PACKS_PER_PAGE = 12;
+  const totalPages = Math.max(1, Math.ceil(filteredPacks.length / PACKS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedPacks = useMemo(() => {
+    const start = (safePage - 1) * PACKS_PER_PAGE;
+    return filteredPacks.slice(start, start + PACKS_PER_PAGE);
+  }, [filteredPacks, safePage]);
+
+  const unclaimedFreeInView = useMemo(
+    () =>
+      filteredPacks.filter(
+        (p) => p.pricingType === 'free' && !entitlementByPackId.has(p.id)
+      ),
+    [filteredPacks, entitlementByPackId]
+  );
+
+  const hasActiveFilter =
+    selectedStrand !== 'all' ||
+    gradeFilter !== 'all' ||
+    pricingFilter !== 'all' ||
+    ownershipFilter !== 'all' ||
+    searchQuery.trim().length > 0;
+
+  const handleResetFilters = () => {
+    setSelectedStrand('all');
+    setGradeFilter('all');
+    setPricingFilter('all');
+    setOwnershipFilter('all');
+    setSearchQuery('');
+    setCurrentPage(1);
+  };
 
   const handleClaimFree = async (pack: CentralExamPack) => {
     setProcessingPackId(pack.id);
     try {
       await onClaimFreePack(pack);
       setToastMessage(`รับชุดข้อสอบ "${pack.titleTh}" (+${getPackQuestionCount(pack)} ข้อ) เข้าคลังโรงเรียนแล้ว`);
+    } finally {
+      setProcessingPackId(null);
+    }
+  };
+
+  const handleClaimAllFreeInView = async () => {
+    if (unclaimedFreeInView.length === 0) return;
+    setProcessingPackId('bulk_free_view');
+    let claimed = 0;
+    try {
+      for (const pack of unclaimedFreeInView) {
+        await onClaimFreePack(pack);
+        claimed += 1;
+      }
+      setToastMessage(`รับชุดข้อสอบฟรีเข้าคลังโรงเรียนสำเร็จ ${claimed} ชุด`);
     } finally {
       setProcessingPackId(null);
     }
@@ -843,7 +1003,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -857,6 +1017,20 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <select
+            aria-label="กรองตามระดับชั้น"
+            value={gradeFilter}
+            onChange={(e) => setGradeFilter(e.target.value as ExamGradeFilter)}
+            className="px-3 py-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+          >
+            {EXAM_GRADE_LEVELS.map((lvl) => (
+              <option key={lvl.id} value={lvl.id}>
+                {lvl.labelTh}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label="กรองตามประเภทราคา"
             value={pricingFilter}
             onChange={(e) => setPricingFilter(e.target.value as 'all' | 'free' | 'paid')}
             className="px-3 py-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
@@ -867,6 +1041,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
           </select>
 
           <select
+            aria-label="กรองตามสถานะการรับ"
             value={ownershipFilter}
             onChange={(e) => setOwnershipFilter(e.target.value as 'all' | 'unclaimed' | 'claimed')}
             className="px-3 py-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]"
@@ -879,122 +1054,215 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
               รับ/ซื้อเข้าโรงเรียนแล้ว ({publishedPacks.filter((p) => entitlementByPackId.has(p.id)).length})
             </option>
           </select>
+
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-2.5 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>ล้างตัวกรอง</span>
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Clean Status Strip & Quick Bulk Claim */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
+        <div className="tabular-nums">
+          {selectedStrand !== 'all' ? (
+            <span>
+              กลุ่มสาระฯ <strong className="text-[var(--color-text-title)]">{getStrandMeta(selectedStrand).nameTh}</strong> · พบ {filteredPacks.length} ชุด
+            </span>
+          ) : (
+            <span>
+              แสดง {(safePage - 1) * PACKS_PER_PAGE + (filteredPacks.length > 0 ? 1 : 0)}–
+              {Math.min(safePage * PACKS_PER_PAGE, filteredPacks.length)} จาก {filteredPacks.length} ชุด (8 สาระ × 10 ชุด)
+            </span>
+          )}
+        </div>
+
+        {canSchoolAdminAcquire && unclaimedFreeInView.length > 0 && (
+          <button
+            type="button"
+            disabled={processingPackId !== null}
+            onClick={() => void handleClaimAllFreeInView()}
+            className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+          >
+            <Gift className="w-3.5 h-3.5" />
+            <span>
+              {processingPackId === 'bulk_free_view'
+                ? 'กำลังรับชุดฟรีเข้าคลัง...'
+                : `รับชุดฟรีในหน้านี้ทั้งหมด (${unclaimedFreeInView.length} ชุด)`}
+            </span>
+          </button>
+        )}
+      </div>
+
       {/* Packs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredPacks.map((pack) => {
-          const strandMeta = getStrandMeta(pack.strand);
-          const entitlement = entitlementByPackId.get(pack.id);
-          const isFree = pack.pricingType === 'free';
+      {filteredPacks.length === 0 ? (
+        <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-10 text-center space-y-2">
+          <p className="text-sm font-bold text-[var(--color-text-title)]">ไม่พบชุดข้อสอบที่ตรงกับเงื่อนไขการค้นหา</p>
+          <p className="text-xs text-[var(--color-text-muted)]">ลองปรับคำค้นหาหรือล้างตัวกรองเพื่อดูชุดข้อสอบทั้งหมด</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {paginatedPacks.map((pack) => {
+            const strandMeta = getStrandMeta(pack.strand);
+            const entitlement = entitlementByPackId.get(pack.id);
+            const isFree = pack.pricingType === 'free';
 
-          return (
-            <div
-              key={pack.id}
-              className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 flex flex-col justify-between space-y-4"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="px-2 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-bold text-[var(--color-text-title)]">
-                    {strandMeta.code} · {strandMeta.nameTh}
-                  </span>
-                  {entitlement ? (
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>รับเข้าโรงเรียนแล้ว</span>
+            return (
+              <div
+                key={pack.id}
+                className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="font-bold text-[var(--color-text-muted)]">
+                      {strandMeta.code} · {strandMeta.nameTh}
                     </span>
-                  ) : isFree ? (
-                    <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">
-                      ฟรี (Free)
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-bold tabular-nums">
-                      ฿{pack.priceThb.toLocaleString()} / โรงเรียน
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="text-sm font-extrabold text-[var(--color-text-title)] leading-snug">
-                  {pack.titleTh}
-                </h3>
-                <p className="text-xs text-[var(--color-text-body)] line-clamp-2">{pack.descriptionTh}</p>
-
-                <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-2 pt-1">
-                  <span>ระดับชั้น: {pack.gradeLevel}</span>
-                  <span>·</span>
-                  <span className="tabular-nums font-semibold text-[var(--color-text-title)]">
-                    {getPackQuestionCount(pack)} ข้อ
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewPack(pack)}
-                  className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>ดูตัวอย่าง</span>
-                </button>
-
-                {entitlement ? (
-                  <div className="flex flex-wrap items-center gap-1.5 justify-end">
-                    {courses.length > 0 && onSyncQuizScoresToGradebook && (
-                      <button
-                        type="button"
-                        onClick={() => openQuizSyncModal(pack)}
-                        className="px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
-                      >
-                        ส่ง Quiz เข้าสมุดคะแนน
-                      </button>
+                    {entitlement ? (
+                      <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>รับเข้าโรงเรียนแล้ว</span>
+                      </span>
+                    ) : isFree ? (
+                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">
+                        ฟรี
+                      </span>
+                    ) : (
+                      <span className="text-amber-700 dark:text-amber-300 font-bold tabular-nums">
+                        ฿{pack.priceThb.toLocaleString()} / โรงเรียน
+                      </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={onOpenQuestionBankInEduBattle}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>เปิดใช้ในคลังข้อสอบ</span>
-                    </button>
                   </div>
-                ) : canSchoolAdminAcquire ? (
-                  isFree ? (
-                    <button
-                      type="button"
-                      disabled={processingPackId === pack.id}
-                      onClick={() => void handleClaimFree(pack)}
-                      className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Gift className="w-3.5 h-3.5" />
-                      <span>{processingPackId === pack.id ? 'กำลังรับ...' : 'กดรับข้อสอบฟรี'}</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setCheckoutPack(pack)}
-                      className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer tabular-nums"
-                    >
-                      <Coins className="w-3.5 h-3.5" />
-                      <span>สั่งซื้อ ฿{pack.priceThb.toLocaleString()}</span>
-                    </button>
-                  )
-                ) : (
+
+                  <h3 className="text-sm font-extrabold text-[var(--color-text-title)] leading-snug">
+                    {pack.titleTh}
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-body)] line-clamp-2">{pack.descriptionTh}</p>
+
+                  <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-2 pt-1">
+                    <span>{pack.gradeLevel}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="tabular-nums font-semibold text-[var(--color-text-title)]">
+                      {getPackQuestionCount(pack)} ข้อ
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={onOpenCoordinationDesk}
-                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    onClick={() => setPreviewPack(pack)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
                   >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>ให้ Admin โรงเรียนกดรับ/ซื้อ</span>
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>ดูตัวอย่าง</span>
                   </button>
-                )}
+
+                  {entitlement ? (
+                    <div className="flex flex-wrap items-center gap-1.5 justify-end">
+                      {courses.length > 0 && onSyncQuizScoresToGradebook && (
+                        <button
+                          type="button"
+                          onClick={() => openQuizSyncModal(pack)}
+                          className="px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
+                        >
+                          ส่ง Quiz เข้าสมุดคะแนน
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onOpenQuestionBankInEduBattle}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>เปิดใช้ในคลัง</span>
+                      </button>
+                    </div>
+                  ) : canSchoolAdminAcquire ? (
+                    isFree ? (
+                      <button
+                        type="button"
+                        disabled={processingPackId === pack.id || processingPackId === 'bulk_free_view'}
+                        onClick={() => void handleClaimFree(pack)}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Gift className="w-3.5 h-3.5" />
+                        <span>{processingPackId === pack.id ? 'กำลังรับ...' : 'กดรับข้อสอบฟรี'}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutPack(pack)}
+                        className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer tabular-nums"
+                      >
+                        <Coins className="w-3.5 h-3.5" />
+                        <span>สั่งซื้อ ฿{pack.priceThb.toLocaleString()}</span>
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onOpenCoordinationDesk}
+                      className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>ให้ Admin โรงเรียนกดรับ/ซื้อ</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination Bar */}
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--color-border)] text-xs">
+          <span className="text-[var(--color-text-muted)] tabular-nums">
+            หน้า {safePage} จาก {totalPages} ({filteredPacks.length} ชุดข้อสอบ)
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] disabled:opacity-40 cursor-pointer flex items-center gap-1 font-medium"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>ก่อนหน้า</span>
+            </button>
+            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => setCurrentPage(pageNum)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold tabular-nums cursor-pointer transition ${
+                  pageNum === safePage
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] disabled:opacity-40 cursor-pointer flex items-center gap-1 font-medium"
+            >
+              <span>ถัดไป</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sample Questions Preview Modal */}
       {previewPack && (
