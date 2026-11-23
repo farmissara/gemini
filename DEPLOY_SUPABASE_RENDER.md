@@ -45,6 +45,7 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 16. รัน `supabase/migrations/20261120_school_student_records.sql` เพื่อบันทึกแฟ้มผลงาน ข้อมูลพฤติกรรม SDQ และการเข้าห้องพยาบาล พร้อม RLS แยกโรงเรียนและนักเรียน
 17. รัน `supabase/migrations/20261120_school_lms_lessons.sql` เพื่อบันทึกบทเรียน LMS และสถานะเรียนจบรายบท พร้อม RLS แยกโรงเรียน/นักเรียน
 18. รัน `supabase/migrations/20261120_school_lms_teacher_course_rls.sql` เพื่อจำกัดการเพิ่ม/แก้ไขบทเรียนของครูให้ทำได้เฉพาะรายวิชาที่ได้รับมอบหมาย (ผู้ดูแลยังจัดการได้ทุกวิชา)
+19. รัน `supabase/migrations/20261123000005_school_ai_key_vault_and_quotas.sql` เพื่อเปิดคลัง Gemini API key แบบเข้ารหัสแยกโรงเรียนและโควตาคำขอรายเดือน
 
 หากต้องการเปิดใช้คิวอนุมัติการสมัครโรงเรียนในหน้า Super Admin ให้รัน `supabase/super_admin_registration_approval_migration.sql` เพิ่มใน SQL Editor ด้วย Migration นี้จำกัดสิทธิ์แก้ไขโปรไฟล์ไม่ให้ผู้ใช้เปลี่ยน role/สถานะของตนเอง และสร้าง RPC ที่ตรวจ role `super_admin` ฝั่งฐานข้อมูลก่อนอ่านหรืออนุมัติคำขอ
 
@@ -181,7 +182,9 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 ## ส่วนที่ 3: ตั้งค่าแอปและการบันทึกข้อมูล
 
-ตั้งค่า `VITE_SUPABASE_URL` และ `VITE_SUPABASE_ANON_KEY` (หรือ `VITE_SUPABASE_PUBLISHABLE_KEY`) ใน environment ของ Render และไฟล์ `.env.local` สำหรับพัฒนาในเครื่อง สำหรับ AI endpoints ให้ตั้งค่า `SUPABASE_URL`/`SUPABASE_ANON_KEY` และ `REDIS_REST_URL`/`REDIS_REST_TOKEN` บน production server ด้วย หากไม่มี Redis ระบบจะปิด AI endpoints ใน production เพื่อไม่ให้การจำกัดการเรียกถูกข้ามได้ ห้ามนำ `service_role` key หรือรหัสผ่านฐานข้อมูลมาใส่ใน `VITE_*` หรือ frontend
+ตั้งค่า `VITE_SUPABASE_URL` และ `VITE_SUPABASE_ANON_KEY` (หรือ `VITE_SUPABASE_PUBLISHABLE_KEY`) ใน environment ของ Render และไฟล์ `.env.local` สำหรับพัฒนาในเครื่อง สำหรับ AI endpoints ให้ตั้งค่า `SUPABASE_URL`/`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_REST_URL`/`REDIS_REST_TOKEN` และ `SCHOOL_AI_ENCRYPTION_KEY` บน production server ด้วย หากไม่มี Redis ระบบจะปิด AI endpoints ใน production เพื่อไม่ให้การจำกัดการเรียกถูกข้ามได้ สร้าง encryption key ด้วย `openssl rand -hex 32`; เก็บค่านี้ใน Render และสำรองไว้ในที่ปลอดภัย เพราะการเปลี่ยน key โดยไม่เข้ารหัสข้อมูลใหม่จะทำให้ถอดรหัส Gemini key ที่โรงเรียนบันทึกไว้ไม่ได้ ห้ามนำ `service_role` key, Gemini API key หรือรหัสผ่านฐานข้อมูลมาใส่ใน `VITE_*` หรือ frontend
+
+หลัง migration และ deploy แล้ว ผู้ดูแลโรงเรียนไปที่ **System Settings → Packages and AI** เพื่อใส่ Gemini API key จาก Google AI Studio และกำหนดโควตาคำขอต่อเดือน ระบบแสดงจำนวนคำขอและ token ที่ใช้ แต่โควตาคำขอไม่ใช่วงเงินเป็นบาท และ Google เรียกเก็บเงินกับ Google project ที่เป็นเจ้าของ API key โดยตรง API keys จะไม่ถูกรวมในไฟล์สำรอง ต้องตั้งใหม่หลัง restore
 
 หลังเข้าสู่ระบบ แอปจะโหลดและบันทึกข้อมูลนักเรียน รายวิชา คะแนน การเข้าเรียน ใบแจ้งหนี้ และประกาศของโรงเรียนที่บัญชีมีสิทธิ์ใช้งานโดยอัตโนมัติ หากตั้งค่า RLS หรือโปรไฟล์ไม่ครบ แอปจะแสดงข้อผิดพลาดและไม่ใช้ข้อมูลจำลองแทน
 

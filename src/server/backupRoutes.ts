@@ -19,7 +19,7 @@ const DIRECT_SCHOOL_TABLES = [
   'learning_indicators', 'leave_requests', 'parent_notifications', 'parent_student_links',
   'period_attendance', 'school_assignments', 'school_campus_gates', 'school_exam_entitlements',
   'school_lesson_completions', 'school_lms_lessons', 'school_package_orders',
-  'school_period_times', 'school_questions', 'school_student_records',
+  'school_period_times', 'school_questions', 'school_student_records', 'school_ai_requests',
   'staff_parent_invitations', 'student_account_invitations', 'student_career_quests',
   'student_learning_indicator_scores', 'students', 'teachers', 'timetable_slots',
 ] as const;
@@ -31,6 +31,7 @@ const ALLOWED_TABLES = new Set<string>([
 ]);
 const RESTORE_ORDER = [
   'schools', 'students', 'user_profiles', 'teachers', 'courses', 'central_exam_packs',
+  'school_ai_requests',
   'moe_standard_catalog', 'package_catalog', 'school_period_times', 'learning_indicator_sets',
   'learning_indicators', 'school_questions', 'school_lms_lessons',
   'school_campus_gates', 'school_exam_entitlements', 'school_package_orders',
@@ -44,6 +45,7 @@ const RESTORE_ORDER = [
 ];
 const OMITTED_TABLES: Record<string, string> = {
   parent_push_subscriptions: 'มี endpoint และกุญแจ push ที่เป็นข้อมูลรับรองเฉพาะอุปกรณ์ จึงไม่ส่งออก/นำเข้าข้ามระบบ',
+  school_ai_secrets: 'Gemini API keys เป็นข้อมูลลับและไม่รวมในไฟล์สำรอง โรงเรียนต้องตั้งค่าคีย์ใหม่หลังย้ายหรือกู้คืนระบบ',
 };
 const STORAGE_BUCKETS = ['school-logos', 'school-attachments', 'attendance-selfies'] as const;
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;

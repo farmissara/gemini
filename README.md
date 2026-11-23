@@ -36,4 +36,8 @@ Use the isolated local project to test without sending app queries to the hosted
 
 The current Supabase persistence covers students, courses, grades, attendance, invoices, announcements, assignments, homework submissions, student portfolios, behavior records, SDQ assessments, infirmary visits, LMS lessons, and student lesson progress after applying the related migrations. Other modules and third-party integrations are not yet production-backed.
 
+### Per-school Gemini AI credentials
+
+Apply [`20261123000005_school_ai_key_vault_and_quotas.sql`](./supabase/migrations/20261123000005_school_ai_key_vault_and_quotas.sql) before enabling per-school Gemini AI. Set `SCHOOL_AI_ENCRYPTION_KEY` in Render to a persistent 32-byte secret generated with `openssl rand -hex 32`; keep a protected copy and do not rotate it unless every saved school key is re-encrypted. School admins then enter their own Google AI Studio API key in System Settings → Packages and AI. Keys are AES-256-GCM encrypted in the database and never returned to the browser after saving. The monthly limit counts AI requests (10–20,000); Google bills the Google project that owns each key, so the in-app request quota is not a currency spending cap. AI keys are intentionally excluded from backups and must be entered again after restore or migration.
+
 Built with React 19, TypeScript, Tailwind CSS v4, Lucide Icons, and Vite.

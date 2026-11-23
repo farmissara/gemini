@@ -2,11 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   CreditCard,
+  KeyRound,
   Lock,
   Package,
   RefreshCw,
   ShieldCheck,
+  Save,
   Sparkles,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react';
@@ -43,6 +46,7 @@ import type {
   SchoolPackagePurchaseOrder,
   UserRole,
 } from '../../types';
+import { getSupabaseClient } from '../../lib/supabase';
 
 interface SchoolPackagesAndAiPanelProps {
   activeSchool: School;
@@ -68,7 +72,17 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
   const [billingCycle, setBillingCycle] = useState<'yearly' | 'monthly'>('yearly');
 
   const [aiHealthLoading, setAiHealthLoading] = useState(true);
-  const [geminiConfigured, setGeminiConfigured] = useState<boolean | null>(null);
+  const [schoolAiStatus, setSchoolAiStatus] = useState<{
+    configured: boolean;
+    keyLast4: string | null;
+    monthlyRequestLimit: number;
+    encryptionReady: boolean;
+    usage: { month: string; requests: number; promptTokens: number; outputTokens: number; remainingRequests: number };
+  } | null>(null);
+  const [schoolApiKeyDraft, setSchoolApiKeyDraft] = useState('');
+  const [monthlyRequestLimitDraft, setMonthlyRequestLimitDraft] = useState('300');
+  const [savingSchoolAi, setSavingSchoolAi] = useState(false);
+  const [schoolAiNotice, setSchoolAiNotice] = useState<string | null>(null);
   const [savingFlagsNotice, setSavingFlagsNotice] = useState<string | null>(null);
 
   // Checkout Modal State
@@ -84,17 +98,78 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
   const checkServerAiHealth = async () => {
     setAiHealthLoading(true);
     try {
-      const resp = await fetch('/api/health');
-      if (resp.ok) {
-        const json = (await resp.json()) as { geminiConfigured?: boolean };
-        setGeminiConfigured(Boolean(json.geminiConfigured));
-      } else {
-        setGeminiConfigured(false);
-      }
+      const client = getSupabaseClient();
+      if (!client) throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+      const { data } = await client.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+      const response = await fetch(`/api/school-ai/settings?schoolId=${encodeURIComponent(activeSchool.id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'อ่านสถานะ AI ของโรงเรียนไม่สำเร็จ');
+      const settings = result as NonNullable<typeof schoolAiStatus>;
+      setSchoolAiStatus(settings);
+      setMonthlyRequestLimitDraft(String(settings.monthlyRequestLimit || 300));
     } catch {
-      setGeminiConfigured(false);
+      setSchoolAiStatus(null);
     } finally {
       setAiHealthLoading(false);
+    }
+  };
+
+  const saveSchoolAiSettings = async (includeApiKey: boolean) => {
+    setSavingSchoolAi(true);
+    setSchoolAiNotice(null);
+    try {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+      const { data } = await client.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+      const response = await fetch('/api/school-ai/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          schoolId: activeSchool.id,
+          ...(includeApiKey ? { apiKey: schoolApiKeyDraft } : {}),
+          monthlyRequestLimit: Number(monthlyRequestLimitDraft),
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'บันทึกการตั้งค่า AI ไม่สำเร็จ');
+      setSchoolApiKeyDraft('');
+      setSchoolAiNotice(includeApiKey ? 'บันทึก API key ของโรงเรียนแบบเข้ารหัสแล้ว' : 'บันทึกโควตา AI ต่อเดือนแล้ว');
+      await checkServerAiHealth();
+    } catch (error) {
+      setSchoolAiNotice(error instanceof Error ? error.message : 'บันทึกการตั้งค่าไม่สำเร็จ');
+    } finally {
+      setSavingSchoolAi(false);
+    }
+  };
+
+  const removeSchoolAiKey = async () => {
+    if (!window.confirm('ลบ Gemini API key ของโรงเรียนนี้หรือไม่? ฟีเจอร์ AI จะหยุดทำงานจนกว่าจะเพิ่ม key ใหม่')) return;
+    setSavingSchoolAi(true);
+    setSchoolAiNotice(null);
+    try {
+      const client = getSupabaseClient();
+      if (!client) throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+      const { data } = await client.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('กรุณาเข้าสู่ระบบใหม่');
+      const response = await fetch(`/api/school-ai/settings?schoolId=${encodeURIComponent(activeSchool.id)}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'ลบ API key ไม่สำเร็จ');
+      setSchoolAiNotice('ลบ API key ของโรงเรียนแล้ว');
+      await checkServerAiHealth();
+    } catch (error) {
+      setSchoolAiNotice(error instanceof Error ? error.message : 'ลบ API key ไม่สำเร็จ');
+    } finally {
+      setSavingSchoolAi(false);
     }
   };
 
@@ -256,10 +331,10 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>การเปิดใช้งานฟังก์ชัน AI สำหรับนักเรียน (Server Environment Secret &amp; Student AI Gate)</span>
+              <span>Gemini AI และโควตาการใช้งานของโรงเรียน</span>
             </h3>
             <p className="text-xs text-[var(--color-text-body)]">
-              เพื่อความปลอดภัยของรหัสลับองค์กร คีย์ <span className="font-mono font-semibold">GEMINI_API_KEY</span> จะถูกเก็บไว้เฉพาะใน Environment Secrets ของเซิร์ฟเวอร์ (ไม่เก็บบนเบราว์เซอร์) และผู้ดูแลโรงเรียนสามารถเปิด/ปิดสิทธิ์ให้นักเรียนเข้าใช้งานชุด AI ได้ที่นี่
+              โรงเรียนใส่ Gemini API key ของตนเอง ระบบเข้ารหัสก่อนจัดเก็บ และคิดโควตาเป็นจำนวนคำขอต่อเดือน ผู้ดูแลระบบต้องตั้ง <span className="font-mono font-semibold">SCHOOL_AI_ENCRYPTION_KEY</span> ใน Render ก่อนใช้งาน
             </p>
           </div>
           <button
@@ -274,30 +349,30 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
-          {/* Server Secret Readiness Readout */}
+          {/* School-specific key and usage status */}
           <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold text-[var(--color-text-title)]">
-                สถานะ GEMINI_API_KEY บนเซิร์ฟเวอร์
+                สถานะ Gemini API key ของโรงเรียน
               </span>
               <span
                 className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                  geminiConfigured
+                  schoolAiStatus?.configured
                     ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
                     : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
                 }`}
               >
                 {aiHealthLoading
                   ? 'กำลังตรวจสอบ...'
-                  : geminiConfigured
-                    ? 'พร้อมใช้งาน (Server Configured)'
-                    : 'ยังไม่ได้ตั้งค่า Server Secret'}
+                  : schoolAiStatus?.configured
+                    ? `ตั้งค่าแล้ว · ลงท้าย ${schoolAiStatus.keyLast4 || '••••'}`
+                    : 'ยังไม่ได้ตั้งค่า API key'}
               </span>
             </div>
             <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
-              {geminiConfigured
-                ? 'เซิร์ฟเวอร์เชื่อมต่อ Gemini API Proxy (/api/ai/*) พร้อมประมวลผล Career Quest AI, Socratic Tutor และ Snap & Solve แล้ว'
-                : 'หากโรงเรียนต้องการเปิดใช้ AI กรุณาให้ผู้ดูแลระบบตั้งค่าตัวแปร GEMINI_API_KEY ใน Settings > Secrets (หรือไฟล์ .env บนเซิร์ฟเวอร์) แล้วรีสตาร์ทเซิร์ฟเวอร์'}
+              {schoolAiStatus?.configured
+                ? `Gemini ใน Career Quest ใช้คีย์และโควตาของโรงเรียนนี้ · เดือนนี้ใช้ ${schoolAiStatus.usage.requests}/${schoolAiStatus.monthlyRequestLimit} คำขอ · เหลือ ${schoolAiStatus.usage.remainingRequests} คำขอ`
+                : 'Career Quest AI จะใช้ไม่ได้จนกว่าโรงเรียนจะเพิ่มคีย์ของตนเอง โดยไม่มีการใช้คีย์หรือโควตาร่วมกับโรงเรียนอื่น'}
             </p>
           </div>
 
@@ -328,6 +403,85 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
               {flags.allowStudentsAi && anyAiModuleUnlocked ? 'เปิดให้นักเรียนใช้ AI' : 'ปิด AI สำหรับนักเรียน'}
             </button>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 className="text-xs font-bold text-[var(--color-text-title)]">ข้อมูล API key และโควตารายเดือน</h4>
+              <p className="text-[11px] text-[var(--color-text-muted)]">ใช้กับ Career Quest AI เท่านั้น คีย์จะไม่ถูกส่งกลับมาแสดงหลังบันทึก</p>
+            </div>
+            <div className="text-[11px] text-[var(--color-text-muted)]">
+              {schoolAiStatus ? `${schoolAiStatus.usage.promptTokens.toLocaleString()} input tokens · ${schoolAiStatus.usage.outputTokens.toLocaleString()} output tokens เดือนนี้` : ''}
+            </div>
+          </div>
+
+          {!schoolAiStatus?.encryptionReady && !aiHealthLoading && (
+            <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+              ระบบยังเข้ารหัสคีย์ไม่ได้ ให้ผู้ดูแลเพิ่ม `SCHOOL_AI_ENCRYPTION_KEY` ใน Environment ของ Render ก่อน (ใช้ค่า 32 bytes แบบ hex หรือ base64)
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px_auto] gap-2 items-end">
+            <label className="space-y-1">
+              <span className="text-[11px] font-semibold text-[var(--color-text-body)]">Gemini API key ของโรงเรียน</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={schoolApiKeyDraft}
+                onChange={(event) => setSchoolApiKeyDraft(event.target.value)}
+                placeholder={schoolAiStatus?.configured ? 'กรอกคีย์ใหม่เพื่อเปลี่ยนคีย์เดิม' : 'วาง API key จาก Google AI Studio'}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-semibold text-[var(--color-text-body)]">โควตาคำขอต่อเดือน</span>
+              <input
+                type="number"
+                min={10}
+                max={20000}
+                step={10}
+                value={monthlyRequestLimitDraft}
+                onChange={(event) => setMonthlyRequestLimitDraft(event.target.value)}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void saveSchoolAiSettings(true)}
+              disabled={savingSchoolAi || aiHealthLoading || !schoolAiStatus?.encryptionReady || !schoolApiKeyDraft.trim()}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+            >
+              <KeyRound className="h-3.5 w-3.5" /> บันทึกคีย์
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border)] pt-3">
+            <div role="status" className="text-[11px] text-[var(--color-text-muted)]">{schoolAiNotice || 'ตั้งโควตาได้ 10–20,000 คำขอต่อเดือน ระบบปฏิเสธคำขอเมื่อใช้ครบ'}</div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void saveSchoolAiSettings(false)}
+                disabled={savingSchoolAi || !schoolAiStatus?.configured}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text-title)] disabled:opacity-50"
+              >
+                <Save className="h-3.5 w-3.5" /> บันทึกโควตา
+              </button>
+              {schoolAiStatus?.configured && (
+                <button
+                  type="button"
+                  onClick={() => void removeSchoolAiKey()}
+                  disabled={savingSchoolAi}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> ลบคีย์
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="text-[10px] leading-relaxed text-[var(--color-text-muted)]">
+            Google เรียกเก็บค่าใช้ API จากบัญชี/โปรเจกต์ Google ที่สร้างคีย์นี้โดยตรง โควตาในระบบนี้จำกัดจำนวนคำขอต่อเดือน ไม่ใช่วงเงินเงินบาท และคีย์จะไม่รวมในไฟล์ Backup
+          </p>
         </div>
       </div>
 

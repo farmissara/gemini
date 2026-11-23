@@ -5,28 +5,16 @@ import http from 'node:http';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { loadEnv } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import { Type } from '@google/genai';
 import { backupRawParser, createBackupRouter } from './src/server/backupRoutes.ts';
 import { createStaffInviteEmailRouter } from './src/server/staffInviteEmailRoutes.ts';
+import { createSchoolAiRouter, finishSchoolAiRequest, getSchoolAiContext, prepareSchoolAiRequest, reserveSchoolAiRequest } from './src/server/schoolAiRoutes.ts';
 
 const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 const MODEL_NAME = 'gemini-4-hydrogen';
-
-function getGeminiClient(): GoogleGenAI | null {
-  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
-  if (!apiKey) return null;
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
 
 function getStageInstructions(stage: string): string {
   if (stage === 'primary') {
@@ -66,6 +54,22 @@ function handleGeminiError(res: Response, err: unknown) {
     error: 'GEMINI_UPSTREAM_ERROR',
     message,
   });
+}
+
+async function reserveCareerQuestAiQuota(req: Request, res: Response): Promise<boolean> {
+  const quota = await reserveSchoolAiRequest(req, getServerEnv);
+  if (quota.allowed) return true;
+  if (quota.reason === 'quota_exceeded') {
+    res.status(429).json({
+      error: 'SCHOOL_AI_MONTHLY_QUOTA_EXCEEDED',
+      message: `โรงเรียนใช้ Gemini ครบโควตาเดือนนี้แล้ว (${quota.used}/${quota.limit} ครั้ง)`,
+      used: quota.used,
+      limit: quota.limit,
+    });
+    return false;
+  }
+  res.status(503).json({ error: 'SCHOOL_AI_NOT_READY', message: 'ระบบ AI ของโรงเรียนยังไม่พร้อม กรุณาติดต่อผู้ดูแลระบบ' });
+  return false;
 }
 
 function getServerEnv(name: string): string {
@@ -232,6 +236,20 @@ async function requireActiveSupabaseUser(req: Request, res: Response, next: Next
       res.status(429).json({ error: 'AI_RATE_LIMITED', message: 'ใช้ AI ครบจำนวนชั่วคราวแล้ว กรุณาลองใหม่ภายหลัง' });
       return;
     }
+
+    if (!profile.school_id) {
+      res.status(403).json({ error: 'SCHOOL_REQUIRED', message: 'บัญชีนี้ยังไม่ได้ผูกกับโรงเรียน' });
+      return;
+    }
+    const schoolAi = await prepareSchoolAiRequest(req, profile.school_id, authData.user.id, getServerEnv);
+    if (!schoolAi.allowed) {
+      if (schoolAi.reason === 'key_missing') {
+        res.status(503).json({ error: 'SCHOOL_AI_KEY_NOT_CONFIGURED', message: 'โรงเรียนยังไม่ได้ตั้งค่า Gemini API key' });
+        return;
+      }
+      res.status(503).json({ error: 'SCHOOL_AI_NOT_READY', message: 'ระบบ AI ของโรงเรียนยังไม่พร้อม กรุณาติดต่อผู้ดูแลระบบ' });
+      return;
+    }
     next();
   } catch (err) {
     console.error('[Career Quest AI] Authentication error:', err instanceof Error ? err.message : String(err));
@@ -246,11 +264,13 @@ async function createApp() {
 
   app.use('/api/backup', createBackupRouter(getServerEnv));
   app.use('/api/staff-invitations', createStaffInviteEmailRouter(getServerEnv));
+  app.use('/api/school-ai', createSchoolAiRouter(getServerEnv));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({
       ok: true,
-      geminiConfigured: Boolean((process.env.GEMINI_API_KEY || '').trim()),
+      schoolAiMode: 'per_school',
+      schoolAiEncryptionConfigured: Boolean(getServerEnv('SCHOOL_AI_ENCRYPTION_KEY')),
       supabaseConfigured: Boolean(
         (getServerEnv('SUPABASE_URL') || getServerEnv('VITE_SUPABASE_URL')) &&
         (getServerEnv('SUPABASE_ANON_KEY') || getServerEnv('SUPABASE_PUBLISHABLE_KEY') ||
@@ -285,11 +305,11 @@ async function createApp() {
 
   // 1. Analyze any direct or custom dream career for the student
   app.post('/api/career-quest/analyze-career', async (req: Request, res: Response) => {
-    const ai = getGeminiClient();
+    const ai = getSchoolAiContext(req)?.client;
     if (!ai) {
       return res.status(503).json({
-        error: 'GEMINI_API_KEY_NOT_CONFIGURED',
-        message: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์',
+        error: 'SCHOOL_AI_KEY_NOT_CONFIGURED',
+        message: 'โรงเรียนยังไม่ได้ตั้งค่า Gemini API key',
       });
     }
 
@@ -301,6 +321,10 @@ async function createApp() {
       if (!careerQuery || !careerQuery.trim()) {
         return res.status(400).json({ error: 'INVALID_REQUEST', message: 'กรุณาระบุชื่ออาชีพที่ต้องการวิเคราะห์' });
       }
+      if (careerQuery.trim().length > 160) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ชื่ออาชีพยาวได้ไม่เกิน 160 ตัวอักษร' });
+      }
+      if (!(await reserveCareerQuestAiQuota(req, res))) return;
 
       const stage = String(studentContext?.stage || 'high');
       const prompt = [
@@ -367,20 +391,22 @@ async function createApp() {
         },
       });
 
+      await finishSchoolAiRequest(req, response.usageMetadata, 'succeeded', getServerEnv);
       const parsed = JSON.parse((response.text || '{}').trim());
       return res.json({ career: parsed });
     } catch (err) {
+      await finishSchoolAiRequest(req, null, 'failed', getServerEnv);
       return handleGeminiError(res, err);
     }
   });
 
   // 2. 5-question Career Vibe Quiz + Real Grades -> Top 3 Matches
   app.post('/api/career-quest/vibe-quiz', async (req: Request, res: Response) => {
-    const ai = getGeminiClient();
+    const ai = getSchoolAiContext(req)?.client;
     if (!ai) {
       return res.status(503).json({
-        error: 'GEMINI_API_KEY_NOT_CONFIGURED',
-        message: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์',
+        error: 'SCHOOL_AI_KEY_NOT_CONFIGURED',
+        message: 'โรงเรียนยังไม่ได้ตั้งค่า Gemini API key',
       });
     }
 
@@ -389,6 +415,13 @@ async function createApp() {
         quizAnswers?: Array<{ questionTh?: string; selectedLabelTh?: string; traitTag?: string }>;
         studentContext?: Record<string, unknown>;
       };
+      if (!Array.isArray(quizAnswers) || quizAnswers.length < 1 || quizAnswers.length > 20) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'กรุณาส่งคำตอบแบบทดสอบ 1–20 ข้อ' });
+      }
+      if (quizAnswers.some((answer) => String(answer.selectedLabelTh || '').length > 500 || String(answer.questionTh || '').length > 500)) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อความคำตอบยาวเกินกำหนด' });
+      }
+      if (!(await reserveCareerQuestAiQuota(req, res))) return;
       const stage = String(studentContext?.stage || 'high');
       const answersText = (quizAnswers || [])
         .map((a, idx) => `${idx + 1}. ${a.questionTh || ''} -> เลือก: ${a.selectedLabelTh || ''} (${a.traitTag || ''})`)
@@ -452,20 +485,22 @@ async function createApp() {
         },
       });
 
+      await finishSchoolAiRequest(req, response.usageMetadata, 'succeeded', getServerEnv);
       const parsed = JSON.parse((response.text || '{"matches":[]}').trim());
       return res.json(parsed);
     } catch (err) {
+      await finishSchoolAiRequest(req, null, 'failed', getServerEnv);
       return handleGeminiError(res, err);
     }
   });
 
   // 3. Refresh / Generate personalized 3-tier quests
   app.post('/api/career-quest/generate-quests', async (req: Request, res: Response) => {
-    const ai = getGeminiClient();
+    const ai = getSchoolAiContext(req)?.client;
     if (!ai) {
       return res.status(503).json({
-        error: 'GEMINI_API_KEY_NOT_CONFIGURED',
-        message: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์',
+        error: 'SCHOOL_AI_KEY_NOT_CONFIGURED',
+        message: 'โรงเรียนยังไม่ได้ตั้งค่า Gemini API key',
       });
     }
 
@@ -474,6 +509,10 @@ async function createApp() {
         careerTitleTh?: string;
         studentContext?: Record<string, unknown>;
       };
+      if (careerTitleTh && careerTitleTh.length > 160) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ชื่ออาชีพยาวได้ไม่เกิน 160 ตัวอักษร' });
+      }
+      if (!(await reserveCareerQuestAiQuota(req, res))) return;
       const stage = String(studentContext?.stage || 'high');
 
       const prompt = [
@@ -515,20 +554,22 @@ async function createApp() {
         },
       });
 
+      await finishSchoolAiRequest(req, response.usageMetadata, 'succeeded', getServerEnv);
       const parsed = JSON.parse((response.text || '{"quests":[]}').trim());
       return res.json(parsed);
     } catch (err) {
+      await finishSchoolAiRequest(req, null, 'failed', getServerEnv);
       return handleGeminiError(res, err);
     }
   });
 
   // 4. Interactive 3-5 turn AI Role-Play Mission
   app.post('/api/career-quest/roleplay', async (req: Request, res: Response) => {
-    const ai = getGeminiClient();
+    const ai = getSchoolAiContext(req)?.client;
     if (!ai) {
       return res.status(503).json({
-        error: 'GEMINI_API_KEY_NOT_CONFIGURED',
-        message: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์',
+        error: 'SCHOOL_AI_KEY_NOT_CONFIGURED',
+        message: 'โรงเรียนยังไม่ได้ตั้งค่า Gemini API key',
       });
     }
 
@@ -551,6 +592,10 @@ async function createApp() {
 
       const currentTurn = Math.max(1, Number(turnNumber) || 1);
       const totalTurns = Math.min(5, Math.max(3, Number(maxTurns) || 4));
+      if ((careerTitleTh || '').length > 160 || (chosenOptionText || '').length > 500 || !Array.isArray(history || []) || (history || []).length > 10 || (history || []).some((entry) => String(entry.text || '').length > 1000)) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อมูลสถานการณ์ยาวหรือมีจำนวนเกินกำหนด' });
+      }
+      if (!(await reserveCareerQuestAiQuota(req, res))) return;
       const isFinalTurn = currentTurn >= totalTurns;
 
       const historyText = (history || [])
@@ -611,20 +656,22 @@ async function createApp() {
         },
       });
 
+      await finishSchoolAiRequest(req, response.usageMetadata, 'succeeded', getServerEnv);
       const parsed = JSON.parse((response.text || '{}').trim());
       return res.json({ roleplay: parsed });
     } catch (err) {
+      await finishSchoolAiRequest(req, null, 'failed', getServerEnv);
       return handleGeminiError(res, err);
     }
   });
 
   // 5. AI Career Coach Personal Mentor
   app.post('/api/career-quest/coach', async (req: Request, res: Response) => {
-    const ai = getGeminiClient();
+    const ai = getSchoolAiContext(req)?.client;
     if (!ai) {
       return res.status(503).json({
-        error: 'GEMINI_API_KEY_NOT_CONFIGURED',
-        message: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์',
+        error: 'SCHOOL_AI_KEY_NOT_CONFIGURED',
+        message: 'โรงเรียนยังไม่ได้ตั้งค่า Gemini API key',
       });
     }
 
@@ -640,6 +687,10 @@ async function createApp() {
       if (!message || !message.trim()) {
         return res.status(400).json({ error: 'INVALID_REQUEST', message: 'กรุณาพิมพ์คำถามถึงพี่เลี้ยง AI' });
       }
+      if (message.trim().length > 2000 || (chatHistory || []).length > 50 || (chatHistory || []).some((entry) => String(entry.text || '').length > 2000)) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อความหรือประวัติสนทนายาวเกินกำหนด' });
+      }
+      if (!(await reserveCareerQuestAiQuota(req, res))) return;
 
       const stage = String(studentContext?.stage || 'high');
       const recentChat = (chatHistory || [])
@@ -679,9 +730,11 @@ async function createApp() {
         },
       });
 
+      await finishSchoolAiRequest(req, response.usageMetadata, 'succeeded', getServerEnv);
       const parsed = JSON.parse((response.text || '{}').trim());
       return res.json({ coach: parsed });
     } catch (err) {
+      await finishSchoolAiRequest(req, null, 'failed', getServerEnv);
       return handleGeminiError(res, err);
     }
   });
