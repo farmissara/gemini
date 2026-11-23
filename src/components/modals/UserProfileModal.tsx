@@ -206,7 +206,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   {formData.fullNameTh || formData.fullNameEn}
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-900 text-blue-100 border border-blue-600 uppercase font-bold">
-                  {currentUser.role === 'admin' ? 'School Admin' : currentUser.role === 'teacher' ? 'ครูผู้สอน' : currentUser.role === 'student' ? 'นักเรียน' : currentUser.role}
+                  {currentUser.role === 'super_admin' ? 'ผู้ดูแลระบบสูงสุด' : currentUser.role === 'admin' ? 'ผู้ดูแลโรงเรียน' : currentUser.role === 'teacher' ? 'ครูผู้สอน' : currentUser.role === 'student' ? 'นักเรียน' : currentUser.role === 'parent' ? 'ผู้ปกครอง' : currentUser.role}
                 </span>
               </div>
               <p className="text-xs text-slate-200 font-mono mt-0.5">
@@ -257,12 +257,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            {currentUser.role === 'student' ? <GraduationCap className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
+            {currentUser.role === 'student' ? <GraduationCap className="w-4 h-4" /> : currentUser.role === 'super_admin' ? <ShieldCheck className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
             <span>
-              {currentUser.role === 'student' ? 'การศึกษา & เป้าหมาย TCAS' : currentUser.role === 'teacher' ? 'วิชาการ & วิทยฐานะ ว.PA' : 'การบริหาร & ภาระงาน'}
+              {currentUser.role === 'student' ? 'การศึกษา & เป้าหมาย TCAS' : currentUser.role === 'teacher' ? 'วิชาการ & วิทยฐานะ ว.PA' : currentUser.role === 'super_admin' ? 'ข้อมูลผู้ดูแลระบบ' : currentUser.role === 'admin' ? 'ข้อมูลการบริหารโรงเรียน' : 'ข้อมูลการทำงาน'}
             </span>
           </button>
 
+          {currentUser.role !== 'super_admin' && <>
           <button
             type="button"
             onClick={() => setActiveTab('portfolio')}
@@ -288,6 +289,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <BookOpen className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
             <span>พรีวิวเล่ม Portfolio ดิจิทัล</span>
           </button>
+          </>}
         </div>
 
         {/* Modal Scrollable Body */}
@@ -822,8 +824,30 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               )}
 
-              {/* ADMIN PROFILE */}
-              {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
+              {currentUser.role === 'super_admin' && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-950 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-100">
+                    <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700 dark:text-indigo-300" />
+                    <div>
+                      <h4 className="text-sm font-extrabold">โปรไฟล์ผู้ดูแลระบบสูงสุด</h4>
+                      <p className="mt-1 text-xs leading-relaxed text-indigo-800 dark:text-indigo-200">บัญชีนี้ดูแลระบบส่วนกลางและสถานศึกษาทั้งหมด จึงไม่มีตำแหน่งหรือสำนักงานประจำโรงเรียน</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4">
+                      <p className="text-[11px] font-semibold text-[var(--color-text-muted)]">ระดับสิทธิ์</p>
+                      <p className="mt-1 font-bold text-[var(--color-text-title)]">ผู้ดูแลระบบสูงสุด</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4">
+                      <p className="text-[11px] font-semibold text-[var(--color-text-muted)]">ขอบเขตการดูแล</p>
+                      <p className="mt-1 font-bold text-[var(--color-text-title)]">ระบบส่วนกลางและทุกโรงเรียน</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SCHOOL ADMIN PROFILE */}
+              {currentUser.role === 'admin' && (
                 <div className="space-y-5">
                   <div className="p-4 rounded-2xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-start gap-3">
                     <Building2 className="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
@@ -880,7 +904,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               )}
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
+              {currentUser.role !== 'super_admin' && <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={onClose}
@@ -893,9 +917,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   className="px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-2 shadow-lg cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
-                  <span>บันทึกข้อมูลวิชาการ</span>
+                  <span>{currentUser.role === 'admin' ? 'บันทึกข้อมูลการบริหารโรงเรียน' : 'บันทึกข้อมูลวิชาการ'}</span>
                 </button>
-              </div>
+              </div>}
             </form>
           )}
 
