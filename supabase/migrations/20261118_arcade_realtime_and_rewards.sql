@@ -67,26 +67,115 @@ alter table public.arcade_player_profiles enable row level security;
 alter table public.arcade_reward_redemptions enable row level security;
 alter table public.arcade_custom_rewards enable row level security;
 
+-- Arcade data is private to active school members. Students can only change
+-- their own game profile; school staff can review redemptions and manage rewards.
 drop policy if exists "arcade_player_profiles_all" on public.arcade_player_profiles;
-create policy "arcade_player_profiles_all"
+drop policy if exists "arcade_player_profiles_school_read" on public.arcade_player_profiles;
+create policy "arcade_player_profiles_school_read"
   on public.arcade_player_profiles
-  for all
-  to anon, authenticated
-  using (true)
-  with check (true);
+  for select
+  to authenticated
+  using (
+    public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher', 'student', 'parent'])
+  );
+drop policy if exists "arcade_player_profiles_self_insert" on public.arcade_player_profiles;
+create policy "arcade_player_profiles_self_insert"
+  on public.arcade_player_profiles
+  for insert
+  to authenticated
+  with check (
+    user_id = auth.uid()::text
+    and role = public.current_user_role()
+    and role IN ('student', 'teacher')
+    and public.has_school_role(school_id, ARRAY['student', 'teacher'])
+  );
+drop policy if exists "arcade_player_profiles_self_update" on public.arcade_player_profiles;
+create policy "arcade_player_profiles_self_update"
+  on public.arcade_player_profiles
+  for update
+  to authenticated
+  using (
+    user_id = auth.uid()::text
+    and role = public.current_user_role()
+    and role IN ('student', 'teacher')
+    and public.has_school_role(school_id, ARRAY['student', 'teacher'])
+  )
+  with check (
+    user_id = auth.uid()::text
+    and role = public.current_user_role()
+    and role IN ('student', 'teacher')
+    and public.has_school_role(school_id, ARRAY['student', 'teacher'])
+  );
 
 drop policy if exists "arcade_reward_redemptions_all" on public.arcade_reward_redemptions;
-create policy "arcade_reward_redemptions_all"
+drop policy if exists "arcade_reward_redemptions_school_read" on public.arcade_reward_redemptions;
+create policy "arcade_reward_redemptions_school_read"
   on public.arcade_reward_redemptions
-  for all
-  to anon, authenticated
-  using (true)
-  with check (true);
+  for select
+  to authenticated
+  using (
+    (
+      user_id = auth.uid()::text
+      and public.has_school_role(school_id, ARRAY['student'])
+    )
+    or public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+  );
+drop policy if exists "arcade_reward_redemptions_student_insert" on public.arcade_reward_redemptions;
+create policy "arcade_reward_redemptions_student_insert"
+  on public.arcade_reward_redemptions
+  for insert
+  to authenticated
+  with check (
+    user_id = auth.uid()::text
+    and public.has_school_role(school_id, ARRAY['student'])
+    and status IN ('pending', 'approved')
+    and reviewed_by IS NULL
+    and reviewed_at IS NULL
+  );
+drop policy if exists "arcade_reward_redemptions_staff_update" on public.arcade_reward_redemptions;
+create policy "arcade_reward_redemptions_staff_update"
+  on public.arcade_reward_redemptions
+  for update
+  to authenticated
+  using (public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']))
+  with check (public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
 
 drop policy if exists "arcade_custom_rewards_all" on public.arcade_custom_rewards;
-create policy "arcade_custom_rewards_all"
+drop policy if exists "arcade_custom_rewards_school_read" on public.arcade_custom_rewards;
+create policy "arcade_custom_rewards_school_read"
   on public.arcade_custom_rewards
-  for all
-  to anon, authenticated
-  using (true)
-  with check (true);
+  for select
+  to authenticated
+  using (
+    public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher', 'student', 'parent'])
+  );
+drop policy if exists "arcade_custom_rewards_staff_insert" on public.arcade_custom_rewards;
+create policy "arcade_custom_rewards_staff_insert"
+  on public.arcade_custom_rewards
+  for insert
+  to authenticated
+  with check (public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
+drop policy if exists "arcade_custom_rewards_staff_update" on public.arcade_custom_rewards;
+create policy "arcade_custom_rewards_staff_update"
+  on public.arcade_custom_rewards
+  for update
+  to authenticated
+  using (public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']))
+  with check (public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher']));
+
+revoke all on public.arcade_player_profiles,
+  public.arcade_reward_redemptions,
+  public.arcade_custom_rewards from public, anon;
+grant select, insert, update on public.arcade_player_profiles to authenticated;
+grant select, insert, update on public.arcade_reward_redemptions to authenticated;
+grant select, insert, update on public.arcade_custom_rewards to authenticated;
+grant select, insert, update, delete on public.arcade_player_profiles,
+  public.arcade_reward_redemptions,
+  public.arcade_custom_rewards to service_role;
+
+-- Prevent a student client from changing redemption review fields.
+revoke update on public.arcade_reward_redemptions from authenticated;
+grant update (status, reviewed_by, reviewed_at, teacher_note)
+  on public.arcade_reward_redemptions to authenticated;
+
+notify pgrst, 'reload schema';
