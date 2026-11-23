@@ -10,7 +10,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: 22.12.0
+        value: 24.22.1
       - key: VITE_SUPABASE_URL
         value: https://fjjxsljqzwxboqupoloe.supabase.co
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
