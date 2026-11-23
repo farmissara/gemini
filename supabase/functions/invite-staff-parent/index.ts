@@ -143,7 +143,10 @@ Deno.serve(async (request) => {
   const redirectToInput = typeof payload.redirectTo === 'string' && /^https?:\/\//i.test(payload.redirectTo.trim())
     ? payload.redirectTo.trim()
     : null;
-  const appSiteUrl = Deno.env.get('APP_SITE_URL') || redirectToInput;
+  const configuredSiteUrl = Deno.env.get('APP_SITE_URL') || redirectToInput;
+  const appSiteUrl = configuredSiteUrl
+    ? `${new URL(configuredSiteUrl).origin}/?inviteId=${encodeURIComponent(invitation.id)}`
+    : undefined;
   const { error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
     ...(appSiteUrl ? { redirectTo: appSiteUrl } : {}),
     data: {

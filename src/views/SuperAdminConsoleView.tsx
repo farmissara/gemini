@@ -26,6 +26,7 @@ import {
   BookOpen,
   Trash2,
   Package,
+  DatabaseBackup,
 } from 'lucide-react';
 import { SuperAdminCentralExamManager } from './SuperAdminCentralExamManager';
 import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
@@ -88,6 +89,7 @@ interface SuperAdminConsoleViewProps {
   onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
   coordinationUnreadCount?: number;
   onOpenCoordinationDesk?: () => void;
+  onOpenBackupCenter?: () => void;
   initialSubTab?: 'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs';
 }
 
@@ -108,6 +110,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   onUpdateSchoolFeatureFlags,
   coordinationUnreadCount = 0,
   onOpenCoordinationDesk,
+  onOpenBackupCenter,
   initialSubTab,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs'>(
@@ -555,6 +558,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
             </div>
           </div>
         </div>
+        {onOpenBackupCenter && <button type="button" onClick={onOpenBackupCenter} className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100"><DatabaseBackup className="h-4 w-4"/>สำรอง/กู้คืนข้อมูล</button>}
 
         {/* Quick KPI stats & Urgent Desk Link */}
         <div className="flex flex-wrap items-center gap-2">

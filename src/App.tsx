@@ -201,6 +201,7 @@ import { UserProfileModal } from './components/modals/UserProfileModal';
 import { SystemSettingsView, type SystemSettingsTab } from './views/SystemSettingsView';
 import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
 import { DataImportExportModal } from './components/modals/DataImportExportModal';
+import { BackupCenterModal } from './components/modals/BackupCenterModal';
 import { ModuleGuideModal, type GuideModuleId, type ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
 import { GuideTourProvider } from './components/guide/GuideTourContext';
 import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboardingTutorModal';
@@ -746,6 +747,7 @@ export const App: React.FC = () => {
   const [isConfirmModalBusy, setIsConfirmModalBusy] = useState(false);
   const [showOnboardingTutorModal, setShowOnboardingTutorModal] = useState<boolean>(false);
   const [showImportExportModal, setShowImportExportModal] = useState<boolean>(false);
+  const [showBackupCenterModal, setShowBackupCenterModal] = useState(false);
   const [importExportInitialTab, setImportExportInitialTab] = useState<string>('students');
   const [showGpsModal, setShowGpsModal] = useState<boolean>(false);
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
@@ -5262,6 +5264,7 @@ export const App: React.FC = () => {
                     onToggleSchoolStatus={handleToggleSchoolStatus}
                     coordinationUnreadCount={coordinationUnreadCount}
                     onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
+                    onOpenBackupCenter={() => setShowBackupCenterModal(true)}
                     initialSubTab={superAdminSubTab}
                     onUpdateSchoolFeatureFlags={handleUpdateSchoolFeatureFlags}
                   />
@@ -6270,6 +6273,7 @@ export const App: React.FC = () => {
           semester={timetableSemester}
           lang={lang}
           initialTab={importExportInitialTab}
+          onOpenBackupCenter={currentRole === 'admin' || currentRole === 'super_admin' ? () => { setShowImportExportModal(false); setShowBackupCenterModal(true); } : undefined}
           onImportStudents={handleImportStudents}
           onImportTeachers={handleImportTeachers}
           onImportQuestions={handleImportQuestions}
@@ -6279,6 +6283,15 @@ export const App: React.FC = () => {
           onImportAttendance={handleBulkImportAttendance}
           onImportTimetableSlots={handleImportTimetableSlots}
           onClose={() => setShowImportExportModal(false)}
+        />
+      )}
+
+      {showBackupCenterModal && (currentRole === 'admin' || currentRole === 'super_admin') && (
+        <BackupCenterModal
+          isSuperAdmin={currentRole === 'super_admin'}
+          schools={schools}
+          activeSchoolId={activeSchool.id}
+          onClose={() => setShowBackupCenterModal(false)}
         />
       )}
 

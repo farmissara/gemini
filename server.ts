@@ -6,6 +6,8 @@ import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { loadEnv } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { backupRawParser, createBackupRouter } from './src/server/backupRoutes.ts';
+import { createStaffInviteEmailRouter } from './src/server/staffInviteEmailRoutes.ts';
 
 const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
@@ -239,7 +241,11 @@ async function requireActiveSupabaseUser(req: Request, res: Response, next: Next
 
 async function createApp() {
   const app = express();
+  app.use('/api/backup', backupRawParser());
   app.use(express.json({ limit: '64kb' }));
+
+  app.use('/api/backup', createBackupRouter(getServerEnv));
+  app.use('/api/staff-invitations', createStaffInviteEmailRouter(getServerEnv));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({

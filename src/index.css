@@ -27,15 +27,15 @@
    ======================================================== */
 
 :root {
-  --color-canvas: #f7f7f5;
+  --color-canvas: #f4f7f9;
   --color-card: #ffffff;
-  --color-card-subtle: #f3f3f1;
-  --color-border: #e7e7e3;
-  --color-text-title: #242421;
-  --color-text-body: #44443f;
-  --color-text-muted: #777770;
-  --color-primary: #285fc5;
-  --color-primary-hover: #214fa8;
+  --color-card-subtle: #f7f9fb;
+  --color-border: #dfe7ec;
+  --color-text-title: #182b39;
+  --color-text-body: #405765;
+  --color-text-muted: #657b88;
+  --color-primary: #285bd4;
+  --color-primary-hover: #204dbb;
   --color-primary-light: #edf3ff;
   --color-primary-text: #244f9b;
   --role-admin-accent: #14766e;
@@ -45,15 +45,15 @@
 /* Light Eye-Care Neutral Paper (สะอาด เรียบ คมชัดแบบ Apple / Linear) */
 .theme-light_warm,
 .theme-light {
-  --color-canvas: #f7f7f5;
+  --color-canvas: #f4f7f9;
   --color-card: #ffffff;
-  --color-card-subtle: #f3f3f1;
-  --color-border: #e7e7e3;
-  --color-text-title: #242421;
-  --color-text-body: #44443f;
-  --color-text-muted: #777770;
-  --color-primary: #285fc5;
-  --color-primary-hover: #214fa8;
+  --color-card-subtle: #f7f9fb;
+  --color-border: #dfe7ec;
+  --color-text-title: #182b39;
+  --color-text-body: #405765;
+  --color-text-muted: #657b88;
+  --color-primary: #285bd4;
+  --color-primary-hover: #204dbb;
   --color-primary-light: #edf3ff;
   --color-primary-text: #244f9b;
   background-color: var(--color-canvas);
@@ -62,13 +62,13 @@
 
 /* Light Soft Sky */
 .theme-light_sky {
-  --color-canvas: #f8fafc;
+  --color-canvas: #f3f7fb;
   --color-card: #ffffff;
-  --color-card-subtle: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-text-title: #0f172a;
-  --color-text-body: #334155;
-  --color-text-muted: #64748b;
+  --color-card-subtle: #f6f9fc;
+  --color-border: #dce6ef;
+  --color-text-title: #14283a;
+  --color-text-body: #3b5366;
+  --color-text-muted: #627b8d;
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;
   --color-primary-light: #eff6ff;
@@ -80,19 +80,19 @@
 /* Soft Dark Slate (Linear Dark Mode) */
 .theme-sapphire,
 .theme-dark {
-  --color-canvas: #0b0f17;
-  --color-card: #111827;
-  --color-card-subtle: #182234;
-  --color-border: #1f2937;
-  --color-text-title: #f8fafc;
-  --color-text-body: #e2e8f0;
-  --color-text-muted: #94a3b8;
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-primary-light: #1e293b;
-  --color-primary-text: #93c5fd;
-  --role-admin-accent: #5eead4;
-  --role-teacher-accent: #93c5fd;
+  --color-canvas: #111822;
+  --color-card: #192330;
+  --color-card-subtle: #202d3c;
+  --color-border: #304052;
+  --color-text-title: #f1f5f9;
+  --color-text-body: #d2dce5;
+  --color-text-muted: #9aabba;
+  --color-primary: #79a4ff;
+  --color-primary-hover: #9bbaff;
+  --color-primary-light: #24344d;
+  --color-primary-text: #a8c4ff;
+  --role-admin-accent: #66d6c6;
+  --role-teacher-accent: #a8c4ff;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
@@ -105,8 +105,8 @@
   .app-page-header {
     background: var(--color-card);
     border: 1px solid var(--color-border);
-    border-radius: 0.625rem;
-    box-shadow: none;
+    border-radius: 0.875rem;
+    box-shadow: 0 1px 2px rgb(24 43 57 / 0.035);
     color: var(--color-text-body);
   }
 
@@ -129,9 +129,9 @@
 
   .app-section-card {
     border: 1px solid var(--color-border);
-    border-radius: 0.625rem;
+    border-radius: 0.875rem;
     background: var(--color-card);
-    box-shadow: none;
+    box-shadow: 0 1px 2px rgb(24 43 57 / 0.025);
   }
 
   :is(.tone-1, .tone-2, .tone-3, .tone-4, .tone-5, .tone-6, .tone-7, .tone-8) :is(h1, h2, h3) {
@@ -322,14 +322,14 @@
   --tone-solid: var(--color-primary);
   --tone-solid-hover: var(--color-primary-hover);
 
-  --tone-1: #2f5bea; --tone-1-soft: #e9efff; --tone-1-solid: #1d4ed8; --tone-1-solid-hover: #1e40af;
-  --tone-2: #047857; --tone-2-soft: #e3f7ee; --tone-2-solid: #047857; --tone-2-solid-hover: #065f46;
-  --tone-3: #b45309; --tone-3-soft: #fdf2df; --tone-3-solid: #b45309; --tone-3-solid-hover: #92400e;
-  --tone-4: #be123c; --tone-4-soft: #fde9ee; --tone-4-solid: #be123c; --tone-4-solid-hover: #9f1239;
-  --tone-5: #6d28d9; --tone-5-soft: #f1eafd; --tone-5-solid: #6d28d9; --tone-5-solid-hover: #5b21b6;
-  --tone-6: #0e7490; --tone-6-soft: #e0f5fa; --tone-6-solid: #0e7490; --tone-6-solid-hover: #155e75;
-  --tone-7: #334155; --tone-7-soft: #eef2f6; --tone-7-solid: #334155; --tone-7-solid-hover: #1e293b;
-  --tone-8: #c2410c; --tone-8-soft: #fff0e7; --tone-8-solid: #c2410c; --tone-8-solid-hover: #9a3412;
+  --tone-1: #315fd2; --tone-1-soft: #edf2ff; --tone-1-solid: #285bd4; --tone-1-solid-hover: #204dbb;
+  --tone-2: #08785d; --tone-2-soft: #e7f6f0; --tone-2-solid: #08785d; --tone-2-solid-hover: #06634d;
+  --tone-3: #a85b0a; --tone-3-soft: #fff3df; --tone-3-solid: #a85b0a; --tone-3-solid-hover: #874806;
+  --tone-4: #b4234e; --tone-4-soft: #fff0f3; --tone-4-solid: #b4234e; --tone-4-solid-hover: #941b3f;
+  --tone-5: #6d3ac3; --tone-5-soft: #f3edff; --tone-5-solid: #6d3ac3; --tone-5-solid-hover: #572da2;
+  --tone-6: #087e8b; --tone-6-soft: #e7f6f7; --tone-6-solid: #087e8b; --tone-6-solid-hover: #066670;
+  --tone-7: #526274; --tone-7-soft: #edf1f5; --tone-7-solid: #435365; --tone-7-solid-hover: #344353;
+  --tone-8: #bd4d17; --tone-8-soft: #fff1e8; --tone-8-solid: #bd4d17; --tone-8-solid-hover: #983d11;
 }
 .dark {
   --tone-1: #8aa8ff; --tone-1-soft: rgb(47 91 234 / 0.22); --tone-1-solid: #2563eb; --tone-1-solid-hover: #1d4ed8;
@@ -342,7 +342,7 @@
   --tone-8: #fdba92; --tone-8-soft: rgb(194 65 12 / 0.22); --tone-8-solid: #c2410c; --tone-8-solid-hover: #9a3412;
 }
 .tone-1 { --tone: var(--tone-1); --tone-soft: var(--tone-1-soft); --tone-solid: var(--tone-1-solid); --tone-solid-hover: var(--tone-1-solid-hover); }
-.tone-2 { --tone: var(--tone-2); --tone-2-soft: var(--tone-2-soft); --tone-soft: var(--tone-2-soft); --tone-solid: var(--tone-2-solid); --tone-solid-hover: var(--tone-2-solid-hover); }
+.tone-2 { --tone: var(--tone-2); --tone-soft: var(--tone-2-soft); --tone-solid: var(--tone-2-solid); --tone-solid-hover: var(--tone-2-solid-hover); }
 .tone-3 { --tone: var(--tone-3); --tone-soft: var(--tone-3-soft); --tone-solid: var(--tone-3-solid); --tone-solid-hover: var(--tone-3-solid-hover); }
 .tone-4 { --tone: var(--tone-4); --tone-soft: var(--tone-4-soft); --tone-solid: var(--tone-4-solid); --tone-solid-hover: var(--tone-4-solid-hover); }
 .tone-5 { --tone: var(--tone-5); --tone-soft: var(--tone-5-soft); --tone-solid: var(--tone-5-solid); --tone-solid-hover: var(--tone-5-solid-hover); }
@@ -872,6 +872,141 @@ textarea::placeholder {
   .milestone-badge-sweep,
   .milestone-badge-ring {
     animation: none !important;
+  }
+}
+
+/* ========================================================
+   SHARED PRODUCT UI SYSTEM
+   Neutral work surfaces, semantic module color, compact controls.
+   ======================================================== */
+.app-workspace {
+  min-width: 0;
+  color: var(--color-text-body);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color-scheme: light;
+}
+
+.dark .app-workspace {
+  color-scheme: dark;
+}
+
+.app-workspace :is(.app-section-card, .saas-card, .frosted-card, .frosted-blue, .frosted-green, .frosted-purple, .frosted-orange, .frosted-amber) {
+  min-width: 0;
+  border-color: var(--color-border);
+  border-radius: 0.875rem;
+  background-color: var(--color-card);
+  color: var(--color-text-body);
+  box-shadow: 0 1px 2px rgb(24 43 57 / 0.035);
+}
+
+.app-workspace .app-page-header {
+  gap: 0.75rem;
+  border-radius: 0.875rem;
+}
+
+.app-workspace :is(h1, h2, h3, h4) {
+  text-wrap: pretty;
+}
+
+.app-workspace h1 {
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  font-weight: 750;
+}
+
+.app-workspace h2 {
+  line-height: 1.32;
+  letter-spacing: -0.018em;
+  font-weight: 700;
+}
+
+.app-workspace h3 {
+  line-height: 1.38;
+  font-weight: 650;
+}
+
+.app-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea) {
+  min-width: 0;
+  border-radius: 0.625rem;
+  color: var(--color-text-title);
+}
+
+.app-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select):not([class*="h-"]):not([class*="min-h-"]) {
+  min-height: 2.375rem;
+}
+
+.app-workspace textarea {
+  line-height: 1.5;
+}
+
+.app-workspace :is(.grid, .flex) > * {
+  min-width: 0;
+}
+
+.app-workspace .table-comfortable {
+  border-color: var(--color-border);
+  color: var(--color-text-body);
+}
+
+.app-workspace .table-comfortable thead th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.app-workspace .table-comfortable tbody td {
+  line-height: 1.4;
+}
+
+.app-workspace :is(.app-filter-bar, .toolbar-filter-zone, .fn-group, .fn-group-tone) {
+  min-width: 0;
+}
+
+.app-sidebar {
+  color: var(--color-text-body);
+}
+
+.app-sidebar .sidebar-category-trigger {
+  min-height: 2.5rem;
+}
+
+.app-sidebar .sidebar-category-trigger[data-expanded="true"] {
+  background: color-mix(in srgb, var(--tone-soft) 46%, var(--color-card));
+}
+
+.app-sidebar [data-nav-tab]:hover {
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.app-workspace :is(button, a[href], summary, [role="button"]) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 640px) {
+  .app-workspace {
+    font-size: 0.875rem;
+  }
+
+  .app-workspace .app-page-header {
+    align-items: flex-start;
+    padding-block: 0.625rem;
+    padding-inline: 0.75rem;
+  }
+
+  .app-workspace :is(.app-filter-bar, .toolbar-filter-zone) {
+    gap: 0.375rem;
+    padding: 0.5rem;
+  }
+
+  .app-workspace :is(.overflow-x-auto, .overflow-auto) {
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+  }
+
+  .app-workspace :is(.app-section-card, .saas-card, .frosted-card, .frosted-blue, .frosted-green, .frosted-purple, .frosted-orange, .frosted-amber) {
+    border-radius: 0.75rem;
   }
 }
 

@@ -630,11 +630,12 @@ export async function inviteStudentAccount(params: {
 
 export interface TeacherParentInviteResult {
   invitationId: string;
-  deliveryMethod: 'email_edge_function' | 'invite_link_rpc';
+  deliveryMethod: 'email_edge_function' | 'email_server' | 'invite_link_rpc';
   inviteUrl: string;
   email: string;
   inviteRole: 'teacher' | 'parent';
   fullNameTh?: string;
+  emailDeliveryError?: string;
 }
 
 export interface StaffParentInvitationPublicInfo {
@@ -730,6 +731,28 @@ export async function inviteTeacherOrParentAccount(params: {
   });
 
   if (!rpcError && typeof rpcId === 'string' && rpcId.length > 0) {
+    const emailResponse = await fetch('/api/staff-invitations/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        invitationId: rpcId,
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      }),
+    });
+    const emailResult = await emailResponse.json().catch(() => ({})) as { sent?: boolean; message?: string; error?: string };
+    if (emailResponse.ok && emailResult.sent) {
+      return {
+        invitationId: rpcId,
+        deliveryMethod: 'email_server',
+        inviteUrl: buildStaffInviteUrl(rpcId),
+        email: normalizedEmail,
+        inviteRole: params.inviteRole,
+        fullNameTh: params.fullNameTh?.trim(),
+      };
+    }
     return {
       invitationId: rpcId,
       deliveryMethod: 'invite_link_rpc',
@@ -737,6 +760,7 @@ export async function inviteTeacherOrParentAccount(params: {
       email: normalizedEmail,
       inviteRole: params.inviteRole,
       fullNameTh: params.fullNameTh?.trim(),
+      emailDeliveryError: emailResult.message || emailResult.error || 'เซิร์ฟเวอร์ยังส่งอีเมลอัตโนมัติไม่ได้',
     };
   }
 

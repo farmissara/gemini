@@ -66,6 +66,21 @@ interface AuthLayoutProps {
 }
 
 function getAuthErrorMessage(message: string, lang: AppLanguage): string {
+  if (/school registration is waiting for approval from a super admin/i.test(message)) {
+    return lang === 'th'
+      ? 'คำขอลงทะเบียนโรงเรียนอยู่ระหว่างรอผู้ดูแลระบบส่วนกลางอนุมัติ'
+      : 'Your school registration is waiting for Super Admin approval.';
+  }
+  if (/account is waiting for approval from your school administrator/i.test(message)) {
+    return lang === 'th'
+      ? 'บัญชีนี้ผ่านการเข้าสู่ระบบแล้ว และกำลังรอผู้ดูแลโรงเรียนอนุมัติ'
+      : 'Your credentials are valid. Your school administrator still needs to approve this account.';
+  }
+  if (/account is suspended/i.test(message)) {
+    return lang === 'th'
+      ? 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลโรงเรียน'
+      : 'This account is suspended. Contact your school administrator.';
+  }
   if (/error sending confirmation email|could not resend confirmation email|confirmation email|rate limit/i.test(message)) {
     return lang === 'th'
       ? 'คำขอถูกส่งเข้าสู่ระบบแล้ว ผู้ดูแลระบบส่วนกลาง (Super Admin) จะตรวจสอบและเปิดใช้งานให้จากในระบบโดยตรง'
@@ -474,8 +489,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       setError(
         mode === 'login' && message.toLowerCase().includes('invalid login credentials')
           ? lang === 'th'
-            ? 'อีเมล/รหัสประจำตัวหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีอยู่ระหว่างรอผู้ดูแลโรงเรียนอนุมัติ'
-            : 'Invalid credentials, or your account is awaiting school administrator approval.'
+            ? 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอีเมล/รหัสนักเรียนและรหัสผ่าน หรือยืนยันว่าบัญชีถูกสร้างในระบบนี้แล้ว'
+            : 'Sign-in failed. Check your email/Student ID and password, or confirm that this account was created in this system.'
           : getAuthErrorMessage(message, lang)
       );
     } finally {

@@ -15,3 +15,7 @@ services:
         value: https://fjjxsljqzwxboqupoloe.supabase.co
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: APP_SITE_URL
+        value: https://baanpakkru.onrender.com
