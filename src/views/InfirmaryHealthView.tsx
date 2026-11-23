@@ -41,6 +41,7 @@ interface InfirmaryHealthViewProps {
   onAddVisit: (visit: InfirmaryVisit) => void;
   lang: AppLanguage;
   currentRole: UserRole;
+  currentUserId: string;
 }
 
 export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
@@ -49,7 +50,8 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   students,
   onAddVisit,
   lang,
-  currentRole
+  currentRole,
+  currentUserId,
 }) => {
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
@@ -132,6 +134,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
     if (!isOnlineNow()) {
       enqueueOfflineAction({
         actionType: 'health_visit',
+        userId: currentUserId,
         schoolId: student.schoolId || 'school-1',
         description: `ห้องพยาบาล (ออฟไลน์): ${newVisit.studentName} - ${newVisit.symptoms}`,
         payload: newVisit,

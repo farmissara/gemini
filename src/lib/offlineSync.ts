@@ -12,6 +12,7 @@ export type OfflineActionType =
 
 export interface OfflineQueueItem {
   id: string;
+  userId?: string;
   actionType: OfflineActionType;
   schoolId: string;
   description: string;
@@ -34,6 +35,11 @@ export function getOfflineQueue(): OfflineQueueItem[] {
   }
 }
 
+export function getOfflineQueueForUser(userId?: string): OfflineQueueItem[] {
+  if (!userId) return [];
+  return getOfflineQueue().filter((item) => item.userId === userId);
+}
+
 export function saveOfflineQueue(items: OfflineQueueItem[]): void {
   if (typeof window === 'undefined') return;
   try {
@@ -46,13 +52,29 @@ export function saveOfflineQueue(items: OfflineQueueItem[]): void {
 
 export function enqueueOfflineAction(params: {
   actionType: OfflineActionType;
+  userId: string;
   schoolId: string;
   description: string;
   payload: any;
 }): OfflineQueueItem {
   const payload = params.payload;
+  if (!params.userId) {
+    console.warn('Offline action was not queued because no authenticated account owns it.');
+    return {
+      id: `off-unowned-${Date.now()}`,
+      userId: undefined,
+      actionType: params.actionType,
+      schoolId: params.schoolId,
+      description: params.description,
+      payload,
+      createdAt: new Date().toISOString(),
+      retryCount: 0,
+      status: 'failed',
+      lastError: 'ไม่สามารถระบุบัญชีผู้ใช้ของรายการออฟไลน์ได้',
+    };
+  }
   const existing = getOfflineQueue().find((item) => {
-    if (item.actionType !== params.actionType || item.schoolId !== params.schoolId) return false;
+    if (item.userId !== params.userId || item.actionType !== params.actionType || item.schoolId !== params.schoolId) return false;
     if (params.actionType === 'attendance') {
       const queuedDate = item.payload?.extra?.date || new Date(item.createdAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
       return Date.now() - new Date(item.createdAt).getTime() < 10_000 &&
@@ -68,6 +90,7 @@ export function enqueueOfflineAction(params: {
 
   const item: OfflineQueueItem = {
     id: `off-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: params.userId,
     actionType: params.actionType,
     schoolId: params.schoolId,
     description: params.description,
@@ -87,8 +110,9 @@ export function removeOfflineItem(id: string): void {
   saveOfflineQueue(queue.filter(q => q.id !== id));
 }
 
-export function clearOfflineQueue(): void {
-  saveOfflineQueue([]);
+export function clearOfflineQueue(userId?: string): void {
+  if (!userId) return;
+  saveOfflineQueue(getOfflineQueue().filter((item) => item.userId !== userId));
 }
 
 export function isOnlineNow(): boolean {
@@ -98,9 +122,11 @@ export function isOnlineNow(): boolean {
 
 // Process and sync pending queue when online
 export async function flushOfflineQueue(
-  handler: (item: OfflineQueueItem) => Promise<boolean>
+  handler: (item: OfflineQueueItem) => Promise<boolean>,
+  userId?: string,
 ): Promise<{ syncedCount: number; failedCount: number }> {
-  const queue = getOfflineQueue().filter(item => item.status === 'pending' || item.status === 'failed');
+  if (!userId) return { syncedCount: 0, failedCount: 0 };
+  const queue = getOfflineQueueForUser(userId).filter(item => item.status === 'pending' || item.status === 'failed');
   if (queue.length === 0) return { syncedCount: 0, failedCount: 0 };
 
   let syncedCount = 0;

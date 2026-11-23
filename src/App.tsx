@@ -46,13 +46,16 @@ import {
 } from './types';
 import {
   DEFAULT_ARCADE_REWARDS,
+  awardArcadeRewardEvent,
   computeRankTitle,
   computeUpdatedDailyStreak,
   createRewardRedemptionRequest,
+  loadAuthoritativeArcadeProfile,
   loadSchoolArcadeProfiles,
   loadSchoolRewardRedemptions,
   loadSchoolRewardsCatalog,
   saveSchoolCustomReward,
+  redeemArcadeReward,
   triggerHaptic,
   updateRewardRedemptionStatus,
   upsertArcadePlayerProfile,
@@ -133,6 +136,7 @@ import {
   saveQueuedAttendanceToDb,
 } from './lib/supabase';
 import { cleanupStudentCampusData } from './lib/campusDataStore';
+import { clearSchoolSnapshotsForUser } from './lib/offlineSchoolCache';
 import { hydrateSchoolRegistryFromSupabase } from './lib/studentRegistryStore';
 import {
   deleteSchoolStudentRecord,
@@ -1223,6 +1227,13 @@ export const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
+      if (currentUser?.id) {
+        try {
+          await clearSchoolSnapshotsForUser(currentUser.id);
+        } catch (cacheError) {
+          console.warn('Could not clear this account\'s offline data cache:', cacheError);
+        }
+      }
       await signOutFromSupabase();
       setBiometricSoftLock(null);
       setIsBiometricLocked(false);
@@ -2837,6 +2848,7 @@ export const App: React.FC = () => {
       void saveQueuedAttendanceToDb(queuedRecord).catch((error: unknown) => {
         enqueueOfflineAction({
           actionType: 'attendance',
+          userId: currentUser?.id || '',
           schoolId: activeSchool.id,
           description: `เช็คชื่อรอซิงค์: ${personName}`,
           payload: {
@@ -3783,7 +3795,8 @@ export const App: React.FC = () => {
 
   const handleEarnRewards = (userId: string, exp: number, gems: number, isWin: boolean) => {
     const resolvedUserId = userId === 'temp' && currentUser?.id ? currentUser.id : userId;
-    if (!resolvedUserId) return;
+    if (!resolvedUserId || !currentUser || resolvedUserId !== currentUser.id) return;
+    const eventId = globalThis.crypto?.randomUUID?.() || `arc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
     triggerHaptic(isWin ? 'success' : 'light');
 
@@ -3836,15 +3849,30 @@ export const App: React.FC = () => {
             unlockedItemIds: [],
           };
 
-      if (activeSchool.id) {
-        upsertArcadePlayerProfile(activeSchool.id, updatedProfile).catch(() => {});
-      }
-
       const nextList = existing
         ? prev.map((p) => (p.userId === resolvedUserId ? updatedProfile : p))
         : [updatedProfile, ...prev];
       return [...nextList].sort((a, b) => b.exp - a.exp);
     });
+
+    if (activeSchool.id) {
+      awardArcadeRewardEvent(activeSchool.id, eventId, Math.max(0, exp), Math.max(0, gems), isWin)
+        .then((authoritativeProfile) => {
+          if (!authoritativeProfile) return;
+          setPlayerScores((prev) => [
+            authoritativeProfile,
+            ...prev.filter((profile) => profile.userId !== authoritativeProfile.userId),
+          ].sort((a, b) => b.exp - a.exp));
+        })
+        .catch((error) => {
+          console.warn('Arcade reward was not accepted by the server:', error);
+          loadAuthoritativeArcadeProfile(activeSchool.id, resolvedUserId)
+            .then((authoritativeProfile) => setPlayerScores((prev) => authoritativeProfile
+              ? [authoritativeProfile, ...prev.filter((profile) => profile.userId !== resolvedUserId)]
+              : prev.filter((profile) => profile.userId !== resolvedUserId)))
+            .catch(() => {});
+        });
+    }
   };
 
   const handleRecordMilestoneActivity = (
@@ -3885,7 +3913,7 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleRedeemReward = (rewardId: string, costGems: number) => {
+  const handleRedeemReward = async (rewardId: string, costGems: number) => {
     if (!currentUser || !activeSchool.id) return;
     const item = rewardItems.find((r) => r.id === rewardId);
     const currentProfile = playerScores.find((p) => p.userId === currentUser.id);
@@ -3904,6 +3932,36 @@ export const App: React.FC = () => {
       return;
     }
 
+    const matchedStudent = students.find(
+      (s) => s.id === currentUser.studentRecordId || s.studentIdNumber === currentUser.studentIdNumber
+    );
+    const requestId = globalThis.crypto?.randomUUID?.() || `redeem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      const secureResult = await redeemArcadeReward(activeSchool.id, requestId, item.id);
+      if (secureResult) {
+        triggerHaptic('success');
+        setPlayerScores((prev) => [
+          secureResult.profile,
+          ...prev.filter((profile) => profile.userId !== secureResult.profile.userId),
+        ].sort((a, b) => b.exp - a.exp));
+        if (secureResult.redemption) {
+          setRewardRedemptions((prev) => [
+            secureResult.redemption!,
+            ...prev.filter((request) => request.id !== secureResult.redemption!.id),
+          ]);
+          setRewardItems((prev) => prev.map((reward) =>
+            reward.id === item.id && reward.stock > 0 ? { ...reward, stock: reward.stock - 1 } : reward
+          ));
+        }
+        return;
+      }
+    } catch (error) {
+      console.warn('Arcade redemption was not accepted by the server:', error);
+      triggerHaptic('error');
+      return;
+    }
+
+    // Local-only demo/offline mode. Persistent accounts use the atomic server RPC above.
     triggerHaptic('success');
 
     const nextUnlocked = isCosmetic
@@ -3932,7 +3990,7 @@ export const App: React.FC = () => {
         (s) => s.id === currentUser.studentRecordId || s.studentIdNumber === currentUser.studentIdNumber
       );
       const request: RewardRedemptionRequest = {
-        id: `redeem-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: requestId,
         schoolId: activeSchool.id,
         userId: currentUser.id,
         studentName: currentUser.fullNameTh || currentUser.fullNameEn || 'นักเรียน',
@@ -3983,38 +4041,22 @@ export const App: React.FC = () => {
     const reviewerName = currentUser.fullNameTh || currentUser.fullNameEn || 'ครูผู้ดูแล';
     triggerHaptic(status === 'approved' ? 'success' : 'light');
 
-    setRewardRedemptions((prev) =>
-      prev.map((r) =>
-        r.id === requestId
-          ? {
-              ...r,
-              status,
-              reviewedBy: reviewerName,
-              reviewedAt: new Date().toISOString(),
-              teacherNote,
-            }
-          : r
-      )
-    );
     updateRewardRedemptionStatus(
       activeSchool.id,
       requestId,
       status,
       reviewerName,
       teacherNote
-    ).catch(() => {});
-
-    // Refund Gems automatically when a school perk request is rejected
-    if (status === 'rejected') {
-      setPlayerScores((prev) =>
-        prev.map((p) => {
-          if (p.userId !== target.userId) return p;
-          const refunded = { ...p, gems: p.gems + target.costGems };
-          upsertArcadePlayerProfile(activeSchool.id, refunded).catch(() => {});
-          return refunded;
-        })
-      );
-    }
+    ).then((updatedProfile) => {
+      setRewardRedemptions((prev) => prev.map((request) => request.id === requestId
+        ? { ...request, status, reviewedBy: reviewerName, reviewedAt: new Date().toISOString(), teacherNote }
+        : request));
+      if (updatedProfile) {
+        setPlayerScores((prev) => [updatedProfile, ...prev.filter((profile) => profile.userId !== updatedProfile.userId)]);
+      }
+    }).catch((error) => {
+      console.warn('Arcade reward review was not accepted by the server:', error);
+    });
   };
 
   const handleCreateCustomReward = (item: RewardItem) => {
@@ -4266,6 +4308,7 @@ export const App: React.FC = () => {
         setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
         enqueueOfflineAction({
           actionType: 'health_visit',
+          userId: currentUser?.id || '',
           schoolId: activeSchool.id,
           description: `ห้องพยาบาลรอซิงค์: ${taggedVisit.studentName}`,
           payload: taggedVisit,
@@ -5012,7 +5055,7 @@ export const App: React.FC = () => {
         />
 
         {/* Offline Status Connectivity Banner */}
-        <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} isUsingCachedData={isUsingCachedSchoolData} />
+        <OfflineIndicator lang={lang} currentUserId={currentUser?.id} onSyncItem={handleSyncOfflineItem} isUsingCachedData={isUsingCachedSchoolData} />
         </ViewErrorBoundary>
       </div>
     );
@@ -5825,6 +5868,7 @@ export const App: React.FC = () => {
                     visits={viewInfirmaryVisits}
                     students={viewStudents}
                     onAddVisit={handleAddInfirmaryVisit}
+                    currentUserId={currentUser?.id || ''}
                     lang={lang}
                     currentRole={currentRole}
                     schoolId={activeSchool.id}
@@ -6502,7 +6546,7 @@ export const App: React.FC = () => {
       />
 
       {/* Offline Status Connectivity Banner */}
-      <OfflineIndicator lang={lang} onSyncItem={handleSyncOfflineItem} isUsingCachedData={isUsingCachedSchoolData} />
+      <OfflineIndicator lang={lang} currentUserId={currentUser?.id} onSyncItem={handleSyncOfflineItem} isUsingCachedData={isUsingCachedSchoolData} />
     </div>
     </GuideTourProvider>
   );

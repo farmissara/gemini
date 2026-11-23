@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { WifiOff, Wifi, RefreshCw, CheckCircle2, Clock, Trash2, X, Database } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
-import { getOfflineQueue, flushOfflineQueue, clearOfflineQueue, OfflineQueueItem } from '../../lib/offlineSync';
+import { getOfflineQueueForUser, flushOfflineQueue, clearOfflineQueue, OfflineQueueItem } from '../../lib/offlineSync';
 import { AppLanguage } from '../../types';
 
 interface OfflineIndicatorProps {
   lang?: AppLanguage;
   onSyncItem?: (item: OfflineQueueItem) => Promise<boolean>;
   isUsingCachedData?: boolean;
+  currentUserId?: string;
 }
 
 export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({ 
   lang = 'th',
   onSyncItem,
   isUsingCachedData = false,
+  currentUserId,
 }) => {
   const isOnline = useOnlineStatus();
   const [queue, setQueue] = useState<OfflineQueueItem[]>([]);
@@ -22,14 +24,14 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
   const [syncToast, setSyncToast] = useState<string | null>(null);
 
   useEffect(() => {
-    setQueue(getOfflineQueue());
+    setQueue(getOfflineQueueForUser(currentUserId));
 
     const handler = () => {
-      setQueue(getOfflineQueue());
+      setQueue(getOfflineQueueForUser(currentUserId));
     };
     window.addEventListener('eduverse:offline-queue-changed', handler);
     return () => window.removeEventListener('eduverse:offline-queue-changed', handler);
-  }, []);
+  }, [currentUserId]);
 
   // When coming back online, auto-sync if items are pending
   useEffect(() => {
@@ -60,7 +62,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
         // Simulated standard save
         await new Promise(r => setTimeout(r, 400));
         return true;
-      });
+      }, currentUserId);
 
       if (syncedCount > 0) {
         setSyncToast(lang === 'th' ? `ซิงค์ข้อมูลออฟไลน์ ${syncedCount} รายการขึ้นระบบเรียบร้อยแล้ว` : `Successfully synced ${syncedCount} offline records.`);
@@ -68,7 +70,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
       }
     } finally {
       setIsSyncing(false);
-      setQueue(getOfflineQueue());
+      setQueue(getOfflineQueueForUser(currentUserId));
     }
   };
 
@@ -186,7 +188,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    clearOfflineQueue();
+              clearOfflineQueue(currentUserId);
                     setQueue([]);
                   }}
                   className="text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"

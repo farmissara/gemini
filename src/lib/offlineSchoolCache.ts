@@ -81,3 +81,27 @@ export async function loadSchoolSnapshot(
     db.close();
   }
 }
+
+export async function clearSchoolSnapshotsForUser(userId: string): Promise<void> {
+  if (!userId || typeof indexedDB === 'undefined') return;
+  const db = await openCacheDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        const snapshot = cursor.value as SchoolSnapshot;
+        if (snapshot.userId === userId) cursor.delete();
+        cursor.continue();
+      };
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error('ล้างข้อมูลสำรองในเครื่องไม่สำเร็จ'));
+      transaction.onabort = () => reject(transaction.error || new Error('ยกเลิกล้างข้อมูลสำรองในเครื่อง'));
+    });
+  } finally {
+    db.close();
+  }
+}

@@ -271,6 +271,7 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
     if (!isOnlineNow()) {
       enqueueOfflineAction({
         actionType: 'attendance',
+        userId: currentUser?.id || '',
         schoolId: matched.schoolId || schoolId,
         description: `${scanMode === 'check_in' ? 'เช็คชื่อเข้าเรียน' : 'ปล่อยกลับบ้าน'} ${matched.firstNameTh} ${matched.lastNameTh} (${matched.studentIdNumber})`,
         payload: {

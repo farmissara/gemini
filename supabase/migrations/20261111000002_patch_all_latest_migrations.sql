@@ -1114,14 +1114,45 @@ CREATE INDEX IF NOT EXISTS idx_student_career_quests_student
 ALTER TABLE public.student_career_quests ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "student_career_quests_all" ON public.student_career_quests;
-CREATE POLICY "student_career_quests_all"
-    ON public.student_career_quests
-    FOR ALL
-    TO anon, authenticated
-    USING (true)
-    WITH CHECK (true);
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_career_quests TO anon, authenticated;
+DROP POLICY IF EXISTS "career_quest_owner_read" ON public.student_career_quests;
+CREATE POLICY "career_quest_owner_read" ON public.student_career_quests
+    FOR SELECT TO authenticated
+    USING (user_id = auth.uid()::text AND public.has_school_role(school_id, ARRAY['student']));
+DROP POLICY IF EXISTS "career_quest_shared_school_staff_read" ON public.student_career_quests;
+CREATE POLICY "career_quest_shared_school_staff_read" ON public.student_career_quests
+    FOR SELECT TO authenticated USING (
+        share_with_teachers_parents AND public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'teacher'])
+    );
+DROP POLICY IF EXISTS "career_quest_shared_parent_read" ON public.student_career_quests;
+CREATE POLICY "career_quest_shared_parent_read" ON public.student_career_quests
+    FOR SELECT TO authenticated USING (
+        share_with_teachers_parents AND student_id IS NOT NULL
+        AND public.has_school_role(school_id, ARRAY['parent'])
+        AND EXISTS (SELECT 1 FROM public.parent_student_links link
+            WHERE link.profile_id = auth.uid() AND link.school_id = student_career_quests.school_id
+                AND link.student_id = student_career_quests.student_id)
+    );
+DROP POLICY IF EXISTS "career_quest_owner_insert" ON public.student_career_quests;
+CREATE POLICY "career_quest_owner_insert" ON public.student_career_quests
+    FOR INSERT TO authenticated WITH CHECK (
+        user_id = auth.uid()::text AND public.has_school_role(school_id, ARRAY['student'])
+        AND student_id IS NOT DISTINCT FROM (SELECT profile.student_id FROM public.user_profiles profile WHERE profile.id = auth.uid())
+    );
+DROP POLICY IF EXISTS "career_quest_owner_update" ON public.student_career_quests;
+CREATE POLICY "career_quest_owner_update" ON public.student_career_quests
+    FOR UPDATE TO authenticated USING (
+        user_id = auth.uid()::text AND public.has_school_role(school_id, ARRAY['student'])
+    ) WITH CHECK (
+        user_id = auth.uid()::text AND public.has_school_role(school_id, ARRAY['student'])
+        AND student_id IS NOT DISTINCT FROM (SELECT profile.student_id FROM public.user_profiles profile WHERE profile.id = auth.uid())
+    );
+DROP POLICY IF EXISTS "career_quest_owner_delete" ON public.student_career_quests;
+CREATE POLICY "career_quest_owner_delete" ON public.student_career_quests
+    FOR DELETE TO authenticated USING (
+        user_id = auth.uid()::text AND public.has_school_role(school_id, ARRAY['student'])
+    );
+REVOKE ALL ON public.student_career_quests FROM PUBLIC, anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_career_quests TO authenticated;
 
 -- 6C. LEVELED PURCHASABLE PACKAGES, FULL FEATURE GATING & STUDENT AI ACCESS CONTROL
 ALTER TABLE public.schools

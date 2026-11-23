@@ -497,6 +497,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       if (offline) {
         enqueueOfflineAction({
           actionType: 'attendance',
+          userId: currentUser?.id || '',
           schoolId: activeSchool?.id || currentUser?.schoolId || 'school-1',
           description: `เช็คชื่อตนเอง (ออฟไลน์) ${loggedInProfile.userName}`,
           payload: {
@@ -543,6 +544,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       if (offline) {
         enqueueOfflineAction({
           actionType: 'attendance',
+          userId: currentUser?.id || '',
           schoolId: matchedScannerStudent.schoolId || activeSchool?.id || 'school-1',
           description: `สแกนเข้าเรียน (ออฟไลน์) ${matchedScannerStudent.firstNameTh} ${matchedScannerStudent.lastNameTh}`,
           payload: {

@@ -251,7 +251,34 @@ async function createApp() {
     res.json({
       ok: true,
       geminiConfigured: Boolean((process.env.GEMINI_API_KEY || '').trim()),
+      supabaseConfigured: Boolean(
+        (getServerEnv('SUPABASE_URL') || getServerEnv('VITE_SUPABASE_URL')) &&
+        (getServerEnv('SUPABASE_ANON_KEY') || getServerEnv('SUPABASE_PUBLISHABLE_KEY') ||
+          getServerEnv('VITE_SUPABASE_ANON_KEY') || getServerEnv('VITE_SUPABASE_PUBLISHABLE_KEY'))
+      ),
     });
+  });
+
+  // Readiness diagnostics are separate from liveness so an external database
+  // incident does not cause the host to restart a healthy web process.
+  app.get('/api/ready', async (_req: Request, res: Response) => {
+    const url = getServerEnv('SUPABASE_URL') || getServerEnv('VITE_SUPABASE_URL');
+    const key = getServerEnv('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !key) {
+      res.status(503).json({ ok: false, checks: { database: false, serviceRoleConfigured: false } });
+      return;
+    }
+    try {
+      const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { error } = await client.from('schools').select('id').limit(1);
+      if (error) {
+        res.status(503).json({ ok: false, checks: { database: false, serviceRoleConfigured: true } });
+        return;
+      }
+      res.json({ ok: true, checks: { database: true, serviceRoleConfigured: true } });
+    } catch {
+      res.status(503).json({ ok: false, checks: { database: false, serviceRoleConfigured: true } });
+    }
   });
 
   app.use('/api/career-quest', requireActiveSupabaseUser);

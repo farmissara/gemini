@@ -283,6 +283,30 @@ function writeLocalJson(key: string, value: unknown): void {
   }
 }
 
+function mapArcadeProfile(row: Record<string, unknown>, fallbackSchoolId = ''): PlayerScore {
+  const exp = Number(row.exp || 0);
+  return {
+    userId: String(row.user_id || ''),
+    schoolId: String(row.school_id || fallbackSchoolId),
+    studentId: row.student_id ? String(row.student_id) : undefined,
+    name: String(row.display_name || 'ผู้เล่น'),
+    role: row.role === 'teacher' ? 'teacher' : 'student',
+    avatarUrl: String(row.avatar_url || ''),
+    exp,
+    gems: Number(row.gems || 0),
+    rankTitle: String(row.rank_title || computeRankTitle(exp)),
+    battleWins: Number(row.battle_wins || 0),
+    streak: Number(row.win_streak || 0),
+    dailyStreak: Number(row.daily_streak || 0),
+    lastPlayedDate: row.last_played_date ? String(row.last_played_date) : undefined,
+    equippedFrameId: row.equipped_frame_id ? String(row.equipped_frame_id) : 'frame-default',
+    equippedTitle: row.equipped_title ? String(row.equipped_title) : undefined,
+    unlockedItemIds: Array.isArray(row.unlocked_item_ids)
+      ? (row.unlocked_item_ids as string[])
+      : [],
+  };
+}
+
 export async function loadSchoolArcadeProfiles(schoolId: string): Promise<PlayerScore[]> {
   if (!schoolId) return [];
   const localProfiles = readLocalJson<PlayerScore[]>(profilesStorageKey(schoolId), []);
@@ -306,26 +330,8 @@ export async function loadSchoolArcadeProfiles(schoolId: string): Promise<Player
       return [...localProfiles].sort((a, b) => b.exp - a.exp);
     }
 
-    const remoteProfiles: PlayerScore[] = (data || []).map((row: Record<string, unknown>) => ({
-      userId: String(row.user_id || ''),
-      schoolId: String(row.school_id || schoolId),
-      studentId: row.student_id ? String(row.student_id) : undefined,
-      name: String(row.display_name || 'ผู้เล่น'),
-      role: row.role === 'teacher' ? 'teacher' : 'student',
-      avatarUrl: String(row.avatar_url || ''),
-      exp: Number(row.exp || 0),
-      gems: Number(row.gems || 0),
-      rankTitle: String(row.rank_title || computeRankTitle(Number(row.exp || 0))),
-      battleWins: Number(row.battle_wins || 0),
-      streak: Number(row.win_streak || 0),
-      dailyStreak: Number(row.daily_streak || 0),
-      lastPlayedDate: row.last_played_date ? String(row.last_played_date) : undefined,
-      equippedFrameId: row.equipped_frame_id ? String(row.equipped_frame_id) : 'frame-default',
-      equippedTitle: row.equipped_title ? String(row.equipped_title) : undefined,
-      unlockedItemIds: Array.isArray(row.unlocked_item_ids)
-        ? (row.unlocked_item_ids as string[])
-        : [],
-    }));
+    const remoteProfiles: PlayerScore[] = (data || []).map((row: Record<string, unknown>) =>
+      mapArcadeProfile(row, schoolId));
 
     // Merge remote with any newer local-only profiles
     const byUserId = new Map<string, PlayerScore>();
@@ -345,6 +351,22 @@ export async function loadSchoolArcadeProfiles(schoolId: string): Promise<Player
   }
 }
 
+export async function loadAuthoritativeArcadeProfile(
+  schoolId: string,
+  userId: string,
+): Promise<PlayerScore | null> {
+  const client = getSupabaseClient();
+  if (!client || !schoolId || !userId) return null;
+  const { data, error } = await client.from('arcade_player_profiles').select('*')
+    .eq('school_id', schoolId).eq('user_id', userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const profile = mapArcadeProfile(data as Record<string, unknown>, schoolId);
+  const local = readLocalJson<PlayerScore[]>(profilesStorageKey(schoolId), []);
+  writeLocalJson(profilesStorageKey(schoolId), [profile, ...local.filter((entry) => entry.userId !== userId)]);
+  return profile;
+}
+
 export async function upsertArcadePlayerProfile(
   schoolId: string,
   profile: PlayerScore
@@ -362,34 +384,89 @@ export async function upsertArcadePlayerProfile(
   if (!client) return;
 
   try {
-    const { error } = await client.from('arcade_player_profiles').upsert(
-      {
-        school_id: schoolId,
-        user_id: profile.userId,
-        student_id: profile.studentId || null,
-        display_name: profile.name,
-        role: profile.role,
-        avatar_url: profile.avatarUrl || '',
-        exp: profile.exp,
-        gems: profile.gems,
-        rank_title: profile.rankTitle,
-        battle_wins: profile.battleWins,
-        win_streak: profile.streak,
-        daily_streak: profile.dailyStreak || 0,
-        last_played_date: profile.lastPlayedDate || null,
-        equipped_frame_id: profile.equippedFrameId || 'frame-default',
-        equipped_title: profile.equippedTitle || null,
-        unlocked_item_ids: profile.unlockedItemIds || [],
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'school_id,user_id' }
-    );
+    const { error } = await client.from('arcade_player_profiles').update({
+      equipped_frame_id: profile.equippedFrameId || 'frame-default',
+      equipped_title: profile.equippedTitle || null,
+      updated_at: new Date().toISOString(),
+    }).eq('school_id', schoolId).eq('user_id', profile.userId);
     if (error && !isMissingArcadeTableError(error)) {
       console.warn('Could not sync arcade_player_profiles:', error.message);
     }
   } catch {
     // Keep local cache safely
   }
+}
+
+export async function awardArcadeRewardEvent(
+  schoolId: string,
+  eventId: string,
+  exp: number,
+  gems: number,
+  isWin: boolean,
+): Promise<PlayerScore | null> {
+  const client = getSupabaseClient();
+  if (!client || !schoolId) return null;
+  const { data, error } = await client.rpc('arcade_apply_reward_event', {
+    target_school_id: schoolId,
+    target_event_id: eventId,
+    target_exp: exp,
+    target_gems: gems,
+    target_is_win: isWin,
+  });
+  if (error) throw new Error(error.message);
+  if (!data || typeof data !== 'object') return null;
+  const profile = mapArcadeProfile(data as Record<string, unknown>, schoolId);
+  const local = readLocalJson<PlayerScore[]>(profilesStorageKey(schoolId), []);
+  writeLocalJson(profilesStorageKey(schoolId), [
+    profile,
+    ...local.filter((entry) => entry.userId !== profile.userId),
+  ].sort((a, b) => b.exp - a.exp));
+  return profile;
+}
+
+export async function redeemArcadeReward(
+  schoolId: string,
+  requestId: string,
+  itemId: string,
+): Promise<{ profile: PlayerScore; redemption: RewardRedemptionRequest | null } | null> {
+  const client = getSupabaseClient();
+  if (!client || !schoolId) return null;
+  const { data, error } = await client.rpc('arcade_redeem_reward', {
+    target_school_id: schoolId,
+    target_request_id: requestId,
+    target_item_id: itemId,
+  });
+  if (error) throw new Error(error.message);
+  const result = data as Record<string, unknown> | null;
+  if (!result || typeof result.profile !== 'object' || !result.profile) return null;
+  const profile = mapArcadeProfile(result.profile as Record<string, unknown>, schoolId);
+  let redemption: RewardRedemptionRequest | null = null;
+  if (result.redemption && typeof result.redemption === 'object') {
+    const row = result.redemption as Record<string, unknown>;
+    redemption = {
+      id: String(row.id || requestId),
+      schoolId: String(row.school_id || schoolId),
+      userId: String(row.user_id || profile.userId),
+      studentName: String(row.student_name || profile.name),
+      gradeRoom: row.grade_room ? String(row.grade_room) : undefined,
+      itemId: String(row.item_id || itemId),
+      itemTitleTh: String(row.item_title_th || 'รางวัล'),
+      costGems: Number(row.cost_gems || 0),
+      category: (row.category as RewardItem['category']) || 'perk',
+      status: (row.status as RewardRedemptionRequest['status']) || 'pending',
+      requestedAt: String(row.requested_at || new Date().toISOString()),
+      reviewedBy: row.reviewed_by ? String(row.reviewed_by) : undefined,
+      reviewedAt: row.reviewed_at ? String(row.reviewed_at) : undefined,
+      teacherNote: row.teacher_note ? String(row.teacher_note) : undefined,
+    };
+  }
+  const localProfiles = readLocalJson<PlayerScore[]>(profilesStorageKey(schoolId), []);
+  writeLocalJson(profilesStorageKey(schoolId), [profile, ...localProfiles.filter((entry) => entry.userId !== profile.userId)]);
+  if (redemption) {
+    const localRequests = readLocalJson<RewardRedemptionRequest[]>(redemptionsStorageKey(schoolId), []);
+    writeLocalJson(redemptionsStorageKey(schoolId), [redemption, ...localRequests.filter((entry) => entry.id !== redemption?.id)]);
+  }
+  return { profile, redemption };
 }
 
 export async function loadSchoolRewardRedemptions(
@@ -455,33 +532,6 @@ export async function createRewardRedemptionRequest(
   const existing = readLocalJson<RewardRedemptionRequest[]>(redemptionsStorageKey(schoolId), []);
   const next = [req, ...existing.filter((r) => r.id !== req.id)];
   writeLocalJson(redemptionsStorageKey(schoolId), next);
-
-  const client = getSupabaseClient();
-  if (!client) return;
-
-  try {
-    const { error } = await client.from('arcade_reward_redemptions').insert({
-      id: req.id,
-      school_id: schoolId,
-      user_id: req.userId,
-      student_name: req.studentName,
-      grade_room: req.gradeRoom || null,
-      item_id: req.itemId,
-      item_title_th: req.itemTitleTh,
-      cost_gems: req.costGems,
-      category: req.category,
-      status: req.status,
-      requested_at: req.requestedAt,
-      reviewed_by: req.reviewedBy || null,
-      reviewed_at: req.reviewedAt || null,
-      teacher_note: req.teacherNote || null,
-    });
-    if (error && !isMissingArcadeTableError(error)) {
-      console.warn('Could not insert arcade_reward_redemptions:', error.message);
-    }
-  } catch {
-    // Keep local cache safely
-  }
 }
 
 export async function updateRewardRedemptionStatus(
@@ -490,36 +540,66 @@ export async function updateRewardRedemptionStatus(
   status: 'approved' | 'rejected',
   reviewedBy: string,
   teacherNote?: string
-): Promise<void> {
-  if (!schoolId) return;
+): Promise<PlayerScore | null> {
+  if (!schoolId) return null;
   const reviewedAt = new Date().toISOString();
+  const client = getSupabaseClient();
+  if (client) {
+    const { data, error } = await client.rpc('arcade_review_reward_redemption', {
+      target_school_id: schoolId,
+      target_request_id: requestId,
+      target_status: status,
+      target_reviewer: reviewedBy,
+      target_note: teacherNote || null,
+    });
+    if (error) throw new Error(error.message);
+    const result = data as Record<string, unknown> | null;
+    if (result?.redemption && typeof result.redemption === 'object') {
+      const row = result.redemption as Record<string, unknown>;
+      const localRequests = readLocalJson<RewardRedemptionRequest[]>(redemptionsStorageKey(schoolId), []);
+      const reviewed: RewardRedemptionRequest = {
+        id: String(row.id || requestId),
+        schoolId: String(row.school_id || schoolId),
+        userId: String(row.user_id || ''),
+        studentName: String(row.student_name || 'นักเรียน'),
+        gradeRoom: row.grade_room ? String(row.grade_room) : undefined,
+        itemId: String(row.item_id || ''),
+        itemTitleTh: String(row.item_title_th || 'รางวัล'),
+        costGems: Number(row.cost_gems || 0),
+        category: (row.category as RewardItem['category']) || 'perk',
+        status: (row.status as RewardRedemptionRequest['status']) || status,
+        requestedAt: String(row.requested_at || reviewedAt),
+        reviewedBy: row.reviewed_by ? String(row.reviewed_by) : undefined,
+        reviewedAt: row.reviewed_at ? String(row.reviewed_at) : undefined,
+        teacherNote: row.teacher_note ? String(row.teacher_note) : undefined,
+      };
+      writeLocalJson(redemptionsStorageKey(schoolId), localRequests.map((entry) => entry.id === requestId ? reviewed : entry));
+    }
+    if (result?.profile && typeof result.profile === 'object') {
+      const profile = mapArcadeProfile(result.profile as Record<string, unknown>, schoolId);
+      const localProfiles = readLocalJson<PlayerScore[]>(profilesStorageKey(schoolId), []);
+      writeLocalJson(profilesStorageKey(schoolId), [profile, ...localProfiles.filter((entry) => entry.userId !== profile.userId)]);
+      return profile;
+    }
+    return null;
+  }
   const existing = readLocalJson<RewardRedemptionRequest[]>(redemptionsStorageKey(schoolId), []);
   const next = existing.map((r) =>
     r.id === requestId ? { ...r, status, reviewedBy, reviewedAt, teacherNote } : r
   );
   writeLocalJson(redemptionsStorageKey(schoolId), next);
-
-  const client = getSupabaseClient();
-  if (!client) return;
-
-  try {
-    const { error } = await client
-      .from('arcade_reward_redemptions')
-      .update({
-        status,
-        reviewed_by: reviewedBy,
-        reviewed_at: reviewedAt,
-        teacher_note: teacherNote || null,
-      })
-      .eq('id', requestId)
-      .eq('school_id', schoolId);
-
-    if (error && !isMissingArcadeTableError(error)) {
-      console.warn('Could not update arcade_reward_redemptions:', error.message);
+  if (status === 'rejected') {
+    const target = existing.find((request) => request.id === requestId);
+    if (target) {
+      const players = readLocalJson<PlayerScore[]>(profilesStorageKey(schoolId), []);
+      const refunded = players.map((player) => player.userId === target.userId
+        ? { ...player, gems: player.gems + target.costGems }
+        : player);
+      writeLocalJson(profilesStorageKey(schoolId), refunded);
+      return refunded.find((player) => player.userId === target.userId) || null;
     }
-  } catch {
-    // Keep local cache safely
   }
+  return null;
 }
 
 export async function loadSchoolRewardsCatalog(schoolId: string): Promise<RewardItem[]> {
