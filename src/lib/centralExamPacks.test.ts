@@ -4,6 +4,10 @@ import {
   DEFAULT_CENTRAL_EXAM_PACKS,
   LEARNING_STRANDS,
 } from '../data/examQuestionBanks';
+import {
+  countMissingBuiltInPacks,
+  sortCentralExamPacks,
+} from './centralExamBank';
 
 describe('Central Exam Bank (คลังข้อสอบกลาง 10 ชุด/สาระ)', () => {
   it('provides exactly 10 published exam packs for each of the 8 learning strands (80 total)', () => {
@@ -67,5 +71,27 @@ describe('Central Exam Bank (คลังข้อสอบกลาง 10 ช�
         );
       }
     }
+  });
+
+  it('detects missing built-in packs and sorts custom packs before canonical built-in order', () => {
+    assert.equal(countMissingBuiltInPacks([]), 80);
+    assert.equal(countMissingBuiltInPacks(DEFAULT_CENTRAL_EXAM_PACKS.slice(0, 8)), 72);
+    assert.equal(countMissingBuiltInPacks(DEFAULT_CENTRAL_EXAM_PACKS), 0);
+
+    const customPack = {
+      ...DEFAULT_CENTRAL_EXAM_PACKS[0],
+      id: 'pack-custom-test-1',
+      updatedAt: '2026-11-23T05:00:00.000Z',
+    };
+    const reversedWithCustom = [
+      DEFAULT_CENTRAL_EXAM_PACKS[10],
+      DEFAULT_CENTRAL_EXAM_PACKS[0],
+      customPack,
+    ];
+    const sorted = sortCentralExamPacks(reversedWithCustom);
+    assert.deepEqual(
+      sorted.map((p) => p.id),
+      ['pack-custom-test-1', DEFAULT_CENTRAL_EXAM_PACKS[0].id, DEFAULT_CENTRAL_EXAM_PACKS[10].id]
+    );
   });
 });

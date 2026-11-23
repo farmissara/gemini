@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   BookOpen,
@@ -16,6 +16,7 @@ import {
   Globe,
   Layers,
   Plus,
+  RefreshCw,
   Search,
   Send,
   ShieldAlert,
@@ -29,12 +30,15 @@ import { LEARNING_STRANDS } from '../data/examQuestionBanks';
 import {
   buildCentralExamCsvTemplate,
   CENTRAL_EXAMS_UPDATED_EVENT,
+  countMissingBuiltInPacks,
   deleteCentralExamPack,
   fetchAllAuditEntitlements,
   fetchCentralExamPacks,
   getStrandMeta,
+  hasBuiltInSeedCompleted,
   parseExamQuestionsCsvOrJson,
   revokeExamEntitlement,
+  syncMissingDefaultCentralExamPacksToSupabase,
   upsertCentralExamPack,
   verifyExamEntitlement,
 } from '../lib/centralExamBank';
@@ -54,6 +58,8 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
 }) => {
   const [packs, setPacks] = useState<CentralExamPack[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSyncingDefaults, setIsSyncingDefaults] = useState(false);
+  const skipNextEventReloadRef = useRef(false);
   const [strandFilter, setStrandFilter] = useState<LearningStrandId | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,7 +145,29 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   const loadPacks = async () => {
     setLoading(true);
     try {
-      const list = await fetchCentralExamPacks(isDemoMode);
+      let list = await fetchCentralExamPacks(isDemoMode);
+      const missingCount = countMissingBuiltInPacks(list);
+
+      if (!isDemoMode && missingCount > 0 && (list.length === 0 || !hasBuiltInSeedCompleted())) {
+        try {
+          skipNextEventReloadRef.current = true;
+          const synced = await syncMissingDefaultCentralExamPacksToSupabase(list, { isDemoMode });
+          list = synced.packs;
+          if (synced.insertedCount > 0) {
+            setFeedbackMessage({
+              type: 'success',
+              text: `นำเข้าชุดข้อสอบกลางมาตรฐานเข้าสู่ฐานข้อมูลแล้ว ${synced.insertedCount} ชุด (รวม ${list.length} ชุด · 8 กลุ่มสาระฯ)`,
+            });
+          }
+        } catch (syncError) {
+          skipNextEventReloadRef.current = false;
+          setFeedbackMessage({
+            type: 'error',
+            text: syncError instanceof Error ? syncError.message : String(syncError),
+          });
+        }
+      }
+
       setPacks(list);
       if (!importExistingPackId && list.length > 0) {
         setImportExistingPackId(list[0].id);
@@ -154,10 +182,41 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     }
   };
 
+  const handleSyncBuiltInPacks = async () => {
+    setIsSyncingDefaults(true);
+    try {
+      skipNextEventReloadRef.current = true;
+      const result = await syncMissingDefaultCentralExamPacksToSupabase(packs, { isDemoMode });
+      setPacks(result.packs);
+      if (!importExistingPackId && result.packs.length > 0) {
+        setImportExistingPackId(result.packs[0].id);
+      }
+      setFeedbackMessage({
+        type: 'success',
+        text: result.alreadyComplete
+          ? `คลังข้อสอบกลางครบทั้ง ${result.packs.length} ชุดแล้ว`
+          : `เติมชุดข้อสอบกลางมาตรฐานเข้าสู่ระบบเรียบร้อยแล้ว +${result.insertedCount} ชุด (รวม ${result.packs.length} ชุด)`,
+      });
+    } catch (error) {
+      skipNextEventReloadRef.current = false;
+      setFeedbackMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'ไม่สามารถนำเข้าชุดข้อสอบกลางมาตรฐานได้',
+      });
+    } finally {
+      setIsSyncingDefaults(false);
+    }
+  };
+
   useEffect(() => {
     void loadPacks();
     void loadAuditList();
     const handleUpdate = () => {
+      if (skipNextEventReloadRef.current) {
+        skipNextEventReloadRef.current = false;
+        void loadAuditList();
+        return;
+      }
       void loadPacks();
       void loadAuditList();
     };
@@ -223,6 +282,11 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
 
   const totalQuestionsCount = useMemo(
     () => packs.reduce((sum, p) => sum + p.questions.length, 0),
+    [packs]
+  );
+
+  const missingBuiltInCount = useMemo(
+    () => countMissingBuiltInPacks(packs),
     [packs]
   );
 
@@ -619,6 +683,21 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {!isDemoMode && missingBuiltInCount > 0 && (
+            <button
+              type="button"
+              disabled={isSyncingDefaults}
+              onClick={() => void handleSyncBuiltInPacks()}
+              className="btn-tool-tone disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDefaults ? 'animate-spin' : ''}`} />
+              <span>
+                {isSyncingDefaults
+                  ? 'กำลังซิงก์ข้อสอบ...'
+                  : `เติมข้อสอบกลาง (+${missingBuiltInCount} ชุด)`}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             onClick={handleDownloadCsvTemplate}
@@ -786,11 +865,30 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
           กำลังโหลดคลังข้อสอบกลาง 8 สาระการเรียนรู้...
         </div>
       ) : filteredPacks.length === 0 ? (
-        <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-8 text-center space-y-2">
+        <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-8 text-center space-y-3">
           <p className="text-sm font-bold text-[var(--color-text-title)]">ไม่พบชุดข้อสอบที่ตรงกับเงื่อนไข</p>
           <p className="text-xs text-[var(--color-text-muted)]">
-            ลองเปลี่ยนตัวกรองสาระวิชา หรือกด "สร้างชุดข้อสอบกลางใหม่" เพื่อเริ่มต้น
+            {packs.length === 0 && !isDemoMode
+              ? 'ยังไม่มีชุดข้อสอบกลางในฐานข้อมูล Supabase สามารถกดปุ่มด้านล่างเพื่อซิงก์ชุดข้อสอบมาตรฐานทั้ง 80 ชุด (8 กลุ่มสาระฯ) ได้ทันที'
+              : 'ลองเปลี่ยนตัวกรองสาระวิชา หรือกด "สร้างชุดข้อสอบกลางใหม่" เพื่อเริ่มต้น'}
           </p>
+          {!isDemoMode && missingBuiltInCount > 0 && (
+            <div className="pt-1 flex justify-center">
+              <button
+                type="button"
+                disabled={isSyncingDefaults}
+                onClick={() => void handleSyncBuiltInPacks()}
+                className="btn-action-primary disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncingDefaults ? 'animate-spin' : ''}`} />
+                <span>
+                  {isSyncingDefaults
+                    ? 'กำลังนำเข้าข้อสอบกลาง 80 ชุด...'
+                    : `ซิงก์ชุดข้อสอบกลางมาตรฐาน (${missingBuiltInCount} ชุด / 8 สาระ)`}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

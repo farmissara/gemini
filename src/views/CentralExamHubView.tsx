@@ -1103,8 +1103,16 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
       {/* Packs Grid */}
       {filteredPacks.length === 0 ? (
         <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-10 text-center space-y-2">
-          <p className="text-sm font-bold text-[var(--color-text-title)]">ไม่พบชุดข้อสอบที่ตรงกับเงื่อนไขการค้นหา</p>
-          <p className="text-xs text-[var(--color-text-muted)]">ลองปรับคำค้นหาหรือล้างตัวกรองเพื่อดูชุดข้อสอบทั้งหมด</p>
+          <p className="text-sm font-bold text-[var(--color-text-title)]">
+            {publishedPacks.length === 0
+              ? 'ยังไม่มีชุดข้อสอบกลางที่เผยแพร่ในฐานข้อมูล'
+              : 'ไม่พบชุดข้อสอบที่ตรงกับเงื่อนไขการค้นหา'}
+          </p>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            {publishedPacks.length === 0
+              ? 'กรุณาให้ผู้ดูแลระบบสูงสุด (Super Admin) เปิดแท็บ คลังข้อสอบกลาง เพื่อซิงก์ชุดข้อสอบมาตรฐานทั้ง 80 ชุดเข้าสู่ระบบ'
+              : 'ลองปรับคำค้นหาหรือล้างตัวกรองเพื่อดูชุดข้อสอบทั้งหมด'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

@@ -237,13 +237,16 @@ import {
   buildCentralExamSignature,
   CENTRAL_EXAMS_UPDATED_EVENT,
   claimCentralExamPack,
+  countMissingBuiltInPacks,
   fetchCentralExamPacks,
   fetchSchoolExamEntitlements,
   fetchSchoolPersistedQuestions,
   getUnclaimedPublishedPacks,
+  hasBuiltInSeedCompleted,
   hasSeenCentralExamPopup,
   markCentralExamPopupSeen,
   saveSchoolQuestionsBatch,
+  syncMissingDefaultCentralExamPacksToSupabase,
 } from './lib/centralExamBank';
 import {
   getScopedNotificationsForUser,
@@ -861,12 +864,31 @@ export const App: React.FC = () => {
 
     const loadCentralExamState = async () => {
       try {
-        const [packs, entitlements, persistedSchoolQs] = await Promise.all([
+        let [packs, entitlements, persistedSchoolQs] = await Promise.all([
           fetchCentralExamPacks(isDemoMode),
           fetchSchoolExamEntitlements(activeSchool.id, isDemoMode),
           fetchSchoolPersistedQuestions(activeSchool.id, isDemoMode),
         ]);
         if (!active) return;
+
+        if (
+          !isDemoMode &&
+          currentRole === 'super_admin' &&
+          countMissingBuiltInPacks(packs) > 0 &&
+          (packs.length === 0 || !hasBuiltInSeedCompleted())
+        ) {
+          try {
+            const synced = await syncMissingDefaultCentralExamPacksToSupabase(packs, {
+              isDemoMode,
+              silent: true,
+            });
+            if (!active) return;
+            packs = synced.packs;
+          } catch (seedError) {
+            console.warn('Auto-seed central exam packs skipped:', seedError);
+          }
+        }
+
         setCentralExamPacks(packs);
         setSchoolExamEntitlements(entitlements);
 
@@ -897,7 +919,7 @@ export const App: React.FC = () => {
       active = false;
       window.removeEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdated);
     };
-  }, [currentUser?.id, activeSchool.id, isDemoMode]);
+  }, [currentUser?.id, currentRole, activeSchool.id, isDemoMode]);
 
   const unclaimedCentralPacks = getUnclaimedPublishedPacks(centralExamPacks, schoolExamEntitlements);
 

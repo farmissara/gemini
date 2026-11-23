@@ -13,9 +13,57 @@ export const CENTRAL_EXAMS_UPDATED_EVENT = 'eduverse:central-exams-updated';
 export const EXAM_PAYMENT_SETTINGS_UPDATED_EVENT = 'eduverse:central-exam-payment-settings-updated';
 
 const PACKS_STORAGE_KEY = 'eduverse_central_exam_packs_v1';
+const BUILT_IN_SEEDED_KEY = 'eduverse_central_packs_seeded_80_v1';
 const entitlementsStorageKey = (schoolId: string) => `eduverse_school_exam_entitlements_v1_${schoolId}`;
 const schoolQuestionsStorageKey = (schoolId: string) => `eduverse_school_questions_v1_${schoolId}`;
 const popupSeenStorageKey = (schoolId: string) => `eduverse_central_exam_popup_seen_v1_${schoolId}`;
+
+let inFlightSeedPromise: Promise<{
+  insertedCount: number;
+  packs: CentralExamPack[];
+  alreadyComplete: boolean;
+}> | null = null;
+
+export function sortCentralExamPacks(packs: CentralExamPack[]): CentralExamPack[] {
+  const defaultIndexMap = new Map(DEFAULT_CENTRAL_EXAM_PACKS.map((p, idx) => [p.id, idx]));
+  return [...packs].sort((a, b) => {
+    const idxA = defaultIndexMap.get(a.id);
+    const idxB = defaultIndexMap.get(b.id);
+    if (idxA === undefined && idxB === undefined) {
+      return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+    }
+    if (idxA === undefined) return -1;
+    if (idxB === undefined) return 1;
+    return idxA - idxB;
+  });
+}
+
+export function countMissingBuiltInPacks(packs: CentralExamPack[]): number {
+  const existingIds = new Set(packs.map((p) => p.id));
+  let missing = 0;
+  for (const defPack of DEFAULT_CENTRAL_EXAM_PACKS) {
+    if (!existingIds.has(defPack.id)) missing += 1;
+  }
+  return missing;
+}
+
+export function hasBuiltInSeedCompleted(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return localStorage.getItem(BUILT_IN_SEEDED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markBuiltInSeedCompleted() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(BUILT_IN_SEEDED_KEY, '1');
+  } catch {
+    // ignore storage quota errors
+  }
+}
 
 function isMissingTableOrSchemaError(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
@@ -69,16 +117,7 @@ function readLocalPacks(): CentralExamPack[] {
         merged.push(defPack);
       }
     }
-    const defaultIndexMap = new Map(DEFAULT_CENTRAL_EXAM_PACKS.map((p, idx) => [p.id, idx]));
-    merged.sort((a, b) => {
-      const idxA = defaultIndexMap.get(a.id);
-      const idxB = defaultIndexMap.get(b.id);
-      if (idxA === undefined && idxB === undefined) return 0;
-      if (idxA === undefined) return -1;
-      if (idxB === undefined) return 1;
-      return idxA - idxB;
-    });
-    return merged;
+    return sortCentralExamPacks(merged);
   } catch {
     return DEFAULT_CENTRAL_EXAM_PACKS;
   }
@@ -199,9 +238,67 @@ export async function fetchCentralExamPacks(isDemoMode: boolean): Promise<Centra
   const { data, error } = await client.rpc('list_central_exam_packs');
   if (error) throw new Error(`Could not load central exam packs: ${error.message}`);
 
-  const packs = ((data || []) as DbCentralExamPackRow[]).map(mapPackFromDb);
+  const packs = sortCentralExamPacks(((data || []) as DbCentralExamPackRow[]).map(mapPackFromDb));
   writeLocalPacks(packs);
   return packs;
+}
+
+export async function syncMissingDefaultCentralExamPacksToSupabase(
+  existingPacks?: CentralExamPack[],
+  options?: { isDemoMode?: boolean; silent?: boolean }
+): Promise<{ insertedCount: number; packs: CentralExamPack[]; alreadyComplete: boolean }> {
+  if (options?.isDemoMode) {
+    const localPacks = readLocalPacks();
+    return { insertedCount: 0, packs: localPacks, alreadyComplete: true };
+  }
+
+  if (inFlightSeedPromise) {
+    return inFlightSeedPromise;
+  }
+
+  inFlightSeedPromise = (async () => {
+    const client = getSupabaseClient();
+    if (!client) throw new Error('Supabase is not configured.');
+
+    const currentPacks = existingPacks ?? (await fetchCentralExamPacks(false));
+    const existingIds = new Set(currentPacks.map((p) => p.id));
+    const missingPacks = DEFAULT_CENTRAL_EXAM_PACKS.filter((p) => !existingIds.has(p.id));
+
+    if (missingPacks.length === 0) {
+      markBuiltInSeedCompleted();
+      return {
+        insertedCount: 0,
+        packs: sortCentralExamPacks(currentPacks),
+        alreadyComplete: true,
+      };
+    }
+
+    const CHUNK_SIZE = 20;
+    for (let i = 0; i < missingPacks.length; i += CHUNK_SIZE) {
+      const chunk = missingPacks.slice(i, i + CHUNK_SIZE).map(mapPackToDb);
+      const { error } = await client
+        .from('central_exam_packs')
+        .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
+      if (error) {
+        throw new Error(`Could not sync central exam packs: ${error.message}`);
+      }
+    }
+
+    markBuiltInSeedCompleted();
+    const refreshed = await fetchCentralExamPacks(false);
+    if (!options?.silent) {
+      dispatchCentralExamsUpdated();
+    }
+    return {
+      insertedCount: missingPacks.length,
+      packs: refreshed,
+      alreadyComplete: false,
+    };
+  })().finally(() => {
+    inFlightSeedPromise = null;
+  });
+
+  return inFlightSeedPromise;
 }
 
 export async function upsertCentralExamPack(
