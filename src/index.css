@@ -1139,6 +1139,89 @@ textarea::placeholder {
   color: var(--tone);
 }
 
+/* LMS course switcher: filters stay in one compact row without wrapping or
+   making the whole page wider when a school has many subjects. */
+.lms-course-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 3.75rem;
+  padding: 0.25rem 0 0.65rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lms-teacher-filter {
+  flex: 0 0 clamp(12rem, 18vw, 16rem);
+  max-width: 40vw;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+}
+
+.lms-course-picker-label {
+  display: flex;
+  flex: 1 1 0%;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.lms-course-picker {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+}
+
+.lms-section-tabs .seg-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.375rem;
+  padding-inline: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .lms-course-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .lms-teacher-filter {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  .lms-course-picker-label {
+    align-items: flex-start;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .lms-section-tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .lms-section-tabs .seg-tab-btn {
+    flex: 1 1 0%;
+    min-width: 0;
+    padding-inline: 0.65rem;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
+}
+
 .ui-section-heading {
   display: flex;
   align-items: center;

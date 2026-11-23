@@ -182,9 +182,9 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
               {submissionError}
             </div>
           )}
-          <div className="px-2.5 py-1 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-xs flex items-center gap-1.5">
+          <div className="ui-status" data-state={progressPercent === 100 ? 'success' : 'info'}>
             <span className="text-[var(--color-text-muted)]">{lang === 'th' ? 'ความคืบหน้า:' : 'Progress:'}</span>
-            <span className="text-emerald-700 dark:text-emerald-300 font-bold font-mono tabular-nums">{progressPercent}%</span>
+            <span className="font-bold font-mono tabular-nums">{progressPercent}%</span>
           </div>
         </div>
       </div>
@@ -227,7 +227,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       )}
 
       {/* Course Switcher Tabs with Teacher Filter */}
-      <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--color-border)]">
+      <div className="lms-course-toolbar shrink-0">
         {teacherFilterOptions.length > 0 && (
           <select
             aria-label="กรองวิชาตามรายชื่อครู"
@@ -244,7 +244,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                 if (firstL) setSelectedLessonId(firstL.id);
               }
             }}
-            className="shrink-0 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
+            className="lms-teacher-filter rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
           >
             <option value="all">
               {lang === 'th'
@@ -258,35 +258,38 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
             ))}
           </select>
         )}
-        {filteredCourses.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => {
-              setSelectedCourseId(c.id);
-              const firstL = lessons.find((l) => l.courseId === c.id);
+        <label className="lms-course-picker-label">
+          <span>{lang === 'th' ? 'รายวิชา' : 'Course'}</span>
+          <select
+            aria-label={lang === 'th' ? 'เลือกรายวิชา' : 'Choose a course'}
+            value={activeCourseIdResolved}
+            onChange={(e) => {
+              const nextCourseId = e.target.value;
+              setSelectedCourseId(nextCourseId);
+              const firstL = lessons.find((l) => l.courseId === nextCourseId);
               if (firstL) setSelectedLessonId(firstL.id);
             }}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-              activeCourseIdResolved === c.id
-                ? 'bg-[var(--tone-solid)] text-white border-[var(--tone-solid)] shadow-xs'
-                : 'bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--tone-soft)] border-[var(--color-border)]'
-            }`}
+            className="lms-course-picker rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
           >
-            <span className="font-mono mr-1.5">{c.code}</span>
-            <span>{lang === 'th' ? c.titleTh : c.titleEn}</span>
-          </button>
-        ))}
+            {filteredCourses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.code} · {lang === 'th' ? course.titleTh : course.titleEn}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {/* Navigation Sub-tabs */}
-      <div className="shrink-0 seg-tab-group w-fit max-w-full overflow-x-auto no-scrollbar">
+      <div className="shrink-0 seg-tab-group w-fit max-w-full overflow-x-auto no-scrollbar lms-section-tabs">
         <button
           data-guide-id="lms-lessons-tab"
           data-active={activeTab === 'lessons'}
           onClick={() => setActiveTab('lessons')}
           className="seg-tab-btn"
         >
-          {lang === 'th' ? '📚 บทเรียนวิดีโอ & สื่อการสอน' : '📚 Video Lessons & Notes'}
+          <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+          {lang === 'th' ? 'บทเรียนวิดีโอ & สื่อการสอน' : 'Video Lessons & Notes'}
         </button>
         <button
           data-guide-id="lms-homework-tab"
@@ -294,7 +297,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           onClick={() => setActiveTab('assignments')}
           className="seg-tab-btn"
         >
-          {lang === 'th' ? '📝 การบ้าน & ใบงานออนไลน์' : '📝 Assignments & Tasks'}
+          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+          {lang === 'th' ? 'การบ้าน & ใบงานออนไลน์' : 'Assignments & Tasks'}
         </button>
       </div>
 
