@@ -38,6 +38,14 @@
   --color-primary-hover: #204dbb;
   --color-primary-light: #edf3ff;
   --color-primary-text: #244f9b;
+  --state-success: #08785d;
+  --state-success-soft: #e7f6f0;
+  --state-warning: #a85b0a;
+  --state-warning-soft: #fff3df;
+  --state-danger: #b4234e;
+  --state-danger-soft: #fff0f3;
+  --state-info: #285bd4;
+  --state-info-soft: #edf2ff;
   --role-admin-accent: #14766e;
   --role-teacher-accent: #285fc5;
 }
@@ -56,6 +64,14 @@
   --color-primary-hover: #204dbb;
   --color-primary-light: #edf3ff;
   --color-primary-text: #244f9b;
+  --state-success: #08785d;
+  --state-success-soft: #e7f6f0;
+  --state-warning: #a85b0a;
+  --state-warning-soft: #fff3df;
+  --state-danger: #b4234e;
+  --state-danger-soft: #fff0f3;
+  --state-info: #285bd4;
+  --state-info-soft: #edf2ff;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
@@ -73,6 +89,14 @@
   --color-primary-hover: #1d4ed8;
   --color-primary-light: #eff6ff;
   --color-primary-text: #1d4ed8;
+  --state-success: #08785d;
+  --state-success-soft: #e7f6f0;
+  --state-warning: #a85b0a;
+  --state-warning-soft: #fff3df;
+  --state-danger: #b4234e;
+  --state-danger-soft: #fff0f3;
+  --state-info: #2563eb;
+  --state-info-soft: #eff6ff;
   background-color: var(--color-canvas);
   color: var(--color-text-body);
 }
@@ -91,6 +115,14 @@
   --color-primary-hover: #9bbaff;
   --color-primary-light: #24344d;
   --color-primary-text: #a8c4ff;
+  --state-success: #4ade9f;
+  --state-success-soft: rgb(14 159 110 / 0.18);
+  --state-warning: #fbbf4d;
+  --state-warning-soft: rgb(217 119 6 / 0.18);
+  --state-danger: #fb7f9c;
+  --state-danger-soft: rgb(224 51 95 / 0.18);
+  --state-info: #8aa8ff;
+  --state-info-soft: rgb(47 91 234 / 0.2);
   --role-admin-accent: #66d6c6;
   --role-teacher-accent: #a8c4ff;
   background-color: var(--color-canvas);
@@ -926,6 +958,12 @@ textarea::placeholder {
   font-weight: 650;
 }
 
+/* Every module keeps one heading ladder: page title (neutral/dark),
+   section heading (soft module tone), card title (neutral), details (muted). */
+.app-workspace :is(h2, .type-section-title):not([class*="text-white"]):not([class*="text-emerald"]):not([class*="text-green"]):not([class*="text-red"]):not([class*="text-rose"]):not([class*="text-amber"]):not([class*="text-orange"]):not([class*="text-blue"]):not([class*="text-indigo"]):not([class*="text-cyan"]):not([class*="text-sky"]):not([class*="text-violet"]):not([class*="text-purple"]):not([class*="text-teal"]):not([class*="text-slate"]):not([class*="text-neutral"]):not([class*="text-gray"]):not([class*="text-yellow"]):not([class*="text-pink"]):not([class*="text-lime"]):not([class*="text-fuchsia"]):not([class*="text-stone"]):not([class*="text-zinc"]):not([class*="text-["]) {
+  color: color-mix(in srgb, var(--tone) 78%, var(--color-text-title));
+}
+
 .app-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea) {
   min-width: 0;
   border-radius: 0.625rem;
@@ -982,6 +1020,165 @@ textarea::placeholder {
 
 .app-workspace :is(button, a[href], summary, [role="button"]) {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Semantic accents are reserved for data state; module tones remain for navigation. */
+.ui-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 1.375rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-card-subtle);
+  color: var(--color-text-body);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.ui-status[data-state="success"] {
+  border-color: color-mix(in srgb, var(--state-success) 24%, var(--color-border));
+  background: var(--state-success-soft);
+  color: var(--state-success);
+}
+
+.ui-status[data-state="warning"] {
+  border-color: color-mix(in srgb, var(--state-warning) 26%, var(--color-border));
+  background: var(--state-warning-soft);
+  color: var(--state-warning);
+}
+
+.ui-status[data-state="danger"] {
+  border-color: color-mix(in srgb, var(--state-danger) 24%, var(--color-border));
+  background: var(--state-danger-soft);
+  color: var(--state-danger);
+}
+
+.ui-status[data-state="info"] {
+  border-color: color-mix(in srgb, var(--state-info) 24%, var(--color-border));
+  background: var(--state-info-soft);
+  color: var(--state-info);
+}
+
+.ui-count-badge {
+  display: inline-grid;
+  min-width: 1.5rem;
+  min-height: 1.375rem;
+  padding-inline: 0.375rem;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-card-subtle);
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  color: var(--color-text-body);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.ui-alert[data-state="success"] {
+  border-color: color-mix(in srgb, var(--state-success) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--state-success-soft) 72%, var(--color-card));
+}
+
+.ui-alert[data-state="warning"] {
+  border-color: color-mix(in srgb, var(--state-warning) 32%, var(--color-border));
+  background: color-mix(in srgb, var(--state-warning-soft) 72%, var(--color-card));
+}
+
+.ui-alert[data-state="danger"] {
+  border-color: color-mix(in srgb, var(--state-danger) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--state-danger-soft) 72%, var(--color-card));
+}
+
+.ui-alert[data-state="info"] {
+  border-color: color-mix(in srgb, var(--state-info) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--state-info-soft) 72%, var(--color-card));
+}
+
+.ui-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  border: 1px dashed var(--color-border);
+  border-radius: 0.875rem;
+  background: color-mix(in srgb, var(--color-card-subtle) 78%, transparent);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.ui-empty-state :is(h2, h3, h4) {
+  color: var(--color-text-title);
+}
+
+.ui-icon-tile {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--color-border));
+  background: color-mix(in srgb, var(--tone-soft) 72%, var(--color-card));
+  color: var(--tone);
+}
+
+.ui-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  color: var(--tone);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.ui-section-heading::before {
+  content: "";
+  width: 0.2rem;
+  height: 1.15em;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--tone);
+}
+
+.app-workspace .app-section-card[data-tone-accent="true"] {
+  border-color: color-mix(in srgb, var(--tone) 24%, var(--color-border));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tone) 70%, transparent),
+    0 1px 2px rgb(24 43 57 / 0.035);
+}
+
+.app-workspace .app-page-header :is(.tone-chip, .ui-icon-tile):not([data-state]) {
+  border-color: color-mix(in srgb, var(--tone) 20%, var(--color-border));
+  background: color-mix(in srgb, var(--tone-soft) 78%, var(--color-card));
+  color: var(--tone);
+}
+
+.app-sidebar .ui-count-badge {
+  border-color: transparent;
+  background: var(--color-card-subtle);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-workspace :is(.app-section-card, .saas-card, .frosted-card, .frosted-blue, .frosted-green, .frosted-purple, .frosted-orange, .frosted-amber) {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
 }
 
 @media (max-width: 640px) {

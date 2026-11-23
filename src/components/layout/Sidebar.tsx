@@ -907,13 +907,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </span>
         {item.badge && (
           <span
-            className={`shrink-0 tabular-nums text-[11px] leading-none ${
-              isNumericBadge
-                ? 'font-medium text-[var(--color-text-muted)]'
-                : isAiBadge
-                  ? 'font-bold text-[var(--tone)]'
-                  : 'font-semibold text-rose-600 dark:text-rose-400'
-            }`}
+            className={isNumericBadge ? 'ui-count-badge shrink-0' : 'ui-status shrink-0'}
+            data-state={isAiBadge ? 'info' : isNumericBadge ? undefined : 'danger'}
           >
             {item.badge}
           </span>
@@ -1124,7 +1119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className="sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/30"
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--tone-soft)] text-[var(--tone)]">
+                        <span className="ui-icon-tile h-7 w-7 shrink-0 rounded-lg">
                           <CategoryIcon className="h-3.5 w-3.5" aria-hidden="true" />
                         </span>
                         <span className="block min-w-0">
@@ -1140,11 +1135,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </span>
                       <span className="flex items-center gap-1.5 shrink-0">
                         {isCollapsed && alertBadge && (
-                          <span className="text-[11px] font-semibold leading-none text-rose-600 dark:text-rose-400">
+                          <span className="ui-status shrink-0" data-state="danger">
                             {alertBadge}
                           </span>
                         )}
-                        <span className="min-w-5 rounded-md bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums text-[var(--color-text-muted)]">
+                        <span className="ui-count-badge min-w-5 min-h-5 px-1.5 text-[10px]">
                           {cat.items.length}
                         </span>
                         {isCollapsed ? (
