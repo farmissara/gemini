@@ -226,6 +226,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const roomOptions = savedRoomOptions?.length ? savedRoomOptions : presets.roomOptions;
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
+  const canManageTimetable = isAdmin;
   const isPersonalViewer = currentRole === 'student' || currentRole === 'parent';
   const canUsePeriodCheckin =
     Boolean(onOpenPeriodCheckin) &&
@@ -272,9 +273,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const viewAcademicYear = selectedAcademicPeriod.academicYear;
   const viewSemester = selectedAcademicPeriod.semester;
   const isViewingCurrentTerm = selectedAcademicPeriod.key === activeAcademicPeriodKey;
-  const canEditTimetableSlots = isViewingCurrentTerm
-    && ['admin', 'super_admin', 'teacher'].includes(currentRole)
-    && Boolean(onUpdateSlot);
+  const canEditTimetableSlots = isViewingCurrentTerm && canManageTimetable && Boolean(onUpdateSlot);
   const slots = allTimetableSlots.filter((slot) => (
     (slot.academicYear || academicYear) === viewAcademicYear &&
     (slot.semester || currentSemester) === viewSemester
@@ -3019,7 +3018,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   )}
 
                   <div className="fn-group">
-                    {!isPersonalViewer && (
+                    {isAdmin && (
                       <button
                         type="button"
                         disabled={isSyncingHolidays}
@@ -3031,7 +3030,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุดราชการ'}</span>
                       </button>
                     )}
-                    {!isPersonalViewer && (
+                    {isAdmin && (
                       <button
                         type="button"
                         onClick={() => setShowAddHolidayForm((v) => !v)}
@@ -3041,7 +3040,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         <span>เพิ่มวันหยุดโรงเรียน</span>
                       </button>
                     )}
-                    {!isPersonalViewer && (
+                    {isAdmin && (
                       <button
                         type="button"
                         onClick={() => setShowImportExportModal(true)}
@@ -3090,7 +3089,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               </div>
 
               {/* Admin / Teacher Custom School Holiday Form */}
-              {!isPersonalViewer && showAddHolidayForm && (
+              {isAdmin && showAddHolidayForm && (
                 <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 flex flex-wrap items-end gap-2 text-xs">
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--color-text-muted)] mb-1">วันที่หยุดพิเศษ</label>
@@ -3864,7 +3863,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   </button>
                 );
               })()}
-              {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'teacher' || currentRole === 'super_admin') && (
+              {isViewingCurrentTerm && canManageTimetable && (
                 <button
                   type="button"
                   onClick={() => {
@@ -4385,7 +4384,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                     </div>
                                   )}
 
-                                  {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                                  {isViewingCurrentTerm && canManageTimetable && (
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -4954,7 +4953,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       แก้ไขคาบนี้
                     </button>
                   )}
-                  {isViewingCurrentTerm && (currentRole === 'admin' || currentRole === 'super_admin' || currentRole === 'teacher') && (
+                  {isViewingCurrentTerm && canManageTimetable && (
                 <button
                   type="button"
                   onClick={() => {

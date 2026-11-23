@@ -260,7 +260,11 @@ import {
 } from './lib/schoolPackageStore';
 import { useSchoolPermissions } from './lib/schoolPermissions';
 import { loadSchoolLessons, saveSchoolLessonCompletionToDb, saveSchoolLessonToDb } from './lib/lmsPersistence';
-import { teacherMatchesCourse } from './lib/courseTeacherFilter';
+import {
+  resolveMatchedTeacherForUser,
+  slotMatchesLoggedInTeacher,
+  teacherMatchesCourse,
+} from './lib/courseTeacherFilter';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -441,6 +445,7 @@ export const App: React.FC = () => {
   const [isGamePlaying, setIsGamePlaying] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
+  const [lmsLessonJumpTarget, setLmsLessonJumpTarget] = useState<{ courseId: string; lessonId: string } | null>(null);
   const [lang, setLang] = useState<AppLanguage>('th');
   const [theme, setTheme] = useState<AppTheme>('light');
   const [themePalette, setThemePalette] = useState<ThemePalette>('light_warm');
@@ -874,6 +879,46 @@ export const App: React.FC = () => {
   const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
   const schoolLeaveRequests = leaveRequests.filter((request) => !request.schoolId || request.schoolId === activeSchool.id);
   const schoolPermissions = useSchoolPermissions(activeSchool.id);
+  const matchedTeacherForScope = currentRole === 'teacher'
+    ? resolveMatchedTeacherForUser(currentUser, schoolTeachers)
+    : undefined;
+  const teacherScopedCourses = currentRole === 'teacher' && matchedTeacherForScope
+    ? schoolCourses.filter((course) => teacherMatchesCourse(matchedTeacherForScope, course))
+    : currentRole === 'teacher' ? [] : schoolCourses;
+  const teacherCourseIds = new Set(teacherScopedCourses.map((course) => course.id));
+  const teacherStudentKeys = new Set<string>();
+  teacherScopedCourses.forEach((course) => {
+    (course.enrolledStudentIds || []).forEach((id) => teacherStudentKeys.add(id));
+  });
+  const teacherScopedTimetableSlots = currentRole === 'teacher'
+    ? schoolTimetableSlotsAllTerms.filter((slot) =>
+        slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacherForScope, teacherScopedCourses)
+      )
+    : schoolTimetableSlotsAllTerms;
+  const normalizeRoomScope = (value: string) => value
+    .normalize('NFC')
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/^(?:ห้องเรียน|ห้อง|room|class)\s*/i, '')
+    .replace(/\s+/g, '');
+  const teacherRoomKeys = new Set<string>([
+    ...(matchedTeacherForScope?.homeroomClasses || []),
+    ...teacherScopedTimetableSlots.map((slot) => slot.classRoom).filter(Boolean),
+  ].map(normalizeRoomScope).filter(Boolean));
+  const teacherScopedStudents = currentRole === 'teacher'
+    ? schoolStudents.filter((student) => {
+        if (teacherStudentKeys.has(student.id) || teacherStudentKeys.has(student.studentIdNumber)) return true;
+        const rooms = [student.room, ...(student.enrolledRooms || [])].filter(Boolean);
+        const gradeShort = student.gradeLevel.match(/(?:อ|ป|ม)\.?\s*\d{1,2}/i)?.[0] || '';
+        const candidates = rooms.flatMap((room) => [room, gradeShort ? `${gradeShort}/${room}` : '']);
+        return candidates.some((room) => teacherRoomKeys.has(normalizeRoomScope(room)));
+      })
+    : schoolStudents;
+  const teacherStudentIds = new Set<string>();
+  teacherScopedStudents.forEach((student) => {
+    teacherStudentIds.add(student.id);
+    teacherStudentIds.add(student.studentIdNumber);
+  });
   const isRestrictedViewer = currentRole === 'student' || currentRole === 'parent';
   const linkedStudentsForUser = useMemo(
     () => (isRestrictedViewer ? resolveLinkedStudentsForUser(currentUser, schoolStudents) : schoolStudents),
@@ -4771,51 +4816,75 @@ export const App: React.FC = () => {
 
   // Strict Student & Parent Personal Scoping Boundary (uses earlier scoped boundary)
   const scopedStudentIdSet = new Set<string>(ownStudentIds);
-  const viewStudents = isRestrictedViewer ? linkedStudentsForUser : schoolStudents;
-  const viewCourses = filterCoursesForPersonalRole(schoolCourses, currentUser, schoolStudents);
-  const viewAssignments = filterAssignmentsForPersonalRole(schoolAssignments, viewCourses, currentUser);
+  const viewStudents = isRestrictedViewer
+    ? linkedStudentsForUser
+    : currentRole === 'teacher' ? teacherScopedStudents : schoolStudents;
+  const viewTeachers = isRestrictedViewer
+    ? []
+    : currentRole === 'teacher' ? (matchedTeacherForScope ? [matchedTeacherForScope] : []) : schoolTeachers;
+  const viewCourses = currentRole === 'teacher'
+    ? teacherScopedCourses
+    : filterCoursesForPersonalRole(schoolCourses, currentUser, schoolStudents);
+  const viewAssignments = currentRole === 'teacher'
+    ? schoolAssignments.filter((assignment) => teacherCourseIds.has(assignment.courseId))
+    : filterAssignmentsForPersonalRole(schoolAssignments, viewCourses, currentUser);
   const viewLessons = isRestrictedViewer
     ? schoolLessons.filter((lesson) => viewCourses.some((course) => course.id === lesson.courseId))
-    : schoolLessons;
-  const viewTimetableSlots = filterTimetableSlotsForPersonalRole(
-    schoolTimetableSlots,
-    currentUser,
-    schoolStudents,
-    schoolCourses
-  );
-  const viewTimetableSlotsAllTerms = filterTimetableSlotsForPersonalRole(
-    schoolTimetableSlotsAllTerms,
-    currentUser,
-    schoolStudents,
-    schoolCourses
-  );
+    : currentRole === 'teacher'
+      ? schoolLessons.filter((lesson) => teacherCourseIds.has(lesson.courseId))
+      : schoolLessons;
+  const viewTimetableSlots = currentRole === 'teacher'
+    ? teacherScopedTimetableSlots.filter((slot) => slot.academicYear === timetableAcademicYear && slot.semester === timetableSemester)
+    : filterTimetableSlotsForPersonalRole(schoolTimetableSlots, currentUser, schoolStudents, schoolCourses);
+  const viewTimetableSlotsAllTerms = currentRole === 'teacher'
+    ? teacherScopedTimetableSlots
+    : filterTimetableSlotsForPersonalRole(schoolTimetableSlotsAllTerms, currentUser, schoolStudents, schoolCourses);
   const viewAttendance = isRestrictedViewer
     ? filterAttendanceForUser(schoolAttendance, currentUser, schoolStudents)
-    : schoolAttendance;
+    : currentRole === 'teacher'
+      ? schoolAttendance.filter((record) => teacherStudentIds.has(record.studentId))
+      : schoolAttendance;
   const viewPeriodAttendance = isRestrictedViewer
     ? filterPeriodAttendanceForUser(schoolPeriodAttendance, currentUser, schoolStudents)
-    : schoolPeriodAttendance;
+    : currentRole === 'teacher'
+      ? schoolPeriodAttendance.filter((record) => teacherStudentIds.has(record.studentId) && teacherCourseIds.has(record.courseId))
+      : schoolPeriodAttendance;
   const viewLeaveRequests = isRestrictedViewer
     ? filterLeaveRequestsForUser(schoolLeaveRequests, currentUser, schoolStudents)
-    : schoolLeaveRequests;
+    : currentRole === 'teacher'
+      ? schoolLeaveRequests.filter((request) => request.userRole === 'teacher' && request.userId === currentUser?.id)
+      : schoolLeaveRequests;
   const viewGrades = isRestrictedViewer
     ? schoolGrades.filter((g) => scopedStudentIdSet.has(g.studentId))
-    : schoolGrades;
+    : currentRole === 'teacher'
+      ? schoolGrades.filter((grade) => teacherStudentIds.has(grade.studentId) && teacherCourseIds.has(grade.courseId))
+      : schoolGrades;
   const viewInvoices = isRestrictedViewer
     ? schoolInvoices.filter((inv) => scopedStudentIdSet.has(inv.studentId))
     : schoolInvoices;
   const viewHomeworkSubmissions = isRestrictedViewer
     ? schoolHomeworkSubmissions.filter((sub) => scopedStudentIdSet.has(sub.studentId))
-    : schoolHomeworkSubmissions;
+    : currentRole === 'teacher'
+      ? schoolHomeworkSubmissions.filter((sub) =>
+          teacherStudentIds.has(sub.studentId) &&
+          viewAssignments.some((assignment) => assignment.id === sub.assignmentId)
+        )
+      : schoolHomeworkSubmissions;
   const viewInfirmaryVisits = isRestrictedViewer
     ? schoolInfirmaryVisits.filter((v) => scopedStudentIdSet.has(v.studentId))
-    : schoolInfirmaryVisits;
+    : currentRole === 'teacher'
+      ? schoolInfirmaryVisits.filter((visit) => teacherStudentIds.has(visit.studentId))
+      : schoolInfirmaryVisits;
   const viewBehaviorRecords = isRestrictedViewer
     ? schoolBehaviorRecords.filter((b) => scopedStudentIdSet.has(b.studentId))
-    : schoolBehaviorRecords;
+    : currentRole === 'teacher'
+      ? schoolBehaviorRecords.filter((record) => teacherStudentIds.has(record.studentId))
+      : schoolBehaviorRecords;
   const viewSdqAssessments = isRestrictedViewer
     ? schoolSdqAssessments.filter((s) => scopedStudentIdSet.has(s.studentId))
-    : schoolSdqAssessments;
+    : currentRole === 'teacher'
+      ? schoolSdqAssessments.filter((assessment) => teacherStudentIds.has(assessment.studentId))
+      : schoolSdqAssessments;
   const viewPortfolioItems = isRestrictedViewer
     ? schoolPortfolioItems.filter((p) => p.ownerId === currentUser?.id || scopedStudentIdSet.has(p.ownerId))
     : schoolPortfolioItems;
@@ -4843,7 +4912,7 @@ export const App: React.FC = () => {
           unreadCount={unreadNotifCount}
           onOpenNotifications={() => setShowNotificationModal(true)}
           students={viewStudents}
-          teachers={isRestrictedViewer ? [] : schoolTeachers}
+          teachers={viewTeachers}
           courses={viewCourses}
           grades={viewGrades}
           invoices={viewInvoices}
@@ -4873,15 +4942,15 @@ export const App: React.FC = () => {
           onRedeemReward={handleRedeemReward}
           onAddQuestion={handleAddQuestion}
           onImportQuestions={handleImportQuestions}
-          onUpdateStudent={handleUpdateStudent}
-          onUpdateTeacher={handleUpdateTeacher}
+          onUpdateStudent={currentRole === 'teacher' ? undefined : handleUpdateStudent}
+          onUpdateTeacher={currentRole === 'teacher' ? undefined : handleUpdateTeacher}
           onUpdateGrade={handleUpdateGrade}
           onAddGrade={handleAddGrade}
           schools={currentRole === 'super_admin' ? schools : (activeSchool.id ? [activeSchool] : [])}
           isDemoMode={isDemoMode}
           coordinationUnreadCount={coordinationUnreadCount}
           onOpenSchoolSwitcher={currentRole === 'super_admin' ? () => setShowSchoolSwitcher(true) : undefined}
-          onUpdateSchool={handleUpdateSchool}
+          onUpdateSchool={currentRole === 'teacher' ? undefined : handleUpdateSchool}
           onAddAnnouncement={handleAddAnnouncement}
           onApproveInvoiceSlip={handleApproveInvoiceSlip}
           onRejectInvoiceSlip={handleRejectInvoiceSlip}
@@ -4936,9 +5005,9 @@ export const App: React.FC = () => {
               setSelectedStudentForProfile(null);
               setSelectedStudentForReport(stu);
             }}
-            onToggleLineSync={handleToggleLineSync}
+            onToggleLineSync={currentRole === 'teacher' ? () => undefined : handleToggleLineSync}
             gradingSystem={systemConfig.gradingSystem}
-            onUpdateStudent={(updated) => {
+            onUpdateStudent={currentRole === 'teacher' ? undefined : (updated) => {
               handleUpdateStudent(updated);
               setSelectedStudentForProfile(updated);
             }}
@@ -5329,10 +5398,10 @@ export const App: React.FC = () => {
                   <SystemSettingsView
                     systemConfig={systemConfig}
                     activeSchool={activeSchool}
-                    students={schoolStudents}
-                    teachers={schoolTeachers}
-                    courses={schoolCourses}
-                    grades={schoolGrades}
+                    students={viewStudents}
+                    teachers={viewTeachers}
+                    courses={viewCourses}
+                    grades={viewGrades}
                     attendance={schoolAttendance}
                     timetableSlots={schoolTimetableSlots}
                     currentRole={currentRole}
@@ -5357,7 +5426,7 @@ export const App: React.FC = () => {
                 {currentTab === 'dashboard' && (
                   <DashboardView
                     students={viewStudents}
-                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    teachers={viewTeachers}
                     courses={viewCourses}
                     attendance={viewAttendance}
                     grades={viewGrades}
@@ -5378,6 +5447,11 @@ export const App: React.FC = () => {
                     leaveRequests={viewLeaveRequests}
                     homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={viewAssignments}
+                    lessons={viewLessons}
+                    onOpenLmsLesson={(courseId, lessonId) => {
+                      setLmsLessonJumpTarget({ courseId, lessonId });
+                      handleChangeProgramMode('lms_classroom');
+                    }}
                     periodAttendance={viewPeriodAttendance}
                     schoolPeriods={schoolPeriods}
                     behaviorRecords={viewBehaviorRecords}
@@ -5432,10 +5506,10 @@ export const App: React.FC = () => {
 
                 {currentTab === 'students' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <StudentsView
-                    students={schoolStudents}
-                    teachers={schoolTeachers}
-                    courses={schoolCourses}
-                    grades={schoolGrades}
+                    students={viewStudents}
+                    teachers={viewTeachers}
+                    courses={viewCourses}
+                    grades={viewGrades}
                     gradingSystem={systemConfig.gradingSystem}
                     systemConfig={systemConfig}
                     activeSchool={activeSchool}
@@ -5453,31 +5527,31 @@ export const App: React.FC = () => {
                     lang={lang}
                     onSelectStudent={setSelectedStudentForProfile}
                     onOpenReportCard={setSelectedStudentForReport}
-                    onToggleLineSync={handleToggleLineSync}
-                    onAddStudent={handleAddStudent}
-                    onAddStudents={handleAddStudents}
-                    onUpdateStudent={handleUpdateStudent}
-                    onUpdateRoomOptions={(roomOptions) => handleUpdateSchool({ roomOptions })}
-                    onDeleteStudent={handleDeleteStudent}
-                    onPurgeSampleStudents={handlePurgeSampleStudents}
-                    onBatchUpdateStudents={(updatedList) => {
+                    onToggleLineSync={currentRole === 'teacher' ? () => undefined : handleToggleLineSync}
+                    onAddStudent={currentRole === 'teacher' ? () => undefined : handleAddStudent}
+                    onAddStudents={currentRole === 'teacher' ? undefined : handleAddStudents}
+                    onUpdateStudent={currentRole === 'teacher' ? undefined : handleUpdateStudent}
+                    onUpdateRoomOptions={currentRole === 'teacher' ? undefined : (roomOptions) => handleUpdateSchool({ roomOptions })}
+                    onDeleteStudent={currentRole === 'teacher' ? undefined : handleDeleteStudent}
+                    onPurgeSampleStudents={currentRole === 'teacher' ? undefined : handlePurgeSampleStudents}
+                    onBatchUpdateStudents={currentRole === 'teacher' ? undefined : (updatedList) => {
                       const updateMap = new Map(updatedList.map((s) => [s.id, s]));
                       setStudents((prev) => prev.map((s) => updateMap.get(s.id) || s));
                     }}
-                    onOpenImportExport={() => {
+                    onOpenImportExport={currentRole === 'teacher' ? undefined : () => {
                       setImportExportInitialTab('students');
                       setShowImportExportModal(true);
                     }}
-                    onOpenGradeImportExport={() => {
+                    onOpenGradeImportExport={currentRole === 'teacher' ? undefined : () => {
                       setImportExportInitialTab('grades');
                       setShowImportExportModal(true);
                     }}
-                    onOpenStudentAccountsSettings={() => {
+                    onOpenStudentAccountsSettings={currentRole === 'teacher' ? undefined : () => {
                       setSystemSettingsInitialTab('student_accounts');
                       setProgramMode('school_erp');
                       setCurrentTab('system_settings');
                     }}
-                    onChangeGradingSystem={(mode) => handleUpdateSchool({ gradingSystem: mode })}
+                    onChangeGradingSystem={currentRole === 'teacher' ? undefined : (mode) => handleUpdateSchool({ gradingSystem: mode })}
                     onUpdateGrade={handleUpdateGrade}
                     onAddGrade={handleAddGrade}
                     onDeleteGrade={handleDeleteGrade}
@@ -5503,18 +5577,18 @@ export const App: React.FC = () => {
 
                 {currentTab === 'teachers' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <TeachersView
-                    teachers={schoolTeachers}
+                    teachers={viewTeachers}
                     lang={lang}
                     currentRole={currentRole}
                     schoolId={activeSchool.id}
-                    onAddTeacher={handleAddTeacher}
-                    onUpdateTeacher={handleUpdateTeacher}
-                    onDeleteTeacher={handleDeleteTeacher}
-                    onPurgeSampleTeachers={handlePurgeSampleTeachers}
+                    onAddTeacher={currentRole === 'teacher' ? () => undefined : handleAddTeacher}
+                    onUpdateTeacher={currentRole === 'teacher' ? () => undefined : handleUpdateTeacher}
+                    onDeleteTeacher={currentRole === 'teacher' ? () => undefined : handleDeleteTeacher}
+                    onPurgeSampleTeachers={currentRole === 'teacher' ? undefined : handlePurgeSampleTeachers}
                     staffPositionOptions={systemConfig.staffPositionOptions}
-                    onUpdateStaffPositionOptions={(options) => handleUpdateSchool({ staffPositionOptions: options })}
+                    onUpdateStaffPositionOptions={currentRole === 'teacher' ? undefined : (options) => handleUpdateSchool({ staffPositionOptions: options })}
                     academicYear={systemConfig.academicYear}
-                    onOpenImportExport={() => {
+                    onOpenImportExport={currentRole === 'teacher' ? undefined : () => {
                       setImportExportInitialTab('teachers');
                       setShowImportExportModal(true);
                     }}
@@ -5525,25 +5599,25 @@ export const App: React.FC = () => {
                   <CoursesView
                     courses={viewCourses}
                     students={viewStudents}
-                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    teachers={viewTeachers}
                     grades={viewGrades}
                     gradingSystem={systemConfig.gradingSystem}
                     currentRole={currentRole}
                     currentUser={currentUser}
                     schoolId={activeSchool.id}
-                    onAddCourse={handleAddCourse}
-                    onUpdateCourse={handleUpdateCourse}
-                    onDeleteCourse={handleDeleteCourse}
-                    onDeleteCourses={handleDeleteCourses}
-                    onEnrollStudent={handleEnrollStudent}
-                    onEnrollStudentsBatch={handleEnrollStudentsBatch}
-                    onUnenrollStudent={handleUnenrollStudent}
-                    onUnenrollStudentsBatch={handleUnenrollStudentsBatch}
+                    onAddCourse={currentRole === 'teacher' ? () => undefined : handleAddCourse}
+                    onUpdateCourse={currentRole === 'teacher' ? undefined : handleUpdateCourse}
+                    onDeleteCourse={currentRole === 'teacher' ? undefined : handleDeleteCourse}
+                    onDeleteCourses={currentRole === 'teacher' ? undefined : handleDeleteCourses}
+                    onEnrollStudent={currentRole === 'teacher' ? () => undefined : handleEnrollStudent}
+                    onEnrollStudentsBatch={currentRole === 'teacher' ? undefined : handleEnrollStudentsBatch}
+                    onUnenrollStudent={currentRole === 'teacher' ? undefined : handleUnenrollStudent}
+                    onUnenrollStudentsBatch={currentRole === 'teacher' ? undefined : handleUnenrollStudentsBatch}
                     semesterOptions={systemConfig.semesterOptions}
                     academicYear={systemConfig.academicYear}
                     currentSemester={systemConfig.currentSemester}
                     showPrimaryCourseCredits={activeSchool.showPrimaryCourseCredits ?? false}
-                    onOpenImportExport={(tab = 'courses') => {
+                    onOpenImportExport={currentRole === 'teacher' ? undefined : (tab = 'courses') => {
                       setImportExportInitialTab(tab);
                       setShowImportExportModal(true);
                     }}
@@ -5596,11 +5670,11 @@ export const App: React.FC = () => {
                       navigateToAppTab('games');
                     }}
                     onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
-                    courses={schoolCourses}
-                    teachers={schoolTeachers}
-                    students={schoolStudents}
-                    grades={schoolGrades}
-                    onSyncQuizScoresToGradebook={handleSyncQuizScoresToGradebook}
+                    courses={viewCourses}
+                    teachers={viewTeachers}
+                    students={viewStudents}
+                    grades={viewGrades}
+                    onSyncQuizScoresToGradebook={currentRole === 'teacher' ? undefined : handleSyncQuizScoresToGradebook}
                   />
                 )}
 
@@ -5711,14 +5785,14 @@ export const App: React.FC = () => {
                     slots={viewTimetableSlotsAllTerms}
                     courses={viewCourses}
                     assignments={viewAssignments}
-                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    teachers={viewTeachers}
                     students={viewStudents}
-                    onAddSlot={handleAddTimetableSlot}
-                    onUpdateSlot={handleUpdateTimetableSlot}
-                    onDeleteSlot={handleDeleteTimetableSlot}
-                    onImportSlots={handleImportTimetableSlots}
+                    onAddSlot={currentRole === 'teacher' ? async () => undefined : handleAddTimetableSlot}
+                    onUpdateSlot={currentRole === 'teacher' ? undefined : handleUpdateTimetableSlot}
+                    onDeleteSlot={currentRole === 'teacher' ? async () => undefined : handleDeleteTimetableSlot}
+                    onImportSlots={currentRole === 'teacher' ? undefined : handleImportTimetableSlots}
                     schoolPeriods={schoolPeriods}
-                    onSaveSchoolPeriods={handleSaveSchoolPeriods}
+                    onSaveSchoolPeriods={currentRole === 'teacher' ? async () => undefined : handleSaveSchoolPeriods}
                     lang={lang}
                     currentRole={currentRole}
                     currentUser={currentUser}
@@ -5731,12 +5805,12 @@ export const App: React.FC = () => {
                     teachingLoadMaxPeriods={activeSchool.teachingLoadMaxPeriods}
                     roomOptions={activeSchool.roomOptions}
                     showPrimaryCourseCredits={activeSchool.showPrimaryCourseCredits ?? false}
-                    onUpdateRoomOptions={(roomOptions) => handleUpdateSchool({ roomOptions })}
-                    onUpdateTeachingLoadThresholds={(minPeriods, maxPeriods) => handleUpdateSchool({
+                    onUpdateRoomOptions={currentRole === 'teacher' ? undefined : (roomOptions) => handleUpdateSchool({ roomOptions })}
+                    onUpdateTeachingLoadThresholds={currentRole === 'teacher' ? undefined : (minPeriods, maxPeriods) => handleUpdateSchool({
                       teachingLoadMinPeriods: minPeriods,
                       teachingLoadMaxPeriods: maxPeriods,
                     })}
-                    onUpdateAcademicPeriod={handleUpdateAcademicPeriod}
+                    onUpdateAcademicPeriod={currentRole === 'teacher' ? undefined : handleUpdateAcademicPeriod}
                     leaveRequests={viewLeaveRequests}
                     attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
@@ -5775,26 +5849,26 @@ export const App: React.FC = () => {
 
                 {currentTab === 'attendance' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                   <AttendanceView
-                    students={schoolStudents}
-                    teachers={schoolTeachers}
-                    attendance={schoolAttendance}
-                    leaveRequests={schoolLeaveRequests}
+                    students={viewStudents}
+                    teachers={viewTeachers}
+                    attendance={viewAttendance}
+                    leaveRequests={viewLeaveRequests}
                     campusGates={campusGates}
                     activeSchool={activeSchool}
                     currentUser={currentUser}
                     currentRole={currentRole}
                     lang={lang}
                     onRecordAttendance={handleRecordAttendance}
-                    onBulkImportAttendance={handleBulkImportAttendance}
-                    onUpdateLeaveStatus={handleUpdateLeaveStatus}
-                    onUpdateCampusGates={handleUpdateCampusGates}
-                    onSaveCampusGates={handleSaveCampusGates}
-                    onUpdateSchoolCoordinates={handleUpdateSchoolCoordinates}
-                    courses={schoolCourses}
+                    onBulkImportAttendance={currentRole === 'teacher' ? undefined : handleBulkImportAttendance}
+                    onUpdateLeaveStatus={currentRole === 'teacher' ? undefined : handleUpdateLeaveStatus}
+                    onUpdateCampusGates={currentRole === 'teacher' ? undefined : handleUpdateCampusGates}
+                    onSaveCampusGates={currentRole === 'teacher' ? undefined : handleSaveCampusGates}
+                    onUpdateSchoolCoordinates={currentRole === 'teacher' ? undefined : handleUpdateSchoolCoordinates}
+                    courses={viewCourses}
                     schoolPeriods={schoolPeriods}
-                    timetableSlots={schoolTimetableSlots}
-                    periodAttendance={schoolPeriodAttendance}
-                    onOpenGpsSettings={() => {
+                    timetableSlots={viewTimetableSlots}
+                    periodAttendance={viewPeriodAttendance}
+                    onOpenGpsSettings={currentRole === 'teacher' ? undefined : () => {
                       setSystemSettingsInitialTab('school_gps');
                       setProgramMode('school_erp');
                       setCurrentTab('system_settings');
@@ -5806,7 +5880,7 @@ export const App: React.FC = () => {
                 {currentTab === 'mobile_checkin' && (
                   <MobileAttendanceView
                     students={viewStudents}
-                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    teachers={viewTeachers}
                     courses={viewCourses}
                     attendance={viewAttendance}
                     periodAttendance={viewPeriodAttendance}
@@ -5838,13 +5912,13 @@ export const App: React.FC = () => {
                 {currentTab === 'student_id_cards' && (
                   <DigitalIdCardView
                     students={viewStudents}
-                    teachers={schoolTeachers}
+                    teachers={viewTeachers}
                     school={activeSchool}
                     lang={lang}
                     currentRole={currentRole}
                     currentUser={currentUser}
-                    onUpdateStudent={handleUpdateStudent}
-                    onUpdateTeacher={handleUpdateTeacher}
+                    onUpdateStudent={currentRole === 'teacher' ? undefined : handleUpdateStudent}
+                    onUpdateTeacher={currentRole === 'teacher' ? undefined : handleUpdateTeacher}
                   />
                 )}
 
@@ -5904,7 +5978,7 @@ export const App: React.FC = () => {
                     school={activeSchool}
                     currentRole={currentRole}
                     currentUser={currentUser}
-                    onChangeGradingSystem={(mode) => handleUpdateSchool({ gradingSystem: mode })}
+                    onChangeGradingSystem={currentRole === 'teacher' ? undefined : (mode) => handleUpdateSchool({ gradingSystem: mode })}
                     onUpdateGrade={handleUpdateGrade}
                     onAddGrade={handleAddGrade}
                     onNotifyGradeChange={handleNotifyGradeChange}
@@ -5917,9 +5991,9 @@ export const App: React.FC = () => {
                     infirmaryVisits={viewInfirmaryVisits}
                     homeworkSubmissions={viewHomeworkSubmissions}
                     assignments={viewAssignments}
-                    onUpdateStudent={handleUpdateStudent}
-                    onAddStudent={handleAddStudent}
-                    onDeleteStudent={handleDeleteStudent}
+                    onUpdateStudent={currentRole === 'teacher' ? undefined : handleUpdateStudent}
+                    onAddStudent={currentRole === 'teacher' ? () => undefined : handleAddStudent}
+                    onDeleteStudent={currentRole === 'teacher' ? undefined : handleDeleteStudent}
                     onDeleteGrade={handleDeleteGrade}
                     onPracticeInAi={
                       isTabEnabledByFeatureFlags('socratic_tutor', activeFeatureFlags, currentRole)
@@ -6007,9 +6081,9 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {currentTab === 'billing' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+                {currentTab === 'billing' && ['super_admin', 'admin'].includes(currentRole) && (
                   <BillingView
-                    students={schoolStudents}
+                    students={viewStudents}
                     invoices={schoolInvoices}
                     systemConfig={systemConfig}
                     schoolId={activeSchool.id}
@@ -6055,6 +6129,8 @@ export const App: React.FC = () => {
                 teachers={isRestrictedViewer ? [] : schoolTeachers}
                 lessons={viewLessons}
                 assignments={viewAssignments}
+                initialCourseId={lmsLessonJumpTarget?.courseId}
+                initialLessonId={lmsLessonJumpTarget?.lessonId}
                 lang={lang}
                 currentUser={currentUser}
                 schoolPermissions={schoolPermissions}
@@ -6279,9 +6355,9 @@ export const App: React.FC = () => {
                 }
               : undefined
           }
-          onToggleLineSync={handleToggleLineSync}
+          onToggleLineSync={currentRole === 'teacher' ? () => undefined : handleToggleLineSync}
           gradingSystem={systemConfig.gradingSystem}
-          onUpdateStudent={(updated) => {
+          onUpdateStudent={currentRole === 'teacher' ? undefined : (updated) => {
             handleUpdateStudent(updated);
             setSelectedStudentForProfile(updated);
           }}
@@ -6302,15 +6378,15 @@ export const App: React.FC = () => {
       )}
 
       {/* Data Import / Export Modal (Bulk CSV/Excel for Courses, Enrollment, Grades, Students, Teachers, Questions) */}
-      {showImportExportModal && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
+      {showImportExportModal && ['super_admin', 'admin'].includes(currentRole) && (
         <DataImportExportModal
-          students={schoolStudents}
-          teachers={schoolTeachers}
+          students={viewStudents}
+          teachers={viewTeachers}
           questions={schoolQuestions}
-          courses={schoolCourses}
-          grades={schoolGrades}
-          attendance={schoolAttendance}
-          timetableSlots={schoolTimetableSlotsAllTerms}
+          courses={viewCourses}
+          grades={viewGrades}
+          attendance={viewAttendance}
+          timetableSlots={viewTimetableSlotsAllTerms}
           schoolPeriods={schoolPeriods}
           activeSchoolId={activeSchool.id}
           academicYear={timetableAcademicYear}

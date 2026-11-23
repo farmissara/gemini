@@ -23,6 +23,7 @@ import {
   Course,
   GradeRecord,
   HomeworkSubmission,
+  Lesson,
   School,
   SchoolPeriodTime,
   Student,
@@ -54,6 +55,7 @@ interface StudentDesktopDashboardProps {
   scopedCourses: Course[];
   scopedGrades: GradeRecord[];
   scopedAssignments: Assignment[];
+  scopedLessons: Lesson[];
   scopedHomework: HomeworkSubmission[];
   todayScheduledSlots: TimetableSlot[];
   schoolPeriods: SchoolPeriodTime[];
@@ -64,8 +66,10 @@ interface StudentDesktopDashboardProps {
   canOpenCareerQuest?: boolean;
   canViewTimetable?: boolean;
   canAccessHomework?: boolean;
+  canAccessLessons?: boolean;
   canViewDigitalId?: boolean;
   onNavigate: (tab: NavTab) => void;
+  onOpenLesson: (courseId: string, lessonId: string) => void;
   onOpenAnnouncementsTab: () => void;
   onOpenPhotoRecord: (record: AttendanceRecord) => void;
 }
@@ -94,6 +98,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
   scopedCourses,
   scopedGrades,
   scopedAssignments,
+  scopedLessons,
   scopedHomework,
   todayScheduledSlots,
   schoolPeriods,
@@ -104,8 +109,10 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
   canOpenCareerQuest = true,
   canViewTimetable = true,
   canAccessHomework = true,
+  canAccessLessons = false,
   canViewDigitalId = true,
   onNavigate,
+  onOpenLesson,
   onOpenAnnouncementsTab,
   onOpenPhotoRecord,
 }) => {
@@ -259,6 +266,23 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       percent,
     };
   }, [scopedAssignments, scopedHomework, student?.id, currentUser?.id]);
+
+  const lessonProgress = useMemo(() => {
+    const completedIds = new Set(
+      scopedLessons
+        .filter((lesson) =>
+          (student?.id && lesson.completedByStudentIds?.includes(student.id)) ||
+          (currentUser?.id && lesson.completedByStudentIds?.includes(currentUser.id))
+        )
+        .map((lesson) => lesson.id)
+    );
+    const pending = scopedLessons.filter((lesson) => !completedIds.has(lesson.id));
+    return {
+      completed: completedIds.size,
+      total: scopedLessons.length,
+      pending: (pending.length ? pending : scopedLessons).slice(0, 2),
+    };
+  }, [scopedLessons, student?.id, currentUser?.id]);
 
   // --- Latest Announcement ---
   const latestAnnouncement = useMemo(() => {
@@ -866,6 +890,70 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
           aria-label={lang === 'th' ? 'การบ้านและประกาศโรงเรียน' : 'Homework and updates'}
           className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-5"
         >
+          {/* Student lesson entry point: resume an unfinished lesson or open the latest available course. */}
+          {canAccessLessons && <div className="space-y-3 border-b border-[var(--color-border)] pb-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold text-[var(--color-text-title)] inline-flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-[var(--color-primary-text)]" aria-hidden="true" />
+                  {lang === 'th' ? 'บทเรียนของฉัน' : 'My lessons'}
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                  {lessonProgress.total > 0
+                    ? lang === 'th'
+                      ? `เรียนจบ ${lessonProgress.completed} จาก ${lessonProgress.total} บท`
+                      : `${lessonProgress.completed} of ${lessonProgress.total} lessons completed`
+                    : lang === 'th' ? 'บทเรียนที่ครูเพิ่มในรายวิชาของคุณ' : 'Lessons added to your courses'}
+                </p>
+              </div>
+              {lessonProgress.pending[0] && (
+                <button
+                  type="button"
+                  onClick={() => onOpenLesson(lessonProgress.pending[0].courseId, lessonProgress.pending[0].id)}
+                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  {lang === 'th' ? 'เปิดห้องเรียน' : 'Open classroom'}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {lessonProgress.pending.length > 0 ? (
+              <div className="divide-y divide-[var(--color-border)]">
+                {lessonProgress.pending.map((lesson) => {
+                  const course = scopedCourses.find((item) => item.id === lesson.courseId);
+                  return (
+                    <button
+                      key={lesson.id}
+                      type="button"
+                      onClick={() => onOpenLesson(lesson.courseId, lesson.id)}
+                      className="w-full py-2.5 first:pt-1 last:pb-0 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-xl px-3 -mx-3 transition cursor-pointer"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-[var(--color-text-title)] truncate">
+                          {lang === 'th' ? lesson.titleTh || lesson.titleEn : lesson.titleEn || lesson.titleTh}
+                        </span>
+                        <span className="block text-xs text-[var(--color-text-muted)] truncate">
+                          {course?.code || (lang === 'th' ? 'รายวิชา' : 'Course')} · {lang === 'th' ? `บทที่ ${lesson.chapterNumber}` : `Chapter ${lesson.chapterNumber}`}
+                        </span>
+                      </span>
+                      <span className="text-xs font-semibold text-[var(--color-primary-text)] whitespace-nowrap shrink-0">
+                        {lessonProgress.completed < lessonProgress.total && lang === 'th' ? 'เรียนต่อ' :
+                          lessonProgress.completed < lessonProgress.total ? 'Continue' :
+                            lang === 'th' ? 'ทบทวน' : 'Review'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-xl bg-[var(--color-card-subtle)] px-3 py-3 text-sm text-[var(--color-text-muted)]">
+                {lessonProgress.total > 0
+                  ? lang === 'th' ? 'เรียนครบทุกบทแล้ว เลือกทบทวนบทเรียนได้' : 'All lessons completed. Choose one to review.'
+                  : lang === 'th' ? 'ยังไม่มีบทเรียนในรายวิชาของคุณ' : 'No lessons are available in your courses yet.'}
+              </p>
+            )}
+          </div>}
+
           {/* Homework Progress Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">

@@ -105,8 +105,8 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   currentSemester = '1',
   showPrimaryCourseCredits = false,
 }) => {
-  const canManageCourses = currentRole !== 'student' && currentRole !== 'parent';
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
+  const canManageCourses = isAdmin;
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const availableDepartments = Array.from(new Set([...DEPARTMENTS, ...presets.departments]));
   const [searchTerm, setSearchTerm] = useState('');

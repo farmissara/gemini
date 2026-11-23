@@ -63,6 +63,7 @@ import {
   SchoolPeriodTime,
   TimetableSlot,
   Assignment,
+  Lesson,
   PeriodAttendanceRecord,
   BehaviorRecord,
   SdqAssessment,
@@ -89,7 +90,7 @@ import { D3DailyAttendanceLineChart } from '../components/D3DailyAttendanceLineC
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { SchoolPolicyId } from '../lib/schoolPermissions';
-import { isTabEnabledByFeatureFlags } from '../lib/schoolFeatureFlags';
+import { isProgramModeEnabledByFeatureFlags, isTabEnabledByFeatureFlags } from '../lib/schoolFeatureFlags';
 import { ExecutiveMonitorView } from './ExecutiveMonitorView';
 import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
 import { StudentDesktopDashboard } from '../components/student/StudentDesktopDashboard';
@@ -135,6 +136,8 @@ interface DashboardViewProps {
   leaveRequests?: LeaveRequest[];
   homeworkSubmissions?: HomeworkSubmission[];
   assignments?: Assignment[];
+  lessons?: Lesson[];
+  onOpenLmsLesson?: (courseId: string, lessonId: string) => void;
   periodAttendance?: PeriodAttendanceRecord[];
   schoolPeriods?: SchoolPeriodTime[];
   behaviorRecords?: BehaviorRecord[];
@@ -181,6 +184,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   leaveRequests = [],
   homeworkSubmissions = [],
   assignments = [],
+  lessons = [],
+  onOpenLmsLesson,
   periodAttendance = [],
   schoolPeriods = [],
   behaviorRecords = [],
@@ -317,6 +322,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const scopedAssignments = useMemo(
     () => filterAssignmentsForPersonalRole(assignments, scopedCourses, currentUser),
     [assignments, currentUser, scopedCourses]
+  );
+  const scopedLessons = useMemo(
+    () => lessons.filter((lesson) => scopedCourses.some((course) => course.id === lesson.courseId)),
+    [lessons, scopedCourses]
   );
   const scopedTimetableSlots = useMemo(
     () => filterTimetableSlotsForPersonalRole(timetableSlots, currentUser, students, scopedCourses),
@@ -987,6 +996,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               scopedCourses={scopedCourses}
               scopedGrades={scopedGrades}
               scopedAssignments={scopedAssignments}
+              scopedLessons={scopedLessons}
               scopedHomework={scopedHomework}
               todayScheduledSlots={todayScheduledSlots}
               schoolPeriods={schoolPeriods}
@@ -997,8 +1007,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               canOpenCareerQuest={isModuleEnabled('career_quest')}
               canViewTimetable={isModuleEnabled('timetable')}
               canAccessHomework={schoolPermissions?.student_submit_homework !== false && isModuleEnabled('homework')}
+              canAccessLessons={isProgramModeEnabledByFeatureFlags('lms_classroom', featureFlags)}
               canViewDigitalId={isModuleEnabled('student_id_cards')}
               onNavigate={onNavigate}
+              onOpenLesson={(courseId, lessonId) => onOpenLmsLesson?.(courseId, lessonId)}
               onOpenAnnouncementsTab={() => setDashboardTab('announcements')}
               onOpenPhotoRecord={openPhotoRecord}
             />

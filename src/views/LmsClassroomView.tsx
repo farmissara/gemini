@@ -15,7 +15,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { getModuleTone } from '../lib/moduleTheme';
-import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter, teacherMatchesCourse } from '../lib/courseTeacherFilter';
 import { resolveLinkedStudentsForUser } from '../lib/attendanceScope';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 
@@ -26,6 +26,8 @@ interface LmsClassroomViewProps {
   teachers?: Teacher[];
   lessons: Lesson[];
   assignments: Assignment[];
+  initialCourseId?: string;
+  initialLessonId?: string;
   lang: AppLanguage;
   currentUser?: AuthUser | null;
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
@@ -41,6 +43,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   teachers = [],
   lessons,
   assignments,
+  initialCourseId,
+  initialLessonId,
   lang,
   currentUser,
   schoolPermissions,
@@ -48,9 +52,9 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   onSaveLesson,
   onSubmitAssignment,
 }) => {
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(initialCourseId || courses[0]?.id || '');
   const [teacherFilter, setTeacherFilter] = useState<string>('all');
-  const [selectedLessonId, setSelectedLessonId] = useState<string>(lessons[0]?.id || '');
+  const [selectedLessonId, setSelectedLessonId] = useState<string>(initialLessonId || lessons[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'lessons' | 'assignments' | 'discussion'>('lessons');
   const [submittedAlert, setSubmittedAlert] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
@@ -67,16 +71,33 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   const canSubmitHomework =
     isStudentUser && Boolean(currentStudentId) && isSchoolPolicyEnabled(schoolPermissions, 'student_submit_homework');
   const canManageLessons = currentUser?.role === 'admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'teacher';
+  const isTeacherUser = currentUser?.role === 'teacher';
+  const currentTeacher = isTeacherUser
+    ? teachers.find((teacher) =>
+        (currentUser?.teacherRecordId && teacher.id === currentUser.teacherRecordId) ||
+        teacher.email.trim().toLowerCase() === currentUser?.email.trim().toLowerCase()
+      )
+    : undefined;
+  const teacherIdentity = currentTeacher || (isTeacherUser && currentUser ? {
+    fullNameTh: currentUser.fullNameTh,
+    fullNameEn: currentUser.fullNameEn,
+    email: currentUser.email,
+  } : undefined);
+  // Teachers can only browse and author lessons for courses assigned to their own account.
+  // Admins retain the school-wide course selector.
+  const accessibleCourses = isTeacherUser
+    ? teacherIdentity
+      ? courses.filter((course) => teacherMatchesCourse(teacherIdentity, course))
+      : []
+    : courses;
 
-  const teacherFilterOptions = buildCourseTeacherOptions(courses, teachers);
-  const filteredCourses = courses.filter((c) =>
-    courseMatchesTeacherFilter(c, teacherFilter, teacherFilterOptions)
-  );
+  const teacherFilterOptions = buildCourseTeacherOptions(accessibleCourses, teachers);
+  const filteredCourses = isTeacherUser
+    ? accessibleCourses
+    : accessibleCourses.filter((c) => courseMatchesTeacherFilter(c, teacherFilter, teacherFilterOptions));
   const activeCourse =
     filteredCourses.find((c) => c.id === selectedCourseId) ||
-    filteredCourses[0] ||
-    courses.find((c) => c.id === selectedCourseId) ||
-    courses[0];
+    filteredCourses[0];
   const activeCourseIdResolved = activeCourse?.id || selectedCourseId;
   const courseLessons = lessons.filter((l) => l.courseId === activeCourseIdResolved);
   const courseAssignments = assignments.filter((a) => a.courseId === activeCourseIdResolved && a.status === 'active');
@@ -115,13 +136,16 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
     }
   };
 
-  const startNewLesson = () => setLessonForm({
+  const startNewLesson = () => {
+    if (!activeCourse) return;
+    setLessonForm({
     id: `lesson-${crypto.randomUUID()}`,
     schoolId,
     courseId: activeCourseIdResolved,
     chapterNumber: Math.max(0, ...courseLessons.map((lesson) => lesson.chapterNumber)) + 1,
     titleTh: '', titleEn: '', durationMinutes: 10, videoUrl: '', content: '', materials: [], completedByStudentIds: [],
-  });
+    });
+  };
 
   const handleAssignmentSubmit = async (id: string) => {
     if (isSubmittingAssignment) return;
@@ -167,7 +191,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <ModuleTourTrigger moduleId="lms_classroom" lang={lang} />
           {canManageLessons && (
-            <button type="button" onClick={startNewLesson} className="px-2.5 py-1.5 rounded-lg bg-[var(--tone-solid)] text-white text-xs font-semibold flex items-center gap-1.5">
+            <button type="button" disabled={!activeCourse} onClick={startNewLesson} className="px-2.5 py-1.5 rounded-lg bg-[var(--tone-solid)] text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
               <Plus className="w-3.5 h-3.5" />{lang === 'th' ? 'เพิ่มบทเรียน' : 'Add lesson'}
             </button>
           )}
@@ -226,9 +250,17 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
         </section>
       )}
 
+      {isTeacherUser && filteredCourses.length === 0 && (
+        <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {lang === 'th'
+            ? 'บัญชีครูนี้ยังไม่พบรายวิชาที่ผูกกับชื่อหรืออีเมลของคุณ โปรดให้ผู้ดูแลตรวจสอบข้อมูลครูและผู้สอนในรายวิชา'
+            : 'No courses are assigned to this teacher account. Ask an administrator to verify your teacher profile and course assignments.'}
+        </div>
+      )}
+
       {/* Course Switcher Tabs with Teacher Filter */}
       <div className="lms-course-toolbar shrink-0">
-        {teacherFilterOptions.length > 0 && (
+        {!isTeacherUser && teacherFilterOptions.length > 0 && (
           <select
             aria-label="กรองวิชาตามรายชื่อครู"
             value={teacherFilter}
@@ -262,6 +294,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
           <span>{lang === 'th' ? 'รายวิชา' : 'Course'}</span>
           <select
             aria-label={lang === 'th' ? 'เลือกรายวิชา' : 'Choose a course'}
+            disabled={filteredCourses.length === 0}
             value={activeCourseIdResolved}
             onChange={(e) => {
               const nextCourseId = e.target.value;
@@ -276,6 +309,9 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                 {course.code} · {lang === 'th' ? course.titleTh : course.titleEn}
               </option>
             ))}
+            {filteredCourses.length === 0 && (
+              <option value="">{lang === 'th' ? 'ไม่พบรายวิชาที่สอน' : 'No assigned courses'}</option>
+            )}
           </select>
         </label>
       </div>

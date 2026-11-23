@@ -334,6 +334,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [studentFormStep, setStudentFormStep] = useState<1 | 2>(1);
 
   const canManageApprovals = ['admin', 'super_admin'].includes(currentRole);
+  const canManageStudentRecords = canManageApprovals;
   const schoolId = activeSchool?.id || students[0]?.schoolId || 'sch-bkk-01';
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const roomOptions = activeSchool?.roomOptions?.length ? activeSchool.roomOptions : presets.roomOptions;
@@ -1307,7 +1308,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <ChevronDown className="h-3.5 w-3.5" />
               </summary>
               <div className="absolute right-0 top-full z-30 mt-1.5 min-w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-                {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
+                {canManageStudentRecords && (
                   <button
                     type="button"
                     data-guide-id="students-add-bulk"
@@ -1337,7 +1338,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </span>
                 </button>
 
-                {onOpenImportExport && (
+                {canManageStudentRecords && onOpenImportExport && (
                   <button
                     type="button"
                     onClick={(event) => {
@@ -1351,17 +1352,19 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    setShowPromotionModal(true);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
-                  <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
-                </button>
+                {canManageStudentRecords && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      setShowPromotionModal(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
+                    <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
+                  </button>
+                )}
 
                 {['admin', 'super_admin'].includes(currentRole) && (
                   <button
@@ -1393,15 +1396,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               </div>
             </details>
 
-            <button
-              type="button"
-              data-guide-id="students-add-single"
-              onClick={handleOpenAdd}
-              className="btn-action-primary px-3 py-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>เพิ่มนักเรียน</span>
-            </button>
+            {canManageStudentRecords && (
+              <button
+                type="button"
+                data-guide-id="students-add-single"
+                onClick={handleOpenAdd}
+                className="btn-action-primary px-3 py-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>เพิ่มนักเรียน</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1742,19 +1747,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <td className="py-2.5 px-4">
                         <div className="text-[var(--color-text-body)] font-medium">{student.guardianName} ({student.guardianRelation})</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <button
-                            type="button"
-                            onClick={() => onToggleLineSync(student.id)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors border cursor-pointer ${
-                              student.lineLinked
-                                ? 'bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-500/30'
-                                : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
-                            }`}
-                            title={student.lineLinked ? 'LINE Connected (Click to toggle)' : 'Not Connected to LINE (Click to link)'}
-                          >
-                            <MessageSquare className="w-2.5 h-2.5 fill-current" />
-                            {student.lineLinked ? 'LINE Linked' : 'Connect LINE'}
-                          </button>
+                          {canManageStudentRecords && (
+                            <button
+                              type="button"
+                              onClick={() => onToggleLineSync(student.id)}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors border cursor-pointer ${
+                                student.lineLinked
+                                  ? 'bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-500/30'
+                                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
+                              }`}
+                              title={student.lineLinked ? 'LINE Connected (Click to toggle)' : 'Not Connected to LINE (Click to link)'}
+                            >
+                              <MessageSquare className="w-2.5 h-2.5 fill-current" />
+                              {student.lineLinked ? 'LINE Linked' : 'Connect LINE'}
+                            </button>
+                          )}
                           <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-0.5 tabular-nums">
                             <Phone className="w-2.5 h-2.5" /> {student.guardianPhone}
                           </span>
@@ -1800,12 +1807,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               dividerBefore: true,
                               onClick: () => onSelectStudent(student),
                             },
-                            {
-                              id: 'edit',
-                              label: 'แก้ไขข้อมูลพื้นฐาน / ห้อง / สถานะ',
-                              icon: <Edit3 className="w-3.5 h-3.5" />,
-                              onClick: () => handleOpenEdit(student),
-                            },
+                            ...(canManageStudentRecords
+                              ? [{
+                                  id: 'edit',
+                                  label: 'แก้ไขข้อมูลพื้นฐาน / ห้อง / สถานะ',
+                                  icon: <Edit3 className="w-3.5 h-3.5" />,
+                                  onClick: () => handleOpenEdit(student),
+                                }]
+                              : []),
                             ...(canManageApprovals
                               ? [
                                   {
