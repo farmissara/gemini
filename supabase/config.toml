@@ -1,2 +1,5 @@
 [functions.attendance-photo-retention]
 verify_jwt = false
+
+[functions.manage-student-credentials]
+verify_jwt = false

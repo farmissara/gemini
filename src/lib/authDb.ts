@@ -1018,30 +1018,151 @@ export async function completeFirstStudentPasswordChange(password: string): Prom
   return context;
 }
 
+async function extractEdgeFunctionError(error: unknown): Promise<{
+  status?: number;
+  message: string;
+  isUnreachable: boolean;
+}> {
+  const errObj = error as { name?: string; message?: string; context?: unknown } | null;
+  const rawMessage = errObj?.message || (error instanceof Error ? error.message : String(error || 'Unknown error'));
+  const name = errObj?.name || '';
+  let status: number | undefined;
+  let bodyMessage = '';
+
+  const context = errObj?.context;
+  if (context && typeof context === 'object' && 'status' in context) {
+    const responseLike = context as Response;
+    if (typeof responseLike.status === 'number') {
+      status = responseLike.status;
+    }
+    try {
+      const cloned = typeof responseLike.clone === 'function' ? responseLike.clone() : responseLike;
+      if (typeof cloned.json === 'function') {
+        const parsed = (await cloned.json()) as { error?: unknown; message?: unknown } | null;
+        if (typeof parsed?.message === 'string' && parsed.message.trim()) {
+          bodyMessage = parsed.message.trim();
+        } else if (typeof parsed?.error === 'string' && parsed.error.trim()) {
+          bodyMessage = parsed.error.trim();
+        }
+      }
+    } catch {
+      // Ignore non-JSON error payloads from the gateway
+    }
+  }
+
+  const isUnreachable =
+    name === 'FunctionsFetchError' ||
+    name === 'FunctionsRelayError' ||
+    /failed to send a request to the edge function|failed to fetch|networkerror/i.test(rawMessage) ||
+    status === 404 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504;
+
+  return {
+    status,
+    message: bodyMessage || rawMessage,
+    isUnreachable,
+  };
+}
+
+async function invokeStudentCredentialManager(
+  payload:
+    | { operation: 'create' | 'reset'; schoolId: string; studentId: string }
+    | { operation: 'create_all_missing'; schoolId: string }
+): Promise<Record<string, unknown>> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data: sessionData } = await client.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (!accessToken) {
+    throw new Error('โหมดสาธิตไม่สามารถจัดการบัญชีหรือรหัสผ่านนักเรียนได้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase');
+  }
+
+  // Tier 1: Supabase Edge Function
+  const { data, error } = await client.functions.invoke('manage-student-credentials', {
+    body: payload,
+  });
+
+  if (!error && data && typeof data === 'object') {
+    return data as Record<string, unknown>;
+  }
+
+  const edgeDetails = await extractEdgeFunctionError(error);
+  if (
+    error &&
+    !edgeDetails.isUnreachable &&
+    edgeDetails.status !== undefined &&
+    edgeDetails.status >= 400 &&
+    edgeDetails.status < 500
+  ) {
+    throw new Error(edgeDetails.message);
+  }
+
+  // Tier 2: Express backend fallback when Edge Function is not deployed or unreachable
+  try {
+    const response = await fetch('/api/student-credentials', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    const serverPayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    if (response.ok) {
+      return serverPayload;
+    }
+
+    const serverErrorCode = typeof serverPayload.error === 'string' ? serverPayload.error : '';
+    const serverMessage =
+      typeof serverPayload.message === 'string'
+        ? serverPayload.message
+        : typeof serverPayload.error === 'string'
+          ? serverPayload.error
+          : `HTTP ${response.status}`;
+
+    if (response.status === 503 && serverErrorCode === 'STUDENT_CREDENTIALS_SERVER_NOT_CONFIGURED') {
+      throw new Error(
+        `ไม่สามารถติดต่อ Edge Function "manage-student-credentials" ของ Supabase (${edgeDetails.message}) และเซิร์ฟเวอร์ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY — กรุณา Deploy Edge Function "manage-student-credentials" ใน Supabase (พร้อมรัน migration 20261120_student_temporary_credentials.sql) หรือกำหนดค่า SUPABASE_SERVICE_ROLE_KEY บนเซิร์ฟเวอร์`
+      );
+    }
+
+    throw new Error(serverMessage);
+  } catch (fallbackErr) {
+    if (fallbackErr instanceof Error && !/failed to fetch|networkerror/i.test(fallbackErr.message)) {
+      throw fallbackErr;
+    }
+    throw new Error(
+      `ไม่สามารถติดต่อทั้ง Edge Function "manage-student-credentials" (${edgeDetails.message}) และเซิร์ฟเวอร์สำรอง (/api/student-credentials)`
+    );
+  }
+}
+
 async function manageStudentTemporaryCredential(
   operation: 'create' | 'reset',
   schoolId: string,
   studentId: string
 ): Promise<TemporaryStudentCredential> {
-  const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
-
-  const { data, error } = await client.functions.invoke('manage-student-credentials', {
-    body: { operation, schoolId, studentId },
-  });
-  if (error) throw new Error(`ไม่สามารถจัดการรหัสผ่านนักเรียนได้: ${error.message}`);
-  if (
-    typeof data?.studentIdNumber !== 'string' ||
-    typeof data?.temporaryPassword !== 'string' ||
-    typeof data?.expiresAt !== 'string'
-  ) {
-    throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบออกรหัสผ่านชั่วคราวตอบกลับไม่ถูกต้อง');
+  try {
+    const data = await invokeStudentCredentialManager({ operation, schoolId, studentId });
+    if (
+      typeof data?.studentIdNumber !== 'string' ||
+      typeof data?.temporaryPassword !== 'string' ||
+      typeof data?.expiresAt !== 'string'
+    ) {
+      throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบออกรหัสผ่านชั่วคราวตอบกลับไม่ถูกต้อง');
+    }
+    return {
+      studentIdNumber: data.studentIdNumber,
+      temporaryPassword: data.temporaryPassword,
+      expiresAt: data.expiresAt,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`ไม่สามารถจัดการรหัสผ่านนักเรียนได้: ${message}`);
   }
-  return {
-    studentIdNumber: data.studentIdNumber,
-    temporaryPassword: data.temporaryPassword,
-    expiresAt: data.expiresAt,
-  };
 }
 
 export function createStudentLoginAccount(
@@ -1054,13 +1175,14 @@ export function createStudentLoginAccount(
 export async function createMissingStudentLoginAccounts(
   schoolId: string
 ): Promise<BulkStudentCredentialResult> {
-  const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase is not configured.');
+  let data: Record<string, unknown>;
+  try {
+    data = await invokeStudentCredentialManager({ operation: 'create_all_missing', schoolId });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`ไม่สามารถสร้างบัญชีนักเรียนเป็นชุดได้: ${message}`);
+  }
 
-  const { data, error } = await client.functions.invoke('manage-student-credentials', {
-    body: { operation: 'create_all_missing', schoolId },
-  });
-  if (error) throw new Error(`ไม่สามารถสร้างบัญชีนักเรียนเป็นชุดได้: ${error.message}`);
   if (!Array.isArray(data?.created) || !Array.isArray(data?.skipped) || !Array.isArray(data?.failed)) {
     throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบสร้างบัญชีนักเรียนตอบกลับไม่ถูกต้อง');
   }

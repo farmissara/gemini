@@ -8,6 +8,7 @@ import { loadEnv } from 'vite';
 import { Type } from '@google/genai';
 import { backupRawParser, createBackupRouter } from './src/server/backupRoutes.ts';
 import { createStaffInviteEmailRouter } from './src/server/staffInviteEmailRoutes.ts';
+import { createStudentCredentialsRouter } from './src/server/studentCredentialsRoutes.ts';
 import { createSchoolAiRouter, finishSchoolAiRequest, getSchoolAiContext, prepareSchoolAiRequest, reserveSchoolAiRequest } from './src/server/schoolAiRoutes.ts';
 
 const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
@@ -264,6 +265,7 @@ async function createApp() {
 
   app.use('/api/backup', createBackupRouter(getServerEnv));
   app.use('/api/staff-invitations', createStaffInviteEmailRouter(getServerEnv));
+  app.use('/api/student-credentials', createStudentCredentialsRouter(getServerEnv));
   app.use('/api/school-ai', createSchoolAiRouter(getServerEnv));
 
   app.get('/api/health', (_req: Request, res: Response) => {

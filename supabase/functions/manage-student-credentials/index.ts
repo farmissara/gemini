@@ -110,8 +110,11 @@ Deno.serve(async (request) => {
   if (!token) return respond(401, { error: 'Sign in before managing student credentials.' });
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const anonKey =
+    Deno.env.get('SUPABASE_ANON_KEY') ||
+    Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ||
+    serviceRoleKey;
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     console.error('Missing Supabase environment configuration for manage-student-credentials.');
     return respond(500, { error: 'Student credential management is not configured.' });
@@ -152,11 +155,23 @@ Deno.serve(async (request) => {
     console.error('Could not load student credential manager profile:', actorError.message);
     return respond(500, { error: 'Could not verify your school role.' });
   }
-  if (!actor || actor.status !== 'active' || !['admin', 'super_admin'].includes(actor.role)) {
-    return respond(403, { error: 'Only an active school administrator can manage student credentials.' });
+  let isSchoolAdminTeacher = false;
+  if (actor?.status === 'active' && actor.role === 'teacher' && actor.school_id === schoolId && authData.user.email) {
+    const { data: teacher } = await serviceClient
+      .from('teachers')
+      .select('is_school_admin')
+      .eq('school_id', schoolId)
+      .ilike('email', authData.user.email)
+      .maybeSingle();
+    isSchoolAdminTeacher = Boolean(teacher?.is_school_admin);
   }
-  if (actor.role === 'admin' && actor.school_id !== schoolId) {
-    return respond(403, { error: 'You can only manage students from your own school.' });
+  const isAuthorized =
+    actor?.status === 'active' &&
+    (actor.role === 'super_admin' ||
+      (actor.role === 'admin' && actor.school_id === schoolId) ||
+      isSchoolAdminTeacher);
+  if (!isAuthorized) {
+    return respond(403, { error: 'Only an active school administrator can manage student credentials.' });
   }
 
   const { data: school, error: schoolError } = await serviceClient
