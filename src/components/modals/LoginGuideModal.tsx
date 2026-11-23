@@ -306,7 +306,7 @@ export const LoginGuideModal: React.FC<LoginGuideModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-guide-modal-title"
-        className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl"
+        className="modal-enter relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl"
       >
         {/* Header */}
         <div className="flex flex-col gap-4 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] px-5 py-4 sm:px-6">

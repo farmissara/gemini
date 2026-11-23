@@ -43,6 +43,8 @@ import {
   getCourseType,
   inferCourseLearningArea,
 } from '../lib/courseClassification';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -432,6 +434,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       setActiveCourseId(newCourse.id);
       setActiveCourseDetailTab('overview');
       setShowAddModal(false);
+      emitAppToast({
+        tone: 'success',
+        message: `เพิ่มรายวิชา ${newCourse.code} ${newCourse.titleTh} เรียบร้อยแล้ว`,
+      });
     };
     if (duplicateReasons.length > 0) {
       setPendingConfirm({
@@ -523,6 +529,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       onConfirm: async () => {
         await onUnenrollStudent?.(course.id, student.id);
         setEnrollFeedback(`ยกเลิกลงทะเบียน ${student.firstNameTh} ${student.lastNameTh} (${student.studentIdNumber}) แล้ว`);
+        emitAppToast({
+          tone: 'info',
+          message: `ยกเลิกลงทะเบียน ${student.firstNameTh} ${student.lastNameTh} ออกจาก ${course.code} แล้ว`,
+        });
         setTimeout(() => setEnrollFeedback(null), 3500);
       },
     });
@@ -761,23 +771,14 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
             items={filteredCourses}
             pageSize={3}
             emptyState={(
-              <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-8 text-center">
-                <p className="text-sm font-semibold text-[var(--color-text-title)]">
-                  {courses.length === 0 ? 'ยังไม่มีรายวิชาในหลักสูตร' : 'ไม่พบรายวิชาที่ตรงกับตัวกรอง'}
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  {courses.length === 0 ? 'เพิ่มรายวิชาใหม่เพื่อเริ่มจัดการหลักสูตร' : 'ลองปรับคำค้นหาหรือล้างตัวกรอง'}
-                </p>
-                {hasActiveCourseFilters && (
-                  <button
-                    type="button"
-                    onClick={clearCourseFilters}
-                    className="mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    ล้างตัวกรอง
-                  </button>
-                )}
-              </div>
+              <EmptyState
+                icon={BookOpen}
+                title={courses.length === 0 ? 'ยังไม่มีรายวิชาในหลักสูตร' : 'ไม่พบรายวิชาที่ตรงกับตัวกรอง'}
+                description={courses.length === 0 ? 'เพิ่มรายวิชาใหม่เพื่อเริ่มจัดการหลักสูตรและลงทะเบียนนักเรียน' : 'ลองปรับคำค้นหาหรือล้างตัวกรองเพื่อดูรายวิชาทั้งหมด'}
+                action={hasActiveCourseFilters
+                  ? { label: 'ล้างตัวกรอง', onClick: clearCourseFilters, variant: 'neutral' }
+                  : undefined}
+              />
             )}
             renderItem={(course) => {
             const isSelected = activeCourse?.id === course.id;
@@ -1399,24 +1400,20 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               )}
             </>
           ) : (
-            <div className="py-10 text-center">
-              <p className="text-sm font-semibold text-[var(--color-text-title)]">
-                {courses.length === 0
+            <EmptyState
+              compact
+              icon={BookOpen}
+              title={
+                courses.length === 0
                   ? 'ยังไม่มีรายวิชาในหลักสูตร'
                   : filteredCourses.length === 0
                     ? 'ไม่พบรายวิชาที่ตรงกับตัวกรอง'
-                    : 'เลือกรายวิชาเพื่อดูรายละเอียดหลักสูตร'}
-              </p>
-              {filteredCourses.length === 0 && hasActiveCourseFilters && (
-                <button
-                  type="button"
-                  onClick={clearCourseFilters}
-                  className="mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  ล้างตัวกรอง
-                </button>
-              )}
-            </div>
+                    : 'เลือกรายวิชาเพื่อดูรายละเอียดหลักสูตร'
+              }
+              action={filteredCourses.length === 0 && hasActiveCourseFilters
+                ? { label: 'ล้างตัวกรอง', onClick: clearCourseFilters, variant: 'neutral' }
+                : undefined}
+            />
           )}
         </div>
       </div>
@@ -1424,7 +1421,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       {/* Add / Edit Course Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl space-y-4">
+          <div className="modal-enter bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
                 <Plus className="w-5 h-5 text-[var(--color-primary-text)]" />

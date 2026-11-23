@@ -27,6 +27,8 @@ import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getInvoiceDuplicateReasons } from '../lib/duplicateRecords';
 import { getLocalDateString } from '../lib/date';
 import { getModuleTone } from '../lib/moduleTheme';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface BillingViewProps {
   schoolId?: string;
@@ -66,8 +68,6 @@ export const BillingView: React.FC<BillingViewProps> = ({
   const [showNewInvoiceModal, setShowNewInvoiceModal] = useState(false);
   const [showFeePresetModal, setShowFeePresetModal] = useState(false);
   const [rejectReasonInput, setRejectReasonInput] = useState('');
-  const [reminderToast, setReminderToast] = useState<string | null>(null);
-  const [reminderError, setReminderError] = useState<string | null>(null);
   const [reminderBusy, setReminderBusy] = useState(false);
 
   // New invoice form state
@@ -91,19 +91,23 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
   const handleTriggerReminder = async (inv: TuitionInvoice) => {
     setReminderBusy(true);
-    setReminderError(null);
     const stu = students.find((s) => s.id === inv.studentId);
     try {
       const result = await onSendPrivateAppReminder(inv);
       if (result.stored === 0) {
         throw new Error('ไม่มีบัญชีผู้ปกครองที่เชื่อมกับนักเรียนนี้ หรือปิดหมวดค่าใช้จ่ายไว้');
       }
-      setReminderToast(result.delivered > 0
-        ? `ส่งแจ้งเตือนผ่านแอปถึงผู้ปกครองของ ${stu?.firstNameTh || stu?.firstNameEn} (${inv.invoiceNumber})`
-        : `บันทึกแจ้งเตือนในแอปของผู้ปกครองแล้ว (${inv.invoiceNumber})`);
-      setTimeout(() => setReminderToast(null), 4000);
+      emitAppToast({
+        tone: 'success',
+        message: result.delivered > 0
+          ? `ส่งแจ้งเตือนผ่านแอปถึงผู้ปกครองของ ${stu?.firstNameTh || stu?.firstNameEn} (${inv.invoiceNumber})`
+          : `บันทึกแจ้งเตือนในแอปของผู้ปกครองแล้ว (${inv.invoiceNumber})`,
+      });
     } catch (error) {
-      setReminderError(error instanceof Error ? error.message : 'ส่งแจ้งเตือนผ่านแอปไม่สำเร็จ');
+      emitAppToast({
+        tone: 'error',
+        message: error instanceof Error ? error.message : 'ส่งแจ้งเตือนผ่านแอปไม่สำเร็จ',
+      });
     } finally {
       setReminderBusy(false);
     }
@@ -136,18 +140,6 @@ export const BillingView: React.FC<BillingViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-          {reminderToast && (
-            <div className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-600 text-emerald-100 text-xs flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-300 fill-current" />
-              <span>{reminderToast}</span>
-            </div>
-          )}
-          {reminderError && (
-            <div className="px-2.5 py-1 rounded-lg bg-rose-100 border border-rose-300 text-rose-900 text-xs flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              <span>{reminderError}</span>
-            </div>
-          )}
           {(isAdmin || (currentRole === 'super_admin' && onOpenExamPaymentSettings)) && (
             <details className="relative">
               <summary className="btn-tool-tone list-none px-2.5 py-1.5">
@@ -227,7 +219,22 @@ export const BillingView: React.FC<BillingViewProps> = ({
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Invoice list */}
         <div className="lg:col-span-7 h-full min-h-0 overflow-y-auto pr-1">
-          <PagedList items={filteredInvoices} pageSize={3} renderItem={(inv) => {
+          <PagedList
+            items={filteredInvoices}
+            pageSize={3}
+            emptyState={(
+              <EmptyState
+                icon={Receipt}
+                title={filterStatus === 'all' ? 'ยังไม่มีใบแจ้งหนี้ในระบบ' : 'ไม่พบใบแจ้งหนี้ในสถานะนี้'}
+                description={filterStatus !== 'all' ? 'ลองสลับดูรายการทั้งหมด หรือออกใบแจ้งหนี้ใหม่ให้ผู้ปกครอง' : 'กดปุ่มออกใบแจ้งหนี้เพื่อเริ่มบันทึกรายการค่าธรรมเนียมการศึกษา'}
+                action={filterStatus !== 'all'
+                  ? { label: 'ดูทั้งหมด', onClick: () => setFilterStatus('all'), variant: 'neutral' }
+                  : isAdmin && onAddInvoice
+                    ? { label: 'ออกใบแจ้งหนี้', onClick: () => { setAllowDupInvoiceConfirm(false); setShowNewInvoiceModal(true); }, icon: Plus }
+                    : undefined}
+              />
+            )}
+            renderItem={(inv) => {
             const student = students.find((s) => s.id === inv.studentId);
             const isSelected = activeInvoice?.id === inv.id;
             return (
@@ -397,7 +404,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
                           onClick={() => {
                             if (onApproveSlip) onApproveSlip(activeInvoice.id);
                             else onPayInvoice(activeInvoice.id, 'promptpay');
-                            setReminderToast(`อนุมัติสลิปและออกใบเสร็จสำหรับ ${activeInvoice.invoiceNumber} แล้ว`);
+                            emitAppToast({
+                              tone: 'success',
+                              message: `อนุมัติสลิปและออกใบเสร็จสำหรับ ${activeInvoice.invoiceNumber} แล้ว`,
+                            });
                           }}
                           className="py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
                         >
@@ -408,7 +418,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
                           onClick={() => {
                             onRejectSlip?.(activeInvoice.id, rejectReasonInput.trim() || 'ภาพหลักฐานไม่ชัดเจน กรุณาอัปโหลดใหม่');
                             setRejectReasonInput('');
-                            setReminderToast(`ส่งคำขอให้ผู้ปกครองแนบสลิป ${activeInvoice.invoiceNumber} ใหม่แล้ว`);
+                            emitAppToast({
+                              tone: 'info',
+                              message: `ส่งคำขอให้ผู้ปกครองแนบสลิป ${activeInvoice.invoiceNumber} ใหม่แล้ว`,
+                            });
                           }}
                           className="py-2 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-semibold flex items-center justify-center gap-1 cursor-pointer"
                         >
@@ -478,15 +491,20 @@ export const BillingView: React.FC<BillingViewProps> = ({
               )}
             </>
           ) : (
-            <p className="text-xs text-[var(--color-text-muted)] text-center py-8">Select an invoice to inspect</p>
+            <EmptyState
+              compact
+              icon={Receipt}
+              title="เลือกใบแจ้งหนี้เพื่อดูรายละเอียด"
+              description="คลิกที่รายการทางด้านซ้ายเพื่อตรวจสอบยอด ช่องทาง PromptPay หรืออนุมัติหลักฐานการโอน"
+            />
           )}
         </div>
       </div>
 
       {/* PromptPay Modal */}
       {showPromptPayModal && activeInvoice && activeStudent && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="modal-enter bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 block">
                 Thai PromptPay QR Payment
@@ -672,7 +690,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 setActiveInvoice(created);
                 setShowNewInvoiceModal(false);
                 setAllowDupInvoiceConfirm(false);
-                setReminderToast(`ออกใบแจ้งหนี้ ${invNumber} ให้ ${stu.firstNameTh} แล้ว`);
+                emitAppToast({
+                  tone: 'success',
+                  message: `ออกใบแจ้งหนี้ ${invNumber} ให้ ${stu.firstNameTh} แล้ว`,
+                });
               }}
               className="space-y-3"
             >

@@ -59,6 +59,8 @@ import { enqueueOfflineAction, isOnlineNow } from '../lib/offlineSync';
 import { getAttendanceDuplicateReasons } from '../lib/duplicateRecords';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -664,6 +666,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    emitAppToast({
+      tone: 'success',
+      message: `ส่งออกรายงานเวลาเรียน (${exportRecords.length} รายการ) เป็น CSV แล้ว`,
+    });
   };
 
   // Export Monthly Attendance Summary to CSV
@@ -704,6 +710,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     link.download = `monthly_attendance_summary_${new Date().getFullYear()}_${new Date().getMonth() + 1}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    emitAppToast({
+      tone: 'success',
+      message: `ส่งออกสรุปการมาเรียนรายเดือน (${monthlySummary.length} คน) เป็น CSV แล้ว`,
+    });
   };
 
   const handleConfirmAttendanceImport = (records: AttendanceRecord[]) => {
@@ -1473,9 +1483,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               ) : (
                 <div className="divide-y divide-[var(--color-border)]">
                   {displayedFilteredLogs.length === 0 ? (
-                    <p className="type-meta py-8 text-center">
-                      {logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็คชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
-                    </p>
+                    <EmptyState
+                      compact
+                      icon={QrCode}
+                      title={logScopeFilter === 'mine' ? 'ไม่พบบันทึกเช็คชื่อของบัญชีคุณในวันนี้' : 'ไม่พบบันทึกการเข้าเรียนในวันที่เลือก'}
+                      description="ลองเปลี่ยนช่วงวันที่ ระดับชั้น หรือสลับดูรายการทั้งหมด"
+                    />
                   ) : (
                     <PagedList items={displayedFilteredLogs} pageSize={6} renderItem={(log) => {
                       const student = students.find(s => s.id === log.studentId);
@@ -1631,7 +1644,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
             <div className="saas-card-body">
               {filteredLeaveRequests.length === 0 ? (
-                <p className="type-meta py-8 text-center">ไม่มีรายการใบลาในหมวดนี้</p>
+                <EmptyState
+                  compact
+                  icon={FileText}
+                  title="ไม่มีรายการใบลาในหมวดนี้"
+                  action={leaveFilter !== 'all' ? { label: 'ดูใบลาทั้งหมด', onClick: () => setLeaveFilter('all'), variant: 'neutral' } : undefined}
+                />
               ) : (
                 <div className="divide-y divide-[var(--color-border)]">
                   <PagedList items={filteredLeaveRequests} pageSize={4} renderItem={(req) => (

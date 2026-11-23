@@ -59,6 +59,8 @@ import {
   HistogramScope,
 } from '../components/GradeDistributionHistogram';
 import { downloadGradeDistributionReportPdf } from '../lib/moeReportPdf';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 import {
   calculateStudentAcademicSummary,
   clampScore,
@@ -1225,6 +1227,10 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    emitAppToast({
+      tone: 'success',
+      message: `ส่งออกสมุด ปพ.5 (${selectedCourse.code}) เป็นไฟล์ CSV แล้ว`,
+    });
   };
 
   const handleExportPp3CSV = () => {
@@ -2590,10 +2596,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <tbody className="divide-y divide-[var(--color-border)]">
                 {filteredGradebookRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-[var(--color-text-muted)]">
-                      {gradebookRows.length === 0
-                        ? 'No grades entered for this course yet.'
-                        : 'ไม่พบรายการที่ตรงกับตัวกรองที่เลือก'}
+                    <td colSpan={10} className="p-4">
+                      <EmptyState
+                        compact
+                        icon={Award}
+                        title={gradebookRows.length === 0 ? 'ยังไม่มีข้อมูลผลการเรียนในรายวิชานี้' : 'ไม่พบรายการที่ตรงกับตัวกรองที่เลือก'}
+                        description="ลองปรับคำค้นหา ตัวกรองห้อง หรือเลือกรายวิชาอื่น"
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -2881,9 +2890,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
           <div className="md:hidden space-y-2.5">
             {filteredGradebookRows.length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)] py-6 text-center">
-                {gradebookRows.length === 0 ? 'ไม่มีข้อมูลผลการเรียนในรายวิชานี้' : 'ไม่พบรายการที่ตรงกับคำค้นหาหรือตัวกรองที่เลือก'}
-              </p>
+              <EmptyState
+                compact
+                icon={Award}
+                title={gradebookRows.length === 0 ? 'ไม่มีข้อมูลผลการเรียนในรายวิชานี้' : 'ไม่พบรายการที่ตรงกับคำค้นหาหรือตัวกรองที่เลือก'}
+              />
             ) : (
               filteredGradebookRows.map(({ grade, student }, index) => {
                 const isVisible = index >= currentGradePage * gradePageSize && index < (currentGradePage + 1) * gradePageSize;

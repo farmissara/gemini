@@ -47,6 +47,8 @@ import type {
   UserRole,
 } from '../../types';
 import { getSupabaseClient } from '../../lib/supabase';
+import { ConfirmActionModal } from '../modals/ConfirmActionModal';
+import { emitAppToast } from '../common/ToastProvider';
 
 interface SchoolPackagesAndAiPanelProps {
   activeSchool: School;
@@ -82,6 +84,7 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
   const [schoolApiKeyDraft, setSchoolApiKeyDraft] = useState('');
   const [monthlyRequestLimitDraft, setMonthlyRequestLimitDraft] = useState('300');
   const [savingSchoolAi, setSavingSchoolAi] = useState(false);
+  const [confirmRemoveAiKeyOpen, setConfirmRemoveAiKeyOpen] = useState(false);
   const [schoolAiNotice, setSchoolAiNotice] = useState<string | null>(null);
   const [savingFlagsNotice, setSavingFlagsNotice] = useState<string | null>(null);
 
@@ -149,8 +152,11 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
     }
   };
 
-  const removeSchoolAiKey = async () => {
-    if (!window.confirm('ลบ Gemini API key ของโรงเรียนนี้หรือไม่? ฟีเจอร์ AI จะหยุดทำงานจนกว่าจะเพิ่ม key ใหม่')) return;
+  const removeSchoolAiKey = () => {
+    setConfirmRemoveAiKeyOpen(true);
+  };
+
+  const confirmRemoveSchoolAiKey = async () => {
     setSavingSchoolAi(true);
     setSchoolAiNotice(null);
     try {
@@ -165,9 +171,14 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'ลบ API key ไม่สำเร็จ');
       setSchoolAiNotice('ลบ API key ของโรงเรียนแล้ว');
+      emitAppToast({ tone: 'info', message: 'ลบ Gemini API key ของโรงเรียนแล้ว' });
+      setConfirmRemoveAiKeyOpen(false);
       await checkServerAiHealth();
     } catch (error) {
-      setSchoolAiNotice(error instanceof Error ? error.message : 'ลบ API key ไม่สำเร็จ');
+      const msg = error instanceof Error ? error.message : 'ลบ API key ไม่สำเร็จ';
+      setSchoolAiNotice(msg);
+      emitAppToast({ tone: 'error', message: msg });
+      setConfirmRemoveAiKeyOpen(false);
     } finally {
       setSavingSchoolAi(false);
     }
@@ -859,6 +870,18 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
           </div>
         </div>
       )}
+      <ConfirmActionModal
+        isOpen={confirmRemoveAiKeyOpen}
+        title="ลบ Gemini API key ของโรงเรียนนี้หรือไม่?"
+        description="ฟีเจอร์ AI ของโรงเรียนนี้จะหยุดทำงานชั่วคราวจนกว่าผู้ดูแลจะเพิ่ม API key ใหม่"
+        confirmLabel="ลบ API Key"
+        tone="danger"
+        isBusy={savingSchoolAi}
+        onCancel={() => {
+          if (!savingSchoolAi) setConfirmRemoveAiKeyOpen(false);
+        }}
+        onConfirm={confirmRemoveSchoolAiKey}
+      />
     </div>
   );
 };

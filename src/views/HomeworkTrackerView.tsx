@@ -37,6 +37,8 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -213,6 +215,10 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
       });
       setShowAssignmentModal(false);
       setHwTab('assignments');
+      emitAppToast({
+        tone: 'success',
+        message: lang === 'th' ? `สั่งการบ้าน "${assignmentTitleTh.trim()}" เรียบร้อยแล้ว` : `Assignment "${assignmentTitleTh.trim()}" created`,
+      });
       setAssignmentTitleTh('');
       setAssignmentTitleEn('');
       setAssignmentDescription('');
@@ -259,6 +265,10 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
       setAllowDuplicateConfirm(false);
       setShowSubmitModal(false);
       setSubmitText('');
+      emitAppToast({
+        tone: 'success',
+        message: lang === 'th' ? `ส่งงาน "${assignment.titleTh}" เรียบร้อยแล้ว` : `Submitted "${assignment.titleTh}"`,
+      });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -501,7 +511,18 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                <PaginatedTableRows items={filteredSubmissions} colSpan={7} renderRow={(sub) => {
+                <PaginatedTableRows
+                  items={filteredSubmissions}
+                  colSpan={7}
+                  emptyState={(
+                    <EmptyState
+                      compact
+                      icon={FileCheck2}
+                      title={lang === 'th' ? 'ยังไม่มีรายการส่งงานที่ตรงกับเงื่อนไข' : 'No matching homework submissions'}
+                      description={lang === 'th' ? 'ลองเปลี่ยนตัวกรองรายวิชา หรือสร้างงานมอบหมายใหม่' : 'Try clearing filters or creating a new assignment'}
+                    />
+                  )}
+                  renderRow={(sub) => {
                   const status = getStatusBadge(sub.status);
 
                   return (
@@ -610,7 +631,18 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
       {hwTab === 'assignments' && (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <PagedList items={filteredAssignments} pageSize={3} renderItem={(asg) => (
+          <PagedList
+            items={filteredAssignments}
+            pageSize={3}
+            emptyState={(
+              <div className="col-span-full">
+                <EmptyState
+                  icon={BookOpen}
+                  title={lang === 'th' ? 'ยังไม่มีงานที่มอบหมายในตัวกรองนี้' : 'No assignments match your filters'}
+                />
+              </div>
+            )}
+            renderItem={(asg) => (
               <div
                 key={asg.id}
                 className="p-3.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5 flex flex-col justify-between"
@@ -680,7 +712,18 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             </h3>
 
             <div className="space-y-2">
-              <PagedList items={filteredPendingSubmissions} pageSize={3} renderItem={(sub) => (
+              <PagedList
+                items={filteredPendingSubmissions}
+                pageSize={3}
+                emptyState={(
+                  <EmptyState
+                    compact
+                    icon={CheckCircle2}
+                    title={lang === 'th' ? 'ไม่พบงานค้างส่งในขณะนี้' : 'No pending submissions'}
+                    description={lang === 'th' ? 'นักเรียนทุกคนส่งงานครบตามกำหนดแล้ว' : 'All filtered students are up to date'}
+                  />
+                )}
+                renderItem={(sub) => (
                 <div
                   key={sub.id}
                   className="p-2.5 rounded-lg bg-[var(--color-card-subtle)] border border-rose-300 dark:border-rose-700 text-xs flex items-center justify-between"

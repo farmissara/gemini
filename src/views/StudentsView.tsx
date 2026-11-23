@@ -59,7 +59,7 @@ import {
   BookMarked,
   Printer,
 } from 'lucide-react';
-import { STAFF_INVITE_RPC_SQL } from '../lib/supabase';
+import { loadStaffInviteRpcSql } from '../lib/supabase';
 import {
   approveStudentAccountInSupabase,
   deleteStudentAccountRegistrationInSupabase,
@@ -95,6 +95,8 @@ import { GradebookView } from './GradebookView';
 import { StudentQualityDevelopmentBookView } from './StudentQualityDevelopmentBookView';
 import { MoeDocViewSelection, MoeStudentDocumentCenter } from '../components/MoeStudentDocumentCenter';
 import { GradeAlertRecord } from '../lib/gradeNotifications';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 export type StudentsViewSubTab =
   | 'roster'
@@ -455,9 +457,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         await linkStudentAccountToStudent(schoolId, account.id, chosenStudentId);
       }
       await refreshAccountLinks();
-      setAccountsSuccess(`อนุมัติบัญชีนักเรียน "${account.full_name_th || account.full_name_en}" เปิดใช้งานเรียบร้อยแล้ว`);
+      const msg = `อนุมัติบัญชีนักเรียน "${account.full_name_th || account.full_name_en}" เปิดใช้งานเรียบร้อยแล้ว`;
+      setAccountsSuccess(msg);
+      emitAppToast({ tone: 'success', message: msg });
     } catch (err) {
-      setAccountsError(err instanceof Error ? err.message : 'อนุมัติบัญชีไม่สำเร็จ');
+      const msg = err instanceof Error ? err.message : 'อนุมัติบัญชีไม่สำเร็จ';
+      setAccountsError(msg);
+      emitAppToast({ tone: 'error', message: msg });
     } finally {
       setProcessingAccountId(null);
     }
@@ -470,11 +476,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     try {
       await updateStudentAccountStatusInSupabase(schoolId, account.id, nextStatus);
       await refreshAccountLinks();
-      setAccountsSuccess(
-        nextStatus === 'suspended'
-          ? `ระงับสิทธิ์บัญชี "${account.full_name_th}" เรียบร้อยแล้ว`
-          : `เปิดใช้งานบัญชี "${account.full_name_th}" เรียบร้อยแล้ว`
-      );
+      const msg = nextStatus === 'suspended'
+        ? `ระงับสิทธิ์บัญชี "${account.full_name_th}" เรียบร้อยแล้ว`
+        : `เปิดใช้งานบัญชี "${account.full_name_th}" เรียบร้อยแล้ว`;
+      setAccountsSuccess(msg);
+      emitAppToast({ tone: nextStatus === 'suspended' ? 'warning' : 'success', message: msg });
     } catch (err) {
       setAccountsError(err instanceof Error ? err.message : 'อัปเดตสถานะบัญชีไม่สำเร็จ');
     } finally {
@@ -1632,7 +1638,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                <PaginatedTableRows items={filteredStudents} colSpan={8} renderRow={(student) => {
+                <PaginatedTableRows
+                  items={filteredStudents}
+                  colSpan={8}
+                  emptyState={(
+                    <EmptyState
+                      icon={Users}
+                      title={students.length === 0 ? 'ยังไม่มีข้อมูลนักเรียนในระบบ' : 'ไม่พบนักเรียนที่ตรงกับการค้นหาหรือตัวกรอง'}
+                      description="ลองปรับคำค้นหา ห้องเรียน หรือสถานะ หรือกดเพิ่มนักเรียนใหม่"
+                    />
+                  )}
+                  renderRow={(student) => {
                   const statusCfg = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
                   const summary = calculateStudentAcademicSummary({
                     student,
@@ -3326,7 +3342,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => void handleCopyInviteField(STAFF_INVITE_RPC_SQL, 'sql')}
+                          onClick={() => void loadStaffInviteRpcSql().then((sql) => handleCopyInviteField(sql, 'sql'))}
                           className="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
                         >
                           {copiedInviteField === 'sql' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

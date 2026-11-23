@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   UserRole, 
   School,
@@ -116,7 +116,7 @@ import {
   saveSchoolGpsCoordinates, 
   saveSchoolPeriodTimes, 
   syncDataToSupabase, 
-  SUPABASE_PATCH_MIGRATION_SQL,
+  loadSupabasePatchMigrationSql,
   deleteStudentFromDb,
   deleteTeacherFromDb,
   deleteCoursesFromDb,
@@ -172,57 +172,67 @@ import { getModuleTone } from './lib/moduleTheme';
 import { FocusToolbar } from './components/layout/FocusToolbar';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ViewErrorBoundary } from './components/common/ViewErrorBoundary';
-import { SchoolSwitcherModal } from './components/modals/SchoolSwitcherModal';
-import { DashboardView, type DashboardSubTab } from './views/DashboardView';
-import {
-  StudentsView,
-  type StudentsViewSubTab,
-  type StudentsMoeJumpTarget,
-} from './views/StudentsView';
-import { TeachersView } from './views/TeachersView';
-import { CoursesView } from './views/CoursesView';
-import { AttendanceView } from './views/AttendanceView';
-import { MobileAttendanceView } from './views/MobileAttendanceView';
-import { EduBattleGameView } from './views/EduBattleGameView';
-import { PortfolioView } from './views/PortfolioView';
-import { GradebookView } from './views/GradebookView';
-import { StudentQualityDevelopmentBookView } from './views/StudentQualityDevelopmentBookView';
-import { GradeLevelQualitativeSummaryView } from './components/GradeLevelQualitativeSummaryView';
-import { BillingView } from './views/BillingView';
-import { AnnouncementsView } from './views/AnnouncementsView';
-import { LmsClassroomView } from './views/LmsClassroomView';
-import { ParentPortalView } from './views/ParentPortalView';
-import { ReportCardModal } from './components/modals/ReportCardModal';
-import { StudentDetailModal } from './components/modals/StudentDetailModal';
-import { TimetableScheduleView } from './views/TimetableScheduleView';
-import { BehaviorSdqView } from './views/BehaviorSdqView';
-import { DigitalIdCardView } from './views/DigitalIdCardView';
-import { InfirmaryHealthView } from './views/InfirmaryHealthView';
-import { HomeworkTrackerView } from './views/HomeworkTrackerView';
-import { SuperAdminConsoleView } from './views/SuperAdminConsoleView';
-import { EduBattleRoyale3DView } from './views/EduBattleRoyale3DView';
-import { SubjectLabSimulationView } from './views/SubjectLabSimulationView';
-import { UserProfileModal } from './components/modals/UserProfileModal';
-import { SystemSettingsView, type SystemSettingsTab } from './views/SystemSettingsView';
-import { SchoolGpsModal } from './components/modals/SchoolGpsModal';
-import { DataImportExportModal } from './components/modals/DataImportExportModal';
-import { BackupCenterModal } from './components/modals/BackupCenterModal';
-import { ModuleGuideModal, type GuideModuleId, type ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
+import { PageSkeleton } from './components/common/PageSkeleton';
+import { emitAppToast } from './components/common/ToastProvider';
+import type { DashboardSubTab } from './views/DashboardView';
+import type { StudentsViewSubTab, StudentsMoeJumpTarget } from './views/StudentsView';
+import type { SystemSettingsTab } from './views/SystemSettingsView';
+import type { GuideModuleId, ModuleGuideRoleView } from './components/modals/ModuleGuideModal';
 import { GuideTourProvider } from './components/guide/GuideTourContext';
-import { SchoolOnboardingTutorModal } from './components/modals/SchoolOnboardingTutorModal';
 import { OfflineIndicator } from './components/layout/OfflineIndicator';
-import { AiDiagnosticLearningView } from './views/AiDiagnosticLearningView';
-import { HallOfFame3DView } from './views/HallOfFame3DView';
-import { StudyStreakQuestPassView } from './views/StudyStreakQuestPassView';
-import { CoopBossRaidView } from './views/CoopBossRaidView';
-import { SocraticTutorView } from './views/SocraticTutorView';
-import { RealWorldSnapQuestView } from './views/RealWorldSnapQuestView';
-import { MobileAppShell } from './components/layout/MobileAppShell';
-import { NotificationCenterModal } from './components/modals/NotificationCenterModal';
-import { AdminSuperAdminDeskView } from './views/AdminSuperAdminDeskView';
 import { ConfirmActionModal } from './components/modals/ConfirmActionModal';
-import { CentralExamHubView, CentralExamNotificationPopup } from './views/CentralExamHubView';
-import { CareerQuestView } from './views/CareerQuestView';
+
+function lazyNamed<T extends Record<string, any>, K extends keyof T>(
+  factory: () => Promise<T>,
+  exportName: K,
+): React.LazyExoticComponent<T[K]> {
+  return lazy(() => factory().then((mod) => ({ default: mod[exportName] })));
+}
+
+const SchoolSwitcherModal = lazyNamed(() => import('./components/modals/SchoolSwitcherModal'), 'SchoolSwitcherModal');
+const DashboardView = lazyNamed(() => import('./views/DashboardView'), 'DashboardView');
+const StudentsView = lazyNamed(() => import('./views/StudentsView'), 'StudentsView');
+const TeachersView = lazyNamed(() => import('./views/TeachersView'), 'TeachersView');
+const CoursesView = lazyNamed(() => import('./views/CoursesView'), 'CoursesView');
+const AttendanceView = lazyNamed(() => import('./views/AttendanceView'), 'AttendanceView');
+const MobileAttendanceView = lazyNamed(() => import('./views/MobileAttendanceView'), 'MobileAttendanceView');
+const EduBattleGameView = lazyNamed(() => import('./views/EduBattleGameView'), 'EduBattleGameView');
+const PortfolioView = lazyNamed(() => import('./views/PortfolioView'), 'PortfolioView');
+const GradebookView = lazyNamed(() => import('./views/GradebookView'), 'GradebookView');
+const StudentQualityDevelopmentBookView = lazyNamed(() => import('./views/StudentQualityDevelopmentBookView'), 'StudentQualityDevelopmentBookView');
+const GradeLevelQualitativeSummaryView = lazyNamed(() => import('./components/GradeLevelQualitativeSummaryView'), 'GradeLevelQualitativeSummaryView');
+const BillingView = lazyNamed(() => import('./views/BillingView'), 'BillingView');
+const AnnouncementsView = lazyNamed(() => import('./views/AnnouncementsView'), 'AnnouncementsView');
+const LmsClassroomView = lazyNamed(() => import('./views/LmsClassroomView'), 'LmsClassroomView');
+const ParentPortalView = lazyNamed(() => import('./views/ParentPortalView'), 'ParentPortalView');
+const ReportCardModal = lazyNamed(() => import('./components/modals/ReportCardModal'), 'ReportCardModal');
+const StudentDetailModal = lazyNamed(() => import('./components/modals/StudentDetailModal'), 'StudentDetailModal');
+const TimetableScheduleView = lazyNamed(() => import('./views/TimetableScheduleView'), 'TimetableScheduleView');
+const BehaviorSdqView = lazyNamed(() => import('./views/BehaviorSdqView'), 'BehaviorSdqView');
+const DigitalIdCardView = lazyNamed(() => import('./views/DigitalIdCardView'), 'DigitalIdCardView');
+const InfirmaryHealthView = lazyNamed(() => import('./views/InfirmaryHealthView'), 'InfirmaryHealthView');
+const HomeworkTrackerView = lazyNamed(() => import('./views/HomeworkTrackerView'), 'HomeworkTrackerView');
+const SuperAdminConsoleView = lazyNamed(() => import('./views/SuperAdminConsoleView'), 'SuperAdminConsoleView');
+const SubjectLabSimulationView = lazyNamed(() => import('./views/SubjectLabSimulationView'), 'SubjectLabSimulationView');
+const UserProfileModal = lazyNamed(() => import('./components/modals/UserProfileModal'), 'UserProfileModal');
+const SystemSettingsView = lazyNamed(() => import('./views/SystemSettingsView'), 'SystemSettingsView');
+const SchoolGpsModal = lazyNamed(() => import('./components/modals/SchoolGpsModal'), 'SchoolGpsModal');
+const DataImportExportModal = lazyNamed(() => import('./components/modals/DataImportExportModal'), 'DataImportExportModal');
+const BackupCenterModal = lazyNamed(() => import('./components/modals/BackupCenterModal'), 'BackupCenterModal');
+const ModuleGuideModal = lazyNamed(() => import('./components/modals/ModuleGuideModal'), 'ModuleGuideModal');
+const SchoolOnboardingTutorModal = lazyNamed(() => import('./components/modals/SchoolOnboardingTutorModal'), 'SchoolOnboardingTutorModal');
+const AiDiagnosticLearningView = lazyNamed(() => import('./views/AiDiagnosticLearningView'), 'AiDiagnosticLearningView');
+const HallOfFame3DView = lazyNamed(() => import('./views/HallOfFame3DView'), 'HallOfFame3DView');
+const StudyStreakQuestPassView = lazyNamed(() => import('./views/StudyStreakQuestPassView'), 'StudyStreakQuestPassView');
+const CoopBossRaidView = lazyNamed(() => import('./views/CoopBossRaidView'), 'CoopBossRaidView');
+const SocraticTutorView = lazyNamed(() => import('./views/SocraticTutorView'), 'SocraticTutorView');
+const RealWorldSnapQuestView = lazyNamed(() => import('./views/RealWorldSnapQuestView'), 'RealWorldSnapQuestView');
+const MobileAppShell = lazyNamed(() => import('./components/layout/MobileAppShell'), 'MobileAppShell');
+const NotificationCenterModal = lazyNamed(() => import('./components/modals/NotificationCenterModal'), 'NotificationCenterModal');
+const AdminSuperAdminDeskView = lazyNamed(() => import('./views/AdminSuperAdminDeskView'), 'AdminSuperAdminDeskView');
+const CentralExamHubView = lazyNamed(() => import('./views/CentralExamHubView'), 'CentralExamHubView');
+const CentralExamNotificationPopup = lazyNamed(() => import('./views/CentralExamHubView'), 'CentralExamNotificationPopup');
+const CareerQuestView = lazyNamed(() => import('./views/CareerQuestView'), 'CareerQuestView');
 import {
   buildCentralExamSignature,
   CENTRAL_EXAMS_UPDATED_EVENT,
@@ -328,6 +338,7 @@ export const App: React.FC = () => {
   const [orphanedGrades, setOrphanedGrades] = useState<GradeRecord[]>([]);
   const [isCleaningOrphanedGrades, setIsCleaningOrphanedGrades] = useState(false);
   const [showSchemaMigrationModal, setShowSchemaMigrationModal] = useState(false);
+  const [patchMigrationSql, setPatchMigrationSql] = useState('');
   const [copiedMigrationSql, setCopiedMigrationSql] = useState(false);
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
   const [isUnlockingBiometrics, setIsUnlockingBiometrics] = useState(false);
@@ -338,13 +349,33 @@ export const App: React.FC = () => {
   const attendanceLoadedRangesRef = useRef(new Map<string, Array<{ start: string | null; end: string | null; studentId?: string }>>());
   const attendanceRangeRequestsRef = useRef(new Map<string, Promise<void>>());
 
+  useEffect(() => {
+    if (showSchemaMigrationModal && !patchMigrationSql) {
+      void loadSupabasePatchMigrationSql().then(setPatchMigrationSql);
+    }
+  }, [showSchemaMigrationModal, patchMigrationSql]);
+
+  useEffect(() => {
+    if (dataSyncSummary) {
+      emitAppToast({ tone: 'success', message: dataSyncSummary });
+    }
+  }, [dataSyncSummary]);
+
+  useEffect(() => {
+    if (dataSyncError) {
+      emitAppToast({ tone: 'error', title: 'ซิงก์ข้อมูลไม่สำเร็จ', message: dataSyncError });
+    }
+  }, [dataSyncError]);
+
   const handleCopyMigrationSql = async () => {
     try {
+      const sql = patchMigrationSql || await loadSupabasePatchMigrationSql();
+      if (!patchMigrationSql) setPatchMigrationSql(sql);
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(SUPABASE_PATCH_MIGRATION_SQL);
+        await navigator.clipboard.writeText(sql);
       } else {
         const textArea = document.createElement('textarea');
-        textArea.value = SUPABASE_PATCH_MIGRATION_SQL;
+        textArea.value = sql;
         textArea.style.position = 'fixed';
         textArea.style.left = '-9999px';
         document.body.appendChild(textArea);
@@ -353,6 +384,7 @@ export const App: React.FC = () => {
         document.body.removeChild(textArea);
       }
       setCopiedMigrationSql(true);
+      emitAppToast({ tone: 'success', message: 'คัดลอกโค้ด SQL Migration แล้ว' });
       window.setTimeout(() => setCopiedMigrationSql(false), 2500);
     } catch (err) {
       console.warn('Could not copy SQL migration:', err);
@@ -364,6 +396,8 @@ export const App: React.FC = () => {
   const [promotions, setPromotions] = useState<PromotionCampaign[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SchoolSubscriptionPlan[]>([]);
   const [superAdminConfigError, setSuperAdminConfigError] = useState<string | null>(null);
+
+  const [currentRole, setCurrentRole] = useState<UserRole>('admin');
 
   useEffect(() => {
     if (!currentUser || isDemoMode || currentRole === 'super_admin') return;
@@ -464,7 +498,6 @@ export const App: React.FC = () => {
   const [systemSettingsInitialTab, setSystemSettingsInitialTab] = useState<SystemSettingsTab>('school_general');
   const [superAdminSubTab, setSuperAdminSubTab] = useState<'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'>('approvals');
   const [isGamePlaying, setIsGamePlaying] = useState(false);
-  const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
   const [lmsLessonJumpTarget, setLmsLessonJumpTarget] = useState<{ courseId: string; lessonId: string } | null>(null);
   const [lang, setLang] = useState<AppLanguage>('th');
@@ -4814,22 +4847,34 @@ export const App: React.FC = () => {
   }
 
   if (!isDataReady || loadedSchoolId !== activeSchool.id) {
-    return (
-      <main className="h-dvh overflow-hidden flex items-center justify-center bg-[var(--color-canvas)] p-6 text-[var(--color-text-body)]">
-        <div className="max-w-lg space-y-4 text-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-sm">
-          <h1 className="text-xl font-bold text-[var(--color-text-title)]">
-            {dataLoadError ? 'โหลดข้อมูลโรงเรียนไม่สำเร็จ' : 'กำลังโหลดข้อมูลโรงเรียน...'}
-          </h1>
-          {dataLoadError && (
+    if (dataLoadError) {
+      return (
+        <main className="h-dvh overflow-hidden flex items-center justify-center bg-[var(--color-canvas)] p-6 text-[var(--color-text-body)]">
+          <div className="max-w-lg space-y-4 text-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-sm">
+            <h1 className="text-xl font-bold text-[var(--color-text-title)]">
+              โหลดข้อมูลโรงเรียนไม่สำเร็จ
+            </h1>
             <p role="alert" className="text-sm font-medium text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 rounded-lg px-3 py-2">
               {dataLoadError}
             </p>
-          )}
-          {dataLoadError && (
             <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-4 py-2 text-sm font-semibold transition cursor-pointer">
               ลองใหม่
             </button>
-          )}
+          </div>
+        </main>
+      );
+    }
+    return (
+      <main className="h-dvh overflow-hidden bg-[var(--color-canvas)] p-4 sm:p-6 text-[var(--color-text-body)]">
+        <div className="mx-auto max-w-6xl space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="skeleton-shimmer h-8 w-44 rounded-lg" />
+            <div className="flex items-center gap-2">
+              <div className="skeleton-shimmer h-8 w-24 rounded-lg" />
+              <div className="skeleton-shimmer h-8 w-8 rounded-full" />
+            </div>
+          </div>
+          <PageSkeleton rows={7} />
         </div>
       </main>
     );
@@ -4918,6 +4963,7 @@ export const App: React.FC = () => {
     return (
       <div className="h-dvh overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] font-sans">
         <ViewErrorBoundary resetKey={`mobile-shell:${activeSchool.id}`} lang={lang} viewName="MobileAppShell">
+        <Suspense fallback={<div className="p-4"><PageSkeleton compact rows={5} /></div>}>
         <MobileAppShell
           currentUser={currentUser}
           activeSchool={activeSchool}
@@ -5146,6 +5192,7 @@ export const App: React.FC = () => {
 
         {/* Offline Status Connectivity Banner */}
         <OfflineIndicator lang={lang} currentUserId={currentUser?.id} onSyncItem={handleSyncOfflineItem} isUsingCachedData={isUsingCachedSchoolData} />
+        </Suspense>
         </ViewErrorBoundary>
       </div>
     );
@@ -5361,6 +5408,8 @@ export const App: React.FC = () => {
                 navigateToAppTab('dashboard');
               }}
             >
+            <Suspense fallback={<PageSkeleton />}>
+            <div key={`${programMode}:${currentTab}`} className="view-stage flex-1 min-h-0 flex flex-col">
             {/* Mode 1: School ERP / SIS */}
             {programMode === 'school_erp' && (
               <>
@@ -6198,6 +6247,8 @@ export const App: React.FC = () => {
                 </div>
               )
             )}
+            </div>
+            </Suspense>
             </ViewErrorBoundary>
           </div>
         </main>
@@ -6313,6 +6364,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Multi-School Switcher Modal (Super Admin Only) */}
+      <Suspense fallback={null}>
       {showSchoolSwitcher && currentRole === 'super_admin' && (
         <SchoolSwitcherModal
           schools={schools}
@@ -6580,7 +6632,7 @@ export const App: React.FC = () => {
                   </button>
                 </div>
                 <pre className="p-3.5 rounded-xl bg-slate-900 text-emerald-300 font-mono text-[11px] max-h-72 overflow-auto leading-relaxed border border-slate-800 select-all">
-                  {SUPABASE_PATCH_MIGRATION_SQL}
+                  {patchMigrationSql || 'กำลังโหลด SQL Migration...'}
                 </pre>
               </div>
             </div>
@@ -6599,22 +6651,25 @@ export const App: React.FC = () => {
       )}
 
       {/* Auto Pop-up Notification for School Admin when New Central Exam Packs (8 Strands) are Published */}
-      <CentralExamNotificationPopup
-        isOpen={!focusMode && showCentralExamPopup && currentRole === 'admin' && programMode === 'school_erp'}
-        schoolName={activeSchool.nameTh}
-        unclaimedPacks={unclaimedCentralPacks}
-        onClaimFreePack={handleClaimFreeCentralPack}
-        onClaimAllFreePacks={handleClaimAllFreeCentralPacks}
-        onPurchasePack={handlePurchaseCentralPack}
-        onOpenHub={() => {
-          setShowCentralExamPopup(false);
-          navigateToAppTab('central_exam_hub');
-        }}
-        onDismiss={() => {
-          markCentralExamPopupSeen(activeSchool.id, buildCentralExamSignature(unclaimedCentralPacks));
-          setShowCentralExamPopup(false);
-        }}
-      />
+      {!focusMode && showCentralExamPopup && currentRole === 'admin' && programMode === 'school_erp' && (
+        <CentralExamNotificationPopup
+          isOpen={true}
+          schoolName={activeSchool.nameTh}
+          unclaimedPacks={unclaimedCentralPacks}
+          onClaimFreePack={handleClaimFreeCentralPack}
+          onClaimAllFreePacks={handleClaimAllFreeCentralPacks}
+          onPurchasePack={handlePurchaseCentralPack}
+          onOpenHub={() => {
+            setShowCentralExamPopup(false);
+            navigateToAppTab('central_exam_hub');
+          }}
+          onDismiss={() => {
+            markCentralExamPopupSeen(activeSchool.id, buildCentralExamSignature(unclaimedCentralPacks));
+            setShowCentralExamPopup(false);
+          }}
+        />
+      )}
+      </Suspense>
 
       <ConfirmActionModal
         isOpen={Boolean(confirmModal)}

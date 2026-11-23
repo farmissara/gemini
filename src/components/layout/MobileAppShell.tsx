@@ -3196,6 +3196,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <img
                   src={arcadeBannerImg}
                   alt={lang === 'th' ? 'ศูนย์เกมความรู้' : 'Learning Arcade'}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="absolute inset-0 w-full h-full object-cover object-center opacity-55"
                 />

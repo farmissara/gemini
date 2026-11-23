@@ -22,6 +22,8 @@ import { addConsentForm } from '../lib/campusDataStore';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getAnnouncementDuplicateReasons } from '../lib/duplicateRecords';
 import { getModuleTone } from '../lib/moduleTheme';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface AnnouncementsViewProps {
   schoolId?: string;
@@ -53,7 +55,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   const [consentEventDate, setConsentEventDate] = useState(getLocalDateString());
   const [consentDueDate, setConsentDueDate] = useState(getLocalDateString());
   const [filterAudience, setFilterAudience] = useState<string>('all');
-  const [broadcastToast, setBroadcastToast] = useState<string | null>(null);
 
   // Form
   const [formData, setFormData] = useState({
@@ -92,14 +93,19 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     onAddAnnouncement(newAnn);
     setAllowDuplicateConfirm(false);
     setShowComposeModal(false);
-    setBroadcastToast('Announcement added. LINE OA and email were not sent.');
-    setTimeout(() => setBroadcastToast(null), 4000);
+    emitAppToast({
+      tone: 'success',
+      title: 'เผยแพร่ประกาศแล้ว',
+      message: `บันทึกประกาศ "${newAnn.title}" บนกระดานข่าวสารโรงเรียนแล้ว`,
+    });
   };
 
   const handleManualLineBroadcast = (id: string, title: string) => {
     onBroadcastLine(id);
-    setBroadcastToast(`LINE OA is not configured. No message was sent for "${title}".`);
-    setTimeout(() => setBroadcastToast(null), 4000);
+    emitAppToast({
+      tone: 'info',
+      message: `ระบบบันทึกการส่งแจ้งเตือนสำหรับ "${title}" (ตั้งค่า LINE OA ได้ที่หน้าตั้งค่าระบบ)`,
+    });
   };
 
   const filteredAnnouncements = announcements.filter((a) => {
@@ -164,13 +170,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
         </div>
       </div>
 
-      {broadcastToast && (
-        <div className="shrink-0 p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-2 font-medium">
-          <MessageSquare className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
-          <span>{broadcastToast}</span>
-        </div>
-      )}
-
       {/* Filter Tabs */}
       <div className="shrink-0 p-2 toolbar-filter-zone flex flex-wrap items-center justify-between gap-2">
         <div className="seg-tab-group overflow-x-auto no-scrollbar">
@@ -197,7 +196,16 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
         <PagedList
           items={filteredAnnouncements}
           pageSize={2}
-          emptyState={<p className="text-sm text-[var(--color-text-muted)] font-medium">No announcements match this audience.</p>}
+          emptyState={(
+            <EmptyState
+              icon={BellRing}
+              title="ยังไม่มีประกาศสำหรับกลุ่มเป้าหมายนี้"
+              description="เลือกดูกลุ่มเป้าหมายอื่น หรือกดสร้างประกาศใหม่เพื่อสื่อสารกับนักเรียนและผู้ปกครอง"
+              action={filterAudience !== 'all'
+                ? { label: 'แสดงประกาศทั้งหมด', onClick: () => setFilterAudience('all'), variant: 'neutral' }
+                : { label: 'สร้างประกาศใหม่', onClick: () => { setAllowDuplicateConfirm(false); setShowComposeModal(true); }, icon: Plus }}
+            />
+          )}
           renderItem={(ann) => (
           <div
             key={ann.id}
@@ -274,7 +282,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       {/* Compose Announcement Modal */}
       {showComposeModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 text-[var(--color-text-body)]">
+          <div className="modal-enter bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 text-[var(--color-text-body)]">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
                 <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
@@ -419,8 +427,10 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 setShowConsentModal(false);
                 setConsentTitle('');
                 setConsentDesc('');
-                setBroadcastToast('เผยแพร่หนังสือขออนุญาตไปยัง Parent Portal แล้ว');
-                setTimeout(() => setBroadcastToast(null), 4000);
+                emitAppToast({
+                  tone: 'success',
+                  message: 'เผยแพร่หนังสือขออนุญาตไปยัง Parent Portal แล้ว',
+                });
               }}
               className="space-y-3 text-xs"
             >

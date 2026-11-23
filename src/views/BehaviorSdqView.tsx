@@ -38,6 +38,8 @@ import { getLocalDateString } from '../lib/date';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { getModuleTone } from '../lib/moduleTheme';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface BehaviorSdqViewProps {
   schoolId?: string;
@@ -152,6 +154,10 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     };
 
     onAddBehaviorRecord(newRecord);
+    emitAppToast({
+      tone: newRecord.type === 'merit' ? 'success' : 'info',
+      message: `บันทึก${newRecord.type === 'merit' ? 'ความดี' : 'พฤติกรรม'}ของ ${newRecord.studentName} (${newRecord.points > 0 ? `+${newRecord.points}` : newRecord.points}) แล้ว`,
+    });
     setAllowDuplicateConfirm(false);
     setShowAddRecordModal(false);
     setRecordNotes('');
@@ -330,6 +336,10 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    emitAppToast({
+      tone: 'success',
+      message: `ส่งออกรายงานผลประเมิน SDQ (${filteredSdqList.length} รายการ) เป็นไฟล์ CSV แล้ว`,
+    });
   };
 
   return (
@@ -510,7 +520,18 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
-                    <PaginatedTableRows items={filteredStudents} colSpan={5} renderRow={(student) => {
+                    <PaginatedTableRows
+                      items={filteredStudents}
+                      colSpan={5}
+                      emptyState={(
+                        <EmptyState
+                          compact
+                          icon={HeartHandshake}
+                          title="ไม่พบรายชื่อนักเรียนที่ค้นหา"
+                          action={searchTerm ? { label: 'ล้างคำค้นหา', onClick: () => setSearchTerm(''), variant: 'neutral' } : undefined}
+                        />
+                      )}
+                      renderRow={(student) => {
                       const score = studentScores[student.id] ?? 100;
                       const badge = getStatusBadge(score);
                       return (
@@ -591,7 +612,18 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               </h3>
 
               <div className="flex-1 min-h-0 overflow-hidden space-y-2 pt-2 pr-1">
-              <PagedList items={records} pageSize={2} renderItem={(rec) => (
+              <PagedList
+                items={records}
+                pageSize={2}
+                emptyState={(
+                  <EmptyState
+                    compact
+                    icon={Activity}
+                    title="ยังไม่มีประวัติพฤติกรรม"
+                    description="บันทึกความดีหรือพฤติกรรมที่ต้องดูแลได้จากปุ่มด้านบน"
+                  />
+                )}
+                renderItem={(rec) => (
                   <div
                     key={rec.id}
                     className="p-2.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs space-y-1"
@@ -785,7 +817,18 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                  <PaginatedTableRows items={filteredSdqList} colSpan={9} renderRow={(sdq) => {
+                  <PaginatedTableRows
+                    items={filteredSdqList}
+                    colSpan={9}
+                    emptyState={(
+                      <EmptyState
+                        compact
+                        icon={HeartHandshake}
+                        title="ยังไม่มีผลคัดกรอง SDQ ในกลุ่มนี้"
+                        action={sdqStatusFilter !== 'all' ? { label: 'แสดงทุกกลุ่มผล', onClick: () => setSdqStatusFilter('all'), variant: 'neutral' } : undefined}
+                      />
+                    )}
+                    renderRow={(sdq) => {
                     const statusConfig = {
                       normal: { label: 'กลุ่มปกติ', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' },
                       risk: { label: 'กลุ่มเสี่ยง', color: 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' },

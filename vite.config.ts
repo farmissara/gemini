@@ -110,6 +110,25 @@ export default defineConfig(() => {
       hmr: devHmrEnabled,
       watch: devHmrEnabled ? {} : null,
     },
+    build: {
+      chunkSizeWarningLimit: 1200,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('/three/')) return 'vendor-three';
+            if (id.includes('/xlsx/')) return 'vendor-xlsx';
+            if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-charts';
+            if (id.includes('/d3/')) return 'vendor-charts';
+            if (id.includes('/@supabase/')) return 'vendor-supabase';
+            if (id.includes('/firebase/')) return 'vendor-firebase';
+            if (id.includes('/lucide-react/')) return 'vendor-icons';
+            if (id.includes('/motion/')) return 'vendor-motion';
+            return undefined;
+          },
+        },
+      },
+    },
     preview: {
       host: '0.0.0.0',
       port: 3000,

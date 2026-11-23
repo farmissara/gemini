@@ -27,6 +27,7 @@ import {
 import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
+import type { NavTab } from './Sidebar';
 import { isAllowedProgramModeForRole } from '../../lib/attendanceScope';
 import { isProgramModeEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 
@@ -67,7 +68,7 @@ interface NavbarProps {
   grades?: GradeRecord[];
   onOpenStudentProfile?: (student: Student) => void;
   onOpenReportCard?: (student: Student) => void;
-  onNavigateTab?: (tab: 'students' | 'teachers' | 'courses' | 'gradebook') => void;
+  onNavigateTab?: (tab: NavTab) => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
   featureFlags?: SchoolFeatureFlags;
@@ -376,6 +377,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               currentRole={currentRole}
               currentUser={currentUser}
               currentStudentRecordId={currentUser?.studentRecordId}
+              featureFlags={featureFlags}
               lang={lang}
               onOpenStudentProfile={onOpenStudentProfile}
               onOpenReportCard={onOpenReportCard}

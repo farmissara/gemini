@@ -1163,9 +1163,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
               })}
             </div>
 
-            {/* Quiet Bottom Toggle for Simplified View or Secondary/Student Modules */}
-            {isSimplifiedAdmin && onToggleAdminSimplifiedView ? (
-              <div className="pt-3 mt-2 border-t border-[var(--color-border)]">
+            {/* Quick Jump Command Palette Trigger & Focus Mode Toggle */}
+            <div className="pt-3 mt-2 border-t border-[var(--color-border)] space-y-1">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('eduverse:open-global-search'))}
+                className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <Search className="w-4 h-4 shrink-0" />
+                  <span className="truncate">
+                    {lang === 'th' ? 'ไปหน้า / ค้นหาด่วน' : 'Quick Jump & Search'}
+                  </span>
+                </span>
+                <kbd className="shrink-0 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
+                  ⌘K
+                </kbd>
+              </button>
+
+              {isSimplifiedAdmin && onToggleAdminSimplifiedView ? (
                 <button
                   type="button"
                   onClick={onToggleAdminSimplifiedView}
@@ -1179,9 +1195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   </span>
                 </button>
-              </div>
-            ) : supportsFocusMode && (
-              <div className="pt-3 mt-2 border-t border-[var(--color-border)]">
+              ) : supportsFocusMode && (
                 <button
                   type="button"
                   onClick={toggleFocusMode}
@@ -1202,8 +1216,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   )}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
       </nav>

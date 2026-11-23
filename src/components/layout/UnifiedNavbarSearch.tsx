@@ -34,10 +34,14 @@ import {
   teacherMatchesCourse,
 } from '../../lib/courseTeacherFilter';
 import { resolveLinkedStudentsForUser } from '../../lib/attendanceScope';
+import type { NavTab } from './Sidebar';
+import type { SchoolFeatureFlags } from '../../types';
+import { getQuickNavEntries } from '../../lib/quickNavCatalog';
+import { Compass } from 'lucide-react';
 
 const OPEN_GLOBAL_SEARCH_EVENT = 'eduverse:open-global-search';
 
-export type UnifiedSearchScope = 'all' | 'students' | 'teachers' | 'courses';
+export type UnifiedSearchScope = 'all' | 'pages' | 'students' | 'teachers' | 'courses';
 
 interface UnifiedNavbarSearchProps {
   searchQuery: string;
@@ -51,10 +55,11 @@ interface UnifiedNavbarSearchProps {
   currentRole: UserRole;
   currentUser?: AuthUser | null;
   currentStudentRecordId?: string;
+  featureFlags?: SchoolFeatureFlags;
   lang: AppLanguage;
   onOpenStudentProfile?: (student: Student) => void;
   onOpenReportCard?: (student: Student) => void;
-  onNavigateTab?: (tab: 'students' | 'teachers' | 'courses' | 'gradebook') => void;
+  onNavigateTab?: (tab: NavTab) => void;
 }
 
 export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
@@ -69,6 +74,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   currentRole,
   currentUser,
   currentStudentRecordId,
+  featureFlags,
   lang,
   onOpenStudentProfile,
   onOpenReportCard,
@@ -186,7 +192,22 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
     });
   }, [courses, deptFilter, courseTeacherFilter, courseTeacherOptions, normalizedQuery]);
 
+  const availableQuickPages = useMemo(
+    () => getQuickNavEntries(currentRole, featureFlags),
+    [currentRole, featureFlags],
+  );
+
+  const matchedPages = useMemo(() => {
+    if (!onNavigateTab) return [];
+    if (!normalizedQuery) return availableQuickPages.slice(0, scope === 'pages' ? 16 : 6);
+    return availableQuickPages.filter((entry) =>
+      [entry.labelTh, entry.labelEn, entry.categoryTh, entry.categoryEn, ...entry.keywords]
+        .some((item) => item.toLowerCase().includes(normalizedQuery)),
+    );
+  }, [availableQuickPages, normalizedQuery, onNavigateTab, scope]);
+
   const totalMatches =
+    (scope === 'all' || scope === 'pages' ? matchedPages.length : 0) +
     (scope === 'all' || scope === 'students' ? matchedStudents.length : 0) +
     (scope === 'all' || scope === 'teachers' ? matchedTeachers.length : 0) +
     (scope === 'all' || scope === 'courses' ? matchedCourses.length : 0);
@@ -278,11 +299,11 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
           placeholder={
             lang === 'th'
               ? isStaff
-                ? 'ค้นหานักเรียน / ครู / รายวิชา...'
-                : 'ค้นหารายวิชาและข้อมูลของฉัน...'
+                ? 'ไปหน้า / ค้นหานักเรียน ครู วิชา...'
+                : 'ไปหน้า / ค้นหารายวิชาของฉัน...'
               : isStaff
-                ? 'Search students, teachers, courses...'
-                : 'Search my courses & info...'
+                ? 'Jump to page, student, teacher...'
+                : 'Jump to page or search courses...'
           }
           className="w-40 2xl:w-52 pl-8 pr-14 py-1 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:bg-[var(--color-card)] transition-all"
         />
@@ -363,8 +384,17 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
                 {
                   id: 'all' as const,
                   label: lang === 'th' ? 'ทั้งหมด' : 'All',
-                  count: (isStaff || visibleStudents.length > 1 ? matchedStudents.length : 0) + matchedTeachers.length + matchedCourses.length,
+                  count: matchedPages.length + (isStaff || visibleStudents.length > 1 ? matchedStudents.length : 0) + matchedTeachers.length + matchedCourses.length,
                 },
+                ...(onNavigateTab
+                  ? [
+                      {
+                        id: 'pages' as const,
+                        label: lang === 'th' ? 'หน้า/เมนู' : 'Pages',
+                        count: matchedPages.length,
+                      },
+                    ]
+                  : []),
                 ...((isStaff || visibleStudents.length > 1)
                   ? [
                       {
@@ -502,6 +532,41 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
               </div>
             ) : (
               <>
+                {/* Quick Pages Jump Group */}
+                {(scope === 'all' || scope === 'pages') && matchedPages.length > 0 && onNavigateTab && (
+                  <div className="space-y-1">
+                    <div className="px-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                      <span className="flex items-center gap-1">
+                        <Compass className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                        {lang === 'th' ? `เมนูและหน้าเว็บ (${matchedPages.length})` : `Quick Jump (${matchedPages.length})`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      {matchedPages.slice(0, scope === 'pages' ? 14 : 4).map((page) => (
+                        <button
+                          key={page.tab}
+                          type="button"
+                          onClick={() => {
+                            setIsOpen(false);
+                            onNavigateTab(page.tab);
+                          }}
+                          className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-[var(--color-card-subtle)]/70 hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-left transition cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-[var(--color-text-title)] truncate">
+                              {lang === 'th' ? page.labelTh : page.labelEn}
+                            </div>
+                            <div className="text-[10px] text-[var(--color-text-muted)] truncate">
+                              {lang === 'th' ? page.categoryTh : page.categoryEn}
+                            </div>
+                          </div>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Students Group */}
                 {(scope === 'all' || scope === 'students') && matchedStudents.length > 0 && (
                   <div className="space-y-1">

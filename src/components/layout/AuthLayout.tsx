@@ -830,6 +830,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   <img
                     src={heroImage}
                     alt={lang === 'th' ? 'ห้องเรียนและการจัดการเรียนการสอนของ BaanPakKru (บ้านพักครู)' : 'Classroom learning with BaanPakKru'}
+                    decoding="async"
                     className="aspect-[16/9] w-full object-cover transition-transform duration-700 hover:scale-[1.015]"
                     referrerPolicy="no-referrer"
                   />

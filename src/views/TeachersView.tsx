@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Teacher, AppLanguage, UserRole, TeacherPortfolioWork } from '../types';
 import { 
   GraduationCap, 
@@ -48,7 +48,7 @@ import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
-import { STAFF_INVITE_RPC_SQL, saveTeachersToDb } from '../lib/supabase';
+import { loadStaffInviteRpcSql, saveTeachersToDb } from '../lib/supabase';
 import {
   approveStaffParentAccountInSupabase,
   InviteBackendSetupError,
@@ -59,6 +59,7 @@ import {
 } from '../lib/authDb';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
+import { EmptyState } from '../components/common/EmptyState';
 
 interface TeachersViewProps {
   teachers: Teacher[];
@@ -133,7 +134,13 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [inviteFeedback, setInviteFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [inviteResult, setInviteResult] = useState<TeacherParentInviteResult | null>(null);
   const [inviteNeedsBackendSql, setInviteNeedsBackendSql] = useState<{ message: string; detail?: string } | null>(null);
+  const [staffInviteRpcSql, setStaffInviteRpcSql] = useState('');
   const [copiedInviteField, setCopiedInviteField] = useState<'link' | 'message' | 'sql' | null>(null);
+  useEffect(() => {
+    if (inviteNeedsBackendSql && !staffInviteRpcSql) {
+      void loadStaffInviteRpcSql().then(setStaffInviteRpcSql);
+    }
+  }, [inviteNeedsBackendSql, staffInviteRpcSql]);
   const [approvingAccountId, setApprovingAccountId] = useState<string | null>(null);
   
   // Image Capture / Upload Modal State
@@ -987,21 +994,21 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           <PagedList
             items={filteredTeachers}
             pageSize={6}
-            emptyState={
-              <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-6 py-10 text-center">
-                <UserCheck className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" />
-                <p className="mt-2 text-sm font-semibold text-[var(--color-text-title)]">
-                  {teachers.length === 0
+            emptyState={(
+              <EmptyState
+                icon={UserCheck}
+                title={
+                  teachers.length === 0
                     ? (lang === 'th' ? 'ยังไม่มีข้อมูลบุคลากร' : 'No staff records yet')
-                    : (lang === 'th' ? 'ไม่พบรายชื่อที่ตรงกับการค้นหา' : 'No staff match your search')}
-                </p>
-                {teachers.length > 0 && (
-                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'ลองเปลี่ยนคำค้นหาหรือตัวกรองกลุ่มสาระ' : 'Try a different search or department filter.'}
-                  </p>
-                )}
-              </div>
-            }
+                    : (lang === 'th' ? 'ไม่พบรายชื่อที่ตรงกับการค้นหา' : 'No staff match your search')
+                }
+                description={
+                  teachers.length > 0
+                    ? (lang === 'th' ? 'ลองเปลี่ยนคำค้นหาหรือตัวกรองกลุ่มสาระ' : 'Try a different search or department filter.')
+                    : (lang === 'th' ? 'เพิ่มข้อมูลครูและบุคลากรเพื่อเชื่อมตารางสอนและสิทธิ์ใช้งานระบบ' : 'Add faculty records to link timetables and access.')
+                }
+              />
+            )}
             renderItem={(teacher) => (
             <div
               key={teacher.id}
@@ -1550,11 +1557,16 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       )} />
                     </div>
                   ) : (
-                    <div className="p-8 text-center border-2 border-dashed border-[var(--color-border)] rounded-2xl">
-                      <FileText className="w-10 h-10 text-[var(--color-text-muted)] mx-auto mb-2" />
-                      <p className="font-bold text-[var(--color-text-title)]">ยังไม่มีการบันทึกผลงาน PA สำหรับอาจารย์ท่านนี้</p>
-                      <p className="text-[var(--color-text-muted)] mt-1">กดปุ่ม "เพิ่มผลงาน ว.PA" เพื่อบันทึกงานวิจัย สื่อนวัตกรรม หรือแผนการสอน</p>
-                    </div>
+                    <EmptyState
+                      icon={FileText}
+                      title="ยังไม่มีการบันทึกผลงาน PA สำหรับอาจารย์ท่านนี้"
+                      description='กดปุ่ม "เพิ่มผลงาน ว.PA" เพื่อบันทึกงานวิจัย สื่อนวัตกรรม หรือแผนการสอน'
+                      action={{
+                        label: 'เพิ่มผลงาน ว.PA',
+                        onClick: () => setShowAddPaModal(true),
+                        icon: Plus,
+                      }}
+                    />
                   )}
                 </div>
               )}
@@ -2728,7 +2740,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => void handleCopyInviteText(STAFF_INVITE_RPC_SQL, 'sql')}
+                          onClick={() => void (staffInviteRpcSql ? Promise.resolve(staffInviteRpcSql) : loadStaffInviteRpcSql()).then((sql) => { setStaffInviteRpcSql(sql); return handleCopyInviteText(sql, 'sql'); })}
                           className="px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
                         >
                           {copiedInviteField === 'sql' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -2749,7 +2761,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                           ดูโค้ด SQL ที่ใช้ติดตั้ง (20261124_staff_invite_link_rpc.sql)
                         </summary>
                         <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2.5 text-[10px] font-mono text-slate-100 whitespace-pre-wrap">
-                          {STAFF_INVITE_RPC_SQL}
+                          {staffInviteRpcSql || 'กำลังโหลด SQL...'}
                         </pre>
                       </details>
                     </div>

@@ -5,6 +5,7 @@ export interface PaginatedTableRowsProps<T> {
   colSpan: number;
   renderRow: (item: T) => React.ReactNode;
   pageSize?: number;
+  emptyState?: React.ReactNode;
 }
 
 export const PaginatedTableRows = <T,>({
@@ -12,10 +13,22 @@ export const PaginatedTableRows = <T,>({
   colSpan,
   renderRow,
   pageSize = 8,
+  emptyState,
 }: PaginatedTableRowsProps<T>) => {
   const [page, setPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
+
+  if (items.length === 0) {
+    if (!emptyState) return null;
+    return (
+      <tr>
+        <td colSpan={colSpan} className="p-4">
+          {emptyState}
+        </td>
+      </tr>
+    );
+  }
 
   return (
     <>
@@ -28,7 +41,7 @@ export const PaginatedTableRows = <T,>({
                 type="button"
                 disabled={currentPage === 0}
                 onClick={() => setPage(currentPage - 1)}
-                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer whitespace-nowrap"
               >
                 ก่อนหน้า
               </button>
@@ -39,7 +52,7 @@ export const PaginatedTableRows = <T,>({
                 type="button"
                 disabled={currentPage === pageCount - 1}
                 onClick={() => setPage(currentPage + 1)}
-                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer whitespace-nowrap"
               >
                 ถัดไป
               </button>

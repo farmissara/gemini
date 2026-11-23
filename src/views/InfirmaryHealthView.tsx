@@ -33,6 +33,8 @@ import { getInfirmaryDuplicateReasons } from '../lib/duplicateRecords';
 import { getLocalDateString } from '../lib/date';
 import { getModuleTone } from '../lib/moduleTheme';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
+import { EmptyState } from '../components/common/EmptyState';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface InfirmaryHealthViewProps {
   schoolId?: string;
@@ -144,6 +146,10 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
     }
 
     onAddVisit(newVisit);
+    emitAppToast({
+      tone: 'success',
+      message: `บันทึกข้อมูลห้องพยาบาลของ ${newVisit.studentName} เรียบร้อยแล้ว`,
+    });
     setAllowDuplicateConfirm(false);
     setShowAddModal(false);
     setSymptoms('');
@@ -286,7 +292,21 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                <PaginatedTableRows items={filteredVisits} colSpan={7} renderRow={(visit) => {
+                <PaginatedTableRows
+                  items={filteredVisits}
+                  colSpan={7}
+                  emptyState={(
+                    <EmptyState
+                      compact
+                      icon={HeartPulse}
+                      title={visits.length === 0 ? 'ยังไม่มีบันทึกการเข้าห้องพยาบาล' : 'ไม่พบรายการที่ตรงกับตัวกรอง'}
+                      description="กดปุ่มบันทึกการรักษาเพื่อเพิ่มประวัติอาการและยาที่จ่ายให้นักเรียน"
+                      action={searchTerm || statusFilter !== 'all'
+                        ? { label: 'ล้างตัวกรอง', onClick: () => { setSearchTerm(''); setStatusFilter('all'); }, variant: 'neutral' }
+                        : { label: 'บันทึกการรักษา', onClick: () => { setAllowDuplicateConfirm(false); setVisitFormStep(1); setShowAddModal(true); }, icon: Plus }}
+                    />
+                  )}
+                  renderRow={(visit) => {
                   const status = getStatusBadge(visit.status);
                   const hasHighFever = visit.temperature >= 37.5;
 
