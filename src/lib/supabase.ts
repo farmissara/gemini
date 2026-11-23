@@ -28,6 +28,7 @@ import studentRecordsMigrationSql from '../../supabase/migrations/20261120000002
 import schoolLmsLessonsMigrationSql from '../../supabase/migrations/20261120_school_lms_lessons.sql?raw';
 import schoolLmsTeacherCourseRlsMigrationSql from '../../supabase/migrations/20261120000001_school_lms_teacher_course_rls.sql?raw';
 import teacherWorkspaceScopeMigrationSql from '../../supabase/migrations/20261123000006_teacher_workspace_scope_admin_writes.sql?raw';
+import rbacPermissionHardeningMigrationSql from '../../supabase/migrations/20261123000007_rbac_permission_hardening.sql?raw';
 import staffInviteRpcSql from '../../supabase/migrations/20261124_staff_invite_link_rpc.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
@@ -115,7 +116,7 @@ export function clearCustomSupabaseCredentials() {
 }
 
 export const SUPABASE_SCHEMA_SQL = schemaSql;
-export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}\n\n${homeworkWorkflowMigrationSql}\n\n${studentRecordsMigrationSql}\n\n${schoolLmsLessonsMigrationSql}\n\n${schoolLmsTeacherCourseRlsMigrationSql}\n\n${teacherWorkspaceScopeMigrationSql}`;
+export const SUPABASE_PATCH_MIGRATION_SQL = `${patchMigrationSql}\n\n${courseClassificationMigrationSql}\n\n${homeworkWorkflowMigrationSql}\n\n${studentRecordsMigrationSql}\n\n${schoolLmsLessonsMigrationSql}\n\n${schoolLmsTeacherCourseRlsMigrationSql}\n\n${teacherWorkspaceScopeMigrationSql}\n\n${rbacPermissionHardeningMigrationSql}`;
 export const STAFF_INVITE_RPC_SQL = staffInviteRpcSql;
 
 function isMissingTableError(error: { code?: string; message: string }): boolean {

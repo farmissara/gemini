@@ -18,6 +18,15 @@ export async function fetchSuperAdminSettings(): Promise<Partial<Record<SuperAdm
   return data as Partial<Record<SuperAdminSettingKey, unknown>>;
 }
 
+export async function fetchMyRolePermissionConfig(): Promise<unknown> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.rpc('get_my_role_permissions');
+  if (error) throw new Error(`Could not load role permissions: ${error.message}`);
+  return data;
+}
+
 export async function saveSuperAdminSetting(
   key: SuperAdminSettingKey,
   value: unknown

@@ -65,6 +65,7 @@ import {
   INITIAL_ROLE_PERMISSIONS,
 } from './data/mockData';
 import {
+  fetchMyRolePermissionConfig,
   fetchSuperAdminSettings,
   saveSuperAdminSetting,
   saveSuperAdminSettings,
@@ -363,6 +364,26 @@ export const App: React.FC = () => {
   const [promotions, setPromotions] = useState<PromotionCampaign[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SchoolSubscriptionPlan[]>([]);
   const [superAdminConfigError, setSuperAdminConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentUser || isDemoMode || currentRole === 'super_admin') return;
+    let active = true;
+    // Never keep permissive mock defaults while the authenticated role's
+    // server-side permission config is loading or unavailable.
+    setRolePermissions([]);
+    fetchMyRolePermissionConfig()
+      .then((config) => {
+        if (!active) return;
+        const roleConfig = config && typeof config === 'object' && !Array.isArray(config)
+          ? config as RolePermissionConfig
+          : null;
+        setRolePermissions(roleConfig?.role === currentRole ? [roleConfig] : []);
+      })
+      .catch(() => {
+        if (active) setRolePermissions([]);
+      });
+    return () => { active = false; };
+  }, [currentUser?.id, currentRole, isDemoMode]);
 
   useEffect(() => {
     if (currentUser?.role !== 'super_admin' || isDemoMode) return;
@@ -1338,7 +1359,7 @@ export const App: React.FC = () => {
 
   const hasGlobalRolePermission = (permission: keyof RolePermissionConfig['permissions']) => {
     if (currentRole === 'super_admin') return true;
-    return rolePermissions.find((item) => item.role === currentRole)?.permissions[permission] ?? true;
+    return rolePermissions.find((item) => item.role === currentRole)?.permissions[permission] === true;
   };
 
   useEffect(() => {
