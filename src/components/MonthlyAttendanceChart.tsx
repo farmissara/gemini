@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -34,6 +34,7 @@ interface MonthlyAttendanceChartProps {
   lang?: AppLanguage;
   selectedDate?: string;
   onSelectDate?: (dateStr: string) => void;
+  onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
 }
 
 type ChartDisplayType = 'composed' | 'stacked_bar' | 'rate_area';
@@ -58,6 +59,7 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
   lang = 'th',
   selectedDate,
   onSelectDate,
+  onLoadAttendanceRange,
 }) => {
   const today = new Date();
   const todayStr = getLocalDateString(today);
@@ -67,6 +69,15 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth()); // 0-indexed
   const [chartType, setChartType] = useState<ChartDisplayType>('composed');
   const [dayFilter, setDayFilter] = useState<DayFilterType>('month_to_date');
+
+  useEffect(() => {
+    if (!onLoadAttendanceRange) return;
+    const start = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+    const end = start.slice(0, 7) === todayStr.slice(0, 7)
+      ? todayStr
+      : getLocalDateString(new Date(selectedYear, selectedMonth + 1, 0));
+    void onLoadAttendanceRange(start, end);
+  }, [selectedYear, selectedMonth, onLoadAttendanceRange, todayStr]);
 
   // Filter student-only attendance
   const studentAttendance = useMemo(() => {

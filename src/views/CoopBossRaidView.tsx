@@ -430,7 +430,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
           </div>
 
           {/* Desktop Boss Visual Stage */}
-          <div className="hidden lg:flex lg:col-span-5 rounded-3xl bg-zinc-900 border border-zinc-800 p-5 flex-col justify-between relative overflow-hidden min-h-[420px]">
+          <div className="hidden lg:flex lg:col-span-5 rounded-3xl bg-zinc-900 border border-zinc-800 p-4 flex-col justify-between relative overflow-hidden min-h-[320px]">
             <div>
               <div className="flex items-center justify-between text-xs font-bold mb-2 tabular-nums">
                 <span className="flex items-center gap-1.5 text-rose-400">
@@ -451,13 +451,13 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
             </div>
 
             <div
-              className={`my-6 flex flex-col items-center justify-center transition-transform duration-200 ${
+              className={`my-4 flex flex-col items-center justify-center transition-transform duration-200 ${
                 attackAnimation ? 'scale-90' : ''
               }`}
             >
               <div className="relative">
-                <div className="w-36 h-36 rounded-3xl bg-gradient-to-br from-rose-600 via-purple-800 to-zinc-950 border-2 border-rose-500/70 shadow-2xl shadow-rose-600/20 flex items-center justify-center">
-                  <Swords className="w-14 h-14 text-amber-300" />
+                <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-rose-600 via-purple-800 to-zinc-950 border-2 border-rose-500/70 shadow-xl shadow-rose-600/20 flex items-center justify-center">
+                  <Swords className="w-10 h-10 text-amber-300" />
                 </div>
 
                 {lastDamage !== null && lastDamage > 0 && (
@@ -640,8 +640,8 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
       {victoryCelebration && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-amber-400/50 rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-400 text-zinc-950 flex items-center justify-center">
-              <Trophy className="w-8 h-8" />
+            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-400 text-zinc-950 flex items-center justify-center">
+              <Trophy className="w-6 h-6" />
             </div>
 
             <div className="space-y-1">

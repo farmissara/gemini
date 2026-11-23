@@ -1,0 +1,2 @@
+[functions.attendance-photo-retention]
+verify_jwt = false

@@ -296,7 +296,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   return (
     <div className="flex flex-col gap-5 pb-6 animate-in fade-in duration-200">
       {/* 1. VISUAL HERO BANNER — Student Identity + 1 Dominant Primary CTA */}
-      <section className="relative rounded-3xl overflow-hidden shadow-lg shadow-slate-900/15 bg-slate-900 min-h-[236px] flex flex-col justify-between">
+      <section className="relative rounded-3xl overflow-hidden shadow-lg shadow-slate-900/15 bg-slate-900 min-h-[192px] sm:min-h-[216px] flex flex-col justify-between">
         <img
           src={heroCampusImg}
           alt={lang === 'th' ? 'ภาพบรรยากาศโรงเรียน' : 'Campus atmosphere'}

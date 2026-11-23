@@ -595,8 +595,8 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
               ) : (
                 /* Result Screen */
                 <div className="text-center py-4 space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center">
-                    <Award className="w-8 h-8" />
+                  <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center">
+                    <Award className="w-6 h-6" />
                   </div>
                   <h4 className="text-lg font-black text-[var(--color-text-title)]">
                     {lang === 'th' ? 'ผลการทำภารกิจซ่อมเสริม' : 'Remedial Quest Result'}

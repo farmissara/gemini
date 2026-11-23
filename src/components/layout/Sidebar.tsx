@@ -384,7 +384,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       helperEn: 'Schedule → attendance → grades and follow-up',
       shortLabelTh: 'งานประจำ',
       shortLabelEn: 'Daily',
-      icon: Award,
+      icon: Calendar,
       items: [
         {
           id: 'timetable',
@@ -875,7 +875,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return hidden;
   }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, focusTabs, resolvedSidebarActiveTab]);
 
-  const renderItem = (item: NavItemDef, onClick?: () => void) => {
+  const renderItem = (item: NavItemDef, onClick?: () => void, tone = getModuleTone(item.id)) => {
     const Icon = item.icon;
     const isActive = resolvedSidebarActiveTab === item.id;
     const isNumericBadge = Boolean(item.badge && /^\d+$/.test(String(item.badge)));
@@ -889,9 +889,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setCurrentTab(item.id);
           onClick?.();
         }}
-        className={`${getModuleTone(item.id)} group relative w-full flex min-h-10 sm:min-h-9 items-center justify-between gap-2 px-3 py-1.5 rounded-xl text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
+        className={`${tone} group relative w-full flex min-h-10 sm:min-h-9 items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
           isActive
-            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
+            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold shadow-[inset_3px_0_0_var(--tone)]'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
@@ -987,7 +987,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setCurrentTab(item.id)}
                     title={`${lang === 'th' ? cat.shortLabelTh : cat.shortLabelEn} · ${lang === 'th' ? item.labelTh : item.labelEn}`}
                     aria-label={lang === 'th' ? item.labelTh : item.labelEn}
-                    className={`${getModuleTone(item.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
+                    className={`${getCategoryTone(cat.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                       isActive
                         ? 'bg-[var(--tone-soft)] text-[var(--tone)] shadow-xs'
                         : 'text-[var(--color-text-muted)] hover:bg-[var(--tone-soft)]/50 hover:text-[var(--tone)]'
@@ -1008,7 +1008,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="app-sidebar w-72 max-w-[85vw] border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
+    <aside className="app-sidebar w-64 max-w-[85vw] border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex flex-col shrink-0 select-none h-full overflow-hidden transition-[width] duration-200">
       {/* Compact Search + Collapse Header */}
       <div className="shrink-0 p-3 border-b border-[var(--color-border)]/70 bg-[var(--color-card)] flex items-center gap-2" data-guide-id="sidebar-search">
         <div className="relative flex-1 min-w-0">
@@ -1044,7 +1044,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5 space-y-2">
         {searchFilter.trim() ? (
           <div className="space-y-1">
             <div className="px-3 pb-1 text-[11px] font-semibold text-[var(--color-text-muted)]">
@@ -1103,6 +1103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {visibleCategories.map((cat) => {
                 const isCollapsed = isCategoryCollapsed(cat.id);
                 const catTone = getCategoryTone(cat.id);
+                const CategoryIcon = cat.icon;
                 const alertBadge = cat.items.find(
                   (i) => i.badge && !/^\d+$/.test(String(i.badge)) && i.badge !== 'AI'
                 )?.badge;
@@ -1119,17 +1120,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           [cat.id]: !isCategoryCollapsed(cat.id),
                         }));
                       }}
-                      className="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-left transition cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40"
+                      data-expanded={!isCollapsed}
+                      className="sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/30"
                     >
-                      <span className="block min-w-0">
-                        <span className="block truncate text-[11px] font-bold tracking-tight">
-                          {lang === 'th' ? cat.labelTh : cat.labelEn}
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--tone-soft)] text-[var(--tone)]">
+                          <CategoryIcon className="h-3.5 w-3.5" aria-hidden="true" />
                         </span>
-                        {(lang === 'th' ? cat.helperTh : cat.helperEn) && (
-                          <span className="block truncate text-[9px] leading-tight font-medium text-[var(--color-text-muted)]">
-                            {lang === 'th' ? cat.helperTh : cat.helperEn}
+                        <span className="block min-w-0">
+                          <span className="block truncate text-[13px] leading-5 font-extrabold tracking-tight text-[var(--tone)]">
+                            {lang === 'th' ? cat.labelTh : cat.labelEn}
                           </span>
-                        )}
+                          {(lang === 'th' ? cat.helperTh : cat.helperEn) && (
+                            <span className="block truncate text-[11px] leading-4 font-medium text-[var(--color-text-muted)]">
+                              {lang === 'th' ? cat.helperTh : cat.helperEn}
+                            </span>
+                          )}
+                        </span>
                       </span>
                       <span className="flex items-center gap-1.5 shrink-0">
                         {isCollapsed && alertBadge && (
@@ -1137,6 +1144,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {alertBadge}
                           </span>
                         )}
+                        <span className="min-w-5 rounded-md bg-[var(--color-card-subtle)] px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums text-[var(--color-text-muted)]">
+                          {cat.items.length}
+                        </span>
                         {isCollapsed ? (
                           <ChevronRight className="w-3.5 h-3.5" />
                         ) : (
@@ -1148,9 +1158,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {!isCollapsed && (
                       <div
                         id={`sidebar-category-${cat.id}`}
-                        className="space-y-0.5"
+                        className="sidebar-category-items ml-3 space-y-0.5 border-l border-[color-mix(in_srgb,var(--tone)_24%,var(--color-border))] pl-2"
                       >
-                        {cat.items.map((item) => renderItem(item))}
+                        {cat.items.map((item) => renderItem(item, undefined, catTone))}
                       </div>
                     )}
                   </div>

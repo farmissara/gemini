@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AttendancePhoto from '../components/AttendancePhoto';
 import { 
   Student, 
   AttendanceRecord, 
@@ -72,6 +73,7 @@ interface ParentPortalViewProps {
   onSubmitInvoiceSlip?: (invoiceId: string, slipDataUrl: string, note: string) => void;
   onOpenReportCard: (student: Student) => void;
   onAddLeaveRequest?: (req: LeaveRequest) => void;
+  onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null, studentId?: string) => Promise<void> | void;
 }
 
 export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
@@ -91,7 +93,8 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   onPayInvoice: _onPayInvoice,
   onSubmitInvoiceSlip,
   onOpenReportCard,
-  onAddLeaveRequest
+  onAddLeaveRequest,
+  onLoadAttendanceRange,
 }) => {
   const canSeeRealtimeAttendance = isSchoolPolicyEnabled(schoolPermissions, 'parent_realtime_attendance');
   const canPayTuition = isSchoolPolicyEnabled(schoolPermissions, 'parent_promptpay_tuition');
@@ -123,6 +126,11 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
   const student = students.find((s) => s.id === selectedStudentId) || students[0];
+  React.useEffect(() => {
+    if (onLoadAttendanceRange && albumSelectedDate) {
+      void onLoadAttendanceRange(albumSelectedDate, albumSelectedDate, student?.id);
+    }
+  }, [albumSelectedDate, onLoadAttendanceRange, student?.id]);
   const studentAttendance = attendance.filter((a) => a.studentId === student?.id);
   const studentInvoices = invoices.filter((i) => i.studentId === student?.id);
   const studentGrades = grades.filter((g) => g.studentId === student?.id);
@@ -748,7 +756,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
 
                     <div className="flex gap-3">
                       <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-slate-900 border border-[var(--color-border)] shrink-0">
-                        <img src={photoSrc} alt="Selfie" className="w-full h-full object-cover" />
+                        <AttendancePhoto src={photoSrc} fallbackSrc={student?.avatarUrl} alt="Selfie" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/30 hover:opacity-100 flex items-center justify-center text-white">
                           <Eye className="w-5 h-5 drop-shadow" />
                         </div>
@@ -1044,7 +1052,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             </div>
 
             <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
-              <img
+              <AttendancePhoto
                 src={selectedZoomPhoto.photoUrl || selectedZoomPhoto.userAvatar || student?.avatarUrl}
                 alt="Selfie Zoom"
                 className="w-full h-full object-contain"

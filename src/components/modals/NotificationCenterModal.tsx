@@ -126,7 +126,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   useEffect(() => {
     if (!isOpen || currentUser.role !== 'parent') return;
     let active = true;
+    let refreshing = false;
     const refresh = async () => {
+      if (!active || document.visibilityState === 'hidden' || refreshing) return;
+      refreshing = true;
       const seqAtStart = actionSequenceRef.current;
       try {
         const items = await listParentNotifications();
@@ -143,12 +146,21 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         if (active && seqAtStart === actionSequenceRef.current) {
           setParentError(error instanceof Error ? error.message : 'โหลดการแจ้งเตือนของนักเรียนไม่สำเร็จ');
         }
+      } finally {
+        refreshing = false;
       }
     };
-    const interval = window.setInterval(() => void refresh(), 15000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    const interval = window.setInterval(() => void refresh(), 60000);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onVisibilityChange);
     return () => {
       active = false;
       window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onVisibilityChange);
     };
   }, [isOpen, currentUser.role, loadScopedNotifications, onUnreadCountChange]);
 

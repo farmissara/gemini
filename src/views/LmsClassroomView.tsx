@@ -318,7 +318,7 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
                     ></iframe>
                   ) : (
                     <div className="text-center p-6 space-y-2">
-                      <Video className="w-12 h-12 text-indigo-300 mx-auto" />
+                      <Video className="w-8 h-8 text-indigo-300 mx-auto" />
                       <p className="text-sm font-semibold text-white">Live Stream &amp; Interactive Lesson</p>
                       <p className="text-xs text-slate-200">Class meets via EduVerse Cloud Stream</p>
                     </div>

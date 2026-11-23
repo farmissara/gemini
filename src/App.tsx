@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   UserRole, 
   School,
@@ -76,8 +76,38 @@ import {
 } from './lib/authDb';
 import type { AuthContext } from './lib/authDb';
 import { fetchCoordinationMessages } from './lib/coordinationDesk';
+
+type CoreSyncRows = {
+  students: Student[];
+  teachers: Teacher[];
+  courses: Course[];
+  grades: GradeRecord[];
+  attendance: AttendanceRecord[];
+  invoices: TuitionInvoice[];
+  announcements: Announcement[];
+};
+
+function findChangedRowIds<T extends { id: string }>(current: T[], previous: T[] | undefined): string[] {
+  if (!previous) return current.map((row) => row.id);
+  const previousById = new Map(previous.map((row) => [row.id, JSON.stringify(row)]));
+  return current
+    .filter((row) => previousById.get(row.id) !== JSON.stringify(row))
+    .map((row) => row.id);
+}
+
+function hasChangedRowIds(changedIds: Record<keyof CoreSyncRows, string[]>): boolean {
+  return Object.values(changedIds).some((ids) => ids.length > 0);
+}
+
+function getAcademicYearStartDate(label: string): string {
+  const westernYear = label.match(/\b(20\d{2})\b/)?.[1];
+  const thaiYear = label.match(/\b(25\d{2})\b/)?.[1];
+  const year = westernYear ? Number(westernYear) : thaiYear ? Number(thaiYear) - 543 : new Date().getFullYear();
+  return `${year}-05-01`;
+}
 import { 
   loadSchoolData, 
+  loadAttendanceRangeFromSupabase,
   saveSchoolCampusGates, 
   saveSchoolGpsCoordinates, 
   saveSchoolPeriodTimes, 
@@ -133,6 +163,7 @@ import type { DuplicateRecordReport, DuplicateRecordTarget } from './lib/duplica
 import { isMobileViewport } from './lib/screenOrientation';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
+import { getModuleTone } from './lib/moduleTheme';
 import { FocusToolbar } from './components/layout/FocusToolbar';
 import { AuthLayout } from './components/layout/AuthLayout';
 import { ViewErrorBoundary } from './components/common/ViewErrorBoundary';
@@ -293,6 +324,9 @@ export const App: React.FC = () => {
   const [biometricLockError, setBiometricLockError] = useState<string | null>(null);
   const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
   const skipNextOfflineRowSyncRef = useRef(false);
+  const lastSyncedRowsBySchoolRef = useRef(new Map<string, CoreSyncRows>());
+  const attendanceLoadedRangesRef = useRef(new Map<string, Array<{ start: string | null; end: string | null; studentId?: string }>>());
+  const attendanceRangeRequestsRef = useRef(new Map<string, Promise<void>>());
 
   const handleCopyMigrationSql = async () => {
     try {
@@ -407,6 +441,10 @@ export const App: React.FC = () => {
   const [themePalette, setThemePalette] = useState<ThemePalette>('light_warm');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCompactViewport, setIsSidebarCompactViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 1360,
+  );
+  const [isSidebarExpandedForCompactViewport, setIsSidebarExpandedForCompactViewport] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -423,6 +461,16 @@ export const App: React.FC = () => {
       // ignore
     }
   }, [isSidebarCollapsed]);
+  useEffect(() => {
+    const updateViewportSidebar = () => {
+      const compact = window.innerWidth < 1360;
+      setIsSidebarCompactViewport(compact);
+      if (!compact) setIsSidebarExpandedForCompactViewport(false);
+    };
+    window.addEventListener('resize', updateViewportSidebar, { passive: true });
+    return () => window.removeEventListener('resize', updateViewportSidebar);
+  }, []);
+  const sidebarIsCollapsed = isSidebarCollapsed || (isSidebarCompactViewport && !isSidebarExpandedForCompactViewport);
 
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -546,6 +594,70 @@ export const App: React.FC = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [invoices, setInvoices] = useState<TuitionInvoice[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const getCurrentSchoolSyncRows = (): CoreSyncRows => ({
+    students: students.filter((item) => item.schoolId === activeSchool.id),
+    teachers: teachers.filter((item) => !item.schoolId || item.schoolId === activeSchool.id),
+    courses: courses.filter((item) => item.schoolId === activeSchool.id),
+    grades: grades.filter((item) => item.schoolId === activeSchool.id),
+    attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
+    invoices: invoices.filter((item) => item.schoolId === activeSchool.id),
+    announcements: announcements.filter((item) => item.schoolId === activeSchool.id),
+  });
+  const loadAttendanceHistory = useCallback(async (
+    startDate?: string | null,
+    endDate?: string | null,
+    studentId?: string,
+  ) => {
+    const schoolId = activeSchool.id;
+    if (!schoolId) return;
+    const ownerId = currentUser?.id || 'anonymous';
+    const rangeScopeKey = `${ownerId}:${schoolId}`;
+    const requestKey = `${rangeScopeKey}:${studentId || '*'}:${startDate || '*'}:${endDate || '*'}`;
+    const currentRanges = attendanceLoadedRangesRef.current.get(rangeScopeKey) || [];
+    const requestStart = startDate || '0000-01-01';
+    const requestEnd = endDate || '9999-12-31';
+    const alreadyCovered = currentRanges.some((range) => {
+      const coversStudent = !range.studentId || range.studentId === studentId;
+      const rangeStart = range.start || '0000-01-01';
+      const rangeEnd = range.end || '9999-12-31';
+      return coversStudent && rangeStart <= requestStart && rangeEnd >= requestEnd;
+    });
+    if (alreadyCovered) return;
+    const inFlight = attendanceRangeRequestsRef.current.get(requestKey);
+    if (inFlight) return inFlight;
+
+    const request = loadAttendanceRangeFromSupabase(schoolId, startDate, endDate, studentId)
+      .then((loadedRows) => {
+        if (activeSchool.id !== schoolId || (currentUser?.id || 'anonymous') !== ownerId) return;
+        const ranges = attendanceLoadedRangesRef.current.get(rangeScopeKey) || [];
+        ranges.push({ start: startDate || null, end: endDate || null, ...(studentId ? { studentId } : {}) });
+        attendanceLoadedRangesRef.current.set(rangeScopeKey, ranges);
+        const syncBaseline = lastSyncedRowsBySchoolRef.current.get(schoolId);
+        if (syncBaseline) {
+          const baselineById = new Map(syncBaseline.attendance.map((record) => [record.id, record]));
+          loadedRows.forEach((record) => {
+            if (!baselineById.has(record.id)) baselineById.set(record.id, record);
+          });
+          lastSyncedRowsBySchoolRef.current.set(schoolId, {
+            ...syncBaseline,
+            attendance: [...baselineById.values()],
+          });
+        }
+        setAttendance((previous) => {
+          const recordsById = new Map(previous.map((record) => [record.id, record]));
+          loadedRows.forEach((record) => {
+            if (!recordsById.has(record.id)) recordsById.set(record.id, record);
+          });
+          return [...recordsById.values()].sort((a, b) => (`${b.date} ${b.time}`).localeCompare(`${a.date} ${a.time}`));
+        });
+      })
+      .catch((error: unknown) => {
+        console.warn('Could not load selected attendance history:', error);
+      })
+      .finally(() => attendanceRangeRequestsRef.current.delete(requestKey));
+    attendanceRangeRequestsRef.current.set(requestKey, request);
+    return request;
+  }, [activeSchool.id, currentUser?.id]);
   const [systemConfig, setSystemConfig] = useState<SystemConfig>(INITIAL_SYSTEM_CONFIG);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -563,6 +675,15 @@ export const App: React.FC = () => {
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
   const [campusGates, setCampusGates] = useState<CampusGateGeofence[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+
+  useEffect(() => {
+    const isGradebookOpen = currentTab === 'gradebook' || (currentTab === 'students' && studentsSubTab === 'gradebook');
+    if (!isGradebookOpen || !['admin', 'teacher', 'super_admin'].includes(currentUser?.role || '')) return;
+    void loadAttendanceHistory(
+      getAcademicYearStartDate(systemConfig.academicYear || activeSchool.academicYear || ''),
+      getLocalDateString(),
+    );
+  }, [currentTab, studentsSubTab, currentUser?.role, activeSchool.id, activeSchool.academicYear, systemConfig.academicYear, loadAttendanceHistory]);
 
   // Load and synchronize real school GPS campus gates per active school (never sample/demo gates)
   useEffect(() => {
@@ -778,7 +899,10 @@ export const App: React.FC = () => {
     const resolvedSchoolId = activeSchool.id || currentUser.schoolId;
     if (currentUser.role === 'parent') {
       let active = true;
+      let refreshing = false;
       const updateUnread = async () => {
+        if (!active || document.visibilityState === 'hidden' || refreshing) return;
+        refreshing = true;
         try {
           const count = await getParentUnreadNotificationCount();
           const extraUnread = getScopedNotificationsForUser({
@@ -791,17 +915,26 @@ export const App: React.FC = () => {
           if (active) setUnreadNotifCount(count + extraUnread);
         } catch (error) {
           console.error('Could not refresh private child notification count:', error);
+        } finally {
+          refreshing = false;
         }
+      };
+      const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') void updateUnread();
       };
       void updateUnread();
       window.addEventListener('eduverse:notification', updateUnread);
       window.addEventListener('eduverse:holidays-updated', updateUnread);
-      const interval = window.setInterval(updateUnread, 30000);
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      window.addEventListener('focus', onVisibilityChange);
+      const interval = window.setInterval(updateUnread, 60000);
       return () => {
         active = false;
         window.clearInterval(interval);
         window.removeEventListener('eduverse:notification', updateUnread);
         window.removeEventListener('eduverse:holidays-updated', updateUnread);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.removeEventListener('focus', onVisibilityChange);
       };
     }
 
@@ -1512,6 +1645,15 @@ export const App: React.FC = () => {
     loadSchoolData(activeSchool.id, currentUser.id)
       .then((data) => {
         if (!active) return;
+        // Hydrating the initial school snapshot must not trigger the broad
+        // write-back effect below. The first sync should follow a user edit.
+        skipNextOfflineRowSyncRef.current = ['super_admin', 'admin', 'teacher'].includes(currentUser.role);
+        if (data.attendanceLoadedRange) {
+          const rangeScopeKey = `${currentUser.id}:${activeSchool.id}`;
+          const loadedRanges = attendanceLoadedRangesRef.current.get(rangeScopeKey) || [];
+          loadedRanges.push(data.attendanceLoadedRange);
+          attendanceLoadedRangesRef.current.set(rangeScopeKey, loadedRanges);
+        }
         setIsUsingCachedSchoolData(Boolean(data.loadedFromCache));
         if (currentUser.role === 'super_admin') {
           skipNextSuperAdminSyncRef.current = true;
@@ -1712,7 +1854,9 @@ export const App: React.FC = () => {
   }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView]);
 
   useEffect(() => {
-    if (!activeSchool.id || !currentUser || !isDataReady || loadedSchoolId !== activeSchool.id || isDemoMode) return;
+    // LMS lesson bodies and progress are sizable. Load them only when the user
+    // opens the classroom instead of on every ERP dashboard visit.
+    if (programMode !== 'lms_classroom' || !activeSchool.id || !currentUser || !isDataReady || loadedSchoolId !== activeSchool.id || isDemoMode) return;
     let active = true;
     void loadSchoolLessons(activeSchool.id)
       .then((items) => {
@@ -1725,7 +1869,7 @@ export const App: React.FC = () => {
         setDataSyncWarnings((prev) => [...new Set([...prev, message])]);
       });
     return () => { active = false; };
-  }, [activeSchool.id, currentUser?.id, loadedSchoolId, isDataReady, isDemoMode]);
+  }, [programMode, activeSchool.id, currentUser?.id, loadedSchoolId, isDataReady, isDemoMode]);
 
   useEffect(() => {
     if (!activeSchool.id || !currentUser || !isDataReady || isDemoMode) return;
@@ -1885,25 +2029,35 @@ export const App: React.FC = () => {
     ) return;
     if (skipNextOfflineRowSyncRef.current) {
       skipNextOfflineRowSyncRef.current = false;
+      lastSyncedRowsBySchoolRef.current.set(activeSchool.id, getCurrentSchoolSyncRows());
       return;
     }
     if (currentUser.role === 'super_admin' && skipNextSuperAdminSyncRef.current) {
       skipNextSuperAdminSyncRef.current = false;
+      lastSyncedRowsBySchoolRef.current.set(activeSchool.id, getCurrentSchoolSyncRows());
       return;
     }
     const timeoutId = window.setTimeout(() => {
       syncQueueRef.current = syncQueueRef.current.then(async () => {
+        const rows = getCurrentSchoolSyncRows();
+        const previousRows = lastSyncedRowsBySchoolRef.current.get(activeSchool.id);
+        const changedIds = {
+          students: findChangedRowIds(rows.students, previousRows?.students),
+          teachers: findChangedRowIds(rows.teachers, previousRows?.teachers),
+          courses: findChangedRowIds(rows.courses, previousRows?.courses),
+          grades: findChangedRowIds(rows.grades, previousRows?.grades),
+          attendance: findChangedRowIds(rows.attendance, previousRows?.attendance),
+          invoices: findChangedRowIds(rows.invoices, previousRows?.invoices),
+          announcements: findChangedRowIds(rows.announcements, previousRows?.announcements),
+        };
+        if (!hasChangedRowIds(changedIds)) return;
         const result = await syncDataToSupabase({
           school: activeSchool,
           role: currentUser.role,
-          students: students.filter((item) => item.schoolId === activeSchool.id),
-          teachers: teachers.filter((item) => !item.schoolId || item.schoolId === activeSchool.id),
-          courses: courses.filter((item) => item.schoolId === activeSchool.id),
-          grades: grades.filter((item) => item.schoolId === activeSchool.id),
-          attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
-          invoices: invoices.filter((item) => item.schoolId === activeSchool.id),
-          announcements: announcements.filter((item) => item.schoolId === activeSchool.id),
+          ...rows,
+          changedIds,
         });
+        if (result.success) lastSyncedRowsBySchoolRef.current.set(activeSchool.id, rows);
         setDataSyncError(result.success ? null : result.message);
         setDataSyncWarnings(result.warnings || []);
         setDataSyncSummary(result.warnings && result.warnings.length > 0 ? result.message : null);
@@ -4732,6 +4886,7 @@ export const App: React.FC = () => {
             grades={viewGrades}
             attendance={viewAttendance}
             onClose={() => setSelectedStudentForProfile(null)}
+            onLoadAttendanceHistory={loadAttendanceHistory}
             onOpenReportCard={(stu) => {
               setSelectedStudentForProfile(null);
               setSelectedStudentForReport(stu);
@@ -4869,7 +5024,7 @@ export const App: React.FC = () => {
       isGuideEnabled={isGuideTourEnabled}
       onSetGuideEnabled={(next) => handleToggleGuideTour(next)}
     >
-    <div className={`${useImmersiveGameLayout ? 'game-immersive-root' : ''} ${isMobileInDesktopView ? 'h-dvh max-h-dvh w-full overflow-x-auto overflow-y-hidden' : 'h-dvh max-h-dvh overflow-hidden'} bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
+    <div className={`${useImmersiveGameLayout ? 'game-immersive-root' : ''} h-dvh max-h-dvh w-full overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
       {useImmersiveGameLayout && isPortraitScreen && (
         <div className="fixed top-3 left-1/2 z-[60] -translate-x-1/2 pointer-events-none">
           <div className="flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/85 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md">
@@ -4881,8 +5036,8 @@ export const App: React.FC = () => {
       {/* Single Sticky Top Banner when viewing Desktop View on Mobile Screen */}
       {isMobileInDesktopView && (
         <div className="sticky top-0 z-50 bg-[var(--color-primary)] text-white px-3 py-1.5 text-xs flex items-center justify-between gap-2 shrink-0">
-          <span className="font-medium truncate">
-            {lang === 'th' ? 'โหมดคอมพิวเตอร์ · เลื่อนซ้าย-ขวาได้' : 'Desktop View · Horizontal scroll enabled'}
+            <span className="font-medium truncate">
+            {lang === 'th' ? 'โหมดคอมพิวเตอร์ · ปรับตามความกว้างหน้าจอ' : 'Desktop View · Responsive layout'}
           </span>
           <button
             type="button"
@@ -4958,7 +5113,7 @@ export const App: React.FC = () => {
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
             onClick={() => setIsMobileMenuOpen(false)} 
           />
-          <div className="relative w-72 max-w-[85vw] bg-[var(--color-card)] text-[var(--color-text-body)] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-[var(--color-border)]">
+          <div className="relative w-64 max-w-[85vw] bg-[var(--color-card)] text-[var(--color-text-body)] h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200 border-r border-[var(--color-border)]">
             <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
               <span className="font-bold text-xs text-[var(--color-text-title)]">เมนูระบบโรงเรียน (BaanPakKru · บ้านพักครู)</span>
               <button 
@@ -4998,7 +5153,6 @@ export const App: React.FC = () => {
 
       <div 
         className={`flex-1 flex min-w-0 min-h-0 ${useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950 overflow-hidden' : 'overflow-hidden'}`}
-        style={isMobileInDesktopView ? { minWidth: '1120px' } : undefined}
       >
         {/* Desktop Left Sidebar only shown in School ERP mode (collapsed completely in Focus Mode) */}
         {!useImmersiveGameLayout && !focusMode && programMode === 'school_erp' && (
@@ -5018,8 +5172,14 @@ export const App: React.FC = () => {
               lang={lang}
               featureFlags={activeFeatureFlags}
               schoolPermissions={schoolPermissions}
-              desktopCollapsed={isSidebarCollapsed}
-              onToggleDesktopCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+              desktopCollapsed={sidebarIsCollapsed}
+              onToggleDesktopCollapse={() => {
+                if (isSidebarCompactViewport && !isSidebarCollapsed) {
+                  setIsSidebarExpandedForCompactViewport((prev) => !prev);
+                } else {
+                  setIsSidebarCollapsed((prev) => !prev);
+                }
+              }}
               adminSimplifiedView={adminSimplifiedView}
               onToggleAdminSimplifiedView={() => setAdminSimplifiedView((prev) => !prev)}
             />
@@ -5027,8 +5187,8 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : 'app-workspace p-4 sm:p-6 lg:p-8 pb-24 md:pb-10 overflow-y-auto'}`}>
-          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : (isMobileInDesktopView ? 'w-full' : 'max-w-[1440px] mx-auto')} w-full min-w-0 flex-1 min-h-0 flex flex-col`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : `app-workspace ${getModuleTone(currentTab)} p-2.5 sm:p-3.5 lg:p-4 pb-20 md:pb-5 overflow-y-auto`}`}>
+          <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : 'w-full'} min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && focusMode && (
               <FocusToolbar
                 currentTab={currentTab}
@@ -5163,6 +5323,7 @@ export const App: React.FC = () => {
                     currentUser={currentUser}
                     lang={lang}
                     onNavigate={navigateToAppTab}
+                    onLoadAttendanceRange={loadAttendanceHistory}
                     onQuickCheckIn={handleQuickCheckIn}
                     onRecordMilestoneActivity={handleRecordMilestoneActivity}
                     unclaimedCentralPacksCount={unclaimedCentralPacks.length}
@@ -5592,6 +5753,7 @@ export const App: React.FC = () => {
                       setProgramMode('school_erp');
                       setCurrentTab('system_settings');
                     }}
+                    onLoadAttendanceRange={loadAttendanceHistory}
                   />
                 )}
 
@@ -5872,6 +6034,7 @@ export const App: React.FC = () => {
                   onOpenReportCard={setSelectedStudentForReport}
                   onAddLeaveRequest={handleAddLeaveRequest}
                   schoolId={activeSchool.id}
+                  onLoadAttendanceRange={loadAttendanceHistory}
                   periodAttendance={viewPeriodAttendance}
                   homeworkSubmissions={viewHomeworkSubmissions}
                   infirmaryVisits={viewInfirmaryVisits}
@@ -6048,6 +6211,7 @@ export const App: React.FC = () => {
           grades={viewGrades}
           attendance={viewAttendance}
           onClose={() => setSelectedStudentForProfile(null)}
+          onLoadAttendanceHistory={loadAttendanceHistory}
           onOpenReportCard={(stu) => {
             setSelectedStudentForProfile(null);
             setSelectedStudentForReport(stu);

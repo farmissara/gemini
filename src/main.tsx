@@ -5,7 +5,16 @@ import App from './App.tsx';
 import './index.css';
 
 // Automatically register PWA Service Worker for offline support & installability
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && import.meta.env.DEV) {
+  // A previously installed production PWA worker can serve stale app code on
+  // localhost and hide source edits. Keep the development app network-only.
+  void navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+    if (!registrations.length) return;
+    const wasControlled = Boolean(navigator.serviceWorker.controller);
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+    if (wasControlled) window.location.reload();
+  }).catch(() => undefined);
+} else if ('serviceWorker' in navigator) {
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {

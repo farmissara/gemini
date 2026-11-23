@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import AttendancePhoto from '../components/AttendancePhoto';
 import { 
   Student, 
   Teacher,
@@ -86,6 +87,7 @@ interface AttendanceViewProps {
   timetableSlots?: TimetableSlot[];
   periodAttendance?: PeriodAttendanceRecord[];
   onOpenGpsSettings?: () => void;
+  onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -109,6 +111,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   timetableSlots = [],
   periodAttendance = [],
   onOpenGpsSettings,
+  onLoadAttendanceRange,
 }) => {
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
   const isAdminUser = currentRole === 'admin' || currentRole === 'super_admin';
@@ -169,6 +172,29 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [logScopeFilter, setLogScopeFilter] = useState<'all' | 'mine'>('all');
   const [showMoreFilters, setShowMoreFilters] = useState<boolean>(false);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<AttendanceRecord | null>(null);
+
+  useEffect(() => {
+    if (!onLoadAttendanceRange) return;
+    if (!startDateFilter && !endDateFilter) {
+      void onLoadAttendanceRange(null, null);
+      return;
+    }
+    if (startDateFilter && endDateFilter && startDateFilter > endDateFilter) return;
+    void onLoadAttendanceRange(startDateFilter || null, endDateFilter || null);
+  }, [startDateFilter, endDateFilter, onLoadAttendanceRange]);
+
+  useEffect(() => {
+    if (onLoadAttendanceRange && rollCallDate) void onLoadAttendanceRange(rollCallDate, rollCallDate);
+  }, [rollCallDate, onLoadAttendanceRange]);
+
+  useEffect(() => {
+    if (!onLoadAttendanceRange || !selectedWeekDate) return;
+    const monday = new Date(`${selectedWeekDate}T00:00:00`);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const friday = new Date(monday);
+    friday.setDate(friday.getDate() + 4);
+    void onLoadAttendanceRange(getLocalDateString(monday), getLocalDateString(friday));
+  }, [selectedWeekDate, onLoadAttendanceRange]);
 
   const courseTeacherOptions = useMemo(
     () => buildCourseTeacherOptions(courses, teachers),
@@ -1467,7 +1493,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                                 log.photoUrl ? 'cursor-pointer ring-2 ring-[var(--color-primary)]/40 hover:opacity-90' : ''
                               }`}
                             >
-                              <img src={photoSrc} alt={name} className="w-full h-full object-cover" />
+                              <AttendancePhoto src={photoSrc} fallbackSrc={student?.avatarUrl} alt={name} className="w-full h-full object-cover" />
                               {log.photoUrl && (
                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 hover:opacity-100">
                                   <Eye className="w-3.5 h-3.5" />
@@ -1916,7 +1942,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
             <div className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
               <div className="relative rounded-xl overflow-hidden aspect-4/3 max-h-72 border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
-                <img
+                <AttendancePhoto
                   src={selectedPhotoModal.photoUrl}
                   alt="Selfie Zoom"
                   className="w-full h-full object-contain"

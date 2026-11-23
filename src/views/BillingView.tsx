@@ -590,7 +590,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 <div><strong>ผู้ปกครอง:</strong> {activeStudent.guardianName}</div>
               </div>
 
-              <table className="w-full border-collapse border border-slate-300">
+            <table className="table-comfortable w-full border-collapse border border-slate-300">
                 <thead>
                   <tr className="bg-slate-100 text-slate-800 font-bold">
                     <th className="border border-slate-300 p-2 text-left">รายการค่าธรรมเนียม</th>

@@ -23,7 +23,7 @@ export async function loadSchoolLessons(schoolId: string): Promise<Lesson[]> {
   const [lessonResult, completionResult] = await Promise.all([
     client
       .from('school_lms_lessons')
-      .select('*')
+      .select('id, school_id, course_id, chapter_number, title_th, title_en, duration_minutes, video_url, content, materials')
       .eq('school_id', schoolId)
       .order('course_id')
       .order('chapter_number'),

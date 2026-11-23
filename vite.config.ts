@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
+  const devHmrEnabled = process.env.NODE_ENV !== 'production' && process.env.DISABLE_HMR !== 'true';
   return {
     plugins: [
       react(),
@@ -92,7 +93,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true',
+          enabled: process.env.ENABLE_DEV_PWA === 'true' && devHmrEnabled,
           type: 'module',
         },
       }),
@@ -106,8 +107,8 @@ export default defineConfig(() => {
       host: '0.0.0.0',
       port: 3000,
       allowedHosts: true as const,
-      hmr: process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true',
-      watch: process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true' ? {} : null,
+      hmr: devHmrEnabled,
+      watch: devHmrEnabled ? {} : null,
     },
     preview: {
       host: '0.0.0.0',

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import AttendancePhoto, { resolveAttendancePhotoUrl } from '../components/AttendancePhoto';
 import { 
   Users, 
   CheckCircle2, 
@@ -156,6 +157,7 @@ interface DashboardViewProps {
   onToggleFocusMode?: () => void;
   adminSimplifiedView?: boolean;
   onToggleAdminSimplifiedView?: () => void;
+  onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -201,6 +203,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onToggleFocusMode,
   adminSimplifiedView = false,
   onToggleAdminSimplifiedView,
+  onLoadAttendanceRange,
 }) => {
   const [localFocusMode, setLocalFocusMode] = useState(false);
   const isFocusMode = typeof controlledFocusMode === 'boolean' ? controlledFocusMode : localFocusMode;
@@ -241,6 +244,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+
+  useEffect(() => {
+    if (onLoadAttendanceRange && selectedDate) void onLoadAttendanceRange(selectedDate, selectedDate);
+  }, [selectedDate, onLoadAttendanceRange]);
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | 'student' | 'teacher'>('all');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'check_in' | 'check_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -798,7 +805,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Clean Role-Aware Top Bar: View Title + Unified Sub-Lenses + Direct Print/Fullscreen Actions */}
-      <div className="no-print shrink-0 saas-card px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="no-print shrink-0 saas-card px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
             {currentRole === 'teacher'
@@ -1065,7 +1072,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* MORNING BRIEF STRIP (Harmonized with AuthLayout Editorial Tone) */}
             <section
               aria-label={lang === 'th' ? 'สรุปภาพรวมประจำวัน' : 'Daily Morning Brief'}
-              className="no-print morning-brief-strip px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+              className="no-print morning-brief-strip px-3 sm:px-4 py-2.5 sm:py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2"
             >
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[var(--color-primary-text)]">
@@ -1080,31 +1087,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ? `ปีการศึกษา ${systemConfig.academicYear} (${formatSemesterLabel(systemConfig.currentSemester)})`
                       : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
                   </span>
-                  {(todayHoliday || upcomingHoliday) && (
-                    <>
-                      <span className="text-[var(--color-text-muted)]" aria-hidden="true">·</span>
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('timetable')}
-                        className={`font-semibold hover:underline cursor-pointer ${
-                          todayHoliday
-                            ? 'text-rose-700 dark:text-rose-300'
-                            : 'text-amber-700 dark:text-amber-300'
-                        }`}
-                      >
-                        {todayHoliday
-                          ? (lang === 'th' ? `วันหยุดวันนี้: ${todayHoliday.nameTh}` : `Holiday Today: ${todayHoliday.nameEn}`)
-                          : upcomingHoliday
-                            ? (lang === 'th' ? `วันหยุดถัดไป (${upcomingHoliday.date}): ${upcomingHoliday.nameTh}` : `Upcoming (${upcomingHoliday.date}): ${upcomingHoliday.nameEn}`)
-                            : null}
-                      </button>
-                    </>
-                  )}
                 </div>
                 <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-[var(--color-text-title)] truncate">
                   {timeGreeting}, {userDisplayName}
                 </h2>
-                <p className="text-xs text-[var(--color-text-muted)] truncate">
+                <p className="text-xs text-[var(--color-text-muted)] truncate" title={
+                  todayHoliday
+                    ? (lang === 'th' ? `วันหยุดวันนี้: ${todayHoliday.nameTh}` : `Holiday Today: ${todayHoliday.nameEn}`)
+                    : upcomingHoliday
+                      ? (lang === 'th' ? `วันหยุดถัดไป (${upcomingHoliday.date}): ${upcomingHoliday.nameTh}` : `Upcoming (${upcomingHoliday.date}): ${upcomingHoliday.nameEn}`)
+                      : undefined
+                }>
                   {todayHoliday
                     ? lang === 'th'
                       ? `วันนี้เป็นวันหยุด: ${todayHoliday.nameTh} · สามารถเช็กปฏิทินโรงเรียนและงานค้างได้`
@@ -1400,7 +1393,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* MAIN 2-PANE ACTION WORKSPACE */}
             {currentRole === 'teacher' ? (
-              <div className="dashboard-print-grid relative dash-grid grid-cols-1 lg:grid-cols-2 items-stretch">
+              <div className="dashboard-print-grid relative dash-grid grid-cols-1 lg:grid-cols-2 items-start">
                 {/* LEFT PANE: Teacher Today's Teaching Schedule */}
                 <section
                   data-guide-id="dashboard-today-desk"
@@ -1470,7 +1463,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             return (
                               <div
                                 key={slot.id}
-                                className="print-keep py-3 first:pt-1 last:pb-1 flex items-center justify-between gap-3"
+                                className="print-keep py-2 first:pt-1 last:pb-1 flex items-center justify-between gap-2"
                               >
                                 <div className="flex items-center gap-3 min-w-0">
                                   <div className="w-10 h-10 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex flex-col items-center justify-center shrink-0 tabular-nums">
@@ -1633,7 +1626,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                     key={row.id}
                                     type="button"
                                     onClick={row.onClick}
-                                    className="print-keep w-full py-3.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 cursor-pointer transition"
+                                    className="print-keep w-full py-2 first:pt-1 last:pb-1 flex items-center justify-between gap-2 text-left hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 cursor-pointer transition"
                                   >
                                     <span className="type-card-title min-w-0 truncate inline-flex items-center gap-2">
                                       <RowIcon className="w-4 h-4 shrink-0 text-[var(--color-primary-text)]" />
@@ -1700,7 +1693,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   className="print-keep w-full py-3 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 transition"
                                 >
                                   <div className="flex items-center gap-3 min-w-0">
-                                    <img
+                                    <AttendancePhoto
                                       src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                                       alt={rec.userName || 'User'}
                                       referrerPolicy="no-referrer"
@@ -1820,7 +1813,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             className="print-keep w-full py-3.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 transition"
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <img
+                              <AttendancePhoto
                                 src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                                 alt={rec.userName || 'User'}
                                 referrerPolicy="no-referrer"
@@ -2028,6 +2021,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   students={scopedStudents}
                   attendance={scopedAttendance}
                   lang={lang}
+                  onLoadAttendanceRange={onLoadAttendanceRange}
                 />
               </div>
             )}
@@ -2038,6 +2032,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               lang={lang}
               selectedDate={selectedDate}
               onSelectDate={(date) => setSelectedDate(date)}
+              onLoadAttendanceRange={onLoadAttendanceRange}
             />
 
             {playerScores.length > 0 && (
@@ -2064,7 +2059,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           (dashboardTab === 'executive_monitor' ||
             dashboardTab === 'obec_learning_areas' ||
             dashboardTab === 'pp6_quality_overview') && (
-            <div className="no-print saas-card px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="no-print saas-card px-3 py-2 flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-semibold text-[var(--color-text-muted)]">
                 {lang === 'th' ? 'มุมมองรายงานผู้บริหาร & สพฐ.' : 'Executive & OBEC Analytics'}
               </span>
@@ -2120,6 +2115,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               leaveRequests={leaveRequests}
               lang={lang}
               onOpenGradebookCourse={onOpenGradebookCourse}
+              onLoadAttendanceRange={onLoadAttendanceRange}
               onNavigate={(tab) => {
                 if (tab === 'executive_warning' && canViewEarlyWarning) {
                   setDashboardTab('early_warning');
@@ -2487,6 +2483,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               lang={lang}
               selectedDate={selectedDate}
               onSelectDate={(date) => setSelectedDate(date)}
+              onLoadAttendanceRange={onLoadAttendanceRange}
             />
 
             {/* Grade-Level Attendance & Academic Comparison (Staff only) */}
@@ -2591,7 +2588,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Middle: Photo & Person Info */}
                     <div className="flex items-center gap-3">
                       <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[var(--color-card)] border border-[var(--color-border)] shrink-0 group-hover:ring-2 group-hover:ring-[var(--color-primary)] transition">
-                        <img
+                        <AttendancePhoto
                           src={photoSrc}
                           alt={rec.userName || 'Check-in photo'}
                           className="w-full h-full object-cover"
@@ -2682,7 +2679,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 transition"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <img
+                      <AttendancePhoto
                         src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                         alt={rec.userName}
                         referrerPolicy="no-referrer"
@@ -3061,7 +3058,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
               <div className="relative rounded-xl overflow-hidden bg-slate-950 aspect-4/3 max-h-64 border border-[var(--color-border)] flex items-center justify-center">
-                <img
+                <AttendancePhoto
                   src={selectedPhotoRecord.photoUrl || selectedPhotoRecord.userAvatar || fallbackAvatarSvg(selectedPhotoRecord.userName)}
                   alt={selectedPhotoRecord.userName}
                   referrerPolicy="no-referrer"
@@ -3109,9 +3106,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
+                    const photoUrl = selectedPhotoRecord.photoUrl
+                      ? await resolveAttendancePhotoUrl(selectedPhotoRecord.photoUrl)
+                      : selectedPhotoRecord.userAvatar;
+                    if (!photoUrl) return;
                     const link = document.createElement('a');
-                    link.href = selectedPhotoRecord.photoUrl || selectedPhotoRecord.userAvatar || '';
+                    link.href = photoUrl;
                     link.download = `selfie_${selectedPhotoRecord.userName}_${selectedPhotoRecord.date}.jpg`;
                     link.click();
                   }}

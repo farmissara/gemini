@@ -133,9 +133,10 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
    - Port: `465` (SSL) หรือ `587` (STARTTLS)
    - Username: `baanpakkru@gmail.com`
    - Sender email: `baanpakkru@gmail.com`
-   - Sender name: ชื่อระบบที่ต้องการให้ผู้รับเห็น เช่น `EduVerse`
+   - Sender name: `BaanPakKru`
    - Password: Google App Password
-4. บันทึกการตั้งค่าแล้วทดสอบสมัครบัญชีและส่งลิงก์ยืนยันใหม่ โดยใช้กล่องเมลที่ควบคุมได้ ตรวจโฟลเดอร์ Spam หากไม่พบอีเมล
+4. ใน **Authentication → URL Configuration** ตั้ง Site URL เป็น URL Render จริง และเพิ่ม URL ของ Render กับ `http://localhost:3000/**` ใน Redirect URLs
+5. บันทึกการตั้งค่าแล้วทดสอบสมัครบัญชีและส่งลิงก์ยืนยันใหม่ รวมถึงทดสอบลืมรหัสผ่าน ตรวจโฟลเดอร์ Spam หากไม่พบอีเมล
 
 หากหน้าเว็บแจ้ง `Error sending recovery email` ปัญหาอยู่ที่ Supabase Auth ส่งอีเมลไม่สำเร็จ ไม่ใช่การรัน SQL migration ให้ตรวจว่าเปิด Custom SMTP แล้ว, credentials ถูกต้อง, sender address ใช้งานได้ และ **Authentication → URL Configuration** อนุญาต URL ของเว็บที่ใช้งานจริงทั้ง Site URL และ Redirect URLs จากนั้นตรวจ Auth logs ใน Supabase เพื่อดูข้อผิดพลาดจากผู้ให้บริการ SMTP โดยตรง
 
@@ -153,10 +154,10 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 ## ส่วนที่ 2: การนำขึ้นเว็บ Render.com (Deploy to Render)
 
-Render.com ให้บริการโฮสต์เว็บประเภท **Static Site** ได้ฟรี เร็ว มี SSL Certificate (HTTPS) อัตโนมัติ
+โปรเจกต์นี้ใช้ **Render Web Service** (Node/Express) เพราะมี API ฝั่งเซิร์ฟเวอร์และ health check ที่ `/api/health`.
 
 ### 2.1 ตรวจสอบไฟล์ที่เตรียมไว้ในโปรเจกต์
-ในโปรเจกต์นี้ได้จัดเตรียมไฟล์คอนฟิกสำหรับ Render.com ไว้เรียบร้อยแล้ว:
+ในโปรเจกต์นี้มีไฟล์ Blueprint สำหรับ Render ซึ่ง build ด้วย `npm ci && npm run build`, รันด้วย `npm start` และตรวจสุขภาพที่ `/api/health`:
 - `public/_redirects`: มีกฎ `/* /index.html 200` ป้องกันปัญหาหน้าย่อย 404 เมื่อ Refresh หรือเข้าผ่าน URL ตรง
 - `render.yaml`: Blueprint Config สำหรับสร้างบริการบน Render อัตโนมัติ
 
@@ -168,18 +169,13 @@ Render.com ให้บริการโฮสต์เว็บประเภ
    git push origin main
    ```
 2. ไปที่ [https://dashboard.render.com](https://dashboard.render.com)
-3. คลิกปุ่ม **"New +"** มุมขวาบน → เลือก **"Static Site"**
-4. เชื่อมต่อบัญชี GitHub แล้วเลือก Repository ของคุณ (`farmissara/gemini`)
-5. กำหนดการตั้งค่าในหน้าแบบฟอร์ม:
-   - **Name**: `eduverse-school` (หรือชื่อที่คุณต้องการ)
-   - **Branch**: `main`
-   - **Build Command**: `npm run build`
-   - **Publish Directory**: `dist`
-6. เลื่อนลงมาที่หัวข้อ **Advanced** หรือ **Environment Variables** แล้วกดปุ่ม **Add Environment Variable**:
+3. เลือก **New + → Blueprint** แล้วเชื่อม Repository `farmissara/gemini` สาขา `main` ที่มี `render.yaml`
+4. ตรวจชื่อบริการ `khaonangtuam-eduverse` และกรอกค่าที่ Blueprint ขอ:
    - `VITE_SUPABASE_URL` = `https://your-project.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY` = `your-supabase-anon-key`
-7. คลิกปุ่ม **"Create Static Site"**
-8. Render จะเริ่มรัน `npm run build` และเผยแพร่เว็บของคุณให้พร้อมใช้งานภายใน 1-2 นาที จะได้ URL เช่น `https://khaonangtuam-eduverse.onrender.com`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` = publishable key ของ Supabase (ใช้ anon key ได้หากโปรเจกต์ยังแสดงคีย์รุ่นเดิม)
+5. กด **Apply** รอ Deploy ผ่าน แล้วเปิด URL ที่ Render แสดง ตรวจหน้าเว็บและ `/api/health`
+
+ห้ามใส่ `service_role` key หรือรหัสผ่านฐานข้อมูลใน `VITE_*`; การตั้งอีเมลยืนยันทำใน Supabase SMTP ตามข้อ 1.3 ไม่ได้ทำใน Render.
 
 ---
 

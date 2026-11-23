@@ -3606,7 +3606,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   ไม่มีคาบสอนในตัวกรองหรือภาคเรียนที่เลือก
                 </p>
               ) : (
-                <div aria-label="ปฏิทินตารางสอนรายสัปดาห์" className="grid min-w-[900px] grid-cols-5 gap-2">
+                <div aria-label="ปฏิทินตารางสอนรายสัปดาห์" className="grid min-w-0 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 items-start gap-2">
                   {calendarWeekDays.map((day) => {
                     const dayHoliday = getHolidayForDate(day.date, schoolId);
                     const dayNotes = getVisibleCalendarNotesForDate(
@@ -3622,21 +3622,21 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                           || a.periodNumber - b.periodNumber
                       ));
                     return (
-                      <section key={day.key} aria-label={formatCalendarDate(day.date)} className="min-h-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2">
-                        <header className={`sticky top-0 z-10 mb-2 rounded-lg border p-2 ${dayHoliday ? 'border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/60' : 'border-[var(--color-border)] bg-[var(--color-card)]'}`}>
+                      <section key={day.key} aria-label={formatCalendarDate(day.date)} className={`min-h-0 rounded-lg border p-1.5 ${dayHoliday ? 'border-rose-200 bg-rose-50/40 dark:border-rose-900 dark:bg-rose-950/20' : 'border-[var(--color-border)] bg-[var(--color-card)]'}`}>
+                        <header className={`sticky top-0 z-10 mb-1.5 border-b pb-1.5 ${day.date === todayBangkokDate ? 'border-[var(--color-primary)]/40' : 'border-[var(--color-border)]'}`}>
                           <div className="flex items-center justify-between gap-1">
-                            <h3 className="text-[11px] font-bold text-[var(--color-text-title)]">{formatCalendarDate(day.date)}</h3>
+                            <h3 className={`text-[11px] font-bold ${day.date === todayBangkokDate ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-title)]'}`}>{formatCalendarDate(day.date)}</h3>
                             <button
                               type="button"
                               onClick={() => {
                                 setCalendarLayoutMode('month');
                                 handleStartNewNote(day.date);
                               }}
-                              className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 cursor-pointer shrink-0"
+                              aria-label={`เพิ่มโน้ต ${formatCalendarDate(day.date)}`}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer shrink-0"
                               title="เพิ่มโน้ตวันนี้"
                             >
-                              <StickyNote className="w-2.5 h-2.5" />
-                              <span>+ โน้ต</span>
+                              <StickyNote className="w-3.5 h-3.5" />
                             </button>
                           </div>
                           {dayHoliday ? (
@@ -3669,7 +3669,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                             </div>
                           )}
                         </header>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {daySlots.length === 0 ? (
                             <p className="py-6 text-center text-[10px] text-[var(--color-text-muted)]">ไม่มีคาบ</p>
                           ) : daySlots.map((slot) => {
@@ -3698,7 +3698,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                 key={slot.id}
                                 onClick={() => openSlotDetails(slot)}
                                 style={!hasConflict ? slotColor.style : undefined}
-                                className={`w-full rounded-lg border p-2 text-left transition cursor-pointer space-y-1.5 ${
+                                className={`w-full rounded-md border p-1.5 text-left transition cursor-pointer space-y-1 ${
                                   hasConflict
                                     ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50'
                                     : slotColor.className
@@ -4171,14 +4171,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             })()}
 
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
-            <table className={`w-full text-left border-collapse ${
-              isAllClassroomsView ? 'min-w-[1120px]' : 'min-w-[880px]'
-            }`}>
+            <table className="table-comfortable w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
-                  <th className="p-3 w-32 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
+                  <th className="p-1.5 w-24 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
                   {orderedSchoolPeriods.map((period) => (
-                      <th key={period.periodNumber} className={`p-2.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-16' : ''}`}>
+                      <th key={period.periodNumber} className={`p-1.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-12' : ''}`}>
                         <div className={`font-bold ${period.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
                           {period.labelTh || (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
                         </div>
@@ -4188,7 +4186,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       </th>
                   ))}
                   {!isPersonalViewer && (
-                    <th className="p-2.5 w-44 text-center font-bold text-[var(--color-text-title)] print:hidden">
+                    <th className="p-1.5 w-32 text-center font-bold text-[var(--color-text-title)] print:hidden">
                       สถานะการเข้าเรียน
                     </th>
                   )}
@@ -4210,7 +4208,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     }`}
                   >
                     {/* Day Column */}
-                    <td className="p-2.5 text-center border-r border-[var(--color-border)] align-middle">
+                    <td className="p-1.5 text-center border-r border-[var(--color-border)] align-middle">
                       <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-bold border ${day.color}`}>
                         {day.th}
                       </span>
@@ -4257,7 +4255,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                       }
 
                       return (
-                        <td key={period.periodNumber} className="p-1.5 border-r border-[var(--color-border)] align-top">
+                        <td key={period.periodNumber} className="p-1 border-r border-[var(--color-border)] align-top">
                           <div className={isAllClassroomsView ? 'space-y-1' : 'space-y-1.5'}>
                             {periodSlots.map((slot) => {
                               const hasConflict = conflictingSlotIds.has(slot.id);
@@ -4281,7 +4279,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                   key={slot.id}
                                   onClick={() => openSlotDetails(slot)}
                                   style={slotColor.style}
-                                  className={`${isAllClassroomsView ? 'min-h-16 p-1.5' : 'min-h-22 p-2'} rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${slotColor.className} ${
+                                  className={`${isAllClassroomsView ? 'min-h-14 p-1' : 'min-h-18 p-1.5'} rounded-md border transition group relative flex flex-col justify-between cursor-pointer ${slotColor.className} ${
                                     slotActivity.isActive
                                       ? 'border-rose-500 ring-2 ring-rose-500/45 shadow-md shadow-rose-500/20'
                                       : hasConflict && !isPersonalViewer

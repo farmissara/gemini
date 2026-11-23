@@ -78,7 +78,7 @@ export class ViewErrorBoundary extends React.Component<ViewErrorBoundaryProps, V
             <button
               type="button"
               onClick={this.handleRetry}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--tone-solid)] hover:bg-[var(--tone-solid-hover)] text-white text-xs font-bold transition cursor-pointer"
             >
               <RotateCw className="w-3.5 h-3.5" />
               <span>{isTh ? 'ลองเปิดใหม่อีกครั้ง' : 'Try Again'}</span>

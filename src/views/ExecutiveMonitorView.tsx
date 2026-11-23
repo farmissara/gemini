@@ -86,6 +86,7 @@ interface ExecutiveMonitorViewProps {
   lang: AppLanguage;
   onOpenGradebookCourse?: (courseId?: string) => void;
   onNavigate: (tab: NavTab) => void;
+  onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
 }
 
 const DAY_KEY_LABELS_TH: Record<string, string> = {
@@ -118,6 +119,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
   leaveRequests,
   onOpenGradebookCourse,
   onNavigate,
+  onLoadAttendanceRange,
 }) => {
   const [lens, setLens] = useState<MonitorLens>('overview');
   const [timeframe, setTimeframe] = useState<TimeframeScope>('today');
@@ -222,6 +224,15 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     if (timeframe === '30d') return getLocalDateString(new Date(Date.now() - 29 * 86400000));
     return '';
   }, [timeframe, todayStr]);
+
+  useEffect(() => {
+    if (!onLoadAttendanceRange) return;
+    const currentYear = new Date().getFullYear();
+    const start = dateFloorStr || (timeframe === 'term'
+      ? `${new Date().getMonth() >= 4 ? currentYear : currentYear - 1}-05-01`
+      : todayStr);
+    void onLoadAttendanceRange(start, todayStr);
+  }, [dateFloorStr, onLoadAttendanceRange, timeframe, todayStr]);
 
   // Scoped attendance records (gate)
   const scopedAttendance = useMemo(() => {
@@ -1029,7 +1040,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     <div
       ref={containerRef}
       data-refresh-tick={refreshTick}
-      className={`space-y-4 pb-8 ${getModuleTone('executive_monitor')} ${
+      className={`space-y-3 pb-6 ${getModuleTone('executive_monitor')} ${
         isTvMode
           ? 'min-h-full bg-slate-950 text-slate-100 p-4 sm:p-6 rounded-2xl border border-slate-800'
           : 'print-area'
@@ -1037,15 +1048,15 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     >
       {/* Top Executive Command Header */}
       <div
-        className={`rounded-xl p-4 space-y-3 ${
+        className={`rounded-xl p-3 sm:p-3.5 space-y-2 ${
           isTvMode ? 'bg-slate-900 border border-slate-800 text-slate-100' : 'app-page-header'
         }`}
       >
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2">
           <div className="flex items-start gap-3 min-w-0">
             {!isTvMode && (
-              <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-                <Monitor className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg tone-chip shrink-0 mt-0.5">
+                <Monitor className="w-4 h-4" />
               </div>
             )}
             <div className="space-y-0.5 min-w-0">
@@ -1133,7 +1144,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
         </div>
 
         {/* Second Toolbar Row: Monitor Lenses + Scope Filters + Auto-Refresh */}
-        <div className="pt-3 border-t border-current/10 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 print:hidden">
+        <div className="pt-2 border-t border-current/10 flex flex-col lg:flex-row lg:items-center justify-between gap-2 print:hidden">
           {/* Lens Switcher */}
           <div
             className={`inline-flex p-0.5 rounded-lg border overflow-x-auto max-w-full ${
@@ -1173,7 +1184,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           </div>
 
           {/* Scope Filters & Live Refresh Control */}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs min-w-0">
             {/* Timeframe */}
             <div
               className={`inline-flex p-0.5 rounded-lg border ${
@@ -1348,7 +1359,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       {lens === 'overview' && (
         <div className="space-y-4">
           {/* Action & Exception Radar */}
-          <section className={`rounded-xl p-4 sm:p-5 space-y-3 ${cardSurface}`}>
+          <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-current/10">
               <div>
                 <h2 className={`text-sm sm:text-base font-extrabold flex items-center gap-2 ${titleText}`}>
@@ -1411,7 +1422,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           {/* 7-Day Attendance & Room Quick Comparison Grid */}
           <div className="grid gap-4 lg:grid-cols-12">
             {/* 7-Day Trend Bar Chart */}
-            <section className={`rounded-xl p-4 sm:p-5 space-y-4 lg:col-span-7 ${cardSurface}`}>
+            <section className={`rounded-xl p-3 sm:p-4 space-y-3 lg:col-span-7 ${cardSurface}`}>
               <div className="flex items-center justify-between gap-2 pb-2 border-b border-current/10">
                 <div>
                   <h2 className={`text-sm sm:text-base font-extrabold flex items-center gap-2 ${titleText}`}>
@@ -1489,7 +1500,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             </section>
 
             {/* Recent Gate Activity */}
-            <section className={`rounded-xl p-4 sm:p-5 space-y-3 lg:col-span-5 ${cardSurface}`}>
+            <section className={`rounded-xl p-3 sm:p-4 space-y-3 lg:col-span-5 ${cardSurface}`}>
               <div className="flex items-center justify-between gap-2 pb-2 border-b border-current/10">
                 <div>
                   <h2 className={`text-sm sm:text-base font-extrabold flex items-center gap-2 ${titleText}`}>
@@ -1542,7 +1553,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           {/* Bottom 3 Executive Summary Panels: Academics | Student Care | Finance & Bulletins */}
           <div className="grid gap-4 lg:grid-cols-3">
             {/* Academic Bands */}
-            <section className={`rounded-xl p-4 sm:p-5 space-y-3 ${cardSurface}`}>
+            <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
               <div className="flex items-center justify-between gap-2 pb-2 border-b border-current/10">
                 <h2 className={`text-sm font-extrabold flex items-center gap-2 ${titleText}`}>
                   <TrendingUp className="w-4 h-4 text-blue-500" />
@@ -1589,7 +1600,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             </section>
 
             {/* Student Care, Infirmary & SDQ */}
-            <section className={`rounded-xl p-4 sm:p-5 space-y-3 ${cardSurface}`}>
+            <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
               <div className="flex items-center justify-between gap-2 pb-2 border-b border-current/10">
                 <h2 className={`text-sm font-extrabold flex items-center gap-2 ${titleText}`}>
                   <HeartPulse className="w-4 h-4 text-rose-500" />
@@ -1642,7 +1653,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             </section>
 
             {/* Finance & School Bulletins */}
-            <section className={`rounded-xl p-4 sm:p-5 space-y-3 ${cardSurface}`}>
+            <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
               <div className="flex items-center justify-between gap-2 pb-2 border-b border-current/10">
                 <h2 className={`text-sm font-extrabold flex items-center gap-2 ${titleText}`}>
                   <Building2 className="w-4 h-4 text-teal-500" />
@@ -1712,7 +1723,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       {/* LENS 2: GRADE & ROOM EXECUTIVE MATRIX                                 */}
       {/* ===================================================================== */}
       {lens === 'rooms' && (
-        <section className={`rounded-xl p-4 sm:p-5 space-y-4 ${cardSurface}`}>
+        <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-current/10">
             <div>
               <h2 className={`text-base font-extrabold flex items-center gap-2 ${titleText}`}>
@@ -1789,7 +1800,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs tabular-nums">
+            <table className="table-comfortable w-full text-left border-collapse text-xs tabular-nums">
                 <thead>
                   <tr className={`border-b border-current/15 text-[11px] font-bold ${mutedText}`}>
                     <th className="py-2.5 px-3 whitespace-nowrap">ห้องเรียน</th>
@@ -1878,7 +1889,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       {lens === 'academics' && (
         <div className="space-y-4">
           {/* Today Period-by-Period Check-in Compliance */}
-          <section className={`rounded-xl p-4 sm:p-5 space-y-4 ${cardSurface}`}>
+          <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-current/10">
               <div>
                 <h2 className={`text-base font-extrabold flex items-center gap-2 ${titleText}`}>
@@ -1930,7 +1941,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs tabular-nums">
+            <table className="table-comfortable w-full text-left border-collapse text-xs tabular-nums">
                   <thead>
                     <tr className={`border-b border-current/15 text-[11px] font-bold ${mutedText}`}>
                       <th className="py-2 px-3">คาบ / เวลา</th>
@@ -1971,7 +1982,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           </section>
 
           {/* Course & Gradebook Completion Audit */}
-          <section className={`rounded-xl p-4 sm:p-5 space-y-4 ${cardSurface}`}>
+          <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-current/10">
               <div>
                 <h2 className={`text-base font-extrabold flex items-center gap-2 ${titleText}`}>
@@ -1998,7 +2009,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               <p className={`py-8 text-center text-xs ${mutedText}`}>ไม่พบรายวิชาที่ตรงกับการค้นหา</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs tabular-nums">
+            <table className="table-comfortable w-full text-left border-collapse text-xs tabular-nums">
                   <thead>
                     <tr className={`border-b border-current/15 text-[11px] font-bold ${mutedText}`}>
                       <th className="py-2 px-3">รายวิชา</th>

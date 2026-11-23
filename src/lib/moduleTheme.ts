@@ -1,6 +1,6 @@
 import type { NavCategoryId, NavTab } from '../components/layout/Sidebar';
 
-export type ModuleTone = 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7';
+export type ModuleTone = 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8';
 
 /**
  * Canonical Semantic Module Identity Tones
@@ -110,13 +110,18 @@ export const TONE_GROUP_META: Record<ModuleTone, ModuleGroupMeta> = {
     labelTh: 'ตั้งค่าระบบ & ประสานงาน',
     labelEn: 'Settings & Desk',
   },
+  'tone-8': {
+    tone: 'tone-8',
+    labelTh: 'รายงาน & ติดตามคุณภาพ',
+    labelEn: 'Reports & Quality',
+  },
 };
 
 export const CATEGORY_TONE_MAP: Record<NavCategoryId, ModuleTone> = {
   super_admin: 'tone-3',
   daily_work: 'tone-2',
   academic_setup: 'tone-1',
-  report_monitor: 'tone-1',
+  report_monitor: 'tone-8',
   student_care: 'tone-4',
   innovation: 'tone-5',
   finance: 'tone-6',

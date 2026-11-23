@@ -2767,7 +2767,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                         รหัสแต่ละรายการมี 8 ตัว ใช้ตัวพิมพ์ใหญ่และตัวเลขที่ไม่สับสน จดบันทึกหรือส่งรหัสให้นักเรียนอย่างปลอดภัย เมื่อปิดหน้านี้จะไม่สามารถเรียกดูรหัสเดิมได้อีก นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ
                       </p>
                       <div className="max-h-80 overflow-auto rounded-lg border border-amber-300 dark:border-amber-800">
-                        <table className="w-full min-w-[620px] text-left text-xs">
+            <table className="table-comfortable w-full min-w-[620px] text-left text-xs">
                           <thead className="sticky top-0 bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-100">
                             <tr>
                               <th className="px-3 py-2">รหัสนักเรียน</th>

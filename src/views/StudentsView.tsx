@@ -2396,7 +2396,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     </div>
                   </div>
                   <div className="max-h-72 overflow-y-auto rounded-xl border border-[var(--color-border)]">
-                    <table className="w-full text-xs text-left">
+            <table className="table-comfortable w-full text-xs text-left">
                       <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
                         <tr>
                           <th className="p-2 w-10 text-center">#</th>

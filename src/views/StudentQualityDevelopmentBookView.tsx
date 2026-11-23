@@ -1251,7 +1251,7 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse">
+            <table className="table-comfortable w-full text-xs text-left border-collapse">
                 <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-semibold">
                   <tr>
                     <th className="py-2 px-3">รหัสวิชา</th>

@@ -6,5 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+!.env.migrate.example
+supabase-local/
+supabase/.temp/
 *.zip
 public/assets/aistudio/*.zip

@@ -11,11 +11,13 @@ import {
 } from 'lucide-react';
 import { AppLanguage, AttendanceRecord, Student } from '../types';
 import { detectEducationStage, isPrimaryStage } from '../lib/moeGrading';
+import { getLocalDateString } from '../lib/date';
 
 interface D3DailyAttendanceLineChartProps {
   students: Student[];
   attendance: AttendanceRecord[];
   lang?: AppLanguage;
+  onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
 }
 
 interface DailyTrendDatum {
@@ -68,8 +70,10 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
   students,
   attendance,
   lang = 'th',
+  onLoadAttendanceRange,
 }) => {
   const today = new Date();
+  const todayStr = getLocalDateString(today);
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
   const [schoolLevelFilter, setSchoolLevelFilter] = useState<string>('all');
@@ -82,6 +86,15 @@ export const D3DailyAttendanceLineChart: React.FC<D3DailyAttendanceLineChartProp
 
   const chartWrapperRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  useEffect(() => {
+    if (!onLoadAttendanceRange) return;
+    const start = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+    const end = start.slice(0, 7) === todayStr.slice(0, 7)
+      ? todayStr
+      : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(new Date(selectedYear, selectedMonth + 1, 0).getDate()).padStart(2, '0')}`;
+    void onLoadAttendanceRange(start, end);
+  }, [selectedYear, selectedMonth, onLoadAttendanceRange, todayStr]);
 
   // Track responsive container width
   useEffect(() => {

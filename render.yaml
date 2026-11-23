@@ -5,14 +5,13 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: 22.12.0
       - key: VITE_SUPABASE_URL
-        sync: false
-      - key: VITE_SUPABASE_ANON_KEY
-        sync: false
+        value: https://fjjxsljqzwxboqupoloe.supabase.co
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false

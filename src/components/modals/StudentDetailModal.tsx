@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Student, Course, GradeRecord, AttendanceRecord, StudentStatus, GradingSystem } from '../../types';
 import { 
   X, 
@@ -47,6 +47,7 @@ interface StudentDetailModalProps {
   grades: GradeRecord[];
   attendance: AttendanceRecord[];
   onClose: () => void;
+  onLoadAttendanceHistory?: (startDate?: string | null, endDate?: string | null, studentId?: string) => Promise<void> | void;
   onOpenReportCard: (student: Student) => void;
   onOpenDevelopmentBook?: (student: Student) => void;
   onOpenMoeDocumentCenter?: (student: Student) => void;
@@ -61,6 +62,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   grades,
   attendance,
   onClose,
+  onLoadAttendanceHistory,
   onOpenReportCard,
   onOpenDevelopmentBook,
   onOpenMoeDocumentCenter,
@@ -68,6 +70,10 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onUpdateStudent,
   gradingSystem = 'thai',
 }) => {
+  useEffect(() => {
+    if (onLoadAttendanceHistory) void onLoadAttendanceHistory(null, null, student.id);
+  }, [onLoadAttendanceHistory, student.id]);
+
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrPayloadMode, setQrPayloadMode] = useState<'eduverse' | 'raw_id'>('eduverse');

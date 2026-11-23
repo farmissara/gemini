@@ -21,12 +21,12 @@ import {
   HomeworkSubmission,
 } from '../types';
 import schemaSql from '../../supabase/schema.sql?raw';
-import patchMigrationSql from '../../supabase/migrations/20261111_patch_all_latest_migrations.sql?raw';
+import patchMigrationSql from '../../supabase/migrations/20261111000002_patch_all_latest_migrations.sql?raw';
 import courseClassificationMigrationSql from '../../supabase/migrations/20261125_course_classification.sql?raw';
-import homeworkWorkflowMigrationSql from '../../supabase/migrations/20261120_teacher_homework_workflow.sql?raw';
-import studentRecordsMigrationSql from '../../supabase/migrations/20261120_school_student_records.sql?raw';
+import homeworkWorkflowMigrationSql from '../../supabase/migrations/20261120000004_teacher_homework_workflow.sql?raw';
+import studentRecordsMigrationSql from '../../supabase/migrations/20261120000002_school_student_records.sql?raw';
 import schoolLmsLessonsMigrationSql from '../../supabase/migrations/20261120_school_lms_lessons.sql?raw';
-import schoolLmsTeacherCourseRlsMigrationSql from '../../supabase/migrations/20261120_school_lms_teacher_course_rls.sql?raw';
+import schoolLmsTeacherCourseRlsMigrationSql from '../../supabase/migrations/20261120000001_school_lms_teacher_course_rls.sql?raw';
 import staffInviteRpcSql from '../../supabase/migrations/20261124_staff_invite_link_rpc.sql?raw';
 import { DEFAULT_SCHOOL_PERIODS } from './schoolPeriods';
 import { loadCachedSchoolPeriods, saveCachedSchoolPeriods } from './schoolCustomPresets';
@@ -34,6 +34,7 @@ import { parseSlotTeachersFromRaw, serializeSlotTeacherForDb } from './timetable
 import { sanitizeSchoolCampusGates } from './schoolGps';
 import { getCourseType, inferCourseLearningArea } from './courseClassification';
 import { loadSchoolSnapshot, saveSchoolSnapshot } from './offlineSchoolCache';
+import { getLocalDateString } from './date';
 
 const STORAGE_KEY_URL = 'eduverse_supabase_url';
 const STORAGE_KEY_ANON = 'eduverse_supabase_anon_key';
@@ -210,7 +211,82 @@ export interface SchoolData {
   timetableSlots: TimetableSlot[];
   leaveRequests: LeaveRequest[];
   periodAttendance: PeriodAttendanceRecord[];
+  attendanceLoadedRange?: { start: string; end: string };
   loadedFromCache?: boolean;
+}
+
+const ATTENDANCE_SELECT = 'id, school_id, student_id, user_name, record_type, date, time, status, checkin_method, photo_url, remarks, line_notification_sent';
+const ATTENDANCE_PAGE_SIZE = 1000;
+const RECENT_ATTENDANCE_DAYS = 30;
+
+type AttendanceDbRow = {
+  id: string;
+  school_id: string;
+  student_id: string;
+  user_name: string | null;
+  record_type: string | null;
+  date: string;
+  time: string;
+  status: string;
+  checkin_method: string | null;
+  photo_url: string | null;
+  remarks: string | null;
+  line_notification_sent: boolean | null;
+};
+
+function mapAttendanceDbRow(row: AttendanceDbRow): AttendanceRecord {
+  const photoStoragePath = row.photo_url || undefined;
+  return {
+    id: row.id,
+    schoolId: row.school_id,
+    studentId: row.student_id,
+    userName: row.user_name || undefined,
+    recordType: (row.record_type || 'check_in') as AttendanceCheckType,
+    date: row.date,
+    time: row.time,
+    status: row.status as AttendanceStatus,
+    checkinMethod: row.checkin_method as AttendanceRecord['checkinMethod'],
+    // Signed links are requested lazily by AttendancePhoto when visible.
+    photoUrl: photoStoragePath,
+    photoStoragePath,
+    remarks: row.remarks || undefined,
+    lineNotificationSent: Boolean(row.line_notification_sent),
+  };
+}
+
+function getRecentAttendanceRange(): { start: string; end: string } {
+  const endDate = new Date();
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - (RECENT_ATTENDANCE_DAYS - 1));
+  return { start: getLocalDateString(startDate), end: getLocalDateString(endDate) };
+}
+
+export async function loadAttendanceRangeFromSupabase(
+  schoolId: string,
+  startDate?: string | null,
+  endDate?: string | null,
+  studentId?: string,
+): Promise<AttendanceRecord[]> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase ยังเชื่อมต่อไม่ได้');
+  const rows: AttendanceDbRow[] = [];
+  for (let offset = 0; ; offset += ATTENDANCE_PAGE_SIZE) {
+    let query = client.from('attendance')
+      .select(ATTENDANCE_SELECT)
+      .eq('school_id', schoolId)
+      .order('date', { ascending: false })
+      .order('time', { ascending: false })
+      .range(offset, offset + ATTENDANCE_PAGE_SIZE - 1);
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    if (studentId) query = query.eq('student_id', studentId);
+    const { data, error } = await query;
+    if (error) throw new Error(`Could not load attendance history: ${error.message}`);
+    const page = (data || []) as AttendanceDbRow[];
+    rows.push(...page);
+    if (page.length < ATTENDANCE_PAGE_SIZE) break;
+  }
+  return rows.map(mapAttendanceDbRow);
 }
 
 export async function loadSchoolData(schoolId: string, userId: string): Promise<SchoolData> {
@@ -245,6 +321,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
   // Keep these projections aligned with the row mappings below. A number of
   // school tables have grown optional/profile fields over time, and selecting
   // every column sends those fields to every user on every school load.
+  const attendanceLoadedRange = getRecentAttendanceRange();
   const schoolDataQueries = [
     client.from('students')
       .select('id, school_id, student_id_number, national_id, first_name_en, last_name_en, first_name_th, last_name_th, gender, date_of_birth, grade_level, room, status, avatar_url, gpa, guardian_name, guardian_relation, guardian_phone, guardian_email, line_user_id, line_linked, line_notify_enabled, enrolled_date')
@@ -256,8 +333,13 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
       .select('id, school_id, student_id, course_id, academic_year, semester, midterm_score, final_score, assignment_score, quiz_score, total_score, letter_grade, grade_point')
       .eq('school_id', schoolId),
     client.from('attendance')
-      .select('id, school_id, student_id, user_name, record_type, date, time, status, checkin_method, photo_url, remarks, line_notification_sent')
-      .eq('school_id', schoolId),
+      .select(ATTENDANCE_SELECT)
+      .eq('school_id', schoolId)
+      .gte('date', attendanceLoadedRange.start)
+      .lte('date', attendanceLoadedRange.end)
+      .order('date', { ascending: false })
+      .order('time', { ascending: false })
+      .range(0, ATTENDANCE_PAGE_SIZE - 1),
     client.from('invoices')
       .select('id, school_id, invoice_number, student_id, semester, academic_year, issue_date, due_date, total_amount, status, items, payment_method, paid_at, receipt_number, slip_image_url, slip_submitted_at, slip_status, slip_reject_reason, slip_amount, slip_reference_note')
       .eq('school_id', schoolId),
@@ -290,6 +372,25 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
       };
     }
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);
+  }
+
+  const initialAttendanceResult = results[3];
+  const attendanceRows = [...(initialAttendanceResult.data || [])] as AttendanceDbRow[];
+  if (attendanceRows.length === ATTENDANCE_PAGE_SIZE) {
+    for (let offset = ATTENDANCE_PAGE_SIZE; ; offset += ATTENDANCE_PAGE_SIZE) {
+      const { data, error } = await client.from('attendance')
+        .select(ATTENDANCE_SELECT)
+        .eq('school_id', schoolId)
+        .gte('date', attendanceLoadedRange.start)
+        .lte('date', attendanceLoadedRange.end)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false })
+        .range(offset, offset + ATTENDANCE_PAGE_SIZE - 1);
+      if (error) throw new Error(`Could not load recent attendance: ${error.message}`);
+      const page = (data || []) as AttendanceDbRow[];
+      attendanceRows.push(...page);
+      if (page.length < ATTENDANCE_PAGE_SIZE) break;
+    }
   }
 
   const teacherResult = await client.from('teachers')
@@ -392,7 +493,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     paPortfolio: Array.isArray(row.pa_portfolio) ? row.pa_portfolio : [],
   }));
 
-  const [studentResult, courseResult, gradeResult, attendanceResult, invoiceResult, announcementResult] = results;
+  const [studentResult, courseResult, gradeResult, , invoiceResult, announcementResult] = results;
   const students: Student[] = (studentResult.data || []).map((row) => ({
     id: row.id,
     schoolId: row.school_id,
@@ -464,33 +565,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     letterGrade: row.letter_grade,
     gradePoint: Number(row.grade_point || 0),
   }));
-  const attendance: AttendanceRecord[] = await Promise.all((attendanceResult.data || []).map(async (row) => {
-    const photoStoragePath: string | undefined = row.photo_url || undefined;
-    let photoUrl = photoStoragePath;
-    if (photoStoragePath) {
-      const { data, error } = await client.storage
-        .from('attendance-selfies')
-        .createSignedUrl(photoStoragePath, 3600);
-      if (error) throw new Error(`Could not load attendance photo: ${error.message}`);
-      photoUrl = data.signedUrl;
-    }
-
-    return {
-      id: row.id,
-      schoolId: row.school_id,
-      studentId: row.student_id,
-      userName: row.user_name || undefined,
-      recordType: row.record_type || 'check_in',
-      date: row.date,
-      time: row.time,
-      status: row.status,
-      checkinMethod: row.checkin_method,
-      photoUrl,
-      photoStoragePath,
-      remarks: row.remarks || undefined,
-      lineNotificationSent: Boolean(row.line_notification_sent),
-    };
-  }));
+  const attendance: AttendanceRecord[] = attendanceRows.map(mapAttendanceDbRow);
   const invoices: TuitionInvoice[] = (invoiceResult.data || []).map((row) => ({
     id: row.id,
     schoolId: row.school_id,
@@ -717,6 +792,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     timetableSlots,
     leaveRequests,
     periodAttendance,
+    attendanceLoadedRange,
   };
 }
 
@@ -1180,6 +1256,15 @@ export async function syncDataToSupabase(payload: {
   attendance: AttendanceRecord[];
   invoices: TuitionInvoice[];
   announcements: Announcement[];
+  changedIds?: {
+    students?: string[];
+    teachers?: string[];
+    courses?: string[];
+    grades?: string[];
+    attendance?: string[];
+    invoices?: string[];
+    announcements?: string[];
+  };
 }): Promise<{ success: boolean; message: string; warnings?: string[] }> {
   const client = getSupabaseClient();
   if (!client) {
@@ -1191,6 +1276,17 @@ export async function syncDataToSupabase(payload: {
 
   const warnings: string[] = [];
   let syncedTeachersCount = 0;
+  const changedIdSets = payload.changedIds ? {
+    students: new Set(payload.changedIds.students || []),
+    teachers: new Set(payload.changedIds.teachers || []),
+    courses: new Set(payload.changedIds.courses || []),
+    grades: new Set(payload.changedIds.grades || []),
+    attendance: new Set(payload.changedIds.attendance || []),
+    invoices: new Set(payload.changedIds.invoices || []),
+    announcements: new Set(payload.changedIds.announcements || []),
+  } : null;
+  const shouldSyncRow = (table: keyof NonNullable<typeof changedIdSets>, id: string) =>
+    !changedIdSets || changedIdSets[table].has(id);
   try {
     // School identity is provisioned by an administrator and is never upserted by the client.
     if (['super_admin', 'admin'].includes(payload.role) && payload.students.length > 0) {
@@ -1218,15 +1314,21 @@ export async function syncDataToSupabase(payload: {
         line_linked: s.lineLinked,
         line_notify_enabled: s.lineNotifyEnabled,
         enrolled_date: s.enrolledDate,
-      }));
-      const { error: stuErr } = await client.from('students').upsert(studentRows);
-      if (stuErr) throw new Error(`Students sync error: ${stuErr.message}`);
+      })).filter((row) => shouldSyncRow('students', row.id));
+      if (studentRows.length > 0) {
+        const { error: stuErr } = await client.from('students').upsert(studentRows);
+        if (stuErr) throw new Error(`Students sync error: ${stuErr.message}`);
+      }
     }
 
     // 2.5 Upsert Teachers (HRMS & DPA)
     if (['super_admin', 'admin'].includes(payload.role) && payload.teachers && payload.teachers.length > 0) {
-      const teacherRows = payload.teachers.map((teacher) => mapTeacherToDb(teacher, payload.school.id));
-      const { error: tErr } = await client.from('teachers').upsert(teacherRows);
+      const teacherRows = payload.teachers
+        .map((teacher) => mapTeacherToDb(teacher, payload.school.id))
+        .filter((row) => shouldSyncRow('teachers', row.id));
+      const { error: tErr } = teacherRows.length > 0
+        ? await client.from('teachers').upsert(teacherRows)
+        : { error: null };
       if (tErr) {
         if (isMissingTableError(tErr)) {
           warnings.push('ตาราง teachers ยังไม่มีใน Supabase จึงยังไม่ได้บันทึกข้อมูลครู กรุณารัน SQL Migration เพิ่มตาราง teachers');
@@ -1234,7 +1336,7 @@ export async function syncDataToSupabase(payload: {
           throw new Error(`Teachers sync error: ${tErr.message}`);
         }
       } else {
-        syncedTeachersCount = payload.teachers.length;
+        syncedTeachersCount = teacherRows.length;
       }
     }
 
@@ -1263,9 +1365,11 @@ export async function syncDataToSupabase(payload: {
         enrolled_student_ids: c.enrolledStudentIds,
         description: c.description,
         cover_image: c.coverImage || null,
-      }));
-      const { error: courseErr } = await client.from('courses').upsert(courseRows);
-      if (courseErr) throw new Error(`Courses sync error: ${courseErr.message}`);
+      })).filter((row) => shouldSyncRow('courses', row.id));
+      if (courseRows.length > 0) {
+        const { error: courseErr } = await client.from('courses').upsert(courseRows);
+        if (courseErr) throw new Error(`Courses sync error: ${courseErr.message}`);
+      }
     }
 
     // 4. Upsert Grades
@@ -1320,9 +1424,11 @@ export async function syncDataToSupabase(payload: {
           letter_grade: g.letterGrade,
           grade_point: g.gradePoint,
         };
-      });
-      const { error: gradeErr } = await client.from('grades').upsert(gradeRows);
-      if (gradeErr) throw new Error(`Grades sync error: ${gradeErr.message}`);
+      }).filter((row) => shouldSyncRow('grades', row.id));
+      if (gradeRows.length > 0) {
+        const { error: gradeErr } = await client.from('grades').upsert(gradeRows);
+        if (gradeErr) throw new Error(`Grades sync error: ${gradeErr.message}`);
+      }
     }
 
     // 5. Upsert Attendance with fallback if table schema lacks newer columns (photo_url, record_type, user_name)
@@ -1340,35 +1446,39 @@ export async function syncDataToSupabase(payload: {
         record_type: a.recordType || 'check_in',
         user_name: a.userName || null,
         photo_url: a.photoStoragePath || null,
-      }));
-      let { error: attErr } = await client.from('attendance').upsert(attRows);
-      if (
-        attErr &&
-        (attErr.code === 'PGRST204' ||
-          attErr.code === '42703' ||
-          /photo_url|record_type|user_name|schema cache|could not find the '.*' column/i.test(attErr.message))
-      ) {
-        console.warn('[Attendance] Retrying attendance upsert with base columns:', attErr.message);
-        const baseRows = payload.attendance.map((a) => ({
-          id: a.id,
-          school_id: payload.school.id,
-          student_id: a.studentId,
-          date: a.date,
-          time: a.time,
-          status: a.status,
-          checkin_method: a.checkinMethod,
-          remarks: a.remarks || null,
-          line_notification_sent: a.lineNotificationSent,
-        }));
-        const retryResult = await client.from('attendance').upsert(baseRows);
-        if (retryResult.error) {
-          throw new Error(`Attendance sync error: ${retryResult.error.message}`);
-        } else {
-          warnings.push('ตาราง attendance ขาดคอลัมน์ photo_url ใน Supabase จึงบันทึกข้อมูลแบบมาตรฐานเรียบร้อยแล้ว (แนะนำให้รัน SQL Migration เพิ่มคอลัมน์ photo_url)');
-          attErr = null;
+      })).filter((row) => shouldSyncRow('attendance', row.id));
+      if (attRows.length === 0) {
+        // Nothing in this collection changed.
+      } else {
+        let { error: attErr } = await client.from('attendance').upsert(attRows);
+        if (
+          attErr &&
+          (attErr.code === 'PGRST204' ||
+            attErr.code === '42703' ||
+            /photo_url|record_type|user_name|schema cache|could not find the '.*' column/i.test(attErr.message))
+        ) {
+          console.warn('[Attendance] Retrying attendance upsert with base columns:', attErr.message);
+          const baseRows = payload.attendance.map((a) => ({
+            id: a.id,
+            school_id: payload.school.id,
+            student_id: a.studentId,
+            date: a.date,
+            time: a.time,
+            status: a.status,
+            checkin_method: a.checkinMethod,
+            remarks: a.remarks || null,
+            line_notification_sent: a.lineNotificationSent,
+          })).filter((row) => shouldSyncRow('attendance', row.id));
+          const retryResult = await client.from('attendance').upsert(baseRows);
+          if (retryResult.error) {
+            throw new Error(`Attendance sync error: ${retryResult.error.message}`);
+          } else {
+            warnings.push('ตาราง attendance ขาดคอลัมน์ photo_url ใน Supabase จึงบันทึกข้อมูลแบบมาตรฐานเรียบร้อยแล้ว (แนะนำให้รัน SQL Migration เพิ่มคอลัมน์ photo_url)');
+            attErr = null;
+          }
+        } else if (attErr) {
+          throw new Error(`Attendance sync error: ${attErr.message}`);
         }
-      } else if (attErr) {
-        throw new Error(`Attendance sync error: ${attErr.message}`);
       }
     }
 
@@ -1395,34 +1505,38 @@ export async function syncDataToSupabase(payload: {
         slip_reject_reason: i.slipRejectReason || null,
         slip_amount: i.slipAmount ?? null,
         slip_reference_note: i.slipReferenceNote || null,
-      }));
-      const { error: invErr } = await client.from('invoices').upsert(invRows);
-      if (
-        invErr &&
-        (invErr.code === 'PGRST204' ||
-          invErr.code === '42703' ||
-          /slip_image_url|slip_status|schema cache|could not find the '.*' column/i.test(invErr.message))
-      ) {
-        const baseInvRows = payload.invoices.map((i) => ({
-          id: i.id,
-          school_id: payload.school.id,
-          invoice_number: i.invoiceNumber,
-          student_id: i.studentId,
-          semester: i.semester,
-          academic_year: i.academicYear,
-          issue_date: i.issueDate,
-          due_date: i.dueDate,
-          total_amount: i.totalAmount,
-          status: i.status,
-          items: i.items,
-          payment_method: i.paymentMethod || null,
-          paid_at: i.paidAt || null,
-          receipt_number: i.receiptNumber || null,
-        }));
-        const retryInv = await client.from('invoices').upsert(baseInvRows);
-        if (retryInv.error) throw new Error(`Invoices sync error: ${retryInv.error.message}`);
-      } else if (invErr) {
-        throw new Error(`Invoices sync error: ${invErr.message}`);
+      })).filter((row) => shouldSyncRow('invoices', row.id));
+      if (invRows.length === 0) {
+        // Nothing in this collection changed.
+      } else {
+        const { error: invErr } = await client.from('invoices').upsert(invRows);
+        if (
+          invErr &&
+          (invErr.code === 'PGRST204' ||
+            invErr.code === '42703' ||
+            /slip_image_url|slip_status|schema cache|could not find the '.*' column/i.test(invErr.message))
+        ) {
+          const baseInvRows = payload.invoices.map((i) => ({
+            id: i.id,
+            school_id: payload.school.id,
+            invoice_number: i.invoiceNumber,
+            student_id: i.studentId,
+            semester: i.semester,
+            academic_year: i.academicYear,
+            issue_date: i.issueDate,
+            due_date: i.dueDate,
+            total_amount: i.totalAmount,
+            status: i.status,
+            items: i.items,
+            payment_method: i.paymentMethod || null,
+            paid_at: i.paidAt || null,
+            receipt_number: i.receiptNumber || null,
+          })).filter((row) => shouldSyncRow('invoices', row.id));
+          const retryInv = await client.from('invoices').upsert(baseInvRows);
+          if (retryInv.error) throw new Error(`Invoices sync error: ${retryInv.error.message}`);
+        } else if (invErr) {
+          throw new Error(`Invoices sync error: ${invErr.message}`);
+        }
       }
     }
 
@@ -1441,9 +1555,11 @@ export async function syncDataToSupabase(payload: {
         pinned: an.pinned,
         line_broadcast_sent: an.lineBroadcastSent,
         resend_email_sent: an.resendEmailSent,
-      }));
-      const { error: annErr } = await client.from('announcements').upsert(annRows);
-      if (annErr) throw new Error(`Announcements sync error: ${annErr.message}`);
+      })).filter((row) => shouldSyncRow('announcements', row.id));
+      if (annRows.length > 0) {
+        const { error: annErr } = await client.from('announcements').upsert(annRows);
+        if (annErr) throw new Error(`Announcements sync error: ${annErr.message}`);
+      }
     }
 
     // 8. Automatically keep schools.students_count and teachers_count up to date in Supabase

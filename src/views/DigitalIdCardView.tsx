@@ -405,9 +405,9 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
           } flex flex-col items-center justify-center p-3 sm:p-6 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-xs space-y-3 overflow-hidden text-[var(--color-text-title)]`}
         >
           {!activePerson ? (
-            <div className="max-w-sm text-center py-8 px-4 space-y-2">
-              <div className="w-11 h-11 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center mx-auto text-[var(--color-text-muted)]">
-                <AlertCircle className="w-5 h-5" />
+            <div className="max-w-sm text-center py-5 px-4 space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center mx-auto text-[var(--color-text-muted)]">
+                <AlertCircle className="w-4 h-4" />
               </div>
               <p className="text-sm font-bold text-[var(--color-text-title)]">
                 {activeCardType === 'staff'

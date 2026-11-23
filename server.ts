@@ -666,7 +666,9 @@ async function createApp() {
       res.sendFile(path.join(distDir, 'index.html'));
     });
   } else {
-    const hmrEnabled = process.env.ENABLE_HMR === 'true' && process.env.DISABLE_HMR !== 'true';
+    // Keep the local development server in sync with source edits by default.
+    // HMR can still be disabled explicitly for constrained environments.
+    const hmrEnabled = process.env.NODE_ENV !== 'production' && process.env.DISABLE_HMR !== 'true';
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: {

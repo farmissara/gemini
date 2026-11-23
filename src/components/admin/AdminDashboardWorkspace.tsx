@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import AttendancePhoto from '../AttendancePhoto';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -810,7 +811,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
                       className="print-keep w-full py-3 first:pt-1 last:pb-1 flex items-center justify-between gap-3 text-left cursor-pointer hover:bg-[var(--color-card-subtle)] rounded-lg px-2 -mx-2 transition"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <img
+                        <AttendancePhoto
                           src={rec.photoUrl || rec.userAvatar || fallbackAvatarSvg(rec.userName)}
                           alt={rec.userName || 'User'}
                           referrerPolicy="no-referrer"

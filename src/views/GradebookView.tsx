@@ -1505,8 +1505,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
           {!embeddedInStudentManagement && (
             <>
-              <span className="tone-chip w-10 h-10 rounded-xl shrink-0">
-                <Award className="w-5 h-5" />
+              <span className="tone-chip w-7 h-7 rounded-lg shrink-0">
+                <Award className="w-4 h-4" />
               </span>
               <h1 className="text-base md:text-xl font-bold text-[var(--color-text-title)] leading-tight truncate">
                 {isPersonalGradeViewer

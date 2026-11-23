@@ -110,6 +110,7 @@ import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
 import { slotHasTeacher } from '../../lib/timetableTeachers';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
+import { getModuleTone } from '../../lib/moduleTheme';
 import {
   CALENDAR_NOTE_COLORS,
   CALENDAR_NOTES_UPDATED_EVENT,
@@ -206,6 +207,24 @@ export type MobileTab =
   | 'profile'
   | 'homework'
   | 'announcements';
+
+const MOBILE_TONE_TARGET: Record<MobileTab, NavTab> = {
+  home: 'dashboard',
+  admin_quick: 'dashboard',
+  super_schools: 'super_admin_console',
+  executive: 'executive_monitor',
+  checkin: 'mobile_checkin',
+  leave: 'attendance',
+  gradebook: 'gradebook',
+  student_grades: 'gradebook',
+  portfolio: 'portfolio',
+  career_quest: 'career_quest',
+  timetable: 'timetable',
+  games: 'games',
+  profile: 'system_settings',
+  homework: 'homework',
+  announcements: 'announcements',
+};
 
 const splitAnnouncementIntoPages = (content: string, pageLength = 420) => {
   const characters = Array.from(content);
@@ -914,7 +933,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   }, [attendance, students, teachers, courses, invoices, infirmaryVisits, sdqAssessments]);
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none">
+    <div className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none`}>
       {/* 1. CLEAN SINGLE-ROW APPLE/LINEAR MOBILE HEADER */}
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md transition-colors">
         <div className="px-4 h-14 flex items-center justify-between gap-3">
