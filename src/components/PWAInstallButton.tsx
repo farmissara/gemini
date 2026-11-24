@@ -289,21 +289,18 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       );
     }
 
-    // Default 'nav' style — compact, crisp top-bar action placed alongside language switcher
+    // Default 'nav' style — sleek, clean top-bar action without nested pill-in-pill clutter
     return (
       <button
         type="button"
         onClick={handleInstallClick}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer bg-[var(--color-primary-light)] border-[var(--color-primary)]/25 text-[var(--color-primary-text)] hover:border-[var(--color-primary)] hover:opacity-95 shadow-2xs whitespace-nowrap shrink-0 ${className}`}
-        title={lang === 'th' ? 'ติดตั้ง BaanPakKru ลงบนมือถือ Android & iOS' : 'Install BaanPakKru on Mobile (Android & iOS)'}
+        className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition cursor-pointer bg-[var(--color-primary)]/[0.08] border-[var(--color-primary)]/20 text-[var(--color-primary-text)] hover:bg-[var(--color-primary)]/[0.14] hover:border-[var(--color-primary)]/35 whitespace-nowrap shrink-0 ${className}`}
+        title={lang === 'th' ? 'ติดตั้งแอป BaanPakKru ลงมือถือ (รองรับ Android & iOS)' : 'Install BaanPakKru App (Android & iOS)'}
       >
         <Smartphone className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
         <span className="sm:hidden">{lang === 'th' ? 'ติดตั้งแอป' : 'Install'}</span>
         <span className="hidden sm:inline">
           {lang === 'th' ? 'ติดตั้งลงมือถือ' : 'Install App'}
-        </span>
-        <span className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-text-muted)] leading-none">
-          Android &amp; iOS
         </span>
       </button>
     );

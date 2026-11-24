@@ -148,63 +148,63 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
       {/* CAMERA COLUMN: Always primary on mobile (1-Screen = 1-Task) */}
       <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col' : 'lg:col-span-7 flex flex-col items-center'}`}>
         <div
-          className={`${embeddedMobile ? 'flex-1 min-h-0 w-full rounded-2xl border' : 'w-full max-w-sm rounded-[36px] p-3.5 border-4'} bg-slate-900 shadow-xl border-slate-800 relative flex flex-col overflow-hidden`}
+          className={`${embeddedMobile ? 'flex-1 min-h-0 w-full rounded-2xl' : 'w-full max-w-[420px] rounded-2xl shadow-xl shadow-slate-950/15 dark:shadow-black/40'} border border-[var(--color-border)] bg-slate-950 relative flex flex-col overflow-hidden`}
         >
           {/* Event Selector: Check-in vs Check-out + Gate Selector */}
-          <div className="p-1.5 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-1.5 shrink-0">
-            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800 shrink-0">
+          <div className="px-3 py-2.5 bg-slate-900/95 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.06] border border-white/10 shrink-0">
               <button
                 type="button"
                 onClick={() => setCheckType('check_in')}
-                className={`flex items-center gap-1 py-1 px-2 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 py-1.5 px-2.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                   checkType === 'check_in'
-                    ? 'bg-emerald-700 text-white shadow-xs'
-                    : 'text-slate-200 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <LogIn className="w-3 h-3 text-emerald-200 shrink-0" />
+                <LogIn className="w-3.5 h-3.5 shrink-0" />
                 <span>เข้าโรงเรียน</span>
               </button>
               <button
                 type="button"
                 onClick={() => setCheckType('check_out')}
-                className={`flex items-center gap-1 py-1 px-2 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 py-1.5 px-2.5 rounded-[10px] text-xs font-semibold transition-all cursor-pointer ${
                   checkType === 'check_out'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-slate-200 hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <LogOut className="w-3 h-3 text-purple-200 shrink-0" />
+                <LogOut className="w-3.5 h-3.5 shrink-0" />
                 <span>ออกโรงเรียน</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-              <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
+              <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />
               {normalizedGates.length > 1 && selectedGate ? (
                 <select
                   aria-label={lang === 'th' ? 'จุดประตูเช็คชื่อ' : 'Check-in gate'}
                   value={selectedGate.id}
                   onChange={(e) => setSelectedGateId(e.target.value)}
-                  className="bg-slate-800 text-white text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-600 truncate min-w-0 max-w-full"
+                  className="bg-white/[0.08] hover:bg-white/[0.12] text-white text-xs font-medium rounded-xl px-2.5 py-1.5 border border-white/15 truncate min-w-0 max-w-full focus:outline-hidden focus:border-sky-400/60 transition cursor-pointer"
                 >
                   {normalizedGates.map((gate) => (
-                    <option key={gate.id} value={gate.id} className="bg-slate-800 text-white">
+                    <option key={gate.id} value={gate.id} className="bg-slate-900 text-white">
                       {gate.nameTh}
                     </option>
                   ))}
                 </select>
               ) : (
-                <span className="bg-slate-800/90 text-slate-100 text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-700 truncate min-w-0 max-w-full">
+                <span className="bg-white/[0.08] text-slate-100 text-xs font-medium rounded-xl px-2.5 py-1.5 border border-white/15 truncate min-w-0 max-w-full">
                   {selectedGate ? selectedGate.nameTh : lang === 'th' ? 'ยังไม่ตั้งค่าพิกัดโรงเรียน' : 'School GPS not set'}
                 </span>
               )}
             </div>
           </div>
 
-          {/* Camera Viewfinder Box with Responsive Centered Face Outline Guide */}
+          {/* Camera Viewfinder Box with Modern Biometric Corner-Bracket Guide */}
           <div
-            className={`relative flex-1 bg-black flex items-center justify-center overflow-hidden ${embeddedMobile ? 'min-h-[170px]' : 'min-h-[320px]'}`}
+            className={`relative flex-1 bg-[radial-gradient(circle_at_center,rgba(30,41,59,0.55)_0%,rgba(2,6,23,1)_75%)] flex items-center justify-center overflow-hidden ${embeddedMobile ? 'min-h-[185px]' : 'min-h-[340px]'}`}
           >
             <video
               ref={videoRef}
@@ -229,11 +229,11 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               <button
                 type="button"
                 onClick={handleRefreshGps}
-                className="absolute top-2 right-2 z-30 px-2.5 py-1.5 rounded-full bg-slate-950/85 hover:bg-slate-900 backdrop-blur-md text-white text-[11px] font-bold border border-sky-400/50 shadow-lg flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto"
+                className="absolute top-2.5 right-2.5 z-30 px-2.5 py-1 rounded-lg bg-black/45 hover:bg-black/65 backdrop-blur-md text-slate-100 text-[11px] font-medium border border-white/15 shadow-sm flex items-center gap-1.5 cursor-pointer transition active:scale-95 pointer-events-auto"
                 title="รีเฟรชสัญญาณ GPS"
                 aria-label="รีเฟรชสัญญาณ GPS"
               >
-                <Navigation className={`w-3.5 h-3.5 text-sky-300 shrink-0 ${isGpsLoading ? 'animate-spin' : ''}`} />
+                <Navigation className={`w-3 h-3 text-sky-400 shrink-0 ${isGpsLoading ? 'animate-spin' : ''}`} />
                 <span>พิกัด GPS</span>
               </button>
             )}
@@ -241,67 +241,77 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             {isFlashActive && <div className="absolute inset-0 bg-white z-40 animate-out fade-out duration-200" />}
 
             {!capturedPhotoUrl && (
-              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-2">
+              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
                 <div
-                  className={`${embeddedMobile ? 'w-28 h-36' : 'w-48 h-60'} rounded-[50%] border-2 border-dashed border-cyan-400/80 shadow-md shadow-cyan-500/20 flex flex-col items-center justify-center relative animate-pulse`}
+                  className={`${embeddedMobile ? 'w-32 h-40' : 'w-48 h-60'} relative flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/[0.02]`}
                 >
-                  <div className="absolute top-1.5 w-8 h-1 bg-cyan-400/70 rounded-full" />
-                  <div className="text-center px-2 space-y-0.5">
-                    <p className="text-[10px] font-bold text-cyan-200 drop-shadow">
+                  {/* Minimalist Biometric Corner Brackets */}
+                  <span className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-white/75 rounded-tl-2xl" />
+                  <span className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-white/75 rounded-tr-2xl" />
+                  <span className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-white/75 rounded-bl-2xl" />
+                  <span className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-white/75 rounded-br-2xl" />
+
+                  <div className="text-center px-3 space-y-1">
+                    <p className="text-xs font-medium text-white/90 tracking-tight drop-shadow">
                       {facingMode === 'user' ? 'วางใบหน้าในกรอบ' : 'ถ่ายภาพเช็คชื่อ (กล้องหลัง)'}
                     </p>
-                    <p className="text-[8px] text-cyan-200">
-                      {facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'} (กดสลับกล้องด้านล่างได้)
+                    <p className="text-[10px] text-slate-400">
+                      {facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'} · สลับกล้องได้ด้านล่าง
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Floating GPS & Time Badge */}
-            <div className="absolute top-2 left-2 max-w-[calc(100%-125px)] flex flex-wrap items-center gap-1 pointer-events-none text-[10px]">
-              <div className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white font-mono flex items-center gap-1 border border-white/20">
-                <Clock className="w-3 h-3 text-cyan-300" />
+            {/* Floating GPS & Time HUD */}
+            <div className="absolute top-2.5 left-2.5 max-w-[calc(100%-125px)] flex flex-wrap items-center gap-1.5 pointer-events-none text-[11px]">
+              <div className="px-2 py-1 rounded-lg bg-black/45 backdrop-blur-md text-slate-100 font-mono flex items-center gap-1.5 border border-white/15 tabular-nums">
+                <Clock className="w-3 h-3 text-slate-300" />
                 <span>{new Date().toLocaleTimeString('th-TH')}</span>
               </div>
 
-              <div
-                className={`px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border backdrop-blur-md tabular-nums ${
-                  !hasSchoolGpsConfigured || isGpsLoading || currentGpsDistance === null
-                    ? 'bg-amber-950/80 text-amber-200 border-amber-500/40'
-                    : isInGeofence
-                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
-                      : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
-                }`}
-              >
-                <MapPin className="w-3 h-3" />
+              <div className="px-2 py-1 rounded-lg bg-black/45 backdrop-blur-md text-slate-100 font-medium flex items-center gap-1.5 border border-white/15 tabular-nums">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    !hasSchoolGpsConfigured || isGpsLoading || currentGpsDistance === null
+                      ? 'bg-amber-400'
+                      : isInGeofence
+                        ? 'bg-emerald-400'
+                        : 'bg-rose-400'
+                  }`}
+                />
                 <span>{gpsStatusShortLabel}</span>
               </div>
             </div>
 
             {cameraNotice && !cameraError && !capturedPhotoUrl && (
-              <div className="absolute inset-x-3 bottom-2 z-20 px-2.5 py-1.5 rounded-xl bg-slate-900/85 border border-slate-600 text-slate-100 text-[10px] text-center backdrop-blur-md">
+              <div className="absolute inset-x-3 bottom-2.5 z-20 px-3 py-1.5 rounded-xl bg-slate-900/85 border border-white/15 text-slate-200 text-[11px] text-center backdrop-blur-md">
                 {cameraNotice}
               </div>
             )}
 
             {cameraError && !capturedPhotoUrl && (
-              <div className="absolute inset-x-3 bottom-3 z-30 p-2.5 rounded-xl bg-amber-950/90 border border-amber-500 text-amber-200 text-xs backdrop-blur-md text-center space-y-1.5">
-                <p className="text-[11px]">{cameraError}</p>
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <div className="absolute inset-x-3 bottom-3 z-30 p-3.5 rounded-2xl bg-slate-900/85 border border-white/15 text-slate-100 backdrop-blur-xl shadow-2xl text-center space-y-2.5">
+                <div className="flex items-start justify-center gap-2 text-left">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-400/25 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <Camera className="w-3.5 h-3.5" />
+                  </div>
+                  <p className="text-[11px] text-slate-200 leading-relaxed">{cameraError}</p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       void startCamera(facingModeRef.current);
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] cursor-pointer border border-slate-600"
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs cursor-pointer border border-white/15 transition"
                   >
                     ลองเปิดกล้องอีกครั้ง
                   </button>
                   <button
                     type="button"
                     onClick={handleCaptureSnapshot}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] cursor-pointer shadow-xs"
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-semibold text-xs cursor-pointer shadow-xs transition"
                   >
                     ถ่ายภาพจำลอง
                   </button>
@@ -311,9 +321,9 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
           </div>
 
           {/* Bottom Camera Controls & Shutter */}
-          <div className="p-2.5 bg-slate-950 border-t border-slate-800 shrink-0">
+          <div className="px-4 py-3.5 bg-slate-950 border-t border-white/10 shrink-0">
             {capturedPhotoUrl ? (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -323,7 +333,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                         void startCamera(facingModeRef.current);
                       }
                     }}
-                    className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition cursor-pointer"
+                    className="flex-1 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-slate-100 font-semibold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition cursor-pointer"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     <span>ถ่ายใหม่</span>
@@ -332,11 +342,11 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     type="button"
                     disabled={!isInGeofence || isSavingAttendance}
                     onClick={handleConfirmCheckin}
-                    className={`flex-[2] py-2 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer ${
+                    className={`flex-[2] py-2.5 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer ${
                       isInGeofence
                         ? checkType === 'check_in'
-                          ? 'bg-emerald-700 hover:bg-emerald-600 shadow-emerald-900/30'
-                          : 'bg-[var(--color-primary)] hover:opacity-90 shadow-purple-900/30'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/40'
+                          : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-950/40'
                         : 'bg-slate-700 cursor-not-allowed opacity-70'
                     }`}
                   >
@@ -348,7 +358,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     </span>
                   </button>
                 </div>
-                <p className="text-[11px] text-center text-slate-300 flex items-center justify-center gap-1">
+                <p className="text-[11px] text-center text-slate-300 flex items-center justify-center gap-1.5">
                   {!hasSchoolGpsConfigured ? (
                     <>
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -377,23 +387,23 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                   )}
                 </p>
                 {selfieActionError && (
-                  <p className="text-[10px] text-center text-rose-300 font-semibold">{selfieActionError}</p>
+                  <p className="text-[11px] text-center text-rose-300 font-medium">{selfieActionError}</p>
                 )}
               </div>
             ) : (
-              <div className="space-y-1.5 py-0.5">
-                <div className="flex items-center justify-between px-2 gap-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
                   <button
                     type="button"
                     disabled={isCameraSwitching}
                     onClick={() => {
                       void startCamera(facingModeRef.current);
                     }}
-                    className="px-2.5 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 text-[11px] font-bold disabled:opacity-50"
+                    className="h-10 px-3 rounded-xl bg-white/[0.07] hover:bg-white/[0.13] text-slate-200 border border-white/10 transition cursor-pointer flex items-center gap-1.5 text-xs font-medium disabled:opacity-50"
                     title="เปิด / รีเฟรชกล้อง (Refresh Camera)"
                     aria-label="เปิดหรือรีเฟรชกล้อง"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-cyan-300 shrink-0 ${isCameraSwitching ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 text-slate-300 shrink-0 ${isCameraSwitching ? 'animate-spin' : ''}`} />
                     <span>รีเฟรชกล้อง</span>
                   </button>
 
@@ -401,12 +411,12 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     type="button"
                     onClick={handleCaptureSnapshot}
                     disabled={isCapturing || isCameraSwitching}
-                    className="w-12 h-12 rounded-full bg-white p-0.5 shadow-lg shadow-white/20 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer disabled:opacity-60 shrink-0"
+                    className="w-14 h-14 rounded-full border-[2.5px] border-white/90 p-1 shadow-lg shadow-black/40 hover:scale-105 active:scale-95 transition flex items-center justify-center focus:outline-hidden cursor-pointer disabled:opacity-60 shrink-0"
                     title="ถ่ายรูปเช็คชื่อ"
                     aria-label="ถ่ายรูปเช็คชื่อ"
                   >
-                    <div className="w-full h-full rounded-full border-2 border-slate-900 bg-red-600 hover:bg-red-500 flex items-center justify-center transition">
-                      <Camera className="w-5 h-5 text-white" />
+                    <div className="w-full h-full rounded-full bg-white hover:bg-slate-100 flex items-center justify-center transition text-slate-950">
+                      <Camera className="w-5 h-5" />
                     </div>
                   </button>
 
@@ -414,11 +424,11 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     type="button"
                     disabled={isCameraSwitching}
                     onClick={handleToggleFacingMode}
-                    className="px-2.5 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 border border-amber-400/50 transition cursor-pointer flex items-center gap-1.5 text-[11px] font-bold disabled:opacity-60"
+                    className="h-10 px-3 rounded-xl bg-white/[0.07] hover:bg-white/[0.13] text-slate-200 border border-white/10 transition cursor-pointer flex items-center gap-1.5 text-xs font-medium disabled:opacity-60"
                     title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง (Switch to Back Camera)' : 'สลับเป็นกล้องหน้า (Switch to Front Camera)'}
                     aria-label="สลับกล้องหน้าหรือกล้องหลัง"
                   >
-                    <SwitchCamera className={`w-3.5 h-3.5 text-amber-300 shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
+                    <SwitchCamera className={`w-3.5 h-3.5 text-slate-300 shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
                     <span>{isCameraSwitching ? 'กำลังสลับ...' : 'สลับกล้อง'}</span>
                   </button>
                 </div>
@@ -434,10 +444,10 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                           void startCamera(facingModeRef.current, pickedId);
                         }
                       }}
-                      className="max-w-[240px] px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] text-slate-200 font-medium truncate"
+                      className="max-w-[240px] px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] text-slate-200 font-medium truncate"
                     >
                       {availableCameras.map((cam, idx) => (
-                        <option key={cam.deviceId || idx} value={cam.deviceId}>
+                        <option key={cam.deviceId || idx} value={cam.deviceId} className="bg-slate-900 text-white">
                           {cam.label || `กล้องที่ ${idx + 1}`}
                         </option>
                       ))}
@@ -448,10 +458,10 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             )}
           </div>
 
-          <div className="text-center py-1">
-            <p className={`text-[11px] text-slate-300 ${embeddedMobile ? 'hidden' : ''}`}>
+          <div className={`px-3 py-2 bg-slate-900/75 border-t border-white/5 text-center ${embeddedMobile ? 'hidden' : ''}`}>
+            <p className="text-[11px] text-slate-400 truncate">
               {isSelfCheckin ? 'บัญชีของคุณ · ' : 'สแกนแทน · '}
-              <span className="text-white font-bold">{activePersonName}</span> ({activePersonRole})
+              <span className="text-slate-100 font-semibold">{activePersonName}</span> ({activePersonRole})
             </p>
           </div>
         </div>
