@@ -237,7 +237,16 @@ AS $$
           AND NOT profile.must_change_password
           AND public.current_operational_role() = 'teacher'
           AND profile.school_id = target_school_id
-          AND teacher.full_name_th = target_teacher_name
+          AND EXISTS (
+              SELECT 1
+              FROM regexp_split_to_table(
+                  coalesce(target_teacher_name, ''), '[+,/]'
+              ) AS assigned_name(name)
+              WHERE public.lms_normalize_teacher_name(assigned_name.name) IN (
+                  public.lms_normalize_teacher_name(teacher.full_name_th),
+                  public.lms_normalize_teacher_name(teacher.full_name_en)
+              )
+          )
     )
 $$;
 
@@ -429,6 +438,22 @@ CREATE POLICY "School members can read teachers" ON public.teachers
                 public.has_school_role(school_id, ARRAY['teacher'])
                 AND lower(trim(coalesce(email, ''))) =
                     lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+            )
+        )
+    );
+
+DROP POLICY IF EXISTS "School members can read timetable slots" ON public.timetable_slots;
+CREATE POLICY "School members can read timetable slots" ON public.timetable_slots
+    FOR SELECT USING (
+        public.has_school_role(school_id, ARRAY['super_admin', 'admin', 'student', 'parent'])
+        OR (
+            public.has_school_role(school_id, ARRAY['teacher'])
+            AND (
+                public.is_current_teacher_for_timetable(school_id, teacher_name)
+                OR (
+                    course_id IS NOT NULL
+                    AND public.can_manage_lms_course(school_id, course_id)
+                )
             )
         )
     );

@@ -168,7 +168,7 @@ test('slotMatchesLoggedInTeacher includes direct coTeacherName, honorific prefix
   assert.equal(slotMatchesLoggedInTeacher(unrelatedSlot, coTeacherUser, coTeacher, [coTaughtCourse]), false);
 });
 
-test('slotMatchesLoggedInTeacher includes school-wide scout and all-teacher slots', () => {
+test('school-wide timetable activities still require an explicit teacher assignment', () => {
   const teacherUser = makeUser({
     id: 'usr-scout',
     fullNameTh: 'ครูผู้ช่วย โรงเรียน',
@@ -180,14 +180,24 @@ test('slotMatchesLoggedInTeacher includes school-wide scout and all-teacher slot
     courseTitleTh: 'กิจกรรมลูกเสือ-เนตรนารี',
     teacherName: 'ครูประจำกิจกรรม',
   });
+  const assignedScoutSlot = makeSlot({
+    id: 'slot-scout-assigned',
+    courseCode: 'SCOUT101',
+    courseTitleTh: 'กิจกรรมลูกเสือ-เนตรนารี',
+    teacherName: teacherUser.fullNameTh,
+  });
   const allTeacherSlot = makeSlot({
     id: 'slot-all-teachers',
     courseCode: 'ACT101',
     teacherName: 'ครูทุกคน',
   });
 
-  assert.equal(slotMatchesLoggedInTeacher(scoutSlot, teacherUser, undefined, []), true);
-  assert.equal(slotMatchesLoggedInTeacher(allTeacherSlot, teacherUser, undefined, []), true);
+  assert.equal(slotMatchesLoggedInTeacher(scoutSlot, teacherUser, undefined, []), false);
+  assert.equal(slotMatchesLoggedInTeacher(assignedScoutSlot, teacherUser, makeTeacher({
+    fullNameTh: teacherUser.fullNameTh,
+    email: teacherUser.email,
+  }), []), true);
+  assert.equal(slotMatchesLoggedInTeacher(allTeacherSlot, teacherUser, undefined, []), false);
   assert.equal(isSchoolWideTimetableActivity(scoutSlot), true);
   assert.equal(isSchoolWideTimetableActivity(allTeacherSlot), true);
   assert.equal(isSchoolWideTimetableActivity(makeSlot({ teacherName: 'ครูสมชาย ใจดี' })), false);

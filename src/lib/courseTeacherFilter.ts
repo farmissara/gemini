@@ -357,8 +357,6 @@ export function slotMatchesLoggedInTeacher(
 ): boolean {
   if (!currentUser && !matchedTeacher) return false;
 
-  if (isSchoolWideTimetableActivity(slot)) return true;
-
   const candidateNames = [
     matchedTeacher?.fullNameTh,
     matchedTeacher?.fullNameEn,
