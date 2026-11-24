@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import {
   ArrowRight,
   CheckCircle2,
+  CircleHelp,
   ChevronLeft,
   ChevronRight,
   Compass,
@@ -664,6 +665,7 @@ interface ModuleTourTriggerProps {
   moduleId: string;
   lang: AppLanguage;
   className?: string;
+  floating?: boolean;
 }
 
 /**
@@ -675,12 +677,71 @@ export const ModuleTourTrigger: React.FC<ModuleTourTriggerProps> = ({
   moduleId,
   lang,
   className = '',
+  floating = false,
 }) => {
   const ctx = useGuideTour();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasTour = Boolean(MODULE_GUIDED_TOURS[moduleId]);
   if (!ctx || !hasTour) return null;
 
   const isThisTourActive = ctx.activeTourModuleId === moduleId;
+
+  if (floating) {
+    return (
+      <div className={`fixed bottom-20 right-3 z-[110] print:hidden sm:right-5 md:bottom-5 ${className}`}>
+        {isMenuOpen && (
+          <div
+            role="group"
+            aria-label={lang === 'th' ? 'เมนูทัวร์แนะนำ' : 'Guided tour menu'}
+            className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2.5 shadow-xl"
+          >
+            <p className="px-1 pb-2 text-xs font-bold text-[var(--color-text-title)]">
+              {lang === 'th' ? 'ช่วยเหลือหน้านี้' : 'Page help'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (isThisTourActive) ctx.endTour();
+                else ctx.startModuleTour(moduleId);
+                setIsMenuOpen(false);
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
+            >
+              {isThisTourActive ? <Compass className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              <span>
+                {isThisTourActive
+                  ? lang === 'th' ? 'จบทัวร์แนะนำ' : 'End guided tour'
+                  : lang === 'th' ? 'ทัวร์วิธีใช้หน้านี้' : 'Guided tour'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={ctx.toggleGuideEnabled}
+              aria-pressed={ctx.isGuideEnabled}
+              className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
+            >
+              <Power className={`h-4 w-4 ${ctx.isGuideEnabled ? 'text-emerald-600' : 'text-[var(--color-text-muted)]'}`} />
+              <span>
+                {lang === 'th'
+                  ? `ทัวร์แนะนำ ${ctx.isGuideEnabled ? 'เปิด' : 'ปิด'} · กดเพื่อ${ctx.isGuideEnabled ? 'ปิด' : 'เปิด'}`
+                  : `Guides ${ctx.isGuideEnabled ? 'on' : 'off'} · Click to ${ctx.isGuideEnabled ? 'turn off' : 'turn on'}`}
+              </span>
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setIsMenuOpen((open) => !open)}
+          aria-label={lang === 'th' ? 'เปิดเมนูช่วยเหลือและทัวร์แนะนำ' : 'Open help and guided tour'}
+          aria-expanded={isMenuOpen}
+          className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--color-primary)] bg-[var(--color-card)] px-3.5 text-xs font-bold text-[var(--color-primary-text)] shadow-lg transition hover:bg-[var(--color-primary-light)]"
+        >
+          {isMenuOpen ? <X className="h-4 w-4" /> : <CircleHelp className="h-4 w-4" />}
+          <span>{lang === 'th' ? 'ช่วยเหลือ' : 'Help'}</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`inline-flex items-center gap-1 print:hidden shrink-0 ${className}`}>

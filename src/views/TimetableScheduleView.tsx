@@ -496,6 +496,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [slotActionError, setSlotActionError] = useState<string | null>(null);
   const [isSavingSlot, setIsSavingSlot] = useState(false);
   const [selectedSlotForDetail, setSelectedSlotForDetail] = useState<TimetableSlot | null>(null);
+  const [selectedConflictSlotId, setSelectedConflictSlotId] = useState<string | null>(null);
   const [periodRosterTarget, setPeriodRosterTarget] = useState<{
     slot: TimetableSlot;
     date: string;
@@ -1168,6 +1169,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     });
   });
   const conflictingSlotIds = new Set(conflicts.flatMap((conflict) => [conflict.slotA.id, conflict.slotB.id]));
+  const selectedSlotConflicts = selectedConflictSlotId
+    ? conflicts.filter((conflict) =>
+        conflict.slotA.id === selectedConflictSlotId || conflict.slotB.id === selectedConflictSlotId
+      )
+    : [];
   const editSlotConflicts = editSlotDraft
     ? slots.flatMap((slot) => {
       if (slot.id === editSlotDraft.id) return [];
@@ -2020,7 +2026,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 {lang === 'th' ? timetableGroup.labelTh : timetableGroup.labelEn}
               </span>
             </div>
-            <ModuleTourTrigger moduleId="timetable" lang={lang} />
+            <ModuleTourTrigger moduleId="timetable" lang={lang} floating />
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
             <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="seg-tab-group max-w-full overflow-x-auto no-scrollbar">
@@ -2114,19 +2120,34 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
-      {/* Slim Conflict Warning Strip (staff only) */}
-      {!isPersonalViewer && conflicts.length > 0 && (
-        <details className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
-          <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 px-2.5 py-1 text-[11px] font-semibold">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
-            <span className="truncate">พบข้อขัดแย้งตารางเรียน {conflicts.length} คู่ในภาคเรียนที่เลือก · คาบที่เกี่ยวข้องมีกรอบสีส้ม</span>
-            <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0" />
-          </summary>
-          <div className="max-h-80 space-y-2 overflow-y-auto border-t border-amber-200 px-3 py-2 dark:border-amber-800">
-            <p className="text-[10px]">
-              ตรวจสอบรายการที่ชนกัน แล้วเปิดรายละเอียดของคาบเพื่อแก้ไขครูผู้สอน ห้องเรียน ห้องสถานที่ หรือเวลา
-            </p>
-            {conflicts.map(({ key, slotA, slotB, reasons, overlapStart, overlapEnd }) => {
+      {!isPersonalViewer && selectedConflictSlotId && selectedSlotConflicts.length > 0 && (
+        <div
+          role="dialog"
+          aria-modal="false"
+          aria-label="รายละเอียดข้อขัดแย้งตารางสอน"
+          className="fixed bottom-20 left-3 z-[100] w-[min(28rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-amber-300 bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl dark:border-amber-700 sm:left-5 md:bottom-5"
+        >
+          <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/60">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-amber-950 dark:text-amber-100">
+                ข้อขัดแย้งของคาบนี้ · {selectedSlotConflicts.length} คู่
+              </p>
+              <p className="text-[10px] text-amber-800 dark:text-amber-200">
+                กดรายการเพื่อเปิดรายละเอียดคาบที่เกี่ยวข้อง
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedConflictSlotId(null)}
+              aria-label="ปิดรายละเอียดข้อขัดแย้ง"
+              className="rounded-md p-1 text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:hover:bg-amber-900"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="max-h-[55vh] space-y-2 overflow-y-auto p-2.5">
+            {selectedSlotConflicts.map(({ key, slotA, slotB, reasons, overlapStart, overlapEnd }) => {
               const dayLabel = DAYS.find((day) => day.key === slotA.dayOfWeek)?.th || slotA.dayOfWeek;
               const periodLabel = slotA.periodNumber === slotB.periodNumber
                 ? `คาบ ${slotA.periodNumber}`
@@ -2135,36 +2156,36 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 ? `${formatTimeMinutes(overlapStart)}–${formatTimeMinutes(overlapEnd)}`
                 : 'เวลาเดียวกัน';
               return (
-                <div key={key} className="rounded-lg border border-amber-200 bg-white/70 p-2 dark:border-amber-800 dark:bg-black/20">
-                  <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold">
-                    <span>{dayLabel} · {periodLabel} · เวลาซ้อน {overlapLabel}</span>
-                    <span className="font-normal text-amber-800 dark:text-amber-200">
-                      ชนกัน: {reasons.join(' · ')}
-                    </span>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                <section key={key} className="rounded-lg border border-amber-200 p-2 dark:border-amber-800">
+                  <p className="mb-1 text-[10px] font-semibold">
+                    {dayLabel} · {periodLabel} · {overlapLabel}
+                  </p>
+                  <p className="mb-2 text-[10px] text-amber-800 dark:text-amber-200">
+                    ชนกัน: {reasons.join(' · ')}
+                  </p>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
                     {[slotA, slotB].map((slot) => (
                       <button
                         key={slot.id}
                         type="button"
-                        onClick={() => openConflictSlot(slot)}
-                        className="flex min-w-0 flex-col items-start gap-0.5 rounded-md border border-amber-200 bg-amber-50/70 px-2 py-1.5 text-left text-[10px] hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-900/50"
+                        onClick={() => {
+                          setSelectedConflictSlotId(null);
+                          openConflictSlot(slot);
+                        }}
+                        className="flex min-w-0 flex-col items-start rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-left text-[10px] hover:border-amber-400"
                       >
                         <span className="w-full truncate font-bold">
                           {slot.courseCode} · {slot.courseTitleTh}
                         </span>
-                        <span>ห้องเรียน {slot.classRoom || 'ไม่ระบุ'} · ครู {formatSlotTeachersDisplay(slot)}</span>
-                        <span>
-                          สถานที่ {slot.room || 'ไม่ระบุ'} · {canEditTimetableSlots ? 'แก้ไขคาบนี้' : 'เปิดรายละเอียดคาบนี้'}
-                        </span>
+                        <span>ห้อง {slot.classRoom || 'ไม่ระบุ'} · ครู {formatSlotTeachersDisplay(slot)}</span>
                       </button>
                     ))}
                   </div>
-                </div>
+                </section>
               );
             })}
           </div>
-        </details>
+        </div>
       )}
 
       {/* MAIN VIEW CONTENT: Grid Table, Substitute Finder, Workload, or Hours Criteria */}
@@ -3893,7 +3914,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                         สอนคู่
                                       </span>
                                     )}
-                                    {conflictingSlotIds.has(slot.id) && <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" />}
+                                    {conflictingSlotIds.has(slot.id) && !isPersonalViewer && (
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setSelectedConflictSlotId(slot.id);
+                                        }}
+                                        aria-label={`ดูข้อขัดแย้งของคาบ ${slot.courseTitleTh}`}
+                                        title="ดูรายละเอียดข้อขัดแย้ง"
+                                        className="rounded p-0.5 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
+                                      >
+                                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                                      </button>
+                                    )}
                                   </span>
                                 </span>
                                 <span className="block text-[10px] font-bold text-[var(--color-text-title)]">
@@ -4359,9 +4393,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                                         {slot.classRoom}
                                       </span>
                                       {hasConflict && !isPersonalViewer && (
-                                        <span title="ตรวจพบคาบชนกัน!" className="shrink-0 text-amber-700 dark:text-amber-300">
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            setSelectedConflictSlotId(slot.id);
+                                          }}
+                                          aria-label={`ดูข้อขัดแย้งของคาบ ${slot.courseTitleTh}`}
+                                          title="ดูรายละเอียดข้อขัดแย้ง"
+                                          className="shrink-0 rounded p-0.5 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
+                                        >
                                           <AlertTriangle className="w-3.5 h-3.5" />
-                                        </span>
+                                        </button>
                                       )}
                                     </div>
                                     {slotActivity.isActive && (

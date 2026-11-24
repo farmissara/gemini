@@ -72,6 +72,7 @@ import {
   CampusGateGeofence,
 } from '../types';
 import { formatSemesterLabel } from '../lib/schoolSettings';
+import { emitAppToast } from '../components/common/ToastProvider';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { getHolidayForDate, getUpcomingHolidays, isWeekendDate } from '../lib/thaiHolidays';
@@ -213,6 +214,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onLoadAttendanceRange,
 }) => {
   const [localFocusMode, setLocalFocusMode] = useState(false);
+  const welcomeToastShownRef = useRef<string | null>(null);
   const isFocusMode = typeof controlledFocusMode === 'boolean' ? controlledFocusMode : localFocusMode;
   const handleToggleFocus = () => {
     if (onToggleFocusMode) {
@@ -646,6 +648,70 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   const teacherNextSlot = todayScheduledSlots[0] || null;
+  const dailyBriefText = todayHoliday
+    ? lang === 'th'
+      ? `วันนี้เป็นวันหยุด: ${todayHoliday.nameTh} · สามารถเช็กปฏิทินโรงเรียนและงานค้างได้`
+      : `Holiday today: ${todayHoliday.nameEn} · Check the school calendar and pending work`
+    : isTodayWeekend
+      ? lang === 'th'
+        ? 'วันหยุดสุดสัปดาห์ · ไม่มีคาบเรียนปกติ ตรวจสอบปฏิทินวันหยุดราชการได้ในตารางเรียน'
+        : 'Weekend · Check upcoming holidays and assignments in your calendar'
+      : currentRole === 'teacher'
+        ? teacherNextSlot
+          ? lang === 'th'
+            ? `วันนี้คุณมีสอน ${todayScheduledSlots.length} คาบ · คาบแรก ${teacherNextSlot.courseTitleTh || teacherNextSlot.courseCode} (${teacherNextSlot.room || 'ห้องเรียน'})`
+            : `You have ${todayScheduledSlots.length} classes today · First: ${teacherNextSlot.courseTitleEn || teacherNextSlot.courseCode}`
+          : lang === 'th'
+            ? 'วันนี้ยังไม่มีคาบสอนในตาราง · พร้อมตรวจงานและบันทึกคะแนน ปพ.5'
+            : 'No classes scheduled today · Ready for grading and student support'
+        : currentRole === 'parent'
+          ? primaryScopedStudent
+            ? lang === 'th'
+              ? `ข้อมูลผู้เรียนในความดูแล: ${primaryScopedStudent.firstNameTh} ${primaryScopedStudent.lastNameTh} (ชั้น ${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
+              : `Linked student: ${primaryScopedStudent.firstNameEn} ${primaryScopedStudent.lastNameEn} (${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
+            : lang === 'th'
+              ? 'ติดตามการเข้าเรียน ผลการเรียน และประกาศของบุตรหลาน'
+              : 'Track your child’s attendance, grades, and school updates'
+          : lang === 'th'
+            ? `ภาพรวมสถานศึกษาประจำวัน · นักเรียนในระบบ ${totalStudents} คน · พร้อมใช้งานทุกโมดูล`
+            : `Daily campus summary · ${totalStudents} active students`;
+  const academicPeriodGreeting = lang === 'th'
+    ? `ปีการศึกษา ${systemConfig.academicYear} (${formatSemesterLabel(systemConfig.currentSemester)})`
+    : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`;
+
+  useEffect(() => {
+    if (!currentUser || isAdminSimplified) return;
+
+    const welcomeKey = `eduverse_dashboard_welcome_${school?.id || 'default'}_${currentUser.id}_${currentRole}_${todayStr}`;
+    try {
+      if (window.sessionStorage.getItem(welcomeKey)) return;
+      window.sessionStorage.setItem(welcomeKey, '1');
+    } catch {
+      if (welcomeToastShownRef.current === welcomeKey) return;
+      welcomeToastShownRef.current = welcomeKey;
+    }
+
+    emitAppToast({
+      id: welcomeKey,
+      title: `${roleBadgeLabel} · ${formattedTodayDate} · ${academicPeriodGreeting}`,
+      message: `${timeGreeting}, ${userDisplayName}\n${dailyBriefText}`,
+      tone: 'info',
+      durationMs: 9000,
+    });
+  }, [
+    academicPeriodGreeting,
+    currentRole,
+    currentUser,
+    dailyBriefText,
+    formattedTodayDate,
+    isAdminSimplified,
+    roleBadgeLabel,
+    school?.id,
+    timeGreeting,
+    todayStr,
+    userDisplayName,
+  ]);
+
   const teacherAttendanceTab: NavTab | null =
     schoolPermissions?.teacher_attendance !== false && isModuleEnabled('attendance')
       ? 'attendance'
@@ -1097,66 +1163,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
           ) : (
           <div className="dash-scroll-stack animate-in fade-in duration-150">
-            {/* MORNING BRIEF STRIP (Harmonized with AuthLayout Editorial Tone) */}
-            <section
-              aria-label={lang === 'th' ? 'สรุปภาพรวมประจำวัน' : 'Daily Morning Brief'}
-              className="no-print morning-brief-strip px-3 sm:px-4 py-2.5 sm:py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2"
-            >
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[var(--color-primary-text)]">
-                  <span>{roleBadgeLabel}</span>
-                  <span className="text-[var(--color-text-muted)]" aria-hidden="true">·</span>
-                  <span className="text-[var(--color-text-muted)] font-semibold tabular-nums">
-                    {formattedTodayDate}
-                  </span>
-                  <span className="text-[var(--color-text-muted)]" aria-hidden="true">·</span>
-                  <span className="text-[var(--color-text-muted)] font-semibold tabular-nums">
-                    {lang === 'th'
-                      ? `ปีการศึกษา ${systemConfig.academicYear} (${formatSemesterLabel(systemConfig.currentSemester)})`
-                      : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
-                  </span>
-                </div>
-                <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-[var(--color-text-title)] truncate">
-                  {timeGreeting}, {userDisplayName}
-                </h2>
-                <p className="text-xs text-[var(--color-text-muted)] truncate" title={
-                  todayHoliday
-                    ? (lang === 'th' ? `วันหยุดวันนี้: ${todayHoliday.nameTh}` : `Holiday Today: ${todayHoliday.nameEn}`)
-                    : upcomingHoliday
-                      ? (lang === 'th' ? `วันหยุดถัดไป (${upcomingHoliday.date}): ${upcomingHoliday.nameTh}` : `Upcoming (${upcomingHoliday.date}): ${upcomingHoliday.nameEn}`)
-                      : undefined
-                }>
-                  {todayHoliday
-                    ? lang === 'th'
-                      ? `วันนี้เป็นวันหยุด: ${todayHoliday.nameTh} · สามารถเช็กปฏิทินโรงเรียนและงานค้างได้`
-                      : `Holiday Today: ${todayHoliday.nameEn} · Check school calendar & assignments`
-                    : isTodayWeekend
-                      ? lang === 'th'
-                        ? 'วันหยุดสุดสัปดาห์ · ไม่มีคาบเรียนปกติ ตรวจสอบปฏิทินวันหยุดราชการได้ในตารางเรียน'
-                        : 'Weekend · Check upcoming holidays and assignments in your calendar'
-                      : currentRole === 'teacher'
-                        ? teacherNextSlot
-                          ? lang === 'th'
-                            ? `วันนี้คุณมีสอน ${todayScheduledSlots.length} คาบ · คาบแรก ${teacherNextSlot.courseTitleTh || teacherNextSlot.courseCode} (${teacherNextSlot.room || 'ห้องเรียน'})`
-                            : `You have ${todayScheduledSlots.length} classes today · First: ${teacherNextSlot.courseTitleEn || teacherNextSlot.courseCode}`
-                          : lang === 'th'
-                            ? 'วันนี้ยังไม่มีคาบสอนในตาราง · พร้อมตรวจงานและบันทึกคะแนน ปพ.5'
-                            : 'No classes scheduled today · Ready for grading and student support'
-                        : currentRole === 'parent'
-                            ? primaryScopedStudent
-                              ? lang === 'th'
-                                ? `ข้อมูลผู้เรียนในความดูแล: ${primaryScopedStudent.firstNameTh} ${primaryScopedStudent.lastNameTh} (ชั้น ${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
-                                : `Linked student: ${primaryScopedStudent.firstNameEn} ${primaryScopedStudent.lastNameEn} (${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
-                              : lang === 'th'
-                                ? 'ติดตามการเข้าเรียน ผลการเรียน และประกาศของบุตรหลาน'
-                                : 'Track your child’s attendance, grades, and school updates'
-                            : lang === 'th'
-                              ? `ภาพรวมสถานศึกษาประจำวัน · นักเรียนในระบบ ${totalStudents} คน · พร้อมใช้งานทุกโมดูล`
-                              : `Daily campus summary · ${totalStudents} active students`}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {morningQuickActions.length > 0 && (
+              <nav aria-label={lang === 'th' ? 'ทางลัดประจำวัน' : 'Daily shortcuts'} className="no-print flex flex-wrap items-center justify-end gap-2">
                 {morningQuickActions.slice(0, 2).map((act) => {
                   const ActionIcon = act.icon;
                   return (
@@ -1171,8 +1179,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </button>
                   );
                 })}
-              </div>
-            </section>
+              </nav>
+            )}
 
             {/* STRICTLY 3 ROLE-ADAPTED LARGE KPI CELLS */}
             <section
