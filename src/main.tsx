@@ -52,10 +52,24 @@ if (typeof window !== 'undefined') {
   });
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
-  </StrictMode>,
-);
+const root = createRoot(document.getElementById('root')!);
+
+if (import.meta.env.DEV && window.location.pathname === '/__ui-preview') {
+  void import('./dev/UiPreview').then(({ UiPreview }) => {
+    root.render(
+      <StrictMode>
+        <ToastProvider>
+          <UiPreview />
+        </ToastProvider>
+      </StrictMode>,
+    );
+  });
+} else {
+  root.render(
+    <StrictMode>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </StrictMode>,
+  );
+}

@@ -819,44 +819,63 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
               <span>บันทึกพฤติกรรม</span>
             </button>
           )}
-          {onOpenCoreReportCard && (
-            <button
-              type="button"
-              onClick={() => onOpenCoreReportCard(selectedStudent.id)}
-              className="btn-tool-tone px-2.5 py-1.5 text-xs whitespace-nowrap"
-            >
-              <Award className="w-3.5 h-3.5 tone-text" />
-              <span>Report Card วิชาพื้นฐาน</span>
-            </button>
-          )}
-          {onOpenQualitativeSummary && (
-            <button
-              type="button"
-              onClick={onOpenQualitativeSummary}
-              className="btn-tool-neutral px-2.5 py-1.5 text-xs whitespace-nowrap"
-            >
-              <ClipboardCheck className="w-3.5 h-3.5" />
-              <span>สรุปคุณลักษณะฯ รายชั้น</span>
-            </button>
-          )}
-          {onOpenReportCard && (
-            <button
-              type="button"
-              onClick={() => onOpenReportCard(selectedStudent)}
-              className="btn-tool-neutral px-2.5 py-1.5 text-xs whitespace-nowrap"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>ใบรายงานผล (ปพ.1)</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="btn-tool-neutral px-2.5 py-1.5 text-xs whitespace-nowrap"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>ส่งออก CSV</span>
-          </button>
+          <details className="relative">
+            <summary className="btn-tool-neutral list-none px-2.5 py-1.5 text-xs whitespace-nowrap cursor-pointer">
+              <span>เอกสารและรายงาน</span>
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+              {onOpenCoreReportCard && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    onOpenCoreReportCard(selectedStudent.id);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <Award className="w-3.5 h-3.5 tone-text" />
+                  <span>Report Card วิชาพื้นฐาน</span>
+                </button>
+              )}
+              {onOpenQualitativeSummary && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    onOpenQualitativeSummary();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  <span>สรุปคุณลักษณะฯ รายชั้น</span>
+                </button>
+              )}
+              {onOpenReportCard && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    onOpenReportCard(selectedStudent);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>ใบรายงานผล (ปพ.1)</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.closest('details')?.removeAttribute('open');
+                  handleExportCsv();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>ส่งออก CSV</span>
+              </button>
+            </div>
+          </details>
           <button
             type="button"
             onClick={handlePrint}

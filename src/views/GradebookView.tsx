@@ -1505,9 +1505,11 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   };
 
   return (
-    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
+    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden ${embeddedInStudentManagement ? 'space-y-1.5' : 'space-y-2.5'}`}>
       {/* Gradebook title, clean tab switcher, and actions */}
-      <div className="shrink-0 px-4 py-2.5 app-page-header flex flex-wrap items-center justify-between gap-x-4 gap-y-2 print:hidden">
+      <div className={`shrink-0 app-page-header flex flex-wrap items-center justify-between gap-x-4 gap-y-2 print:hidden ${
+        embeddedInStudentManagement ? 'px-2.5 py-1.5' : 'px-4 py-2.5'
+      }`}>
         <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
           {!embeddedInStudentManagement && (
             <>
@@ -1778,7 +1780,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           (gradeEligibilityFilter !== 'all' ? 1 : 0);
 
         return (
-          <div data-guide-id="gradebook-course-bar" className="shrink-0 toolbar-filter-zone print:hidden space-y-2 py-3 px-4">
+          <div data-guide-id="gradebook-course-bar" className={`shrink-0 toolbar-filter-zone print:hidden ${
+            embeddedInStudentManagement ? 'space-y-1 py-1.5 px-2.5' : 'space-y-2 py-3 px-4'
+          }`}>
             <div className="flex flex-wrap items-center gap-1.5">
               {loggedInTeacherFilterKey && (
                 <button
@@ -1914,7 +1918,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       setPp5Page(0);
                     }}
                     placeholder="ค้นหานักเรียน / ห้อง..."
-                    className="w-full h-11 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] pl-9 pr-8 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
+                    className={`w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] pl-9 pr-8 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] ${
+                      embeddedInStudentManagement ? 'h-9' : 'h-11'
+                    }`}
                   />
                   {studentSearchTerm && (
                     <button
@@ -1938,7 +1944,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowMoreFilters((prev) => !prev)}
-                  className={`h-11 inline-flex items-center gap-2 px-4 rounded-xl border text-sm font-semibold cursor-pointer transition shrink-0 ${
+                  className={`inline-flex items-center gap-2 rounded-xl border font-semibold cursor-pointer transition shrink-0 ${
+                    embeddedInStudentManagement ? 'h-9 px-2.5 text-xs' : 'h-11 px-4 text-sm'
+                  } ${
                     showMoreFilters || extraFilterCount > 0
                       ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
                       : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
@@ -1951,7 +1959,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               )}
 
               {!isPersonalGradeViewer && (
-                <span className="h-11 inline-flex items-center px-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-sm font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+                <span className={`inline-flex items-center rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap ${
+                  embeddedInStudentManagement ? 'h-9 px-2.5 text-xs' : 'h-11 px-4 text-sm'
+                }`}>
                   {activeTab === 'gradebook'
                     ? gradebookRows.length > 0
                       ? `${filteredGradebookRows.length}/${gradebookRows.length}`
@@ -3151,6 +3161,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           currentPp5Page={currentPp5Page}
           pp5PageSize={pp5PageSize}
           setPp5Page={setPp5Page}
+          compactToolbar={embeddedInStudentManagement}
           searchQuery={studentSearchTerm}
           renderPageControls={renderPageControls}
         />

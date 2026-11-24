@@ -31,6 +31,7 @@ import {
   saveClassroomGpsConfig,
 } from '../lib/classroomGps';
 import { isValidCoordinatePair } from '../lib/schoolGps';
+import { BaseModal } from './common/BaseModal';
 import {
   resolveMatchedCourseForSlot,
   resolveSlotStudents,
@@ -101,14 +102,17 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
   >({});
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
-  // Classroom GPS inline editor state
+  // Classroom GPS editor state
   const [showGpsEditor, setShowGpsEditor] = useState(false);
   const [classroomGps, setClassroomGps] = useState<ClassroomGpsConfig | null>(null);
   const [latInput, setLatInput] = useState('');
   const [lngInput, setLngInput] = useState('');
   const [radiusInput, setRadiusInput] = useState(50);
   const [isLocatingGps, setIsLocatingGps] = useState(false);
-  const [gpsStatusMsg, setGpsStatusMsg] = useState<string | null>(null);
+  const [gpsStatusMsg, setGpsStatusMsg] = useState<{
+    message: string;
+    tone: 'success' | 'error';
+  } | null>(null);
 
   const matchedCourse = useMemo(
     () => resolveMatchedCourseForSlot(slot, courses),
@@ -380,7 +384,10 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
 
   const handleDetectClassroomGps = () => {
     if (!navigator.geolocation) {
-      setGpsStatusMsg('อุปกรณ์นี้ไม่รองรับการดึงพิกัด GPS อัตโนมัติ กรุณากรอกละติจูด/ลองจิจูดด้วยตนเอง');
+      setGpsStatusMsg({
+        message: 'อุปกรณ์นี้ไม่รองรับการดึงพิกัด GPS อัตโนมัติ กรุณากรอกละติจูด/ลองจิจูดด้วยตนเอง',
+        tone: 'error',
+      });
       return;
     }
     setIsLocatingGps(true);
@@ -406,11 +413,17 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
         });
         setClassroomGps(fresh);
         setIsLocatingGps(false);
-        setGpsStatusMsg(`บันทึกพิกัดห้องเรียน ${resolvedRoomLabel} สำเร็จ (${lat}, ${lng} · รัศมี ${radiusInput} ม.)`);
+        setGpsStatusMsg({
+          message: `บันทึกพิกัดห้องเรียน ${resolvedRoomLabel} สำเร็จ (${lat}, ${lng} · รัศมี ${radiusInput} ม.)`,
+          tone: 'success',
+        });
       },
       () => {
         setIsLocatingGps(false);
-        setGpsStatusMsg('ไม่สามารถดึงพิกัด GPS ได้ กรุณาอนุญาตสิทธิ์ตำแหน่งหรือกรอกพิกัดด้วยตนเอง');
+        setGpsStatusMsg({
+          message: 'ไม่สามารถดึงพิกัด GPS ได้ กรุณาอนุญาตสิทธิ์ตำแหน่งหรือกรอกพิกัดด้วยตนเอง',
+          tone: 'error',
+        });
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -420,7 +433,10 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
     const lat = Number(latInput);
     const lng = Number(lngInput);
     if (!isValidCoordinatePair(lat, lng)) {
-      setGpsStatusMsg('กรุณากรอกค่าละติจูด/ลองจิจูดที่ถูกต้อง');
+      setGpsStatusMsg({
+        message: 'กรุณากรอกค่าละติจูด/ลองจิจูดที่ถูกต้อง',
+        tone: 'error',
+      });
       return;
     }
     saveClassroomGpsConfig(schoolId, {
@@ -437,7 +453,10 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
       classRoom: slot.classRoom,
     });
     setClassroomGps(fresh);
-    setGpsStatusMsg(`บันทึกพิกัดห้องเรียน ${resolvedRoomLabel} เรียบร้อยแล้ว`);
+    setGpsStatusMsg({
+      message: `บันทึกพิกัดห้องเรียน ${resolvedRoomLabel} เรียบร้อยแล้ว`,
+      tone: 'success',
+    });
   };
 
   return (
@@ -464,7 +483,14 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
             {showGpsEditorToggle && (
               <button
                 type="button"
-                onClick={() => setShowGpsEditor((prev) => !prev)}
+                onClick={() => setShowGpsEditor(true)}
+                aria-haspopup="dialog"
+                aria-expanded={showGpsEditor}
+                title={
+                  classroomGps
+                    ? `ตั้งค่าพิกัดห้องเรียน ${resolvedRoomLabel} ใหม่`
+                    : `ยังไม่ตั้งพิกัดห้องเรียน ${resolvedRoomLabel}`
+                }
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer transition ${
                   classroomGps
                     ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
@@ -474,8 +500,8 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
                 <span>
                   {classroomGps
-                    ? `พิกัดห้องเรียน: รัศมี ${classroomGps.radiusMeters} ม.`
-                    : 'ยังไม่ตั้งพิกัดห้องเรียน (คลิกตั้งค่า)'}
+                    ? `พิกัดตั้งแล้ว · ${classroomGps.radiusMeters} ม.`
+                    : 'ตั้งค่าพิกัด GPS'}
                 </span>
               </button>
             )}
@@ -550,64 +576,104 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
           </div>
         )}
 
-        {/* Inline Classroom GPS Setter */}
+        {/* Classroom GPS Settings Popup */}
         {showGpsEditor && showGpsEditorToggle && (
-          <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2 text-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                <span>ตั้งค่าพิกัดห้องเรียน ({resolvedRoomLabel}) สำหรับเช็คชื่อคาบนี้</span>
-              </span>
+          <BaseModal
+            isOpen={showGpsEditor}
+            onClose={() => setShowGpsEditor(false)}
+            title="ตั้งค่าพิกัดห้องเรียน"
+            subtitle={`${resolvedRoomLabel} · ${classroomGps ? `ตั้งแล้ว รัศมี ${classroomGps.radiusMeters} ม.` : 'ยังไม่ได้ตั้งค่า'}`}
+            icon={<MapPin className="h-4 w-4 text-[var(--color-primary-text)]" />}
+            maxWidthClass="max-w-xl"
+            footer={
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowGpsEditor(false)}
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-4 py-2 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card)] cursor-pointer"
+                >
+                  ปิด
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveManualClassroomGps}
+                  className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 cursor-pointer"
+                >
+                  บันทึกพิกัดห้อง
+                </button>
+              </>
+            }
+          >
+            <div className="space-y-4">
+              <div
+                className={`rounded-xl border p-3 text-xs font-semibold ${
+                  classroomGps
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+                    : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200'
+                }`}
+              >
+                {classroomGps
+                  ? `ตั้งพิกัดห้องเรียนแล้ว · รัศมี ${classroomGps.radiusMeters} เมตร`
+                  : 'ยังไม่ตั้งพิกัดห้องเรียน กรุณาตั้งค่าก่อนเช็คชื่อรายคาบ'}
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={latInput}
+                  onChange={(e) => setLatInput(e.target.value)}
+                  aria-label="ละติจูด"
+                  placeholder="ละติจูด (เช่น 13.736717)"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-mono text-[var(--color-text-title)]"
+                />
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={lngInput}
+                  onChange={(e) => setLngInput(e.target.value)}
+                  aria-label="ลองจิจูด"
+                  placeholder="ลองจิจูด (เช่น 100.523186)"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-mono text-[var(--color-text-title)]"
+                />
+                <select
+                  value={radiusInput}
+                  onChange={(e) => setRadiusInput(Number(e.target.value))}
+                  aria-label="รัศมีพิกัดห้องเรียน"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs text-[var(--color-text-title)]"
+                >
+                  {[20, 30, 50, 80, 100, 150, 200].map((r) => (
+                    <option key={r} value={r}>
+                      รัศมี {r} เมตร
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 onClick={handleDetectClassroomGps}
                 disabled={isLocatingGps}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--color-primary)] text-white text-[11px] font-bold cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-3 py-2 text-xs font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 cursor-pointer"
               >
-                <LocateFixed className={`w-3.5 h-3.5 ${isLocatingGps ? 'animate-spin' : ''}`} />
-                <span>{isLocatingGps ? 'กำลังอ่านพิกัด...' : 'ดึงพิกัดห้องเรียนปัจจุบัน'}</span>
+                <LocateFixed className={`h-3.5 w-3.5 ${isLocatingGps ? 'animate-spin' : ''}`} />
+                <span>{isLocatingGps ? 'กำลังอ่านพิกัด...' : 'ใช้ตำแหน่งปัจจุบันและบันทึก'}</span>
               </button>
+
+              {gpsStatusMsg && (
+                <p
+                  role={gpsStatusMsg.tone === 'error' ? 'alert' : 'status'}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold ${
+                    gpsStatusMsg.tone === 'error'
+                      ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'
+                      : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+                  }`}
+                >
+                  {gpsStatusMsg.message}
+                </p>
+              )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-              <input
-                type="number"
-                step="0.000001"
-                value={latInput}
-                onChange={(e) => setLatInput(e.target.value)}
-                placeholder="ละติจูด (เช่น 13.736717)"
-                className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-mono"
-              />
-              <input
-                type="number"
-                step="0.000001"
-                value={lngInput}
-                onChange={(e) => setLngInput(e.target.value)}
-                placeholder="ลองจิจูด (เช่น 100.523186)"
-                className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-mono"
-              />
-              <select
-                value={radiusInput}
-                onChange={(e) => setRadiusInput(Number(e.target.value))}
-                className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
-              >
-                {[20, 30, 50, 80, 100, 150, 200].map((r) => (
-                  <option key={r} value={r}>
-                    รัศมี {r} เมตร
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={handleSaveManualClassroomGps}
-                className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs cursor-pointer"
-              >
-                บันทึกพิกัดห้อง
-              </button>
-            </div>
-            {gpsStatusMsg && (
-              <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{gpsStatusMsg}</p>
-            )}
-          </div>
+          </BaseModal>
         )}
 
         {/* Summary Strip + Search + Filter */}

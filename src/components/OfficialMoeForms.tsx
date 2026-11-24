@@ -95,6 +95,7 @@ interface Pp5OfficialFormProps {
   currentPp5Page: number;
   pp5PageSize: number;
   setPp5Page: (page: number) => void;
+  compactToolbar?: boolean;
   searchQuery?: string;
   renderPageControls: (
     page: number,
@@ -132,6 +133,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   currentPp5Page,
   pp5PageSize,
   setPp5Page,
+  compactToolbar = false,
   searchQuery = '',
   renderPageControls,
 }) => {
@@ -676,9 +678,11 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   ];
 
   return (
-    <div className="space-y-3">
+    <div className={compactToolbar ? 'space-y-1.5' : 'space-y-3'}>
       {/* Screen-only Section Switcher & Print Controls */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2.5 print:hidden space-y-2">
+      <div className={`rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] print:hidden ${
+        compactToolbar ? 'p-1.5 space-y-1' : 'p-2.5 space-y-2'
+      }`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <BookOpen className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
@@ -702,13 +706,20 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div
+          aria-label="เลือกส่วนของสมุด ปพ.๕"
+          className={`flex gap-1.5 ${
+            compactToolbar ? 'flex-nowrap overflow-x-auto pb-0.5' : 'flex-wrap'
+          }`}
+        >
           {sectionTabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveSection(tab.id)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`shrink-0 rounded-lg border text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                compactToolbar ? 'px-2 py-1' : 'px-2.5 py-1.5'
+              } ${
                 activeSection === tab.id
                   ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
                   : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
@@ -733,7 +744,9 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
       )}
 
       {/* Screen-only Collapsible Official Metadata & Ratio Editor */}
-      <details className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 print:hidden">
+      <details className={`rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] print:hidden ${
+        compactToolbar ? 'px-2.5 py-1.5' : 'px-3 py-2'
+      }`}>
         <summary className="list-none flex flex-wrap items-center justify-between gap-2 cursor-pointer text-xs font-bold text-[var(--color-text-title)]">
           <div className="flex items-center gap-2">
             <FileText className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />

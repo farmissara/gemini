@@ -222,7 +222,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const hasMoreToolsItems =
     Boolean(onSwitchToMobileMode) ||
     showImportExportAction ||
-    (canAccessSchoolOperations && Boolean(onOpenGuide)) ||
     Boolean(onOpenOnboardingTutor) ||
     Boolean(onOpenLoginGuide) ||
     (canAccessSchoolOperations && Boolean(onOpenCoordinationDesk)) ||
@@ -409,6 +408,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? (lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus')
                 : (lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode')}
             </span>
+          </button>
+        )}
+
+        {canAccessSchoolOperations && onOpenGuide && (
+          <button
+            type="button"
+            onClick={() => onOpenGuide(currentRole === 'student' || currentRole === 'parent' ? 'student' : 'teacher')}
+            aria-label={lang === 'th' ? 'เปิดคู่มือการใช้งาน' : 'Open user guide'}
+            title={lang === 'th' ? 'คู่มือการใช้งาน' : 'User guide'}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">{lang === 'th' ? 'ช่วยเหลือ' : 'Help'}</span>
           </button>
         )}
 
@@ -666,20 +678,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <CreditCard className="h-4 w-4 text-[var(--color-text-muted)]" />
                       <span>{lang === 'th' ? 'ตั้งค่าชำระเงินคลังข้อสอบ' : 'Exam Payment Settings'}</span>
-                    </button>
-                  )}
-
-                  {canAccessSchoolOperations && onOpenGuide && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAccountMenuOpen(false);
-                        onOpenGuide(currentRole === 'student' || currentRole === 'parent' ? 'student' : 'teacher');
-                      }}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                    >
-                      <HelpCircle className="h-4 w-4 text-[var(--color-text-muted)]" />
-                      <span>{lang === 'th' ? 'คู่มือการใช้งาน' : 'User Guide'}</span>
                     </button>
                   )}
 

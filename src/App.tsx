@@ -5889,7 +5889,7 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : `app-workspace ${getModuleTone(currentTab)} p-2.5 sm:p-3.5 lg:p-4 pb-20 md:pb-5 overflow-y-auto`}`}>
+        <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${useImmersiveGameLayout ? 'p-0 overflow-hidden' : `app-workspace ${getModuleTone(currentTab)} p-2.5 sm:p-3.5 lg:p-4 pb-20 md:pb-5 ${currentTab === 'students' ? 'overflow-hidden' : 'overflow-y-auto'}`}`}>
           <div className={`${useImmersiveGameLayout ? 'max-w-none h-full' : 'w-full'} min-w-0 flex-1 min-h-0 flex flex-col`}>
             {!useImmersiveGameLayout && focusMode && (
               <FocusToolbar

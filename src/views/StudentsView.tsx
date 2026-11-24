@@ -2339,6 +2339,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               setActiveTab('dev_book');
             }}
             onOpenImportExport={onOpenGradeImportExport}
+            embeddedInStudentManagement
             lang={lang}
           />
         </div>
