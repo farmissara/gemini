@@ -4,11 +4,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Compass,
   Crosshair,
   Lightbulb,
-  Play,
-  Power,
   X,
 } from 'lucide-react';
 import { AppLanguage, UserRole } from '../../types';
@@ -755,93 +752,7 @@ interface ModuleTourTriggerProps {
 }
 
 /**
- * Embedded per-module Guided Tour trigger & ON/OFF toggle control.
- * Lives directly inside each main module (Dashboard, Gradebook, Students, Attendance, etc.)
- * instead of the login screen.
+ * Legacy per-module header tour trigger — now consolidated into FloatingMascotNavigator (ชาโค & หมี)
+ * so every page header remains clean without duplicate tour/toggle controls.
  */
-export const ModuleTourTrigger: React.FC<ModuleTourTriggerProps> = ({
-  moduleId,
-  lang,
-  className = '',
-  floating = false,
-}) => {
-  const ctx = useGuideTour();
-  const hasTour = Boolean(MODULE_GUIDED_TOURS[moduleId]);
-  if (!ctx || !hasTour) return null;
-
-  // Floating trigger is handled globally by FloatingMascotNavigator so there are no duplicate floating buttons
-  if (floating) return null;
-
-  const isThisTourActive = ctx.activeTourModuleId === moduleId;
-
-  return (
-    <div className={`inline-flex items-center gap-1 print:hidden shrink-0 ${className}`}>
-      <button
-        type="button"
-        onClick={() => {
-          if (isThisTourActive) {
-            ctx.endTour();
-          } else {
-            ctx.startModuleTour(moduleId);
-          }
-        }}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-          isThisTourActive
-            ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-xs'
-            : 'border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-        }`}
-        title={
-          lang === 'th'
-            ? 'เริ่มระบบนำทางทีละขั้นตอนพร้อมชี้จุดบนหน้าจอ'
-            : 'Start step-by-step guided tour with live screen spotlight'
-        }
-      >
-        {isThisTourActive ? (
-          <Compass className="w-3.5 h-3.5 shrink-0" />
-        ) : (
-          <Play className="w-3.5 h-3.5 shrink-0" />
-        )}
-        <span>
-          {isThisTourActive
-            ? lang === 'th'
-              ? 'กำลังนำทาง'
-              : 'Touring'
-            : lang === 'th'
-            ? 'ทัวร์วิธีใช้หน้านี้'
-            : 'Guided Tour'}
-        </span>
-      </button>
-
-      <button
-        type="button"
-        onClick={ctx.toggleGuideEnabled}
-        aria-pressed={ctx.isGuideEnabled}
-        title={
-          ctx.isGuideEnabled
-            ? lang === 'th'
-              ? 'ปิดการนำทางและป๊อปอัปชี้จุด'
-              : 'Turn OFF interactive guide'
-            : lang === 'th'
-            ? 'เปิดการนำทางและป๊อปอัปชี้จุด'
-            : 'Turn ON interactive guide'
-        }
-        className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
-          ctx.isGuideEnabled
-            ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200'
-            : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-        }`}
-      >
-        <Power className="w-3 h-3 shrink-0" />
-        <span className="hidden sm:inline">
-          {ctx.isGuideEnabled
-            ? lang === 'th'
-              ? 'เปิด'
-              : 'ON'
-            : lang === 'th'
-            ? 'ปิด'
-            : 'OFF'}
-        </span>
-      </button>
-    </div>
-  );
-};
+export const ModuleTourTrigger: React.FC<ModuleTourTriggerProps> = () => null;
