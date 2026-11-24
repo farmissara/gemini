@@ -80,6 +80,13 @@ import {
   type CameraFacingMode,
 } from '../lib/cameraStream';
 import {
+  composeLiveVideoSnapshot,
+  composeSimulatedStudioSnapshot,
+  type PlacedSticker,
+  type SelfieFilterId,
+  type SelfieFrameId,
+} from '../lib/selfieStickerStudio';
+import {
   AttendanceModalsAndSheets,
   LeaveRequestTab,
   NfcTapAttendanceTab,
@@ -293,9 +300,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [activeCameraId, setActiveCameraId] = useState<string | null>(null);
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
+  const [isSimulatedPhoto, setIsSimulatedPhoto] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isFlashActive, setIsFlashActive] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [selfieFilterId, setSelfieFilterId] = useState<SelfieFilterId>('normal');
+  const [selfieFrameId, setSelfieFrameId] = useState<SelfieFrameId>('mascot_duo');
+  const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([
+    { uid: 'init-1', stickerId: 'sparkle_heart', xPct: 82, yPct: 24, rotation: 10 },
+  ]);
+  const [selfieTimerSeconds, setSelfieTimerSeconds] = useState<0 | 3>(0);
+  const [selfieCountdown, setSelfieCountdown] = useState<number | null>(null);
+  const countdownIntervalRef = useRef<number | null>(null);
 
   const [checkinSuccessFeedback, setCheckinSuccessFeedback] = useState<CheckinSuccessFeedback | null>(null);
   const [showLineFlexPreview, setShowLineFlexPreview] = useState(false);
@@ -739,25 +755,39 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     };
   }, [subTab]);
 
-  const handleCaptureSnapshot = () => {
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current !== null) {
+        window.clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const executeSnapshotCapture = () => {
     setIsCapturing(true);
     setIsFlashActive(true);
     setTimeout(() => setIsFlashActive(false), 200);
 
+    const studioOptions = {
+      frameId: selfieFrameId,
+      filterId: selfieFilterId,
+      stickers: placedStickers,
+      personName: activePersonName || 'ผู้ใช้งาน',
+      gateName: selectedGate?.nameTh || 'จุดเช็คชื่อโรงเรียน',
+      checkTypeLabel: checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน',
+      timeText: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+    };
+
     if (videoRef.current && isCameraActive) {
       try {
-        const canvas = document.createElement('canvas');
-        canvas.width = videoRef.current.videoWidth || 640;
-        canvas.height = videoRef.current.videoHeight || 480;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          if (facingMode === 'user') {
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-          }
-          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-          setCapturedPhotoUrl(dataUrl);
+        const composited = composeLiveVideoSnapshot(
+          videoRef.current,
+          facingMode === 'user',
+          studioOptions
+        );
+        if (composited) {
+          setIsSimulatedPhoto(false);
+          setCapturedPhotoUrl(composited);
           setIsCapturing(false);
           return;
         }
@@ -766,11 +796,51 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       }
     }
 
+    setIsSimulatedPhoto(true);
+    if (currentUser?.role !== 'student') {
+      try {
+        const simulatedStudioUrl = composeSimulatedStudioSnapshot(
+          activePersonName || 'ผู้ใช้งาน',
+          studioOptions
+        );
+        if (simulatedStudioUrl) {
+          setCapturedPhotoUrl(simulatedStudioUrl);
+          setIsCapturing(false);
+          return;
+        }
+      } catch (e) {
+        console.error('Simulated studio capture failed:', e);
+      }
+    }
+
     const fallbackPhoto =
       activePersonDefaultAvatar ||
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500';
     setCapturedPhotoUrl(fallbackPhoto);
     setIsCapturing(false);
+  };
+
+  const handleCaptureSnapshot = () => {
+    if (selfieCountdown !== null) return;
+    if (selfieTimerSeconds > 0) {
+      let remaining: number = selfieTimerSeconds;
+      setSelfieCountdown(remaining);
+      countdownIntervalRef.current = window.setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          if (countdownIntervalRef.current !== null) {
+            window.clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setSelfieCountdown(null);
+          executeSnapshotCapture();
+        } else {
+          setSelfieCountdown(remaining);
+        }
+      }, 1000);
+      return;
+    }
+    executeSnapshotCapture();
   };
 
   const handleRefreshGps = () => {
@@ -914,7 +984,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       setSelfieActionError('ไม่พบข้อมูลผู้ใช้งานสำหรับเช็คอิน กรุณาติดต่อผู้ดูแลระบบ');
       return;
     }
-    if (currentUser?.role === 'student' && !capturedPhotoUrl?.startsWith('data:image/jpeg;base64,')) {
+    if (
+      currentUser?.role === 'student' &&
+      (isSimulatedPhoto || !capturedPhotoUrl?.startsWith('data:image/jpeg;base64,'))
+    ) {
       setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็คอิน');
       return;
     }
@@ -2481,6 +2554,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           teachers={teachers}
           isSchoolAdmin={isSchoolAdmin}
           setShowGpsAdminModal={setShowGpsAdminModal}
+          selfieFilterId={selfieFilterId}
+          setSelfieFilterId={setSelfieFilterId}
+          selfieFrameId={selfieFrameId}
+          setSelfieFrameId={setSelfieFrameId}
+          placedStickers={placedStickers}
+          setPlacedStickers={setPlacedStickers}
+          selfieTimerSeconds={selfieTimerSeconds}
+          setSelfieTimerSeconds={setSelfieTimerSeconds}
+          selfieCountdown={selfieCountdown}
         />
       )}
 
