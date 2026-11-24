@@ -283,6 +283,27 @@ async function loadAuthContext(userId: string, email: string, emailConfirmed: bo
     : school
       ? [school]
       : [];
+  let teacherRecordId: string | undefined;
+  let isSchoolAdmin = false;
+  if (
+    resolvedSchool &&
+    (profileRow.role === 'teacher' || profileRow.role === 'admin') &&
+    email.trim()
+  ) {
+    const { data: teacherRows, error: teacherError } = await client
+      .from('teachers')
+      .select('id, email, full_name_th, is_school_admin')
+      .eq('school_id', resolvedSchool.id);
+    if (teacherError) {
+      throw new Error(`Could not load your linked teacher profile: ${teacherError.message}`);
+    }
+    const teacherEmail = email.trim().toLowerCase();
+    const teacherByEmail = teacherRows?.find(
+      (row) => (row.email || '').trim().toLowerCase() === teacherEmail
+    );
+    teacherRecordId = teacherByEmail?.id || undefined;
+    isSchoolAdmin = Boolean(teacherByEmail?.is_school_admin);
+  }
 
   const user: AuthUser = {
     id: profileRow.id,
@@ -295,6 +316,8 @@ async function loadAuthContext(userId: string, email: string, emailConfirmed: bo
     lineConnected: false,
     phone: profileRow.phone || undefined,
     studentRecordId: profileRow.student_id || undefined,
+    teacherRecordId,
+    isSchoolAdmin,
     mustChangePassword: false,
   };
 

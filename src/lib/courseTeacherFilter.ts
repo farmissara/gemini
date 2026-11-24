@@ -277,6 +277,11 @@ export function resolveMatchedTeacherForUser(
 ): Teacher | undefined {
   if (!currentUser || teachers.length === 0) return undefined;
 
+  if (currentUser.teacherRecordId) {
+    const linkedTeacher = teachers.find((t) => t.id === currentUser.teacherRecordId);
+    if (linkedTeacher) return linkedTeacher;
+  }
+
   const byId = teachers.find((t) => t.id === currentUser.id);
   if (byId) return byId;
 

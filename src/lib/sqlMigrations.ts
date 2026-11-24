@@ -14,6 +14,7 @@ export async function loadSupabasePatchMigrationSql(): Promise<string> {
     teacherWorkspaceScopeMigrationSql,
     rbacPermissionHardeningMigrationSql,
     schoolWideTimetableActivityReadMigrationSql,
+    dualRoleTeacherSchoolAdminMigrationSql,
   ] = await Promise.all([
     import('../../supabase/migrations/20261111000002_patch_all_latest_migrations.sql?raw'),
     import('../../supabase/migrations/20261125_course_classification.sql?raw'),
@@ -24,6 +25,7 @@ export async function loadSupabasePatchMigrationSql(): Promise<string> {
     import('../../supabase/migrations/20261123000006_teacher_workspace_scope_admin_writes.sql?raw'),
     import('../../supabase/migrations/20261123000007_rbac_permission_hardening.sql?raw'),
     import('../../supabase/migrations/20261124000001_school_wide_timetable_activity_read.sql?raw'),
+    import('../../supabase/migrations/20261124000002_dual_role_teacher_school_admin.sql?raw'),
   ]);
 
   return [
@@ -36,6 +38,7 @@ export async function loadSupabasePatchMigrationSql(): Promise<string> {
     teacherWorkspaceScopeMigrationSql.default,
     rbacPermissionHardeningMigrationSql.default,
     schoolWideTimetableActivityReadMigrationSql.default,
+    dualRoleTeacherSchoolAdminMigrationSql.default,
   ].join('\n\n');
 }
 

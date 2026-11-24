@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildCourseTeacherOptions,
   courseMatchesTeacherFilter,
+  resolveMatchedTeacherForUser,
   slotMatchesLoggedInTeacher,
   teacherMatchesCourse,
   userMatchesCourse,
@@ -81,6 +82,14 @@ const makeSlot = (overrides: Partial<TimetableSlot> = {}): TimetableSlot => ({
   classRoom: 'ม.1/1',
   colorTag: 'sky',
   ...overrides,
+});
+
+test('resolveMatchedTeacherForUser prefers the linked teacher record', () => {
+  const linkedTeacher = makeTeacher({ id: 'linked-teacher', email: 'linked@school.ac.th' });
+  const unrelatedTeacher = makeTeacher({ id: 'usr-1', email: 'other@school.ac.th' });
+  const user = makeUser({ teacherRecordId: linkedTeacher.id });
+
+  assert.equal(resolveMatchedTeacherForUser(user, [unrelatedTeacher, linkedTeacher]), linkedTeacher);
 });
 
 test('teacherMatchesCourse and userMatchesCourse match co-taught courses with honorific differences', () => {

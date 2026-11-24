@@ -70,6 +70,7 @@ import {
   saveSuperAdminSetting,
   saveSuperAdminSettings,
 } from './lib/superAdminSettings';
+import { getAvailableOperationalRoles } from './lib/operationalRoles';
 import {
   isPasswordRecoveryRedirect,
   restoreSupabaseSession,
@@ -445,6 +446,7 @@ export const App: React.FC = () => {
   const [superAdminConfigError, setSuperAdminConfigError] = useState<string | null>(null);
 
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
+  const [authenticatedRole, setAuthenticatedRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     if (!currentUser || isDemoMode || currentRole === 'super_admin') return;
@@ -452,7 +454,7 @@ export const App: React.FC = () => {
     // Never keep permissive mock defaults while the authenticated role's
     // server-side permission config is loading or unavailable.
     setRolePermissions([]);
-    fetchMyRolePermissionConfig()
+    fetchMyRolePermissionConfig(currentRole)
       .then((config) => {
         if (!active) return;
         const roleConfig = config && typeof config === 'object' && !Array.isArray(config)
@@ -1197,6 +1199,7 @@ export const App: React.FC = () => {
     setSchools(context.schools);
     setCurrentUser(context.user);
     setCurrentRole(context.user.role);
+    setAuthenticatedRole(context.user.role);
     setDataLoadError(null);
     if (school) {
       setActiveSchool(school);
@@ -1411,6 +1414,7 @@ export const App: React.FC = () => {
       setIsBiometricLocked(false);
       setBiometricLockError(null);
       setCurrentUser(null);
+      setAuthenticatedRole(null);
       setIsSuperAdminSchoolView(false);
       setIsDataReady(false);
       setLoadedSchoolId(null);
@@ -5283,12 +5287,25 @@ export const App: React.FC = () => {
   const viewTimetableSlotsAllTerms = currentRole === 'teacher'
     ? teacherScopedTimetableSlots
     : filterTimetableSlotsForPersonalRole(schoolTimetableSlotsAllTerms, currentUser, schoolStudents, schoolCourses);
+  const hasLinkedTeacherProfile = Boolean(
+    currentUser?.teacherRecordId &&
+    schoolTeachers.some((teacher) => teacher.id === currentUser.teacherRecordId)
+  );
+  const availableOperationalRoles = getAvailableOperationalRoles({
+    accountRole: authenticatedRole,
+    isSchoolAdminTeacher: Boolean(currentUser?.isSchoolAdmin),
+    hasTeacherProfile: hasLinkedTeacherProfile,
+  });
+  const canUseAdminMode = availableOperationalRoles.includes('admin');
+  const canUseTeacherMode = availableOperationalRoles.includes('teacher');
   const canSwitchAdminTeacherMode =
-    (currentRole === 'admin') ||
-    (currentRole === 'teacher' && Boolean(resolveOwnTeacher(currentUser, schoolTeachers)));
+    (currentRole === 'admin' && canUseTeacherMode) ||
+    (currentRole === 'teacher' && canUseAdminMode);
   const handleSwitchOperationalRole = (nextRole: 'admin' | 'teacher') => {
     if (nextRole === currentRole) return;
-    if (nextRole === 'teacher' && !resolveOwnTeacher(currentUser, schoolTeachers)) return;
+    if (nextRole === 'admin' && !canUseAdminMode) return;
+    if (nextRole === 'teacher' && !canUseTeacherMode) return;
+    setCurrentUser((user) => (user ? { ...user, role: nextRole } : user));
     setCurrentRole(nextRole);
     setProgramMode('school_erp');
     setCurrentTab(nextRole === 'teacher' ? 'timetable' : 'dashboard');

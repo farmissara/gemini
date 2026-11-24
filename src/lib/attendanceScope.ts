@@ -40,6 +40,11 @@ export function resolveOwnStudent(currentUser: AuthUser | null | undefined, stud
 export function resolveOwnTeacher(currentUser: AuthUser | null | undefined, teachers: Teacher[]): Teacher | undefined {
   if (!currentUser || teachers.length === 0) return undefined;
 
+  if (currentUser.teacherRecordId) {
+    const linkedTeacher = teachers.find((t) => t.id === currentUser.teacherRecordId);
+    if (linkedTeacher) return linkedTeacher;
+  }
+
   const byId = teachers.find((t) => t.id === currentUser.id);
   if (byId) return byId;
 
