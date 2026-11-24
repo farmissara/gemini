@@ -109,6 +109,47 @@ function getAcademicYearStartDate(label: string): string {
   const year = westernYear ? Number(westernYear) : thaiYear ? Number(thaiYear) - 543 : new Date().getFullYear();
   return `${year}-05-01`;
 }
+
+type PendingAvatarCache = {
+  self?: string;
+  students?: Record<string, string>;
+  teachers?: Record<string, string>;
+};
+
+const getPendingAvatarCacheKey = (schoolId: string, userId: string) =>
+  `eduverse_pending_avatars_v1_${schoolId}_${userId}`;
+
+function readPendingAvatarCache(schoolId: string, userId: string): PendingAvatarCache {
+  if (typeof window === 'undefined' || !schoolId || !userId) return {};
+  try {
+    const raw = localStorage.getItem(getPendingAvatarCacheKey(schoolId, userId));
+    return raw ? (JSON.parse(raw) as PendingAvatarCache) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writePendingAvatarCache(
+  schoolId: string,
+  userId: string,
+  updater: (prev: PendingAvatarCache) => PendingAvatarCache
+): void {
+  if (typeof window === 'undefined' || !schoolId || !userId) return;
+  try {
+    const next = updater(readPendingAvatarCache(schoolId, userId));
+    const hasEntries =
+      Boolean(next.self) ||
+      Object.keys(next.students || {}).length > 0 ||
+      Object.keys(next.teachers || {}).length > 0;
+    if (hasEntries) {
+      localStorage.setItem(getPendingAvatarCacheKey(schoolId, userId), JSON.stringify(next));
+    } else {
+      localStorage.removeItem(getPendingAvatarCacheKey(schoolId, userId));
+    }
+  } catch {
+    // ignore storage quota errors
+  }
+}
 import { 
   loadSchoolData, 
   loadAttendanceRangeFromSupabase,
@@ -135,6 +176,7 @@ import {
   saveHomeworkSubmissionToDb,
   saveHomeworkGradeToDb,
   saveQueuedAttendanceToDb,
+  persistAvatarChangeToSupabase,
 } from './lib/supabase';
 import { cleanupStudentCampusData } from './lib/campusDataStore';
 import { clearSchoolSnapshotsForUser } from './lib/offlineSchoolCache';
@@ -285,6 +327,8 @@ import {
   filterPeriodAttendanceForUser,
   isAllowedProgramModeForRole,
   resolveLinkedStudentsForUser,
+  resolveOwnStudent,
+  resolveOwnTeacher,
 } from './lib/attendanceScope';
 import {
   filterAnnouncementsForRole,
@@ -1894,8 +1938,53 @@ export const App: React.FC = () => {
           }
           return { ...stu, gpa: summary.gpax };
         });
-        setStudents(syncedStudents);
-        setTeachers(resolvedTeachers);
+        const pendingAvatars = readPendingAvatarCache(activeSchool.id, currentUser.id);
+        let reconciledUserAvatar = pendingAvatars.self || currentUser.avatarUrl || '';
+        let reconciledStudents = syncedStudents.map((stu) => {
+          const pendingStuAvatar = pendingAvatars.students?.[stu.id];
+          return pendingStuAvatar ? { ...stu, avatarUrl: pendingStuAvatar } : stu;
+        });
+        let reconciledTeachers = resolvedTeachers.map((tch) => {
+          const pendingTchAvatar = pendingAvatars.teachers?.[tch.id];
+          return pendingTchAvatar ? { ...tch, avatarUrl: pendingTchAvatar } : tch;
+        });
+
+        if (currentUser.role === 'student') {
+          const ownStu = resolveOwnStudent(currentUser, reconciledStudents);
+          if (ownStu) {
+            if (reconciledUserAvatar) {
+              if (ownStu.avatarUrl !== reconciledUserAvatar) {
+                reconciledStudents = reconciledStudents.map((stu) =>
+                  stu.id === ownStu.id ? { ...stu, avatarUrl: reconciledUserAvatar } : stu
+                );
+              }
+            } else if (ownStu.avatarUrl) {
+              reconciledUserAvatar = ownStu.avatarUrl;
+            }
+          }
+        } else if (['teacher', 'admin', 'super_admin'].includes(currentUser.role)) {
+          const ownTch = resolveOwnTeacher(currentUser, reconciledTeachers);
+          if (ownTch) {
+            if (reconciledUserAvatar) {
+              if (ownTch.avatarUrl !== reconciledUserAvatar) {
+                reconciledTeachers = reconciledTeachers.map((tch) =>
+                  tch.id === ownTch.id ? { ...tch, avatarUrl: reconciledUserAvatar } : tch
+                );
+              }
+            } else if (ownTch.avatarUrl) {
+              reconciledUserAvatar = ownTch.avatarUrl;
+            }
+          }
+        }
+
+        if (reconciledUserAvatar && reconciledUserAvatar !== (currentUser.avatarUrl || '')) {
+          setCurrentUser((prev) =>
+            prev && prev.id === currentUser.id ? { ...prev, avatarUrl: reconciledUserAvatar } : prev
+          );
+        }
+
+        setStudents(reconciledStudents);
+        setTeachers(reconciledTeachers);
         setCourses(resolvedCourses);
         setGrades(normalizedGrades);
         setAttendance(resolvedAttendance);
@@ -2240,10 +2329,108 @@ export const App: React.FC = () => {
     ]);
   };
 
+  const syncOwnAvatarInDirectory = useCallback((avatarUrl: string) => {
+    if (!currentUser) return;
+    if (currentUser.role === 'student') {
+      setStudents((prev) => {
+        const own = resolveOwnStudent(currentUser, prev);
+        if (!own || own.avatarUrl === avatarUrl) return prev;
+        const next = prev.map((s) => (s.id === own.id ? { ...s, avatarUrl } : s));
+        if (typeof window !== 'undefined' && activeSchool.id) {
+          try {
+            localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
+          } catch {
+            // ignore storage errors
+          }
+        }
+        return next;
+      });
+    } else if (['teacher', 'admin', 'super_admin'].includes(currentUser.role)) {
+      setTeachers((prev) => {
+        const own = resolveOwnTeacher(currentUser, prev);
+        if (!own || own.avatarUrl === avatarUrl) return prev;
+        const next = prev.map((t) => (t.id === own.id ? { ...t, avatarUrl } : t));
+        if (typeof window !== 'undefined' && activeSchool.id) {
+          try {
+            localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
+          } catch {
+            // ignore storage errors
+          }
+        }
+        return next;
+      });
+    }
+  }, [currentUser, activeSchool.id]);
+
   const handleUpdateStudent = (updatedStudent: Student) => {
-    setStudents((prev) =>
-      prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
+    const previousStudent = students.find((s) => s.id === updatedStudent.id);
+    const avatarChanged = Boolean(
+      updatedStudent.avatarUrl && updatedStudent.avatarUrl !== (previousStudent?.avatarUrl || '')
     );
+    const isOwnStudent = Boolean(
+      currentUser &&
+        currentUser.role === 'student' &&
+        resolveOwnStudent(currentUser, [updatedStudent])
+    );
+
+    setStudents((prev) => {
+      const next = prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s));
+      if (typeof window !== 'undefined' && activeSchool.id) {
+        try {
+          localStorage.setItem(`eduverse_students_${activeSchool.id}`, JSON.stringify(next));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
+
+    if (isOwnStudent && avatarChanged) {
+      setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: updatedStudent.avatarUrl } : prev));
+    }
+
+    if (avatarChanged && currentUser && activeSchool.id && !isDemoMode) {
+      void persistAvatarChangeToSupabase({
+        schoolId: activeSchool.id,
+        userId: currentUser.id,
+        userRole: currentUser.role,
+        targetType: 'student',
+        targetId: updatedStudent.id,
+        avatarUrl: updatedStudent.avatarUrl,
+        isSelf: isOwnStudent,
+      })
+        .then(({ resolvedUrl, persistedToDb }) => {
+          if (resolvedUrl && resolvedUrl !== updatedStudent.avatarUrl) {
+            setStudents((prev) =>
+              prev.map((s) => (s.id === updatedStudent.id ? { ...s, avatarUrl: resolvedUrl } : s))
+            );
+            if (isOwnStudent) {
+              setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: resolvedUrl } : prev));
+            }
+          }
+          writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => {
+            const nextStudents = { ...(prev.students || {}) };
+            if (persistedToDb) {
+              delete nextStudents[updatedStudent.id];
+            } else if (resolvedUrl) {
+              nextStudents[updatedStudent.id] = resolvedUrl;
+            }
+            return {
+              ...prev,
+              self: isOwnStudent ? (persistedToDb ? undefined : resolvedUrl) : prev.self,
+              students: nextStudents,
+            };
+          });
+        })
+        .catch((error: unknown) => {
+          console.warn('Could not persist student avatar:', error);
+          writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => ({
+            ...prev,
+            self: isOwnStudent ? updatedStudent.avatarUrl : prev.self,
+            students: { ...(prev.students || {}), [updatedStudent.id]: updatedStudent.avatarUrl },
+          }));
+        });
+    }
   };
 
   const handleOpenStudentMoeDocs = (student: Student) => {
@@ -2429,9 +2616,74 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateTeacher = (updatedTeacher: Teacher) => {
-    setTeachers((prev) =>
-      prev.map((t) => (t.id === updatedTeacher.id ? updatedTeacher : t))
+    const previousTeacher = teachers.find((t) => t.id === updatedTeacher.id);
+    const avatarChanged = Boolean(
+      updatedTeacher.avatarUrl && updatedTeacher.avatarUrl !== (previousTeacher?.avatarUrl || '')
     );
+    const isOwnTeacher = Boolean(
+      currentUser &&
+        ['teacher', 'admin', 'super_admin'].includes(currentUser.role) &&
+        resolveOwnTeacher(currentUser, [updatedTeacher])
+    );
+
+    setTeachers((prev) => {
+      const next = prev.map((t) => (t.id === updatedTeacher.id ? updatedTeacher : t));
+      if (typeof window !== 'undefined' && activeSchool.id) {
+        try {
+          localStorage.setItem(`eduverse_teachers_${activeSchool.id}`, JSON.stringify(next));
+        } catch {
+          // ignore storage errors
+        }
+      }
+      return next;
+    });
+
+    if (isOwnTeacher && avatarChanged) {
+      setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: updatedTeacher.avatarUrl } : prev));
+    }
+
+    if (avatarChanged && currentUser && activeSchool.id && !isDemoMode) {
+      void persistAvatarChangeToSupabase({
+        schoolId: activeSchool.id,
+        userId: currentUser.id,
+        userRole: currentUser.role,
+        targetType: 'teacher',
+        targetId: updatedTeacher.id,
+        avatarUrl: updatedTeacher.avatarUrl,
+        isSelf: isOwnTeacher,
+      })
+        .then(({ resolvedUrl, persistedToDb }) => {
+          if (resolvedUrl && resolvedUrl !== updatedTeacher.avatarUrl) {
+            setTeachers((prev) =>
+              prev.map((t) => (t.id === updatedTeacher.id ? { ...t, avatarUrl: resolvedUrl } : t))
+            );
+            if (isOwnTeacher) {
+              setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: resolvedUrl } : prev));
+            }
+          }
+          writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => {
+            const nextTeachers = { ...(prev.teachers || {}) };
+            if (persistedToDb) {
+              delete nextTeachers[updatedTeacher.id];
+            } else if (resolvedUrl) {
+              nextTeachers[updatedTeacher.id] = resolvedUrl;
+            }
+            return {
+              ...prev,
+              self: isOwnTeacher ? (persistedToDb ? undefined : resolvedUrl) : prev.self,
+              teachers: nextTeachers,
+            };
+          });
+        })
+        .catch((error: unknown) => {
+          console.warn('Could not persist teacher avatar:', error);
+          writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => ({
+            ...prev,
+            self: isOwnTeacher ? updatedTeacher.avatarUrl : prev.self,
+            teachers: { ...(prev.teachers || {}), [updatedTeacher.id]: updatedTeacher.avatarUrl },
+          }));
+        });
+    }
   };
 
   const handleDeleteTeacher = (teacherId: string) => {
@@ -4263,26 +4515,110 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleUpdateOwnAvatar = (avatarUrl: string) => {
+    if (!currentUser) return;
+    const cleanUrl = (avatarUrl || '').trim();
+    if (!cleanUrl) return;
+
+    setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: cleanUrl } : prev));
+    syncOwnAvatarInDirectory(cleanUrl);
+
+    if (activeSchool.id && !isDemoMode) {
+      const ownStu = currentUser.role === 'student' ? resolveOwnStudent(currentUser, students) : undefined;
+      const ownTch = ['teacher', 'admin', 'super_admin'].includes(currentUser.role)
+        ? resolveOwnTeacher(currentUser, teachers)
+        : undefined;
+      const targetType = ownStu ? 'student' : ownTch ? 'teacher' : 'self';
+      const targetId = ownStu?.id || ownTch?.id || currentUser.id;
+
+      void persistAvatarChangeToSupabase({
+        schoolId: activeSchool.id,
+        userId: currentUser.id,
+        userRole: currentUser.role,
+        targetType,
+        targetId,
+        avatarUrl: cleanUrl,
+        isSelf: true,
+      })
+        .then(({ resolvedUrl, persistedToDb }) => {
+          const finalUrl = resolvedUrl || cleanUrl;
+          if (finalUrl !== cleanUrl) {
+            setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: finalUrl } : prev));
+            syncOwnAvatarInDirectory(finalUrl);
+          }
+          writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => ({
+            ...prev,
+            self: persistedToDb ? undefined : finalUrl,
+          }));
+        })
+        .catch((error: unknown) => {
+          console.warn('Could not persist own avatar:', error);
+          writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => ({
+            ...prev,
+            self: cleanUrl,
+          }));
+        });
+    }
+  };
+
   const handleUpdateUserProfile = async (updatedUser: AuthUser) => {
     if (!currentUser) return;
-    const user = {
+    let resolvedAvatarUrl = updatedUser.avatarUrl;
+    const avatarChanged = Boolean(updatedUser.avatarUrl && updatedUser.avatarUrl !== currentUser.avatarUrl);
+
+    const buildUser = (avatarUrl: string): AuthUser => ({
       ...currentUser,
       fullNameTh: updatedUser.fullNameTh,
       fullNameEn: updatedUser.fullNameEn,
-      avatarUrl: updatedUser.avatarUrl,
+      avatarUrl,
       phone: updatedUser.phone,
       role: currentUser?.role || 'student',
       schoolId: activeSchool.id,
-    };
+    });
+
     if (isDemoMode) {
-      setCurrentUser(user);
+      const demoUser = buildUser(resolvedAvatarUrl);
+      setCurrentUser(demoUser);
+      syncOwnAvatarInDirectory(demoUser.avatarUrl);
       return;
     }
+
     try {
+      if (avatarChanged && activeSchool.id) {
+        const ownStu = currentUser.role === 'student' ? resolveOwnStudent(currentUser, students) : undefined;
+        const ownTch = ['teacher', 'admin', 'super_admin'].includes(currentUser.role)
+          ? resolveOwnTeacher(currentUser, teachers)
+          : undefined;
+        const avatarRes = await persistAvatarChangeToSupabase({
+          schoolId: activeSchool.id,
+          userId: currentUser.id,
+          userRole: currentUser.role,
+          targetType: ownStu ? 'student' : ownTch ? 'teacher' : 'self',
+          targetId: ownStu?.id || ownTch?.id || currentUser.id,
+          avatarUrl: updatedUser.avatarUrl,
+          isSelf: true,
+        });
+        if (avatarRes.resolvedUrl) {
+          resolvedAvatarUrl = avatarRes.resolvedUrl;
+        }
+        writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => ({
+          ...prev,
+          self: avatarRes.persistedToDb ? undefined : resolvedAvatarUrl,
+        }));
+      }
+
+      const user = buildUser(resolvedAvatarUrl);
       await updateUserProfileInSupabase(user);
       setCurrentUser(user);
+      syncOwnAvatarInDirectory(user.avatarUrl);
       setDataSyncError(null);
     } catch (error) {
+      if (avatarChanged && activeSchool.id && resolvedAvatarUrl) {
+        writePendingAvatarCache(activeSchool.id, currentUser.id, (prev) => ({
+          ...prev,
+          self: resolvedAvatarUrl,
+        }));
+      }
       setDataSyncError(error instanceof Error ? error.message : String(error));
       return;
     }
@@ -5043,6 +5379,7 @@ export const App: React.FC = () => {
           onImportQuestions={handleImportQuestions}
           onUpdateStudent={currentRole === 'teacher' ? undefined : handleUpdateStudent}
           onUpdateTeacher={currentRole === 'teacher' ? undefined : handleUpdateTeacher}
+          onUpdateOwnAvatar={handleUpdateOwnAvatar}
           onUpdateGrade={handleUpdateGrade}
           onAddGrade={handleAddGrade}
           schools={currentRole === 'super_admin' ? schools : (activeSchool.id ? [activeSchool] : [])}
@@ -6036,6 +6373,7 @@ export const App: React.FC = () => {
                     currentUser={currentUser}
                     onUpdateStudent={currentRole === 'teacher' ? undefined : handleUpdateStudent}
                     onUpdateTeacher={currentRole === 'teacher' ? undefined : handleUpdateTeacher}
+                    onUpdateOwnAvatar={handleUpdateOwnAvatar}
                   />
                 )}
 

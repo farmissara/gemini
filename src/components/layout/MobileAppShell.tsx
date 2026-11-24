@@ -304,6 +304,7 @@ interface MobileAppShellProps {
   onImportQuestions: (imported: QuizQuestion[]) => void;
   onUpdateStudent?: (student: Student) => void;
   onUpdateTeacher?: (teacher: Teacher) => void;
+  onUpdateOwnAvatar?: (avatarUrl: string) => void;
   timetableSlots?: TimetableSlot[];
   schoolPeriods?: SchoolPeriodTime[];
   gradingSystem?: GradingSystem;
@@ -388,6 +389,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onImportQuestions,
   onUpdateStudent,
   onUpdateTeacher,
+  onUpdateOwnAvatar,
   timetableSlots = [],
   schoolPeriods = DEFAULT_SCHOOL_PERIODS,
   gradingSystem = activeSchool.gradingSystem || 'thai',
@@ -3449,6 +3451,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 currentUser={currentUser}
                 onUpdateStudent={onUpdateStudent}
                 onUpdateTeacher={onUpdateTeacher}
+                onUpdateOwnAvatar={onUpdateOwnAvatar}
               />
             )}
 

@@ -251,7 +251,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     setCapturedPhotoUrl(null);
   };
 
-  // File Upload Handler (Base64 conversion)
+  // File Upload Handler (Compressed Base64 conversion to keep storage & DB fast)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -264,9 +264,34 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     setUploadError(null);
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setPreviewUrl(reader.result);
-      }
+      if (typeof reader.result !== 'string') return;
+      const rawDataUrl = reader.result;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxDim = 512;
+          const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+          const targetW = Math.max(1, Math.round((img.width || maxDim) * scale));
+          const targetH = Math.max(1, Math.round((img.height || maxDim) * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            setPreviewUrl(rawDataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+          const compressed = canvas.toDataURL('image/jpeg', 0.84);
+          setPreviewUrl(compressed.length < rawDataUrl.length ? compressed : rawDataUrl);
+        } catch {
+          setPreviewUrl(rawDataUrl);
+        }
+      };
+      img.onerror = () => {
+        setPreviewUrl(rawDataUrl);
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   };

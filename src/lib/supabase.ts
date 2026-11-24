@@ -1990,4 +1990,104 @@ export async function submitInvoiceSlipToDb(
   return finalUrl;
 }
 
+export async function persistAvatarChangeToSupabase(params: {
+  schoolId: string;
+  userId: string;
+  userRole: UserRole;
+  targetType: 'self' | 'student' | 'teacher';
+  targetId?: string;
+  avatarUrl: string;
+  isSelf?: boolean;
+}): Promise<{ resolvedUrl: string; persistedToDb: boolean }> {
+  const rawUrl = (params.avatarUrl || '').trim();
+  if (!rawUrl) {
+    return { resolvedUrl: '', persistedToDb: false };
+  }
 
+  const client = getSupabaseClient();
+  if (!client) {
+    return { resolvedUrl: rawUrl, persistedToDb: false };
+  }
+
+  let finalUrl = rawUrl;
+  if (rawUrl.startsWith('data:') && params.schoolId) {
+    const uploadedUrl = await uploadSchoolAttachment(params.schoolId, 'avatars', rawUrl);
+    if (uploadedUrl) {
+      finalUrl = uploadedUrl;
+    }
+  }
+
+  let persistedToDb = false;
+  const isAdmin = params.userRole === 'admin' || params.userRole === 'super_admin';
+  const isSelf = Boolean(params.isSelf || params.targetType === 'self');
+
+  try {
+    const { data: sessionData } = await client.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (token) {
+      const response = await fetch('/api/profile-avatar', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetType: params.targetType,
+          schoolId: params.schoolId,
+          targetId: params.targetId || '',
+          avatarUrl: finalUrl,
+        }),
+      });
+      if (response.ok) {
+        persistedToDb = true;
+      }
+    }
+  } catch {
+    // Fall back to direct Supabase client persistence below
+  }
+
+  if (!persistedToDb) {
+    if (isSelf) {
+      try {
+        const { error: rpcErr } = await client.rpc('update_own_avatar', {
+          target_avatar_url: finalUrl,
+        });
+        if (!rpcErr) {
+          persistedToDb = true;
+        }
+      } catch {
+        // RPC may not be installed yet; fall back to direct user_profiles update
+      }
+
+      const { error: profileErr } = await client
+        .from('user_profiles')
+        .update({ avatar_url: finalUrl })
+        .eq('id', params.userId);
+      if (!profileErr) {
+        persistedToDb = true;
+      }
+    }
+
+    if (isAdmin && params.targetType === 'student' && params.targetId) {
+      const { error: stuErr } = await client
+        .from('students')
+        .update({ avatar_url: finalUrl })
+        .eq('school_id', params.schoolId)
+        .eq('id', params.targetId);
+      if (!stuErr) {
+        persistedToDb = true;
+      }
+    } else if (isAdmin && params.targetType === 'teacher' && params.targetId) {
+      const { error: tchErr } = await client
+        .from('teachers')
+        .update({ avatar_url: finalUrl })
+        .eq('school_id', params.schoolId)
+        .eq('id', params.targetId);
+      if (!tchErr) {
+        persistedToDb = true;
+      }
+    }
+  }
+
+  return { resolvedUrl: finalUrl, persistedToDb };
+}

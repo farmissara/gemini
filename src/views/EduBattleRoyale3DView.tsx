@@ -479,13 +479,32 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
   const nearAirdropRef = useRef<boolean>(false);
   const isOutsideStormRef = useRef<boolean>(false);
   const activeBoosterNitroRef = useRef<boolean>(false);
+  const openedChestIdsRef = useRef<Set<string>>(new Set());
+  const [openedChestIds, setOpenedChestIds] = useState<string[]>([]);
+  const openedChestsCountRef = useRef<number>(0);
+  const activeQuestionRef = useRef<QuizQuestion | null>(null);
+  const gamePhaseRef = useRef<'lobby' | 'playing'>('lobby');
+  const gameWonRef = useRef<boolean>(false);
   const triggerInteractionRef = useRef<() => void>(() => {});
   const handleUseFreezeTrapRef = useRef<() => void>(() => {});
   const handleUseNitroRef = useRef<() => void>(() => {});
+  const handleAnswerRef = useRef<(index: number) => void>(() => {});
 
   useEffect(() => {
     activeBoosterNitroRef.current = activeBooster.nitro;
   }, [activeBooster.nitro]);
+
+  useEffect(() => {
+    activeQuestionRef.current = activeQuestion;
+  }, [activeQuestion]);
+
+  useEffect(() => {
+    gamePhaseRef.current = gamePhase;
+  }, [gamePhase]);
+
+  useEffect(() => {
+    gameWonRef.current = gameWon;
+  }, [gameWon]);
 
   useEffect(() => {
     onGamePhaseChange?.(gamePhase === 'playing');
@@ -669,8 +688,18 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
     setPlayerHp(100);
     setTimerSeconds(playMode === 'classroom' || playMode === 'teacher_room' ? teacherTimePerQuestion * teacherChestCount + 30 : 90);
+    openedChestIdsRef.current.clear();
+    setOpenedChestIds([]);
+    openedChestsCountRef.current = 0;
     setOpenedChestsCount(0);
     setOpenedFallbackIndices([]);
+    activeQuestionRef.current = null;
+    setActiveQuestion(null);
+    setSelectedAnswerIndex(null);
+    setQuestionFeedback(null);
+    setIsAirdropQuestion(false);
+    nearChestIdRef.current = null;
+    setNearChestId(null);
     setCorrectCount(0);
     setTotalExp(0);
     setTotalGems(0);
@@ -679,19 +708,32 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     setStormPhase(1);
     setIsOutsideStorm(false);
     isOutsideStormRef.current = false;
+    gameWonRef.current = false;
     setGameWon(false);
 
     // Refresh chests with selected bank questions
     chestsRef.current.forEach((c, idx) => {
       c.opened = false;
       c.question = arenaQuestions[idx % arenaQuestions.length];
+      c.beaconMesh.visible = true;
       if (c.mesh) {
         c.mesh.visible = true;
         c.mesh.position.y = 1.0;
         c.mesh.rotation.y = Math.PI / 4;
+        const box = c.mesh.children[0] as THREE.Mesh | undefined;
+        if (box?.material) {
+          (box.material as THREE.MeshStandardMaterial).color.setHex(0xf59e0b);
+        }
+        const lid = c.mesh.children[1];
+        if (lid) lid.rotation.x = 0;
+        const prism = c.mesh.children[2];
+        if (prism) prism.visible = true;
+        const light = c.mesh.children[3];
+        if (light) light.visible = true;
       }
     });
 
+    gamePhaseRef.current = 'playing';
     setGamePhase('playing');
     if (!isMuted) {
       battleAudio.startAmbientMusic();
@@ -704,7 +746,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     const interval = setInterval(() => {
       setQuestionTimer(prev => {
         if (prev <= 1) {
-          handleAnswer(-1); // time out = wrong
+          handleAnswerRef.current(-1); // time out = wrong
           return 0;
         }
         return prev - 1;
@@ -1131,16 +1173,28 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     const chestTrimMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85, roughness: 0.2 });
 
     chestLocations.forEach((loc, idx) => {
+      const alreadyOpened = openedChestIdsRef.current.has(loc.id);
       const cGroup = new THREE.Group();
+      const boxMat = chestMat.clone();
+      if (alreadyOpened) {
+        boxMat.color.setHex(0x555555);
+      }
       // Chest box
-      const box = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 1.3), chestMat);
+      const box = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 1.3), boxMat);
       box.position.y = 0.6;
       box.castShadow = !isSoftwareGl;
       cGroup.add(box);
 
       // Gold rim lid
-      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 2.0, 16, 1, false, 0, Math.PI), chestTrimMat);
+      const lidMat = chestTrimMat.clone();
+      if (alreadyOpened) {
+        lidMat.color.setHex(0x4b5563);
+      }
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 2.0, 16, 1, false, 0, Math.PI), lidMat);
       lid.rotation.z = Math.PI / 2;
+      if (alreadyOpened) {
+        lid.rotation.x = -Math.PI / 3;
+      }
       lid.position.y = 1.2;
       cGroup.add(lid);
 
@@ -1150,11 +1204,13 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         new THREE.MeshStandardMaterial({ color: 0xfde047, emissive: 0xeab308, emissiveIntensity: 0.8, roughness: 0.2 })
       );
       prism.position.y = 2.4;
+      prism.visible = !alreadyOpened;
       cGroup.add(prism);
 
       // Point Light
       const pLight = new THREE.PointLight(0xf59e0b, 1.8, 10);
       pLight.position.y = 2.3;
+      pLight.visible = !alreadyOpened;
       cGroup.add(pLight);
 
       // Sky Beacon Light Beam (EduArena Beacon Light Pillar)
@@ -1167,6 +1223,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       });
       const beamMesh = new THREE.Mesh(beamGeo, beamMat);
       beamMesh.position.y = 23;
+      beamMesh.visible = !alreadyOpened;
       cGroup.add(beamMesh);
 
       const groundY = getGroundHeight(loc.x, loc.z);
@@ -1180,7 +1237,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         z: loc.z,
         mesh: cGroup,
         beaconMesh: beamMesh,
-        opened: false,
+        opened: alreadyOpened,
         question: arenaQuestions[idx % arenaQuestions.length]
       });
     });
@@ -1484,7 +1541,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       let closeChest: ChestItem | null = null;
 
       chestsRef.current.forEach((c) => {
-        if (!c.opened) {
+        if (!c.opened && !openedChestIdsRef.current.has(c.id)) {
           const prism = c.mesh.children[2];
           if (prism) {
             prism.rotation.y += dt * 2.2;
@@ -1498,7 +1555,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         }
       });
 
-      const nextNearChestId = closeChest && closestDist < 4.5 ? (closeChest as ChestItem).id : null;
+      const nextNearChestId =
+        !activeQuestionRef.current && closeChest && closestDist < 4.5
+          ? (closeChest as ChestItem).id
+          : null;
       if (nextNearChestId !== nearChestIdRef.current) {
         nearChestIdRef.current = nextNearChestId;
         setNearChestId(nextNearChestId);
@@ -1593,14 +1653,31 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
   // 2D Interactive Fallback chest opener (works when WebGL is disabled/software-only)
   const openFallbackChest = (idx: number) => {
-    if (openedFallbackIndices.includes(idx) || arenaQuestions.length === 0) return;
+    const chestId = `chest-${idx + 1}`;
+    if (
+      activeQuestionRef.current ||
+      gamePhaseRef.current !== 'playing' ||
+      gameWonRef.current ||
+      openedFallbackIndices.includes(idx) ||
+      openedChestIdsRef.current.has(chestId) ||
+      arenaQuestions.length === 0
+    ) {
+      return;
+    }
+    const q = arenaQuestions[idx % arenaQuestions.length];
+    openedChestIdsRef.current.add(chestId);
+    const nextOpenedIds = Array.from(openedChestIdsRef.current);
+    setOpenedChestIds(nextOpenedIds);
+    openedChestsCountRef.current = nextOpenedIds.length;
+    setOpenedChestsCount(nextOpenedIds.length);
+    setOpenedFallbackIndices(prev => (prev.includes(idx) ? prev : [...prev, idx]));
+    activeQuestionRef.current = q;
+
     battleAudio.playChestOpen();
     playLootBeamSound();
-    setOpenedFallbackIndices(prev => [...prev, idx]);
-    setOpenedChestsCount(prev => prev + 1);
     setCurrentStage(Math.min(totalStages, idx + 1));
     setIsAirdropQuestion(false);
-    setActiveQuestion(arenaQuestions[idx % arenaQuestions.length]);
+    setActiveQuestion(q);
     setQuestionTimer(teacherTimePerQuestion || 20);
     setSelectedAnswerIndex(null);
     setQuestionFeedback(null);
@@ -1608,13 +1685,16 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
 
   // Trigger Interaction (Chest or Airdrop)
   const triggerInteraction = () => {
+    if (activeQuestionRef.current || gamePhaseRef.current !== 'playing' || gameWonRef.current) return;
+
     // 1. Airdrop claim
-    if (nearAirdropRef.current && airdropRef.current && !airdropRef.current.claimed) {
+    if (nearAirdropRef.current && airdropRef.current && !airdropRef.current.claimed && !airdropRef.current.falling) {
       battleAudio.playChestOpen();
       airdropRef.current.claimed = true;
       airdropRef.current.mesh.visible = false;
       nearAirdropRef.current = false;
       setNearAirdrop(false);
+      activeQuestionRef.current = airdropRef.current.question;
       setIsAirdropQuestion(true);
       setActiveQuestion(airdropRef.current.question);
       setQuestionTimer(25);
@@ -1628,22 +1708,36 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
     const targetChestId = nearChestIdRef.current || nearChestId;
     if (!targetChestId) return;
     const chest = chestsRef.current.find(c => c.id === targetChestId);
-    if (!chest || chest.opened) return;
+    if (!chest || chest.opened || openedChestIdsRef.current.has(chest.id)) {
+      nearChestIdRef.current = null;
+      setNearChestId(null);
+      return;
+    }
 
     battleAudio.playChestOpen();
     playLootBeamSound();
     chest.opened = true;
+    openedChestIdsRef.current.add(chest.id);
+    const nextOpenedIds = Array.from(openedChestIdsRef.current);
+    setOpenedChestIds(nextOpenedIds);
+    openedChestsCountRef.current = nextOpenedIds.length;
+    setOpenedChestsCount(nextOpenedIds.length);
+
     chest.beaconMesh.visible = false; // Turn off god-ray beam
     const box = chest.mesh.children[0] as THREE.Mesh;
     if (box && box.material) {
       (box.material as THREE.MeshStandardMaterial).color.setHex(0x555555);
     }
+    const lid = chest.mesh.children[1];
+    if (lid) lid.rotation.x = -Math.PI / 3;
+    const prism = chest.mesh.children[2];
+    if (prism) prism.visible = false;
     const light = chest.mesh.children[3];
     if (light) light.visible = false;
 
     nearChestIdRef.current = null;
     setNearChestId(null);
-    setOpenedChestsCount(prev => prev + 1);
+    activeQuestionRef.current = chest.question;
     setCurrentStage(Math.min(totalStages, chest.stage));
     setIsAirdropQuestion(false);
     setActiveQuestion(chest.question);
@@ -1682,8 +1776,9 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
         onEarnRewards(currentUser.id, expGain, gemGain, false);
       }
 
-      if (openedChestsCount >= totalChests) {
+      if (openedChestsCountRef.current >= totalChests) {
         setTimeout(() => {
+          gameWonRef.current = true;
           setGameWon(true);
           playGrandVictoryFanfare();
           if (currentUser) {
@@ -1700,15 +1795,28 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
       } else {
         setPlayerStreak(0);
       }
+
+      if (openedChestsCountRef.current >= totalChests) {
+        setTimeout(() => {
+          gameWonRef.current = true;
+          setGameWon(true);
+          playGrandVictoryFanfare();
+          if (currentUser) {
+            onEarnRewards(currentUser.id, 300, 75, true);
+          }
+        }, 2800);
+      }
     }
 
     setTimeout(() => {
+      activeQuestionRef.current = null;
       setActiveQuestion(null);
       setSelectedAnswerIndex(null);
       setQuestionFeedback(null);
       setIsAirdropQuestion(false);
     }, 2800);
   };
+  handleAnswerRef.current = handleAnswer;
 
   // Compass Ribbon
   const compassRibbon = useMemo(() => {
@@ -2147,24 +2255,24 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {Array.from({ length: totalChests }).map((_, idx) => {
-                  const chestId = `chest-${idx}`;
-                  const isOpened = openedFallbackIndices.includes(idx);
+                  const chestId = `chest-${idx + 1}`;
+                  const isOpened = openedFallbackIndices.includes(idx) || openedChestIds.includes(chestId);
                   return (
                     <button
                       key={chestId}
                       type="button"
-                      disabled={isOpened}
+                      disabled={isOpened || Boolean(activeQuestion)}
                       onClick={() => openFallbackChest(idx)}
-                      className={`min-h-[112px] p-4 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                      className={`min-h-[112px] p-4 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-2 ${
                         isOpened
-                          ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 cursor-default'
-                          : 'bg-zinc-900 hover:bg-zinc-800 border-amber-400/50 text-white active:scale-95'
+                          ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 cursor-not-allowed opacity-75'
+                          : 'bg-zinc-900 hover:bg-zinc-800 border-amber-400/50 text-white active:scale-95 cursor-pointer'
                       }`}
                     >
                       <Package className={`w-7 h-7 ${isOpened ? 'text-emerald-400' : 'text-amber-400'}`} />
                       <span className="text-xs font-black">หีบ #{idx + 1}</span>
                       <span className="text-[11px] text-zinc-400">
-                        {isOpened ? 'เปิดแล้ว' : 'แตะเพื่อเปิด'}
+                        {isOpened ? 'เปิดแล้ว (เปิดซ้ำไม่ได้)' : 'แตะเพื่อเปิด'}
                       </span>
                     </button>
                   );
@@ -2509,7 +2617,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                       <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:12px_12px]" />
                       <div className="w-2.5 h-2.5 rounded-full bg-white shadow-lg z-10" />
                       {chestsRef.current.map((c, i) => {
-                        if (c.opened) return null;
+                        if (c.opened || openedChestIds.includes(c.id)) return null;
                         return (
                           <div
                             key={i}
@@ -2977,15 +3085,7 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
             <div className="flex gap-3 justify-center">
               <button
                 type="button"
-                onClick={() => {
-                  battleAudio.playClick();
-                  setGameWon(false);
-                  setOpenedChestsCount(0);
-                  chestsRef.current.forEach(c => {
-                    c.opened = false;
-                    c.beaconMesh.visible = true;
-                  });
-                }}
+                onClick={handleStartBattleMatch}
                 className="px-5 py-2.5 rounded-xl bg-cyan-700 hover:bg-cyan-800 font-bold text-sm text-white shadow-lg cursor-pointer"
               >
                 เล่นใหม่อีกครั้ง

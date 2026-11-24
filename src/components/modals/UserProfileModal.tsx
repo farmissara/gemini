@@ -1303,8 +1303,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       <ImageCaptureUploadModal
         isOpen={showImageModal}
         currentImageUrl={formData.avatarUrl}
-        title="อัปเดตรูปถ่ายโปรไฟล์ของคุณ"
-        onSelectImage={(newUrl) => handleChange('avatarUrl', newUrl)}
+        title="อัปเดตรูปถ่ายโปรไฟล์และบัตรประจำตัว"
+        onSelectImage={(newUrl) => {
+          const updatedProfile = { ...formData, avatarUrl: newUrl };
+          setFormData(updatedProfile);
+          onSaveProfile(updatedProfile);
+          showToast('✅ บันทึกรูปโปรไฟล์และอัปเดตรูปบัตรประจำตัวแล้ว');
+        }}
         onClose={() => setShowImageModal(false)}
       />
     </div>

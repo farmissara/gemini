@@ -10,6 +10,7 @@ import { backupRawParser, createBackupRouter } from './src/server/backupRoutes.t
 import { createStaffInviteEmailRouter } from './src/server/staffInviteEmailRoutes.ts';
 import { createStudentCredentialsRouter } from './src/server/studentCredentialsRoutes.ts';
 import { createSchoolAiRouter, finishSchoolAiRequest, getSchoolAiContext, prepareSchoolAiRequest, reserveSchoolAiRequest } from './src/server/schoolAiRoutes.ts';
+import { createProfileAvatarRouter } from './src/server/profileAvatarRoutes.ts';
 
 const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
@@ -261,6 +262,7 @@ async function requireActiveSupabaseUser(req: Request, res: Response, next: Next
 async function createApp() {
   const app = express();
   app.use('/api/backup', backupRawParser());
+  app.use('/api/profile-avatar', createProfileAvatarRouter(getServerEnv));
   app.use(express.json({ limit: '64kb' }));
 
   app.use('/api/backup', createBackupRouter(getServerEnv));

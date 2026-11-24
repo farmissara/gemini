@@ -17,6 +17,7 @@ import { PagedList } from '../components/PagedList';
 import { BatchIdCardPrintModal } from '../components/modals/BatchIdCardPrintModal';
 import { getModuleTone } from '../lib/moduleTheme';
 import { resolveLinkedStudentsForUser, resolveOwnStudent, resolveOwnTeacher } from '../lib/attendanceScope';
+import { emitAppToast } from '../components/common/ToastProvider';
 
 interface DigitalIdCardViewProps {
   students: Student[];
@@ -27,6 +28,7 @@ interface DigitalIdCardViewProps {
   currentUser?: AuthUser | null;
   onUpdateStudent?: (student: Student) => void;
   onUpdateTeacher?: (teacher: Teacher) => void;
+  onUpdateOwnAvatar?: (avatarUrl: string) => void;
 }
 
 export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
@@ -38,6 +40,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   currentUser,
   onUpdateStudent,
   onUpdateTeacher,
+  onUpdateOwnAvatar,
 }) => {
   const effectiveRole: UserRole = currentUser?.role || currentRole;
   const isStudentViewer = effectiveRole === 'student';
@@ -188,10 +191,28 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
 
   const showSelectorSidebar = isAdminViewer || (isParentViewer && visibleStudents.length > 1);
   const activePerson = activeCardType === 'staff' ? selectedTeacher : selectedStudent;
+  const ownStudentRecord = useMemo(
+    () => (currentUser ? resolveOwnStudent(currentUser, visibleStudents) : undefined),
+    [currentUser, visibleStudents]
+  );
+  const isOwnStudentCard = Boolean(
+    !isParentViewer &&
+      selectedStudent &&
+      (isStudentViewer || (ownStudentRecord && ownStudentRecord.id === selectedStudent.id))
+  );
+  const isOwnTeacherCard = Boolean(
+    selectedTeacher && ownTeacherProfile && ownTeacherProfile.id === selectedTeacher.id
+  );
+  const hasTeacherRow = Boolean(selectedTeacher && teachers.some((t) => t.id === selectedTeacher.id));
+  const selectedStudentAvatar =
+    selectedStudent?.avatarUrl || (isOwnStudentCard ? currentUser?.avatarUrl : '') || '';
+  const selectedTeacherAvatar =
+    selectedTeacher?.avatarUrl || (isOwnTeacherCard ? currentUser?.avatarUrl : '') || '';
+  const activeCardAvatarUrl = activeCardType === 'staff' ? selectedTeacherAvatar : selectedStudentAvatar;
   const canUpdateActivePhoto =
     activeCardType === 'staff'
-      ? Boolean(selectedTeacher && onUpdateTeacher && teachers.some((t) => t.id === selectedTeacher.id))
-      : Boolean(selectedStudent && onUpdateStudent);
+      ? Boolean(selectedTeacher && ((onUpdateTeacher && hasTeacherRow) || (isOwnTeacherCard && onUpdateOwnAvatar)))
+      : Boolean(selectedStudent && (onUpdateStudent || (isOwnStudentCard && onUpdateOwnAvatar)));
 
   return (
     <div className={`${getModuleTone('student_id_cards')} lg:h-full flex flex-col min-h-0 lg:overflow-hidden space-y-2`}>
@@ -502,9 +523,9 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                         className={`relative shrink-0 group ${canUpdateActivePhoto ? 'cursor-pointer' : ''}`}
                         title={canUpdateActivePhoto ? 'แตะเพื่อถ่ายรูปสด หรืออัปโหลดรูปภาพใหม่ลงบัตร' : undefined}
                       >
-                        {(activeCardType === 'staff' ? selectedTeacher?.avatarUrl : selectedStudent?.avatarUrl) ? (
+                        {activeCardAvatarUrl ? (
                           <img
-                            src={(activeCardType === 'staff' ? selectedTeacher?.avatarUrl : selectedStudent?.avatarUrl) || ''}
+                            src={activeCardAvatarUrl}
                             alt={activeCardType === 'staff' ? selectedTeacher?.fullNameTh : selectedStudent?.firstNameTh || 'ID Photo'}
                             className="w-20 h-24 rounded-xl object-cover border-2 border-cyan-400/60 shadow-md group-hover:ring-2 group-hover:ring-cyan-300 transition"
                           />
@@ -693,28 +714,48 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
       )}
 
       {/* Image Capture & Upload Modal */}
-      {activeCardType === 'staff' && selectedTeacher && onUpdateTeacher ? (
+      {activeCardType === 'staff' && selectedTeacher && ((onUpdateTeacher && hasTeacherRow) || (isOwnTeacherCard && onUpdateOwnAvatar)) ? (
         <ImageCaptureUploadModal
           isOpen={showPhotoModal}
-          currentImageUrl={selectedTeacher.avatarUrl}
+          currentImageUrl={selectedTeacherAvatar}
           title={`ถ่ายรูปสดหรือเปลี่ยนรูปบนบัตร: ${selectedTeacher.fullNameTh}`}
           onSelectImage={(newUrl) => {
-            onUpdateTeacher({
-              ...selectedTeacher,
-              avatarUrl: newUrl,
+            if (onUpdateTeacher && hasTeacherRow) {
+              onUpdateTeacher({
+                ...selectedTeacher,
+                avatarUrl: newUrl,
+              });
+            } else if (isOwnTeacherCard && onUpdateOwnAvatar) {
+              onUpdateOwnAvatar(newUrl);
+            }
+            emitAppToast({
+              tone: 'success',
+              message: lang === 'th'
+                ? 'บันทึกรูปบัตรประจำตัวและซิงค์กับรูปโปรไฟล์เรียบร้อยแล้ว'
+                : 'ID card and profile photo saved.',
             });
           }}
           onClose={() => setShowPhotoModal(false)}
         />
-      ) : selectedStudent && onUpdateStudent ? (
+      ) : selectedStudent && (onUpdateStudent || (isOwnStudentCard && onUpdateOwnAvatar)) ? (
         <ImageCaptureUploadModal
           isOpen={showPhotoModal}
-          currentImageUrl={selectedStudent.avatarUrl}
+          currentImageUrl={selectedStudentAvatar}
           title={`ถ่ายรูปสดหรือเปลี่ยนรูปบนบัตร: ${selectedStudent.firstNameTh} ${selectedStudent.lastNameTh}`}
           onSelectImage={(newUrl) => {
-            onUpdateStudent({
-              ...selectedStudent,
-              avatarUrl: newUrl,
+            if (onUpdateStudent) {
+              onUpdateStudent({
+                ...selectedStudent,
+                avatarUrl: newUrl,
+              });
+            } else if (isOwnStudentCard && onUpdateOwnAvatar) {
+              onUpdateOwnAvatar(newUrl);
+            }
+            emitAppToast({
+              tone: 'success',
+              message: lang === 'th'
+                ? 'บันทึกรูปบัตรประจำตัวและซิงค์กับรูปโปรไฟล์เรียบร้อยแล้ว'
+                : 'ID card and profile photo saved.',
             });
           }}
           onClose={() => setShowPhotoModal(false)}
