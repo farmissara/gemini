@@ -65,12 +65,15 @@ import {
   INITIAL_ROLE_PERMISSIONS,
 } from './data/mockData';
 import {
+  fetchMyOperationalRole,
   fetchMyRolePermissionConfig,
   fetchSuperAdminSettings,
+  setMyOperationalRole,
   saveSuperAdminSetting,
   saveSuperAdminSettings,
 } from './lib/superAdminSettings';
 import { getAvailableOperationalRoles } from './lib/operationalRoles';
+import { belongsToSchool } from './lib/schoolDataScope';
 import {
   isPasswordRecoveryRedirect,
   restoreSupabaseSession,
@@ -317,6 +320,7 @@ import {
 import { useSchoolPermissions } from './lib/schoolPermissions';
 import { loadSchoolLessons, saveSchoolLessonCompletionToDb, saveSchoolLessonToDb } from './lib/lmsPersistence';
 import {
+  isSchoolWideTimetableActivity,
   resolveMatchedTeacherForUser,
   slotMatchesLoggedInTeacher,
   teacherMatchesCourse,
@@ -447,9 +451,11 @@ export const App: React.FC = () => {
 
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
   const [authenticatedRole, setAuthenticatedRole] = useState<UserRole | null>(null);
+  const [operationalRoleReady, setOperationalRoleReady] = useState(false);
+  const operationalRoleSwitchRef = useRef(false);
 
   useEffect(() => {
-    if (!currentUser || isDemoMode || currentRole === 'super_admin') return;
+    if (!currentUser || isDemoMode || currentRole === 'super_admin' || !operationalRoleReady) return;
     let active = true;
     // Never keep permissive mock defaults while the authenticated role's
     // server-side permission config is loading or unavailable.
@@ -466,7 +472,51 @@ export const App: React.FC = () => {
         if (active) setRolePermissions([]);
       });
     return () => { active = false; };
-  }, [currentUser?.id, currentRole, isDemoMode]);
+  }, [currentUser?.id, currentRole, isDemoMode, operationalRoleReady]);
+
+  useEffect(() => {
+    if (
+      !currentUser ||
+      isDemoMode ||
+      (authenticatedRole !== 'admin' && authenticatedRole !== 'teacher')
+    ) {
+      setOperationalRoleReady(true);
+      return;
+    }
+
+    let active = true;
+    let roleRestored = false;
+    setOperationalRoleReady(false);
+    void fetchMyOperationalRole()
+      .then((role) => {
+        if (!active) return;
+        const availableRoles = getAvailableOperationalRoles({
+          accountRole: authenticatedRole,
+          isSchoolAdminTeacher: Boolean(currentUser.isSchoolAdmin),
+          hasTeacherProfile: Boolean(currentUser.teacherRecordId),
+        });
+        if (!availableRoles.includes(role)) {
+          throw new Error('The saved role is no longer assigned to this account.');
+        }
+        setCurrentRole(role);
+        setCurrentUser((user) =>
+          user?.id === currentUser.id ? { ...user, role } : user
+        );
+        roleRestored = true;
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : String(error);
+        setDataLoadError(
+          `ไม่สามารถยืนยันโหมดสิทธิ์กับฐานข้อมูลได้ กรุณาตรวจสอบและใช้ SQL migration ล่าสุด แล้วลองใหม่ (${message})`
+        );
+      })
+      .finally(() => {
+        if (active && roleRestored) setOperationalRoleReady(true);
+      });
+
+    return () => { active = false; };
+  }, [currentUser?.id, authenticatedRole, isDemoMode]);
 
   useEffect(() => {
     if (currentUser?.role !== 'super_admin' || isDemoMode) return;
@@ -709,7 +759,7 @@ export const App: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const getCurrentSchoolSyncRows = (): CoreSyncRows => ({
     students: students.filter((item) => item.schoolId === activeSchool.id),
-    teachers: teachers.filter((item) => !item.schoolId || item.schoolId === activeSchool.id),
+    teachers: teachers.filter((item) => belongsToSchool(item, activeSchool.id, isDemoMode)),
     courses: courses.filter((item) => item.schoolId === activeSchool.id),
     grades: grades.filter((item) => item.schoolId === activeSchool.id),
     attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
@@ -970,18 +1020,18 @@ export const App: React.FC = () => {
   const unclaimedCentralPacks = getUnclaimedPublishedPacks(centralExamPacks, schoolExamEntitlements);
 
   // Filter items by active school
-  const schoolStudents = students.filter((s) => s.schoolId === activeSchool.id);
-  const schoolTeachers = teachers.filter((t) => !t.schoolId || t.schoolId === activeSchool.id);
-  const schoolCourses = courses.filter((c) => c.schoolId === activeSchool.id);
-  const schoolGrades = grades.filter((g) => g.schoolId === activeSchool.id);
-  const schoolAttendance = attendance.filter((a) => a.schoolId === activeSchool.id);
-  const schoolInvoices = invoices.filter((i) => i.schoolId === activeSchool.id);
-  const schoolAnnouncements = announcements.filter((a) => a.schoolId === activeSchool.id);
-  const schoolLessons = lessons.filter((l) => l.schoolId === activeSchool.id);
-  const schoolAssignments = assignments.filter((a) => a.schoolId === activeSchool.id);
-  const schoolQuestions = questions.filter((q) => !q.schoolId || q.schoolId === activeSchool.id);
-  const schoolPeriodAttendance = periodAttendance.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
-  const schoolPortfolioItems = portfolioItems.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
+  const schoolStudents = students.filter((s) => belongsToSchool(s, activeSchool.id, isDemoMode));
+  const schoolTeachers = teachers.filter((t) => belongsToSchool(t, activeSchool.id, isDemoMode));
+  const schoolCourses = courses.filter((c) => belongsToSchool(c, activeSchool.id, isDemoMode));
+  const schoolGrades = grades.filter((g) => belongsToSchool(g, activeSchool.id, isDemoMode));
+  const schoolAttendance = attendance.filter((a) => belongsToSchool(a, activeSchool.id, isDemoMode));
+  const schoolInvoices = invoices.filter((i) => belongsToSchool(i, activeSchool.id, isDemoMode));
+  const schoolAnnouncements = announcements.filter((a) => belongsToSchool(a, activeSchool.id, isDemoMode));
+  const schoolLessons = lessons.filter((l) => belongsToSchool(l, activeSchool.id, isDemoMode));
+  const schoolAssignments = assignments.filter((a) => belongsToSchool(a, activeSchool.id, isDemoMode));
+  const schoolQuestions = questions.filter((q) => belongsToSchool(q, activeSchool.id, isDemoMode));
+  const schoolPeriodAttendance = periodAttendance.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode));
+  const schoolPortfolioItems = portfolioItems.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode));
   const normalizeTimetableAcademicYear = (value?: string) => {
     const raw = (value || '').trim();
     const gregorianYear = raw.match(/\d{4}/)?.[0];
@@ -992,7 +1042,7 @@ export const App: React.FC = () => {
   const timetableAcademicYear = normalizeTimetableAcademicYear(activeSchool.academicYear || systemConfig.academicYear);
   const timetableSemester = activeSchool.currentSemester || systemConfig.currentSemester;
   const schoolTimetableSlotsAllTerms = timetableSlots
-    .filter((slot) => !slot.schoolId || slot.schoolId === activeSchool.id)
+    .filter((slot) => belongsToSchool(slot, activeSchool.id, isDemoMode))
     .map((slot) => ({
       ...slot,
       academicYear: normalizeTimetableAcademicYear(slot.academicYear || timetableAcademicYear),
@@ -1002,11 +1052,11 @@ export const App: React.FC = () => {
       slot.academicYear === timetableAcademicYear &&
       slot.semester === timetableSemester
     ));
-  const schoolBehaviorRecords = behaviorRecords.filter((b) => !b.schoolId || b.schoolId === activeSchool.id);
-  const schoolSdqAssessments = sdqAssessments.filter((s) => !s.schoolId || s.schoolId === activeSchool.id);
-  const schoolInfirmaryVisits = infirmaryVisits.filter((i) => !i.schoolId || i.schoolId === activeSchool.id);
-  const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => !h.schoolId || h.schoolId === activeSchool.id);
-  const schoolLeaveRequests = leaveRequests.filter((request) => !request.schoolId || request.schoolId === activeSchool.id);
+  const schoolBehaviorRecords = behaviorRecords.filter((b) => belongsToSchool(b, activeSchool.id, isDemoMode));
+  const schoolSdqAssessments = sdqAssessments.filter((s) => belongsToSchool(s, activeSchool.id, isDemoMode));
+  const schoolInfirmaryVisits = infirmaryVisits.filter((i) => belongsToSchool(i, activeSchool.id, isDemoMode));
+  const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => belongsToSchool(h, activeSchool.id, isDemoMode));
+  const schoolLeaveRequests = leaveRequests.filter((request) => belongsToSchool(request, activeSchool.id, isDemoMode));
   const schoolPermissions = useSchoolPermissions(activeSchool.id);
   const matchedTeacherForScope = currentRole === 'teacher'
     ? resolveMatchedTeacherForUser(currentUser, schoolTeachers)
@@ -1032,7 +1082,10 @@ export const App: React.FC = () => {
     .replace(/\s+/g, '');
   const teacherRoomKeys = new Set<string>([
     ...(matchedTeacherForScope?.homeroomClasses || []),
-    ...teacherScopedTimetableSlots.map((slot) => slot.classRoom).filter(Boolean),
+    ...teacherScopedTimetableSlots
+      .filter((slot) => !isSchoolWideTimetableActivity(slot))
+      .map((slot) => slot.classRoom)
+      .filter(Boolean),
   ].map(normalizeRoomScope).filter(Boolean));
   const teacherScopedStudents = currentRole === 'teacher'
     ? schoolStudents.filter((student) => {
@@ -1196,6 +1249,8 @@ export const App: React.FC = () => {
     setIsBiometricLocked(false);
     setBiometricLockError(null);
     setIsSuperAdminSchoolView(false);
+    setOperationalRoleReady(false);
+    setIsDataReady(false);
     setSchools(context.schools);
     setCurrentUser(context.user);
     setCurrentRole(context.user.role);
@@ -1261,7 +1316,7 @@ export const App: React.FC = () => {
       if (updates.gradingSystem && updates.gradingSystem !== systemConfig.gradingSystem) {
         const targetMode = updates.gradingSystem;
         const recalculatedGrades = grades.map((grade) => {
-          if (grade.schoolId && grade.schoolId !== activeSchool.id) return grade;
+          if (!belongsToSchool(grade, activeSchool.id, isDemoMode)) return grade;
           if (isSpecialMoeGrade(grade.letterGrade)) {
             return { ...grade, gradePoint: 0 };
           }
@@ -1415,6 +1470,7 @@ export const App: React.FC = () => {
       setBiometricLockError(null);
       setCurrentUser(null);
       setAuthenticatedRole(null);
+      setOperationalRoleReady(false);
       setIsSuperAdminSchoolView(false);
       setIsDataReady(false);
       setLoadedSchoolId(null);
@@ -1827,7 +1883,7 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!currentUser || isDemoMode) return;
+    if (!currentUser || isDemoMode || !operationalRoleReady) return;
     if (currentUser.role === 'super_admin' && !isSuperAdminSchoolView) {
       setDataLoadError(null);
       setIsDataReady(true);
@@ -2095,7 +2151,7 @@ export const App: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView]);
+  }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView, operationalRoleReady]);
 
   useEffect(() => {
     // LMS lesson bodies and progress are sizable. Load them only when the user
@@ -2142,7 +2198,9 @@ export const App: React.FC = () => {
           const raw = localStorage.getItem(`eduverse_portfolio_items_${activeSchool.id}`);
           const parsed: unknown = raw ? JSON.parse(raw) : [];
           if (Array.isArray(parsed)) {
-            cachedItems = (parsed as PortfolioItem[]).filter((item) => !item.schoolId || item.schoolId === activeSchool.id);
+            cachedItems = (parsed as PortfolioItem[]).filter((item) =>
+              belongsToSchool(item, activeSchool.id, isDemoMode)
+            );
           }
         } catch {
           // Keep remote portfolio records if a legacy local cache is invalid.
@@ -2199,7 +2257,7 @@ export const App: React.FC = () => {
 
   // Load real school-scoped Arcade Profiles, Rewards Catalog & Teacher Perk Redemptions from Supabase + local cache
   useEffect(() => {
-    if (!activeSchool.id) return;
+    if (!activeSchool.id || !operationalRoleReady) return;
     let active = true;
     Promise.all([
       loadSchoolArcadeProfiles(activeSchool.id),
@@ -2218,7 +2276,7 @@ export const App: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [activeSchool.id]);
+  }, [activeSchool.id, operationalRoleReady]);
 
   // Load Package Catalog & School Feature Flags (+ Student AI switch) from Supabase with local fallback
   useEffect(() => {
@@ -3045,7 +3103,7 @@ export const App: React.FC = () => {
   ) => {
     setStudents((prevStudents) =>
       prevStudents.map((stu) => {
-        if (stu.schoolId && stu.schoolId !== activeSchool.id) return stu;
+        if (!belongsToSchool(stu, activeSchool.id, isDemoMode)) return stu;
         if (targetStudentIds && !targetStudentIds.has(stu.id)) return stu;
         const summary = calculateStudentAcademicSummary({
           student: stu,
@@ -4475,7 +4533,7 @@ export const App: React.FC = () => {
         if (activeSchool.id) {
           localStorage.setItem(
             `eduverse_portfolio_items_${activeSchool.id}`,
-            JSON.stringify(next.filter((p) => !p.schoolId || p.schoolId === activeSchool.id))
+            JSON.stringify(next.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode)))
           );
         }
       } catch {
@@ -4512,7 +4570,7 @@ export const App: React.FC = () => {
         if (activeSchool.id) {
           localStorage.setItem(
             `eduverse_portfolio_items_${activeSchool.id}`,
-            JSON.stringify(next.filter((p) => !p.schoolId || p.schoolId === activeSchool.id))
+            JSON.stringify(next.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode)))
           );
         }
       } catch {
@@ -4659,7 +4717,7 @@ export const App: React.FC = () => {
     };
     let updated = false;
     const next = timetableSlots.map((currentSlot) => {
-      if (currentSlot.id !== slot.id || (currentSlot.schoolId && currentSlot.schoolId !== activeSchool.id)) {
+      if (currentSlot.id !== slot.id || !belongsToSchool(currentSlot, activeSchool.id, isDemoMode)) {
         return currentSlot;
       }
       updated = true;
@@ -4702,7 +4760,7 @@ export const App: React.FC = () => {
         .map((period) => period.periodNumber)
     );
     const activeTermSlots = timetableSlots.filter((slot) => (
-      (!slot.schoolId || slot.schoolId === activeSchool.id) &&
+      belongsToSchool(slot, activeSchool.id, isDemoMode) &&
       (slot.academicYear || timetableAcademicYear) === timetableAcademicYear &&
       (slot.semester || timetableSemester) === timetableSemester
     ));
@@ -4903,7 +4961,7 @@ export const App: React.FC = () => {
     };
     setGrades((prev) => {
       const existingIdx = prev.findIndex(
-        (g) => (g.schoolId === activeSchool.id || !g.schoolId) && g.studentId === created.studentId && g.courseId === created.courseId
+        (g) => belongsToSchool(g, activeSchool.id, isDemoMode) && g.studentId === created.studentId && g.courseId === created.courseId
       );
       const next = existingIdx >= 0
         ? prev.map((g, idx) => (idx === existingIdx ? { ...g, ...created, id: g.id } : g))
@@ -4992,7 +5050,7 @@ export const App: React.FC = () => {
       for (const entry of entries) {
         affectedIds.add(entry.studentId);
         const idx = next.findIndex(
-          (g) => (g.schoolId === activeSchool.id || !g.schoolId) && g.courseId === courseId && g.studentId === entry.studentId
+          (g) => belongsToSchool(g, activeSchool.id, isDemoMode) && g.courseId === courseId && g.studentId === entry.studentId
         );
         if (idx >= 0) {
           const existing = next[idx];
@@ -5301,10 +5359,24 @@ export const App: React.FC = () => {
   const canSwitchAdminTeacherMode =
     (currentRole === 'admin' && canUseTeacherMode) ||
     (currentRole === 'teacher' && canUseAdminMode);
-  const handleSwitchOperationalRole = (nextRole: 'admin' | 'teacher') => {
+  const handleSwitchOperationalRole = async (nextRole: 'admin' | 'teacher') => {
     if (nextRole === currentRole) return;
     if (nextRole === 'admin' && !canUseAdminMode) return;
     if (nextRole === 'teacher' && !canUseTeacherMode) return;
+    if (operationalRoleSwitchRef.current) return;
+    operationalRoleSwitchRef.current = true;
+    try {
+      await setMyOperationalRole(nextRole);
+    } catch (error) {
+      emitAppToast({
+        tone: 'error',
+        title: 'เปลี่ยนโหมดไม่สำเร็จ',
+        message: error instanceof Error ? error.message : String(error),
+      });
+      operationalRoleSwitchRef.current = false;
+      return;
+    }
+    operationalRoleSwitchRef.current = false;
     setCurrentUser((user) => (user ? { ...user, role: nextRole } : user));
     setCurrentRole(nextRole);
     setProgramMode('school_erp');
@@ -5332,7 +5404,7 @@ export const App: React.FC = () => {
       : schoolGrades;
   const viewInvoices = isRestrictedViewer
     ? schoolInvoices.filter((inv) => scopedStudentIdSet.has(inv.studentId))
-    : schoolInvoices;
+    : currentRole === 'teacher' ? [] : schoolInvoices;
   const viewHomeworkSubmissions = isRestrictedViewer
     ? schoolHomeworkSubmissions.filter((sub) => scopedStudentIdSet.has(sub.studentId))
     : currentRole === 'teacher'
@@ -5358,7 +5430,30 @@ export const App: React.FC = () => {
       : schoolSdqAssessments;
   const viewPortfolioItems = isRestrictedViewer
     ? schoolPortfolioItems.filter((p) => p.ownerId === currentUser?.id || scopedStudentIdSet.has(p.ownerId))
-    : schoolPortfolioItems;
+    : currentRole === 'teacher'
+      ? schoolPortfolioItems.filter((item) =>
+          item.ownerId === currentUser?.id ||
+          item.ownerId === currentUser?.teacherRecordId ||
+          teacherStudentIds.has(item.ownerId)
+        )
+      : schoolPortfolioItems;
+  const viewPlayerScores = isRestrictedViewer
+    ? playerScores.filter((score) =>
+        score.userId === currentUser?.id ||
+        ownStudentIds.includes(score.userId) ||
+        Boolean(score.studentId && ownStudentIds.includes(score.studentId))
+      )
+    : currentRole === 'teacher'
+      ? playerScores.filter((score) =>
+          score.userId === currentUser?.id ||
+          teacherStudentIds.has(score.userId) ||
+          Boolean(score.studentId && teacherStudentIds.has(score.studentId))
+        )
+      : playerScores;
+  const ownPortfolioItems = viewPortfolioItems.filter((item) =>
+    item.ownerId === currentUser?.id ||
+    item.ownerId === currentUser?.teacherRecordId
+  );
   const canEditGradesInSchool =
     ['super_admin', 'admin'].includes(currentRole) ||
     (currentRole === 'teacher' && schoolPermissions.teacher_grade_entry !== false);
@@ -5398,7 +5493,7 @@ export const App: React.FC = () => {
           homeworkSubmissions={viewHomeworkSubmissions}
           announcements={viewAnnouncements}
           questions={schoolQuestions}
-          playerScores={playerScores}
+          playerScores={viewPlayerScores}
           rewardItems={rewardItems}
           campusGates={campusGates}
           timetableSlots={viewTimetableSlots}
@@ -5492,7 +5587,7 @@ export const App: React.FC = () => {
         {showProfileModal && currentUser && (
           <UserProfileModal
             currentUser={currentUser}
-            portfolioItems={viewPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
+            portfolioItems={ownPortfolioItems}
             lang={lang}
             onSaveProfile={handleUpdateUserProfile}
             onAddPortfolioItem={handleAddPortfolioItem}
@@ -5691,7 +5786,7 @@ export const App: React.FC = () => {
         onOpenCoordinationDesk={['admin', 'super_admin'].includes(currentRole) ? () => navigateToAppTab('admin_superadmin_desk') : undefined}
         onOpenExamPaymentSettings={currentRole === 'super_admin' ? handleOpenExamPaymentSettings : undefined}
         students={viewStudents}
-        teachers={isRestrictedViewer ? [] : schoolTeachers}
+        teachers={viewTeachers}
         courses={viewCourses}
         grades={viewGrades}
         onOpenStudentProfile={setSelectedStudentForProfile}
@@ -5925,7 +6020,7 @@ export const App: React.FC = () => {
                     courses={viewCourses}
                     attendance={viewAttendance}
                     grades={viewGrades}
-                    playerScores={isRestrictedViewer ? playerScores.filter((p) => p.userId === currentUser?.id) : playerScores}
+                    playerScores={viewPlayerScores}
                     invoices={viewInvoices}
                     announcements={viewAnnouncements}
                     systemConfig={systemConfig}
@@ -6122,7 +6217,7 @@ export const App: React.FC = () => {
                 {currentTab === 'games' && (
                   <EduBattleGameView
                     questions={schoolQuestions}
-                    playerScores={playerScores}
+                    playerScores={viewPlayerScores}
                     rewardItems={rewardItems}
                     currentUser={currentUser}
                     lang={lang}
@@ -6249,7 +6344,7 @@ export const App: React.FC = () => {
                     school={activeSchool}
                     students={viewStudents}
                     portfolioItems={viewPortfolioItems}
-                    playerScores={playerScores}
+                    playerScores={viewPlayerScores}
                     currentUser={currentUser}
                     onOpenPortfolio={() => setCurrentTab('portfolio')}
                     onExit={() => setCurrentTab('dashboard')}
@@ -6265,7 +6360,7 @@ export const App: React.FC = () => {
                     grades={viewGrades}
                     attendance={viewAttendance}
                     portfolioItems={viewPortfolioItems}
-                    playerScores={playerScores}
+                    playerScores={viewPlayerScores}
                     gradingSystem={systemConfig.gradingSystem}
                     lang={lang}
                     onNavigate={navigateToAppTab}
@@ -6328,7 +6423,7 @@ export const App: React.FC = () => {
                   <HomeworkTrackerView
                     submissions={viewHomeworkSubmissions}
                     students={viewStudents}
-                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    teachers={viewTeachers}
                     courses={viewCourses}
                     assignments={viewAssignments}
                     schoolId={activeSchool.id}
@@ -6449,10 +6544,10 @@ export const App: React.FC = () => {
                   <PortfolioView
                     portfolioItems={viewPortfolioItems}
                     students={viewStudents}
-                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    teachers={viewTeachers}
                     courses={viewCourses}
                     grades={viewGrades}
-                    playerScores={playerScores}
+                    playerScores={viewPlayerScores}
                     school={activeSchool}
                     gradingSystem={systemConfig.gradingSystem}
                     currentUser={currentUser}
@@ -6467,7 +6562,7 @@ export const App: React.FC = () => {
                 {currentTab === 'gradebook' && (
                   <GradebookView
                     students={viewStudents}
-                    teachers={isRestrictedViewer ? [] : schoolTeachers}
+                    teachers={viewTeachers}
                     courses={viewCourses}
                     grades={viewGrades}
                     systemConfig={systemConfig}
@@ -6622,7 +6717,7 @@ export const App: React.FC = () => {
                 schoolId={activeSchool.id}
                 courses={viewCourses}
                 students={viewStudents}
-                teachers={isRestrictedViewer ? [] : schoolTeachers}
+                teachers={viewTeachers}
                 lessons={viewLessons}
                 assignments={viewAssignments}
                 initialCourseId={lmsLessonJumpTarget?.courseId}
@@ -6867,7 +6962,7 @@ export const App: React.FC = () => {
       {showProfileModal && currentUser && (
         <UserProfileModal
           currentUser={currentUser}
-          portfolioItems={viewPortfolioItems.filter(p => p.ownerId === currentUser.id || p.ownerRole === currentUser.role)}
+          portfolioItems={ownPortfolioItems}
           lang={lang}
           onSaveProfile={handleUpdateUserProfile}
           onAddPortfolioItem={handleAddPortfolioItem}

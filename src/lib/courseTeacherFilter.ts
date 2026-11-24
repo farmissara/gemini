@@ -74,8 +74,6 @@ export function userMatchesCourse(
   const candidateNames = [
     matchedTeacher?.fullNameTh,
     matchedTeacher?.fullNameEn,
-    currentUser?.fullNameTh,
-    currentUser?.fullNameEn,
   ]
     .map((n) => (n || '').trim())
     .filter(Boolean);
@@ -297,18 +295,6 @@ export function resolveMatchedTeacherForUser(
     if (byEmail) return byEmail;
   }
 
-  const userNames = [currentUser.fullNameTh, currentUser.fullNameEn].filter(Boolean) as string[];
-  if (userNames.length > 0) {
-    const byName = teachers.find((t) =>
-      userNames.some(
-        (uName) =>
-          namesMatchFlexibly(uName, t.fullNameTh || '') ||
-          namesMatchFlexibly(uName, t.fullNameEn || '')
-      )
-    );
-    if (byName) return byName;
-  }
-
   return undefined;
 }
 
@@ -337,8 +323,6 @@ export function resolveTeacherFilterKeyForUser(
   const candidateNames = [
     matchedTeacher?.fullNameTh,
     matchedTeacher?.fullNameEn,
-    currentUser.fullNameTh,
-    currentUser.fullNameEn,
   ].filter(Boolean) as string[];
 
   for (const cand of candidateNames) {
@@ -373,30 +357,11 @@ export function slotMatchesLoggedInTeacher(
 ): boolean {
   if (!currentUser && !matchedTeacher) return false;
 
-  const slotCourseCode = (slot.courseCode || '').trim().toUpperCase();
-  const slotCourseTitle = `${slot.courseTitleTh || ''} ${slot.courseTitleEn || ''}`.normalize('NFC').toLocaleLowerCase();
-  const slotTeacherNames = getSlotTeachers(slot)
-    .map((name) => normalizeTeacherName(name))
-    .join(' ');
-  const isSchoolWideActivity =
-    slotCourseCode.includes('SCOUT') ||
-    slotCourseCode.includes('LADYSCOUT') ||
-    slotCourseCode.includes('NETRA') ||
-    slotCourseTitle.includes('ลูกเสือ') ||
-    slotCourseTitle.includes('เนตรนารี') ||
-    slotCourseTitle.includes('ยุกา') ||
-    slotCourseTitle.includes('บำเพ็ญประโยชน์') ||
-    slotCourseTitle.includes('พัฒนาผู้เรียน') ||
-    slotTeacherNames.includes('ครูทุกคน') ||
-    slotTeacherNames.includes('อาจารย์ทุกคน') ||
-    slotTeacherNames.includes('ทุกครู');
-  if (isSchoolWideActivity) return true;
+  if (isSchoolWideTimetableActivity(slot)) return true;
 
   const candidateNames = [
     matchedTeacher?.fullNameTh,
     matchedTeacher?.fullNameEn,
-    currentUser?.fullNameTh,
-    currentUser?.fullNameEn,
   ].filter(Boolean) as string[];
 
   const slotTeachers = getSlotTeachers(slot);
@@ -415,4 +380,27 @@ export function slotMatchesLoggedInTeacher(
   if (!linkedCourse) return false;
 
   return userMatchesCourse(currentUser, matchedTeacher, linkedCourse);
+}
+
+export function isSchoolWideTimetableActivity(
+  slot: Pick<TimetableSlot, 'courseCode' | 'courseTitleTh' | 'courseTitleEn' | 'teacherName' | 'coTeacherName'>
+): boolean {
+  const slotCourseCode = (slot.courseCode || '').trim().toUpperCase();
+  const slotCourseTitle = `${slot.courseTitleTh || ''} ${slot.courseTitleEn || ''}`.normalize('NFC').toLocaleLowerCase();
+  const slotTeacherNames = getSlotTeachers(slot)
+    .map((name) => normalizeTeacherName(name))
+    .join(' ');
+  const isSchoolWideActivity =
+    slotCourseCode.includes('SCOUT') ||
+    slotCourseCode.includes('LADYSCOUT') ||
+    slotCourseCode.includes('NETRA') ||
+    slotCourseTitle.includes('ลูกเสือ') ||
+    slotCourseTitle.includes('เนตรนารี') ||
+    slotCourseTitle.includes('ยุกา') ||
+    slotCourseTitle.includes('บำเพ็ญประโยชน์') ||
+    slotCourseTitle.includes('พัฒนาผู้เรียน') ||
+    slotTeacherNames.includes('ครูทุกคน') ||
+    slotTeacherNames.includes('อาจารย์ทุกคน') ||
+    slotTeacherNames.includes('ทุกครู');
+  return isSchoolWideActivity;
 }

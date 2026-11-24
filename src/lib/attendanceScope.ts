@@ -60,13 +60,6 @@ export function resolveOwnTeacher(currentUser: AuthUser | null | undefined, teac
     if (byEmail) return byEmail;
   }
 
-  const thName = (currentUser.fullNameTh || '').trim().toLocaleLowerCase();
-  const byName = teachers.find((t) => {
-    const tName = t.fullNameTh.trim().toLocaleLowerCase();
-    return thName && thName === tName;
-  });
-  if (byName) return byName;
-
   return undefined;
 }
 

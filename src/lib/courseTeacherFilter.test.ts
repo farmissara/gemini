@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildCourseTeacherOptions,
   courseMatchesTeacherFilter,
+  isSchoolWideTimetableActivity,
   resolveMatchedTeacherForUser,
   slotMatchesLoggedInTeacher,
   teacherMatchesCourse,
@@ -110,7 +111,11 @@ test('teacherMatchesCourse and userMatchesCourse match co-taught courses with ho
   });
 
   assert.equal(teacherMatchesCourse(coTeacher, coTaughtCourse), true);
-  assert.equal(userMatchesCourse(coTeacherUser, undefined, coTaughtCourse), true);
+  assert.equal(userMatchesCourse(coTeacherUser, coTeacher, coTaughtCourse), true);
+  assert.equal(
+    userMatchesCourse(makeUser({ fullNameTh: 'สมหญิง รักเรียน', email: 'unlinked@school.ac.th' }), undefined, coTaughtCourse),
+    false
+  );
 });
 
 test('slotMatchesLoggedInTeacher includes direct coTeacherName, honorific prefixes, and course-level co-teaching fallback', () => {
@@ -157,9 +162,9 @@ test('slotMatchesLoggedInTeacher includes direct coTeacherName, honorific prefix
   });
 
   assert.equal(slotMatchesLoggedInTeacher(directCoSlot, coTeacherUser, coTeacher, [coTaughtCourse]), true);
-  assert.equal(slotMatchesLoggedInTeacher(directCoSlot, coTeacherUser, undefined, []), true);
+  assert.equal(slotMatchesLoggedInTeacher(directCoSlot, coTeacherUser, undefined, []), false);
   assert.equal(slotMatchesLoggedInTeacher(courseFallbackSlot, coTeacherUser, coTeacher, [coTaughtCourse]), true);
-  assert.equal(slotMatchesLoggedInTeacher(courseFallbackSlot, coTeacherUser, undefined, [coTaughtCourse]), true);
+  assert.equal(slotMatchesLoggedInTeacher(courseFallbackSlot, coTeacherUser, undefined, [coTaughtCourse]), false);
   assert.equal(slotMatchesLoggedInTeacher(unrelatedSlot, coTeacherUser, coTeacher, [coTaughtCourse]), false);
 });
 
@@ -183,6 +188,9 @@ test('slotMatchesLoggedInTeacher includes school-wide scout and all-teacher slot
 
   assert.equal(slotMatchesLoggedInTeacher(scoutSlot, teacherUser, undefined, []), true);
   assert.equal(slotMatchesLoggedInTeacher(allTeacherSlot, teacherUser, undefined, []), true);
+  assert.equal(isSchoolWideTimetableActivity(scoutSlot), true);
+  assert.equal(isSchoolWideTimetableActivity(allTeacherSlot), true);
+  assert.equal(isSchoolWideTimetableActivity(makeSlot({ teacherName: 'ครูสมชาย ใจดี' })), false);
 });
 
 test('buildCourseTeacherOptions keeps co-teachers isolated so filtering by co-teacher does not include primary teacher solo courses', () => {

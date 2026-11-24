@@ -1,5 +1,6 @@
 import type { UserRole } from '../types';
 import { getSupabaseClient } from './supabase';
+import type { OperationalRole } from './operationalRoles';
 
 export type SuperAdminSettingKey =
   | 'role_permissions'
@@ -28,6 +29,31 @@ export async function fetchMyRolePermissionConfig(role?: UserRole): Promise<unkn
   });
   if (error) throw new Error(`Could not load role permissions: ${error.message}`);
   return data;
+}
+
+export async function fetchMyOperationalRole(): Promise<OperationalRole> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.rpc('get_my_operational_role');
+  if (error) throw new Error(`Could not load this session's role: ${error.message}`);
+  if (data !== 'admin' && data !== 'teacher') {
+    throw new Error('The active operational role returned by the database is invalid.');
+  }
+  return data;
+}
+
+export async function setMyOperationalRole(role: OperationalRole): Promise<void> {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await client.rpc('set_my_operational_role', {
+    requested_role: role,
+  });
+  if (error) throw new Error(`Could not switch role: ${error.message}`);
+  if (data !== role) {
+    throw new Error('The database did not confirm the requested operational role.');
+  }
 }
 
 export async function saveSuperAdminSetting(
