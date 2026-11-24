@@ -635,6 +635,53 @@ CREATE POLICY "Teachers submit own leave requests" ON public.leave_requests
         AND public.has_school_role(school_id, ARRAY['teacher'])
     );
 
+DROP POLICY IF EXISTS "Teachers read assigned student leave requests" ON public.leave_requests;
+CREATE POLICY "Teachers read assigned student leave requests" ON public.leave_requests
+    FOR SELECT USING (
+        user_role = 'student'
+        AND public.has_school_role(school_id, ARRAY['teacher'])
+        AND public.has_role_permission(school_id, 'recordAttendance')
+        AND (
+            public.teacher_can_access_student(school_id, user_id, NULL)
+            OR (
+                leave_scope = 'period_hourly'
+                AND course_id IS NOT NULL
+                AND public.can_manage_lms_course(school_id, course_id)
+            )
+        )
+    );
+
+DROP POLICY IF EXISTS "Teachers approve assigned student leave requests" ON public.leave_requests;
+CREATE POLICY "Teachers approve assigned student leave requests" ON public.leave_requests
+    FOR UPDATE USING (
+        user_role = 'student'
+        AND status = 'pending'
+        AND public.has_school_role(school_id, ARRAY['teacher'])
+        AND public.has_role_permission(school_id, 'recordAttendance')
+        AND (
+            public.teacher_can_access_student(school_id, user_id, NULL)
+            OR (
+                leave_scope = 'period_hourly'
+                AND course_id IS NOT NULL
+                AND public.can_manage_lms_course(school_id, course_id)
+            )
+        )
+    )
+    WITH CHECK (
+        user_role = 'student'
+        AND status IN ('approved', 'rejected')
+        AND public.has_school_role(school_id, ARRAY['teacher'])
+        AND public.has_role_permission(school_id, 'recordAttendance')
+        AND (
+            public.teacher_can_access_student(school_id, user_id, NULL)
+            OR (
+                leave_scope = 'period_hourly'
+                AND course_id IS NOT NULL
+                AND public.can_manage_lms_course(school_id, course_id)
+            )
+        )
+    );
+
 DROP POLICY IF EXISTS "arcade_player_profiles_school_read" ON public.arcade_player_profiles;
 CREATE POLICY "arcade_player_profiles_school_read"
     ON public.arcade_player_profiles FOR SELECT TO authenticated
