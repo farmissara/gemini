@@ -53,6 +53,68 @@ interface CentralExamPurchaseModalProps {
 
 const getPackQuestionCount = (pack: CentralExamPack) => pack.questionCount ?? pack.questions.length;
 
+const STRAND_PALETTE: Record<
+  LearningStrandId,
+  { filter: string; selectedFilter: string; code: string; packCard: string; packBadge: string }
+> = {
+  thai: {
+    filter: 'border-rose-200 bg-gradient-to-br from-rose-50 to-white hover:border-rose-400 dark:border-rose-900 dark:from-rose-950/40 dark:to-slate-900',
+    selectedFilter: 'border-rose-500 ring-2 ring-rose-200 dark:ring-rose-900',
+    code: 'border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300',
+    packCard: 'border-rose-200 border-l-4 border-l-rose-500 bg-gradient-to-br from-rose-50/70 via-white to-white hover:border-rose-300 dark:border-rose-900 dark:border-l-rose-500 dark:from-rose-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
+  },
+  math: {
+    filter: 'border-violet-200 bg-gradient-to-br from-violet-50 to-white hover:border-violet-400 dark:border-violet-900 dark:from-violet-950/40 dark:to-slate-900',
+    selectedFilter: 'border-violet-500 ring-2 ring-violet-200 dark:ring-violet-900',
+    code: 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300',
+    packCard: 'border-violet-200 border-l-4 border-l-violet-500 bg-gradient-to-br from-violet-50/70 via-white to-white hover:border-violet-300 dark:border-violet-900 dark:border-l-violet-500 dark:from-violet-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300',
+  },
+  science_tech: {
+    filter: 'border-sky-200 bg-gradient-to-br from-sky-50 to-white hover:border-sky-400 dark:border-sky-900 dark:from-sky-950/40 dark:to-slate-900',
+    selectedFilter: 'border-sky-500 ring-2 ring-sky-200 dark:ring-sky-900',
+    code: 'border-sky-200 bg-sky-100 text-sky-700 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300',
+    packCard: 'border-sky-200 border-l-4 border-l-sky-500 bg-gradient-to-br from-sky-50/70 via-white to-white hover:border-sky-300 dark:border-sky-900 dark:border-l-sky-500 dark:from-sky-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
+  },
+  social: {
+    filter: 'border-amber-200 bg-gradient-to-br from-amber-50 to-white hover:border-amber-400 dark:border-amber-900 dark:from-amber-950/40 dark:to-slate-900',
+    selectedFilter: 'border-amber-500 ring-2 ring-amber-200 dark:ring-amber-900',
+    code: 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    packCard: 'border-amber-200 border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/70 via-white to-white hover:border-amber-300 dark:border-amber-900 dark:border-l-amber-500 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+  },
+  health_pe: {
+    filter: 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white hover:border-emerald-400 dark:border-emerald-900 dark:from-emerald-950/40 dark:to-slate-900',
+    selectedFilter: 'border-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900',
+    code: 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+    packCard: 'border-emerald-200 border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/70 via-white to-white hover:border-emerald-300 dark:border-emerald-900 dark:border-l-emerald-500 dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+  },
+  arts: {
+    filter: 'border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-white hover:border-fuchsia-400 dark:border-fuchsia-900 dark:from-fuchsia-950/40 dark:to-slate-900',
+    selectedFilter: 'border-fuchsia-500 ring-2 ring-fuchsia-200 dark:ring-fuchsia-900',
+    code: 'border-fuchsia-200 bg-fuchsia-100 text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-300',
+    packCard: 'border-fuchsia-200 border-l-4 border-l-fuchsia-500 bg-gradient-to-br from-fuchsia-50/70 via-white to-white hover:border-fuchsia-300 dark:border-fuchsia-900 dark:border-l-fuchsia-500 dark:from-fuchsia-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-300',
+  },
+  career_tech: {
+    filter: 'border-orange-200 bg-gradient-to-br from-orange-50 to-white hover:border-orange-400 dark:border-orange-900 dark:from-orange-950/40 dark:to-slate-900',
+    selectedFilter: 'border-orange-500 ring-2 ring-orange-200 dark:ring-orange-900',
+    code: 'border-orange-200 bg-orange-100 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300',
+    packCard: 'border-orange-200 border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/70 via-white to-white hover:border-orange-300 dark:border-orange-900 dark:border-l-orange-500 dark:from-orange-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300',
+  },
+  foreign_lang: {
+    filter: 'border-cyan-200 bg-gradient-to-br from-cyan-50 to-white hover:border-cyan-400 dark:border-cyan-900 dark:from-cyan-950/40 dark:to-slate-900',
+    selectedFilter: 'border-cyan-500 ring-2 ring-cyan-200 dark:ring-cyan-900',
+    code: 'border-cyan-200 bg-cyan-100 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300',
+    packCard: 'border-cyan-200 border-l-4 border-l-cyan-500 bg-gradient-to-br from-cyan-50/70 via-white to-white hover:border-cyan-300 dark:border-cyan-900 dark:border-l-cyan-500 dark:from-cyan-950/30 dark:via-slate-900 dark:to-slate-900',
+    packBadge: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300',
+  },
+};
+
 function matchesExamGradeFilter(gradeLevel: string, filter: ExamGradeFilter): boolean {
   if (filter === 'all') return true;
   const g = (gradeLevel || '').toLowerCase();
@@ -926,7 +988,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   return (
     <div className={`space-y-5 ${getModuleTone('central_exam_hub')}`}>
       {/* Header Banner */}
-      <div className="app-page-header p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="app-page-header border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-50 via-cyan-50 to-white p-5 shadow-sm dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
             <BookOpen className="w-5 h-5" />
@@ -972,22 +1034,26 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         {strandStats.map((s) => {
           const isSelected = selectedStrand === s.id;
+          const palette = STRAND_PALETTE[s.id];
           return (
             <button
               key={s.id}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => setSelectedStrand(isSelected ? 'all' : s.id)}
-              className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+              className={`p-2.5 rounded-xl border text-left transition cursor-pointer hover:-translate-y-0.5 hover:shadow-sm ${
+                palette.filter
+              } ${
                 isSelected
-                  ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
+                  ? `${palette.selectedFilter} text-[var(--color-text-title)] shadow-sm`
+                  : 'text-[var(--color-text-title)]'
               }`}
             >
               <div className="flex items-center justify-between text-[11px] font-bold">
-                <span className="px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-mono">
+                <span className={`px-1.5 py-0.5 rounded-md border font-mono ${palette.code}`}>
                   {s.code}
                 </span>
-                <span className="tabular-nums text-[var(--color-text-muted)]">
+                <span className="tabular-nums text-[var(--color-text-body)]">
                   {s.claimedPackCount}/{s.packCount}
                 </span>
               </div>
@@ -1003,7 +1069,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-sm">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -1118,17 +1184,19 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {paginatedPacks.map((pack) => {
             const strandMeta = getStrandMeta(pack.strand);
+            const strandPalette = STRAND_PALETTE[pack.strand];
             const entitlement = entitlementByPackId.get(pack.id);
             const isFree = pack.pricingType === 'free';
 
             return (
               <div
                 key={pack.id}
-                className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 flex flex-col justify-between space-y-4"
+                className={`group rounded-xl p-4 flex flex-col justify-between space-y-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${strandPalette.packCard}`}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="font-bold text-[var(--color-text-muted)]">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 font-bold ${strandPalette.packBadge}`}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
                       {strandMeta.code} · {strandMeta.nameTh}
                     </span>
                     {entitlement ? (
@@ -1147,7 +1215,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                     )}
                   </div>
 
-                  <h3 className="text-sm font-extrabold text-[var(--color-text-title)] leading-snug">
+                  <h3 className="min-h-[2.5rem] line-clamp-2 text-sm font-extrabold text-[var(--color-text-title)] leading-snug">
                     {pack.titleTh}
                   </h3>
                   <p className="text-xs text-[var(--color-text-body)] line-clamp-2">{pack.descriptionTh}</p>
