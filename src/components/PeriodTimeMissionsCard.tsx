@@ -44,6 +44,7 @@ interface PeriodTimeMissionsCardProps {
   ) => void;
   onOpenSchedule?: () => void;
   compact?: boolean;
+  collapsedByDefault?: boolean;
   periodAttendance?: PeriodAttendanceRecord[];
 }
 
@@ -60,8 +61,9 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
   onTriggerCheckin,
   onOpenSchedule,
   compact = false,
+  collapsedByDefault = false,
 }) => {
-  const [expanded, setExpanded] = useState(!compact);
+  const [expanded, setExpanded] = useState(collapsedByDefault ? false : !compact);
 
   if (!canSelfCheckin || (currentRole !== 'student' && currentRole !== 'teacher')) {
     return null;
@@ -111,14 +113,125 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
   const progressPercent =
     totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
+  const prioritizedMissions = [
+    ...activeMissions,
+    ...enrichedMissions.filter((m) => !m.activity.isActive && m.partialCheckedIn),
+    ...enrichedMissions.filter((m) => !m.activity.isActive && !m.partialCheckedIn && !m.completed),
+    ...enrichedMissions.filter((m) => m.completed),
+  ];
   const visibleMissions =
     compact && !expanded
-      ? [
-          ...activeMissions,
-          ...enrichedMissions.filter((m) => !m.activity.isActive && !m.completed),
-          ...enrichedMissions.filter((m) => m.completed),
-        ].slice(0, 2)
+      ? prioritizedMissions.slice(0, 2)
       : enrichedMissions;
+  const featuredMission = prioritizedMissions[0];
+
+  if (collapsedByDefault && !expanded) {
+    return (
+      <section
+        aria-label={
+          lang === 'th'
+            ? 'ภารกิจเช็คชื่อเข้า-ออกตามเวลา'
+            : 'Timed Period Check-in Missions'
+        }
+        className={`rounded-xl border px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 transition ${
+          activeMissions.length > 0
+            ? 'border-rose-400 dark:border-rose-800 bg-rose-50/85 dark:bg-rose-950/35'
+            : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span
+            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+              activeMissions.length > 0
+                ? 'bg-rose-600 text-white'
+                : 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+            }`}
+          >
+            {activeMissions.length > 0 ? (
+              <Flame className="w-3.5 h-3.5" />
+            ) : (
+              <Target className="w-3.5 h-3.5" />
+            )}
+          </span>
+          <span className="text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap">
+            {lang === 'th' ? 'ภารกิจเช็คอินรายคาบ' : 'Period Missions'}
+          </span>
+          <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+            เข้า {completedCount}/{totalCount} · ครบ {fullDoneCount}/{totalCount}
+          </span>
+          {featuredMission && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold truncate max-w-[280px] ${
+                featuredMission.activity.isActive
+                  ? 'bg-rose-600 text-white'
+                  : featuredMission.partialCheckedIn
+                    ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+                    : 'bg-[var(--color-card)] text-[var(--color-text-body)] border border-[var(--color-border)]'
+              }`}
+            >
+              <span>
+                คาบ {featuredMission.slot.periodNumber} · {featuredMission.slot.courseCode}
+              </span>
+              <span className="opacity-85">
+                {featuredMission.completed
+                  ? '(ครบแล้ว)'
+                  : featuredMission.activity.isActive
+                    ? '(ถึงเวลา)'
+                    : featuredMission.partialCheckedIn
+                      ? '(รอเช็คเอาท์)'
+                      : featuredMission.activity.minutesUntilStart !== null
+                        ? `(อีก ${featuredMission.activity.minutesUntilStart} น.)`
+                        : ''}
+              </span>
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {featuredMission && !featuredMission.completed && (
+            <button
+              type="button"
+              onClick={() =>
+                onTriggerCheckin(
+                  featuredMission.slot,
+                  targetDateStr,
+                  featuredMission.nextCheckType
+                )
+              }
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold cursor-pointer transition ${
+                featuredMission.activity.isActive
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                  : featuredMission.partialCheckedIn
+                    ? 'bg-slate-800 hover:bg-slate-900 dark:bg-rose-700 dark:hover:bg-rose-800 text-white'
+                    : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white'
+              }`}
+            >
+              {featuredMission.nextCheckType === 'check_out' ? (
+                <LogOut className="w-3 h-3" />
+              ) : (
+                <LogIn className="w-3 h-3" />
+              )}
+              <span>
+                {featuredMission.nextCheckType === 'check_out'
+                  ? 'เช็คเอาท์'
+                  : featuredMission.activity.isActive
+                    ? 'เช็คอินตอนนี้'
+                    : 'เช็คอิน'}
+              </span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+          >
+            <span>{lang === 'th' ? `ดูทั้งหมด (${totalCount})` : `Show (${totalCount})`}</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -191,7 +304,7 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
               {lang === 'th' ? 'ดูตารางเต็ม' : 'Full Schedule'}
             </button>
           )}
-          {enrichedMissions.length > 2 && (
+          {(collapsedByDefault || enrichedMissions.length > 2) && (
             <button
               type="button"
               onClick={() => setExpanded((prev) => !prev)}

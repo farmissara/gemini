@@ -82,7 +82,7 @@ import {
   slotHasTeacher,
 } from '../lib/timetableTeachers';
 import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
-import { PeriodTimeMissionsCard } from '../components/PeriodTimeMissionsCard';
+import { emitAppToast } from '../components/common/ToastProvider';
 import { TimetableImportExportModal } from '../components/modals/TimetableImportExportModal';
 import {
   buildCourseTeacherOptions,
@@ -829,6 +829,169 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       checkType,
     });
   };
+
+  const lastPeriodMissionToastKeyRef = useRef<string>('');
+  useEffect(() => {
+    if (
+      viewMode !== 'classroom' ||
+      !canUsePeriodCheckin ||
+      todayHoliday ||
+      isWeekendDate(todayBangkokDate) ||
+      (currentRole !== 'student' && currentRole !== 'teacher')
+    ) {
+      return;
+    }
+
+    const myTodayPeriodSlots = slots
+      .filter((s) => s.dayOfWeek === todayDayKey)
+      .filter((s) =>
+        currentRole === 'teacher'
+          ? slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses)
+          : true
+      )
+      .slice()
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+
+    if (myTodayPeriodSlots.length === 0) return;
+
+    const enriched = myTodayPeriodSlots.map((slot) => {
+      const activity = getTimetableSlotActivityStatus({
+        slot,
+        schoolPeriods,
+        now: bangkokClock,
+        schoolId,
+        targetDateStr: todayBangkokDate,
+      });
+      const checkStatus = getSlotCheckStatusForDate(slot, todayBangkokDate);
+      const completed = checkStatus.hasCheckIn && checkStatus.hasCheckOut;
+      const partialCheckedIn = checkStatus.hasCheckIn && !checkStatus.hasCheckOut;
+      const nextCheckType: 'check_in' | 'check_out' = partialCheckedIn ? 'check_out' : 'check_in';
+      return { slot, activity, checkStatus, completed, partialCheckedIn, nextCheckType };
+    });
+
+    const completedCount = enriched.filter((m) => m.checkStatus.hasCheckIn).length;
+    const fullDoneCount = enriched.filter((m) => m.completed).length;
+    const totalCount = enriched.length;
+
+    const featured =
+      enriched.find((m) => m.activity.isActive && !m.completed) ||
+      enriched.find((m) => m.partialCheckedIn) ||
+      enriched.find((m) => m.activity.missionPhase === 'upcoming' && !m.checkStatus.hasCheckIn);
+
+    if (!featured) return;
+
+    const alertKey = `${schoolId}:${currentUser?.id || currentRole}:${todayBangkokDate}:${featured.slot.id}:${featured.nextCheckType}:${featured.activity.isActive ? 'active' : featured.activity.missionPhase}`;
+    if (lastPeriodMissionToastKeyRef.current === alertKey) return;
+    lastPeriodMissionToastKeyRef.current = alertKey;
+
+    const timeRange = `${featured.activity.startTime || '--:--'}–${featured.activity.endTime || '--:--'}`;
+    const phaseNote = featured.activity.isActive
+      ? `ถึงเวลาคาบเรียน${featured.activity.remainingMinutes !== null ? ` (เหลือ ${featured.activity.remainingMinutes} น.)` : ''}`
+      : featured.partialCheckedIn
+        ? 'เช็คอินแล้ว · รอเช็คเอาท์'
+        : featured.activity.minutesUntilStart !== null
+          ? `อีก ${featured.activity.minutesUntilStart} น. ถึงเวลาเรียน`
+          : 'รอถึงเวลาเรียน';
+
+    emitAppToast({
+      id: 'timetable-period-mission-alert',
+      tone: featured.activity.isActive || featured.partialCheckedIn ? 'warning' : 'info',
+      title:
+        lang === 'th'
+          ? `เตือนเช็คชื่อเข้า-ออกตามเวลา (${completedCount}/${totalCount} เข้า · ${fullDoneCount}/${totalCount} ครบ)`
+          : `Period Check-in Reminder (${completedCount}/${totalCount})`,
+      message: `คาบ ${featured.slot.periodNumber} (${timeRange}) · ${featured.slot.courseCode} ${featured.slot.courseTitleTh || featured.slot.courseTitleEn} — ${phaseNote}`,
+      actionLabel:
+        featured.nextCheckType === 'check_out'
+          ? 'เช็คเอาท์คาบนี้'
+          : featured.activity.isActive
+            ? 'เช็คอินตอนนี้'
+            : 'เช็คอินคาบนี้',
+      durationMs: 7000,
+      onAction: () => triggerSlotCheckin(featured.slot, todayBangkokDate, featured.nextCheckType),
+    });
+  }, [
+    viewMode,
+    canUsePeriodCheckin,
+    todayHoliday,
+    todayBangkokDate,
+    todayDayKey,
+    currentRole,
+    currentUser,
+    matchedTeacher,
+    courses,
+    slots,
+    schoolPeriods,
+    bangkokClock,
+    schoolId,
+    periodAttendance,
+    lang,
+  ]);
+
+  const lastHolidayToastKeyRef = useRef<string>('');
+  useEffect(() => {
+    if (viewMode !== 'classroom' || isPersonalViewer) return;
+
+    const focusHoliday =
+      todayHoliday ||
+      currentWeekHolidays[0] ||
+      upcomingHolidaysList[0];
+
+    const holidaySummaryKey = `${schoolId}:${todayBangkokDate}:${todayHoliday?.id || ''}:${currentWeekHolidays.map((h) => h.id).join(',')}:${upcomingHolidaysList.slice(0, 2).map((h) => h.id).join(',')}`;
+    if (lastHolidayToastKeyRef.current === holidaySummaryKey) return;
+    lastHolidayToastKeyRef.current = holidaySummaryKey;
+
+    if (!focusHoliday && yearHolidaysCount === 0) return;
+
+    const title = todayHoliday
+      ? `วันหยุดราชการไทย (${currentBangkokYear + 543}) — วันนี้หยุด`
+      : currentWeekHolidays.length > 0
+        ? `วันหยุดราชการไทยสัปดาห์นี้ (${currentBangkokYear + 543})`
+        : `วันหยุดราชการไทย (${currentBangkokYear + 543})`;
+
+    const message = todayHoliday
+      ? `${todayHoliday.nameTh} (งดการเรียนการสอน)`
+      : currentWeekHolidays.length > 0
+        ? currentWeekHolidays
+            .map((h) => `${formatShortThaiDate(h.date)} · ${h.nameTh}`)
+            .join(' | ')
+        : upcomingHolidaysList.length > 0
+          ? `ถัดไป: ${upcomingHolidaysList
+              .slice(0, 2)
+              .map((h) => `${formatShortThaiDate(h.date)} · ${h.nameTh}`)
+              .join(' | ')}`
+          : `ปฏิทินวันหยุดไทย (${yearHolidaysCount} วันในระบบ)`;
+
+    emitAppToast({
+      id: 'timetable-thai-holiday-popup',
+      tone: todayHoliday ? 'warning' : 'info',
+      title,
+      message,
+      durationMs: 6500,
+      actionLabel: 'เปิดปฏิทินวันหยุด',
+      onAction: () => {
+        if (focusHoliday) {
+          setSelectedCalendarDate(focusHoliday.date);
+          setCalendarMonthCursor({
+            year: Number(focusHoliday.date.slice(0, 4)),
+            month: Number(focusHoliday.date.slice(5, 7)) - 1,
+          });
+        }
+        setCalendarLayoutMode('month');
+        setViewMode('calendar');
+      },
+    });
+  }, [
+    viewMode,
+    isPersonalViewer,
+    schoolId,
+    todayBangkokDate,
+    currentBangkokYear,
+    todayHoliday,
+    currentWeekHolidays,
+    upcomingHolidaysList,
+    yearHolidaysCount,
+  ]);
 
   const renderSlotStaffStatusBadges = (
     slot: TimetableSlot,
@@ -3996,6 +4159,34 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     <>
                       <div className="my-1 border-t border-[var(--color-border)]" />
                       <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
+                        วันหยุดราชการไทย ({currentBangkokYear + 543})
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isSyncingHolidays}
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          void handleManualHolidaySync(currentBangkokYear);
+                        }}
+                        className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-60 cursor-pointer"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
+                        <span>{isSyncingHolidays ? 'กำลังซิงค์วันหยุด...' : 'ซิงค์วันหยุดราชการ'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          setCalendarLayoutMode('month');
+                          setViewMode('calendar');
+                        }}
+                        className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                      >
+                        <CalendarDays className="h-3.5 w-3.5 tone-text" />
+                        <span>ปฏิทินวันหยุด ({yearHolidaysCount} วัน)</span>
+                      </button>
+                      <div className="my-1 border-t border-[var(--color-border)]" />
+                      <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
                         ทดสอบแจ้งเตือน
                       </div>
                       <button
@@ -4039,151 +4230,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </div>
           </div>
 
-          {/* Thai Government & School Holiday Banner on Classroom Timetable View for Teachers & Administrators */}
-          {!isPersonalViewer && (
-            <div
-              className={`print:hidden shrink-0 px-3 py-2 border-b flex flex-wrap items-center justify-between gap-2 text-xs ${
-                todayHoliday
-                  ? 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40'
-                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-2 min-w-0">
-                <span className="inline-flex items-center gap-1.5 font-bold text-[var(--color-text-title)] shrink-0">
-                  <CalendarDays className={`w-4 h-4 shrink-0 ${todayHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--color-primary-text)]'}`} />
-                  <span>วันหยุดราชการไทย ({currentBangkokYear + 543}):</span>
-                </span>
-                {todayHoliday ? (
-                  <span className="font-bold text-rose-700 dark:text-rose-200">
-                    วันนี้หยุด — {todayHoliday.nameTh} (งดการเรียนการสอน)
-                  </span>
-                ) : currentWeekHolidays.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[var(--color-text-muted)]">สัปดาห์นี้:</span>
-                    {currentWeekHolidays.map((h) => (
-                      <button
-                        key={h.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCalendarDate(h.date);
-                          setCalendarMonthCursor({
-                            year: Number(h.date.slice(0, 4)),
-                            month: Number(h.date.slice(5, 7)) - 1,
-                          });
-                          setCalendarLayoutMode('month');
-                          setViewMode('calendar');
-                        }}
-                        className="inline-flex items-center gap-1 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 text-[11px] font-bold text-rose-700 dark:text-rose-200 hover:bg-rose-100 cursor-pointer tabular-nums"
-                      >
-                        <span>{formatShortThaiDate(h.date)}</span>
-                        <span>· {h.nameTh}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : upcomingHolidaysList.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[var(--color-text-muted)]">ถัดไป:</span>
-                    {upcomingHolidaysList.slice(0, 2).map((h) => (
-                      <button
-                        key={h.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCalendarDate(h.date);
-                          setCalendarMonthCursor({
-                            year: Number(h.date.slice(0, 4)),
-                            month: Number(h.date.slice(5, 7)) - 1,
-                          });
-                          setCalendarLayoutMode('month');
-                          setViewMode('calendar');
-                        }}
-                        className="inline-flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-title)] hover:border-rose-300 cursor-pointer tabular-nums"
-                      >
-                        <span className="text-rose-600 dark:text-rose-400 font-bold">{formatShortThaiDate(h.date)}</span>
-                        <span className="truncate max-w-[220px]">{h.nameTh}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-[var(--color-text-muted)] tabular-nums">
-                    รวม {yearHolidaysCount} วันหยุดในระบบ
-                  </span>
-                )}
-              </div>
+          <div className="flex-1 min-h-0 overflow-y-auto">
+          {/* Thai public holiday and period check-in reminders are emitted as popup toasts */}
 
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="hidden xl:inline text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                  {holidaySyncStatus && !holidaySyncStatus.usedFallback
-                    ? `ซิงค์ API แล้ว (${yearHolidaysCount} วัน)`
-                    : `ปฏิทินไทย (${yearHolidaysCount} วัน)`}
-                </span>
-                <button
-                  type="button"
-                  disabled={isSyncingHolidays}
-                  onClick={() => void handleManualHolidaySync(currentBangkokYear)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] disabled:opacity-60 cursor-pointer"
-                >
-                  <RefreshCw className={`w-3 h-3 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
-                  <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุดราชการ'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCalendarLayoutMode('month');
-                    setViewMode('calendar');
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] cursor-pointer"
-                >
-                  <Calendar className="w-3 h-3" />
-                  <span>ปฏิทินวันหยุด</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Time-Based Period Check-in/Out Missions Card (Students & Teachers) */}
-          {canUsePeriodCheckin &&
-            !todayHoliday &&
-            !isWeekendDate(todayBangkokDate) &&
-            (currentRole === 'student' || currentRole === 'teacher') && (() => {
-              const myTodayPeriodSlots = activeSlots
-                .filter((s) => s.dayOfWeek === todayDayKey)
-                .filter((s) =>
-                  currentRole === 'teacher'
-                    ? slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses)
-                    : true
-                );
-              if (myTodayPeriodSlots.length === 0) return null;
-              return (
-                <div className="print:hidden shrink-0 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card)]">
-                  <PeriodTimeMissionsCard
-                    compact={true}
-                    slots={myTodayPeriodSlots}
-                    schoolPeriods={schoolPeriods}
-                    bangkokClock={bangkokClock}
-                    schoolId={schoolId}
-                    targetDateStr={todayBangkokDate}
-                    currentRole={currentRole}
-                    lang={lang}
-                    canSelfCheckin={canUsePeriodCheckin}
-                    getSlotCheckStatus={(s, d) => getSlotCheckStatusForDate(s, d)}
-                    onTriggerCheckin={(s, d, cType) => triggerSlotCheckin(s, d, cType)}
-                    periodAttendance={periodAttendance}
-                  />
-                </div>
-              );
-            })()}
-
-          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
+          <div className="max-lg:overflow-x-auto">
             <table className="table-comfortable w-full table-fixed text-left border-collapse">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] shadow-[0_1px_0_var(--color-border)]">
                 <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
                   <th className="p-1.5 w-24 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
                   {orderedSchoolPeriods.map((period) => (
-                      <th key={period.periodNumber} className={`p-1.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-12' : ''}`}>
-                        <div className={`font-bold ${period.isBreak ? 'text-amber-950 dark:text-amber-200' : 'text-[var(--color-text-title)]'}`}>
+                      <th key={period.periodNumber} className={`p-1.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-20' : ''}`}>
+                        <div className={`font-bold leading-tight ${period.isBreak ? 'text-amber-950 dark:text-amber-200 text-[10px]' : 'text-[var(--color-text-title)]'}`}>
                           {period.labelTh || (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
                         </div>
-                        <div className={`text-[10px] font-mono mt-0.5 ${period.isBreak ? 'text-amber-900 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`}>
+                        <div className={`text-[10px] font-mono mt-0.5 whitespace-nowrap ${period.isBreak ? 'text-amber-900 dark:text-amber-300 text-[9px]' : 'text-[var(--color-text-muted)]'}`}>
                           {`${period.startTime} - ${period.endTime}`}
                         </div>
                       </th>
@@ -4518,6 +4578,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 })}
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       )}
