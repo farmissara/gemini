@@ -2,13 +2,11 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import {
   ArrowRight,
   CheckCircle2,
-  CircleHelp,
   ChevronLeft,
   ChevronRight,
   Compass,
   Crosshair,
   Lightbulb,
-  MapPin,
   Play,
   Power,
   X,
@@ -20,6 +18,7 @@ import {
   ModuleTourStep,
   resolveTourStepsForPage,
 } from '../../data/moduleGuidedTours';
+import { FloatingMascotNavigator, MascotAvatar } from './MascotNavigator';
 
 export interface TourNavigationTarget {
   moduleId: string;
@@ -70,6 +69,8 @@ interface GuideTourProviderProps {
   isGuideEnabled: boolean;
   onSetGuideEnabled: (next: boolean) => void;
   onNavigateToTourTarget?: (target: TourNavigationTarget) => void;
+  onOpenFullGuide?: () => void;
+  hideFloatingMascot?: boolean;
   children: React.ReactNode;
 }
 
@@ -80,6 +81,8 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
   isGuideEnabled,
   onSetGuideEnabled,
   onNavigateToTourTarget,
+  onOpenFullGuide,
+  hideFloatingMascot = false,
   children,
 }) => {
   const [activeTourModuleId, setActiveTourModuleId] = useState<string | null>(null);
@@ -469,16 +472,16 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
           />
           <div
             aria-hidden="true"
-            className="fixed z-40 pointer-events-none inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-2.5 py-1 text-[11px] font-bold text-white shadow-lg print:hidden transition-all duration-200"
+            className="fixed z-40 pointer-events-none inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] pl-1.5 pr-3 py-0.5 text-[11px] font-bold text-white shadow-lg print:hidden transition-all duration-200"
             style={{
-              top: spotlightRect.top > 38 ? spotlightRect.top - 32 : spotlightRect.top + spotlightRect.height + 8,
-              left: Math.min(Math.max(12, spotlightRect.left), Math.max(12, window.innerWidth - 210)),
+              top: spotlightRect.top > 38 ? spotlightRect.top - 34 : spotlightRect.top + spotlightRect.height + 8,
+              left: Math.min(Math.max(12, spotlightRect.left), Math.max(12, window.innerWidth - 230)),
             }}
           >
-            <MapPin className="w-3 h-3 shrink-0" />
+            <MascotAvatar mood="pointing" size={20} animated={false} className="shrink-0 rounded-full bg-white" />
             <span>
               {lang === 'th'
-                ? `ดูตรงนี้ · ขั้นที่ ${activeTourStepIndex + 1}/${activeTourSteps.length}`
+                ? `น้องฮูกชี้ตรงนี้ · ขั้นที่ ${activeTourStepIndex + 1}/${activeTourSteps.length}`
                 : `Look here · Step ${activeTourStepIndex + 1}/${activeTourSteps.length}`}
             </span>
           </div>
@@ -519,8 +522,8 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
           <div className="p-4 space-y-3 overflow-y-auto min-h-0">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0 mt-0.5">
-                  <Compass className="w-4 h-4" />
+                <div className="w-11 h-11 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                  <MascotAvatar mood={currentStep.mood} size={40} />
                 </div>
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums flex flex-wrap items-center gap-1.5">
@@ -653,6 +656,25 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
           </div>
         </aside>
       )}
+
+      {!hideFloatingMascot && (
+        <FloatingMascotNavigator
+          currentTab={currentTab}
+          currentRole={currentRole}
+          lang={lang}
+          isGuideEnabled={isGuideEnabled}
+          isTourActive={Boolean(currentStep)}
+          onToggleGuideEnabled={toggleGuideEnabled}
+          onStartModuleTour={(moduleId) => {
+            startModuleTour(moduleId);
+          }}
+          onEndTour={endTour}
+          onNavigateModule={(moduleId) => {
+            onNavigateToTourTargetRef.current?.({ moduleId });
+          }}
+          onOpenFullGuide={onOpenFullGuide}
+        />
+      )}
     </GuideTourContext.Provider>
   );
 };
@@ -680,68 +702,13 @@ export const ModuleTourTrigger: React.FC<ModuleTourTriggerProps> = ({
   floating = false,
 }) => {
   const ctx = useGuideTour();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasTour = Boolean(MODULE_GUIDED_TOURS[moduleId]);
   if (!ctx || !hasTour) return null;
 
-  const isThisTourActive = ctx.activeTourModuleId === moduleId;
+  // Floating trigger is handled globally by FloatingMascotNavigator so there are no duplicate floating buttons
+  if (floating) return null;
 
-  if (floating) {
-    return (
-      <div className={`fixed bottom-20 right-3 z-[110] print:hidden sm:right-5 md:bottom-5 ${className}`}>
-        {isMenuOpen && (
-          <div
-            role="group"
-            aria-label={lang === 'th' ? 'เมนูทัวร์แนะนำ' : 'Guided tour menu'}
-            className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2.5 shadow-xl"
-          >
-            <p className="px-1 pb-2 text-xs font-bold text-[var(--color-text-title)]">
-              {lang === 'th' ? 'ช่วยเหลือหน้านี้' : 'Page help'}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (isThisTourActive) ctx.endTour();
-                else ctx.startModuleTour(moduleId);
-                setIsMenuOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-            >
-              {isThisTourActive ? <Compass className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              <span>
-                {isThisTourActive
-                  ? lang === 'th' ? 'จบทัวร์แนะนำ' : 'End guided tour'
-                  : lang === 'th' ? 'ทัวร์วิธีใช้หน้านี้' : 'Guided tour'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={ctx.toggleGuideEnabled}
-              aria-pressed={ctx.isGuideEnabled}
-              className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-            >
-              <Power className={`h-4 w-4 ${ctx.isGuideEnabled ? 'text-emerald-600' : 'text-[var(--color-text-muted)]'}`} />
-              <span>
-                {lang === 'th'
-                  ? `ทัวร์แนะนำ ${ctx.isGuideEnabled ? 'เปิด' : 'ปิด'} · กดเพื่อ${ctx.isGuideEnabled ? 'ปิด' : 'เปิด'}`
-                  : `Guides ${ctx.isGuideEnabled ? 'on' : 'off'} · Click to ${ctx.isGuideEnabled ? 'turn off' : 'turn on'}`}
-              </span>
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setIsMenuOpen((open) => !open)}
-          aria-label={lang === 'th' ? 'เปิดเมนูช่วยเหลือและทัวร์แนะนำ' : 'Open help and guided tour'}
-          aria-expanded={isMenuOpen}
-          className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--color-primary)] bg-[var(--color-card)] px-3.5 text-xs font-bold text-[var(--color-primary-text)] shadow-lg transition hover:bg-[var(--color-primary-light)]"
-        >
-          {isMenuOpen ? <X className="h-4 w-4" /> : <CircleHelp className="h-4 w-4" />}
-          <span>{lang === 'th' ? 'ช่วยเหลือ' : 'Help'}</span>
-        </button>
-      </div>
-    );
-  }
+  const isThisTourActive = ctx.activeTourModuleId === moduleId;
 
   return (
     <div className={`inline-flex items-center gap-1 print:hidden shrink-0 ${className}`}>

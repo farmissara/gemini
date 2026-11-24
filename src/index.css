@@ -1502,43 +1502,63 @@ textarea::placeholder {
 
   body:has(.timetable-print-area) #root,
   body:has(.timetable-print-area) #root :has(.timetable-print-area) {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 
-  body:has(.timetable-print-area) #root * {
-    visibility: hidden !important;
-  }
-
-  body:has(.timetable-print-area) #root .timetable-print-area,
-  body:has(.timetable-print-area) #root .timetable-print-area * {
-    visibility: visible !important;
+  body:has(.timetable-print-area) #root *:not(.timetable-print-area):not(.timetable-print-area *):not(:has(.timetable-print-area)) {
+    display: none !important;
   }
 
   body:has(.timetable-print-area) #root .timetable-print-area {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
+    position: static !important;
     display: block !important;
     width: 100% !important;
     height: auto !important;
     max-width: none !important;
     overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
     page: timetable;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .timetable-print-area > div.overflow-x-auto {
+  .timetable-print-area > div:not(.print\:hidden),
+  .timetable-print-area div.overflow-x-auto {
     display: block !important;
     height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
+  }
+
+  .timetable-print-area > div.print\:flex {
+    display: flex !important;
   }
 
   .timetable-print-area table {
     width: 100% !important;
     min-width: 0 !important;
     table-layout: fixed !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+  }
+
+  .timetable-print-area thead {
+    position: static !important;
+    display: table-header-group !important;
   }
 
   .timetable-print-area tr {
@@ -1546,17 +1566,41 @@ textarea::placeholder {
     page-break-inside: avoid;
   }
 
+  .timetable-print-area th,
+  .timetable-print-area td {
+    padding: 3px 4px !important;
+    border-color: #94a3b8 !important;
+    vertical-align: top !important;
+    color: #0f172a !important;
+  }
+
+  .timetable-print-area th {
+    background: #f1f5f9 !important;
+    font-size: 9px !important;
+  }
+
+  .timetable-print-area td > div {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  .timetable-print-area td > div.h-22 {
+    height: 36px !important;
+  }
+
   .timetable-print-area * {
-    color: #000000 !important;
     box-shadow: none !important;
     text-shadow: none !important;
   }
 
-  .timetable-print-area th,
-  .timetable-print-area td,
-  .timetable-print-area td > div {
-    background: #ffffff !important;
-    border-color: #94a3b8 !important;
+  .timetable-print-area [class*="min-h-"] {
+    min-height: 0 !important;
+  }
+
+  .timetable-print-area .writing-vertical {
+    writing-mode: vertical-rl;
+    padding: 2px 0 !important;
+    font-size: 8px !important;
   }
 
   /* Printable Student Attendance QR Pass Isolation */

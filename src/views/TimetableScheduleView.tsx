@@ -1810,7 +1810,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             <h1 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
               ตารางเรียนและตารางสอน
             </h1>
-            <ModuleTourTrigger moduleId="timetable" lang={lang} floating />
+            <ModuleTourTrigger moduleId="timetable" lang={lang} />
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="seg-tab-group max-w-full overflow-x-auto no-scrollbar">
@@ -2060,6 +2060,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       ) : (
         <TimetableClassroomGridTab
           schoolId={schoolId}
+          schoolName={schoolName}
           lang={lang}
           isAdmin={isAdmin}
           isPersonalViewer={isPersonalViewer}

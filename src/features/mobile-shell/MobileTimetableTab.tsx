@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Calendar,
@@ -7,7 +7,10 @@ import {
   Edit3,
   LogIn,
   LogOut,
+  Maximize2,
+  Minimize2,
   Plus,
+  Printer,
   RefreshCw,
   StickyNote,
   Trash2,
@@ -52,6 +55,9 @@ import {
   type ThaiHoliday,
 } from '../../lib/thaiHolidays';
 import { PeriodTimeMissionsCard } from '../../components/PeriodTimeMissionsCard';
+import { enterLandscapeGameMode, exitLandscapeGameMode } from '../../lib/screenOrientation';
+import { printTimetableLandscape, setTimetableLandscapePageRule } from '../../lib/timetablePrint';
+import { getTimetableSlotCardStyle } from '../../lib/timetableColors';
 
 interface MobileTimetableTabProps {
   activeSchool: School;
@@ -150,6 +156,15 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
   const [mobileNoteContent, setMobileNoteContent] = useState('');
   const [mobileNoteScope, setMobileNoteScope] = useState<CalendarNoteScope>('personal');
   const [mobileNoteColor, setMobileNoteColor] = useState<CalendarNoteColor>('amber');
+  const [showLandscapeWeekly, setShowLandscapeWeekly] = useState(false);
+  const landscapeContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setTimetableLandscapePageRule(showLandscapeWeekly);
+    return () => {
+      setTimetableLandscapePageRule(false);
+    };
+  }, [showLandscapeWeekly]);
 
   useEffect(() => {
     const onNotesUpdated = () => setMobileCalendarNotesTick((v) => v + 1);
@@ -265,8 +280,8 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
         </div>
       )}
 
-      {/* Mode Switch: Day vs Month Calendar */}
-      <div className="flex items-center justify-between gap-2">
+      {/* Mode Switch: Day vs Month Calendar + Landscape Weekly */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
           <button
             type="button"
@@ -292,19 +307,33 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
           </button>
         </div>
 
-        {currentRole === 'teacher' && (
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setTimetableOnlyMine((prev) => !prev)}
-            className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold cursor-pointer whitespace-nowrap ${
-              timetableOnlyMine
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
-            }`}
+            onClick={() => {
+              setShowLandscapeWeekly(true);
+              void enterLandscapeGameMode(landscapeContainerRef.current);
+            }}
+            className="min-h-[36px] px-3 rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
-            {timetableOnlyMine ? (lang === 'th' ? 'คาบฉัน' : 'Mine') : lang === 'th' ? 'ทั้งหมด' : 'All'}
+            <Maximize2 className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'ตารางสัปดาห์แนวนอน' : 'Landscape Grid'}</span>
           </button>
-        )}
+
+          {currentRole === 'teacher' && (
+            <button
+              type="button"
+              onClick={() => setTimetableOnlyMine((prev) => !prev)}
+              className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold cursor-pointer whitespace-nowrap ${
+                timetableOnlyMine
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
+              }`}
+            >
+              {timetableOnlyMine ? (lang === 'th' ? 'คาบฉัน' : 'Mine') : lang === 'th' ? 'ทั้งหมด' : 'All'}
+            </button>
+          )}
+        </div>
       </div>
 
       {mobileTimetableMode === 'day' ? (
@@ -997,6 +1026,170 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showLandscapeWeekly && (
+        <div
+          ref={landscapeContainerRef}
+          className="timetable-print-area print-area fixed inset-0 z-[120] bg-[var(--color-canvas)] flex flex-col p-2.5 sm:p-4 overflow-hidden print:static print:p-0"
+        >
+          <div className="hidden print:flex items-center justify-between gap-4 pb-2 mb-2 border-b-2 border-slate-700">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn} · {lang === 'th' ? 'ตารางเรียน / ตารางสอนรายสัปดาห์' : 'Weekly Timetable'}
+              </h2>
+              <p className="text-[11px] text-slate-700">
+                {currentRole === 'teacher' && timetableOnlyMine
+                  ? (lang === 'th' ? 'เฉพาะคาบสอนของฉัน' : 'My teaching periods')
+                  : (lang === 'th' ? 'ทุกคาบในความรับผิดชอบ' : 'All visible periods')}
+              </p>
+            </div>
+            <div className="text-right text-[10px] text-slate-600 tabular-nums">
+              {todayBangkokStr} · A4 แนวนอน
+            </div>
+          </div>
+
+          <div className="shrink-0 flex items-center justify-between gap-2 pb-2.5 border-b border-[var(--color-border)] print:hidden">
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                {lang === 'th' ? 'ตารางสัปดาห์แบบแนวนอน' : 'Landscape Weekly Timetable'}
+              </h2>
+              <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                {lang === 'th' ? 'เลื่อนซ้าย-ขวาเพื่อดูครบทุกคาบ หรือกดพิมพ์ A4 แนวนอน' : 'Scroll horizontally or print in A4 landscape'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={printTimetableLandscape}
+                className="min-h-[36px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-text-title)] inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                <span>{lang === 'th' ? 'พิมพ์ A4 แนวนอน' : 'Print A4'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLandscapeWeekly(false);
+                  void exitLandscapeGameMode();
+                }}
+                className="min-h-[36px] px-3 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ปิด' : 'Close'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-auto pt-2 print:overflow-visible print:pt-0">
+            <div className="overflow-x-auto print:overflow-visible">
+              <table
+                style={{ minWidth: `${Math.max(820, 90 + schoolPeriods.length * 105)}px` }}
+                className="w-full table-fixed border-collapse bg-[var(--color-card)] rounded-xl overflow-hidden border border-[var(--color-border)] print:!min-w-0"
+              >
+                <thead>
+                  <tr className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[10px]">
+                    <th className="p-1.5 w-20 text-center font-bold text-[var(--color-text-title)] border-r border-[var(--color-border)]">
+                      วัน / คาบ
+                    </th>
+                    {schoolPeriods
+                      .slice()
+                      .sort((a, b) => a.periodNumber - b.periodNumber)
+                      .map((p) => (
+                        <th
+                          key={p.periodNumber}
+                          className={`p-1.5 text-center border-r border-[var(--color-border)] ${
+                            p.isBreak ? 'bg-amber-100/80 dark:bg-amber-950/60 w-16' : ''
+                          }`}
+                        >
+                          <div className="font-bold text-[var(--color-text-title)]">
+                            {p.labelTh || (p.isBreak ? 'พัก' : `คาบ ${p.periodNumber}`)}
+                          </div>
+                          <div className="text-[9px] font-mono text-[var(--color-text-muted)] whitespace-nowrap">
+                            {p.startTime}-{p.endTime}
+                          </div>
+                        </th>
+                      ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)] text-[10px]">
+                  {(
+                    [
+                      { key: 'mon', th: 'จันทร์' },
+                      { key: 'tue', th: 'อังคาร' },
+                      { key: 'wed', th: 'พุธ' },
+                      { key: 'thu', th: 'พฤหัสบดี' },
+                      { key: 'fri', th: 'ศุกร์' },
+                    ] as const
+                  ).map((day) => {
+                    const visibleDaySlots = scopedTimetableSlots
+                      .filter((s) => s.dayOfWeek === day.key)
+                      .filter(
+                        (s) =>
+                          !(currentRole === 'teacher' && timetableOnlyMine) ||
+                          slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses)
+                      );
+                    return (
+                      <tr key={day.key}>
+                        <td className="p-1.5 text-center font-bold text-[var(--color-text-title)] border-r border-[var(--color-border)] bg-[var(--color-card-subtle)]/50">
+                          {day.th}
+                        </td>
+                        {schoolPeriods
+                          .slice()
+                          .sort((a, b) => a.periodNumber - b.periodNumber)
+                          .map((p) => {
+                            if (p.isBreak) {
+                              return (
+                                <td
+                                  key={p.periodNumber}
+                                  className="p-1 text-center bg-amber-50/70 dark:bg-amber-950/30 border-r border-[var(--color-border)] text-[9px] font-bold text-amber-800 dark:text-amber-200"
+                                >
+                                  {p.labelTh || 'พัก'}
+                                </td>
+                              );
+                            }
+                            const cellSlots = visibleDaySlots.filter((s) => s.periodNumber === p.periodNumber);
+                            if (cellSlots.length === 0) {
+                              return (
+                                <td
+                                  key={p.periodNumber}
+                                  className="p-1 text-center border-r border-[var(--color-border)] text-[var(--color-text-muted)]"
+                                >
+                                  -
+                                </td>
+                              );
+                            }
+                            return (
+                              <td key={p.periodNumber} className="p-1 border-r border-[var(--color-border)] align-top space-y-1">
+                                {cellSlots.map((slot) => {
+                                  const slotColor = getTimetableSlotCardStyle(slot.colorTag);
+                                  return (
+                                    <div
+                                      key={slot.id}
+                                      style={slotColor.style}
+                                      className={`rounded-md border p-1 ${slotColor.className}`}
+                                    >
+                                      <div className="font-mono text-[9px] font-bold truncate">{slot.courseCode}</div>
+                                      <div className="font-bold text-[10px] leading-tight line-clamp-1">
+                                        {slot.courseTitleTh}
+                                      </div>
+                                      <div className="text-[9px] opacity-85 truncate">
+                                        {slot.classRoom}{slot.room ? ` · ${slot.room}` : ''}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </td>
+                            );
+                          })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

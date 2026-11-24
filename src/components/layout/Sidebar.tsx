@@ -203,13 +203,18 @@ const ADMIN_SIMPLIFIED_TABS = new Set<NavTab>([
 ]);
 
 const ARCADE_TABS = new Set<NavTab>(['games', 'boss_raid', 'study_streak', 'hall_of_fame']);
-// Settings sub-routes remain searchable via sidebar search and global Cmd+K, without cluttering the default tree
+// Settings & executive report sub-routes remain searchable via sidebar search and global Cmd+K, without cluttering the default tree
 const SETTINGS_DEEP_LINK_TABS = new Set<NavTab>([
   'school_permissions',
   'school_gps',
   'admin_line_control',
   'admin_student_accounts',
   'admin_saas_audit',
+]);
+const REPORT_DEEP_LINK_TABS = new Set<NavTab>([
+  'obec_executive_dashboard',
+  'pp6_executive_dashboard',
+  'report_insights',
 ]);
 const SIDEBAR_FOCUS_STORAGE_KEY = 'baanpakkru_sidebar_focus_mode';
 
@@ -806,7 +811,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
   }), [currentRole]);
 
-  // Visible items per category (redundant settings deep-links are excluded unless active; still searchable)
+  // Visible items per category (redundant settings/report deep-links are excluded unless active; still searchable)
   const visibleCategories = useMemo(() => {
     return categories
       .map((cat) => {
@@ -816,6 +821,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
             isAllowedBySchoolPolicy(i.id) &&
             (!SETTINGS_DEEP_LINK_TABS.has(i.id) || i.id === resolvedSidebarActiveTab) &&
+            (!REPORT_DEEP_LINK_TABS.has(i.id) || i.id === resolvedSidebarActiveTab) &&
             (isSimplifiedAdmin
               ? ADMIN_SIMPLIFIED_TABS.has(i.id)
               : !focusMode || !supportsFocusMode || focusTabs.has(i.id) || i.id === resolvedSidebarActiveTab)
@@ -1189,61 +1195,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
               })}
             </div>
 
-            {/* Quick Jump Command Palette Trigger & Focus Mode Toggle */}
-            <div className="pt-3 mt-2 border-t border-[var(--color-border)] space-y-1">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('eduverse:open-global-search'))}
-                className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <Search className="w-4 h-4 shrink-0" />
-                  <span className="truncate">
-                    {lang === 'th' ? 'ไปหน้า / ค้นหาด่วน' : 'Quick Jump & Search'}
-                  </span>
-                </span>
-                <kbd className="shrink-0 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-muted)]">
-                  ⌘K
-                </kbd>
-              </button>
-
-              {isSimplifiedAdmin && onToggleAdminSimplifiedView ? (
-                <button
-                  type="button"
-                  onClick={onToggleAdminSimplifiedView}
-                  aria-pressed={true}
-                  className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] font-semibold text-[var(--color-primary-text)] bg-[var(--color-primary-light)]/70 hover:bg-[var(--color-primary-light)] transition cursor-pointer"
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <Layers className="w-4 h-4 shrink-0" />
-                    <span className="truncate">
-                      {lang === 'th' ? 'แสดงเมนู & ตั้งค่าทั้งหมด' : 'Exit Simplified View'}
+            {/* Core vs All Tools Menu Toggle */}
+            {(isSimplifiedAdmin && onToggleAdminSimplifiedView) || supportsFocusMode ? (
+              <div className="pt-3 mt-2 border-t border-[var(--color-border)] space-y-1">
+                {isSimplifiedAdmin && onToggleAdminSimplifiedView ? (
+                  <button
+                    type="button"
+                    onClick={onToggleAdminSimplifiedView}
+                    aria-pressed={true}
+                    className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] font-semibold text-[var(--color-primary-text)] bg-[var(--color-primary-light)]/70 hover:bg-[var(--color-primary-light)] transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Layers className="w-4 h-4 shrink-0" />
+                      <span className="truncate">
+                        {lang === 'th' ? 'แสดงเมนู & ตั้งค่าทั้งหมด' : 'Exit Simplified View'}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              ) : supportsFocusMode && (
-                <button
-                  type="button"
-                  onClick={toggleFocusMode}
-                  aria-pressed={!focusMode}
-                  className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <Layers className="w-4 h-4 shrink-0" />
-                    <span className="truncate">
-                      {focusMode
-                        ? (lang === 'th' ? 'แสดงเมนูเสริม & กิจกรรมเด็ก' : 'Show More & Student Tools')
-                        : (lang === 'th' ? 'กลับสู่โหมดงานหลัก (ซ่อนเมนูรอง)' : 'Core Work Menus Only')}
+                  </button>
+                ) : supportsFocusMode && (
+                  <button
+                    type="button"
+                    onClick={toggleFocusMode}
+                    aria-pressed={!focusMode}
+                    className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Layers className="w-4 h-4 shrink-0" />
+                      <span className="truncate">
+                        {focusMode
+                          ? (lang === 'th' ? 'แสดงเมนูเสริมทั้งหมด' : 'Show All Extra Tools')
+                          : (lang === 'th' ? 'แสดงเฉพาะเมนูงานหลัก' : 'Core Menus Only')}
+                      </span>
                     </span>
-                  </span>
-                  {focusMode && hiddenByFocusCount > 0 && (
-                    <span className="shrink-0 tabular-nums text-[11px] font-semibold text-[var(--color-text-muted)]">
-                      +{hiddenByFocusCount}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
+                    {focusMode && hiddenByFocusCount > 0 && (
+                      <span className="shrink-0 tabular-nums text-[11px] font-semibold text-[var(--color-text-muted)]">
+                        +{hiddenByFocusCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            ) : null}
           </>
         )}
       </nav>

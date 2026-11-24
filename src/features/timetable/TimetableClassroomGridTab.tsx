@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Calendar,
@@ -9,6 +9,8 @@ import {
   LogIn,
   LogOut,
   MapPin,
+  Maximize2,
+  Minimize2,
   Plus,
   Printer,
   RefreshCw,
@@ -38,6 +40,8 @@ import { formatSlotTeachersDisplay, getSlotTeachers } from '../../lib/timetableT
 import { getSlotAttendanceAndLeaveSummary } from '../../lib/timetableAttendanceStatus';
 import { BangkokClockSnapshot, getTimetableSlotActivityStatus } from '../../lib/timetableCalendar';
 import { getThaiHolidayCategoryLabel, ThaiHoliday } from '../../lib/thaiHolidays';
+import { enterLandscapeGameMode, exitLandscapeGameMode } from '../../lib/screenOrientation';
+import { printTimetableLandscape, setTimetableLandscapePageRule } from '../../lib/timetablePrint';
 import {
   ALL_CLASSROOMS,
   DAYS,
@@ -50,6 +54,7 @@ import { SlotStaffStatusBadges } from './SlotStaffStatusBadges';
 
 interface TimetableClassroomGridTabProps {
   schoolId: string;
+  schoolName?: string;
   lang: AppLanguage;
   isAdmin: boolean;
   isPersonalViewer: boolean;
@@ -110,6 +115,7 @@ interface TimetableClassroomGridTabProps {
 
 export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps> = ({
   schoolId,
+  schoolName,
   lang,
   isAdmin,
   isPersonalViewer,
@@ -163,9 +169,72 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
   getSlotCheckStatusForDate,
   triggerSlotCheckin,
 }) => {
+  const [isLandscapeExpanded, setIsLandscapeExpanded] = useState(false);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setTimetableLandscapePageRule(true);
+    return () => {
+      setTimetableLandscapePageRule(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // Keep overlay optional or sync cleanly if browser exited fullscreen externally
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const handleToggleLandscapeExpanded = () => {
+    if (isLandscapeExpanded) {
+      setIsLandscapeExpanded(false);
+      void exitLandscapeGameMode();
+    } else {
+      setIsLandscapeExpanded(true);
+      void enterLandscapeGameMode(gridContainerRef.current);
+    }
+  };
+
+  const scheduleTargetTitle = activeScheduleFilters
+    ? `${activeScheduleFilters.gradeLevel || 'ทุกระดับชั้น'} · ${activeScheduleFilters.classRoom || 'ทุกห้อง'} · ${activeScheduleFilters.teacherName || 'ครูทุกคน'}`
+    : selectedClassRoom === ALL_CLASSROOMS
+      ? `ตารางรวมทุกห้อง (${uniqueClassRooms.length})`
+      : selectedClassRoom;
+
+  const computedTableMinWidth = Math.max(920, 120 + orderedSchoolPeriods.length * 112);
+
   return (
-    <div data-guide-id="timetable-grid-area" className="timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
-      <div data-guide-id="timetable-filters-bar" className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
+    <div
+      ref={gridContainerRef}
+      data-guide-id="timetable-grid-area"
+      className={`timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] shadow-sm overflow-hidden flex flex-col ${
+        isLandscapeExpanded
+          ? 'fixed inset-0 z-[105] rounded-none border-0 p-2 sm:p-4 print:static print:p-0'
+          : 'rounded-2xl border border-[var(--color-border)]'
+      }`}
+    >
+      {/* Dedicated Landscape A4 Print Header */}
+      <div className="hidden print:flex items-center justify-between gap-4 pb-2 mb-2 border-b-2 border-slate-700">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">
+            {schoolName ? `${schoolName} · ` : ''}ตารางเรียนและตารางสอน ({scheduleTargetTitle})
+          </h2>
+          <p className="text-[11px] text-slate-700">
+            {formatSemesterLabel(viewSemester)} ปีการศึกษา {viewAcademicYear}
+            {myCoursesOnly ? ' · เฉพาะรายวิชาที่รับผิดชอบสอน' : ''}
+          </p>
+        </div>
+        <div className="text-right text-[10px] text-slate-600 tabular-nums">
+          <div>พิมพ์เมื่อ {formatShortThaiDate(todayBangkokDate)}</div>
+          <div>A4 แนวนอน · รวม {activeSlots.length} คาบ/สัปดาห์</div>
+        </div>
+      </div>
+
+      <div data-guide-id="timetable-filters-bar" className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)] print:hidden">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {renderRoomAndTermControls()}
@@ -176,14 +245,6 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
               )}
             </span>
           </div>
-          <p className="hidden print:block print:text-xs print:font-bold">
-            {activeScheduleFilters
-              ? `ตารางสอน — ${activeScheduleFilters.gradeLevel || 'ทุกระดับชั้น'} · ${activeScheduleFilters.classRoom || 'ทุกห้อง'} · ${activeScheduleFilters.teacherName || 'ครูทุกคน'}`
-              : selectedClassRoom === ALL_CLASSROOMS
-                ? `ตารางรวมทุกห้อง (${uniqueClassRooms.length})`
-                : selectedClassRoom
-            } — {formatSemesterLabel(viewSemester)} ปีการศึกษา {viewAcademicYear}
-          </p>
         </div>
         <div className="print:hidden flex flex-wrap items-center justify-end gap-1.5">
           {canUsePeriodCheckin && hasOpenPeriodCheckinHandler && (() => {
@@ -237,6 +298,39 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
               <span>เพิ่มคาบ</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleToggleLandscapeExpanded}
+            aria-pressed={isLandscapeExpanded}
+            title={lang === 'th' ? 'แสดงตารางสอนแบบแนวนอนเต็มจอ' : 'Toggle full-width landscape view'}
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+              isLandscapeExpanded
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-xs'
+                : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
+            }`}
+          >
+            {isLandscapeExpanded ? (
+              <Minimize2 className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <Maximize2 className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" />
+            )}
+            <span>
+              {isLandscapeExpanded
+                ? lang === 'th' ? 'ออกจากแนวนอน' : 'Exit Wide'
+                : lang === 'th' ? 'มุมมองแนวนอน' : 'Landscape'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={printTimetableLandscape}
+            title={lang === 'th' ? 'พิมพ์ตารางสอนขนาด A4 แนวนอน' : 'Print A4 Landscape'}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-bold text-[var(--color-text-title)] transition cursor-pointer"
+          >
+            <Printer className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" />
+            <span>{lang === 'th' ? 'พิมพ์แนวนอน (A4)' : 'Print Landscape'}</span>
+          </button>
 
           {/* Consolidated Secondary Schedule Tools Dropdown */}
           <details className="group relative">
@@ -308,12 +402,12 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
                 type="button"
                 onClick={(event) => {
                   event.currentTarget.closest('details')?.removeAttribute('open');
-                  window.print();
+                  printTimetableLandscape();
                 }}
                 className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
                 <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-                <span>พิมพ์ตารางเรียน A4</span>
+                <span>พิมพ์ตารางเรียน A4 (แนวนอน)</span>
               </button>
 
               {!isPersonalViewer && (
@@ -391,9 +485,12 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="max-lg:overflow-x-auto">
-          <table className="table-comfortable w-full table-fixed text-left border-collapse">
+      <div className="flex-1 min-h-0 overflow-y-auto print:overflow-visible">
+        <div className="overflow-x-auto print:overflow-visible">
+          <table
+            style={{ minWidth: `${computedTableMinWidth}px` }}
+            className="table-comfortable w-full table-fixed text-left border-collapse print:!min-w-0"
+          >
             <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] shadow-[0_1px_0_var(--color-border)]">
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
                 <th className="p-1.5 w-24 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>

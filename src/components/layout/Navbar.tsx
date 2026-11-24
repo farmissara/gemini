@@ -385,20 +385,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {onToggleFocusMode && focusMode && (
-          <button
-            type="button"
-            data-guide-id="header-focus-toggle"
-            onClick={onToggleFocusMode}
-            aria-pressed={true}
-            title={lang === 'th' ? 'แสดงแถบเมนูทั้งหมด (Ctrl+Shift+F)' : 'Show sidebar & menus (Ctrl+Shift+F)'}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
-          >
-            <Focus className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus'}</span>
-          </button>
-        )}
-
         {canAccessSchoolOperations && onOpenGuide && (
           <button
             type="button"

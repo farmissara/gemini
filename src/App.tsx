@@ -486,6 +486,17 @@ export const App: React.FC = () => {
       lang={prefs.lang}
       isGuideEnabled={prefs.isGuideTourEnabled}
       onSetGuideEnabled={(next) => prefs.handleToggleGuideTour(next)}
+      hideFloatingMascot={nav.useImmersiveGameLayout}
+      onOpenFullGuide={
+        data.currentRole !== 'super_admin' || data.isSuperAdminSchoolView
+          ? () => {
+              setGuideModalInitialRoleView(
+                data.currentRole === 'student' || data.currentRole === 'parent' ? 'student' : 'teacher'
+              );
+              setShowGuideModal(true);
+            }
+          : undefined
+      }
       onNavigateToTourTarget={({ moduleId, settingsTab }) => {
         if (moduleId === 'lms_classroom' || moduleId === 'lms') {
           nav.handleChangeProgramMode('lms_classroom');
