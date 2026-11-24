@@ -299,7 +299,6 @@ import { getParentUnreadNotificationCount, sendPrivateParentNotification } from 
 import { dispatchGradeAlert } from './lib/gradeNotifications';
 import { getLocalDateString } from './lib/date';
 import { getHolidayForDate, isWeekendDate, syncPublicHolidaysFromApi } from './lib/thaiHolidays';
-import { slotHasTeacher } from './lib/timetableTeachers';
 import { enqueueOfflineAction, isOnlineNow, type OfflineQueueItem } from './lib/offlineSync';
 import { appendAuditLog } from './lib/auditLog';
 import {
@@ -320,6 +319,7 @@ import {
   resolveMatchedTeacherForUser,
   slotMatchesLoggedInTeacher,
   teacherMatchesCourse,
+  userMatchesCourse,
 } from './lib/courseTeacherFilter';
 import {
   filterAttendanceForUser,
@@ -1002,9 +1002,9 @@ export const App: React.FC = () => {
   const matchedTeacherForScope = currentRole === 'teacher'
     ? resolveMatchedTeacherForUser(currentUser, schoolTeachers)
     : undefined;
-  const teacherScopedCourses = currentRole === 'teacher' && matchedTeacherForScope
-    ? schoolCourses.filter((course) => teacherMatchesCourse(matchedTeacherForScope, course))
-    : currentRole === 'teacher' ? [] : schoolCourses;
+  const teacherScopedCourses = currentRole === 'teacher'
+    ? schoolCourses.filter((course) => userMatchesCourse(currentUser, matchedTeacherForScope, course))
+    : schoolCourses;
   const teacherCourseIds = new Set(teacherScopedCourses.map((course) => course.id));
   const teacherStudentKeys = new Set<string>();
   teacherScopedCourses.forEach((course) => {
@@ -1012,7 +1012,7 @@ export const App: React.FC = () => {
   });
   const teacherScopedTimetableSlots = currentRole === 'teacher'
     ? schoolTimetableSlotsAllTerms.filter((slot) =>
-        slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacherForScope, teacherScopedCourses)
+        slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacherForScope, schoolCourses)
       )
     : schoolTimetableSlotsAllTerms;
   const normalizeRoomScope = (value: string) => value
@@ -3656,19 +3656,22 @@ export const App: React.FC = () => {
       }
 
       // 4. Period Timetable Notifications — strictly only for this user's scheduled slots today
-      const personalTodaySlots = filterTimetableSlotsForPersonalRole(
-        schoolTimetableSlots,
-        currentUser,
-        schoolStudents,
-        schoolCourses
-      ).filter((slot) => {
-        if (slot.dayOfWeek !== dayKey) return false;
-        if (currentUser.role === 'teacher') {
-          const teacherName = currentUser.fullNameTh || currentUser.fullNameEn || '';
-          return teacherName ? slotHasTeacher(slot, teacherName) : true;
-        }
-        return true;
-      });
+      const personalTodaySlots = currentUser.role === 'teacher'
+        ? schoolTimetableSlots.filter((slot) =>
+            slot.dayOfWeek === dayKey &&
+            slotMatchesLoggedInTeacher(
+              slot,
+              currentUser,
+              resolveMatchedTeacherForUser(currentUser, schoolTeachers),
+              schoolCourses
+            )
+          )
+        : filterTimetableSlotsForPersonalRole(
+            schoolTimetableSlots,
+            currentUser,
+            schoolStudents,
+            schoolCourses
+          ).filter((slot) => slot.dayOfWeek === dayKey);
 
       const periodsToCheck = (schoolPeriods.length > 0 ? schoolPeriods : DEFAULT_SCHOOL_PERIODS).filter(
         (p) => !p.isBreak && p.periodNumber > 0

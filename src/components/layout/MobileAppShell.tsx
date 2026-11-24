@@ -107,7 +107,7 @@ import arcadeBannerImg from '../../assets/images/student_arcade_banner_179499685
 import { getLocalDateString } from '../../lib/date';
 import { calculateGrade } from '../../lib/schoolSettings';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
-import { slotHasTeacher } from '../../lib/timetableTeachers';
+import { resolveMatchedTeacherForUser, slotMatchesLoggedInTeacher } from '../../lib/courseTeacherFilter';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone } from '../../lib/moduleTheme';
@@ -751,19 +751,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     [announcements, currentUser]
   );
 
+  const matchedTeacher = useMemo(
+    () => (currentRole === 'teacher' ? resolveMatchedTeacherForUser(currentUser, teachers) : undefined),
+    [currentRole, currentUser, teachers]
+  );
   const teacherFullName = currentUser?.fullNameTh || currentUser?.fullNameEn || '';
   const todayMySlots = useMemo(() => {
     return scopedTimetableSlots
       .filter((s) => s.dayOfWeek === todayDayKey)
       .filter((s) => {
-        if (currentRole === 'teacher' && timetableOnlyMine && teacherFullName) {
-          return slotHasTeacher(s, teacherFullName);
+        if (currentRole === 'teacher' && timetableOnlyMine) {
+          return slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses);
         }
         return true;
       })
       .slice()
       .sort((a, b) => a.periodNumber - b.periodNumber);
-  }, [scopedTimetableSlots, todayDayKey, currentRole, timetableOnlyMine, teacherFullName]);
+  }, [scopedTimetableSlots, todayDayKey, currentRole, timetableOnlyMine, currentUser, matchedTeacher, courses]);
 
   const todayHoliday = useMemo(
     () => (holidaySyncTick >= 0 ? getHolidayForDate(todayBangkokStr, activeSchool.id) : null),
@@ -2106,7 +2110,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           const selectedCalDaySlots = calDayKey
             ? scopedTimetableSlots
                 .filter((s) => s.dayOfWeek === calDayKey)
-                .filter((s) => !(currentRole === 'teacher' && timetableOnlyMine && teacherFullName) || slotHasTeacher(s, teacherFullName))
+                .filter((s) => !(currentRole === 'teacher' && timetableOnlyMine) || slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses))
                 .slice()
                 .sort((a, b) => a.periodNumber - b.periodNumber)
             : [];
@@ -2288,8 +2292,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     const daySlots = scopedTimetableSlots
                       .filter((s) => s.dayOfWeek === selectedTimetableDay)
                       .filter((s) => {
-                        if (currentRole === 'teacher' && timetableOnlyMine && teacherFullName) {
-                          return slotHasTeacher(s, teacherFullName);
+                        if (currentRole === 'teacher' && timetableOnlyMine) {
+                          return slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses);
                         }
                         return true;
                       })

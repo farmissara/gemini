@@ -90,6 +90,7 @@ import {
   resolveMatchedTeacherForUser,
   resolveTeacherFilterKeyForUser,
   slotMatchesLoggedInTeacher,
+  userMatchesCourse,
 } from '../lib/courseTeacherFilter';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { TimetablePeriodAttendanceModal } from '../components/modals/TimetablePeriodAttendanceModal';
@@ -704,10 +705,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       setMyCoursesOnly(true);
       setSelectedClassRoom(ALL_CLASSROOMS);
       setActiveScheduleFilters(null);
-      if (loggedInCourseTeacherKey) {
-        setCatalogTeacherFilter(loggedInCourseTeacherKey);
-        setHoursTeacherFilter(loggedInCourseTeacherKey);
-      }
+      setCatalogTeacherFilter('all');
+      setHoursTeacherFilter('all');
     } else {
       setMyCoursesOnly(false);
       setCatalogTeacherFilter('all');
@@ -723,6 +722,13 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   ]);
 
   const filteredCourseCatalog = courses.filter((course) => {
+    if (
+      currentRole === 'teacher' &&
+      myCoursesOnly &&
+      !userMatchesCourse(currentUser, matchedTeacher, course)
+    ) {
+      return false;
+    }
     if (!courseMatchesTeacherFilter(course, catalogTeacherFilter, courseCatalogTeacherOptions)) {
       return false;
     }
@@ -1682,9 +1688,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             if (next) {
               setActiveScheduleFilters(null);
               setSelectedClassRoom(ALL_CLASSROOMS);
-              if (loggedInCourseTeacherKey) {
-                setHoursTeacherFilter(loggedInCourseTeacherKey);
-              }
+              setHoursTeacherFilter(currentRole === 'teacher' ? 'all' : (loggedInCourseTeacherKey || 'all'));
             } else {
               setHoursTeacherFilter('all');
             }

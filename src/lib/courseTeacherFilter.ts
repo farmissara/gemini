@@ -11,13 +11,13 @@ export interface CourseTeacherOption {
 
 /**
  * Splits a course's `teacherName` string into individual trimmed teacher names.
- * Supports `+`, `,`, and `/` delimiters for co-teaching entries.
+ * Supports `+`, `,`, `/`, `;`, and `&` delimiters for co-teaching entries.
  */
 export function extractCourseTeacherNames(course: Pick<Course, 'teacherName'>): string[] {
   const raw = (course.teacherName || '').trim();
   if (!raw) return [];
   const parts = raw
-    .split(/\s*(?:\+|,|\/)\s*/)
+    .split(/\s*(?:\+|,|\/|;|&)\s*/)
     .map((part) => part.normalize('NFC').trim().replace(/\s+/g, ' '))
     .filter(Boolean);
   const seen = new Set<string>();
@@ -32,7 +32,7 @@ export function extractCourseTeacherNames(course: Pick<Course, 'teacherName'>): 
 }
 
 /**
- * Checks whether a specific `Teacher` record teaches/matches the given `Course`.
+ * Checks whether a specific `Teacher` record teaches/matches the given `Course` (including co-teaching and honorific variants).
  */
 export function teacherMatchesCourse(
   teacher: Pick<Teacher, 'fullNameTh' | 'fullNameEn' | 'email'>,
@@ -42,16 +42,52 @@ export function teacherMatchesCourse(
   const cEmail = (course.teacherEmail || '').trim().toLowerCase();
   if (tEmail && cEmail && tEmail === cEmail) return true;
 
-  const tAliases = [teacher.fullNameTh, teacher.fullNameEn]
-    .map((n) => normalizeTeacherName(n || ''))
+  const tNames = [teacher.fullNameTh, teacher.fullNameEn]
+    .map((n) => (n || '').trim())
     .filter(Boolean);
-  if (tAliases.length === 0) return false;
+  if (tNames.length === 0) return false;
 
-  const cNames = extractCourseTeacherNames(course).map((n) => normalizeTeacherName(n));
-  if (cNames.some((cn) => tAliases.includes(cn))) return true;
+  const cNames = extractCourseTeacherNames(course);
+  if (cNames.some((cn) => tNames.some((tn) => namesMatchFlexibly(tn, cn)))) return true;
 
-  const rawFullNorm = normalizeTeacherName(course.teacherName || '');
-  return Boolean(rawFullNorm && tAliases.includes(rawFullNorm));
+  const rawFull = (course.teacherName || '').trim();
+  return Boolean(rawFull && tNames.some((tn) => namesMatchFlexibly(tn, rawFull)));
+}
+
+/**
+ * Checks whether the logged-in user (via AuthUser and/or matched Teacher record) teaches or co-teaches the given `Course`.
+ */
+export function userMatchesCourse(
+  currentUser: AuthUser | null | undefined,
+  matchedTeacher: Pick<Teacher, 'fullNameTh' | 'fullNameEn' | 'email'> | undefined,
+  course: Pick<Course, 'teacherName' | 'teacherEmail'>
+): boolean {
+  if (!currentUser && !matchedTeacher) return false;
+  if (matchedTeacher && teacherMatchesCourse(matchedTeacher, course)) return true;
+
+  const candidateEmails = [currentUser?.email, matchedTeacher?.email]
+    .map((em) => (em || '').trim().toLowerCase())
+    .filter(Boolean);
+  const cEmail = (course.teacherEmail || '').trim().toLowerCase();
+  if (cEmail && candidateEmails.includes(cEmail)) return true;
+
+  const candidateNames = [
+    matchedTeacher?.fullNameTh,
+    matchedTeacher?.fullNameEn,
+    currentUser?.fullNameTh,
+    currentUser?.fullNameEn,
+  ]
+    .map((n) => (n || '').trim())
+    .filter(Boolean);
+  if (candidateNames.length === 0) return false;
+
+  const cNames = extractCourseTeacherNames(course);
+  if (cNames.some((cn) => candidateNames.some((cand) => namesMatchFlexibly(cand, cn)))) {
+    return true;
+  }
+
+  const rawFull = (course.teacherName || '').trim();
+  return Boolean(rawFull && candidateNames.some((cand) => namesMatchFlexibly(cand, rawFull)));
 }
 
 /**
@@ -64,6 +100,7 @@ export function buildCourseTeacherOptions(
 ): CourseTeacherOption[] {
   const teacherByEmail = new Map<string, Teacher>();
   const teacherByNameKey = new Map<string, Teacher>();
+  const teacherByStrippedKey = new Map<string, Teacher>();
 
   teachers.forEach((t) => {
     const email = (t.email || '').trim().toLowerCase();
@@ -72,6 +109,10 @@ export function buildCourseTeacherOptions(
     if (thKey) teacherByNameKey.set(thKey, t);
     const enKey = normalizeTeacherName(t.fullNameEn || '');
     if (enKey) teacherByNameKey.set(enKey, t);
+    const thStripped = stripTeacherHonorifics(t.fullNameTh || '');
+    if (thStripped && !teacherByStrippedKey.has(thStripped)) teacherByStrippedKey.set(thStripped, t);
+    const enStripped = stripTeacherHonorifics(t.fullNameEn || '');
+    if (enStripped && !teacherByStrippedKey.has(enStripped)) teacherByStrippedKey.set(enStripped, t);
   });
 
   const optionMap = new Map<string, CourseTeacherOption>();
@@ -108,15 +149,26 @@ export function buildCourseTeacherOptions(
     const courseEmail = (course.teacherEmail || '').trim().toLowerCase();
     const courseNames = extractCourseTeacherNames(course);
 
-    const registerMatchedTeacher = (t: Teacher) => {
+    const registerMatchedTeacher = (
+      t: Teacher,
+      matchedPart?: string,
+      includeCourseEmail = false
+    ) => {
       const label = (t.fullNameTh || t.fullNameEn || t.email).normalize('NFC').trim().replace(/\s+/g, ' ');
       const key = normalizeTeacherName(label) || `email:${(t.email || '').trim().toLowerCase()}`;
       const aliases = [
         normalizeTeacherName(t.fullNameTh || ''),
         normalizeTeacherName(t.fullNameEn || ''),
-        ...courseNames.map((n) => normalizeTeacherName(n)),
+        ...(matchedPart
+          ? [normalizeTeacherName(matchedPart)]
+          : courseNames.length === 1
+            ? [normalizeTeacherName(courseNames[0])]
+            : []),
       ].filter(Boolean);
-      const emails = [(t.email || '').trim().toLowerCase(), courseEmail].filter(Boolean);
+      const emails = [
+        (t.email || '').trim().toLowerCase(),
+        ...(includeCourseEmail && courseEmail ? [courseEmail] : []),
+      ].filter(Boolean);
       const opt = ensureOption(key, label, aliases, emails);
       if (!matchedKeysThisCourse.has(key)) {
         opt.count += 1;
@@ -125,18 +177,21 @@ export function buildCourseTeacherOptions(
     };
 
     if (courseEmail && teacherByEmail.has(courseEmail)) {
-      registerMatchedTeacher(teacherByEmail.get(courseEmail)!);
+      registerMatchedTeacher(teacherByEmail.get(courseEmail)!, undefined, true);
     }
 
     courseNames.forEach((part) => {
       const partKey = normalizeTeacherName(part);
       if (!partKey) return;
-      const matchedTeacher = teacherByNameKey.get(partKey);
+      const strippedPartKey = stripTeacherHonorifics(part);
+      const matchedTeacher =
+        teacherByNameKey.get(partKey) ||
+        (strippedPartKey ? teacherByStrippedKey.get(strippedPartKey) : undefined);
       if (matchedTeacher) {
-        registerMatchedTeacher(matchedTeacher);
+        registerMatchedTeacher(matchedTeacher, part, courseNames.length <= 1);
         return;
       }
-      const emails = courseEmail ? [courseEmail] : [];
+      const emails = courseNames.length <= 1 && courseEmail ? [courseEmail] : [];
       const opt = ensureOption(partKey, part, [partKey], emails);
       if (!matchedKeysThisCourse.has(partKey)) {
         opt.count += 1;
@@ -173,14 +228,23 @@ export function courseMatchesTeacherFilter(
 
   if (option) {
     if (courseEmail && option.emails.includes(courseEmail)) return true;
-    if (courseNameKeys.some((ck) => option.aliases.includes(ck))) return true;
+    if (
+      courseNameKeys.some(
+        (ck) =>
+          option.aliases.includes(ck) ||
+          namesMatchFlexibly(ck, option.label) ||
+          option.aliases.some((alias) => namesMatchFlexibly(ck, alias))
+      )
+    ) {
+      return true;
+    }
     return false;
   }
 
   const targetKey = normalizeTeacherName(selectedTeacherKey);
   if (!targetKey) return true;
   if (courseEmail && `email:${courseEmail}` === selectedTeacherKey) return true;
-  return courseNameKeys.includes(targetKey);
+  return courseNameKeys.some((ck) => ck === targetKey || namesMatchFlexibly(ck, targetKey));
 }
 
 /**
@@ -319,10 +383,6 @@ export function slotMatchesLoggedInTeacher(
     return true;
   }
 
-  const candidateEmails = [currentUser?.email, matchedTeacher?.email]
-    .map((em) => (em || '').trim().toLowerCase())
-    .filter(Boolean);
-
   const linkedCourse = courses.find(
     (c) =>
       (slot.courseId && c.id === slot.courseId) ||
@@ -330,12 +390,5 @@ export function slotMatchesLoggedInTeacher(
   );
   if (!linkedCourse) return false;
 
-  if (matchedTeacher && teacherMatchesCourse(matchedTeacher, linkedCourse)) {
-    return true;
-  }
-  const cEmail = (linkedCourse.teacherEmail || '').trim().toLowerCase();
-  if (cEmail && candidateEmails.includes(cEmail)) return true;
-
-  const cNames = extractCourseTeacherNames(linkedCourse);
-  return candidateNames.some((cn) => cNames.some((courseTeacher) => namesMatchFlexibly(cn, courseTeacher)));
+  return userMatchesCourse(currentUser, matchedTeacher, linkedCourse);
 }
