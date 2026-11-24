@@ -2095,87 +2095,197 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="app-page-header px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
-              <Smartphone className="w-4 h-4" />
+        <div className="space-y-0 border-b border-[var(--color-border)]">
+          <div className="pb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
+                <Smartphone className="w-4.5 h-4.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+                    {lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
+                  </h1>
+                  <span className="text-xs text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+                    · {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+              </div>
             </div>
-            <h1 className="text-base font-bold text-[var(--color-text-title)] truncate">
-              {lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
-            </h1>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <ModuleTourTrigger moduleId="mobile_checkin" lang={lang} />
+              {isStaffUser && userPasskey?.protectQuickAttendance && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isQuickAttendanceLocked) {
+                      void handleBiometricVerify();
+                    } else {
+                      handleLockQuickAttendanceNow();
+                    }
+                  }}
+                  disabled={biometricBusy}
+                  className={`h-9 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shrink-0 ${
+                    isQuickAttendanceLocked
+                      ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                      : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400 hover:bg-[var(--color-card-subtle)]'
+                  }`}
+                  title={
+                    isQuickAttendanceLocked
+                      ? lang === 'th'
+                        ? 'แตะเพื่อปลดล็อกด้วย FaceID / TouchID'
+                        : 'Unlock with FaceID / TouchID'
+                      : lang === 'th'
+                        ? 'แตะเพื่อล็อกเช็คชื่อด่วน'
+                        : 'Lock quick attendance'
+                  }
+                >
+                  {isQuickAttendanceLocked ? (
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                  ) : (
+                    <Fingerprint className="w-3.5 h-3.5 shrink-0" />
+                  )}
+                  <span className="tabular-nums">
+                    {isQuickAttendanceLocked
+                      ? lang === 'th'
+                        ? 'ล็อก'
+                        : 'Locked'
+                      : `${biometricUnlockMinutes}${lang === 'th' ? 'น.' : 'm'}`}
+                  </span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="h-9 w-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center transition cursor-pointer"
+                title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+                aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4 text-[var(--color-primary-text)]" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-[var(--color-text-muted)]" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => runWithBiometricGuard(() => setShowRapidScanner(true))}
+                className="h-9 px-3.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+                title="สแกน QR / บาร์โค้ดต่อเนื่อง (1 วินาที/คน)"
+              >
+                <ScanLine className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'สแกน QR รัว' : 'Rapid Scan'}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <ModuleTourTrigger moduleId="mobile_checkin" lang={lang} />
-            <span className="type-meta px-1 tabular-nums">
-              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
-            <button
-              type="button"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="btn-icon-tool"
-              title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-              aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              ) : (
-                <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-              )}
-            </button>
-          </div>
+          <nav
+            data-guide-id="mobile-checkin-tabs"
+            aria-label="Attendance sub-navigation"
+            className="flex items-center gap-1 overflow-x-auto no-scrollbar -mb-px"
+          >
+            {[
+              { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
+              { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
+              {
+                id: 'leave_request',
+                icon: FileText,
+                labelTh: 'ใบลา',
+                labelEn: 'Leave',
+                badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
+                staffOnly: false,
+              },
+              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
+              { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
+            ]
+              .filter((tab) => isStaffUser || !tab.staffOnly)
+              .map((tab) => {
+                const isActive = subTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    data-active={isActive}
+                    onClick={() => {
+                      setSubTab(tab.id as AttendanceSubTab);
+                      if (tab.id === 'leave_request') setLeaveFormStep(1);
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                      isActive
+                        ? 'border-[var(--color-primary)] text-[var(--color-text-title)] font-semibold'
+                        : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
+                    }`}
+                  >
+                    <tab.icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[var(--color-primary-text)]' : ''}`} />
+                    <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+                    {tab.badge ? (
+                      <span
+                        className={`text-[11px] font-semibold tabular-nums ${
+                          isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-400'
+                        }`}
+                      >
+                        ({tab.badge})
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+          </nav>
         </div>
       )}
 
-      {/* Navigation Sub Tabs & Contextual Action */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
-        <nav
-          data-guide-id="mobile-checkin-tabs"
-          aria-label="Attendance sub-navigation"
-          className="seg-tab-group overflow-x-auto no-scrollbar max-w-full"
-        >
-          {[
-            { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
-            { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
-            {
-              id: 'leave_request',
-              icon: FileText,
-              labelTh: 'ใบลา',
-              labelEn: 'Leave',
-              badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
-              staffOnly: false,
-            },
-            { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
-            { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
-          ]
-            .filter((tab) => isStaffUser || !tab.staffOnly)
-            .map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                data-active={subTab === tab.id}
-                onClick={() => {
-                  setSubTab(tab.id as AttendanceSubTab);
-                  if (tab.id === 'leave_request') setLeaveFormStep(1);
-                }}
-                className="seg-tab-btn"
-              >
-                <tab.icon className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
-                {tab.badge ? (
-                  <span
-                    className={`font-bold tabular-nums ${
-                      subTab === tab.id ? 'text-white/90' : 'text-amber-600 dark:text-amber-300'
-                    }`}
-                  >
-                    ({tab.badge})
-                  </span>
-                ) : null}
-              </button>
-            ))}
-        </nav>
+      {/* Mobile Sub-Navigation & Biometric Action (Embedded Mobile Only) */}
+      {embeddedMobile && (
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
+          <nav
+            data-guide-id="mobile-checkin-tabs"
+            aria-label="Attendance sub-navigation"
+            className="seg-tab-group overflow-x-auto no-scrollbar max-w-full"
+          >
+            {[
+              { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
+              { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
+              {
+                id: 'leave_request',
+                icon: FileText,
+                labelTh: 'ใบลา',
+                labelEn: 'Leave',
+                badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
+                staffOnly: false,
+              },
+              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
+              { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
+            ]
+              .filter((tab) => isStaffUser || !tab.staffOnly)
+              .map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  data-active={subTab === tab.id}
+                  onClick={() => {
+                    setSubTab(tab.id as AttendanceSubTab);
+                    if (tab.id === 'leave_request') setLeaveFormStep(1);
+                  }}
+                  className="seg-tab-btn"
+                >
+                  <tab.icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+                  {tab.badge ? (
+                    <span
+                      className={`font-bold tabular-nums ${
+                        subTab === tab.id ? 'text-white/90' : 'text-amber-600 dark:text-amber-300'
+                      }`}
+                    >
+                      ({tab.badge})
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+          </nav>
 
-        <div className="flex items-center gap-1.5 shrink-0">
           {isStaffUser && userPasskey?.protectQuickAttendance && (
             <button
               type="button"
@@ -2216,20 +2326,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </span>
             </button>
           )}
-
-          {!embeddedMobile && (
-            <button
-              type="button"
-              onClick={() => runWithBiometricGuard(() => setShowRapidScanner(true))}
-              className="btn-action-primary px-3 py-1.5 shrink-0"
-              title="สแกน QR / บาร์โค้ดต่อเนื่อง (1 วินาที/คน)"
-            >
-              <ScanLine className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'สแกน QR รัว' : 'Rapid Scan'}</span>
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Slim Biometric Status / Lock Bar */}
       {isStaffUser &&

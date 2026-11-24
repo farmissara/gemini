@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Download, 
   Smartphone, 
@@ -10,7 +11,6 @@ import {
   Copy, 
   Check, 
   ExternalLink,
-  Sparkles,
   Apple
 } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
@@ -40,6 +40,15 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   });
   const [installSuccess, setInstallSuccess] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowModal(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showModal]);
 
   // If already running as an installed PWA in standalone mode, return null
   if (isInstalled) {
@@ -131,9 +140,10 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                         setActiveTab('android');
                         setShowModal(true);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
                     >
-                      <span>🤖 {lang === 'th' ? 'สำหรับ Android' : 'Android'}</span>
+                      <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                      <span>{lang === 'th' ? 'Android' : 'Android'}</span>
                     </button>
                     <button
                       type="button"
@@ -141,9 +151,10 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                         setActiveTab('ios');
                         setShowModal(true);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-semibold shadow-xs transition cursor-pointer"
                     >
-                      <span>🍏 {lang === 'th' ? 'สำหรับ iOS (iPhone)' : 'iOS'}</span>
+                      <Apple className="w-3.5 h-3.5 shrink-0" />
+                      <span>{lang === 'th' ? 'iOS (iPhone / iPad)' : 'iOS'}</span>
                     </button>
                   </>
                 )}
@@ -289,18 +300,21 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       );
     }
 
-    // Default 'nav' style — sleek, clean top-bar action without nested pill-in-pill clutter
+    // Default 'nav' style — crisp architectural button with unboxed inline iOS & Android visibility
     return (
       <button
         type="button"
         onClick={handleInstallClick}
-        className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition cursor-pointer bg-[var(--color-primary)]/[0.08] border-[var(--color-primary)]/20 text-[var(--color-primary-text)] hover:bg-[var(--color-primary)]/[0.14] hover:border-[var(--color-primary)]/35 whitespace-nowrap shrink-0 ${className}`}
-        title={lang === 'th' ? 'ติดตั้งแอป BaanPakKru ลงมือถือ (รองรับ Android & iOS)' : 'Install BaanPakKru App (Android & iOS)'}
+        className={`inline-flex h-9 items-center justify-center gap-2 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-medium transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0 ${className}`}
+        title={lang === 'th' ? 'ติดตั้งแอป BaanPakKru ลงมือถือ (รองรับ iOS & Android)' : 'Install BaanPakKru App (iOS & Android)'}
       >
         <Smartphone className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-        <span className="sm:hidden">{lang === 'th' ? 'ติดตั้งแอป' : 'Install'}</span>
-        <span className="hidden sm:inline">
+        <span className="sm:hidden font-semibold">{lang === 'th' ? 'ติดตั้ง iOS / Android' : 'Install App'}</span>
+        <span className="hidden sm:inline font-semibold">
           {lang === 'th' ? 'ติดตั้งลงมือถือ' : 'Install App'}
+        </span>
+        <span className="hidden md:inline text-[var(--color-text-muted)] font-normal">
+          · iOS &amp; Android
         </span>
       </button>
     );
@@ -311,18 +325,30 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       {renderTriggerButton()}
 
       {/* Guided Multi-Platform Modal (Android, iOS & QR Code) */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-2xl sm:rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 sm:p-6 shadow-2xl relative text-[var(--color-text-body)] max-h-[92vh] overflow-y-auto">
-            {/* Close Button */}
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-              aria-label="Close"
+      {showModal &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowModal(false);
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนมือถือ' : 'Install BaanPakKru on Mobile'}
+              className="modal-enter w-full max-w-lg rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 sm:p-6 shadow-2xl relative text-[var(--color-text-body)] max-h-[90dvh] overflow-y-auto"
             >
-              <X className="w-5 h-5" />
-            </button>
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
@@ -352,8 +378,8 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <span>🤖</span>
-                <span>{lang === 'th' ? 'Android (แอนดรอยด์)' : 'Android'}</span>
+                <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'Android' : 'Android'}</span>
               </button>
 
               <button
@@ -361,11 +387,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                 onClick={() => setActiveTab('ios')}
                 className={`flex-1 py-2 px-2.5 rounded-lg transition text-center cursor-pointer flex items-center justify-center gap-1.5 ${
                   activeTab === 'ios'
-                    ? 'bg-[var(--color-card)] text-indigo-700 dark:text-indigo-400 shadow-xs border border-[var(--color-border)]'
+                    ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs border border-[var(--color-border)]'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <span>🍏</span>
+                <Apple className="w-3.5 h-3.5 shrink-0" />
                 <span>{lang === 'th' ? 'iOS (iPhone / iPad)' : 'iOS (iPhone)'}</span>
               </button>
 
@@ -388,7 +414,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               <div className="space-y-3 animate-in fade-in duration-150">
                 <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs">
                   <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300 mb-1">
-                    <span>✨</span>
+                    <Smartphone className="w-3.5 h-3.5 shrink-0" />
                     <span>{lang === 'th' ? 'ระบบ Android (Google Chrome & Samsung Internet)' : 'Android Chrome / Browser'}</span>
                   </div>
                   <p className="text-emerald-800 dark:text-emerald-200 leading-relaxed text-[11px]">
@@ -551,30 +577,33 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
 
             {/* Footer Buttons */}
             <div className="mt-5 pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-3">
-              <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>PWA Standards Compliant</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'รองรับ iPhone / iPad (Safari) และ Android (Chrome)' : 'Supports iOS Safari & Android Chrome'}
               </span>
 
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="px-5 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] border border-[var(--color-border)] text-xs font-bold transition cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] transition cursor-pointer"
               >
                 {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
 
       {/* Success Notification */}
-      {installSuccess && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold shadow-xl animate-bounce">
-          <CheckCircle2 className="w-4 h-4" />
-          <span>{lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนอุปกรณ์เรียบร้อยแล้ว!' : 'BaanPakKru installed successfully!'}</span>
-        </div>
-      )}
+      {installSuccess &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed bottom-5 right-5 z-[110] flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold shadow-xl">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนอุปกรณ์เรียบร้อยแล้ว!' : 'BaanPakKru installed successfully!'}</span>
+          </div>,
+          document.body
+        )}
     </>
   );
 };

@@ -156,41 +156,41 @@ export const NfcTapAttendanceTab: React.FC<NfcTapAttendanceTabProps> = ({
         <div className="saas-card-body space-y-4">
           {/* Mode Controls: IN/OUT + Gate + (Staff Status) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+            <div className="flex items-center gap-1 p-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
               <button
                 type="button"
                 onClick={() => setNfcCheckType('check_in')}
-                className={`flex-1 min-h-[40px] px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                className={`flex-1 min-h-[36px] px-3 rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   nfcCheckType === 'check_in'
-                    ? 'bg-emerald-700 text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                    ? 'bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold shadow-xs border border-[var(--color-border)]'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
                 }`}
               >
-                <LogIn className="w-3.5 h-3.5" />
+                <LogIn className={`w-3.5 h-3.5 ${nfcCheckType === 'check_in' ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
                 <span>{lang === 'th' ? 'เข้าโรงเรียน' : 'Check In'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setNfcCheckType('check_out')}
-                className={`flex-1 min-h-[40px] px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                className={`flex-1 min-h-[36px] px-3 rounded-md flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   nfcCheckType === 'check_out'
-                    ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                    : 'text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
+                    ? 'bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold shadow-xs border border-[var(--color-border)]'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
                 }`}
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className={`w-3.5 h-3.5 ${nfcCheckType === 'check_out' ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
                 <span>{lang === 'th' ? 'ออกโรงเรียน' : 'Check Out'}</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
               <MapPin className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
               {normalizedGates.length > 1 && selectedGate ? (
                 <select
                   aria-label={lang === 'th' ? 'จุดสแกน NFC' : 'NFC Gate'}
                   value={selectedGate.id}
                   onChange={(e) => setSelectedGateId(e.target.value)}
-                  className="flex-1 min-w-0 bg-transparent text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden"
+                  className="flex-1 min-w-0 bg-transparent text-xs font-medium text-[var(--color-text-title)] focus:outline-hidden"
                 >
                   {normalizedGates.map((gate) => (
                     <option key={gate.id} value={gate.id}>
@@ -199,25 +199,23 @@ export const NfcTapAttendanceTab: React.FC<NfcTapAttendanceTabProps> = ({
                   ))}
                 </select>
               ) : (
-                <span className="flex-1 min-w-0 text-xs font-semibold text-[var(--color-text-title)] truncate">
+                <span className="flex-1 min-w-0 text-xs font-medium text-[var(--color-text-title)] truncate">
                   {selectedGate ? selectedGate.nameTh : lang === 'th' ? 'ยังไม่ตั้งค่าพิกัดโรงเรียน' : 'School GPS not set'}
                 </span>
               )}
             </div>
 
             {isStaffUser && (
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                 {(['present', 'late'] as const).map((stt) => (
                   <button
                     key={stt}
                     type="button"
                     onClick={() => setNfcStatusMode(stt)}
-                    className={`flex-1 min-h-[40px] px-2.5 rounded-lg font-bold text-xs transition cursor-pointer ${
+                    className={`flex-1 min-h-[36px] px-2.5 rounded-md text-xs transition cursor-pointer ${
                       nfcStatusMode === stt
-                        ? stt === 'present'
-                          ? 'bg-emerald-700 text-white'
-                          : 'bg-amber-500 text-slate-950'
-                        : 'text-[var(--color-text-body)]'
+                        ? 'bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold shadow-xs border border-[var(--color-border)]'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
                     }`}
                   >
                     {stt === 'present' ? (lang === 'th' ? 'สถานะ: มา' : 'Present') : lang === 'th' ? 'สถานะ: สาย' : 'Late'}
@@ -229,20 +227,20 @@ export const NfcTapAttendanceTab: React.FC<NfcTapAttendanceTabProps> = ({
 
           {/* Live Web NFC Tap Pad */}
           <div
-            className={`p-4 rounded-2xl border-2 border-dashed transition flex flex-col items-center text-center gap-3 ${
+            className={`p-5 rounded-xl border transition flex flex-col items-center text-center gap-3 ${
               isNfcScanning
-                ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30'
+                ? 'border-emerald-500/60 bg-emerald-500/[0.06]'
                 : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
             }`}
           >
             <div
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm ${
+              className={`w-14 h-14 rounded-xl flex items-center justify-center transition ${
                 isNfcScanning
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'bg-[var(--color-card)] text-[var(--color-primary-text)] border border-[var(--color-border)]'
               }`}
             >
-              <Nfc className="w-8 h-8" />
+              <Nfc className="w-7 h-7" />
             </div>
 
             <div className="space-y-1 max-w-md">

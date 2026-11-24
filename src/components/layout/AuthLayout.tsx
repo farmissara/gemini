@@ -693,25 +693,23 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </a>
 
           <div className="flex items-center gap-2 shrink-0">
-            <PWAInstallButton lang={lang} variant="nav" className="h-9" />
+            <PWAInstallButton lang={lang} variant="nav" />
 
-            <div className="inline-flex h-9 items-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] p-0.5 shadow-2xs">
+            <div className="inline-flex h-9 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] divide-x divide-[var(--color-border)] overflow-hidden shadow-2xs">
               <button
                 type="button"
                 onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-                className="inline-flex h-7.5 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer whitespace-nowrap"
+                className="inline-flex h-full items-center gap-1.5 px-2.5 text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer whitespace-nowrap"
                 title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
               >
                 <Globe className="h-3.5 w-3.5 text-[var(--color-text-muted)] shrink-0" />
                 <span>{lang === 'th' ? 'ไทย' : 'EN'}</span>
               </button>
 
-              <span className="h-3.5 w-px bg-[var(--color-border)]" aria-hidden="true" />
-
               <button
                 type="button"
                 onClick={() => setThemePalette?.(isLight ? 'sapphire' : 'light_warm')}
-                className="inline-flex h-7.5 w-8 items-center justify-center rounded-full text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                className="inline-flex h-full w-9 items-center justify-center text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
                 title={lang === 'th' ? 'สลับโหมดสีถนอมสายตา' : 'Toggle Theme'}
                 aria-label={lang === 'th' ? 'สลับโหมดสีถนอมสายตา' : 'Toggle theme'}
               >
