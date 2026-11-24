@@ -5227,6 +5227,21 @@ export const App: React.FC = () => {
       lang={lang}
       isGuideEnabled={isGuideTourEnabled}
       onSetGuideEnabled={(next) => handleToggleGuideTour(next)}
+      onNavigateToTourTarget={({ moduleId, settingsTab }) => {
+        if (moduleId === 'lms_classroom' || moduleId === 'lms') {
+          handleChangeProgramMode('lms_classroom');
+          return;
+        }
+        if (moduleId === 'parent_portal') {
+          handleChangeProgramMode('parent_portal');
+          return;
+        }
+        handleChangeProgramMode('school_erp');
+        if (moduleId === 'system_settings' && settingsTab) {
+          setSystemSettingsInitialTab(settingsTab as SystemSettingsTab);
+        }
+        navigateToAppTab(moduleId as NavTab);
+      }}
     >
     <div className={`${useImmersiveGameLayout ? 'game-immersive-root' : ''} h-dvh max-h-dvh w-full overflow-hidden bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col font-sans transition-colors duration-200`}>
       {useImmersiveGameLayout && isPortraitScreen && (

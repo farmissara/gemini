@@ -58,10 +58,10 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
     getSchoolShortCode(activeSchool)
   );
   const [defaultPasswordType, setDefaultPasswordType] = useState<'student_id' | 'birthdate' | 'custom' | 'pin'>(
-    activeSchool.studentDefaultPasswordType || 'birthdate'
+    activeSchool.studentDefaultPasswordType || 'student_id'
   );
   const [passwordNote, setPasswordNote] = useState<string>(
-    activeSchool.studentDefaultPasswordNote || 'ใช้วันเดือนปีเกิด (ววดดปปปป เช่น 12042551) หรือรหัสนักเรียน'
+    activeSchool.studentDefaultPasswordNote || 'ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น (เมื่อเข้าครั้งแรก ระบบจะบังคับเปลี่ยนรหัสผ่านใหม่)'
   );
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState(false);
@@ -475,8 +475,8 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                     onChange={(e) => setDefaultPasswordType(e.target.value as any)}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
                   >
+                    <option value="student_id">ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น (แนะนำ · บังคับเปลี่ยนครั้งแรก)</option>
                     <option value="birthdate">วันเดือนปีเกิด (ววดดปปปป เช่น 12042551)</option>
-                    <option value="student_id">ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น</option>
                     <option value="custom">รหัสผ่านที่โรงเรียนกำหนดเอง (Default Password)</option>
                     <option value="pin">เลขประจำตัวประชาชน 4 ตัวท้าย</option>
                   </select>

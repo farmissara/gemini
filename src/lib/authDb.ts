@@ -55,7 +55,7 @@ export interface StudentAccountLink {
 export interface TemporaryStudentCredential {
   studentIdNumber: string;
   temporaryPassword: string;
-  expiresAt: string;
+  expiresAt: string | null;
 }
 
 export interface BulkStudentCredentialResult {
@@ -170,7 +170,7 @@ function mapSchool(row: SchoolRow): School {
     showPrimaryCourseCredits: row.show_primary_course_credits ?? false,
     studentLoginIdentifierType: row.student_login_identifier_type || 'both',
     customLoginSlug: row.custom_login_slug || undefined,
-    studentDefaultPasswordType: row.student_default_password_type || 'birthdate',
+    studentDefaultPasswordType: row.student_default_password_type || 'student_id',
     studentDefaultPasswordNote: row.student_default_password_note || undefined,
     latitude:
       row.latitude !== null && row.latitude !== undefined && Number.isFinite(Number(row.latitude))
@@ -436,11 +436,11 @@ export async function fetchSchoolLoginPortalInfo(params: {
           : 'both',
       customLoginSlug: typeof row.custom_login_slug === 'string' && row.custom_login_slug ? row.custom_login_slug : undefined,
       studentDefaultPasswordType:
-        row.student_default_password_type === 'student_id' ||
+        row.student_default_password_type === 'birthdate' ||
         row.student_default_password_type === 'custom' ||
         row.student_default_password_type === 'pin'
           ? row.student_default_password_type
-          : 'birthdate',
+          : 'student_id',
       studentDefaultPasswordNote:
         typeof row.student_default_password_note === 'string' && row.student_default_password_note
           ? row.student_default_password_note
@@ -470,7 +470,7 @@ export async function fetchSchoolLoginPortalInfo(params: {
     logoUrl: match.logo_url || undefined,
     primaryColor: match.primary_color || '#1e40af',
     studentLoginIdentifierType: 'both',
-    studentDefaultPasswordType: 'birthdate',
+    studentDefaultPasswordType: 'student_id',
   };
 }
 
@@ -1150,14 +1150,14 @@ async function manageStudentTemporaryCredential(
     if (
       typeof data?.studentIdNumber !== 'string' ||
       typeof data?.temporaryPassword !== 'string' ||
-      typeof data?.expiresAt !== 'string'
+      (data?.expiresAt !== null && data?.expiresAt !== undefined && typeof data?.expiresAt !== 'string')
     ) {
-      throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบออกรหัสผ่านชั่วคราวตอบกลับไม่ถูกต้อง');
+      throw new Error(typeof data?.error === 'string' ? data.error : 'ระบบออกรหัสผ่านเริ่มต้นตอบกลับไม่ถูกต้อง');
     }
     return {
       studentIdNumber: data.studentIdNumber,
       temporaryPassword: data.temporaryPassword,
-      expiresAt: data.expiresAt,
+      expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : null,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1192,14 +1192,14 @@ export async function createMissingStudentLoginAccounts(
     if (
       typeof item?.studentIdNumber !== 'string' ||
       typeof item?.temporaryPassword !== 'string' ||
-      typeof item?.expiresAt !== 'string'
+      (item?.expiresAt !== null && item?.expiresAt !== undefined && typeof item?.expiresAt !== 'string')
     ) {
-      throw new Error('ระบบสร้างบัญชีนักเรียนส่งข้อมูลรหัสชั่วคราวไม่ครบถ้วน');
+      throw new Error('ระบบสร้างบัญชีนักเรียนส่งข้อมูลรหัสผ่านเริ่มต้นไม่ครบถ้วน');
     }
     created.push({
       studentIdNumber: item.studentIdNumber,
       temporaryPassword: item.temporaryPassword,
-      expiresAt: item.expiresAt,
+      expiresAt: typeof item.expiresAt === 'string' ? item.expiresAt : null,
     });
   }
 

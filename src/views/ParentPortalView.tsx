@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AttendancePhoto from '../components/AttendancePhoto';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
   Student, 
   AttendanceRecord, 
@@ -325,7 +326,8 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         </div>
 
         {/* Student selector */}
-        <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
+        <div data-guide-id="parent-student-switcher" className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
+          <ModuleTourTrigger moduleId="parent_portal" lang={lang} />
           <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
             {lang === 'th' ? 'เลือกลูก/นักเรียนในการดูแล:' : 'Select Student:'}
           </label>
@@ -344,7 +346,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       </div>
 
       {/* Navigation Tabs in Parent Portal */}
-      <div className="seg-tab-group shrink-0 overflow-x-auto max-w-full">
+      <div data-guide-id="parent-portal-tabs" className="seg-tab-group shrink-0 overflow-x-auto max-w-full">
         <button
           type="button"
           onClick={() => setActivePortalTab('overview')}

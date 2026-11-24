@@ -29,6 +29,7 @@ import { getLocalDateString } from '../lib/date';
 import { getModuleTone } from '../lib/moduleTheme';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 interface BillingViewProps {
   schoolId?: string;
@@ -140,6 +141,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+          <ModuleTourTrigger moduleId="billing" lang="th" />
           {(isAdmin || (currentRole === 'super_admin' && onOpenExamPaymentSettings)) && (
             <details className="relative">
               <summary className="btn-tool-tone list-none px-2.5 py-1.5">
@@ -194,7 +196,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
       {/* Filter Tabs */}
       <div className="shrink-0 p-2 toolbar-filter-zone flex items-center justify-between gap-2 flex-wrap">
-        <div className="seg-tab-group overflow-x-auto no-scrollbar">
+        <div data-guide-id="billing-filter-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
           {['all', 'slip_pending', 'paid', 'pending', 'overdue'].map((st) => (
             <button
               key={st}
@@ -216,7 +218,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
       </div>
 
       {/* Invoices Split View */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
+      <div data-guide-id="billing-invoices-split" className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Invoice list */}
         <div className="lg:col-span-7 h-full min-h-0 overflow-y-auto pr-1">
           <PagedList

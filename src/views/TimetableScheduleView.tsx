@@ -3800,8 +3800,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         );
       })() : (
         /* TAB: Timetable 5-Day Weekly Grid View */
-        <div className="timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
-          <div className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
+        <div data-guide-id="timetable-grid-area" className="timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
+          <div data-guide-id="timetable-filters-bar" className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 {renderRoomAndTermControls()}

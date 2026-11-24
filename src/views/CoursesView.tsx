@@ -665,7 +665,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
           {courseDeleteError}
         </p>
       )}
-      <div className="shrink-0 toolbar-filter-zone space-y-2 shadow-xs">
+      <div data-guide-id="courses-search-filter" className="shrink-0 toolbar-filter-zone space-y-2 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -764,7 +764,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       </div>
 
       {/* Main Grid: Course Catalog & Active Course Detail */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
+      <div data-guide-id="courses-list-grid" className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
         {/* Left: Course Cards (7 cols) */}
         <div className="lg:col-span-7 h-full min-h-0 overflow-hidden pr-1">
           <PagedList

@@ -27,10 +27,16 @@ import {
   Key,
   MousePointerClick,
   Power,
-  UserCheck
+  UserCheck,
+  Compass,
+  Clock,
+  Play,
+  MapPin
 } from 'lucide-react';
 import { AppLanguage, UserRole } from '../../types';
 import { ROLE_WORKFLOW_STEPS } from '../../data/interactiveGuideTopics';
+import { GUIDED_PLAYBOOKS, MODULE_GUIDED_TOURS } from '../../data/moduleGuidedTours';
+import { useGuideTour } from '../guide/GuideTourContext';
 
 export type GuideModuleId = 
   | 'dashboard'
@@ -47,7 +53,7 @@ export type GuideModuleId =
   | 'parent_portal'
   | 'games';
 
-export type ModuleGuideRoleView = 'all' | 'student' | 'teacher';
+export type ModuleGuideRoleView = 'playbooks' | 'all' | 'student' | 'teacher';
 
 interface ModuleGuideModalProps {
   initialModule?: GuideModuleId;
@@ -772,15 +778,20 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
   onClose,
   onNavigateToModule
 }) => {
+  const guideTour = useGuideTour();
   const [roleView, setRoleView] = useState<ModuleGuideRoleView>(() => {
     if (initialRoleView) return initialRoleView;
-    if (currentRole === 'student') return 'student';
-    if (currentRole === 'teacher') return 'teacher';
-    return 'all';
+    return 'playbooks';
+  });
+  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>(() => {
+    const matched = GUIDED_PLAYBOOKS.find((pb) => pb.audienceRoles.includes(currentRole));
+    return matched?.id || GUIDED_PLAYBOOKS[0]?.id || 'admin_onboarding';
   });
   const [selectedModuleId, setSelectedModuleId] = useState<GuideModuleId>(initialModule);
   const [searchQuery, setSearchQuery] = useState('');
   const [guideSection, setGuideSection] = useState<'features' | 'steps' | 'tips'>('features');
+
+  const resolveTourModuleId = (modId: string) => (modId === 'lms' ? 'lms_classroom' : modId);
 
   const filteredGuides = MODULE_GUIDES.filter(g => {
     if (!searchQuery.trim()) return true;
@@ -795,6 +806,8 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
   const activeGuide = MODULE_GUIDES.find(g => g.id === selectedModuleId) || MODULE_GUIDES[0];
   const ActiveIcon = activeGuide.icon;
+  const activePlaybook =
+    GUIDED_PLAYBOOKS.find((pb) => pb.id === selectedPlaybookId) || GUIDED_PLAYBOOKS[0];
   const activeRoleSteps = ROLE_WORKFLOW_STEPS.filter(
     (s) => s.role === (roleView === 'student' ? 'student' : 'teacher')
   );
@@ -838,9 +851,22 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
           </div>
         </div>
 
-        {/* Dedicated In-Module View Switcher: Student Guide / Teacher Guide / All Modules */}
+        {/* Dedicated In-Module View Switcher: Hand-Holding Playbooks / Student / Teacher / All Modules */}
         <div className="px-5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setRoleView('playbooks')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer whitespace-nowrap ${
+                roleView === 'playbooks'
+                  ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-xs'
+                  : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'นำทางจับมือทำทีละขั้น' : 'Hand-Holding Playbooks'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setRoleView('student')}
@@ -883,13 +909,166 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
 
           <span className="text-[11px] text-[var(--color-text-muted)] hidden sm:inline">
             {lang === 'th'
-              ? 'เลือกดูขั้นตอนตามบทบาทหรือค้นหาคู่มือแต่ละโมดูลได้ทันที'
-              : 'Browse role workflows or jump straight to any module guide.'}
+              ? 'กดเริ่มนำทางเพื่อให้ระบบเปิดหน้าจอจริงและชี้จุดทีละขั้น'
+              : 'Launch any playbook or module tour for live on-screen spotlighting.'}
           </span>
         </div>
 
-        {/* Content Body: Illustrated Role Guide OR Module Directory */}
-        {roleView !== 'all' ? (
+        {/* Content Body: Hand-Holding Playbooks / Illustrated Role Guide / Module Directory */}
+        {roleView === 'playbooks' && activePlaybook ? (
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5">
+            {/* Playbook Role Selector Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              {GUIDED_PLAYBOOKS.map((pb) => {
+                const isSelected = pb.id === activePlaybook.id;
+                const isRecommended = pb.audienceRoles.includes(currentRole);
+                return (
+                  <button
+                    key={pb.id}
+                    type="button"
+                    onClick={() => setSelectedPlaybookId(pb.id)}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      isSelected
+                        ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-xs'
+                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-primary-text)] truncate">
+                        {lang === 'th' ? pb.roleTagTh : pb.roleTagEn}
+                      </span>
+                      {isRecommended && (
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
+                          {lang === 'th' ? 'แนะนำ' : 'For you'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs font-bold text-[var(--color-text-title)] leading-snug">
+                      {lang === 'th' ? pb.titleTh : pb.titleEn}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                      <span>{pb.steps.length} {lang === 'th' ? 'ขั้นตอน' : 'stages'}</span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        ~{pb.estimatedMinutes} {lang === 'th' ? 'นาที' : 'min'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active Playbook Hero & Launch Button */}
+            <div className="rounded-2xl border border-[var(--color-primary)]/40 bg-[var(--color-primary-light)]/50 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-[var(--color-primary)] text-white">
+                    <Compass className="w-3 h-3" />
+                    <span>{lang === 'th' ? activePlaybook.roleTagTh : activePlaybook.roleTagEn}</span>
+                  </span>
+                  <span className="text-xs text-[var(--color-text-muted)] font-semibold tabular-nums">
+                    {activePlaybook.steps.length} {lang === 'th' ? 'ด่านต่อเนื่อง' : 'sequential stages'}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-extrabold text-[var(--color-text-title)]">
+                  {lang === 'th' ? activePlaybook.titleTh : activePlaybook.titleEn}
+                </h3>
+                <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                  {lang === 'th' ? activePlaybook.subtitleTh : activePlaybook.subtitleEn}
+                </p>
+              </div>
+
+              {guideTour && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    guideTour.startPlaybook(activePlaybook.id, 0);
+                    onClose();
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md transition cursor-pointer shrink-0 whitespace-nowrap"
+                >
+                  <Play className="w-4 h-4 shrink-0" />
+                  <span>
+                    {lang === 'th'
+                      ? 'เริ่มนำทางจับมือทำตั้งแต่ขั้นที่ 1'
+                      : 'Start Guided Walkthrough'}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Numbered Stage Breakdown */}
+            <div className="space-y-3">
+              {activePlaybook.steps.map((stage, idx) => {
+                const items = lang === 'th' ? stage.checklistTh : stage.checklistEn;
+                return (
+                  <div
+                    key={stage.id}
+                    className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-4 shadow-xs"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)] text-white font-extrabold text-sm flex items-center justify-center shrink-0 tabular-nums">
+                        {idx + 1}
+                      </div>
+                      <div className="space-y-2 min-w-0">
+                        <div>
+                          <h4 className="text-sm font-bold text-[var(--color-text-title)]">
+                            {lang === 'th' ? stage.titleTh : stage.titleEn}
+                          </h4>
+                          <p className="text-xs text-[var(--color-text-body)] mt-0.5 leading-relaxed">
+                            {lang === 'th' ? stage.summaryTh : stage.summaryEn}
+                          </p>
+                        </div>
+                        <ul className="space-y-1">
+                          {items.map((line, lineIdx) => (
+                            <li
+                              key={lineIdx}
+                              className="flex items-start gap-2 text-xs text-[var(--color-text-body)]"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                              <span>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                      {guideTour ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            guideTour.startPlaybook(activePlaybook.id, idx);
+                            onClose();
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--color-primary)] bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white text-[var(--color-primary-text)] text-xs font-bold transition cursor-pointer whitespace-nowrap"
+                        >
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {lang === 'th' ? 'เปิดหน้านี้พร้อมชี้จุด' : 'Open & Spotlight'}
+                          </span>
+                        </button>
+                      ) : onNavigateToModule ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onNavigateToModule(stage.moduleId);
+                            onClose();
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold transition cursor-pointer whitespace-nowrap"
+                        >
+                          <span>{lang === 'th' ? 'ไปที่หน้านี้' : 'Open'}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : roleView !== 'all' ? (
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -919,15 +1098,18 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setRoleView('all')}
+                onClick={() => setRoleView('playbooks')}
                 className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] text-xs font-bold text-[var(--color-primary-text)] shrink-0 cursor-pointer whitespace-nowrap"
               >
-                {lang === 'th' ? 'ดูคู่มือทุกโมดูล' : 'Browse All Modules'}
+                {lang === 'th' ? 'โหมดนำทางจับมือทำ' : 'Step-by-Step Playbooks'}
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activeRoleSteps.map((step) => (
+              {activeRoleSteps.map((step) => {
+                const tourModuleId = step.targetTab ? resolveTourModuleId(step.targetTab) : '';
+                const hasLiveTour = Boolean(tourModuleId && MODULE_GUIDED_TOURS[tourModuleId] && guideTour);
+                return (
                 <article
                   key={step.id}
                   className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden flex flex-col justify-between shadow-xs"
@@ -968,26 +1150,44 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                     </div>
                   </div>
 
-                  {step.targetTab && onNavigateToModule && (
-                    <div className="px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
+                  {step.targetTab && (onNavigateToModule || hasLiveTour) && (
+                    <div className="px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
                       <span className="text-[11px] text-[var(--color-text-muted)] truncate">
                         {lang === 'th' ? step.captionTh : step.captionEn}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onNavigateToModule(step.targetTab!);
-                          onClose();
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
-                      >
-                        <span>{lang === 'th' ? 'เปิดเมนูนี้' : 'Open Module'}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {hasLiveTour && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              guideTour!.startModuleTourAtTarget(tourModuleId);
+                              onClose();
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-primary)] bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white text-[var(--color-primary-text)] text-xs font-bold transition cursor-pointer whitespace-nowrap"
+                          >
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span>{lang === 'th' ? 'นำทางชี้จุด' : 'Spotlight Tour'}</span>
+                          </button>
+                        )}
+                        {onNavigateToModule && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onNavigateToModule(step.targetTab!);
+                              onClose();
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold transition cursor-pointer whitespace-nowrap"
+                          >
+                            <span>{lang === 'th' ? 'เปิดเมนูนี้' : 'Open Module'}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </article>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -1060,18 +1260,34 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
                 </div>
               </div>
 
-              {onNavigateToModule && (
-                <button
-                  onClick={() => {
-                    onNavigateToModule(activeGuide.id);
-                    onClose();
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-md transition-all self-start sm:self-auto cursor-pointer"
-                >
-                  <span>{lang === 'th' ? 'ไปที่โมดูลนี้' : 'Open Module'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+                {guideTour && MODULE_GUIDED_TOURS[resolveTourModuleId(activeGuide.id)] && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      guideTour.startModuleTourAtTarget(resolveTourModuleId(activeGuide.id));
+                      onClose();
+                    }}
+                    className="px-3.5 py-2 rounded-xl border border-[var(--color-primary)] bg-[var(--color-primary-light)] hover:bg-[var(--color-primary)] hover:text-white text-[var(--color-primary-text)] text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'เริ่มทัวร์ชี้จุดหน้านี้' : 'Spotlight Tour'}</span>
+                  </button>
+                )}
+
+                {onNavigateToModule && (
+                  <button
+                    onClick={() => {
+                      onNavigateToModule(activeGuide.id);
+                      onClose();
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-md transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <span>{lang === 'th' ? 'ไปที่โมดูลนี้' : 'Open Module'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Applicable Roles */}

@@ -4,22 +4,30 @@ import { describe, it } from 'node:test';
 import express from 'express';
 import {
   createStudentCredentialsRouter,
-  generateTemporaryPassword,
+  formatStudentPasswordPolicyError,
+  getStudentInitialPassword,
   getSyntheticStudentEmail,
-  TEMP_PASSWORD_ALPHABET,
-  TEMP_PASSWORD_LENGTH,
   validateStudentCredentialPayload,
 } from './studentCredentialsRoutes';
 
 describe('student credentials route helpers', () => {
-  it('generates 8-character passwords from the unambiguous alphabet', () => {
-    for (let i = 0; i < 20; i++) {
-      const password = generateTemporaryPassword();
-      assert.equal(password.length, TEMP_PASSWORD_LENGTH);
-      for (const ch of password) {
-        assert.ok(TEMP_PASSWORD_ALPHABET.includes(ch), `Unexpected char ${ch}`);
-      }
-    }
+  it('uses trimmed student ID number as the initial student password', () => {
+    assert.equal(getStudentInitialPassword(' ED-69001 '), 'ED-69001');
+    assert.equal(getStudentInitialPassword('68010025'), '68010025');
+    assert.equal(getStudentInitialPassword('   '), '');
+  });
+
+  it('formats short-password Auth errors into a clear Thai explanation', () => {
+    const formatted = formatStudentPasswordPolicyError(
+      '1001',
+      'Password should be at least 6 characters.'
+    );
+    assert.ok(formatted.includes('"1001"'));
+    assert.ok(formatted.includes('6 ตัวอักษร'));
+    assert.equal(
+      formatStudentPasswordPolicyError('100001', 'Network timeout'),
+      'Network timeout'
+    );
   });
 
   it('derives deterministic synthetic student email matching the Edge Function SHA-256 format', () => {

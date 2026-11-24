@@ -35,6 +35,7 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 interface InfirmaryHealthViewProps {
   schoolId?: string;
@@ -182,8 +183,9 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
+          <ModuleTourTrigger moduleId="infirmary" lang={lang} />
           {/* Subtabs switcher */}
-          <div className="seg-tab-group overflow-x-auto no-scrollbar">
+          <div data-guide-id="infirmary-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
             <button
               type="button"
               data-active={infirmaryTab === 'visits'}

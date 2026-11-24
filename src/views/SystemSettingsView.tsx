@@ -70,6 +70,7 @@ import { getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeat
 import { getSchoolRolePolicies, saveSchoolRolePolicies, type SchoolPolicyId } from '../lib/schoolPermissions';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 export type SystemSettingsTab =
   | 'control_overview'
@@ -363,9 +364,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const handleCopyBulkCredentials = async () => {
     if (!bulkCredentialResult?.created.length) return;
     const text = [
-      'รหัสนักเรียน\tรหัสผ่านชั่วคราว\tหมดอายุ',
+      'รหัสนักเรียน\tรหัสผ่านเริ่มต้น (รหัสนักเรียน)\tเงื่อนไขการเข้าใช้',
       ...bulkCredentialResult.created.map((credential) =>
-        `${credential.studentIdNumber}\t${credential.temporaryPassword}\t${credential.expiresAt}`
+        `${credential.studentIdNumber}\t${credential.temporaryPassword}\t${
+          credential.expiresAt
+            ? new Date(credential.expiresAt).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')
+            : 'บังคับเปลี่ยนรหัสผ่านเมื่อเข้าครั้งแรก'
+        }`
       ),
     ].join('\n');
     try {
@@ -373,14 +378,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       setCopiedField('bulkStudentCredentials');
       setTimeout(() => setCopiedField(null), 2500);
     } catch (error) {
-      setStudentAccountError(error instanceof Error ? error.message : 'คัดลอกรหัสชั่วคราวไม่สำเร็จ');
+      setStudentAccountError(error instanceof Error ? error.message : 'คัดลอกข้อมูลรหัสผ่านไม่สำเร็จ');
     }
   };
 
   const handleConfirmPasswordReset = async () => {
     const studentId = pendingPasswordReset?.student_id;
     if (!pendingPasswordReset || !studentId) return;
-    const account = pendingPasswordReset;
     setStudentAccountSaving(true);
     setStudentAccountError(null);
     setStudentAccountSuccess(null);
@@ -389,7 +393,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     try {
       const credential = await resetStudentLoginPassword(activeSchool.id, studentId);
       setTemporaryCredential(credential);
-      setStudentAccountSuccess(`ออกรหัสผ่านชั่วคราวให้นักเรียน ${credential.studentIdNumber} เรียบร้อยแล้ว`);
+      setStudentAccountSuccess(`รีเซ็ตรหัสผ่านเริ่มต้นให้นักเรียน ${credential.studentIdNumber} เป็นรหัสนักเรียนเรียบร้อยแล้ว`);
       await reloadStudentAccounts();
     } catch (error) {
       setStudentAccountError(error instanceof Error ? error.message : 'รีเซ็ตรหัสผ่านนักเรียนไม่สำเร็จ');
@@ -754,6 +758,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <ModuleTourTrigger moduleId="system_settings" lang={lang} />
             <button
               type="button"
               onClick={handleSave}
@@ -816,7 +821,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
       {/* Primary Grouped Navigation (6 clean groups instead of 11 overflowing tabs) */}
       <div className="shrink-0 flex flex-col gap-2">
-        <div className="seg-tab-group overflow-x-auto no-scrollbar w-fit max-w-full">
+        <div data-guide-id="settings-tabs" className="seg-tab-group overflow-x-auto no-scrollbar w-fit max-w-full">
           <button
             type="button"
             data-active={activeTab === 'control_overview'}
@@ -999,7 +1004,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
 
       {/* Tab Panels Container */}
-      <div className="space-y-4">
+      <div data-guide-id="settings-overview-panel" className="space-y-4">
       {/* TAB 0: UNIFIED SYSTEM CONTROL OPERATIONS OVERVIEW */}
       {activeTab === 'control_overview' && (() => {
         const policies = getSchoolRolePolicies(activeSchool.id);
@@ -2677,13 +2682,19 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {activeTab === 'student_accounts' &&
         ['admin', 'super_admin'].includes(currentRole) && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
+            <div data-guide-id="settings-student-accounts" className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
               <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">บัญชีเข้าสู่ระบบสำหรับนักเรียน</h3>
+                <h3 className="text-sm font-bold text-[var(--color-text-title)]">บัญชีเข้าสู่ระบบสำหรับนักเรียน (รหัสเริ่มต้น = รหัสนักเรียน)</h3>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว หรือรีเซ็ตรหัสผ่านบัญชีเดิม รหัสชั่วคราวมี 8 ตัว ใช้ตัวพิมพ์ใหญ่และตัวเลขที่ไม่สับสน ระบบแสดงครั้งเดียวและหมดอายุใน 24 ชั่วโมง
+                  สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว หรือรีเซ็ตรหัสผ่านบัญชีเดิม โดยรหัสผ่านเริ่มต้นจะเป็น <strong className="text-[var(--color-text-title)]">รหัสนักเรียน</strong> ของนักเรียนคนนั้น และระบบจะบังคับให้นักเรียนเปลี่ยนเป็นรหัสผ่านส่วนตัวทันทีเมื่อเข้าสู่ระบบครั้งแรก
                 </p>
               </div>
+
+              {activeStudentsWithoutAccounts.some((student) => (student.studentIdNumber || '').trim().length > 0 && (student.studentIdNumber || '').trim().length < 6) && (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                  หมายเหตุ: มีนักเรียนบางคนที่มีรหัสนักเรียนสั้นกว่า 6 ตัวอักษร ซึ่งอาจติดเกณฑ์ความยาวรหัสผ่านขั้นต่ำของ Supabase Auth (6 ตัวอักษร) หากสร้างไม่สำเร็จกรุณาปรับรหัสนักเรียนให้ครบ 6 ตัวขึ้นไป หรือปรับ Password minimum length ใน Supabase
+                </p>
+              )}
 
               {studentAccountError && (
                 <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
@@ -2719,7 +2730,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   disabled={studentAccountsLoading || studentAccountSaving || !credentialStudentId}
                   className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {studentAccountSaving ? 'กำลังดำเนินการ...' : 'สร้างบัญชีและออกรหัสชั่วคราว'}
+                  {studentAccountSaving ? 'กำลังดำเนินการ...' : 'สร้างบัญชี (รหัสเริ่มต้น = รหัสนักเรียน)'}
                 </button>
                 <button
                   type="button"
@@ -2735,7 +2746,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-bold">รหัสผ่านชั่วคราว — แสดงครั้งเดียว</p>
+                      <p className="text-sm font-bold">บัญชีที่สร้างสำเร็จ — รหัสผ่านเริ่มต้นคือรหัสนักเรียน</p>
                       <p className="mt-1 text-xs">
                         สร้าง {bulkCredentialResult.created.length} · ข้าม {bulkCredentialResult.skipped.length} · ล้มเหลว {bulkCredentialResult.failed.length}
                       </p>
@@ -2756,7 +2767,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                         onClick={() => setBulkCredentialResult(null)}
                         className="rounded-lg border border-amber-400 px-2.5 py-1.5 text-[11px] font-bold hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900"
                       >
-                        ปิดและล้างรหัส
+                        ปิดรายการ
                       </button>
                     </div>
                   </div>
@@ -2764,15 +2775,15 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   {bulkCredentialResult.created.length > 0 && (
                     <>
                       <p className="text-[11px] leading-relaxed">
-                        รหัสแต่ละรายการมี 8 ตัว ใช้ตัวพิมพ์ใหญ่และตัวเลขที่ไม่สับสน จดบันทึกหรือส่งรหัสให้นักเรียนอย่างปลอดภัย เมื่อปิดหน้านี้จะไม่สามารถเรียกดูรหัสเดิมได้อีก นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ
+                        นักเรียนสามารถใช้ <strong>รหัสนักเรียน</strong> เป็นทั้งชื่อผู้ใช้และรหัสผ่านเริ่มต้นเพื่อเข้าสู่ระบบครั้งแรกได้ทันที โดยระบบจะบังคับให้ตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษรทันทีหลังเข้าสู่ระบบ
                       </p>
                       <div className="max-h-80 overflow-auto rounded-lg border border-amber-300 dark:border-amber-800">
             <table className="table-comfortable w-full min-w-[620px] text-left text-xs">
                           <thead className="sticky top-0 bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-100">
                             <tr>
-                              <th className="px-3 py-2">รหัสนักเรียน</th>
-                              <th className="px-3 py-2">รหัสผ่านชั่วคราว</th>
-                              <th className="px-3 py-2">หมดอายุ</th>
+                              <th className="px-3 py-2">รหัสนักเรียน (ชื่อผู้ใช้)</th>
+                              <th className="px-3 py-2">รหัสผ่านเริ่มต้น</th>
+                              <th className="px-3 py-2">เงื่อนไขเมื่อเข้าครั้งแรก</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-amber-200 dark:divide-amber-800">
@@ -2780,7 +2791,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                               <tr key={`${credential.studentIdNumber}-${index}`}>
                                 <td className="px-3 py-2 font-mono">{credential.studentIdNumber}</td>
                                 <td className="px-3 py-2 font-mono font-bold select-all">{credential.temporaryPassword}</td>
-                                <td className="px-3 py-2">{new Date(credential.expiresAt).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')}</td>
+                                <td className="px-3 py-2">
+                                  {credential.expiresAt
+                                    ? `หมดอายุ ${new Date(credential.expiresAt).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')}`
+                                    : 'บังคับเปลี่ยนรหัสผ่านทันทีเมื่อเข้าครั้งแรก'}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -2811,8 +2826,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-bold">รหัสชั่วคราว — แสดงครั้งเดียว</p>
-                      <p className="mt-1 text-xs">รหัสนักเรียน: <span className="font-mono font-bold">{temporaryCredential.studentIdNumber}</span> · รหัสชั่วคราว 8 ตัว</p>
+                      <p className="text-sm font-bold">รหัสผ่านเริ่มต้นพร้อมใช้งาน (ใช้รหัสนักเรียน)</p>
+                      <p className="mt-1 text-xs">รหัสนักเรียน: <span className="font-mono font-bold">{temporaryCredential.studentIdNumber}</span> · ใช้เข้าสู่ระบบครั้งแรกแล้วเปลี่ยนรหัสทันที</p>
                     </div>
                     <button
                       type="button"
@@ -2836,8 +2851,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     </button>
                   </div>
                   <p className="text-[11px]">
-                    หมดอายุ: {new Date(temporaryCredential.expiresAt).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')}
-                    {' · '}แจ้งให้นักเรียนเปลี่ยนรหัสผ่านทันทีเมื่อเข้าสู่ระบบ
+                    {temporaryCredential.expiresAt
+                      ? `หมดอายุ: ${new Date(temporaryCredential.expiresAt).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')} · `
+                      : ''}
+                    แจ้งให้นักเรียนเข้าสู่ระบบด้วยรหัสนักเรียน จากนั้นระบบจะบังคับให้ตั้งรหัสผ่านใหม่ทันที
                   </p>
                 </div>
               )}
@@ -2961,7 +2978,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                           ...(account.status === 'active' && account.student_id
                             ? [{
                                 id: 'reset_student_password',
-                                label: 'รีเซ็ตรหัสผ่านชั่วคราว',
+                                label: 'รีเซ็ตรหัสผ่านเป็นรหัสนักเรียน',
                                 icon: <KeyRound className="w-3.5 h-3.5" />,
                                 variant: 'warning' as const,
                                 disabled: studentAccountSaving,
@@ -3036,7 +3053,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {/* TAB 8: Student Login Configuration & Dedicated School Login Link (Requirement 1) */}
       {activeTab === 'student_login_config' &&
         ['admin', 'super_admin'].includes(currentRole) && (
-          <div className="space-y-4 animate-in fade-in duration-200">
+          <div data-guide-id="settings-student-login-card" className="space-y-4 animate-in fade-in duration-200">
             <SchoolStudentLoginSettingsCard
               activeSchool={activeSchool}
               lang={lang}
@@ -3138,7 +3155,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         isOpen={showBulkCreateConfirm}
         title="ยืนยันสร้างบัญชีนักเรียนที่ยังไม่มี"
         description={`ระบบจะสร้างบัญชีให้กับนักเรียนสถานะกำลังศึกษาที่ยังไม่มีบัญชี จำนวน ${activeStudentsWithoutAccounts.length} คน โดยไม่สร้างซ้ำให้บัญชีที่มีอยู่แล้ว`}
-        detailNote="รหัสผ่านชั่วคราว 8 ตัวจะแสดงให้ผู้ดูแลดูได้ครั้งเดียวและหมดอายุใน 24 ชั่วโมง นักเรียนต้องเปลี่ยนรหัสผ่านหลังเข้าสู่ระบบ กรุณาบันทึกหรือส่งรหัสอย่างปลอดภัย"
+        detailNote="ระบบจะตั้งรหัสผ่านเริ่มต้นเป็นรหัสนักเรียนของแต่ละคน และบังคับให้นักเรียนเปลี่ยนเป็นรหัสผ่านส่วนตัวทันทีเมื่อเข้าสู่ระบบครั้งแรก"
         confirmLabel="สร้างบัญชีทั้งหมด"
         cancelLabel="ยกเลิก"
         tone="primary"
@@ -3162,9 +3179,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       />
       <ConfirmActionModal
         isOpen={Boolean(pendingPasswordReset)}
-        title="ยืนยันรีเซ็ตรหัสผ่านนักเรียน"
-        description={`ต้องการออกรหัสผ่านชั่วคราวใหม่ให้ "${pendingPasswordReset?.full_name_th || pendingPasswordReset?.full_name_en || pendingPasswordReset?.email || ''}" หรือไม่? รหัสผ่านปัจจุบันจะใช้เข้าสู่ระบบไม่ได้อีก`}
-        detailNote="รหัสชั่วคราว 8 ตัวจะแสดงให้ดูและคัดลอกได้ครั้งเดียว หมดอายุภายใน 24 ชั่วโมง และนักเรียนต้องตั้งรหัสผ่านส่วนตัวก่อนใช้งานระบบ"
+        title="ยืนยันรีเซ็ตรหัสผ่านเป็นรหัสนักเรียน"
+        description={`ต้องการรีเซ็ตรหัสผ่านของ "${pendingPasswordReset?.full_name_th || pendingPasswordReset?.full_name_en || pendingPasswordReset?.email || ''}" กลับเป็นรหัสนักเรียนหรือไม่? รหัสผ่านเดิมจะใช้เข้าสู่ระบบไม่ได้อีก`}
+        detailNote="หลังรีเซ็ตแล้ว นักเรียนสามารถเข้าสู่ระบบด้วยรหัสนักเรียน และระบบจะบังคับให้ตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษรทันที"
         confirmLabel="ยืนยันรีเซ็ตรหัสผ่าน"
         cancelLabel="ยกเลิก"
         tone="primary"

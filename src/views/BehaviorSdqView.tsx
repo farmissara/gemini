@@ -40,6 +40,7 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 interface BehaviorSdqViewProps {
   schoolId?: string;
@@ -357,7 +358,8 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
         {/* Tab switchers & action */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <div className="seg-tab-group overflow-x-auto no-scrollbar">
+          <ModuleTourTrigger moduleId="behavior_sdq" lang={lang} />
+          <div data-guide-id="behavior-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
             <button
               type="button"
               data-active={activeTab === 'merit'}

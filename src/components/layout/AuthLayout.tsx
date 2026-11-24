@@ -136,6 +136,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const [passwordResetComplete, setPasswordResetComplete] = useState(false);
   const [mustChangePasswordContext, setMustChangePasswordContext] = useState<AuthContext | null>(null);
   const [temporaryPasswordUsed, setTemporaryPasswordUsed] = useState('');
+  const [forcedChangeIdentifier, setForcedChangeIdentifier] = useState('');
   const [firstPasswordError, setFirstPasswordError] = useState<string | null>(null);
   const [isSettingFirstPassword, setIsSettingFirstPassword] = useState(false);
 
@@ -387,6 +388,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     if (context.user.mustChangePassword) {
       setMustChangePasswordContext(context);
       setTemporaryPasswordUsed(password);
+      setForcedChangeIdentifier(email.trim());
       setPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
@@ -399,12 +401,20 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const handleSetFirstStudentPassword = async (event: React.FormEvent) => {
     event.preventDefault();
     setFirstPasswordError(null);
-    if (newPassword.length < 8) {
+    const trimmedNewPassword = newPassword.trim();
+    if (trimmedNewPassword.length < 8) {
       setFirstPasswordError(lang === 'th' ? 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร' : 'Use at least 8 characters.');
       return;
     }
-    if (newPassword === temporaryPasswordUsed) {
-      setFirstPasswordError(lang === 'th' ? 'กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสชั่วคราว' : 'Choose a password different from the temporary password.');
+    if (
+      (temporaryPasswordUsed && trimmedNewPassword === temporaryPasswordUsed.trim()) ||
+      (forcedChangeIdentifier && trimmedNewPassword.toLowerCase() === forcedChangeIdentifier.toLowerCase())
+    ) {
+      setFirstPasswordError(
+        lang === 'th'
+          ? 'กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสนักเรียนหรือรหัสผ่านเริ่มต้น'
+          : 'Choose a personal password different from your Student ID and initial password.'
+      );
       return;
     }
     if (newPassword !== confirmNewPassword) {
@@ -417,6 +427,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       const context = await completeFirstStudentPasswordChange(newPassword);
       setMustChangePasswordContext(null);
       setTemporaryPasswordUsed('');
+      setForcedChangeIdentifier('');
       setNewPassword('');
       setConfirmNewPassword('');
       onLogin(context);
@@ -724,18 +735,20 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
               <div>
                 <h2 id="student-first-password-title" className="font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'ตั้งรหัสผ่านส่วนตัวก่อนใช้งาน' : 'Set a personal password to continue'}
+                  {lang === 'th' ? 'ตั้งรหัสผ่านส่วนตัวก่อนเข้าใช้งานครั้งแรก' : 'Set a personal password for first sign-in'}
                 </h2>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'ต้องเปลี่ยนรหัสผ่านชั่วคราวก่อนเข้าระบบ' : 'Change your temporary password before continuing.'}
+                  {lang === 'th'
+                    ? 'ระบบบังคับเปลี่ยนรหัสผ่านเริ่มต้น (รหัสนักเรียน) เป็นรหัสผ่านส่วนตัวก่อนใช้งาน'
+                    : 'You must replace your initial Student ID password before accessing school data.'}
                 </p>
               </div>
             </div>
 
             <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
               {lang === 'th'
-                ? 'ตั้งรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร และอย่าใช้รหัสนักเรียนเป็นรหัสผ่าน รหัสชั่วคราวหมดอายุภายใน 24 ชั่วโมง'
-                : 'Use at least 8 characters. Do not use your student ID as your password. This temporary password expires in 24 hours.'}
+                ? 'กรุณาตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษร และห้ามใช้รหัสนักเรียนซ้ำเป็นรหัสผ่าน หลังจากบันทึกแล้วให้ใช้รหัสผ่านใหม่นี้ในครั้งถัดไป'
+                : 'Set a personal password of at least 8 characters. Do not reuse your Student ID as your password. Use this new password on future sign-ins.'}
             </p>
 
             {firstPasswordError && (
@@ -1622,8 +1635,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
               </div>
               <p className="text-[11px] text-blue-800/90 dark:text-blue-300/90 pl-5 leading-relaxed">
                 {lang === 'th'
-                  ? 'ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมลบัญชีของคุณโดยตรง หากเป็นบัญชีรหัสนักเรียนที่ไม่ผูกอีเมล กรุณาติดต่อฝ่ายทะเบียนหรือครูประจำชั้นเพื่อออกรหัสผ่านชั่วคราว'
-                  : 'A password reset link will be emailed directly to your registered account. For Student ID accounts without email, please contact your school office.'}
+                  ? 'ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมลบัญชีของคุณโดยตรง หากเป็นบัญชีรหัสนักเรียนที่ไม่ผูกอีเมล กรุณาติดต่อฝ่ายทะเบียนหรือครูประจำชั้นเพื่อรีเซ็ตรหัสผ่านเริ่มต้นกลับเป็นรหัสนักเรียน'
+                  : 'A password reset link will be emailed directly to your registered account. For Student ID accounts without email, please contact your school office to reset your password back to your Student ID.'}
               </p>
             </div>
 

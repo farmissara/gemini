@@ -1,12 +1,9 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 type EnvReader = (name: string) => string;
 
-export const TEMP_PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export const TEMP_PASSWORD_LENGTH = 8;
-export const TEMP_PASSWORD_LIFETIME_MS = 24 * 60 * 60 * 1000;
 const BULK_CREATE_CONCURRENCY = 5;
 
 export type StudentCredentialOperation = 'create' | 'reset' | 'create_all_missing';
@@ -24,22 +21,18 @@ interface StudentRecord {
 export interface StudentCredential {
   studentIdNumber: string;
   temporaryPassword: string;
-  expiresAt: string;
+  expiresAt: string | null;
 }
 
-export function generateTemporaryPassword(): string {
-  const maxByte = 256 - (256 % TEMP_PASSWORD_ALPHABET.length);
-  let password = '';
-  while (password.length < TEMP_PASSWORD_LENGTH) {
-    const bytes = randomBytes(TEMP_PASSWORD_LENGTH * 2);
-    for (const byte of bytes) {
-      if (byte < maxByte) {
-        password += TEMP_PASSWORD_ALPHABET[byte % TEMP_PASSWORD_ALPHABET.length];
-        if (password.length === TEMP_PASSWORD_LENGTH) break;
-      }
-    }
+export function getStudentInitialPassword(studentIdNumber: string): string {
+  return (studentIdNumber || '').trim();
+}
+
+export function formatStudentPasswordPolicyError(initialPassword: string, rawMessage: string): string {
+  if (/at least \d+ characters|weak_password|password.*short|minimum length/i.test(rawMessage)) {
+    return `รหัสนักเรียน "${initialPassword}" มีความยาว ${initialPassword.length} ตัวอักษร ซึ่งสั้นกว่าเกณฑ์ขั้นต่ำของระบบยืนยันตัวตน (6 ตัวอักษร) กรุณาปรับรหัสนักเรียนให้ยาวอย่างน้อย 6 ตัวอักษร หรือปรับ Password minimum length ใน Supabase Auth`;
   }
-  return password;
+  return rawMessage;
 }
 
 export function getSyntheticStudentEmail(schoolId: string, studentId: string): string {
@@ -99,9 +92,12 @@ async function createStudentAccount(
   schoolId: string,
   student: StudentRecord
 ): Promise<{ credential?: StudentCredential; reason?: string }> {
-  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPassword = getStudentInitialPassword(student.student_id_number);
+  if (!temporaryPassword) {
+    return { reason: 'ไม่พบรหัสนักเรียนในทะเบียน จึงไม่สามารถกำหนดรหัสผ่านเริ่มต้นได้' };
+  }
   const issuedAt = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + TEMP_PASSWORD_LIFETIME_MS).toISOString();
+  const expiresAt: string | null = null;
   const email = getSyntheticStudentEmail(schoolId, student.id);
 
   const { data: createdAuthUser, error: createUserError } = await serviceClient.auth.admin.createUser({
@@ -110,7 +106,10 @@ async function createStudentAccount(
     email_confirm: true,
   });
   if (createUserError || !createdAuthUser.user) {
-    const detail = createUserError?.message || 'Missing user response.';
+    const detail = formatStudentPasswordPolicyError(
+      temporaryPassword,
+      createUserError?.message || 'Missing user response.'
+    );
     console.error(`[Student Credentials] Could not create auth user ${student.id}:`, detail);
     return { reason: detail };
   }
@@ -141,7 +140,7 @@ async function createStudentAccount(
 
   return {
     credential: {
-      studentIdNumber: student.student_id_number,
+      studentIdNumber: temporaryPassword,
       temporaryPassword,
       expiresAt,
     },
@@ -374,6 +373,12 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
       }
 
       if (operation === 'create') {
+        if (!getStudentInitialPassword(student.student_id_number)) {
+          return res.status(400).json({
+            error: 'STUDENT_ID_NUMBER_REQUIRED',
+            message: 'นักเรียนคนนี้ยังไม่มีรหัสนักเรียนในทะเบียน จึงไม่สามารถตั้งรหัสผ่านเริ่มต้นได้',
+          });
+        }
         const { data: existingProfile, error: existingProfileError } = await clients.serviceClient
           .from('user_profiles')
           .select('id')
@@ -404,7 +409,7 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
         if (pendingInvitations?.length) {
           return res.status(409).json({
             error: 'INVITATION_PENDING',
-            message: 'นักเรียนคนนี้มีคำเชิญทางอีเมลที่ยังไม่หมดอายุอยู่ กรุณารอหมดอายุก่อนออกรหัสผ่านชั่วคราว',
+            message: 'นักเรียนคนนี้มีคำเชิญทางอีเมลที่ยังไม่หมดอายุอยู่ กรุณารอหมดอายุก่อนออกรหัสผ่านเริ่มต้น',
           });
         }
 
@@ -441,13 +446,19 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
       if (profile.status !== 'active') {
         return res.status(409).json({
           error: 'ACCOUNT_NOT_ACTIVE',
-          message: 'กรุณาอนุมัติเปิดใช้งานบัญชีนักเรียนก่อนออกรหัสผ่านชั่วคราวใหม่',
+          message: 'กรุณาอนุมัติเปิดใช้งานบัญชีนักเรียนก่อนรีเซ็ตรหัสผ่านเป็นรหัสนักเรียน',
         });
       }
 
-      const temporaryPassword = generateTemporaryPassword();
+      const temporaryPassword = getStudentInitialPassword(student.student_id_number);
+      if (!temporaryPassword) {
+        return res.status(400).json({
+          error: 'STUDENT_ID_NUMBER_REQUIRED',
+          message: 'นักเรียนคนนี้ยังไม่มีรหัสนักเรียนในทะเบียน จึงไม่สามารถรีเซ็ตรหัสผ่านเป็นรหัสนักเรียนได้',
+        });
+      }
       const issuedAt = new Date().toISOString();
-      const expiresAt = new Date(Date.now() + TEMP_PASSWORD_LIFETIME_MS).toISOString();
+      const expiresAt: string | null = null;
 
       const { error: profileUpdateError } = await clients.serviceClient
         .from('user_profiles')
@@ -484,15 +495,16 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
         if (rollbackError) {
           console.error('[Student Credentials] Could not rollback student profile after reset failure:', rollbackError.message);
         }
-        console.error('[Student Credentials] Could not reset student password:', passwordUpdateError.message);
+        const detail = formatStudentPasswordPolicyError(temporaryPassword, passwordUpdateError.message);
+        console.error('[Student Credentials] Could not reset student password:', detail);
         return res.status(500).json({
           error: 'PASSWORD_RESET_FAILED',
-          message: `ไม่สามารถรีเซ็ตรหัสผ่านในระบบ Auth ได้ (${passwordUpdateError.message})`,
+          message: `ไม่สามารถรีเซ็ตรหัสผ่านในระบบ Auth ได้ (${detail})`,
         });
       }
 
       return res.json({
-        studentIdNumber: student.student_id_number,
+        studentIdNumber: temporaryPassword,
         temporaryPassword,
         expiresAt,
       });

@@ -30,6 +30,7 @@ import { resolveOwnStudent, resolveOwnTeacher } from '../lib/attendanceScope';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 interface PortfolioViewProps {
   portfolioItems: PortfolioItem[];
@@ -373,7 +374,8 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
 
             {/* Clean Primary & Utility Actions */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div data-guide-id="portfolio-actions" className="flex flex-wrap items-center gap-2 shrink-0">
+              <ModuleTourTrigger moduleId="portfolio" lang={lang} />
               <button
                 type="button"
                 onClick={handleOpenAddModal}
@@ -407,7 +409,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
         </section>
 
         {/* 2. ROLE & CATEGORY FILTER BAR */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div data-guide-id="portfolio-role-filter" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {/* Only show Student/Teacher role switch to staff/teachers */}
             {!isStudentUser && (

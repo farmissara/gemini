@@ -24,6 +24,7 @@ import { getAnnouncementDuplicateReasons } from '../lib/duplicateRecords';
 import { getModuleTone } from '../lib/moduleTheme';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 interface AnnouncementsViewProps {
   schoolId?: string;
@@ -126,6 +127,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
+          <ModuleTourTrigger moduleId="announcements" lang="th" />
           <details className="relative">
             <summary className="btn-tool-tone list-none px-2.5 py-1.5">
               <Sliders className="w-3.5 h-3.5 tone-text" />
@@ -158,6 +160,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           </details>
           <button
             type="button"
+            data-guide-id="announcements-compose-btn"
             onClick={() => {
               setAllowDuplicateConfirm(false);
               setShowComposeModal(true);
@@ -172,7 +175,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
       {/* Filter Tabs */}
       <div className="shrink-0 p-2 toolbar-filter-zone flex flex-wrap items-center justify-between gap-2">
-        <div className="seg-tab-group overflow-x-auto no-scrollbar">
+        <div data-guide-id="announcements-filter-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
           {['all', 'students', 'parents', 'teachers'].map((aud) => (
             <button
               key={aud}

@@ -90,6 +90,7 @@ import { MobileBottomSheet } from '../components/layout/MobileRoleWorkspace';
 import { saveStudentSelfAttendance } from '../lib/supabase';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import {
   buildPrimaryGateFromSchool,
@@ -2320,6 +2321,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
 
           <div className="saas-control-group shrink-0 self-start sm:self-auto">
+            <ModuleTourTrigger moduleId="mobile_checkin" lang={lang} />
             <span className="type-meta px-2 tabular-nums">
               {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
@@ -2338,7 +2340,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
       {/* Navigation Sub Tabs & Contextual Action */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
-        <nav aria-label="Attendance sub-navigation" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
+        <nav data-guide-id="mobile-checkin-tabs" aria-label="Attendance sub-navigation" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
           {[
             { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
             { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
@@ -2515,7 +2517,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 1: SELFIE CHECK-IN/OUT (SELF PHONE) FOR STUDENTS & TEACHERS */}
       {/* ========================================================================= */}
       {subTab === 'selfie_mobile' && (
-        <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col gap-1.5' : 'grid grid-cols-1 lg:grid-cols-12 gap-5 items-start'}`}>
+        <div data-guide-id="mobile-checkin-body" className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col gap-1.5' : 'grid grid-cols-1 lg:grid-cols-12 gap-5 items-start'}`}>
           {/* CAMERA COLUMN: Always primary on mobile (1-Screen = 1-Task) */}
           <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col' : 'lg:col-span-7 flex flex-col items-center'}`}>
             <div className={`${embeddedMobile ? 'flex-1 min-h-0 w-full rounded-2xl border' : 'w-full max-w-sm rounded-[36px] p-3.5 border-4'} bg-slate-900 shadow-xl border-slate-800 relative flex flex-col overflow-hidden`}>
@@ -3088,7 +3090,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 2: ONLINE LEAVE REQUEST SUBMISSION (ใบลาออนไลน์) */}
       {/* ========================================================================= */}
       {subTab === 'leave_request' && (
-        <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
+        <div data-guide-id="mobile-checkin-body" className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Form */}
           <div className="lg:col-span-7 saas-card text-[var(--color-text-body)]">
@@ -3689,7 +3691,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 2B: NFC SCHOOL ID CARD TAP CHECK-IN (TEACHERS & STUDENTS)             */}
       {/* ========================================================================= */}
       {subTab === 'nfc_tap' && (
-        <div className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
+        <div data-guide-id="mobile-checkin-body" className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
           {/* Top Terminal Card */}
           <div className="saas-card">
             <div className="saas-card-header">
@@ -4170,7 +4172,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 3: TEACHER PROXY CHECK-IN (REQUIRES STUDENT ID BEFORE CHECK-IN) */}
       {/* ========================================================================= */}
       {subTab === 'teacher_proxy' && isStaffUser && (
-        <div className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
+        <div data-guide-id="mobile-checkin-body" className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}>
           <div className="saas-card">
             <div className="saas-card-header">
               <div>
@@ -4380,7 +4382,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {/* TAB 4: PERIOD ATTENDANCE (รายคาบ) - WITH QR CODE & CHECK-IN LINK */}
       {/* ========================================================================= */}
       {subTab === 'period_checkin' && (
-        <div className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5' : 'space-y-4'}`}>
+        <div data-guide-id="mobile-checkin-body" className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5' : 'space-y-4'}`}>
           <div className="saas-card">
             <div className="saas-card-header">
               <div>

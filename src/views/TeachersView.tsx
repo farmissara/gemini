@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Teacher, AppLanguage, UserRole, TeacherPortfolioWork } from '../types';
+import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
   GraduationCap, 
   Search, 
@@ -670,7 +671,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             </h1>
           </div>
 
-          <div role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group ml-1">
+          <div data-guide-id="teachers-tabs" role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group ml-1">
             <button
               type="button"
               aria-pressed={staffPage === 'directory'}
@@ -693,7 +694,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div data-guide-id="teachers-tools" className="flex flex-wrap items-center gap-1.5">
+          <ModuleTourTrigger moduleId="teachers" lang={lang} />
           <details className="relative">
             <summary className="btn-tool-neutral list-none px-2.5 py-1.5">
               <span>{lang === 'th' ? 'เครื่องมือข้อมูล' : 'Data actions'}</span>

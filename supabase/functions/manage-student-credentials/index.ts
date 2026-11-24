@@ -6,8 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const TEMP_PASSWORD_LIFETIME_MS = 24 * 60 * 60 * 1000;
 const BULK_CREATE_CONCURRENCY = 5;
 
 interface StudentRecord {
@@ -23,7 +21,7 @@ interface StudentRecord {
 interface StudentCredential {
   studentIdNumber: string;
   temporaryPassword: string;
-  expiresAt: string;
+  expiresAt: string | null;
 }
 
 function respond(status: number, body: Record<string, unknown>): Response {
@@ -33,18 +31,15 @@ function respond(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-function generateTemporaryPassword(): string {
-  const passwordLength = 8;
-  const maxByte = 256 - (256 % PASSWORD_ALPHABET.length);
-  let password = '';
-  while (password.length < passwordLength) {
-    const bytes = crypto.getRandomValues(new Uint8Array(passwordLength));
-    for (const byte of bytes) {
-      if (byte < maxByte) password += PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length];
-      if (password.length === passwordLength) break;
-    }
+function getStudentInitialPassword(studentIdNumber: string): string {
+  return (studentIdNumber || '').trim();
+}
+
+function formatStudentPasswordPolicyError(initialPassword: string, rawMessage: string): string {
+  if (/at least \d+ characters|weak_password|password.*short|minimum length/i.test(rawMessage)) {
+    return `รหัสนักเรียน "${initialPassword}" มีความยาว ${initialPassword.length} ตัวอักษร ซึ่งสั้นกว่าเกณฑ์ขั้นต่ำของระบบยืนยันตัวตน (6 ตัวอักษร) กรุณาปรับรหัสนักเรียนให้ยาวอย่างน้อย 6 ตัวอักษร หรือปรับ Password minimum length ใน Supabase Auth`;
   }
-  return password;
+  return rawMessage;
 }
 
 async function getSyntheticStudentEmail(schoolId: string, studentId: string): Promise<string> {
@@ -58,10 +53,13 @@ async function createStudentAccount(
   serviceClient: ReturnType<typeof createClient>,
   schoolId: string,
   student: StudentRecord
-): Promise<StudentCredential | null> {
-  const temporaryPassword = generateTemporaryPassword();
+): Promise<{ credential?: StudentCredential; reason?: string }> {
+  const temporaryPassword = getStudentInitialPassword(student.student_id_number);
+  if (!temporaryPassword) {
+    return { reason: 'ไม่มีรหัสนักเรียนในทะเบียน' };
+  }
   const issuedAt = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + TEMP_PASSWORD_LIFETIME_MS).toISOString();
+  const expiresAt: string | null = null;
   const email = await getSyntheticStudentEmail(schoolId, student.id);
   const { data: createdAuthUser, error: createUserError } = await serviceClient.auth.admin.createUser({
     email,
@@ -69,8 +67,12 @@ async function createStudentAccount(
     email_confirm: true,
   });
   if (createUserError || !createdAuthUser.user) {
-    console.error(`Could not create student auth user ${student.id}:`, createUserError?.message || 'Missing user response.');
-    return null;
+    const detail = formatStudentPasswordPolicyError(
+      temporaryPassword,
+      createUserError?.message || 'Missing user response.'
+    );
+    console.error(`Could not create student auth user ${student.id}:`, detail);
+    return { reason: detail };
   }
 
   const accountId = createdAuthUser.user.id;
@@ -91,13 +93,15 @@ async function createStudentAccount(
     const { error: cleanupError } = await serviceClient.auth.admin.deleteUser(accountId);
     if (cleanupError) console.error(`Could not remove orphan student auth user ${student.id}:`, cleanupError.message);
     console.error(`Could not create student profile ${student.id}:`, profileError.message);
-    return null;
+    return { reason: profileError.message };
   }
 
   return {
-    studentIdNumber: student.student_id_number,
-    temporaryPassword,
-    expiresAt,
+    credential: {
+      studentIdNumber: temporaryPassword,
+      temporaryPassword,
+      expiresAt,
+    },
   };
 }
 
@@ -281,10 +285,15 @@ Deno.serve(async (request) => {
       const batch = eligibleStudents.slice(offset, offset + BULK_CREATE_CONCURRENCY);
       const results = await Promise.all(batch.map(async (student) => {
         try {
-          const credential = await createStudentAccount(serviceClient, schoolId, student);
-          return credential
-            ? { credential }
-            : { failure: { studentIdNumber: student.student_id_number, reason: 'สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบและลองใหม่' } };
+          const result = await createStudentAccount(serviceClient, schoolId, student);
+          return result.credential
+            ? { credential: result.credential }
+            : {
+                failure: {
+                  studentIdNumber: student.student_id_number,
+                  reason: result.reason || 'สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบและลองใหม่',
+                },
+              };
         } catch (error) {
           console.error(`Unexpected error creating student account ${student.id}:`, error);
           return { failure: { studentIdNumber: student.student_id_number, reason: 'เกิดข้อผิดพลาดระหว่างสร้างบัญชี กรุณาลองใหม่' } };
@@ -345,9 +354,12 @@ Deno.serve(async (request) => {
       return respond(409, { error: 'A student invitation is already pending. Cancel or wait for it to expire before creating a student-ID account.' });
     }
 
-    const credential = await createStudentAccount(serviceClient, schoolId, student as StudentRecord);
-    if (!credential) return respond(500, { error: 'Could not finish creating the student account.' });
-    return respond(200, credential);
+    if (!getStudentInitialPassword(student.student_id_number)) {
+      return respond(400, { error: 'นักเรียนคนนี้ยังไม่มีรหัสนักเรียนในทะเบียน จึงไม่สามารถสร้างบัญชีได้' });
+    }
+    const result = await createStudentAccount(serviceClient, schoolId, student as StudentRecord);
+    if (!result.credential) return respond(500, { error: result.reason || 'Could not finish creating the student account.' });
+    return respond(200, result.credential);
   }
 
   const { data: profile, error: profileError } = await serviceClient
@@ -364,9 +376,12 @@ Deno.serve(async (request) => {
   if (!profile) return respond(404, { error: 'The student does not have a linked login account.' });
   if (profile.status !== 'active') return respond(409, { error: 'Approve the student account before resetting its password.' });
 
-  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPassword = getStudentInitialPassword(student.student_id_number);
+  if (!temporaryPassword) {
+    return respond(400, { error: 'นักเรียนคนนี้ยังไม่มีรหัสนักเรียนในทะเบียน จึงไม่สามารถรีเซ็ตรหัสผ่านได้' });
+  }
   const issuedAt = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + TEMP_PASSWORD_LIFETIME_MS).toISOString();
+  const expiresAt: string | null = null;
   const { error: profileUpdateError } = await serviceClient
     .from('user_profiles')
     .update({
@@ -395,12 +410,13 @@ Deno.serve(async (request) => {
       .eq('id', profile.id)
       .eq('school_id', schoolId);
     if (rollbackError) console.error('Could not restore student profile after failed password reset:', rollbackError.message);
-    console.error('Could not reset student password:', passwordUpdateError.message);
-    return respond(500, { error: 'Could not reset the student password.' });
+    const detail = formatStudentPasswordPolicyError(temporaryPassword, passwordUpdateError.message);
+    console.error('Could not reset student password:', detail);
+    return respond(500, { error: detail });
   }
 
   return respond(200, {
-    studentIdNumber: student.student_id_number,
+    studentIdNumber: temporaryPassword,
     temporaryPassword,
     expiresAt,
   });
