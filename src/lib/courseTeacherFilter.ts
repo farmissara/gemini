@@ -368,6 +368,18 @@ export function slotMatchesLoggedInTeacher(
 ): boolean {
   if (!currentUser && !matchedTeacher) return false;
 
+  const slotCourseCode = (slot.courseCode || '').trim().toUpperCase();
+  const slotTeacherNames = getSlotTeachers(slot)
+    .map((name) => normalizeTeacherName(name))
+    .join(' ');
+  const isSchoolWideActivity =
+    slotCourseCode.includes('SCOUT') ||
+    slotCourseCode.includes('LADYSCOUT') ||
+    slotTeacherNames.includes('ครูทุกคน') ||
+    slotTeacherNames.includes('อาจารย์ทุกคน') ||
+    slotTeacherNames.includes('ทุกครู');
+  if (isSchoolWideActivity) return true;
+
   const candidateNames = [
     matchedTeacher?.fullNameTh,
     matchedTeacher?.fullNameEn,

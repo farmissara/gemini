@@ -154,6 +154,27 @@ test('slotMatchesLoggedInTeacher includes direct coTeacherName, honorific prefix
   assert.equal(slotMatchesLoggedInTeacher(unrelatedSlot, coTeacherUser, coTeacher, [coTaughtCourse]), false);
 });
 
+test('slotMatchesLoggedInTeacher includes school-wide scout and all-teacher slots', () => {
+  const teacherUser = makeUser({
+    id: 'usr-scout',
+    fullNameTh: 'ครูผู้ช่วย โรงเรียน',
+  });
+
+  const scoutSlot = makeSlot({
+    id: 'slot-scout',
+    courseCode: 'SCOUT101',
+    teacherName: 'ครูประจำกิจกรรม',
+  });
+  const allTeacherSlot = makeSlot({
+    id: 'slot-all-teachers',
+    courseCode: 'ACT101',
+    teacherName: 'ครูทุกคน',
+  });
+
+  assert.equal(slotMatchesLoggedInTeacher(scoutSlot, teacherUser, undefined, []), true);
+  assert.equal(slotMatchesLoggedInTeacher(allTeacherSlot, teacherUser, undefined, []), true);
+});
+
 test('buildCourseTeacherOptions keeps co-teachers isolated so filtering by co-teacher does not include primary teacher solo courses', () => {
   const teacherA = makeTeacher({
     id: 'tch-a',

@@ -5276,6 +5276,16 @@ export const App: React.FC = () => {
   const viewTimetableSlotsAllTerms = currentRole === 'teacher'
     ? teacherScopedTimetableSlots
     : filterTimetableSlotsForPersonalRole(schoolTimetableSlotsAllTerms, currentUser, schoolStudents, schoolCourses);
+  const canSwitchAdminTeacherMode =
+    ['admin', 'teacher'].includes(currentRole) &&
+    Boolean(resolveOwnTeacher(currentUser, schoolTeachers));
+  const handleSwitchOperationalRole = (nextRole: 'admin' | 'teacher') => {
+    if (nextRole === currentRole) return;
+    if (nextRole === 'teacher' && !resolveOwnTeacher(currentUser, schoolTeachers)) return;
+    setCurrentRole(nextRole);
+    setProgramMode('school_erp');
+    setCurrentTab(nextRole === 'teacher' ? 'timetable' : 'dashboard');
+  };
   const viewAttendance = isRestrictedViewer
     ? filterAttendanceForUser(schoolAttendance, currentUser, schoolStudents)
     : currentRole === 'teacher'
@@ -5372,6 +5382,8 @@ export const App: React.FC = () => {
           gradingSystem={systemConfig.gradingSystem}
           schoolPermissions={schoolPermissions}
           featureFlags={activeFeatureFlags}
+          canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+          onSwitchOperationalRole={handleSwitchOperationalRole}
           onRecordAttendance={handleRecordAttendance}
           onRecordPeriodAttendance={handleRecordPeriodAttendance}
           onAddLeaveRequest={handleAddLeaveRequest}
@@ -5667,6 +5679,8 @@ export const App: React.FC = () => {
         focusMode={focusMode}
         onToggleFocusMode={() => setFocusMode((prev) => !prev)}
         featureFlags={activeFeatureFlags}
+        canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+        onSwitchOperationalRole={handleSwitchOperationalRole}
       />}
       {!useImmersiveGameLayout && dataSyncError && (
         <div role="alert" className="ui-alert shrink-0 mx-4 sm:mx-6 mt-2 items-center justify-between" data-state="danger">
