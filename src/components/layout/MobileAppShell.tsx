@@ -1,127 +1,11 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { 
-  Home, 
-  Clock, 
-  FileText, 
-  Gamepad2, 
-  User, 
-  Laptop, 
-  Bell, 
-  GraduationCap, 
-  Building2, 
-  CheckCircle2, 
-  AlertCircle,
-  Award,
-  Sparkles,
-  ChevronRight, 
-  BookOpen, 
-  ArrowLeft, 
-  ArrowLeftRight,
-  LogOut, 
-  CreditCard, 
-  Swords, 
-  FlaskConical, 
-  Trophy, 
-  Flame, 
-  Calendar,
-  Globe,
-  Sun,
-  Moon,
-  Send,
-  HelpCircle,
-  Monitor,
-  TrendingUp,
-  HeartPulse,
-  Receipt,
-  ShieldCheck,
-  BarChart3,
-  BellRing,
-  Edit3,
-  Megaphone,
-  SlidersHorizontal,
-  Users,
-  Fingerprint,
-  Lock,
-  KeyRound,
-  Trash2,
-  MoreHorizontal,
-  ClipboardCheck,
-  Search,
-  CalendarDays,
-  LogIn,
-  RefreshCw,
-  Maximize2,
-  Minimize2,
-  Smartphone,
-  Rocket,
-  Grid2x2,
-  SpellCheck2,
-  GitBranch,
-  ShoppingBag,
-  Coins,
-  Radio,
-  Compass,
-  StickyNote,
-  Plus,
-  X,
-  Check,
-  UserCheck,
-} from 'lucide-react';
-import { 
-  AuthUser, 
-  School, 
-  UserRole, 
-  AppLanguage, 
-  ThemePalette, 
-  Student, 
-  Teacher, 
-  Course, 
-  AttendanceRecord, 
-  PeriodAttendanceRecord, 
-  LeaveRequest, 
-  LeaveStatus, 
-  Assignment, 
-  HomeworkSubmission, 
-  Announcement, 
-  QuizQuestion, 
-  PlayerScore, 
-  RewardItem,
-  RewardRedemptionRequest,
-  CampusGateGeofence,
-  AttendanceStatus,
-  AttendanceCheckType,
-  AttendanceUserType,
-  GradeRecord,
-  TuitionInvoice,
-  InfirmaryVisit,
-  BehaviorRecord,
-  SdqAssessment,
-  SchoolFeatureFlags,
-  TimetableSlot,
-  SchoolPeriodTime,
-  GradingSystem,
-  PortfolioItem
-} from '../../types';
-import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
-import arcadeBannerImg from '../../assets/images/student_arcade_banner_1794996857506.jpg';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { PlayerScore, TimetableSlot } from '../../types';
 import { getLocalDateString } from '../../lib/date';
-import { calculateGrade } from '../../lib/schoolSettings';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
 import { resolveMatchedTeacherForUser, slotMatchesLoggedInTeacher } from '../../lib/courseTeacherFilter';
-import { SchoolPolicyId } from '../../lib/schoolPermissions';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone } from '../../lib/moduleTheme';
-import {
-  CALENDAR_NOTE_COLORS,
-  CALENDAR_NOTES_UPDATED_EVENT,
-  CalendarNote,
-  CalendarNoteColor,
-  CalendarNoteScope,
-  deleteCalendarNote,
-  getCalendarNoteColorMeta,
-  getVisibleCalendarNotesForDate,
-  saveCalendarNote,
-} from '../../lib/calendarNotes';
+import { CALENDAR_NOTES_UPDATED_EVENT } from '../../lib/calendarNotes';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -135,217 +19,47 @@ import {
   filterCoursesForPersonalRole,
   filterTimetableSlotsForPersonalRole,
 } from '../../lib/studentDataScope';
+import { addCalendarDays, getBangkokClockSnapshot, getCalendarWeekStart } from '../../lib/timetableCalendar';
 import {
-  addCalendarDays,
-  getBangkokClockSnapshot,
-  getBangkokDateInputValue,
-  getCalendarWeekStart,
-  getTimetableSlotActivityStatus,
-} from '../../lib/timetableCalendar';
-import {
-  HolidaySyncStatus,
   getHolidayForDate,
-  getHolidaysForDate,
-  getHolidaysForYear,
-  getHolidaysInMonth,
   getPublicHolidaySyncStatus,
-  getThaiHolidayCategoryLabel,
   getUpcomingHolidays,
-  isWeekendDate,
   syncPublicHolidaysFromApi,
+  type HolidaySyncStatus,
 } from '../../lib/thaiHolidays';
+import { exitLandscapeGameMode } from '../../lib/screenOrientation';
 import { GoogleCalendarSyncModal } from '../GoogleCalendarSyncModal';
-import { PeriodTimeMissionsCard } from '../PeriodTimeMissionsCard';
 import { TimetablePeriodAttendanceModal } from '../modals/TimetablePeriodAttendanceModal';
-import { getSlotAttendanceAndLeaveSummary } from '../../lib/timetableAttendanceStatus';
-import {
-  enterLandscapeGameMode,
-  exitLandscapeGameMode,
-  isLandscapeViewport,
-} from '../../lib/screenOrientation';
 import { MobileAttendanceView } from '../../views/MobileAttendanceView';
-import { EduBattleGameView, type EduGameSubTab } from '../../views/EduBattleGameView';
-import { EduBattleRoyale3DView } from '../../views/EduBattleRoyale3DView';
-import { CoopBossRaidView } from '../../views/CoopBossRaidView';
-import { SubjectLabSimulationView } from '../../views/SubjectLabSimulationView';
-import { HallOfFame3DView } from '../../views/HallOfFame3DView';
-import { DigitalIdCardView } from '../../views/DigitalIdCardView';
-import { PortfolioView } from '../../views/PortfolioView';
+import type { EduGameSubTab } from '../../views/EduBattleGameView';
 import { StudentMobileHome } from '../student/StudentMobileHome';
-import { PagedList } from '../PagedList';
-import { PWAInstallButton } from '../PWAInstallButton';
-import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { ViewErrorBoundary } from '../common/ViewErrorBoundary';
 import { MobileAdminQuickHub, MobileSuperAdminHub } from './MobileRoleWorkspace';
 import { AdminDailyDashboardView } from '../../views/AdminDailyDashboardView';
-import { CareerQuestView } from '../../views/CareerQuestView';
-import {
-  enrollBiometricPasskey,
-  getPasskeyForUser,
-  getWebAuthnSupportInfo,
-  removeEnrolledPasskey,
-  updatePasskeyPreferences,
-  verifyBiometricPasskey,
-  type EnrolledBiometricPasskey,
-  type WebAuthnSupportInfo,
-} from '../../lib/webAuthn';
 import type { NavTab } from './Sidebar';
+import {
+  MOBILE_TONE_TARGET,
+  MobileAnnouncementsTab,
+  MobileBottomNav,
+  MobileCareerQuestTab,
+  MobileExecutiveTab,
+  MobileFullscreenGameOverlay,
+  MobileGamesHubTab,
+  MobileHeader,
+  MobileHomeworkTab,
+  MobilePortfolioTab,
+  MobileProfileTab,
+  MobileStudentGradesTab,
+  MobileTeacherGradebookTab,
+  MobileTeacherParentHome,
+  MobileTimetableTab,
+  type ActiveGameView,
+  type ExecMetrics,
+  type MobileAppShellProps,
+  type MobileTab,
+} from '../../features/mobile-shell';
 
-export type MobileTab =
-  | 'home'
-  | 'admin_quick'
-  | 'super_schools'
-  | 'executive'
-  | 'checkin'
-  | 'leave'
-  | 'gradebook'
-  | 'student_grades'
-  | 'portfolio'
-  | 'career_quest'
-  | 'timetable'
-  | 'games'
-  | 'profile'
-  | 'homework'
-  | 'announcements';
-
-const MOBILE_TONE_TARGET: Record<MobileTab, NavTab> = {
-  home: 'dashboard',
-  admin_quick: 'dashboard',
-  super_schools: 'super_admin_console',
-  executive: 'executive_monitor',
-  checkin: 'mobile_checkin',
-  leave: 'attendance',
-  gradebook: 'gradebook',
-  student_grades: 'gradebook',
-  portfolio: 'portfolio',
-  career_quest: 'career_quest',
-  timetable: 'timetable',
-  games: 'games',
-  profile: 'system_settings',
-  homework: 'homework',
-  announcements: 'announcements',
-};
-
-const splitAnnouncementIntoPages = (content: string, pageLength = 420) => {
-  const characters = Array.from(content);
-  const pages: string[] = [];
-
-  for (let start = 0; start < characters.length; start += pageLength) {
-    pages.push(characters.slice(start, start + pageLength).join(''));
-  }
-
-  return pages.length > 0 ? pages : [''];
-};
-
-interface MobileAppShellProps {
-  currentUser: AuthUser | null;
-  activeSchool: School;
-  currentRole: UserRole;
-  lang: AppLanguage;
-  setLang: (lang: AppLanguage) => void;
-  themePalette: ThemePalette;
-  setThemePalette: (palette: ThemePalette) => void;
-  onLogout: () => void;
-  onSwitchToDesktopMode: () => void;
-  onOpenProfileModal: () => void;
-  onOpenOnboardingTutor?: () => void;
-  unreadCount?: number;
-  onOpenNotifications?: () => void;
-  
-  // Data props
-  students: Student[];
-  teachers?: Teacher[];
-  courses: Course[];
-  grades?: GradeRecord[];
-  invoices?: TuitionInvoice[];
-  infirmaryVisits?: InfirmaryVisit[];
-  behaviorRecords?: BehaviorRecord[];
-  sdqAssessments?: SdqAssessment[];
-  attendance: AttendanceRecord[];
-  periodAttendance: PeriodAttendanceRecord[];
-  leaveRequests: LeaveRequest[];
-  assignments: Assignment[];
-  homeworkSubmissions: HomeworkSubmission[];
-  announcements: Announcement[];
-  questions: QuizQuestion[];
-  playerScores: PlayerScore[];
-  rewardItems: RewardItem[];
-  campusGates: CampusGateGeofence[];
-
-  // Action Handlers
-  onRecordAttendance: (
-    studentId: string,
-    status: AttendanceStatus,
-    remarks: string,
-    method?: AttendanceRecord['checkinMethod'],
-    extra?: {
-      recordType?: AttendanceCheckType;
-      photoUrl?: string;
-      location?: AttendanceRecord['location'];
-      userType?: AttendanceUserType;
-      teacherId?: string;
-      userName?: string;
-      userRole?: string;
-      userAvatar?: string;
-      userDepartmentOrRoom?: string;
-      date?: string;
-      recordId?: string;
-      photoStoragePath?: string;
-      recordedBy?: string;
-      recordedByRole?: string;
-    }
-  ) => void;
-  onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;
-  onAddLeaveRequest: (req: LeaveRequest) => void;
-  onUpdateLeaveStatus: (reqId: string, status: LeaveStatus, remarks?: string) => void;
-  onEarnRewards: (userId: string, exp: number, gems: number, isWin: boolean) => void;
-  onRedeemReward: (itemId: string, costGems: number) => void;
-  onAddQuestion: (q: QuizQuestion) => void;
-  onImportQuestions: (imported: QuizQuestion[]) => void;
-  onUpdateStudent?: (student: Student) => void;
-  onUpdateTeacher?: (teacher: Teacher) => void;
-  onUpdateOwnAvatar?: (avatarUrl: string) => void;
-  timetableSlots?: TimetableSlot[];
-  schoolPeriods?: SchoolPeriodTime[];
-  gradingSystem?: GradingSystem;
-  schoolPermissions?: Record<SchoolPolicyId, boolean>;
-  featureFlags?: SchoolFeatureFlags;
-  onUpdateGrade?: (gradeId: string, updates: Partial<GradeRecord>) => void;
-  onAddGrade?: (grade: GradeRecord, options?: { notify?: boolean }) => void;
-  // Role-first Mobile & Desktop Continuity Props
-  schools?: School[];
-  isDemoMode?: boolean;
-  coordinationUnreadCount?: number;
-  onOpenSchoolSwitcher?: () => void;
-  onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
-  onAddAnnouncement?: (announcement: Announcement) => void;
-  onApproveInvoiceSlip?: (invoiceId: string) => void;
-  onRejectInvoiceSlip?: (invoiceId: string, reason: string) => void;
-  onViewSchool?: (school: School) => void;
-  onToggleSchoolStatus?: (schoolId: string, status: School['status']) => Promise<void>;
-  onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
-  onJumpToDesktopTab?: (tab: NavTab) => void;
-  initialMobileTab?: MobileTab;
-  initialAttendanceSubTab?: 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
-  initialPeriodCourseId?: string;
-  initialPeriodNumber?: number;
-  initialPeriodDate?: string;
-  initialPeriodCode?: string;
-  initialPeriodCheckType?: 'check_in' | 'check_out';
-  onBiometricLock?: () => void;
-  portfolioItems?: PortfolioItem[];
-  onAddPortfolioItem?: (item: PortfolioItem) => void;
-  onDeletePortfolioItem?: (itemId: string) => void;
-  onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
-  onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
-  onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
-  rewardRedemptions?: RewardRedemptionRequest[];
-  onEquipCosmetic?: (payload: { frameId?: string; title?: string }) => void;
-  onReviewRedemption?: (requestId: string, status: 'approved' | 'rejected', teacherNote?: string) => void;
-  onCreateCustomReward?: (item: RewardItem) => void;
-  canSwitchAdminTeacherMode?: boolean;
-  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
-}
+export type { MobileTab, MobileAppShellProps };
 
 export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   currentUser,
@@ -367,7 +81,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   grades = [],
   invoices = [],
   infirmaryVisits = [],
-  behaviorRecords = [],
   sdqAssessments = [],
   attendance,
   periodAttendance,
@@ -430,80 +143,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
 }) => {
-  const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
-    getPasskeyForUser(currentUser?.id)
-  );
-  const [webAuthnInfo, setWebAuthnInfo] = useState<WebAuthnSupportInfo | null>(null);
-  const [bioBusy, setBioBusy] = useState(false);
-  const [bioMsg, setBioMsg] = useState<string | null>(null);
-  const [bioErr, setBioErr] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
+  const [activeGameView, setActiveGameView] = useState<ActiveGameView>('hub');
+  const [arcadeInitialSubTab, setArcadeInitialSubTab] = useState<EduGameSubTab>('hub');
+  const [profilePage, setProfilePage] = useState(0);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<typeof announcements[number] | null>(null);
   const [mobilePeriodRosterTarget, setMobilePeriodRosterTarget] = useState<{
     slot: TimetableSlot;
     date: string;
   } | null>(null);
-
-  React.useEffect(() => {
-    setPasskey(getPasskeyForUser(currentUser?.id));
-  }, [currentUser?.id]);
-
-  React.useEffect(() => {
-    getWebAuthnSupportInfo().then(setWebAuthnInfo).catch(() => {});
-  }, []);
-
-  const handleEnrollPasskey = async () => {
-    if (!currentUser) return;
-    setBioBusy(true);
-    setBioErr(null);
-    setBioMsg(null);
-    try {
-      const enrolled = await enrollBiometricPasskey({
-        userId: currentUser.id,
-        email: currentUser.email,
-        fullNameTh: currentUser.fullNameTh,
-        fullNameEn: currentUser.fullNameEn,
-        role: currentUser.role,
-        schoolId: activeSchool.id,
-        protectQuickAttendance:
-          currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'teacher',
-      });
-      setPasskey(enrolled);
-      setBioMsg(
-        lang === 'th'
-          ? `ลงทะเบียน ${enrolled.deviceLabel} สำเร็จ`
-          : `Enrolled ${enrolled.deviceLabel}`
-      );
-    } catch (err) {
-      setBioErr(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBioBusy(false);
-    }
-  };
-
-  const handleTestPasskey = async () => {
-    if (!currentUser) return;
-    setBioBusy(true);
-    setBioErr(null);
-    setBioMsg(null);
-    try {
-      const res = await verifyBiometricPasskey({ userId: currentUser.id });
-      setPasskey(res.passkey);
-      setBioMsg(
-        lang === 'th'
-          ? 'ยืนยัน FaceID / TouchID สำเร็จ ✓'
-          : 'Biometric verification passed'
-      );
-    } catch (err) {
-      setBioErr(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBioBusy(false);
-    }
-  };
-  const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
-  const [activeGameView, setActiveGameView] = useState<'hub' | 'arcade_studio' | 'battle_royale_3d' | '1v1_arena' | 'boss_raid' | 'subject_labs' | 'hall_of_fame'>('hub');
-  const [arcadeInitialSubTab, setArcadeInitialSubTab] = useState<EduGameSubTab>('hub');
-  const [mobileGameCategory, setMobileGameCategory] = useState<'all' | 'arcade' | 'battle' | 'lab'>('all');
-  const [isLandscapeScreen, setIsLandscapeScreen] = useState<boolean>(() => isLandscapeViewport());
-  const [gameOrientationNotice, setGameOrientationNotice] = useState<string | null>(null);
 
   const openArcadeSubTab = (tab: EduGameSubTab) => {
     setArcadeInitialSubTab(tab);
@@ -511,60 +159,30 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   };
 
   useEffect(() => {
-    const syncOrientation = () => setIsLandscapeScreen(isLandscapeViewport());
-    window.addEventListener('resize', syncOrientation);
-    window.addEventListener('orientationchange', syncOrientation);
-    return () => {
-      window.removeEventListener('resize', syncOrientation);
-      window.removeEventListener('orientationchange', syncOrientation);
-    };
-  }, []);
-
-  useEffect(() => {
     if (activeGameView === 'hub') {
       void exitLandscapeGameMode();
-      setGameOrientationNotice(null);
     }
   }, [activeGameView]);
-  const [profilePage, setProfilePage] = useState(0);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
-  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
-  const headerMenuRef = useRef<HTMLDivElement>(null);
 
-  // Mobile Teacher Quick Gradebook state
-  const [mobileGradeCourseId, setMobileGradeCourseId] = useState<string>(courses[0]?.id || '');
-  const [mobileGradeSearch, setMobileGradeSearch] = useState('');
-  const [mobileGradeRoom, setMobileGradeRoom] = useState('all');
-  const [mobileGradeToast, setMobileGradeToast] = useState<string | null>(null);
-
-  // Mobile Timetable & Calendar state
+  // Mobile Timetable & Calendar shared state
   const [bangkokClock, setBangkokClock] = useState(() => getBangkokClockSnapshot());
   const todayBangkokStr = bangkokClock.dateStr;
   const currentBangkokYear = Number(todayBangkokStr.slice(0, 4));
   const todayDayKey = bangkokClock.dayKey;
-  const [selectedTimetableDay, setSelectedTimetableDay] = useState<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>(todayDayKey);
   const [timetableOnlyMine, setTimetableOnlyMine] = useState<boolean>(currentRole === 'teacher');
   const [mobileTimetableMode, setMobileTimetableMode] = useState<'day' | 'calendar'>('day');
   const [mobileCalendarMonthCursor, setMobileCalendarMonthCursor] = useState<{ year: number; month: number }>(() => ({
     year: Number(todayBangkokStr.slice(0, 4)),
     month: Number(todayBangkokStr.slice(5, 7)) - 1,
   }));
-  const [mobileSelectedCalendarDate, setMobileSelectedCalendarDate] = useState<string>(todayBangkokStr);
   const [showMobileCalendarSync, setShowMobileCalendarSync] = useState(false);
   const [holidaySyncTick, setHolidaySyncTick] = useState(0);
   const [holidaySyncStatus, setHolidaySyncStatus] = useState<HolidaySyncStatus | null>(() =>
     getPublicHolidaySyncStatus(currentBangkokYear)
   );
   const [isSyncingHolidays, setIsSyncingHolidays] = useState(false);
-  const [mobileCalendarNotesTick, setMobileCalendarNotesTick] = useState(0);
-  const [showMobileNoteForm, setShowMobileNoteForm] = useState(false);
-  const [mobileEditingNoteId, setMobileEditingNoteId] = useState<string | null>(null);
-  const [mobileNoteTitle, setMobileNoteTitle] = useState('');
-  const [mobileNoteContent, setMobileNoteContent] = useState('');
-  const [mobileNoteScope, setMobileNoteScope] = useState<CalendarNoteScope>('personal');
-  const [mobileNoteColor, setMobileNoteColor] = useState<CalendarNoteColor>('amber');
 
-  // Dynamic Check-in deep-link state so tapping any timetable slot jumps cleanly into Period Check-in/Check-out
+  // Dynamic Check-in deep-link state
   const [mobileAttendanceInitialSubTab, setMobileAttendanceInitialSubTab] = useState<
     'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin'
   >(initialAttendanceSubTab);
@@ -621,11 +239,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       setHolidaySyncTick((v) => v + 1);
     };
     window.addEventListener('eduverse:holidays-updated', onHolidaysUpdated);
-    const onNotesUpdated = () => setMobileCalendarNotesTick((v) => v + 1);
-    window.addEventListener(CALENDAR_NOTES_UPDATED_EVENT, onNotesUpdated);
+    const noopNotesListener = () => {};
+    window.addEventListener(CALENDAR_NOTES_UPDATED_EVENT, noopNotesListener);
     return () => {
       window.removeEventListener('eduverse:holidays-updated', onHolidaysUpdated);
-      window.removeEventListener(CALENDAR_NOTES_UPDATED_EVENT, onNotesUpdated);
+      window.removeEventListener(CALENDAR_NOTES_UPDATED_EVENT, noopNotesListener);
     };
   }, [mobileCalendarMonthCursor.year, currentBangkokYear]);
 
@@ -643,32 +261,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (!mobileGradeCourseId && courses.length > 0) {
-      setMobileGradeCourseId(courses[0].id);
-    }
-  }, [courses, mobileGradeCourseId]);
-
-  useEffect(() => {
-    if (!isHeaderMenuOpen) return;
-    const handleOutside = (event: MouseEvent) => {
-      if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
-        setIsHeaderMenuOpen(false);
-      }
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsHeaderMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isHeaderMenuOpen]);
-
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
   const todayStr = getLocalDateString();
 
@@ -680,7 +272,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const ownStudent = resolveOwnStudent(currentUser, students);
   const currentPersonId = ownStudent?.id || currentUser?.id;
   const scopedAttendance = filterAttendanceForUser(attendance, currentUser, students);
-  const todayCheckin = scopedAttendance.find(a => a.date === todayStr);
+  const todayCheckin = scopedAttendance.find((a) => a.date === todayStr);
 
   const isModuleEnabled = (tab: NavTab) => isTabEnabledByFeatureFlags(tab, featureFlags, currentRole);
 
@@ -690,8 +282,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     (currentRole === 'student'
       ? schoolPermissions?.student_self_checkin !== false
       : currentRole === 'teacher'
-      ? schoolPermissions?.teacher_attendance !== false
-      : true);
+        ? schoolPermissions?.teacher_attendance !== false
+        : true);
   const canPlayGames =
     (currentRole === 'student' ? schoolPermissions?.student_treasure_game !== false : true) &&
     (isModuleEnabled('games') || isModuleEnabled('subject_labs') || isModuleEnabled('boss_raid'));
@@ -704,8 +296,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     (currentRole === 'student'
       ? schoolPermissions?.student_submit_homework !== false
       : currentRole === 'teacher'
-      ? schoolPermissions?.teacher_homework !== false
-      : true);
+        ? schoolPermissions?.teacher_homework !== false
+        : true);
   const canViewFinancialsMobile =
     isModuleEnabled('billing') &&
     (currentRole === 'admin' ||
@@ -721,13 +313,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const canOpenLeave = isModuleEnabled('mobile_checkin') || isModuleEnabled('attendance');
   const canViewDigitalId = isModuleEnabled('student_id_cards');
 
-  // Scoped leave requests (students/parents see ONLY their own leave counts)
   const myLeaves = isRestrictedViewer
     ? filterLeaveRequestsForUser(leaveRequests, currentUser, students)
     : leaveRequests;
-  const pendingLeavesCount = myLeaves.filter(l => l.status === 'pending').length;
+  const pendingLeavesCount = myLeaves.filter((l) => l.status === 'pending').length;
 
-  // Role-scoped courses, timetable slots, assignments, and announcements (strict student/parent isolation)
   const scopedCourses = useMemo(
     () => (isRestrictedViewer ? filterCoursesForPersonalRole(courses, currentUser, students) : courses),
     [courses, currentUser, isRestrictedViewer, students]
@@ -786,8 +376,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     dateValue: string,
     checkType: 'check_in' | 'check_out'
   ) => {
-    const resolvedCourseId =
-      slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id;
+    const resolvedCourseId = slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id;
     setMobileAttendanceInitialSubTab('period_checkin');
     setMobilePeriodCourseId(resolvedCourseId);
     setMobilePeriodNumber(slot.periodNumber);
@@ -811,7 +400,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     };
   };
 
-  // Pending homework (excluding closed and submitted)
   const myCompletedSubmissions = new Set(
     homeworkSubmissions.filter((h) => currentPersonId && h.studentId === currentPersonId).map((h) => h.assignmentId)
   );
@@ -822,10 +410,14 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       !(currentPersonId && a.submittedStudentIds?.includes(currentPersonId))
   ).length;
 
-  const currentScore: PlayerScore = playerScores.find(p => p.userId === currentUser?.id) || {
+  const currentScore: PlayerScore = playerScores.find((p) => p.userId === currentUser?.id) || {
     userId: currentUser?.id || 'guest',
     schoolId: activeSchool?.id,
-    name: (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) || currentUser?.fullNameTh || currentUser?.email || (lang === 'th' ? 'ผู้เล่น' : 'Player'),
+    name:
+      (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) ||
+      currentUser?.fullNameTh ||
+      currentUser?.email ||
+      (lang === 'th' ? 'ผู้เล่น' : 'Player'),
     role: currentRole === 'student' ? 'student' : 'teacher',
     avatarUrl: currentUser?.avatarUrl || '',
     exp: 0,
@@ -841,9 +433,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const myOwnPortfolioCount = useMemo(() => {
     if (!currentUser) return 0;
     return portfolioItems.filter(
-      (item) =>
-        item.ownerId === currentUser.id ||
-        (ownStudent && item.ownerId === ownStudent.id)
+      (item) => item.ownerId === currentUser.id || (ownStudent && item.ownerId === ownStudent.id)
     ).length;
   }, [portfolioItems, currentUser, ownStudent]);
 
@@ -884,7 +474,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   useEffect(() => {
     if (activeGameView === 'hub') return;
     const blockedGame =
-      ((activeGameView === 'arcade_studio' || activeGameView === 'battle_royale_3d' || activeGameView === '1v1_arena') && !isModuleEnabled('games')) ||
+      ((activeGameView === 'arcade_studio' ||
+        activeGameView === 'battle_royale_3d' ||
+        activeGameView === '1v1_arena') &&
+        !isModuleEnabled('games')) ||
       (activeGameView === 'boss_raid' && !isModuleEnabled('boss_raid')) ||
       (activeGameView === 'subject_labs' && !isModuleEnabled('subject_labs')) ||
       (activeGameView === 'hall_of_fame' && !isModuleEnabled('hall_of_fame'));
@@ -893,8 +486,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     }
   }, [activeGameView, featureFlags, currentRole]);
 
-  // Executive Dashboard Metrics (Mobile Optimized)
-  const execMetrics = useMemo(() => {
+  const execMetrics = useMemo<ExecMetrics>(() => {
     const today = getLocalDateString();
     const todayRecords = attendance.filter((a) => a.date === today);
     const totalStudents = students.length || 1;
@@ -904,21 +496,20 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     const leaveCount = todayRecords.filter((a) => a.status === 'leave').length;
     const attendanceRate = Math.min(100, Math.round(((presentCount + lateCount) / totalStudents) * 100));
 
-    // Academic GPAX
     const validGpas = students.map((s) => s.gpa).filter((g) => g > 0);
-    const avgGpa = validGpas.length > 0 ? (validGpas.reduce((a, b) => a + b, 0) / validGpas.length).toFixed(2) : '3.45';
+    const avgGpa =
+      validGpas.length > 0 ? (validGpas.reduce((a, b) => a + b, 0) / validGpas.length).toFixed(2) : '3.45';
     const honorCount = students.filter((s) => s.gpa >= 3.5).length;
 
-    // Infirmary
     const todayInfirmary = infirmaryVisits.filter((v) => v.visitDate === today || !v.visitDate).length;
 
-    // Billing / Tuition
     const paidInvoices = invoices.filter((i) => i.status === 'paid');
     const totalCollected = paidInvoices.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
     const pendingInvoices = invoices.filter((i) => i.status === 'pending' || i.status === 'overdue');
 
-    // Risk / SDQ
-    const riskCount = sdqAssessments.filter((s) => s.overallStatus === 'risk' || s.overallStatus === 'problem' || (s.totalDifficultiesScore ?? 0) >= 16).length;
+    const riskCount = sdqAssessments.filter(
+      (s) => s.overallStatus === 'risk' || s.overallStatus === 'problem' || (s.totalDifficultiesScore ?? 0) >= 16
+    ).length;
 
     return {
       attendanceRate,
@@ -939,122 +530,25 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   }, [attendance, students, teachers, courses, invoices, infirmaryVisits, sdqAssessments]);
 
   return (
-    <div className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none`}>
+    <div
+      className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none`}
+    >
       {/* 1. CLEAN SINGLE-ROW APPLE/LINEAR MOBILE HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md transition-colors">
-        <div className="px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <BaanPakKruLogo size={24} />
-            {onOpenSchoolSwitcher && currentRole === 'super_admin' ? (
-              <button
-                type="button"
-                onClick={onOpenSchoolSwitcher}
-                className="text-sm font-bold text-[var(--color-text-title)] truncate hover:underline cursor-pointer"
-              >
-                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-              </button>
-            ) : (
-              <span className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                {lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {onOpenNotifications && (
-              <button
-                type="button"
-                onClick={onOpenNotifications}
-                className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                aria-label={lang === 'th' ? 'การแจ้งเตือน' : 'Notifications'}
-              >
-                <Bell className="w-4 h-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600" />
-                )}
-              </button>
-            )}
-
-            <div ref={headerMenuRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
-                aria-expanded={isHeaderMenuOpen}
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                aria-label={lang === 'th' ? 'เมนูเพิ่มเติม' : 'Menu'}
-              >
-                <MoreHorizontal className="w-5 h-5" />
-              </button>
-              {isHeaderMenuOpen && (
-                <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
-                  {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsHeaderMenuOpen(false);
-                        onSwitchOperationalRole(currentRole === 'admin' ? 'teacher' : 'admin');
-                      }}
-                      className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <ArrowLeftRight className="w-4 h-4 shrink-0" />
-                      <span>
-                        {currentRole === 'admin'
-                          ? (lang === 'th' ? 'สลับเป็นโหมดครูผู้สอน' : 'Switch to Teacher Mode')
-                          : (lang === 'th' ? 'สลับเป็นโหมด Admin' : 'Switch to Admin Mode')}
-                      </span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      onSwitchToDesktopMode();
-                    }}
-                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Laptop className="w-4 h-4 text-[var(--color-text-muted)]" />
-                    <span>{lang === 'th' ? 'สลับมุมมองคอมพิวเตอร์' : 'Desktop View'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      setLang(lang === 'th' ? 'en' : 'th');
-                    }}
-                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center justify-between text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2"><Globe className="w-4 h-4 text-[var(--color-text-muted)]" />{lang === 'th' ? 'ภาษา' : 'Language'}</span>
-                    <span className="font-mono text-xs text-[var(--color-text-muted)]">{lang.toUpperCase()}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      setThemePalette(isLight ? 'sapphire' : 'light_warm');
-                    }}
-                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    {isLight ? <Moon className="w-4 h-4 text-[var(--color-text-muted)]" /> : <Sun className="w-4 h-4 text-[var(--color-text-muted)]" />}
-                    <span>{isLight ? (lang === 'th' ? 'โหมดกลางคืน' : 'Dark Mode') : (lang === 'th' ? 'โหมดสว่าง' : 'Light Mode')}</span>
-                  </button>
-                  <div className="my-1 border-t border-[var(--color-border)]" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      onLogout();
-                    }}
-                    className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <MobileHeader
+        activeSchool={activeSchool}
+        currentRole={currentRole}
+        lang={lang}
+        setLang={setLang}
+        isLight={isLight}
+        setThemePalette={setThemePalette}
+        unreadCount={unreadCount}
+        onOpenNotifications={onOpenNotifications}
+        onOpenSchoolSwitcher={onOpenSchoolSwitcher}
+        canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+        onSwitchOperationalRole={onSwitchOperationalRole}
+        onSwitchToDesktopMode={onSwitchToDesktopMode}
+        onLogout={onLogout}
+      />
 
       {/* 2. MAIN ACTIVE VIEW CONTAINER (Generous spacing, 1 task per screen) */}
       <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-5 sm:p-6 overflow-y-auto">
@@ -1067,1881 +561,347 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             setActiveTab('home');
           }}
         >
-        {/* TAB A: ROLE-FIRST HOME (Clean, Zero Subtitle Clutter, Large Primary CTA) */}
-        {activeTab === 'home' && (
-          <div className="flex flex-col gap-5 py-1 animate-in fade-in duration-150">
-            {currentRole === 'super_admin' ? (
-              <MobileSuperAdminHub
-                schools={schools}
-                activeSchool={activeSchool}
-                isDemoMode={isDemoMode}
-                lang={lang}
-                coordinationUnreadCount={coordinationUnreadCount}
-                onViewSchool={onViewSchool}
-                onToggleSchoolStatus={onToggleSchoolStatus}
-                onUpdateSchoolFeatureFlags={onUpdateSchoolFeatureFlags}
-                onJumpToDesktopTab={onJumpToDesktopTab}
-              />
-            ) : currentRole === 'admin' ? (
-              <AdminDailyDashboardView
-                activeSchool={activeSchool}
-                currentUser={currentUser}
-                lang={lang}
-                students={students}
-                attendance={attendance}
-                leaveRequests={leaveRequests}
-                invoices={invoices}
-                isDemoMode={isDemoMode}
-                coordinationUnreadCount={coordinationUnreadCount}
-                onRecordAttendance={onRecordAttendance}
-                onUpdateLeaveStatus={onUpdateLeaveStatus}
-                onApproveInvoiceSlip={onApproveInvoiceSlip}
-                onRejectInvoiceSlip={onRejectInvoiceSlip}
-                onOpenQuickHub={() => setActiveTab('admin_quick')}
-                onOpenCheckin={() => setActiveTab('checkin')}
-                onOpenExecutive={() => setActiveTab('executive')}
-                onJumpToDesktopTab={onJumpToDesktopTab}
-                canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
-                onSwitchOperationalRole={onSwitchOperationalRole}
-              />
-            ) : currentRole === 'student' ? (
-              <StudentMobileHome
-                currentUser={currentUser}
-                activeSchool={activeSchool}
-                ownStudent={ownStudent}
-                playerProfile={currentScore}
-                lang={lang}
-                todayCheckin={todayCheckin}
-                scopedAttendance={scopedAttendance}
-                scopedCourses={scopedCourses}
-                grades={grades}
-                gradingSystem={gradingSystem}
-                todayMySlots={todayMySlots}
-                schoolPeriods={schoolPeriods}
-                bangkokClock={bangkokClock}
-                todayBangkokStr={todayBangkokStr}
-                todayHoliday={todayHoliday}
-                upcomingHoliday={upcomingHoliday}
-                pendingHomeworkCount={pendingHomeworkCount}
-                totalHomeworkCount={scopedAssignments.length}
-                pendingLeavesCount={pendingLeavesCount}
-                myPortfolioCount={myOwnPortfolioCount}
-                scopedAnnouncements={scopedAnnouncements}
-                canSelfCheckin={canSelfCheckin}
-                canAccessHomework={canAccessHomework}
-                canPlayGames={canPlayGames}
-                canViewGrades={canViewGradesStudent}
-                canViewTimetable={canViewTimetable}
-                canOpenPortfolio={canOpenPortfolio}
-                canOpenLeave={canOpenLeave}
-                canOpenAnnouncements={canOpenAnnouncements}
-                getSlotTodayCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
-                onOpenCheckin={() => {
-                  setMobileAttendanceInitialSubTab('selfie_mobile');
-                  setActiveTab('checkin');
-                }}
-                onTriggerPeriodCheckin={openPeriodCheckinFromSlot}
-                onOpenTimetable={(mode) => {
-                  setMobileTimetableMode(mode);
-                  setActiveTab('timetable');
-                }}
-                onOpenHomework={() => setActiveTab('homework')}
-                onOpenGrades={() => setActiveTab('student_grades')}
-                onOpenPortfolio={() => setActiveTab('portfolio')}
-                onOpenLeave={() => setActiveTab('leave')}
-                onOpenAnnouncements={(ann) => {
-                  if (ann) setSelectedAnnouncement(ann);
-                  setActiveTab('announcements');
-                }}
-                onOpenGames={() => {
-                  setActiveTab('games');
-                  setActiveGameView('hub');
-                }}
-                onOpenCareerQuest={canOpenCareerQuest ? () => setActiveTab('career_quest') : undefined}
-              />
-            ) : (
-              <>
-                {/* Crisp Personal Greeting + Class/Department Context */}
-                <div className="pt-1 space-y-1">
-                  <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'สวัสดี' : 'Hello'} {currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้ใช้งาน'}
-                  </h1>
-                  <p className="text-xs font-medium text-[var(--color-text-muted)] truncate tabular-nums">
-                    {currentRole === 'parent' && linkedStudents.length > 0
-                      ? `${lang === 'th' ? 'ผู้ปกครองของ' : 'Parent of'} ${linkedStudents[0].firstNameTh} (${linkedStudents[0].gradeLevel} ${linkedStudents[0].room})`
-                      : currentRole === 'teacher'
-                        ? `${currentUser?.department || (lang === 'th' ? 'ครูผู้สอน' : 'Teacher')} · ${lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn}`
-                        : lang === 'th'
-                          ? activeSchool.nameTh
-                          : activeSchool.nameEn}
-                  </p>
-                </div>
-
-                {/* 1-click Admin Mode Switch for Dual-Privilege Teachers */}
-                {currentRole === 'teacher' && canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-                  <button
-                    type="button"
-                    onClick={() => onSwitchOperationalRole('admin')}
-                    className="w-full min-h-[48px] px-4 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-between gap-2 cursor-pointer transition"
-                  >
-                    <span className="flex items-center gap-2 min-w-0">
-                      <ShieldCheck className="w-4 h-4 shrink-0" />
-                      <span className="text-xs font-bold truncate">
-                        {lang === 'th' ? 'สลับเข้าสู่โหมด Admin (มีสิทธิ์ผู้ดูแล)' : 'Switch to School Admin Mode'}
-                      </span>
-                    </span>
-                    <ArrowLeftRight className="w-4 h-4 shrink-0" />
-                  </button>
-                )}
-
-                {/* Today / Upcoming Holiday Alert */}
-                {todayHoliday ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileTimetableMode('calendar');
-                      setActiveTab('timetable');
-                    }}
-                    className="w-full rounded-2xl border border-rose-300 dark:border-rose-800 bg-rose-50/90 dark:bg-rose-950/50 p-4 text-left flex items-center justify-between gap-3 cursor-pointer"
-                  >
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
-                        <CalendarDays className="w-4 h-4 shrink-0" />
-                        <span>{todayHoliday.type === 'school' ? 'วันหยุดพิเศษโรงเรียน' : 'วันหยุดราชการวันนี้'}</span>
-                      </p>
-                      <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                        {todayHoliday.nameTh}
-                      </p>
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        งดการเรียนการสอนปกติ · แตะเพื่อดูปฏิทินวันหยุด
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-rose-500 shrink-0" />
-                  </button>
-                ) : upcomingHoliday ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileTimetableMode('calendar');
-                      setActiveTab('timetable');
-                    }}
-                    className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-left flex items-center justify-between gap-3 cursor-pointer hover:border-rose-300 transition"
-                  >
-                    <div className="min-w-0 flex items-center gap-2.5">
-                      <CalendarDays className="w-4 h-4 text-rose-500 shrink-0" />
-                      <p className="text-xs text-[var(--color-text-body)] truncate tabular-nums">
-                        วันหยุดถัดไป: <strong className="text-[var(--color-text-title)]">{upcomingHoliday.nameTh}</strong> ({upcomingHoliday.date})
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-                ) : null}
-
-                {/* 1 Large Primary Action Button */}
-                {(canSelfCheckin || canViewTimetable) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileAttendanceInitialSubTab('selfie_mobile');
-                    setActiveTab(canSelfCheckin ? 'checkin' : 'timetable');
-                  }}
-                  className="w-full min-h-[56px] px-5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-base flex items-center justify-between transition active:scale-[0.99] cursor-pointer shadow-xs"
-                >
-                  <div className="text-left">
-                    <span className="block">
-                      {!canSelfCheckin
-                        ? lang === 'th'
-                          ? 'ตารางเรียนวันนี้'
-                          : 'Today Timetable'
-                        : currentRole === 'teacher'
-                          ? lang === 'th'
-                            ? 'เช็คชื่อเข้าสอน'
-                            : 'Class Check-in'
-                          : currentRole === 'parent'
-                            ? lang === 'th'
-                              ? 'ดูเวลาเข้า-ออกบุตรหลาน'
-                              : 'Child Attendance'
-                            : lang === 'th'
-                              ? 'เช็คชื่อเข้า-ออก'
-                              : 'Check-in & Out'}
-                    </span>
-                    {todayCheckin && currentRole !== 'parent' && (
-                      <span className="block text-[11px] font-normal text-white/85 tabular-nums">
-                        {lang === 'th' ? `เช็คชื่อเข้า รร. แล้ว เวลา ${todayCheckin.time} น.` : `Checked in at ${todayCheckin.time}`}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronRight className="w-5 h-5 shrink-0" />
-                </button>
-                )}
-
-                {/* Timed Period Check-in/Out Missions + Active Period Red Highlight */}
-                {currentRole === 'teacher' &&
-                  !todayHoliday &&
-                  !isWeekendDate(todayBangkokStr) &&
-                  todayMySlots.length > 0 && (() => {
-                    const activeNowSlot = todayMySlots.find(
-                      (s) =>
-                        getTimetableSlotActivityStatus({
-                          slot: s,
-                          schoolPeriods,
-                          now: bangkokClock,
-                          schoolId: activeSchool.id,
-                        }).isActive
-                    );
-                    const nextUpcomingSlot = todayMySlots.find((s) => {
-                      const st = getTimetableSlotActivityStatus({
-                        slot: s,
-                        schoolPeriods,
-                        now: bangkokClock,
-                        schoolId: activeSchool.id,
-                      });
-                      return st.endMinutes !== null && st.endMinutes >= bangkokClock.minutes;
-                    });
-                    const featuredSlot = activeNowSlot || nextUpcomingSlot || todayMySlots[0];
-                    const featuredActivity = getTimetableSlotActivityStatus({
-                      slot: featuredSlot,
-                      schoolPeriods,
-                      now: bangkokClock,
-                      schoolId: activeSchool.id,
-                    });
-                    const status = getSlotTodayCheckStatus(featuredSlot, todayBangkokStr);
-                    const nextCheckType: 'check_in' | 'check_out' =
-                      status.hasCheckIn && !status.hasCheckOut ? 'check_out' : 'check_in';
-                    return (
-                      <div className="space-y-3">
-                        <PeriodTimeMissionsCard
-                          compact={true}
-                          slots={todayMySlots}
-                          schoolPeriods={schoolPeriods}
-                          bangkokClock={bangkokClock}
-                          schoolId={activeSchool.id}
-                          targetDateStr={todayBangkokStr}
-                          currentRole={currentRole}
-                          lang={lang}
-                          canSelfCheckin={canSelfCheckin}
-                          getSlotCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
-                          onTriggerCheckin={openPeriodCheckinFromSlot}
-                          onOpenSchedule={() => {
-                            setMobileTimetableMode('day');
-                            setActiveTab('timetable');
-                          }}
-                          periodAttendance={periodAttendance}
-                        />
-
-                        <div
-                          className={`rounded-2xl border p-4 space-y-3 ${
-                            featuredActivity.isActive
-                              ? 'border-rose-500 ring-2 ring-rose-500/35 bg-rose-50/75 dark:bg-rose-950/35'
-                              : 'border-[var(--color-border)] bg-[var(--color-card)]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-[var(--color-primary-text)] tabular-nums flex items-center gap-1.5 flex-wrap">
-                              {featuredActivity.isActive && (
-                                <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
-                                  ถึงคาบเรียน{featuredActivity.remainingMinutes !== null ? ` · เหลือ ${featuredActivity.remainingMinutes} น.` : ''}
-                                </span>
-                              )}
-                              <span>
-                                {lang === 'th'
-                                  ? `คาบ ${featuredSlot.periodNumber} (${featuredActivity.startTime}–${featuredActivity.endTime})`
-                                  : `Period ${featuredSlot.periodNumber} · ${featuredActivity.startTime}–${featuredActivity.endTime}`}
-                              </span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMobileTimetableMode('day');
-                                setActiveTab('timetable');
-                              }}
-                              className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer tabular-nums"
-                            >
-                              ทั้งหมด {todayMySlots.length} คาบ
-                            </button>
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                              {featuredSlot.courseCode} · {featuredSlot.courseTitleTh || featuredSlot.courseTitleEn}
-                            </p>
-                            <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
-                              {featuredSlot.classRoom} {featuredSlot.room ? `· ห้อง ${featuredSlot.room}` : ''} · {featuredSlot.teacherName}
-                            </p>
-                          </div>
-                          {canSelfCheckin && (
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                type="button"
-                                onClick={() => openPeriodCheckinFromSlot(featuredSlot, todayBangkokStr, nextCheckType)}
-                                className={`flex-1 min-h-[44px] rounded-xl px-3 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm ${
-                                  featuredActivity.isActive
-                                    ? 'bg-rose-600 hover:bg-rose-700'
-                                    : nextCheckType === 'check_out'
-                                      ? 'bg-slate-800 hover:bg-slate-900'
-                                      : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                                }`}
-                              >
-                                {nextCheckType === 'check_out' ? (
-                                  <LogOut className="w-4 h-4" />
-                                ) : (
-                                  <LogIn className="w-4 h-4" />
-                                )}
-                                <span>
-                                  {status.hasCheckIn && status.hasCheckOut
-                                    ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
-                                    : nextCheckType === 'check_out'
-                                      ? 'เช็คเอาท์คาบนี้'
-                                      : featuredActivity.isActive
-                                        ? 'เช็คอินเข้าคาบตอนนี้'
-                                        : 'เช็คอิน/เอาท์รายคาบ'}
-                                </span>
-                              </button>
-                              {!status.hasCheckIn && (
-                                <button
-                                  type="button"
-                                  onClick={() => openPeriodCheckinFromSlot(featuredSlot, todayBangkokStr, 'check_out')}
-                                  className={`min-h-[44px] px-3 rounded-xl border text-xs font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
-                                    featuredActivity.isActive
-                                      ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
-                                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
-                                  }`}
-                                >
-                                  <LogOut className="w-4 h-4" />
-                                  <span>เช็คเอาท์</span>
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                {/* Single-line Clean List Rows */}
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                  {currentRole === 'teacher' && canViewTimetable && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileTimetableMode('day');
-                        setActiveTab('timetable');
-                      }}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <Clock className="w-4 h-4 text-[var(--color-primary-text)]" />
-                        <span>
-                          {lang === 'th' ? 'ตารางสอนวันนี้' : 'Today Teaching Schedule'}
-                        </span>
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {todayHoliday
-                          ? lang === 'th'
-                            ? 'วันหยุด'
-                            : 'Holiday'
-                          : `${todayMySlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`}
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
-
-                  {(currentRole === 'teacher' || currentRole === 'parent') && canViewTimetable && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileTimetableMode('calendar');
-                        setActiveTab('timetable');
-                      }}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <Calendar className="w-4 h-4 text-rose-500" />
-                        <span>{lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}</span>
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] flex items-center gap-2 shrink-0">
-                        <span>.ics</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
-
-                  {currentRole === 'teacher' && isModuleEnabled('gradebook') && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('gradebook')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <ClipboardCheck className="w-4 h-4 text-emerald-600" />
-                        <span>{lang === 'th' ? 'กรอกคะแนน ปพ.5 ด่วน' : 'Quick Gradebook (PP.5)'}</span>
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {scopedCourses.length} {lang === 'th' ? 'วิชา' : 'courses'}
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
-
-                  {currentRole === 'teacher' && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('executive')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <BarChart3 className="w-4 h-4 text-indigo-600" />
-                        <span>{lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}</span>
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {execMetrics.attendanceRate}%
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
-
-                  {currentRole === 'parent' && (
-                    <div className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'เช็คอินวันนี้' : 'Today'}
-                      </span>
-                      <span className="text-xs font-semibold tabular-nums text-[var(--color-text-muted)]">
-                        {todayCheckin ? `${todayCheckin.time} น.` : lang === 'th' ? 'ยังไม่เช็คอิน' : 'Pending'}
-                      </span>
-                    </div>
-                  )}
-
-                  {canOpenLeave && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('leave')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <FileText className="w-4 h-4 text-amber-600" />
-                        <span>{lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}</span>
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {pendingLeavesCount > 0 ? `${pendingLeavesCount}` : ''}
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
-
-                  {currentRole === 'teacher' && canOpenCareerQuest && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('career_quest')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <Compass className="w-4 h-4 text-violet-600" />
-                        <span>{lang === 'th' ? 'เส้นทางอาชีพ (Career Quest AI)' : 'Career Quest AI'}</span>
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                    </button>
-                  )}
-
-                  {currentRole === 'teacher' && canPlayGames && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('games');
-                        setActiveGameView('hub');
-                      }}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <Gamepad2 className="w-4 h-4 text-purple-600" />
-                        <span>{lang === 'th' ? 'เกมส์ความรู้ & แล็บจำลอง' : 'Learning Games & Labs'}</span>
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                    </button>
-                  )}
-
-                  {canOpenAnnouncements && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('announcements')}
-                      className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                        <Megaphone className="w-4 h-4 text-emerald-600" />
-                        <span>{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}</span>
-                      </span>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
-                        {scopedAnnouncements.length}
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('profile')}
-                    className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                  >
-                    <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                      {canViewDigitalId
-                        ? (lang === 'th' ? 'บัตรดิจิทัล & ตั้งค่า' : 'Digital ID & Settings')
-                        : (lang === 'th' ? 'ตั้งค่าบัญชี' : 'Account Settings')}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* TAB: ADMIN QUICK WORKSPACE */}
-        {activeTab === 'admin_quick' && (
-          <MobileAdminQuickHub
-            activeSchool={activeSchool}
-            students={students}
-            teachers={teachers}
-            courses={courses}
-            leaveRequests={leaveRequests}
-            invoices={invoices}
-            announcements={announcements}
-            lang={lang}
-            currentUser={currentUser}
-            onUpdateStudent={onUpdateStudent}
-            onUpdateSchool={onUpdateSchool}
-            onAddAnnouncement={onAddAnnouncement}
-            onUpdateLeaveStatus={onUpdateLeaveStatus}
-            onApproveInvoiceSlip={onApproveInvoiceSlip}
-            onRejectInvoiceSlip={onRejectInvoiceSlip}
-            onJumpToDesktopTab={onJumpToDesktopTab}
-            onOpenCheckin={() => setActiveTab('checkin')}
-          />
-        )}
-
-        {/* TAB: SUPER ADMIN SCHOOLS & APPROVALS */}
-        {activeTab === 'super_schools' && (
-          <MobileSuperAdminHub
-            schools={schools}
-            activeSchool={activeSchool}
-            isDemoMode={isDemoMode}
-            lang={lang}
-            coordinationUnreadCount={coordinationUnreadCount}
-            onViewSchool={onViewSchool}
-            onToggleSchoolStatus={onToggleSchoolStatus}
-            onUpdateSchoolFeatureFlags={onUpdateSchoolFeatureFlags}
-            onJumpToDesktopTab={onJumpToDesktopTab}
-          />
-        )}
-
-        {/* TAB EXECUTIVE: CLEAN, MOBILE-FIRST DIRECTOR DASHBOARD */}
-        {activeTab === 'executive' && (
-          <div className="flex flex-col gap-3 py-1 animate-in fade-in duration-200">
-            {/* Header Card (Clean semantic token surface) */}
-            <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] flex items-center justify-center font-bold shrink-0">
-                    <Monitor className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                      {lang === 'th' ? 'แดชบอร์ดสรุปผู้บริหาร · ผอ. / MIS' : 'Executive Summary · MIS'}
-                    </h2>
-                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">{activeSchool.nameTh || activeSchool.nameEn}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={onSwitchToDesktopMode}
-                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
-                  title="สลับไปมุมมองคอมพิวเตอร์"
-                >
-                  <Laptop className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? 'จอใหญ่' : 'Desktop'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 4 Core Executive Metric Cards (Vertical, Clean, Space-optimized) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Card 1: Attendance */}
-              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">การมาเรียนวันนี้</span>
-                  <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                    <Users className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xl font-black text-emerald-700 dark:text-emerald-400 font-mono">
-                    {execMetrics.attendanceRate}%
-                  </div>
-                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                    มา {execMetrics.presentCount} • สาย {execMetrics.lateCount} • ขาด {execMetrics.absentCount}
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 2: Academic GPAX */}
-              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">เกรดเฉลี่ย (GPAX)</span>
-                  <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
-                    <GraduationCap className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xl font-black text-indigo-700 dark:text-indigo-400 font-mono">
-                    {execMetrics.avgGpa}
-                  </div>
-                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                    เกียรตินิยม (&ge;3.5) {execMetrics.honorCount} คน
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 3: Infirmary & Care */}
-              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ห้องพยาบาล &amp; SDQ</span>
-                  <div className="p-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300">
-                    <HeartPulse className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xl font-black text-rose-700 dark:text-rose-400 font-mono">
-                    {execMetrics.todayInfirmary} <span className="text-xs font-normal">เคส</span>
-                  </div>
-                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                    กลุ่มเสี่ยง SDQ {execMetrics.riskCount} คน
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 4: Finance (Respects teacher_view_financials) */}
-              {canViewFinancialsMobile && (
-              <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ยอดจัดเก็บค่าเทอม</span>
-                  <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
-                    <Receipt className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xl font-black text-blue-700 dark:text-blue-400 font-mono tabular-nums">
-                    ฿{execMetrics.totalCollected.toLocaleString()}
-                  </div>
-                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
-                    ค้างชำระ {execMetrics.pendingCount} ใบเสร็จ
-                  </p>
-                </div>
-              </div>
-              )}
-            </div>
-
-            {/* School Composition Summary */}
-            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2.5">
-              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex flex-wrap items-center justify-between gap-1.5">
-                <span className="inline-flex items-center gap-1.5">
-                  <BarChart3 className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                  <span>อัตราส่วนทรัพยากรโรงเรียน</span>
-                </span>
-                <span className="text-[10px] text-[var(--color-text-muted)]">MIS ข้อมูลล่าสุด</span>
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1">
-                    <Users className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                    <span>นักเรียน</span>
-                  </div>
-                  <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalStudents} คน</div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1">
-                    <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>ครู &amp; บุคลากร</span>
-                  </div>
-                  <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalTeachers} ท่าน</div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                  <div className="text-xs text-[var(--color-text-muted)] flex items-center justify-center gap-1">
-                    <BookOpen className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
-                    <span>รายวิชา</span>
-                  </div>
-                  <div className="text-base font-black text-[var(--color-text-title)] font-mono mt-0.5">{execMetrics.totalCourses} วิชา</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Director Quick Links */}
-            <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
-              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                <span>ทางลัดการบริหาร</span>
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('checkin')}
-                  className="p-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-left text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-between cursor-pointer"
-                >
-                  <span>มอนิเตอร์การเช็คชื่อ</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('leave')}
-                  className="p-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-left text-xs font-semibold text-[var(--color-text-title)] flex items-center justify-between cursor-pointer"
-                >
-                  <span>อนุมัติใบลา ({pendingLeavesCount})</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB B: CHECK-IN (เช็คชื่อ) */}
-        {activeTab === 'checkin' && (
-          <div className="h-full min-h-0 animate-in fade-in duration-200">
-            <MobileAttendanceView
-              embeddedMobile
-              initialSubTab={mobileAttendanceInitialSubTab}
-              initialPeriodCourseId={mobilePeriodCourseId}
-              initialPeriodNumber={mobilePeriodNumber}
-              initialPeriodDate={mobilePeriodDate}
-              initialPeriodCode={initialPeriodCode}
-              initialPeriodCheckType={mobilePeriodCheckType}
-              students={students}
-              teachers={isRestrictedViewer ? [] : teachers}
-              courses={scopedCourses}
-              attendance={attendance}
-              periodAttendance={periodAttendance}
-              currentUser={currentUser}
-              currentRole={currentRole}
-              school={activeSchool}
-              campusGates={campusGates}
-              schoolPeriods={schoolPeriods}
-              leaveRequests={leaveRequests}
-              lang={lang}
-              onRecordAttendance={onRecordAttendance}
-              onRecordPeriodAttendance={onRecordPeriodAttendance}
-              onAddLeaveRequest={onAddLeaveRequest}
-              onUpdateLeaveStatus={onUpdateLeaveStatus}
-              onUpdateCampusGates={currentRole === 'admin' || currentRole === 'super_admin' ? onUpdateCampusGates : undefined}
-              onSaveCampusGates={currentRole === 'admin' || currentRole === 'super_admin' ? onSaveCampusGates : undefined}
-              onUpdateSchoolCoordinates={currentRole === 'admin' || currentRole === 'super_admin' ? onUpdateSchoolCoordinates : undefined}
-            />
-          </div>
-        )}
-
-        {/* TAB C: LEAVE REQUESTS (ใบลา) */}
-        {activeTab === 'leave' && (
-          <div className="h-full min-h-0 animate-in fade-in duration-200">
-            <MobileAttendanceView
-              embeddedMobile
-              initialSubTab="leave_request"
-              students={students}
-              teachers={isRestrictedViewer ? [] : teachers}
-              courses={scopedCourses}
-              attendance={attendance}
-              periodAttendance={periodAttendance}
-              currentUser={currentUser}
-              currentRole={currentRole}
-              school={activeSchool}
-              campusGates={campusGates}
-              schoolPeriods={schoolPeriods}
-              leaveRequests={leaveRequests}
-              lang={lang}
-              onRecordAttendance={onRecordAttendance}
-              onRecordPeriodAttendance={onRecordPeriodAttendance}
-              onAddLeaveRequest={onAddLeaveRequest}
-              onUpdateLeaveStatus={onUpdateLeaveStatus}
-            />
-          </div>
-        )}
-
-        {/* TAB: TEACHER QUICK GRADEBOOK (ปพ.5 มือถือ) */}
-        {activeTab === 'gradebook' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab('home')}
-                className="min-h-[40px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-              </button>
-              <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'กรอกคะแนน ปพ.5 ด่วน' : 'Quick Gradebook'}
-              </h2>
-            </div>
-
-            {!canEditGradesMobile && (
-              <div className="p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-xs text-amber-900 dark:text-amber-200">
-                {lang === 'th'
-                  ? 'สิทธิ์การแก้ไขคะแนนถูกจำกัดโดยผู้บริหารโรงเรียน (แสดงผลแบบอ่านอย่างเดียว)'
-                  : 'Grade editing is restricted by school policy (read-only mode).'}
-              </div>
-            )}
-
-            {mobileGradeToast && (
-              <div role="status" className="p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span className="truncate">{mobileGradeToast}</span>
-              </div>
-            )}
-
-            <div className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'เลือกรายวิชา' : 'Select Course'}
-                </label>
-                <select
-                  value={mobileGradeCourseId}
-                  onChange={(e) => setMobileGradeCourseId(e.target.value)}
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
-                >
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} · {lang === 'th' ? c.titleTh : c.titleEn}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={mobileGradeSearch}
-                    onChange={(e) => setMobileGradeSearch(e.target.value)}
-                    placeholder={lang === 'th' ? 'ค้นหาชื่อ / รหัสนักเรียน' : 'Search student...'}
-                    className="w-full min-h-[44px] pl-8 pr-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden"
-                  />
-                </div>
-                <select
-                  value={mobileGradeRoom}
-                  onChange={(e) => setMobileGradeRoom(e.target.value)}
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] focus:outline-hidden"
-                >
-                  <option value="all">{lang === 'th' ? 'ทุกห้องเรียน' : 'All Rooms'}</option>
-                  {[...new Set(students.map((s) => `${s.gradeLevel} ${s.room}`.trim()).filter(Boolean))].map((roomLabel) => (
-                    <option key={roomLabel} value={roomLabel}>{roomLabel}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {(() => {
-              const selectedCourse = courses.find((c) => c.id === mobileGradeCourseId) || courses[0];
-              if (!selectedCourse) {
-                return (
-                  <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'ยังไม่มีรายวิชาในโรงเรียน' : 'No courses available'}
-                  </div>
-                );
-              }
-              const enrolledSet = new Set(selectedCourse.enrolledStudentIds || []);
-              const baseStudents =
-                enrolledSet.size > 0
-                  ? students.filter((s) => enrolledSet.has(s.id))
-                  : students;
-              const filteredStudents = baseStudents.filter((s) => {
-                const roomLabel = `${s.gradeLevel} ${s.room}`.trim();
-                if (mobileGradeRoom !== 'all' && roomLabel !== mobileGradeRoom) return false;
-                if (mobileGradeSearch.trim()) {
-                  const q = mobileGradeSearch.toLowerCase();
-                  const hay = `${s.firstNameTh} ${s.lastNameTh} ${s.studentIdNumber} ${s.room}`.toLowerCase();
-                  return hay.includes(q);
-                }
-                return true;
-              });
-
-              const updateStudentCourseScore = (
-                student: Student,
-                existingGrade: GradeRecord | undefined,
-                field: 'midtermScore' | 'finalScore' | 'assignmentScore' | 'quizScore',
-                rawValue: number
-              ) => {
-                if (!canEditGradesMobile) return;
-                const maxMap = { midtermScore: 30, finalScore: 40, assignmentScore: 20, quizScore: 10 } as const;
-                const clamped = Math.max(0, Math.min(maxMap[field], Number.isFinite(rawValue) ? Math.round(rawValue) : 0));
-                const nextMidterm = field === 'midtermScore' ? clamped : existingGrade?.midtermScore ?? 0;
-                const nextFinal = field === 'finalScore' ? clamped : existingGrade?.finalScore ?? 0;
-                const nextAssignment = field === 'assignmentScore' ? clamped : existingGrade?.assignmentScore ?? 0;
-                const nextQuiz = field === 'quizScore' ? clamped : existingGrade?.quizScore ?? 0;
-                const totalScore = Math.min(100, nextMidterm + nextFinal + nextAssignment + nextQuiz);
-                const graded = calculateGrade(totalScore, gradingSystem);
-
-                if (existingGrade && onUpdateGrade) {
-                  onUpdateGrade(existingGrade.id, {
-                    [field]: clamped,
-                    totalScore,
-                    letterGrade: graded.letter,
-                    gradePoint: graded.point,
-                  });
-                } else if (onAddGrade) {
-                  onAddGrade({
-                    id: `grd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                    schoolId: activeSchool.id,
-                    studentId: student.id,
-                    courseId: selectedCourse.id,
-                    academicYear: activeSchool.academicYear || '2568',
-                    semester: activeSchool.currentSemester || '1',
-                    midtermScore: nextMidterm,
-                    finalScore: nextFinal,
-                    assignmentScore: nextAssignment,
-                    quizScore: nextQuiz,
-                    totalScore,
-                    letterGrade: graded.letter,
-                    gradePoint: graded.point,
-                  });
-                }
-                setMobileGradeToast(
-                  lang === 'th'
-                    ? `บันทึก ${student.firstNameTh} · รวม ${totalScore} (${graded.letter})`
-                    : `Saved ${student.firstNameEn} · ${totalScore} (${graded.letter})`
-                );
-                window.setTimeout(() => setMobileGradeToast(null), 2200);
-              };
-
-              return (
-                <PagedList
-                  items={filteredStudents}
-                  pageSize={5}
-                  previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
-                  nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
-                  paginationLabel={lang === 'th' ? 'หน้าคะแนนนักเรียน' : 'Gradebook pages'}
-                  emptyState={
-                    <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
-                      {lang === 'th' ? 'ไม่พบนักเรียนที่ตรงกับตัวกรอง' : 'No matching students'}
-                    </div>
-                  }
-                  renderItem={(stu) => {
-                    const grade = grades.find((g) => g.courseId === selectedCourse.id && g.studentId === stu.id);
-                    const midterm = grade?.midtermScore ?? 0;
-                    const finalScore = grade?.finalScore ?? 0;
-                    const assignment = grade?.assignmentScore ?? 0;
-                    const quiz = grade?.quizScore ?? 0;
-                    const total = grade?.totalScore ?? 0;
-                    const letter = grade?.letterGrade ?? '-';
-                    return (
-                      <div key={stu.id} className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                              {stu.firstNameTh} {stu.lastNameTh}
-                            </p>
-                            <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                              {stu.studentIdNumber} · {stu.gradeLevel} {stu.room}
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0 tabular-nums">
-                            <span className="text-base font-extrabold font-mono text-[var(--color-primary-text)]">{total}</span>
-                            <span className="text-xs font-bold text-[var(--color-text-muted)] ml-1.5">({letter})</span>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {(
-                            [
-                              { field: 'midtermScore', label: 'กลาง/30', max: 30, value: midterm },
-                              { field: 'finalScore', label: 'ปลาย/40', max: 40, value: finalScore },
-                              { field: 'assignmentScore', label: 'งาน/20', max: 20, value: assignment },
-                              { field: 'quizScore', label: 'สอบ/10', max: 10, value: quiz },
-                            ] as const
-                          ).map((cell) => (
-                            <label key={cell.field} className="p-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-center block">
-                              <span className="block text-[10px] text-[var(--color-text-muted)] font-medium">{cell.label}</span>
-                              <input
-                                type="number"
-                                min={0}
-                                max={cell.max}
-                                disabled={!canEditGradesMobile}
-                                value={cell.value}
-                                onChange={(e) => updateStudentCourseScore(stu, grade, cell.field, Number(e.target.value))}
-                                className="w-full min-h-[36px] text-center text-sm font-mono font-bold tabular-nums text-[var(--color-text-title)] bg-transparent disabled:opacity-60 focus:outline-hidden"
-                              />
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }}
+          {/* TAB A: ROLE-FIRST HOME */}
+          {activeTab === 'home' && (
+            <div className="flex flex-col gap-5 py-1 animate-in fade-in duration-150">
+              {currentRole === 'super_admin' ? (
+                <MobileSuperAdminHub
+                  schools={schools}
+                  activeSchool={activeSchool}
+                  isDemoMode={isDemoMode}
+                  lang={lang}
+                  coordinationUnreadCount={coordinationUnreadCount}
+                  onViewSchool={onViewSchool}
+                  onToggleSchoolStatus={onToggleSchoolStatus}
+                  onUpdateSchoolFeatureFlags={onUpdateSchoolFeatureFlags}
+                  onJumpToDesktopTab={onJumpToDesktopTab}
                 />
-              );
-            })()}
-          </div>
-        )}
-
-        {/* TAB: MOBILE TIMETABLE + CALENDAR + PUBLIC HOLIDAYS */}
-        {activeTab === 'timetable' && (() => {
-          const monthHolidays = getHolidaysInMonth(
-            mobileCalendarMonthCursor.year,
-            mobileCalendarMonthCursor.month,
-            activeSchool.id
-          );
-          const firstDayOfMonth = new Date(
-            Date.UTC(mobileCalendarMonthCursor.year, mobileCalendarMonthCursor.month, 1)
-          );
-          const daysInMonth = new Date(
-            Date.UTC(mobileCalendarMonthCursor.year, mobileCalendarMonthCursor.month + 1, 0)
-          ).getUTCDate();
-          const leadingBlanks = (firstDayOfMonth.getUTCDay() + 6) % 7;
-          const monthCells: Array<{ dateStr: string; dayNum: number } | null> = [
-            ...Array.from({ length: leadingBlanks }, () => null),
-            ...Array.from({ length: daysInMonth }, (_, i) => {
-              const d = i + 1;
-              const dateStr = `${mobileCalendarMonthCursor.year}-${String(mobileCalendarMonthCursor.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-              return { dateStr, dayNum: d };
-            }),
-          ];
-          const monthTitleTh = firstDayOfMonth.toLocaleDateString('th-TH', {
-            timeZone: 'UTC',
-            month: 'long',
-            year: 'numeric',
-          });
-          const selectedCalDateObj = new Date(`${mobileSelectedCalendarDate}T00:00:00Z`);
-          const calDayKey = ([null, 'mon', 'tue', 'wed', 'thu', 'fri', null] as const)[
-            selectedCalDateObj.getUTCDay()
-          ] || null;
-          const selectedDateHolidays = getHolidaysForDate(mobileSelectedCalendarDate, activeSchool.id);
-          const selectedCalDaySlots = calDayKey
-            ? scopedTimetableSlots
-                .filter((s) => s.dayOfWeek === calDayKey)
-                .filter((s) => !(currentRole === 'teacher' && timetableOnlyMine) || slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses))
-                .slice()
-                .sort((a, b) => a.periodNumber - b.periodNumber)
-            : [];
-
-          return (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('home')}
-                  className="min-h-[40px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-                </button>
-                <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                  {canSelfCheckin && (currentRole === 'student' || currentRole === 'teacher') && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileAttendanceInitialSubTab('period_checkin');
-                        setActiveTab('checkin');
-                      }}
-                      className="min-h-[36px] px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <LogIn className="w-3.5 h-3.5" />
-                      <span>เช็คอินรายคาบ</span>
-                    </button>
-                  )}
-                  {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
-                    <button
-                      type="button"
-                      disabled={isSyncingHolidays}
-                      onClick={() => void handleManualMobileHolidaySync(mobileCalendarMonthCursor.year)}
-                      className="min-h-[36px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-text-title)] inline-flex items-center gap-1.5 cursor-pointer hover:bg-[var(--color-card-subtle)] disabled:opacity-60"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
-                      <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุด'}</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowMobileCalendarSync(true)}
-                    className="min-h-[36px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-primary-text)] inline-flex items-center gap-1.5 cursor-pointer hover:bg-[var(--color-card-subtle)]"
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'เชื่อมต่อ Calendar' : 'Sync .ics'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
-                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                  <div className="min-w-0 truncate">
-                    <span className="font-bold text-[var(--color-text-title)]">
-                      วันหยุดราชการไทย ({currentBangkokYear + 543})
-                    </span>
-                    <span className="text-[var(--color-text-muted)] ml-1.5 tabular-nums">
-                      · {getHolidaysForYear(currentBangkokYear, activeSchool.id).length} วัน
-                      {holidaySyncStatus && !holidaySyncStatus.usedFallback ? ' (ซิงค์ API แล้ว)' : ''}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMobileTimetableMode('calendar')}
-                    className="text-[11px] font-bold text-[var(--color-primary-text)] shrink-0 cursor-pointer"
-                  >
-                    ดูปฏิทินวันหยุด
-                  </button>
-                </div>
-              )}
-
-              {/* Mode Switch: Day vs Month Calendar */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                  <button
-                    type="button"
-                    onClick={() => setMobileTimetableMode('day')}
-                    className={`min-h-[36px] px-3 rounded-lg text-xs font-bold cursor-pointer transition ${
-                      mobileTimetableMode === 'day'
-                        ? 'bg-[var(--color-primary)] text-white'
-                        : 'text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    {currentRole === 'teacher' ? 'รายวัน (สอน)' : 'ตารางเรียนรายวัน'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMobileTimetableMode('calendar')}
-                    className={`min-h-[36px] px-3 rounded-lg text-xs font-bold cursor-pointer transition ${
-                      mobileTimetableMode === 'calendar'
-                        ? 'bg-[var(--color-primary)] text-white'
-                        : 'text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    ปฏิทิน + วันหยุด
-                  </button>
-                </div>
-
-                {currentRole === 'teacher' && (
-                  <button
-                    type="button"
-                    onClick={() => setTimetableOnlyMine((prev) => !prev)}
-                    className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold cursor-pointer whitespace-nowrap ${
-                      timetableOnlyMine
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                        : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
-                    }`}
-                  >
-                    {timetableOnlyMine ? (lang === 'th' ? 'คาบฉัน' : 'Mine') : (lang === 'th' ? 'ทั้งหมด' : 'All')}
-                  </button>
-                )}
-              </div>
-
-              {mobileTimetableMode === 'day' ? (
-                <>
-                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                    {(
-                      [
-                        { id: 'mon', th: 'จ.', en: 'Mon' },
-                        { id: 'tue', th: 'อ.', en: 'Tue' },
-                        { id: 'wed', th: 'พ.', en: 'Wed' },
-                        { id: 'thu', th: 'พฤ.', en: 'Thu' },
-                        { id: 'fri', th: 'ศ.', en: 'Fri' },
-                        { id: 'sat', th: 'ส.', en: 'Sat' },
-                        { id: 'sun', th: 'อา.', en: 'Sun' },
-                      ] as const
-                    ).map((d) => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => setSelectedTimetableDay(d.id)}
-                        className={`min-h-[36px] flex-1 px-3 rounded-lg text-xs font-semibold cursor-pointer transition whitespace-nowrap ${
-                          selectedTimetableDay === d.id
-                            ? 'bg-[var(--color-primary)] text-white'
-                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                        }`}
-                      >
-                        {lang === 'th' ? d.th : d.en}
-                      </button>
-                    ))}
-                  </div>
-
-                  {selectedTimetableDay === todayDayKey && todayHoliday && (
-                    <div className="rounded-2xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 p-3.5 text-xs space-y-1">
-                      <p className="font-bold text-rose-700 dark:text-rose-200 flex items-center gap-1.5">
-                        <CalendarDays className="w-4 h-4 shrink-0" />
-                        <span>วันนี้หยุด: {todayHoliday.nameTh}</span>
-                      </p>
-                      <p className="text-[11px] text-rose-600 dark:text-rose-300">
-                        งดการเรียนการสอนปกติตามปฏิทินวันหยุดราชการ/โรงเรียน
-                      </p>
-                    </div>
-                  )}
-
-                  {selectedTimetableDay === todayDayKey &&
-                    !todayHoliday &&
-                    !isWeekendDate(todayBangkokStr) &&
-                    canSelfCheckin &&
-                    (currentRole === 'student' || currentRole === 'teacher') &&
-                    todayMySlots.length > 0 && (
-                      <PeriodTimeMissionsCard
-                        compact={true}
-                        slots={todayMySlots}
-                        schoolPeriods={schoolPeriods}
-                        bangkokClock={bangkokClock}
-                        schoolId={activeSchool.id}
-                        targetDateStr={todayBangkokStr}
-                        currentRole={currentRole}
-                        lang={lang}
-                        canSelfCheckin={canSelfCheckin}
-                        getSlotCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
-                        onTriggerCheckin={openPeriodCheckinFromSlot}
-                        periodAttendance={periodAttendance}
-                      />
-                    )}
-
-                  {(() => {
-                    const daySlots = scopedTimetableSlots
-                      .filter((s) => s.dayOfWeek === selectedTimetableDay)
-                      .filter((s) => {
-                        if (currentRole === 'teacher' && timetableOnlyMine) {
-                          return slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses);
-                        }
-                        return true;
-                      })
-                      .slice()
-                      .sort((a, b) => a.periodNumber - b.periodNumber);
-
-                    if (daySlots.length === 0) {
-                      return (
-                        <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-muted)] space-y-2">
-                          <Calendar className="w-8 h-8 mx-auto opacity-60" />
-                          <p>{lang === 'th' ? 'ไม่มีคาบเรียนในวันที่เลือก' : 'No scheduled periods for this day'}</p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="space-y-2.5">
-                        {daySlots.map((slot) => {
-                          const course = scopedCourses.find((c) => c.id === slot.courseId || c.code === slot.courseCode);
-                          const status = getSlotTodayCheckStatus(slot, todayBangkokStr);
-                          const slotActivity = getTimetableSlotActivityStatus({
-                            slot,
-                            schoolPeriods,
-                            now: bangkokClock,
-                            schoolId: activeSchool.id,
-                          });
-                          const nextCheckType: 'check_in' | 'check_out' =
-                            status.hasCheckIn && !status.hasCheckOut ? 'check_out' : 'check_in';
-                          const canShowMobileDayCheckin =
-                            (currentRole === 'teacher' || currentRole === 'student') &&
-                            canSelfCheckin &&
-                            (slotActivity.isActive ||
-                              (selectedTimetableDay === todayDayKey &&
-                                slotActivity.isTodayWeekday &&
-                                !slotActivity.isHolidayOff));
-                          return (
-                            <div
-                              key={slot.id}
-                              className={`p-4 rounded-2xl border space-y-2.5 ${
-                                slotActivity.isActive
-                                  ? 'border-rose-500 ring-2 ring-rose-500/35 bg-rose-50/75 dark:bg-rose-950/35 shadow-sm'
-                                  : 'border-[var(--color-border)] bg-[var(--color-card)]'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0 space-y-0.5">
-                                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums">
-                                    <span>{lang === 'th' ? `คาบที่ ${slot.periodNumber}` : `Period ${slot.periodNumber}`}</span>
-                                    <span aria-hidden="true">·</span>
-                                    <span>
-                                      {slotActivity.startTime || '--:--'} - {slotActivity.endTime || '--:--'}
-                                    </span>
-                                    {slotActivity.isActive && (
-                                      <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
-                                        ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                                    {slot.courseCode} ·{' '}
-                                    {lang === 'th'
-                                      ? course?.titleTh || slot.courseTitleTh || slot.courseCode || 'รายวิชา'
-                                      : course?.titleEn || slot.courseTitleEn || slot.courseCode || 'Course'}
-                                  </h3>
-                                  <p className="text-xs text-[var(--color-text-muted)] truncate">
-                                    {slot.classRoom || ''}
-                                    {slot.room ? ` · ห้อง ${slot.room}` : ''}
-                                    {slot.teacherName ? ` · ${slot.teacherName}` : ''}
-                                  </p>
-                                </div>
-                                {(status.hasCheckIn || status.hasCheckOut) && slot.dayOfWeek === todayDayKey && (
-                                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                                    {status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
-                                  </span>
-                                )}
-                              </div>
-
-                              {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (() => {
-                                const slotSummary = getSlotAttendanceAndLeaveSummary({
-                                  slot,
-                                  dateStr: todayBangkokStr,
-                                  courses: scopedCourses,
-                                  students,
-                                  teachers,
-                                  attendance,
-                                  periodAttendance,
-                                  leaveRequests,
-                                });
-                                const leavingTeacher = slotSummary.teacherStatuses.find(
-                                  (ts) => ts.status === 'on_leave_approved' || ts.status === 'on_leave_pending'
-                                );
-                                const primaryTeacher = slotSummary.teacherStatuses[0];
-                                return (
-                                  <div className="space-y-2 pt-1.5 border-t border-[var(--color-border)]">
-                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                                      {leavingTeacher ? (
-                                        <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
-                                          ครูลา{leavingTeacher.substituteTeacherName ? ` · แทน ${leavingTeacher.substituteTeacherName}` : ''}
-                                        </span>
-                                      ) : selectedTimetableDay === todayDayKey && primaryTeacher ? (
-                                        primaryTeacher.status === 'checked_in' ? (
-                                          <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold tabular-nums">
-                                            ครูเข้า รร.{primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}
-                                          </span>
-                                        ) : primaryTeacher.status === 'late' ? (
-                                          <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold">
-                                            ครูสาย รร.
-                                          </span>
-                                        ) : (
-                                          <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-semibold">
-                                            ครูยังไม่เช็คอิน รร.
-                                          </span>
-                                        )
-                                      ) : null}
-                                      {slotSummary.periodCheckedTotal > 0 ? (
-                                        <>
-                                          <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 font-bold tabular-nums">
-                                            มา {slotSummary.periodPresent + slotSummary.periodLate}/{slotSummary.expectedTotal}
-                                          </span>
-                                          {slotSummary.periodExcused > 0 && (
-                                            <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 font-bold tabular-nums">
-                                              ลา {slotSummary.periodExcused}
-                                            </span>
-                                          )}
-                                          {slotSummary.periodAbsent > 0 && (
-                                            <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold tabular-nums">
-                                              ขาด {slotSummary.periodAbsent}
-                                            </span>
-                                          )}
-                                        </>
-                                      ) : (
-                                        <>
-                                          {slotSummary.studentLeaveCount > 0 && (
-                                            <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold tabular-nums">
-                                              นร.ลา {slotSummary.studentLeaveCount}
-                                            </span>
-                                          )}
-                                          {selectedTimetableDay === todayDayKey && slotSummary.hasAnyGateRecordsForDate && slotSummary.expectedTotal > 0 && (
-                                            <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
-                                              เข้า รร. {slotSummary.gatePresentCount}/{slotSummary.expectedTotal}
-                                            </span>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => setMobilePeriodRosterTarget({ slot, date: todayBangkokStr })}
-                                      className="w-full min-h-[40px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-xs"
-                                    >
-                                      <UserCheck className="w-4 h-4 shrink-0" />
-                                      <span>รายชื่อ / เช็กชื่อนักเรียน</span>
-                                    </button>
-                                  </div>
-                                );
-                              })()}
-
-                              {canShowMobileDayCheckin && (
-                                <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
-                                  <button
-                                    type="button"
-                                    onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, nextCheckType)}
-                                    className={`flex-1 min-h-[44px] px-3 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm ${
-                                      slotActivity.isActive
-                                        ? 'bg-rose-600 hover:bg-rose-700'
-                                        : nextCheckType === 'check_out'
-                                          ? 'bg-slate-800 hover:bg-slate-900'
-                                          : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                                    }`}
-                                  >
-                                    {nextCheckType === 'check_out' ? (
-                                      <LogOut className="w-4 h-4" />
-                                    ) : (
-                                      <LogIn className="w-4 h-4" />
-                                    )}
-                                    <span>
-                                      {status.hasCheckIn && status.hasCheckOut
-                                        ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
-                                        : nextCheckType === 'check_out'
-                                          ? 'เช็คเอาท์คาบเรียน'
-                                          : slotActivity.isActive
-                                            ? 'เช็คอินเข้าคาบตอนนี้'
-                                            : 'เช็คอินเข้าคาบเรียน'}
-                                    </span>
-                                  </button>
-                                  {!status.hasCheckIn && (
-                                    <button
-                                      type="button"
-                                      onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, 'check_out')}
-                                      className={`min-h-[44px] px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition ${
-                                        slotActivity.isActive
-                                          ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
-                                          : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
-                                      }`}
-                                    >
-                                      <LogOut className="w-4 h-4" />
-                                      <span>เช็คเอาท์</span>
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </>
+              ) : currentRole === 'admin' ? (
+                <AdminDailyDashboardView
+                  activeSchool={activeSchool}
+                  currentUser={currentUser}
+                  lang={lang}
+                  students={students}
+                  attendance={attendance}
+                  leaveRequests={leaveRequests}
+                  invoices={invoices}
+                  isDemoMode={isDemoMode}
+                  coordinationUnreadCount={coordinationUnreadCount}
+                  onRecordAttendance={onRecordAttendance}
+                  onUpdateLeaveStatus={onUpdateLeaveStatus}
+                  onApproveInvoiceSlip={onApproveInvoiceSlip}
+                  onRejectInvoiceSlip={onRejectInvoiceSlip}
+                  onOpenQuickHub={() => setActiveTab('admin_quick')}
+                  onOpenCheckin={() => setActiveTab('checkin')}
+                  onOpenExecutive={() => setActiveTab('executive')}
+                  onJumpToDesktopTab={onJumpToDesktopTab}
+                  canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+                  onSwitchOperationalRole={onSwitchOperationalRole}
+                />
+              ) : currentRole === 'student' ? (
+                <StudentMobileHome
+                  currentUser={currentUser}
+                  activeSchool={activeSchool}
+                  ownStudent={ownStudent}
+                  playerProfile={currentScore}
+                  lang={lang}
+                  todayCheckin={todayCheckin}
+                  scopedAttendance={scopedAttendance}
+                  scopedCourses={scopedCourses}
+                  grades={grades}
+                  gradingSystem={gradingSystem}
+                  todayMySlots={todayMySlots}
+                  schoolPeriods={schoolPeriods}
+                  bangkokClock={bangkokClock}
+                  todayBangkokStr={todayBangkokStr}
+                  todayHoliday={todayHoliday}
+                  upcomingHoliday={upcomingHoliday}
+                  pendingHomeworkCount={pendingHomeworkCount}
+                  totalHomeworkCount={scopedAssignments.length}
+                  pendingLeavesCount={pendingLeavesCount}
+                  myPortfolioCount={myOwnPortfolioCount}
+                  scopedAnnouncements={scopedAnnouncements}
+                  canSelfCheckin={canSelfCheckin}
+                  canAccessHomework={canAccessHomework}
+                  canPlayGames={canPlayGames}
+                  canViewGrades={canViewGradesStudent}
+                  canViewTimetable={canViewTimetable}
+                  canOpenPortfolio={canOpenPortfolio}
+                  canOpenLeave={canOpenLeave}
+                  canOpenAnnouncements={canOpenAnnouncements}
+                  getSlotTodayCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
+                  onOpenCheckin={() => {
+                    setMobileAttendanceInitialSubTab('selfie_mobile');
+                    setActiveTab('checkin');
+                  }}
+                  onTriggerPeriodCheckin={openPeriodCheckinFromSlot}
+                  onOpenTimetable={(mode) => {
+                    setMobileTimetableMode(mode);
+                    setActiveTab('timetable');
+                  }}
+                  onOpenHomework={() => setActiveTab('homework')}
+                  onOpenGrades={() => setActiveTab('student_grades')}
+                  onOpenPortfolio={() => setActiveTab('portfolio')}
+                  onOpenLeave={() => setActiveTab('leave')}
+                  onOpenAnnouncements={(ann) => {
+                    if (ann) setSelectedAnnouncement(ann);
+                    setActiveTab('announcements');
+                  }}
+                  onOpenGames={() => {
+                    setActiveTab('games');
+                    setActiveGameView('hub');
+                  }}
+                  onOpenCareerQuest={canOpenCareerQuest ? () => setActiveTab('career_quest') : undefined}
+                />
               ) : (
-                <div className="space-y-3">
-                  {/* Month Selector Header */}
-                  <div className="flex items-center justify-between gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMobileCalendarMonthCursor((prev) =>
-                          prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 }
-                        )
-                      }
-                      className="min-h-[38px] px-3 rounded-xl border border-[var(--color-border)] text-xs font-bold cursor-pointer"
-                    >
-                      ก่อนหน้า
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileCalendarMonthCursor({
-                          year: Number(todayBangkokStr.slice(0, 4)),
-                          month: Number(todayBangkokStr.slice(5, 7)) - 1,
-                        });
-                        setMobileSelectedCalendarDate(todayBangkokStr);
-                      }}
-                      className="text-sm font-bold text-[var(--color-text-title)] cursor-pointer"
-                    >
-                      {monthTitleTh}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMobileCalendarMonthCursor((prev) =>
-                          prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 }
-                        )
-                      }
-                      className="min-h-[38px] px-3 rounded-xl border border-[var(--color-border)] text-xs font-bold cursor-pointer"
-                    >
-                      ถัดไป
-                    </button>
-                  </div>
-
-                  {/* Mobile 7-col Calendar */}
-                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 space-y-2">
-                    <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-[var(--color-text-muted)]">
-                      {['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'].map((d, i) => (
-                        <div key={d} className={i >= 5 ? 'text-rose-500' : ''}>{d}</div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-1">
-                      {monthCells.map((cell, idx) => {
-                        if (!cell) return <div key={`mblank-${idx}`} className="h-12" />;
-                        const cellHol = monthHolidays.find((h) => h.date === cell.dateStr);
-                        void mobileCalendarNotesTick;
-                        const cellHasNote = getVisibleCalendarNotesForDate(
-                          activeSchool.id,
-                          cell.dateStr,
-                          currentUser?.id,
-                          currentRole
-                        ).length > 0;
-                        const isToday = cell.dateStr === todayBangkokStr;
-                        const isSel = cell.dateStr === mobileSelectedCalendarDate;
-                        const isWknd = isWeekendDate(cell.dateStr);
-                        return (
-                          <button
-                            key={cell.dateStr}
-                            type="button"
-                            onClick={() => setMobileSelectedCalendarDate(cell.dateStr)}
-                            className={`h-12 rounded-xl border flex flex-col items-center justify-center gap-0.5 text-xs font-bold tabular-nums cursor-pointer transition ${
-                              isSel
-                                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                                : cellHol
-                                  ? 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
-                                  : isWknd
-                                    ? 'border-transparent text-[var(--color-text-muted)]'
-                                    : 'border-[var(--color-border)] text-[var(--color-text-title)]'
-                            }`}
-                          >
-                            <span className={isToday ? 'underline decoration-2' : ''}>{cell.dayNum}</span>
-                            {(cellHol || cellHasNote) && (
-                              <span className="flex items-center gap-0.5">
-                                {cellHol && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
-                                {cellHasNote && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Selected Calendar Day Details */}
-                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
-                        วันที่ {mobileSelectedCalendarDate}
-                      </h3>
-                      <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
-                        {selectedDateHolidays.length > 0 ? 'วันหยุด' : `${selectedCalDaySlots.length} คาบ`}
-                      </span>
-                    </div>
-
-                    {selectedDateHolidays.map((h) => (
-                      <div key={h.id} className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 p-3 text-xs space-y-0.5">
-                        <p className="font-bold text-rose-700 dark:text-rose-200">{h.nameTh}</p>
-                        <p className="text-[11px] text-rose-600 dark:text-rose-300">
-                          {h.nameEn} · {getThaiHolidayCategoryLabel(h, lang)}
-                        </p>
-                      </div>
-                    ))}
-
-                    {/* Mobile Calendar Notes Section */}
-                    {(() => {
-                      void mobileCalendarNotesTick;
-                      const mobileDayNotes = getVisibleCalendarNotesForDate(
-                        activeSchool.id,
-                        mobileSelectedCalendarDate,
-                        currentUser?.id,
-                        currentRole
-                      );
-                      const resetMobileNoteForm = () => {
-                        setShowMobileNoteForm(false);
-                        setMobileEditingNoteId(null);
-                        setMobileNoteTitle('');
-                        setMobileNoteContent('');
-                        setMobileNoteScope('personal');
-                        setMobileNoteColor('amber');
-                      };
-                      const handleMobileSaveNote = (e: React.FormEvent) => {
-                        e.preventDefault();
-                        if (!mobileNoteTitle.trim() && !mobileNoteContent.trim()) return;
-                        saveCalendarNote({
-                          id: mobileEditingNoteId || undefined,
-                          schoolId: activeSchool.id,
-                          date: mobileSelectedCalendarDate,
-                          title: mobileNoteTitle.trim() || mobileNoteContent.trim().slice(0, 40),
-                          content: mobileNoteContent.trim(),
-                          scope: isRestrictedViewer ? 'personal' : mobileNoteScope,
-                          color: mobileNoteColor,
-                          authorId: currentUser?.id || `role:${currentRole}`,
-                          authorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentRole,
-                          authorRole: currentRole,
-                        });
-                        resetMobileNoteForm();
-                        setMobileCalendarNotesTick((v) => v + 1);
-                      };
-                      const handleMobileEditNote = (note: CalendarNote) => {
-                        setMobileEditingNoteId(note.id);
-                        setMobileNoteTitle(note.title);
-                        setMobileNoteContent(note.content);
-                        setMobileNoteScope(note.scope);
-                        setMobileNoteColor(note.color);
-                        setShowMobileNoteForm(true);
-                      };
-                      return (
-                        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                              <StickyNote className="w-3.5 h-3.5 text-amber-500" />
-                              <span>โน้ตประจำวัน ({mobileDayNotes.length})</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => (showMobileNoteForm ? resetMobileNoteForm() : setShowMobileNoteForm(true))}
-                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] text-white px-2.5 py-1 text-[11px] font-bold cursor-pointer"
-                            >
-                              {showMobileNoteForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                              <span>{showMobileNoteForm ? 'ปิด' : 'เพิ่มโน้ต'}</span>
-                            </button>
-                          </div>
-
-                          {showMobileNoteForm && (
-                            <form onSubmit={handleMobileSaveNote} className="space-y-2 pt-1">
-                              <input
-                                type="text"
-                                value={mobileNoteTitle}
-                                onChange={(e) => setMobileNoteTitle(e.target.value)}
-                                placeholder="หัวข้อโน้ต / เตือนความจำ"
-                                className="w-full h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs text-[var(--color-text-title)]"
-                              />
-                              <textarea
-                                rows={2}
-                                value={mobileNoteContent}
-                                onChange={(e) => setMobileNoteContent(e.target.value)}
-                                placeholder="รายละเอียดเพิ่มเติม..."
-                                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] resize-none"
-                              />
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5">
-                                  {CALENDAR_NOTE_COLORS.map((c) => (
-                                    <button
-                                      key={c.id}
-                                      type="button"
-                                      onClick={() => setMobileNoteColor(c.id)}
-                                      className={`w-5 h-5 rounded-full ${c.dotClass} flex items-center justify-center cursor-pointer ${
-                                        mobileNoteColor === c.id ? 'ring-2 ring-offset-1 ring-[var(--color-text-title)]' : 'opacity-70'
-                                      }`}
-                                    >
-                                      {mobileNoteColor === c.id && <Check className="w-3 h-3 text-white" />}
-                                    </button>
-                                  ))}
-                                </div>
-                                {!isRestrictedViewer && (
-                                  <select
-                                    value={mobileNoteScope}
-                                    onChange={(e) => setMobileNoteScope(e.target.value as CalendarNoteScope)}
-                                    className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-[11px] font-semibold"
-                                  >
-                                    <option value="personal">ส่วนตัว</option>
-                                    <option value="school">โน้ตโรงเรียน</option>
-                                  </select>
-                                )}
-                                <button
-                                  type="submit"
-                                  disabled={!mobileNoteTitle.trim() && !mobileNoteContent.trim()}
-                                  className="h-8 rounded-lg bg-emerald-600 text-white px-3 text-[11px] font-bold disabled:opacity-50 cursor-pointer"
-                                >
-                                  {mobileEditingNoteId ? 'อัปเดต' : 'บันทึก'}
-                                </button>
-                              </div>
-                            </form>
-                          )}
-
-                          {mobileDayNotes.length === 0 && !showMobileNoteForm ? (
-                            <p className="text-[11px] text-[var(--color-text-muted)]">ยังไม่มีโน้ตสำหรับวันที่นี้</p>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {mobileDayNotes.map((note) => {
-                                const cm = getCalendarNoteColorMeta(note.color);
-                                const canEdit =
-                                  note.authorId === (currentUser?.id || `role:${currentRole}`) ||
-                                  currentRole === 'admin' ||
-                                  currentRole === 'super_admin';
-                                return (
-                                  <div key={note.id} className={`rounded-xl border p-2.5 text-xs flex items-start justify-between gap-2 ${cm.cardClass}`}>
-                                    <div className="min-w-0">
-                                      <p className="font-bold text-[var(--color-text-title)]">{note.title}</p>
-                                      {note.content && (
-                                        <p className="text-[11px] text-[var(--color-text-body)] mt-0.5 whitespace-pre-line">{note.content}</p>
-                                      )}
-                                    </div>
-                                    {canEdit && (
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleMobileEditNote(note)}
-                                          className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-                                          title="แก้ไข"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            deleteCalendarNote(activeSchool.id, note.id);
-                                            setMobileCalendarNotesTick((v) => v + 1);
-                                          }}
-                                          className="p-1 text-rose-600 cursor-pointer"
-                                          title="ลบ"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {selectedCalDaySlots.map((slot) => {
-                      const slotActivity = getTimetableSlotActivityStatus({
-                        slot,
-                        schoolPeriods,
-                        now: bangkokClock,
-                        schoolId: activeSchool.id,
-                        targetDateStr: mobileSelectedCalendarDate,
-                      });
-                      const calStatus = getSlotTodayCheckStatus(slot, mobileSelectedCalendarDate);
-                      const nextCheckType: 'check_in' | 'check_out' =
-                        calStatus.hasCheckIn && !calStatus.hasCheckOut ? 'check_out' : 'check_in';
-                      const canShowMobileCalCheckin =
-                        (currentRole === 'teacher' || currentRole === 'student') &&
-                        canSelfCheckin &&
-                        (slotActivity.isActive ||
-                          (mobileSelectedCalendarDate === todayBangkokStr &&
-                            slotActivity.isTodayWeekday &&
-                            !slotActivity.isHolidayOff));
-                      return (
-                        <div
-                          key={slot.id}
-                          className={`rounded-xl border p-3 space-y-2 ${
-                            slotActivity.isActive
-                              ? 'border-rose-500 ring-2 ring-rose-500/35 bg-rose-50/75 dark:bg-rose-950/35'
-                              : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-[11px] font-semibold text-[var(--color-primary-text)] tabular-nums flex flex-wrap items-center gap-1.5">
-                                <span>คาบ {slot.periodNumber} · {slotActivity.startTime}–{slotActivity.endTime}</span>
-                                {slotActivity.isActive && (
-                                  <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
-                                    ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-xs font-bold text-[var(--color-text-title)]">
-                                {slot.courseCode} · {slot.courseTitleTh}
-                              </p>
-                            </div>
-                            {(calStatus.hasCheckIn || calStatus.hasCheckOut) && (
-                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                                {calStatus.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
-                              </span>
-                            )}
-                          </div>
-                          {canShowMobileCalCheckin && (
-                              <div className="flex items-center gap-2 pt-1 border-t border-[var(--color-border)]">
-                                <button
-                                  type="button"
-                                  onClick={() => openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, nextCheckType)}
-                                  className={`flex-1 min-h-[42px] rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
-                                    slotActivity.isActive
-                                      ? 'bg-rose-600 hover:bg-rose-700'
-                                      : nextCheckType === 'check_out'
-                                        ? 'bg-slate-800 hover:bg-slate-900'
-                                        : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                                  }`}
-                                >
-                                  {nextCheckType === 'check_out' ? (
-                                    <LogOut className="w-4 h-4" />
-                                  ) : (
-                                    <LogIn className="w-4 h-4" />
-                                  )}
-                                  <span>
-                                    {calStatus.hasCheckIn && calStatus.hasCheckOut
-                                      ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
-                                      : nextCheckType === 'check_out'
-                                        ? 'เช็คเอาท์คาบเรียน'
-                                        : slotActivity.isActive
-                                          ? 'เช็คอินเข้าคาบตอนนี้'
-                                          : 'เช็คอินเข้าคาบเรียน'}
-                                  </span>
-                                </button>
-                                {!calStatus.hasCheckIn && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, 'check_out')}
-                                    className={`min-h-[42px] px-3 rounded-xl border text-xs font-bold cursor-pointer ${
-                                      slotActivity.isActive
-                                        ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
-                                        : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
-                                    }`}
-                                  >
-                                    เช็คเอาท์
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                        </div>
-                      );
-                    })}
-
-                    {monthHolidays.length > 0 && (
-                      <div className="pt-2 border-t border-[var(--color-border)] space-y-1.5">
-                        <p className="text-xs font-bold text-[var(--color-text-title)]">วันหยุดประจำเดือน ({monthHolidays.length})</p>
-                        {monthHolidays.map((h) => (
-                          <p key={h.id} className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                            <span className="font-semibold text-rose-600 dark:text-rose-400">{h.date}</span> · {h.nameTh} ({getThaiHolidayCategoryLabel(h, lang)})
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <MobileTeacherParentHome
+                  currentUser={currentUser}
+                  activeSchool={activeSchool}
+                  currentRole={currentRole}
+                  lang={lang}
+                  linkedStudents={linkedStudents}
+                  canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+                  onSwitchOperationalRole={onSwitchOperationalRole}
+                  todayHoliday={todayHoliday}
+                  upcomingHoliday={upcomingHoliday}
+                  canSelfCheckin={canSelfCheckin}
+                  canViewTimetable={canViewTimetable}
+                  canOpenLeave={canOpenLeave}
+                  canOpenCareerQuest={canOpenCareerQuest}
+                  canPlayGames={canPlayGames}
+                  canOpenAnnouncements={canOpenAnnouncements}
+                  canViewDigitalId={canViewDigitalId}
+                  isModuleEnabled={isModuleEnabled}
+                  todayCheckin={todayCheckin}
+                  todayBangkokStr={todayBangkokStr}
+                  bangkokClock={bangkokClock}
+                  todayMySlots={todayMySlots}
+                  schoolPeriods={schoolPeriods}
+                  periodAttendance={periodAttendance}
+                  scopedCoursesCount={scopedCourses.length}
+                  scopedAnnouncementsCount={scopedAnnouncements.length}
+                  pendingLeavesCount={pendingLeavesCount}
+                  execMetrics={execMetrics}
+                  getSlotTodayCheckStatus={getSlotTodayCheckStatus}
+                  openPeriodCheckinFromSlot={openPeriodCheckinFromSlot}
+                  setMobileAttendanceInitialSubTab={setMobileAttendanceInitialSubTab}
+                  setMobileTimetableMode={setMobileTimetableMode}
+                  setActiveTab={setActiveTab}
+                  setActiveGameView={setActiveGameView}
+                />
               )}
             </div>
-          );
-        })()}
+          )}
 
-        {/* TAB D: GAMES HUB (เมนูรวมเกมส์) */}
-        {/* TAB: STUDENT PORTFOLIO (100% Real Data) */}
-        {activeTab === 'portfolio' && (
-          <div className="space-y-3 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setActiveTab('home')}
-                className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-              </button>
-              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'แฟ้มผลงานของฉัน' : 'My Portfolio'}
-              </span>
-            </div>
-            <PortfolioView
-              portfolioItems={portfolioItems}
-              students={linkedStudents}
+          {/* TAB: ADMIN QUICK WORKSPACE */}
+          {activeTab === 'admin_quick' && (
+            <MobileAdminQuickHub
+              activeSchool={activeSchool}
+              students={students}
               teachers={teachers}
-              courses={scopedCourses}
+              courses={courses}
+              leaveRequests={leaveRequests}
+              invoices={invoices}
+              announcements={announcements}
+              lang={lang}
+              currentUser={currentUser}
+              onUpdateStudent={onUpdateStudent}
+              onUpdateSchool={onUpdateSchool}
+              onAddAnnouncement={onAddAnnouncement}
+              onUpdateLeaveStatus={onUpdateLeaveStatus}
+              onApproveInvoiceSlip={onApproveInvoiceSlip}
+              onRejectInvoiceSlip={onRejectInvoiceSlip}
+              onJumpToDesktopTab={onJumpToDesktopTab}
+              onOpenCheckin={() => setActiveTab('checkin')}
+            />
+          )}
+
+          {/* TAB: SUPER ADMIN SCHOOLS & APPROVALS */}
+          {activeTab === 'super_schools' && (
+            <MobileSuperAdminHub
+              schools={schools}
+              activeSchool={activeSchool}
+              isDemoMode={isDemoMode}
+              lang={lang}
+              coordinationUnreadCount={coordinationUnreadCount}
+              onViewSchool={onViewSchool}
+              onToggleSchoolStatus={onToggleSchoolStatus}
+              onUpdateSchoolFeatureFlags={onUpdateSchoolFeatureFlags}
+              onJumpToDesktopTab={onJumpToDesktopTab}
+            />
+          )}
+
+          {/* TAB EXECUTIVE */}
+          {activeTab === 'executive' && (
+            <MobileExecutiveTab
+              activeSchool={activeSchool}
+              lang={lang}
+              execMetrics={execMetrics}
+              canViewFinancialsMobile={canViewFinancialsMobile}
+              pendingLeavesCount={pendingLeavesCount}
+              onSwitchToDesktopMode={onSwitchToDesktopMode}
+              onSelectTab={setActiveTab}
+            />
+          )}
+
+          {/* TAB B: CHECK-IN */}
+          {activeTab === 'checkin' && (
+            <div className="h-full min-h-0 animate-in fade-in duration-200">
+              <MobileAttendanceView
+                embeddedMobile
+                initialSubTab={mobileAttendanceInitialSubTab}
+                initialPeriodCourseId={mobilePeriodCourseId}
+                initialPeriodNumber={mobilePeriodNumber}
+                initialPeriodDate={mobilePeriodDate}
+                initialPeriodCode={initialPeriodCode}
+                initialPeriodCheckType={mobilePeriodCheckType}
+                students={students}
+                teachers={isRestrictedViewer ? [] : teachers}
+                courses={scopedCourses}
+                attendance={attendance}
+                periodAttendance={periodAttendance}
+                currentUser={currentUser}
+                currentRole={currentRole}
+                school={activeSchool}
+                campusGates={campusGates}
+                schoolPeriods={schoolPeriods}
+                leaveRequests={leaveRequests}
+                lang={lang}
+                onRecordAttendance={onRecordAttendance}
+                onRecordPeriodAttendance={onRecordPeriodAttendance}
+                onAddLeaveRequest={onAddLeaveRequest}
+                onUpdateLeaveStatus={onUpdateLeaveStatus}
+                onUpdateCampusGates={
+                  currentRole === 'admin' || currentRole === 'super_admin' ? onUpdateCampusGates : undefined
+                }
+                onSaveCampusGates={
+                  currentRole === 'admin' || currentRole === 'super_admin' ? onSaveCampusGates : undefined
+                }
+                onUpdateSchoolCoordinates={
+                  currentRole === 'admin' || currentRole === 'super_admin'
+                    ? onUpdateSchoolCoordinates
+                    : undefined
+                }
+              />
+            </div>
+          )}
+
+          {/* TAB C: LEAVE REQUESTS */}
+          {activeTab === 'leave' && (
+            <div className="h-full min-h-0 animate-in fade-in duration-200">
+              <MobileAttendanceView
+                embeddedMobile
+                initialSubTab="leave_request"
+                students={students}
+                teachers={isRestrictedViewer ? [] : teachers}
+                courses={scopedCourses}
+                attendance={attendance}
+                periodAttendance={periodAttendance}
+                currentUser={currentUser}
+                currentRole={currentRole}
+                school={activeSchool}
+                campusGates={campusGates}
+                schoolPeriods={schoolPeriods}
+                leaveRequests={leaveRequests}
+                lang={lang}
+                onRecordAttendance={onRecordAttendance}
+                onRecordPeriodAttendance={onRecordPeriodAttendance}
+                onAddLeaveRequest={onAddLeaveRequest}
+                onUpdateLeaveStatus={onUpdateLeaveStatus}
+              />
+            </div>
+          )}
+
+          {/* TAB: TEACHER QUICK GRADEBOOK */}
+          {activeTab === 'gradebook' && (
+            <MobileTeacherGradebookTab
+              activeSchool={activeSchool}
+              lang={lang}
+              courses={courses}
+              students={students}
+              grades={grades}
+              gradingSystem={gradingSystem}
+              canEditGradesMobile={canEditGradesMobile}
+              onUpdateGrade={onUpdateGrade}
+              onAddGrade={onAddGrade}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
+
+          {/* TAB: MOBILE TIMETABLE + CALENDAR + PUBLIC HOLIDAYS */}
+          {activeTab === 'timetable' && (
+            <MobileTimetableTab
+              activeSchool={activeSchool}
+              currentUser={currentUser}
+              currentRole={currentRole}
+              lang={lang}
+              isRestrictedViewer={isRestrictedViewer}
+              canSelfCheckin={canSelfCheckin}
+              courses={courses}
+              scopedCourses={scopedCourses}
+              scopedTimetableSlots={scopedTimetableSlots}
+              students={students}
+              teachers={teachers}
+              attendance={attendance}
+              periodAttendance={periodAttendance}
+              leaveRequests={leaveRequests}
+              schoolPeriods={schoolPeriods}
+              matchedTeacher={matchedTeacher}
+              bangkokClock={bangkokClock}
+              todayBangkokStr={todayBangkokStr}
+              currentBangkokYear={currentBangkokYear}
+              todayDayKey={todayDayKey}
+              todayHoliday={todayHoliday}
+              todayMySlots={todayMySlots}
+              mobileTimetableMode={mobileTimetableMode}
+              setMobileTimetableMode={setMobileTimetableMode}
+              timetableOnlyMine={timetableOnlyMine}
+              setTimetableOnlyMine={setTimetableOnlyMine}
+              mobileCalendarMonthCursor={mobileCalendarMonthCursor}
+              setMobileCalendarMonthCursor={setMobileCalendarMonthCursor}
+              holidaySyncStatus={holidaySyncStatus}
+              isSyncingHolidays={isSyncingHolidays}
+              onManualHolidaySync={handleManualMobileHolidaySync}
+              onOpenCalendarSync={() => setShowMobileCalendarSync(true)}
+              onOpenPeriodCheckinTab={() => {
+                setMobileAttendanceInitialSubTab('period_checkin');
+                setActiveTab('checkin');
+              }}
+              getSlotTodayCheckStatus={getSlotTodayCheckStatus}
+              openPeriodCheckinFromSlot={openPeriodCheckinFromSlot}
+              onOpenPeriodRoster={setMobilePeriodRosterTarget}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
+
+          {/* TAB: STUDENT PORTFOLIO */}
+          {activeTab === 'portfolio' && (
+            <MobilePortfolioTab
+              lang={lang}
+              portfolioItems={portfolioItems}
+              linkedStudents={linkedStudents}
+              teachers={teachers}
+              scopedCourses={scopedCourses}
               grades={grades}
               playerScores={playerScores}
-              school={activeSchool}
+              activeSchool={activeSchool}
               gradingSystem={gradingSystem}
               currentUser={currentUser}
-              lang={lang}
-              onAddPortfolioItem={(item) => onAddPortfolioItem?.(item)}
+              onAddPortfolioItem={onAddPortfolioItem}
               onDeletePortfolioItem={onDeletePortfolioItem}
-              onOpenProfile={onOpenProfileModal}
-              academicYear={activeSchool.academicYear}
+              onOpenProfileModal={onOpenProfileModal}
+              onBackHome={() => setActiveTab('home')}
             />
-          </div>
-        )}
+          )}
 
-        {/* TAB: CAREER QUEST AI */}
-        {activeTab === 'career_quest' && currentRole !== 'parent' && (
-          <div className="space-y-3 pb-4 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setActiveTab('home')}
-                className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-              </button>
-              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                Career Quest AI
-              </span>
-            </div>
-            <CareerQuestView
+          {/* TAB: CAREER QUEST AI */}
+          {activeTab === 'career_quest' && currentRole !== 'parent' && (
+            <MobileCareerQuestTab
               currentUser={currentUser}
-              school={activeSchool}
+              currentRole={currentRole}
+              activeSchool={activeSchool}
               students={students}
-              courses={scopedCourses}
+              scopedCourses={scopedCourses}
               grades={grades}
               attendance={attendance}
               portfolioItems={portfolioItems}
@@ -2951,1226 +911,151 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               onEarnRewards={onEarnRewards}
               onEquipCosmetic={onEquipCosmetic}
               onAddPortfolioItem={onAddPortfolioItem}
-              onNavigate={(tab) => {
-                if (tab === 'games') {
-                  setActiveTab('games');
-                  setActiveGameView('hub');
-                } else if (tab === 'subject_labs') {
-                  setActiveTab('games');
-                  setActiveGameView('subject_labs');
-                } else if (tab === 'boss_raid') {
-                  setActiveTab('games');
-                  setActiveGameView('boss_raid');
-                } else if (tab === 'mobile_checkin') {
-                  setActiveTab('checkin');
-                } else if (tab === 'homework') {
-                  setActiveTab('homework');
-                } else if (tab === 'portfolio') {
-                  setActiveTab('portfolio');
-                } else if (tab === 'gradebook') {
-                  setActiveTab(currentRole === 'student' ? 'student_grades' : 'gradebook');
-                } else if (tab === 'timetable') {
-                  setActiveTab('timetable');
-                } else if (onJumpToDesktopTab) {
-                  onJumpToDesktopTab(tab);
-                }
-              }}
+              onJumpToDesktopTab={onJumpToDesktopTab}
+              setActiveTab={setActiveTab}
+              setActiveGameView={setActiveGameView}
             />
-          </div>
-        )}
+          )}
 
-        {/* TAB: STUDENT GRADES SUMMARY (Real Data, Clean Visual Layout) */}
-        {activeTab === 'student_grades' && (() => {
-          const myGrades = ownStudent
-            ? grades.filter((g) => g.studentId === ownStudent.id)
-            : [];
-          const summary = ownStudent
-            ? calculateStudentAcademicSummary({
-                student: ownStudent,
-                courses: scopedCourses,
-                grades: myGrades,
-                gradingSystem,
-              })
-            : null;
-          const gpaxVal: number =
-            summary?.gpax != null && summary.gpax > 0
-              ? summary.gpax
-              : ownStudent?.gpa ?? 0;
-
-          return (
-            <div className="space-y-4 pb-4 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('home')}
-                  className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-                </button>
-                <span className="text-xs font-semibold text-[var(--color-text-muted)] tabular-nums">
-                  {lang === 'th'
-                    ? `ปีการศึกษา ${activeSchool.academicYear || '2569'}`
-                    : `AY ${activeSchool.academicYear || '2569'}`}
-                </span>
-              </div>
-
-              {/* Real GPAX Summary Card */}
-              <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white p-5 shadow-md flex items-center justify-between gap-4">
-                <div className="space-y-1 min-w-0">
-                  <p className="text-xs font-medium text-sky-200">
-                    {lang === 'th' ? 'ผลการเรียนเฉลี่ยสะสม (GPAX)' : 'Cumulative GPAX'}
-                  </p>
-                  <div className="text-3xl font-extrabold tracking-tight tabular-nums">
-                    {gpaxVal > 0 ? gpaxVal.toFixed(2) : '—'}
-                  </div>
-                  <p className="text-xs text-slate-300 truncate tabular-nums">
-                    {ownStudent
-                      ? `${ownStudent.gradeLevel} ${ownStudent.room} · ${myGrades.length} รายวิชาที่มีผลคะแนน`
-                      : `${myGrades.length} รายวิชา`}
-                  </p>
-                </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/12 border border-white/20 flex items-center justify-center shrink-0">
-                  <GraduationCap className="w-7 h-7 text-amber-300" />
-                </div>
-              </div>
-
-              {/* Course-by-course grades */}
-              {myGrades.length === 0 ? (
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-8 text-center space-y-2">
-                  <GraduationCap className="w-8 h-8 text-[var(--color-text-muted)] mx-auto opacity-50" />
-                  <p className="text-sm font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'ยังไม่มีข้อมูลผลการเรียนในภาคเรียนนี้' : 'No grade records yet'}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    {lang === 'th'
-                      ? 'เมื่อคุณครูบันทึกคะแนนรายวิชาแล้ว ระบบจะแสดงผลการเรียนที่นี่อัตโนมัติ'
-                      : 'Grades will appear here automatically once recorded by your teachers.'}
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                  {myGrades.map((g) => {
-                    const course = scopedCourses.find((c) => c.id === g.courseId);
-                    const gradeDisplay = g.letterGrade || calculateGrade(g.totalScore, gradingSystem).letter;
-                    return (
-                      <div key={g.id} className="px-4 py-3.5 flex items-center justify-between gap-3">
-                        <div className="min-w-0 space-y-0.5">
-                          <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                            {course?.titleTh || course?.titleEn || g.courseId}
-                          </p>
-                          <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
-                            {course?.code || 'รายวิชา'} · คะแนนรวม {g.totalScore}/100
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-lg font-extrabold text-[var(--color-primary-text)] tabular-nums">
-                            {gradeDisplay}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {activeTab === 'games' && (() => {
-          const mobileGamesList: {
-            id: string;
-            category: 'arcade' | 'battle' | 'lab';
-            title: string;
-            subtitle: string;
-            tag: string;
-            iconBg: string;
-            iconText: string;
-            icon: React.ComponentType<{ className?: string }>;
-            enabled: boolean;
-            onLaunch: () => void;
-          }[] = ([
-            {
-              id: 'meteor_blaster',
-              category: 'arcade' as const,
-              title: 'Meteor Blaster',
-              subtitle: 'ยิงอุกกาบาตสมการ',
-              tag: 'คณิต · ฟิสิกส์',
-              iconBg: 'bg-cyan-500/15',
-              iconText: 'text-cyan-400',
-              icon: Rocket,
-              enabled: isModuleEnabled('games'),
-              onLaunch: () => openArcadeSubTab('meteor_blaster'),
-            },
-            {
-              id: 'concept_match',
-              category: 'arcade' as const,
-              title: 'Match & Memory',
-              subtitle: 'จับคู่ & พลิกการ์ดไว',
-              tag: '8 กลุ่มสาระ',
-              iconBg: 'bg-violet-500/15',
-              iconText: 'text-violet-400',
-              icon: Grid2x2,
-              enabled: isModuleEnabled('games'),
-              onLaunch: () => openArcadeSubTab('concept_match'),
-            },
-            {
-              id: 'word_builder',
-              category: 'arcade' as const,
-              title: 'Word Builder',
-              subtitle: 'ต่อคำศัพท์สองภาษา',
-              tag: 'อังกฤษ · วิทย์',
-              iconBg: 'bg-amber-500/15',
-              iconText: 'text-amber-400',
-              icon: SpellCheck2,
-              enabled: isModuleEnabled('games'),
-              onLaunch: () => openArcadeSubTab('word_builder'),
-            },
-            {
-              id: 'chrono_sort',
-              category: 'arcade' as const,
-              title: 'ChronoSort',
-              subtitle: 'สายพานด่วน & เรียงลำดับ',
-              tag: 'ตรรกะ · สังคม',
-              iconBg: 'bg-emerald-500/15',
-              iconText: 'text-emerald-400',
-              icon: GitBranch,
-              enabled: isModuleEnabled('games'),
-              onLaunch: () => openArcadeSubTab('chrono_sort'),
-            },
-            {
-              id: '1v1_arena',
-              category: 'battle' as const,
-              title: '1v1 Speed Duel',
-              subtitle: 'ดวลตอบสด 15 วิ',
-              tag: '50/50 · โล่',
-              iconBg: 'bg-rose-500/15',
-              iconText: 'text-rose-400',
-              icon: Swords,
-              enabled: isModuleEnabled('games'),
-              onLaunch: () => openArcadeSubTab('arena'),
-            },
-            {
-              id: 'battle_royale_3d',
-              category: 'battle' as const,
-              title: '3D Battle Royale',
-              subtitle: 'ล่าหีบสมบัติเกาะ 3 มิติ',
-              tag: '3D EXPLORE',
-              iconBg: 'bg-indigo-500/15',
-              iconText: 'text-indigo-400',
-              icon: Gamepad2,
-              enabled: isModuleEnabled('games'),
-              onLaunch: () => setActiveGameView('battle_royale_3d'),
-            },
-            {
-              id: 'boss_raid',
-              category: 'battle' as const,
-              title: 'Co-op Boss Raid',
-              subtitle: 'ตีบอสประจำบทเรียน',
-              tag: 'COMBO DMG',
-              iconBg: 'bg-orange-500/15',
-              iconText: 'text-orange-400',
-              icon: Flame,
-              enabled: isModuleEnabled('boss_raid'),
-              onLaunch: () => setActiveGameView('boss_raid'),
-            },
-            {
-              id: 'subject_labs',
-              category: 'lab' as const,
-              title: 'Subject Labs',
-              subtitle: 'ทดลองเคมี ฟิสิกส์ โค้ด',
-              tag: '6D LAB',
-              iconBg: 'bg-sky-500/15',
-              iconText: 'text-sky-400',
-              icon: FlaskConical,
-              enabled: isModuleEnabled('subject_labs'),
-              onLaunch: () => setActiveGameView('subject_labs'),
-            },
-          ]).filter((g) => g.enabled);
-
-          const filteredMobileGames =
-            mobileGameCategory === 'all'
-              ? mobileGamesList
-              : mobileGamesList.filter((g) => g.category === mobileGameCategory);
-
-          const playerLv = Math.floor(currentScore.exp / 500) + 1;
-
-          return (
-            <div className="animate-in fade-in duration-200 space-y-4 pb-6">
-              {/* Sleek Gen Z Arcade Hero Banner */}
-              <section className="relative rounded-3xl overflow-hidden bg-[#09090B] border border-zinc-800 min-h-[148px] flex flex-col justify-end">
-                <img
-                  src={arcadeBannerImg}
-                  alt={lang === 'th' ? 'ศูนย์เกมความรู้' : 'Learning Arcade'}
-                  loading="lazy"
-                  decoding="async"
-                  referrerPolicy="no-referrer"
-                  className="absolute inset-0 w-full h-full object-cover object-center opacity-55"
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-gradient-to-t from-[#09090B] via-[#09090B]/70 to-transparent"
-                />
-                <div className="relative z-10 p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-2 text-xs font-mono font-black tabular-nums">
-                    <span className="text-amber-400">
-                      LV.{playerLv}
-                      {(currentScore.dailyStreak || 0) > 0 ? ` · 🔥 ${currentScore.dailyStreak} วัน` : ' ARCADE'}
-                    </span>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-amber-300 flex items-center gap-1">
-                        <Flame className="w-3.5 h-3.5 fill-current" />
-                        {currentScore.exp.toLocaleString()}
-                      </span>
-                      <span className="text-cyan-300 flex items-center gap-1">
-                        <Coins className="w-3.5 h-3.5" />
-                        {currentScore.gems}
-                      </span>
-                    </div>
-                  </div>
-                  <h2 className="text-lg font-black text-white tracking-tight">
-                    {lang === 'th' ? 'กดแล้วเล่นได้ทันที' : 'Tap & Play Instantly'}
-                  </h2>
-                </div>
-              </section>
-
-              {/* Featured 1-Tap Live Classroom 6-Digit PIN Card */}
-              {isModuleEnabled('games') && (
-              <button
-                type="button"
-                onClick={() => openArcadeSubTab('live_room')}
-                className="w-full p-3.5 rounded-2xl bg-[#09090B] border border-rose-500/45 hover:border-rose-400 text-left flex items-center justify-between gap-3 transition active:scale-[0.98] cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
-                    <Radio className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-mono font-bold text-rose-300 uppercase tracking-wider">
-                      Live PIN · 6 หลัก
-                    </p>
-                    <h3 className="text-sm font-black text-white truncate">
-                      ห้องแข่งสดทั้งห้อง (Quiz & Boss)
-                    </h3>
-                    <p className="text-[11px] text-zinc-400 truncate">
-                      {currentRole === 'student'
-                        ? 'กรอกรหัส PIN 6 หลักแข่งสดกับเพื่อน'
-                        : 'เปิดห้องสร้างรหัส PIN 6 หลักขึ้นจอ'}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-rose-400 shrink-0" />
-              </button>
-              )}
-
-              {canOpenCareerQuest && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('career_quest')}
-                  className="w-full p-3.5 rounded-2xl bg-[#09090B] border border-violet-500/45 hover:border-violet-400 text-left flex items-center justify-between gap-3 transition active:scale-[0.98] cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center shrink-0">
-                      <Compass className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-mono font-bold text-violet-300 uppercase tracking-wider">
-                        Career Quest AI
-                      </p>
-                      <h3 className="text-sm font-black text-white truncate">
-                        {lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน & Role-Play' : 'Career Quest AI'}
-                      </h3>
-                      <p className="text-[11px] text-zinc-400 truncate">
-                        {lang === 'th'
-                          ? 'Vibe Quiz 5 ข้อ · เช็กพลังความพร้อมจากเกรดจริง'
-                          : '5-question quiz & real-grade readiness'}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-violet-400 shrink-0" />
-                </button>
-              )}
-
-              {/* Category Filter Strip */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                {([
-                  { id: 'all', label: `ทั้งหมด (${mobileGamesList.length})` },
-                  { id: 'arcade', label: 'Arcade ไวๆ' },
-                  { id: 'battle', label: 'ดวล & 3D' },
-                  { id: 'lab', label: 'แล็บจำลอง' },
-                ] as const).map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setMobileGameCategory(cat.id)}
-                    className={`min-h-[38px] px-3.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
-                      mobileGameCategory === cat.id
-                        ? 'bg-zinc-900 dark:bg-amber-400 text-white dark:text-zinc-950'
-                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-muted)]'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Direct 1-Tap Gen Z 2-Column Game Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                {filteredMobileGames.map((game) => {
-                  const Icon = game.icon;
-                  return (
-                    <button
-                      key={game.id}
-                      type="button"
-                      onClick={game.onLaunch}
-                      className="p-3.5 rounded-2xl bg-[#09090B] border border-zinc-800 hover:border-zinc-600 text-left flex flex-col justify-between gap-3.5 transition active:scale-[0.97] cursor-pointer min-h-[132px]"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div
-                          className={`w-10 h-10 rounded-xl ${game.iconBg} ${game.iconText} flex items-center justify-center shrink-0`}
-                        >
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-zinc-400 text-right leading-tight">
-                          {game.tag}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="font-black text-sm text-white leading-snug tracking-tight">
-                          {game.title}
-                        </h3>
-                        <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">
-                          {game.subtitle}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Clean Compact Utility Row: Leaderboard, Shop & Hall of Fame */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                {isModuleEnabled('games') && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => openArcadeSubTab('leaderboard')}
-                      className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                        <Trophy className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
-                          อันดับ
-                        </p>
-                        <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
-                          {playerScores.length} คน
-                        </p>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => openArcadeSubTab('shop')}
-                      className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
-                        <ShoppingBag className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
-                          แลกของ
-                        </p>
-                        <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate">
-                          {currentScore.gems} G
-                        </p>
-                      </div>
-                    </button>
-                  </>
-                )}
-
-                {isModuleEnabled('hall_of_fame') && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveGameView('hall_of_fame')}
-                    className="min-h-[54px] px-2.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-left flex items-center gap-2 transition active:scale-[0.98] cursor-pointer"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                      <Award className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-black text-[var(--color-text-title)] truncate">
-                        เกียรติยศ
-                      </p>
-                      <p className="text-[10px] text-[var(--color-text-muted)] truncate">
-                        ถ้วย 3D
-                      </p>
-                    </div>
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* TAB E: PROFILE & DIGITAL VIRTUAL ID CARD */}
-        {activeTab === 'profile' && (
-          <div className="space-y-4 animate-in fade-in duration-200 pb-4">
-            {/* Clean Top Segmented Toggle */}
-            {canViewDigitalId && (
-              <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setProfilePage(0)}
-                  className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
-                    profilePage === 0
-                      ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  {lang === 'th' ? 'บัตรดิจิทัล' : 'Digital ID'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProfilePage(1)}
-                  className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
-                    profilePage === 1
-                      ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  {lang === 'th' ? 'ตั้งค่าบัญชี' : 'Account Settings'}
-                </button>
-              </div>
-            )}
-
-            {canViewDigitalId && profilePage === 0 && (
-              <DigitalIdCardView
-                students={currentRole === 'student' ? (ownStudent ? [ownStudent] : []) : isRestrictedViewer ? linkedStudents : students}
-                teachers={teachers}
-                school={activeSchool}
-                lang={lang}
-                currentRole={currentRole}
-                currentUser={currentUser}
-                onUpdateStudent={onUpdateStudent}
-                onUpdateTeacher={onUpdateTeacher}
-                onUpdateOwnAvatar={onUpdateOwnAvatar}
-              />
-            )}
-
-            {/* Quick Profile Actions & Settings */}
-            {(profilePage === 1 || !canViewDigitalId) && <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
-              <h3 className="text-xs font-semibold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'บัญชีและการตั้งค่า' : 'Account & Preferences'}
-              </h3>
-
-              <div className="space-y-2 text-xs">
-                {currentRole === 'student' && canOpenPortfolio && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('portfolio')}
-                    className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      <span className="font-bold">
-                        {lang === 'th' ? `แฟ้มผลงานของฉัน (${myOwnPortfolioCount})` : `My Portfolio (${myOwnPortfolioCount})`}
-                      </span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-                  </button>
-                )}
-
-                {/* Full Profile & Portfolio Modal trigger */}
-                <button
-                  type="button"
-                  onClick={onOpenProfileModal}
-                  className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <User className="w-4 h-4 text-[var(--color-primary-text)]" />
-                    <span className="font-bold">แก้ไขข้อมูลส่วนตัว &amp; พอร์ตฟอลิโอ</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-                </button>
-
-                {/* Theme Palette Switcher */}
-                <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
-                  <span className="font-bold text-[var(--color-text-title)]">โหมดสีถนอมสายตา</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setThemePalette('light_warm')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${isLight ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
-                    >
-                      {lang === 'th' ? 'สว่าง' : 'Light'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setThemePalette('sapphire')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${!isLight ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
-                    >
-                      {lang === 'th' ? 'มืดคราม' : 'Dark'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Language Switcher */}
-                <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
-                  <span className="font-bold text-[var(--color-text-title)]">ภาษาของระบบ</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setLang('th')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'th' ? 'bg-[var(--color-primary)] text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
-                    >
-                      ไทย (TH)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLang('en')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${lang === 'en' ? 'bg-[var(--color-primary)] text-white font-black' : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'}`}
-                    >
-                      English (EN)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Onboarding Tutor & Thai Systems Guide (Staff/Admin only — hidden for students to reduce clutter) */}
-                {onOpenOnboardingTutor && currentRole !== 'student' && (
-                  <button
-                    type="button"
-                    onClick={onOpenOnboardingTutor}
-                    className="w-full p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 font-bold flex items-center justify-between text-left cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      <div>
-                        <div className="text-xs font-bold">ติวเตอร์ระบบ & คู่มือการศึกษาไทย</div>
-                        <div className="text-[10px] text-amber-700/80 dark:text-amber-300/80 font-normal">DMC, MIS, CCT, OBEC Care, O-NET, HRMS, DPA, ปพ.3</div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-amber-600" />
-                  </button>
-                )}
-
-                {/* Mobile App Install Button */}
-                <PWAInstallButton lang={lang} variant="sidebar" />
-
-                {/* Biometric Security & Passkey Card (WebAuthn FaceID / TouchID) */}
-                <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Fingerprint className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                      <span className="font-bold text-[var(--color-text-title)] truncate">
-                        {lang === 'th' ? 'สแกน FaceID / TouchID' : 'Biometric Security'}
-                      </span>
-                    </div>
-                    {passkey && (
-                      <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
-                        {lang === 'th' ? 'เปิดใช้งาน' : 'Active'}
-                      </span>
-                    )}
-                  </div>
-
-                  {bioMsg && (
-                    <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{bioMsg}</p>
-                  )}
-                  {bioErr && (
-                    <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">{bioErr}</p>
-                  )}
-
-                  {!passkey ? (
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        {webAuthnInfo
-                          ? (lang === 'th' ? webAuthnInfo.reasonTh : webAuthnInfo.reasonEn)
-                          : (lang === 'th' ? 'ใช้สแกนใบหน้าหรือลายนิ้วมือเพื่อยืนยันตัวตนและล็อกเช็คชื่อด่วน' : 'Use FaceID/TouchID for fast login and quick attendance lock')}
-                      </p>
-                      <button
-                        type="button"
-                        disabled={bioBusy || webAuthnInfo?.supported === false}
-                        onClick={handleEnrollPasskey}
-                        className="w-full min-h-[44px] px-3 rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <KeyRound className="w-4 h-4" />
-                        <span>
-                          {bioBusy
-                            ? (lang === 'th' ? 'กำลังลงทะเบียน...' : 'Enrolling...')
-                            : (lang === 'th' ? 'ผูก FaceID / TouchID' : 'Enroll FaceID / TouchID')}
-                        </span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        {passkey.deviceLabel}
-                      </p>
-
-                      {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
-                        <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
-                          <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
-                            {lang === 'th' ? 'ล็อกเมนูเช็คชื่อด่วน' : 'Lock Quick Attendance'}
-                          </span>
-                          <input
-                            type="checkbox"
-                            checked={passkey.protectQuickAttendance}
-                            onChange={(e) => {
-                              if (!currentUser) return;
-                              const updated = updatePasskeyPreferences(currentUser.id, {
-                                protectQuickAttendance: e.target.checked,
-                              });
-                              setPasskey(updated);
-                            }}
-                            className="w-4 h-4 accent-[var(--color-primary)]"
-                          />
-                        </label>
-                      )}
-
-                      <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
-                        <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
-                          {lang === 'th' ? 'ยืนยันตัวตนหน้าเข้าสู่ระบบ' : 'Enable Sign-In Biometrics'}
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={passkey.biometricLoginEnabled}
-                          onChange={(e) => {
-                            if (!currentUser) return;
-                            const updated = updatePasskeyPreferences(currentUser.id, {
-                              biometricLoginEnabled: e.target.checked,
-                            });
-                            setPasskey(updated);
-                          }}
-                          className="w-4 h-4 accent-[var(--color-primary)]"
-                        />
-                      </label>
-
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <button
-                          type="button"
-                          disabled={bioBusy}
-                          onClick={handleTestPasskey}
-                          className="flex-1 min-h-[40px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Fingerprint className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                          <span>{bioBusy ? '...' : (lang === 'th' ? 'ทดสอบสแกน' : 'Test')}</span>
-                        </button>
-
-                        {onBiometricLock && (
-                          <button
-                            type="button"
-                            onClick={onBiometricLock}
-                            className="flex-1 min-h-[40px] px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <Lock className="w-3.5 h-3.5" />
-                            <span>{lang === 'th' ? 'ล็อกหน้าจอด่วน' : 'Lock Screen'}</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!currentUser) return;
-                            removeEnrolledPasskey(currentUser.id);
-                            setPasskey(null);
-                            setBioMsg(lang === 'th' ? 'ลบ Passkey แล้ว' : 'Passkey removed');
-                          }}
-                          className="min-h-[40px] px-3 rounded-xl border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 font-bold text-xs flex items-center justify-center cursor-pointer"
-                          title={lang === 'th' ? 'ลบ Passkey ออกจากเครื่องนี้' : 'Remove Passkey'}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Switch to Full Desktop View */}
-                <button
-                  type="button"
-                  onClick={onSwitchToDesktopMode}
-                  className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold flex items-center justify-between text-left cursor-pointer hover:opacity-90"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Laptop className="w-4 h-4" />
-                    <span>{lang === 'th' ? 'สลับเป็นมุมมองคอมพิวเตอร์' : 'Switch to Desktop View'}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-
-                {/* Logout Button */}
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="w-full p-3 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold flex items-center justify-center gap-2 transition hover:bg-rose-100 dark:hover:bg-rose-900 cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>ออกจากระบบ</span>
-                </button>
-              </div>
-            </div>}
-          </div>
-        )}
-
-        {/* TAB F: HOMEWORK (การบ้านและภารกิจ) */}
-        {activeTab === 'homework' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setActiveTab('home')}
-                className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>กลับหน้าหลัก</span>
-              </button>
-              <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">รายการการบ้านและงานค้าง</h2>
-            </div>
-
-            <PagedList
-              items={scopedAssignments}
-              pageSize={2}
-              previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
-              nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
-              paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าการบ้าน' : 'Homework pages'}
-              emptyState={<div className="text-center py-12 text-[var(--color-text-muted)] text-xs">ไม่มีการบ้านในระบบ</div>}
-              renderItem={(asg) => {
-                const isDone = myCompletedSubmissions.has(asg.id) || Boolean(currentPersonId && asg.submittedStudentIds?.includes(currentPersonId));
-                return (
-                  <div
-                    key={asg.id}
-                    className={`p-3.5 rounded-2xl border ${
-                      isDone
-                        ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800'
-                        : 'bg-[var(--color-card)] border-[var(--color-border)]'
-                    } shadow-xs space-y-2 text-xs`}
-                  >
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-[var(--color-text-muted)]">
-                        {scopedCourses.find(c => c.id === asg.courseId)?.code || scopedCourses.find(c => c.id === asg.courseId)?.titleTh || 'วิชาเรียน'}
-                      </span>
-                      <span className={`font-bold ${
-                        isDone ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
-                      }`}>
-                        {isDone ? 'ส่งแล้ว' : 'รอส่ง'}
-                      </span>
-                    </div>
-
-                    <h4 className="font-bold text-sm text-[var(--color-text-title)]">
-                      {lang === 'th' ? (asg.titleTh || asg.titleEn) : (asg.titleEn || asg.titleTh)}
-                    </h4>
-
-                    <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                      <span>กำหนดส่ง: {asg.dueDate}</span>
-                      <span className="font-semibold text-[var(--color-text-title)]">{asg.points} คะแนน</span>
-                    </div>
-                  </div>
-                );
-              }}
+          {/* TAB: STUDENT GRADES SUMMARY */}
+          {activeTab === 'student_grades' && (
+            <MobileStudentGradesTab
+              activeSchool={activeSchool}
+              ownStudent={ownStudent}
+              scopedCourses={scopedCourses}
+              grades={grades}
+              gradingSystem={gradingSystem}
+              lang={lang}
+              onBackHome={() => setActiveTab('home')}
             />
-          </div>
-        )}
+          )}
 
-        {/* TAB G: ANNOUNCEMENTS (ประกาศโรงเรียน) */}
-        {activeTab === 'announcements' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            {selectedAnnouncement ? (
-              <>
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAnnouncement(null)}
-                    className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>กลับสู่รายการ</span>
-                  </button>
-                  <span className="text-[10px] text-[var(--color-text-muted)]">{selectedAnnouncement.publishedAt}</span>
-                </div>
-                <article className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]">
-                  <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">{selectedAnnouncement.title}</h2>
-                  <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-                    {selectedAnnouncement.author} ({selectedAnnouncement.authorRole})
-                  </p>
-                  <PagedList
-                    items={splitAnnouncementIntoPages(selectedAnnouncement.content)}
-                    pageSize={1}
-                    previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
-                    nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
-                    paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
-                    renderItem={(pageText, pageIndex) => (
-                      <p key={pageIndex} className="mt-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-text-body)]">
-                        {pageText}
-                      </p>
-                    )}
-                  />
-                </article>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('home')}
-                    className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>กลับหน้าหลัก</span>
-                  </button>
-                  <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">ประกาศและข่าวสารโรงเรียน</h2>
-                </div>
+          {/* TAB D: GAMES HUB */}
+          {activeTab === 'games' && (
+            <MobileGamesHubTab
+              currentRole={currentRole}
+              lang={lang}
+              currentScore={currentScore}
+              playerScoresCount={playerScores.length}
+              canOpenCareerQuest={canOpenCareerQuest}
+              isModuleEnabled={isModuleEnabled}
+              openArcadeSubTab={openArcadeSubTab}
+              setActiveGameView={setActiveGameView}
+              setActiveTab={setActiveTab}
+            />
+          )}
 
-                <PagedList
-                  items={scopedAnnouncements}
-                  pageSize={2}
-                  previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
-                  nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
-                  paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
-                  emptyState={<p className="py-8 text-center text-xs text-[var(--color-text-muted)]">ไม่มีประกาศ</p>}
-                  renderItem={(a) => (
-                <div 
-                  key={a.id} 
-                  className={`p-4 rounded-2xl border ${
-                    a.pinned 
-                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40' 
-                      : 'bg-[var(--color-card)] border-[var(--color-border)]'
-                  } shadow-xs space-y-2 text-xs`}
-                >
-                  <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                    <span className="font-semibold text-[var(--color-primary-text)]">{a.category}</span>
-                    <span>{a.publishedAt}</span>
-                  </div>
+          {/* TAB E: PROFILE & DIGITAL VIRTUAL ID CARD */}
+          {activeTab === 'profile' && (
+            <MobileProfileTab
+              currentUser={currentUser}
+              activeSchool={activeSchool}
+              currentRole={currentRole}
+              lang={lang}
+              setLang={setLang}
+              isLight={isLight}
+              setThemePalette={setThemePalette}
+              profilePage={profilePage}
+              setProfilePage={setProfilePage}
+              canViewDigitalId={canViewDigitalId}
+              canOpenPortfolio={canOpenPortfolio}
+              myOwnPortfolioCount={myOwnPortfolioCount}
+              isRestrictedViewer={isRestrictedViewer}
+              ownStudent={ownStudent}
+              linkedStudents={linkedStudents}
+              students={students}
+              teachers={teachers}
+              onUpdateStudent={onUpdateStudent}
+              onUpdateTeacher={onUpdateTeacher}
+              onUpdateOwnAvatar={onUpdateOwnAvatar}
+              onOpenProfileModal={onOpenProfileModal}
+              onOpenOnboardingTutor={onOpenOnboardingTutor}
+              onBiometricLock={onBiometricLock}
+              onSwitchToDesktopMode={onSwitchToDesktopMode}
+              onLogout={onLogout}
+              onOpenPortfolio={() => setActiveTab('portfolio')}
+            />
+          )}
 
-                  <h4 className="font-bold text-sm text-[var(--color-text-title)]">{a.title}</h4>
-                  <p className="text-[var(--color-text-body)] leading-relaxed text-xs whitespace-pre-line line-clamp-2">{a.content}</p>
+          {/* TAB F: HOMEWORK */}
+          {activeTab === 'homework' && (
+            <MobileHomeworkTab
+              lang={lang}
+              scopedAssignments={scopedAssignments}
+              scopedCourses={scopedCourses}
+              myCompletedSubmissions={myCompletedSubmissions}
+              currentPersonId={currentPersonId}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
 
-                  <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-[var(--color-text-muted)]">
-                      {a.author} · {a.authorRole}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedAnnouncement(a)}
-                      className="shrink-0 text-[11px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                    >
-                      อ่านทั้งหมด
-                    </button>
-                  </div>
-                </div>
-                  )}
-                />
-              </>
-            )}
-          </div>
-        )}
+          {/* TAB G: ANNOUNCEMENTS */}
+          {activeTab === 'announcements' && (
+            <MobileAnnouncementsTab
+              lang={lang}
+              scopedAnnouncements={scopedAnnouncements}
+              selectedAnnouncement={selectedAnnouncement}
+              setSelectedAnnouncement={setSelectedAnnouncement}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
         </ViewErrorBoundary>
       </main>
 
       {/* 3. CLEAN APPLE/LINEAR 4-TAB BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-1 safe-area-bottom">
-        <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
-          {/* SLOT 1: HOME */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('home')}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'home' || activeTab === 'portfolio' || activeTab === 'student_grades' || (canSelfCheckin && activeTab === 'timetable') || (canPlayGames && activeTab === 'homework')
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {currentRole === 'super_admin' ? <ShieldCheck className="w-5 h-5 mb-0.5" /> : <Home className="w-5 h-5 mb-0.5" />}
-            <span className="text-[11px] truncate max-w-full">
-              {currentRole === 'super_admin'
-                ? (lang === 'th' ? 'แม่ข่าย' : 'Master')
-                : (lang === 'th' ? 'หน้าหลัก' : 'Home')}
-            </span>
-          </button>
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        setActiveGameView={setActiveGameView}
+        currentRole={currentRole}
+        lang={lang}
+        canSelfCheckin={canSelfCheckin}
+        canViewTimetable={canViewTimetable}
+        canOpenAnnouncements={canOpenAnnouncements}
+        canPlayGames={canPlayGames}
+        canAccessHomework={canAccessHomework}
+        canViewGradesStudent={canViewGradesStudent}
+        canOpenPortfolio={canOpenPortfolio}
+        isModuleEnabled={isModuleEnabled}
+        pendingLeavesCount={pendingLeavesCount}
+        invoices={invoices}
+        onResetCheckinToSelfie={() => {
+          setMobileAttendanceInitialSubTab('selfie_mobile');
+          setMobilePeriodCourseId(undefined);
+          setMobilePeriodNumber(undefined);
+          setMobilePeriodDate(undefined);
+          setMobilePeriodCheckType(undefined);
+        }}
+      />
 
-          {/* SLOT 2: CHECK-IN (or Timetable / Announcements fallback) */}
-          <button
-            type="button"
-            onClick={() => {
-              if (canSelfCheckin) {
-                setMobileAttendanceInitialSubTab('selfie_mobile');
-                setMobilePeriodCourseId(undefined);
-                setMobilePeriodNumber(undefined);
-                setMobilePeriodDate(undefined);
-                setMobilePeriodCheckType(undefined);
-                setActiveTab('checkin');
-              } else if (canViewTimetable) {
-                setActiveTab('timetable');
-              } else if (canOpenAnnouncements) {
-                setActiveTab('announcements');
-              } else {
-                setActiveTab('home');
-              }
-            }}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'checkin' || activeTab === 'leave' || (!canSelfCheckin && activeTab === 'timetable')
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {canSelfCheckin ? <Clock className="w-5 h-5 mb-0.5" /> : <Calendar className="w-5 h-5 mb-0.5" />}
-            <span className="text-[11px] truncate max-w-full">
-              {!canSelfCheckin
-                ? canViewTimetable
-                  ? (lang === 'th' ? 'ตารางเรียน' : 'Schedule')
-                  : canOpenAnnouncements
-                    ? (lang === 'th' ? 'ประกาศ' : 'News')
-                    : (lang === 'th' ? 'หน้าหลัก' : 'Home')
-                : currentRole === 'parent'
-                ? (lang === 'th' ? 'มาเรียน' : 'Logs')
-                : (lang === 'th' ? 'เช็คชื่อ' : 'Check-in')}
-            </span>
-          </button>
-
-          {/* SLOT 3: ROLE PRIMARY ACTION */}
-          {currentRole === 'admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('admin_quick')}
-              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
-                activeTab === 'admin_quick'
-                  ? 'text-[var(--color-primary-text)] font-bold'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {(pendingLeavesCount + invoices.filter((i) => i.slipStatus === 'pending_review').length) > 0 && (
-                <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-rose-600" />
-              )}
-              <Edit3 className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'จัดการด่วน' : 'Manage'}</span>
-            </button>
-          ) : currentRole === 'super_admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('super_schools')}
-              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'super_schools'
-                  ? 'text-[var(--color-primary-text)] font-bold'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <Building2 className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'โรงเรียน' : 'Schools'}</span>
-            </button>
-          ) : currentRole === 'teacher' ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (isModuleEnabled('gradebook')) setActiveTab('gradebook');
-                else if (canViewTimetable) setActiveTab('timetable');
-                else if (canOpenAnnouncements) setActiveTab('announcements');
-                else setActiveTab('executive');
-              }}
-              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'gradebook'
-                  ? 'text-[var(--color-primary-text)] font-bold'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <ClipboardCheck className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">
-                {isModuleEnabled('gradebook')
-                  ? (lang === 'th' ? 'คะแนน' : 'Grades')
-                  : canViewTimetable
-                    ? (lang === 'th' ? 'ตารางสอน' : 'Schedule')
-                    : (lang === 'th' ? 'ภาพรวม' : 'Overview')}
-              </span>
-            </button>
-          ) : currentRole === 'parent' ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (canOpenAnnouncements) setActiveTab('announcements');
-                else if (canViewTimetable) setActiveTab('timetable');
-                else setActiveTab('profile');
-              }}
-              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                activeTab === 'announcements'
-                  ? 'text-[var(--color-primary-text)] font-bold'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              <BellRing className="w-5 h-5 mb-0.5" />
-              <span className="text-[11px] truncate max-w-full">
-                {canOpenAnnouncements
-                  ? (lang === 'th' ? 'ประกาศ' : 'News')
-                  : canViewTimetable
-                    ? (lang === 'th' ? 'ตารางเรียน' : 'Schedule')
-                    : (lang === 'th' ? 'บัตร' : 'ID')}
-              </span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (canPlayGames) {
-                  setActiveTab('games');
-                  setActiveGameView('hub');
-                } else if (canAccessHomework) {
-                  setActiveTab('homework');
-                } else if (canViewGradesStudent) {
-                  setActiveTab('student_grades');
-                } else if (canOpenPortfolio) {
-                  setActiveTab('portfolio');
-                } else {
-                  setActiveTab('profile');
-                }
-              }}
-              className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-                (canPlayGames ? activeTab === 'games' : canAccessHomework ? activeTab === 'homework' : activeTab === 'student_grades')
-                  ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {canPlayGames ? <Gamepad2 className="w-5 h-5 mb-0.5" /> : <BookOpen className="w-5 h-5 mb-0.5" />}
-              <span className="text-[11px] truncate max-w-full">
-                {canPlayGames
-                  ? (lang === 'th' ? 'เกมส์' : 'Arcade')
-                  : canAccessHomework
-                    ? (lang === 'th' ? 'การบ้าน' : 'Tasks')
-                    : canViewGradesStudent
-                      ? (lang === 'th' ? 'เกรด' : 'Grades')
-                      : (lang === 'th' ? 'ผลงาน' : 'Portfolio')}
-              </span>
-            </button>
-          )}
-
-          {/* SLOT 4: ACCOUNT / SETTINGS */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'profile'
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            <User className="w-5 h-5 mb-0.5" />
-            <span className="text-[11px] truncate max-w-full">
-              {lang === 'th' ? 'บัญชี' : 'Account'}
-            </span>
-          </button>
-        </div>
-      </nav>
-
-      {/* ======================================================== */}
-      {/* IMMERSIVE FULLSCREEN GAME TAKEOVER (แสดงเต็มจอ ไม่มีเมนูรกหรือปุ่มทับกัน) */}
-      {/* ======================================================== */}
+      {/* IMMERSIVE FULLSCREEN GAME TAKEOVER */}
       {activeGameView !== 'hub' && (
-        <div className="game-immersive-root fixed inset-0 z-50 bg-[#09090B] w-full h-dvh flex flex-col overflow-hidden animate-in fade-in duration-200">
-          <ViewErrorBoundary
-            resetKey={`game:${activeGameView}:${arcadeInitialSubTab}`}
-            lang={lang}
-            viewName={`mobile-game:${activeGameView}`}
-            onBackHome={() => setActiveGameView('hub')}
-          >
-          {activeGameView === 'battle_royale_3d' && (
-            <div className="h-full w-full overflow-hidden">
-              <EduBattleRoyale3DView
-                questions={questions}
-                currentUser={currentUser}
-                lang={lang}
-                rewardItems={rewardItems}
-                onEarnRewards={onEarnRewards}
-                onExit={() => setActiveGameView('hub')}
-              />
-            </div>
-          )}
-
-          {activeGameView === 'arcade_studio' && (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-[#09090B]">
-              <EduBattleGameView
-                questions={questions}
-                playerScores={playerScores}
-                rewardItems={rewardItems}
-                rewardRedemptions={rewardRedemptions}
-                currentUser={currentUser}
-                lang={lang}
-                initialSubTab={arcadeInitialSubTab}
-                isMobileMode={true}
-                onAddQuestion={onAddQuestion}
-                onImportQuestions={onImportQuestions}
-                onEarnRewards={onEarnRewards}
-                onRedeemReward={onRedeemReward}
-                onEquipCosmetic={onEquipCosmetic}
-                onReviewRedemption={onReviewRedemption}
-                onCreateCustomReward={onCreateCustomReward}
-                onExit={() => setActiveGameView('hub')}
-              />
-            </div>
-          )}
-
-          {activeGameView === '1v1_arena' && (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-[#09090B]">
-              <EduBattleGameView
-                questions={questions}
-                playerScores={playerScores}
-                rewardItems={rewardItems}
-                rewardRedemptions={rewardRedemptions}
-                currentUser={currentUser}
-                lang={lang}
-                initialSubTab="arena"
-                isMobileMode={true}
-                onAddQuestion={onAddQuestion}
-                onImportQuestions={onImportQuestions}
-                onEarnRewards={onEarnRewards}
-                onRedeemReward={onRedeemReward}
-                onEquipCosmetic={onEquipCosmetic}
-                onReviewRedemption={onReviewRedemption}
-                onCreateCustomReward={onCreateCustomReward}
-                onExit={() => setActiveGameView('hub')}
-              />
-            </div>
-          )}
-
-          {activeGameView === 'boss_raid' && (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-[#09090B]">
-              <CoopBossRaidView
-                questions={questions}
-                lang={lang}
-                currentRole={currentRole}
-                currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
-                onExit={() => setActiveGameView('hub')}
-              />
-            </div>
-          )}
-
-          {activeGameView === 'subject_labs' && (
-            <div className="h-full w-full overflow-hidden flex flex-col">
-              <SubjectLabSimulationView
-                currentUserRole={currentRole}
-                currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
-                lang={lang}
-                onEarnRewards={onEarnRewards}
-                onBackToGames={() => setActiveGameView('hub')}
-              />
-            </div>
-          )}
-
-          {activeGameView === 'hall_of_fame' && (
-            <div className="h-full w-full overflow-y-auto flex flex-col bg-slate-950 p-2 sm:p-4">
-              <HallOfFame3DView
-                lang={lang}
-                school={activeSchool}
-                students={linkedStudents}
-                portfolioItems={portfolioItems}
-                playerScores={playerScores}
-                currentUser={currentUser}
-                onOpenPortfolio={() => {
-                  setActiveGameView('hub');
-                  setActiveTab('portfolio');
-                }}
-                onExit={() => setActiveGameView('hub')}
-              />
-            </div>
-          )}
-          </ViewErrorBoundary>
-        </div>
+        <MobileFullscreenGameOverlay
+          activeGameView={activeGameView}
+          arcadeInitialSubTab={arcadeInitialSubTab}
+          lang={lang}
+          currentRole={currentRole}
+          currentUser={currentUser}
+          activeSchool={activeSchool}
+          linkedStudents={linkedStudents}
+          portfolioItems={portfolioItems}
+          questions={questions}
+          playerScores={playerScores}
+          rewardItems={rewardItems}
+          rewardRedemptions={rewardRedemptions}
+          onAddQuestion={onAddQuestion}
+          onImportQuestions={onImportQuestions}
+          onEarnRewards={onEarnRewards}
+          onRedeemReward={onRedeemReward}
+          onEquipCosmetic={onEquipCosmetic}
+          onReviewRedemption={onReviewRedemption}
+          onCreateCustomReward={onCreateCustomReward}
+          onExitGame={() => setActiveGameView('hub')}
+          onOpenPortfolio={() => {
+            setActiveGameView('hub');
+            setActiveTab('portfolio');
+          }}
+        />
       )}
 
       {showMobileCalendarSync && (

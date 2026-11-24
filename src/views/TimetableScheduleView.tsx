@@ -1,43 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  Plus, 
-  Printer, 
-  AlertTriangle, 
-  CheckCircle2, 
-  BookOpen, 
-  User, 
-  UserCheck,
-  MapPin, 
-  Trash2, 
-  Download, 
-  Share2, 
-  Sparkles,
+import {
+  Calendar,
+  CheckCircle2,
   Layers,
-  Search,
-  ShieldCheck,
-  Users,
-  Info,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  SlidersHorizontal,
-  ChevronDown,
-  ChevronRight,
-  FileSpreadsheet,
-  Send,
+  Plus,
   RefreshCw,
-  Palette,
-  Check,
-  CalendarDays,
-  LogIn,
-  LogOut,
-  StickyNote,
-  Edit3,
-  X,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserCheck,
+  Users,
 } from 'lucide-react';
-import { Assignment, AttendanceRecord, AuthUser, TimetableSlot, DayOfWeek, AppLanguage, UserRole, Course, Teacher, Student, SchoolPeriodTime, LeaveRequest, PeriodAttendanceRecord } from '../types';
+import { DayOfWeek, SchoolPeriodTime, Teacher, TimetableSlot } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getCourseType, inferCourseLearningArea } from '../lib/courseClassification';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
@@ -50,19 +23,13 @@ import {
   getTimetableSlotActivityStatus,
 } from '../lib/timetableCalendar';
 import {
-  HolidaySyncStatus,
-  ThaiHoliday,
-  addSchoolCustomHoliday,
   getHolidayForDate,
-  getHolidaysForDate,
   getHolidaysForYear,
-  getHolidaysInMonth,
   getHolidaysInRange,
   getPublicHolidaySyncStatus,
-  getThaiHolidayCategoryLabel,
   getUpcomingHolidays,
+  HolidaySyncStatus,
   isWeekendDate,
-  removeSchoolCustomHoliday,
   syncPublicHolidaysFromApi,
 } from '../lib/thaiHolidays';
 import {
@@ -81,9 +48,7 @@ import {
   parseSlotTeachersFromRaw,
   slotHasTeacher,
 } from '../lib/timetableTeachers';
-import { GoogleCalendarSyncModal } from '../components/GoogleCalendarSyncModal';
 import { emitAppToast } from '../components/common/ToastProvider';
-import { TimetableImportExportModal } from '../components/modals/TimetableImportExportModal';
 import {
   buildCourseTeacherOptions,
   courseMatchesTeacherFilter,
@@ -92,103 +57,38 @@ import {
   slotMatchesLoggedInTeacher,
   userMatchesCourse,
 } from '../lib/courseTeacherFilter';
-import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
-import { TimetablePeriodAttendanceModal } from '../components/modals/TimetablePeriodAttendanceModal';
-import { TimetablePeriodRosterTable } from '../components/TimetablePeriodRosterTable';
 import {
-  getTimetableSlotCardStyle,
-  isCustomHexColor,
-  TIMETABLE_COLOR_PRESETS,
-} from '../lib/timetableColors';
-import {
-  CALENDAR_NOTE_COLORS,
   CALENDAR_NOTES_UPDATED_EVENT,
-  CalendarNote,
   CalendarNoteColor,
   CalendarNoteScope,
-  deleteCalendarNote,
-  getCalendarNoteColorMeta,
-  getVisibleCalendarNotesForDate,
-  getVisibleCalendarNotesMapForMonth,
-  saveCalendarNote,
 } from '../lib/calendarNotes';
-import { getSlotAttendanceAndLeaveSummary } from '../lib/timetableAttendanceStatus';
+import {
+  ALL_CLASSROOMS,
+  ClassroomCourseSummary,
+  DAYS,
+  formatShortThaiDate,
+  getAcademicPeriodKey,
+  MAX_LESSON_PERIODS,
+  PendingSlotConfirmState,
+  SubstituteCandidate,
+  TeacherWorkloadRow,
+  TimetableCalendarTab,
+  TimetableClassroomGridTab,
+  TimetableConflict,
+  TimetableConflictCandidate,
+  TimetableHoursCriteriaTab,
+  TimetableModals,
+  TimetablePeriodRollcallTab,
+  TimetableScheduleFilters,
+  TimetableScheduleViewProps,
+  TimetableSubstituteTab,
+  TimetableViewMode,
+  TimetableWorkloadTab,
+  UNASSIGNED_GRADE_LEVEL,
+  WorkloadStatusFilter,
+} from '../features/timetable';
 
-interface TimetableScheduleViewProps {
-  slots: TimetableSlot[];
-  courses: Course[];
-  assignments?: Assignment[];
-  teachers: Teacher[];
-  students: Student[];
-  onAddSlot: (slot: TimetableSlot) => Promise<void>;
-  onUpdateSlot?: (slot: TimetableSlot) => Promise<void>;
-  onDeleteSlot: (id: string) => Promise<void>;
-  onImportSlots?: (slots: TimetableSlot[]) => Promise<void> | void;
-  schoolPeriods: SchoolPeriodTime[];
-  onSaveSchoolPeriods: (periods: SchoolPeriodTime[]) => Promise<void>;
-  lang: AppLanguage;
-  currentRole: UserRole;
-  currentUser?: AuthUser | null;
-  schoolId?: string;
-  schoolName: string;
-  academicYear: string;
-  currentSemester: string;
-  semesterOptions?: string[];
-  teachingLoadMinPeriods?: number;
-  teachingLoadMaxPeriods?: number;
-  roomOptions?: string[];
-  showPrimaryCourseCredits?: boolean;
-  onUpdateRoomOptions?: (roomOptions: string[]) => Promise<void>;
-  onUpdateTeachingLoadThresholds?: (minPeriods: number, maxPeriods: number) => Promise<void>;
-  onUpdateAcademicPeriod?: (
-    academicYear: string,
-    currentSemester: string,
-    semesterOptions?: string[]
-  ) => Promise<void>;
-  leaveRequests?: LeaveRequest[];
-  attendance?: AttendanceRecord[];
-  periodAttendance?: PeriodAttendanceRecord[];
-  canSelfCheckin?: boolean;
-  onOpenPeriodCheckin?: (params: {
-    courseId?: string;
-    courseCode?: string;
-    periodNumber: number;
-    date: string;
-    checkType: 'check_in' | 'check_out';
-  }) => void;
-  onRecordPeriodAttendance?: (records: PeriodAttendanceRecord[]) => void;
-}
-
-const DAYS: { key: DayOfWeek; th: string; en: string; color: string }[] = [
-  { key: 'mon', th: 'วันจันทร์', en: 'Monday', color: 'bg-amber-100 dark:bg-amber-950 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-200' },
-  { key: 'tue', th: 'วันอังคาร', en: 'Tuesday', color: 'bg-rose-100 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-950 dark:text-rose-200' },
-  { key: 'wed', th: 'วันพุธ', en: 'Wednesday', color: 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-200' },
-  { key: 'thu', th: 'วันพฤหัสบดี', en: 'Thursday', color: 'bg-orange-100 dark:bg-orange-950 border-orange-300 dark:border-orange-700 text-orange-950 dark:text-orange-200' },
-  { key: 'fri', th: 'วันศุกร์', en: 'Friday', color: 'bg-sky-100 dark:bg-sky-950 border-sky-300 dark:border-sky-700 text-sky-950 dark:text-sky-200' }
-];
-
-const MAX_LESSON_PERIODS = 12;
-const ALL_CLASSROOMS = '__all_classrooms__';
-const UNASSIGNED_GRADE_LEVEL = 'ไม่ระบุระดับชั้น';
-type TimetableScheduleFilters = {
-  gradeLevel: string;
-  classRoom: string;
-  teacherName: string;
-};
-type TimetableConflict = {
-  key: string;
-  slotA: TimetableSlot;
-  slotB: TimetableSlot;
-  reasons: string[];
-  overlapStart: number | null;
-  overlapEnd: number | null;
-};
-type TimetableConflictCandidate = Pick<
-  TimetableSlot,
-  'dayOfWeek' | 'periodNumber' | 'startTime' | 'endTime' | 'teacherName' | 'coTeacherName' | 'room' | 'classRoom'
->;
-
-const getAcademicPeriodKey = (academicYear: string, semester: string) => JSON.stringify([academicYear, semester]);
+export type { TimetableScheduleViewProps };
 
 export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   slots: allTimetableSlots,
@@ -233,16 +133,24 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     Boolean(onOpenPeriodCheckin) &&
     (currentRole === 'student' || currentRole === 'teacher') &&
     canSelfCheckin;
-  const workloadMinPeriods = Math.min(60, Math.max(0,
-    Number.isInteger(teachingLoadMinPeriods)
-      ? teachingLoadMinPeriods ?? DEFAULT_TEACHING_LOAD_MIN_PERIODS
-      : DEFAULT_TEACHING_LOAD_MIN_PERIODS
-  ));
-  const workloadMaxPeriods = Math.min(60, Math.max(workloadMinPeriods,
-    Number.isInteger(teachingLoadMaxPeriods)
-      ? teachingLoadMaxPeriods ?? DEFAULT_TEACHING_LOAD_MAX_PERIODS
-      : DEFAULT_TEACHING_LOAD_MAX_PERIODS
-  ));
+  const workloadMinPeriods = Math.min(
+    60,
+    Math.max(
+      0,
+      Number.isInteger(teachingLoadMinPeriods)
+        ? teachingLoadMinPeriods ?? DEFAULT_TEACHING_LOAD_MIN_PERIODS
+        : DEFAULT_TEACHING_LOAD_MIN_PERIODS
+    )
+  );
+  const workloadMaxPeriods = Math.min(
+    60,
+    Math.max(
+      workloadMinPeriods,
+      Number.isInteger(teachingLoadMaxPeriods)
+        ? teachingLoadMaxPeriods ?? DEFAULT_TEACHING_LOAD_MAX_PERIODS
+        : DEFAULT_TEACHING_LOAD_MAX_PERIODS
+    )
+  );
   const activeAcademicPeriodKey = getAcademicPeriodKey(academicYear, currentSemester);
   const [selectedAcademicPeriodKey, setSelectedAcademicPeriodKey] = useState(activeAcademicPeriodKey);
   useEffect(() => {
@@ -281,11 +189,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   ));
 
   // Main view mode: classroom schedule, period roll-call, calendar, attendance-hours criteria, staff workload summary, or substitute finder.
-  const [viewMode, setViewMode] = useState<'classroom' | 'period_rollcall' | 'calendar' | 'hours_criteria' | 'workload' | 'substitute'>('classroom');
+  const [viewMode, setViewMode] = useState<TimetableViewMode>('classroom');
   const [rollcallDate, setRollcallDate] = useState<string>(() => getBangkokDateInputValue());
   const [rollcallSlotId, setRollcallSlotId] = useState<string>('');
   const [workloadSearchTerm, setWorkloadSearchTerm] = useState('');
-  const [workloadStatusFilter, setWorkloadStatusFilter] = useState<'all' | 'scheduled' | 'unassigned' | 'low' | 'within' | 'high'>('all');
+  const [workloadStatusFilter, setWorkloadStatusFilter] = useState<WorkloadStatusFilter>('all');
   const [workloadMinDraft, setWorkloadMinDraft] = useState(String(workloadMinPeriods));
   const [workloadMaxDraft, setWorkloadMaxDraft] = useState(String(workloadMaxPeriods));
   const [workloadSettingsError, setWorkloadSettingsError] = useState<string | null>(null);
@@ -429,7 +337,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || '');
   const [myCoursesOnly, setMyCoursesOnly] = useState(false);
   const autoScopedTimetableRef = useRef<string | null>(null);
-  const handleViewModeChange = (mode: typeof viewMode) => {
+  const handleViewModeChange = (mode: TimetableViewMode) => {
     if (mode === 'hours_criteria' && selectedClassRoom === ALL_CLASSROOMS && !myCoursesOnly) {
       setSelectedClassRoom(uniqueClassRooms[0] || '');
     }
@@ -453,13 +361,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showScheduleSettingsModal, setShowScheduleSettingsModal] = useState(false);
-  const [pendingSlotConfirm, setPendingSlotConfirm] = useState<{
-    title: string;
-    description: string;
-    confirmLabel: string;
-    tone: 'primary' | 'danger';
-    onConfirm: () => Promise<void>;
-  } | null>(null);
+  const [pendingSlotConfirm, setPendingSlotConfirm] = useState<PendingSlotConfirmState | null>(null);
   const [isConfirmingSlotAction, setIsConfirmingSlotAction] = useState(false);
   const [scheduleFilterDraft, setScheduleFilterDraft] = useState<TimetableScheduleFilters>({
     gradeLevel: '',
@@ -550,6 +452,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const [newRoom, setNewRoom] = useState('');
   const [newCredits, setNewCredits] = useState<number>(1.5);
   const [newColor, setNewColor] = useState<TimetableSlot['colorTag']>('sky');
+
   const getPeriodTime = (periodNumber: number) => schoolPeriods.find((period) => period.periodNumber === periodNumber);
   const parseTimeMinutes = (time: string): number | null => {
     const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
@@ -599,9 +502,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       overlapEnd: rangeA && rangeB ? Math.min(rangeA.end, rangeB.end) : null,
     };
   };
-  const formatTimeMinutes = (minutes: number) => (
-    `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
-  );
+
   const handleSaveEditedSlot = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editSlotDraft || !selectedSlotForDetail) return;
@@ -677,6 +578,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
     await executeUpdateSlot();
   };
+
   const orderedSchoolPeriods = [...schoolPeriods].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const lessonPeriods = orderedSchoolPeriods.filter((period) => !period.isBreak);
   const courseCatalogTeacherOptions = buildCourseTeacherOptions(courses, teachers);
@@ -790,13 +692,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const upcomingHolidaysList = holidayRefreshTick >= 0 ? getUpcomingHolidays(todayBangkokDate, 45, schoolId) : [];
   const yearHolidaysCount =
     holidayRefreshTick >= 0 ? getHolidaysForYear(currentBangkokYear, schoolId).length : 0;
-
-  const formatShortThaiDate = (dateStr: string) =>
-    new Date(`${dateStr}T00:00:00Z`).toLocaleDateString('th-TH', {
-      timeZone: 'UTC',
-      day: 'numeric',
-      month: 'short',
-    });
 
   const getSlotCheckStatusForDate = (slot: TimetableSlot, dateStr: string) => {
     const resolvedCourseId =
@@ -994,123 +889,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     yearHolidaysCount,
   ]);
 
-  const renderSlotStaffStatusBadges = (
-    slot: TimetableSlot,
-    dateStr: string,
-    isHolidayOff: boolean
-  ) => {
-    if (isPersonalViewer || isHolidayOff) return null;
-    const summary = getSlotAttendanceAndLeaveSummary({
-      slot,
-      dateStr,
-      courses,
-      students,
-      teachers,
-      attendance,
-      periodAttendance,
-      leaveRequests,
-    });
-
-    const leavingTeacher = summary.teacherStatuses.find(
-      (ts) => ts.status === 'on_leave_approved' || ts.status === 'on_leave_pending'
-    );
-    const primaryTeacher = summary.teacherStatuses[0];
-    const isTodayDate = dateStr === todayBangkokDate;
-    const hasTeacherGateRecord =
-      primaryTeacher &&
-      (primaryTeacher.status === 'checked_in' ||
-        primaryTeacher.status === 'late' ||
-        primaryTeacher.status === 'absent');
-
-    const showTeacherBadge =
-      Boolean(leavingTeacher) ||
-      Boolean(hasTeacherGateRecord && dateStr <= todayBangkokDate) ||
-      Boolean(primaryTeacher && isTodayDate);
-
-    const showStudentSummary =
-      summary.periodCheckedTotal > 0 ||
-      summary.studentLeaveCount > 0 ||
-      (isTodayDate && summary.hasAnyGateRecordsForDate && summary.expectedTotal > 0);
-
-    if (!showTeacherBadge && !showStudentSummary) return null;
-
-    return (
-      <div className="mt-1 flex flex-wrap items-center gap-1 print:hidden">
-        {leavingTeacher && (
-          <span
-            title={
-              leavingTeacher.substituteTeacherName
-                ? `${leavingTeacher.teacherName} ลา · ครูสอนแทน: ${leavingTeacher.substituteTeacherName}`
-                : `${leavingTeacher.teacherName} ยื่นใบลา`
-            }
-            className="inline-flex items-center gap-0.5 rounded bg-rose-100 dark:bg-rose-950/90 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800"
-          >
-            <span>
-              ครูลา{leavingTeacher.substituteTeacherName ? ` · แทน ${leavingTeacher.substituteTeacherName.split(' ')[0]}` : ''}
-            </span>
-          </span>
-        )}
-        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'checked_in' && dateStr <= todayBangkokDate && (
-          <span
-            title={`${primaryTeacher.teacherName} เช็คอินเข้าโรงเรียนแล้ว${primaryTeacher.checkInTime ? ` เวลา ${primaryTeacher.checkInTime}` : ''}`}
-            className="inline-flex items-center gap-0.5 rounded bg-emerald-100/90 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:text-emerald-200 tabular-nums"
-          >
-            <span>ครูเข้า รร.{primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}</span>
-          </span>
-        )}
-        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'late' && dateStr <= todayBangkokDate && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 dark:text-amber-200 tabular-nums">
-            <span>ครูสาย รร.</span>
-          </span>
-        )}
-        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'absent' && dateStr <= todayBangkokDate && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200">
-            <span>ครูขาด</span>
-          </span>
-        )}
-        {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'not_checked_in' && isTodayDate && (
-          <span
-            title={`${primaryTeacher.teacherName} ยังไม่เช็คอินเข้าโรงเรียนวันนี้`}
-            className="inline-flex items-center gap-0.5 rounded bg-amber-50 dark:bg-amber-950/70 px-1.5 py-0.5 text-[9px] font-semibold text-amber-900 dark:text-amber-200 border border-amber-300/70 dark:border-amber-700"
-          >
-            <span>ครูยังไม่เข้า รร.</span>
-          </span>
-        )}
-
-        {summary.periodCheckedTotal > 0 ? (
-          <>
-            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:text-emerald-200 tabular-nums">
-              <span>มา {summary.periodPresent + summary.periodLate}/{summary.expectedTotal}</span>
-            </span>
-            {summary.periodExcused > 0 && (
-              <span className="inline-flex items-center rounded bg-indigo-100 dark:bg-indigo-950/80 px-1.5 py-0.5 text-[9px] font-bold text-indigo-800 dark:text-indigo-200 tabular-nums">
-                ลา {summary.periodExcused}
-              </span>
-            )}
-            {summary.periodAbsent > 0 && (
-              <span className="inline-flex items-center rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200 tabular-nums">
-                ขาด {summary.periodAbsent}
-              </span>
-            )}
-          </>
-        ) : (
-          <>
-            {summary.studentLeaveCount > 0 && (
-              <span className="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 dark:text-amber-200 tabular-nums">
-                นร.ลา {summary.studentLeaveCount}
-              </span>
-            )}
-            {isTodayDate && summary.hasAnyGateRecordsForDate && summary.expectedTotal > 0 && (
-              <span className="inline-flex items-center rounded bg-white/80 dark:bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                เข้า รร. {summary.gatePresentCount}/{summary.expectedTotal}
-              </span>
-            )}
-          </>
-        )}
-      </div>
-    );
-  };
-
   const isAllClassroomsView = viewMode === 'classroom' && (
     activeScheduleFilters
       ? !activeScheduleFilters.classRoom
@@ -1227,7 +1005,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       workloadByTeacher.set(key, teacherSlots);
     });
   });
-  const teacherWorkloadRows = [...workloadPeople.entries()]
+  const teacherWorkloadRows: TeacherWorkloadRow[] = [...workloadPeople.entries()]
     .map(([key, person]) => {
       const teacherSlots = workloadByTeacher.get(key) || [];
       const periodCount = teacherSlots.length;
@@ -1345,7 +1123,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     )
     .sort((a, b) => a.periodNumber - b.periodNumber);
 
-  const findFreeSubstitutesForSlot = (targetSlot: TimetableSlot) => {
+  const findFreeSubstitutesForSlot = (targetSlot: TimetableSlot): SubstituteCandidate[] => {
     const slotCourse = courses.find(
       (course) => course.code.toLowerCase() === targetSlot.courseCode.toLowerCase()
     );
@@ -1464,73 +1242,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       else if (learningArea === 'social') setNewColor('indigo');
       else setNewColor('purple');
     }
-  };
-
-  const renderTimetableColorPicker = (
-    value: string,
-    onChange: (nextColor: string) => void
-  ) => {
-    const activeStyle = getTimetableSlotCardStyle(value);
-    const customHexValue = isCustomHexColor(value) ? value : activeStyle.swatchHex;
-    return (
-      <div className="space-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-text-body)]">
-            <Palette className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-            <span>สีในตารางสอน</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[var(--color-text-muted)]">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full border border-black/15"
-              style={{ backgroundColor: activeStyle.swatchHex }}
-            />
-            <span className="truncate max-w-[170px]">{activeStyle.labelTh}</span>
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {TIMETABLE_COLOR_PRESETS.map((preset) => {
-            const isSelected = value.toLowerCase() === preset.key;
-            return (
-              <button
-                key={preset.key}
-                type="button"
-                onClick={() => onChange(preset.key)}
-                title={preset.labelTh}
-                aria-label={preset.labelTh}
-                aria-pressed={isSelected}
-                className={`relative flex h-6 w-6 items-center justify-center rounded-full border transition cursor-pointer ${
-                  isSelected
-                    ? 'scale-110 ring-2 ring-[var(--color-primary)] ring-offset-2 ring-offset-[var(--color-card-subtle)] border-white shadow-sm'
-                    : 'border-black/15 hover:scale-105'
-                }`}
-                style={{ backgroundColor: preset.swatchHex }}
-              >
-                {isSelected && <Check className="h-3 w-3 text-white drop-shadow-xs" strokeWidth={3} />}
-              </button>
-            );
-          })}
-
-          <label
-            title="เลือกสีเองตามต้องการ"
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition cursor-pointer ${
-              activeStyle.isCustomHex
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:border-[var(--color-primary)]'
-            }`}
-          >
-            <input
-              type="color"
-              value={customHexValue}
-              onChange={(e) => onChange(e.target.value)}
-              aria-label="เลือกสีตารางสอนเอง"
-              className="h-3.5 w-3.5 cursor-pointer rounded-full border-0 bg-transparent p-0"
-            />
-            <span>กำหนดเอง</span>
-          </label>
-        </div>
-      </div>
-    );
   };
 
   // Check if prospective new slot has a conflict
@@ -1743,7 +1454,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
 
   const handleAddBreakPeriod = () => {
-    // Use 0 for primary break if missing, else 90..99 for extra breaks
     const breakNumber = !periodDraft.some((p) => p.periodNumber === 0)
       ? 0
       : Array.from({ length: 9 }, (_, i) => 91 + i).find((n) => !periodDraft.some((p) => p.periodNumber === n));
@@ -1798,8 +1508,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacher, courses)
       )
     : baseClassroomSlots;
-  const classroomCourseMap: Record<string, { code: string; titleTh: string; titleEn: string; teacher: string; scheduledPeriods: number; course?: Course }> = {};
-  
+  const classroomCourseMap: Record<string, ClassroomCourseSummary> = {};
+
   classroomSlots.forEach((s) => {
     if (!classroomCourseMap[s.courseCode]) {
       const matchCourse = courses.find((c) => c.code.toLowerCase() === s.courseCode.toLowerCase());
@@ -1819,7 +1529,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   const hoursCourseStubs = rawClassroomCoursesList.map((item) => ({
     teacherName: item.course?.teacherName || item.teacher,
     teacherEmail: item.course?.teacherEmail || '',
-  })) as Course[];
+  })) as import('../types').Course[];
   const hoursTeacherOptions = buildCourseTeacherOptions(hoursCourseStubs, teachers);
   const effectiveHoursTeacherFilter =
     myCoursesOnly && hoursTeacherFilter !== 'all' && !hoursTeacherOptions.some((o) => o.key === hoursTeacherFilter)
@@ -2056,6 +1766,48 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     </div>
   );
 
+  const openAddSlotModal = () => {
+    setCourseSearchInput('');
+    const initialTeacherFilter =
+      myCoursesOnly && loggedInCourseTeacherKey ? loggedInCourseTeacherKey : 'all';
+    setCatalogTeacherFilter(initialTeacherFilter);
+    setNewClassRoom(activeScheduleFilters
+      ? activeScheduleFilters.classRoom
+      : selectedClassRoom === ALL_CLASSROOMS
+        ? ''
+        : selectedClassRoom);
+    const matchingCourses =
+      initialTeacherFilter === 'all'
+        ? courses
+        : courses.filter((c) =>
+            courseMatchesTeacherFilter(
+              c,
+              initialTeacherFilter,
+              courseCatalogTeacherOptions
+            )
+          );
+    if (matchingCourses.length > 0) {
+      handleSelectCourse(matchingCourses[0].id);
+    } else if (courses.length > 0) {
+      handleSelectCourse(courses[0].id);
+    } else {
+      handleSelectCourse('custom');
+    }
+    if (activeScheduleFilters?.teacherName) {
+      setNewTeacher(activeScheduleFilters.teacherName);
+      setNewCoTeacher('');
+    }
+    setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
+    setSlotActionError(null);
+    setShowAddModal(true);
+  };
+
+  const openPeriodSettingsModal = () => {
+    setPeriodDraft(schoolPeriods.map((period) => ({ ...period })));
+    setPeriodSettingsError(null);
+    setShowPeriodSettings(true);
+  };
+
   return (
     <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
       {/* Ultra-Compact Single-Row Page Heading and Schedule Controls */}
@@ -2157,6 +1909,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </div>
         </div>
       </div>
+
       {academicPeriodNotice && (
         <div className="shrink-0 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5 font-medium">
@@ -2167,3604 +1920,349 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         </div>
       )}
 
-      {!isPersonalViewer && selectedConflictSlotId && selectedSlotConflicts.length > 0 && (
-        <div
-          role="dialog"
-          aria-modal="false"
-          aria-label="รายละเอียดข้อขัดแย้งตารางสอน"
-          className="fixed bottom-20 left-3 z-[100] w-[min(28rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-amber-300 bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl dark:border-amber-700 sm:left-5 md:bottom-5"
-        >
-          <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/60">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-amber-950 dark:text-amber-100">
-                ข้อขัดแย้งของคาบนี้ · {selectedSlotConflicts.length} คู่
-              </p>
-              <p className="text-[10px] text-amber-800 dark:text-amber-200">
-                กดรายการเพื่อเปิดรายละเอียดคาบที่เกี่ยวข้อง
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedConflictSlotId(null)}
-              aria-label="ปิดรายละเอียดข้อขัดแย้ง"
-              className="rounded-md p-1 text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:hover:bg-amber-900"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="max-h-[55vh] space-y-2 overflow-y-auto p-2.5">
-            {selectedSlotConflicts.map(({ key, slotA, slotB, reasons, overlapStart, overlapEnd }) => {
-              const dayLabel = DAYS.find((day) => day.key === slotA.dayOfWeek)?.th || slotA.dayOfWeek;
-              const periodLabel = slotA.periodNumber === slotB.periodNumber
-                ? `คาบ ${slotA.periodNumber}`
-                : `คาบ ${slotA.periodNumber} และ ${slotB.periodNumber}`;
-              const overlapLabel = overlapStart !== null && overlapEnd !== null
-                ? `${formatTimeMinutes(overlapStart)}–${formatTimeMinutes(overlapEnd)}`
-                : 'เวลาเดียวกัน';
-              return (
-                <section key={key} className="rounded-lg border border-amber-200 p-2 dark:border-amber-800">
-                  <p className="mb-1 text-[10px] font-semibold">
-                    {dayLabel} · {periodLabel} · {overlapLabel}
-                  </p>
-                  <p className="mb-2 text-[10px] text-amber-800 dark:text-amber-200">
-                    ชนกัน: {reasons.join(' · ')}
-                  </p>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
-                    {[slotA, slotB].map((slot) => (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedConflictSlotId(null);
-                          openConflictSlot(slot);
-                        }}
-                        className="flex min-w-0 flex-col items-start rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1.5 text-left text-[10px] hover:border-amber-400"
-                      >
-                        <span className="w-full truncate font-bold">
-                          {slot.courseCode} · {slot.courseTitleTh}
-                        </span>
-                        <span>ห้อง {slot.classRoom || 'ไม่ระบุ'} · ครู {formatSlotTeachersDisplay(slot)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* MAIN VIEW CONTENT: Grid Table, Substitute Finder, Workload, or Hours Criteria */}
-      {!isPersonalViewer && viewMode === 'period_rollcall' ? (() => {
-        const parsedRollcallDate = new Date(`${rollcallDate}T12:00:00`);
-        const rollcallJsDay = Number.isNaN(parsedRollcallDate.getTime()) ? 1 : parsedRollcallDate.getDay();
-        const rollcallWeekdayMap: Record<number, DayOfWeek> = {
-          1: 'mon',
-          2: 'tue',
-          3: 'wed',
-          4: 'thu',
-          5: 'fri',
-        };
-        const rollcallDayKey: DayOfWeek | null = rollcallWeekdayMap[rollcallJsDay] || null;
-        const rollcallHoliday = getHolidayForDate(rollcallDate, schoolId);
-        const daySlots = rollcallDayKey
-          ? activeSlots
-              .filter((s) => s.dayOfWeek === rollcallDayKey)
-              .slice()
-              .sort((a, b) => a.periodNumber - b.periodNumber)
-          : [];
-        const activeRollcallSlot =
-          daySlots.find((s) => s.id === rollcallSlotId) ||
-          daySlots.find((s) =>
-            getTimetableSlotActivityStatus({
-              slot: s,
-              schoolPeriods,
-              now: bangkokClock,
-              schoolId,
-              targetDateStr: rollcallDate,
-            }).isActive
-          ) ||
-          daySlots[0] ||
-          null;
-
-        return (
-          <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
-            <header className="shrink-0 border-b border-[var(--color-border)] px-3 py-2.5 space-y-2 bg-[var(--color-card)]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0 flex flex-wrap items-center gap-2">
-                  <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
-                    <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>เช็กชื่อและสถานะการเข้าเรียนรายคาบ</span>
-                  </h2>
-                  <span className="text-[11px] text-[var(--color-text-muted)]">
-                    ดึงสถานะเช็คอินเข้าโรงเรียนและใบลาอัตโนมัติ · บันทึกลงฐานข้อมูลเชื่อมรายงาน ปพ.5 / Report ทันที
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-body)]">
-                    <span>วันที่:</span>
-                    <input
-                      type="date"
-                      value={rollcallDate}
-                      onChange={(e) => setRollcallDate(e.target.value || todayBangkokDate)}
-                      className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-bold text-[var(--color-text-title)] tabular-nums"
-                    />
-                  </label>
-                  {renderRoomAndTermControls()}
-                </div>
-              </div>
-
-              {rollcallHoliday && (
-                <div className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 px-3 py-2 text-xs font-bold text-rose-800 dark:text-rose-200 flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 shrink-0" />
-                  <span>วันหยุด: {rollcallHoliday.nameTh} ({rollcallHoliday.nameEn})</span>
-                </div>
-              )}
-
-              {daySlots.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {daySlots.map((slot) => {
-                    const isSelected = activeRollcallSlot?.id === slot.id;
-                    const slotSum = getSlotAttendanceAndLeaveSummary({
-                      slot,
-                      dateStr: rollcallDate,
-                      courses,
-                      students,
-                      teachers,
-                      attendance,
-                      periodAttendance,
-                      leaveRequests,
-                    });
-                    return (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        onClick={() => setRollcallSlotId(slot.id)}
-                        className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold cursor-pointer transition ${
-                          isSelected
-                            ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
-                            : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
-                        }`}
-                      >
-                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/15">
-                          คาบ {slot.periodNumber}
-                        </span>
-                        <span className="truncate max-w-[160px]">
-                          {slot.courseCode} · {slot.courseTitleTh}
-                        </span>
-                        <span className="text-[10px] opacity-85">({slot.classRoom})</span>
-                        {slotSum.periodCheckedTotal > 0 && (
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded tabular-nums ${
-                              isSelected
-                                ? 'bg-white/20 text-white'
-                                : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
-                            }`}
-                          >
-                            {slotSum.periodPresent + slotSum.periodLate}/{slotSum.expectedTotal}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </header>
-
-            {!rollcallDayKey ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--color-text-muted)] space-y-2">
-                <Calendar className="w-9 h-9 opacity-50" />
-                <p>วันที่เลือกตรงกับวันหยุดสุดสัปดาห์ (ไม่มีตารางเรียนปกติ)</p>
-              </div>
-            ) : !activeRollcallSlot ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-xs text-[var(--color-text-muted)] space-y-2">
-                <BookOpen className="w-9 h-9 opacity-50" />
-                <p>ไม่พบคาบเรียนในวันและตัวกรองที่เลือก กรุณาเปลี่ยนวันที่หรือเลือกห้องเรียนอื่น</p>
-              </div>
-            ) : (
-              <TimetablePeriodRosterTable
-                slot={activeRollcallSlot}
-                selectedDate={rollcallDate}
-                onDateChange={setRollcallDate}
-                schoolId={schoolId}
-                courses={courses}
-                students={students}
-                teachers={teachers}
-                schoolPeriods={schoolPeriods}
-                attendance={attendance}
-                periodAttendance={periodAttendance}
-                leaveRequests={leaveRequests}
-                currentUser={currentUser}
-                lang={lang}
-                onRecordPeriodAttendance={onRecordPeriodAttendance}
-                showDatePicker={false}
-                compactHeader={true}
-              />
-            )}
-          </section>
-        );
-      })() : viewMode === 'substitute' ? (
-        <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
-          <header className="shrink-0 border-b border-[var(--color-border)] p-2.5 sm:px-3 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="min-w-0">
-                <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
-                  <RefreshCw className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>จัดหาครูสอนแทนอัตโนมัติ</span>
-                  <span className="hidden xl:inline text-[11px] font-normal text-[var(--color-text-muted)]">
-                    · เรียงจากกลุ่มสาระเดียวกันและภาระสอนน้อยที่สุดก่อน
-                  </span>
-                </h2>
-              </div>
-              {renderRoomAndTermControls(false)}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <label className="space-y-1 text-[11px] font-semibold text-[var(--color-text-body)]">
-                <span>วันที่ต้องการหาครูสอนแทน</span>
-                <input
-                  type="date"
-                  value={subDate}
-                  onChange={(e) => setSubDate(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                />
-              </label>
-              <label className="space-y-1 text-[11px] font-semibold text-[var(--color-text-body)] sm:col-span-2">
-                <span>เลือกครูที่ลา / ติดภารกิจราชการ ({subDayMeta.th})</span>
-                <select
-                  value={resolvedAbsentTeacher}
-                  onChange={(e) => setSubSelectedTeacher(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
-                >
-                  {subTeacherSelectableList.length === 0 ? (
-                    <option value="">ยังไม่มีรายชื่อครูในภาคเรียนนี้</option>
-                  ) : (
-                    subTeacherSelectableList.map((name) => {
-                      const isOnLeave = absentTeacherNameKeysOnSubDate.has(normalizeTeacherName(name));
-                      return (
-                        <option key={name} value={name}>
-                          {name}{isOnLeave ? ' · (แจ้งลาในวันที่เลือก)' : ''}
-                        </option>
-                      );
-                    })
-                  )}
-                </select>
-              </label>
-            </div>
-
-            {teacherLeavesOnSubDate.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 px-3 py-2 text-[11px] text-amber-900 dark:text-amber-200">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                <span className="font-bold">ครูที่มีใบลาวันที่ {subDate}:</span>
-                {teacherLeavesOnSubDate.map((leave) => (
-                  <button
-                    key={leave.id}
-                    type="button"
-                    onClick={() => setSubSelectedTeacher(leave.userName)}
-                    className={`rounded-md border px-2 py-0.5 text-[10px] font-bold transition cursor-pointer ${
-                      normalizeTeacherName(leave.userName) === normalizeTeacherName(resolvedAbsentTeacher)
-                        ? 'border-amber-500 bg-amber-200/80 text-amber-950 dark:bg-amber-900 dark:text-amber-100'
-                        : 'border-amber-300 bg-white/80 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-black/20 dark:text-amber-200'
-                    }`}
-                  >
-                    {leave.userName} ({leave.status === 'approved' ? 'อนุมัติแล้ว' : 'รออนุมัติ'})
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {isSubWeekendDate && (
-              <div className="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/80 dark:bg-sky-950/30 px-3 py-1.5 text-[11px] text-sky-900 dark:text-sky-200">
-                วันที่เลือกตรงกับวันเสาร์/อาทิตย์ ระบบจึงจำลองตารางสอนของ<strong>วันจันทร์</strong>ให้ตรวจเช็กคิวสอนแทนล่วงหน้า
-              </div>
-            )}
-
-            {subNotice && (
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-200">
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  {subNotice}
-                </span>
-                <button type="button" onClick={() => setSubNotice(null)} className="text-xs font-bold px-1.5 cursor-pointer">✕</button>
-              </div>
-            )}
-          </header>
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
-            {!resolvedAbsentTeacher ? (
-              <div className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                กรุณาเลือกครูที่ต้องการหาผู้สอนแทน หรือเพิ่มข้อมูลบุคลากรและตารางสอนก่อน
-              </div>
-            ) : absentTeacherSlotsOnDay.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-8 text-center space-y-1">
-                <CheckCircle className="h-8 w-8 mx-auto text-emerald-500 opacity-80" />
-                <p className="text-sm font-bold text-[var(--color-text-title)]">
-                  {resolvedAbsentTeacher} ไม่มีคาบสอนใน{subDayMeta.th}
-                </p>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  ไม่ต้องจัดหาครูสอนแทนสำหรับวันนี้ (ช่วยลดภาระการประสานงานได้ทันที)
-                </p>
-              </div>
-            ) : (
-              absentTeacherSlotsOnDay.map((slot) => {
-                const freeCandidates = findFreeSubstitutesForSlot(slot);
-                const isLeaveSpecificOtherPeriod =
-                  resolvedAbsentTeacherLeave?.leaveScope === 'period_hourly' &&
-                  typeof resolvedAbsentTeacherLeave.periodNumber === 'number' &&
-                  resolvedAbsentTeacherLeave.periodNumber !== slot.periodNumber;
-                return (
-                  <div
-                    key={slot.id}
-                    className={`rounded-2xl border p-3.5 space-y-3 ${
-                      isLeaveSpecificOtherPeriod
-                        ? 'border-[var(--color-border)] bg-[var(--color-card-subtle)] opacity-75'
-                        : 'border-amber-200 dark:border-amber-800 bg-[var(--color-card)] shadow-2xs'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-lg bg-amber-100 dark:bg-amber-950 px-2.5 py-1 text-xs font-bold text-amber-900 dark:text-amber-200">
-                          <Clock className="h-3.5 w-3.5" />
-                          คาบ {slot.periodNumber} ({slot.startTime}–{slot.endTime})
-                        </span>
-                        <span className="text-xs font-bold text-[var(--color-text-title)]">
-                          {slot.courseCode} · {slot.courseTitleTh}
-                        </span>
-                        <span className="rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-body)]">
-                          ห้อง {slot.classRoom} {slot.room ? `(${slot.room})` : ''}
-                        </span>
-                        {isLeaveSpecificOtherPeriod && (
-                          <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] text-[var(--color-text-muted)]">
-                            ใบลาขอเฉพาะคาบ {resolvedAbsentTeacherLeave?.periodNumber}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                        พบครูว่าง {freeCandidates.length} ท่าน
-                      </span>
-                    </div>
-
-                    {freeCandidates.length === 0 ? (
-                      <p className="text-xs text-rose-700 dark:text-rose-300">
-                        ไม่มีครูว่างในคาบเวลานี้ (ครูทุกท่านมีคาบสอนซ้อนหรือติดวันลา)
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                        {freeCandidates.slice(0, 6).map((candidate) => {
-                          const requestKey = `${slot.id}::${normalizeTeacherName(candidate.name)}`;
-                          const isSent = Boolean(sentSubRequests[requestKey]);
-                          const isAssigning = assigningSubSlotKey === requestKey;
-                          return (
-                            <div
-                              key={candidate.name}
-                              className={`flex flex-col justify-between gap-2 rounded-xl border p-2.5 ${
-                                candidate.alreadyCoTeacher
-                                  ? 'border-emerald-400 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/30'
-                                  : candidate.sameDepartment
-                                    ? 'border-sky-200 bg-sky-50/50 dark:border-sky-800 dark:bg-sky-950/20'
-                                    : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <span className="truncate text-xs font-bold text-[var(--color-text-title)]">
-                                    {candidate.name}
-                                  </span>
-                                  <span className="shrink-0 rounded-md bg-white/80 dark:bg-black/20 border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[var(--color-text-body)]">
-                                    {candidate.periodCount} คาบ/สัปดาห์
-                                  </span>
-                                </div>
-                                <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
-                                  {candidate.alreadyCoTeacher && (
-                                    <span className="rounded bg-emerald-100 dark:bg-emerald-900 px-1.5 py-0.5 font-bold text-emerald-800 dark:text-emerald-200">
-                                      สอนคู่/แทนอยู่แล้ว
-                                    </span>
-                                  )}
-                                  {candidate.sameDepartment && (
-                                    <span className="rounded bg-sky-100 dark:bg-sky-900 px-1.5 py-0.5 font-bold text-sky-800 dark:text-sky-200">
-                                      กลุ่มสาระเดียวกัน
-                                    </span>
-                                  )}
-                                  {candidate.teacher?.department && (
-                                    <span className="truncate">{candidate.teacher.department}</span>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[var(--color-border)]">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    void handleRequestSubstituteTeacher(slot, candidate.name);
-                                  }}
-                                  className={`flex-1 inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition cursor-pointer ${
-                                    isSent
-                                      ? 'bg-emerald-600 text-white'
-                                      : 'bg-[var(--color-primary)] text-white hover:opacity-95'
-                                  }`}
-                                >
-                                  <Send className="h-3 w-3" />
-                                  <span>{isSent ? 'ส่งแจ้งเตือนแล้ว ✓' : 'แจ้งขอสอนแทน'}</span>
-                                </button>
-                                {canEditTimetableSlots && onUpdateSlot && !candidate.alreadyCoTeacher && (
-                                  <button
-                                    type="button"
-                                    disabled={isAssigning}
-                                    onClick={() => {
-                                      void handleAssignSubstituteToSlot(slot, candidate.name);
-                                    }}
-                                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] disabled:opacity-50 cursor-pointer"
-                                    title="เพิ่มเป็นครูสอนคู่/สอนแทนในตารางสอนจริง"
-                                  >
-                                    <UserCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                                    <span>{isAssigning ? 'กำลังบันทึก...' : 'ลงตารางแทน'}</span>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
+      {/* MAIN VIEW CONTENT */}
+      {!isPersonalViewer && viewMode === 'period_rollcall' ? (
+        <TimetablePeriodRollcallTab
+          rollcallDate={rollcallDate}
+          setRollcallDate={setRollcallDate}
+          rollcallSlotId={rollcallSlotId}
+          setRollcallSlotId={setRollcallSlotId}
+          todayBangkokDate={todayBangkokDate}
+          bangkokClock={bangkokClock}
+          schoolId={schoolId}
+          activeSlots={activeSlots}
+          schoolPeriods={schoolPeriods}
+          courses={courses}
+          students={students}
+          teachers={teachers}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          leaveRequests={leaveRequests}
+          currentUser={currentUser}
+          lang={lang}
+          onRecordPeriodAttendance={onRecordPeriodAttendance}
+          renderRoomAndTermControls={renderRoomAndTermControls}
+        />
+      ) : viewMode === 'substitute' ? (
+        <TimetableSubstituteTab
+          subDate={subDate}
+          setSubDate={setSubDate}
+          setSubSelectedTeacher={setSubSelectedTeacher}
+          subDayMeta={subDayMeta}
+          resolvedAbsentTeacher={resolvedAbsentTeacher}
+          subTeacherSelectableList={subTeacherSelectableList}
+          absentTeacherNameKeysOnSubDate={absentTeacherNameKeysOnSubDate}
+          teacherLeavesOnSubDate={teacherLeavesOnSubDate}
+          isSubWeekendDate={isSubWeekendDate}
+          subNotice={subNotice}
+          setSubNotice={setSubNotice}
+          absentTeacherSlotsOnDay={absentTeacherSlotsOnDay}
+          resolvedAbsentTeacherLeave={resolvedAbsentTeacherLeave}
+          findFreeSubstitutesForSlot={findFreeSubstitutesForSlot}
+          sentSubRequests={sentSubRequests}
+          assigningSubSlotKey={assigningSubSlotKey}
+          canEditTimetableSlots={canEditTimetableSlots}
+          hasUpdateSlotHandler={Boolean(onUpdateSlot)}
+          handleRequestSubstituteTeacher={handleRequestSubstituteTeacher}
+          handleAssignSubstituteToSlot={handleAssignSubstituteToSlot}
+          renderRoomAndTermControls={renderRoomAndTermControls}
+        />
       ) : viewMode === 'workload' ? (
-        <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
-          <header className="shrink-0 border-b border-[var(--color-border)] px-3 py-2 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="min-w-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-                <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
-                  <Users className="h-4 w-4 text-[var(--color-primary-text)] shrink-0" />
-                  <span>ภาระงานสอนรายบุคคล</span>
-                </h2>
-                <span className="text-[11px] text-[var(--color-text-muted)]">
-                  เกณฑ์คัดกรองเบื้องต้น {workloadMinPeriods}–{workloadMaxPeriods} คาบ/สัปดาห์ · คำนวณจากตารางสอนจริง
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                {renderRoomAndTermControls(false)}
-                {isAdmin && onUpdateTeachingLoadThresholds && (
-                  <details className="relative">
-                    <summary
-                      className="btn-tool-neutral list-none px-2.5 py-1.5 text-[11px]"
-                      onClick={() => {
-                        setWorkloadMinDraft(String(workloadMinPeriods));
-                        setWorkloadMaxDraft(String(workloadMaxPeriods));
-                        setWorkloadSettingsError(null);
-                      }}
-                    >
-                      <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-                      <span>ตั้งค่าเกณฑ์</span>
-                      <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)]" />
-                    </summary>
-                    <form
-                      onSubmit={handleSaveTeachingLoadThresholds}
-                      className="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-xl space-y-2.5 text-left"
-                    >
-                      <div className="text-[11px] font-bold text-[var(--color-text-title)]">
-                        เกณฑ์ภาระงานสอนครู (ไม่ใช่เกณฑ์ตำแหน่ง)
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                          ขั้นต่ำ (คาบ/สัปดาห์)
-                          <input
-                            type="number"
-                            min={0}
-                            max={60}
-                            step={1}
-                            value={workloadMinDraft}
-                            onChange={(event) => setWorkloadMinDraft(event.target.value)}
-                            aria-label="จำนวนคาบขั้นต่ำต่อสัปดาห์"
-                            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1 text-xs text-[var(--color-text-title)]"
-                          />
-                        </label>
-                        <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                          สูงสุด (คาบ/สัปดาห์)
-                          <input
-                            type="number"
-                            min={0}
-                            max={60}
-                            step={1}
-                            value={workloadMaxDraft}
-                            onChange={(event) => setWorkloadMaxDraft(event.target.value)}
-                            aria-label="จำนวนคาบสูงสุดต่อสัปดาห์"
-                            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1 text-xs text-[var(--color-text-title)]"
-                          />
-                        </label>
-                      </div>
-                      {workloadSettingsError && (
-                        <p role="alert" className="text-[10px] text-rose-700 dark:text-rose-300">
-                          {workloadSettingsError}
-                        </p>
-                      )}
-                      <button
-                        type="submit"
-                        disabled={isSavingWorkloadSettings}
-                        className="w-full rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60 cursor-pointer"
-                      >
-                        {isSavingWorkloadSettings ? 'กำลังบันทึก…' : 'บันทึกเกณฑ์'}
-                      </button>
-                    </form>
-                  </details>
-                )}
-              </div>
-            </div>
-
-            {/* Compact Single-Row 5-Filter Stat Strip */}
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
-              <button
-                type="button"
-                aria-pressed={workloadStatusFilter === 'all'}
-                onClick={() => setWorkloadStatusFilter('all')}
-                className={`flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-left transition hover:border-[var(--color-primary)] cursor-pointer ${workloadStatusFilter === 'all' ? 'ring-2 ring-[var(--color-primary)]' : ''}`}
-              >
-                <span className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">ครูทั้งหมด</span>
-                <span className="text-xs font-extrabold tabular-nums text-[var(--color-text-title)] shrink-0">{teacherWorkloadRows.length} คน</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={workloadStatusFilter === 'unassigned'}
-                onClick={() => setWorkloadStatusFilter('unassigned')}
-                className={`flex items-center justify-between gap-2 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-left transition hover:border-slate-500 dark:border-slate-700 dark:bg-slate-900/40 cursor-pointer ${workloadStatusFilter === 'unassigned' ? 'ring-2 ring-slate-400' : ''}`}
-              >
-                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">ยังไม่มีคาบ</span>
-                <span className="text-xs font-extrabold tabular-nums text-slate-900 dark:text-slate-100 shrink-0">{unassignedWorkloadCount} คน</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={workloadStatusFilter === 'low'}
-                onClick={() => setWorkloadStatusFilter('low')}
-                className={`flex items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-left transition hover:border-amber-500 dark:border-amber-800 dark:bg-amber-950/40 cursor-pointer ${workloadStatusFilter === 'low' ? 'ring-2 ring-amber-400' : ''}`}
-              >
-                <span className="text-[11px] font-medium text-amber-800 dark:text-amber-200 truncate">ต่ำกว่า {workloadMinPeriods} คาบ</span>
-                <span className="text-xs font-extrabold tabular-nums text-amber-900 dark:text-amber-100 shrink-0">{lowWorkloadCount} คน</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={workloadStatusFilter === 'within'}
-                onClick={() => setWorkloadStatusFilter('within')}
-                className={`flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-left transition hover:border-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 cursor-pointer ${workloadStatusFilter === 'within' ? 'ring-2 ring-emerald-400' : ''}`}
-              >
-                <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-200 truncate">{workloadMinPeriods}–{workloadMaxPeriods} คาบ</span>
-                <span className="text-xs font-extrabold tabular-nums text-emerald-900 dark:text-emerald-100 shrink-0">{withinWorkloadCount} คน</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={workloadStatusFilter === 'high'}
-                onClick={() => setWorkloadStatusFilter('high')}
-                className={`flex items-center justify-between gap-2 rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-left transition hover:border-rose-500 dark:border-rose-800 dark:bg-rose-950/40 cursor-pointer ${workloadStatusFilter === 'high' ? 'ring-2 ring-rose-400' : ''}`}
-              >
-                <span className="text-[11px] font-medium text-rose-800 dark:text-rose-200 truncate">มากกว่า {workloadMaxPeriods} คาบ</span>
-                <span className="text-xs font-extrabold tabular-nums text-rose-900 dark:text-rose-100 shrink-0">{highWorkloadCount} คน</span>
-              </button>
-            </div>
-          </header>
-
-          <div className="shrink-0 grid gap-2 border-b border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.5fr)_auto]">
-            <label className="relative block min-w-0">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="search"
-                value={workloadSearchTerm}
-                onChange={(event) => setWorkloadSearchTerm(event.target.value)}
-                placeholder="ค้นหาชื่อครู วิชา รหัสวิชา หรือห้อง"
-                aria-label="ค้นหาภาระงานครู"
-                className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-1.5 pl-8 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-              />
-            </label>
-            <select
-              value={workloadStatusFilter}
-              onChange={(event) => {
-                const value = event.target.value;
-                if (['all', 'scheduled', 'unassigned', 'low', 'within', 'high'].includes(value)) {
-                  setWorkloadStatusFilter(value as typeof workloadStatusFilter);
-                }
-              }}
-              aria-label="กรองตามสถานะภาระงาน"
-              className="w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)]"
-            >
-              <option value="all">ทุกสถานะ</option>
-              <option value="scheduled">มีคาบสอนแล้ว</option>
-              <option value="unassigned">ยังไม่มีคาบ</option>
-              <option value="low">ต่ำกว่า {workloadMinPeriods} คาบ</option>
-              <option value="within">{workloadMinPeriods}–{workloadMaxPeriods} คาบ</option>
-              <option value="high">มากกว่า {workloadMaxPeriods} คาบ</option>
-            </select>
-            <span className="self-center text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)] sm:text-right">
-              พบ {filteredTeacherWorkloadRows.length} / {teacherWorkloadRows.length} คน
-            </span>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-auto p-1.5 sm:p-2">
-            {filteredTeacherWorkloadRows.length === 0 ? (
-              <p className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                {teacherWorkloadRows.length === 0
-                  ? 'ยังไม่มีรายชื่อครูหรือข้อมูลผู้สอนในตารางสอน'
-                  : 'ไม่พบรายชื่อที่ตรงกับคำค้นหาหรือตัวกรอง'}
-              </p>
-            ) : (
-              <div className="space-y-1.5">
-                {filteredTeacherWorkloadRows.map((teacher) => (
-                  <details
-                    key={normalizeTeacherName(teacher.name)}
-                    className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] transition hover:border-[var(--color-primary)]"
-                  >
-                    <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 rounded-xl px-3 py-2 hover:bg-[var(--color-card-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] sm:grid-cols-[minmax(0,1fr)_minmax(8rem,1fr)_auto_auto] [&::-webkit-details-marker]:hidden">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                          teacher.status === 'high'
-                            ? 'bg-rose-500'
-                            : teacher.status === 'low'
-                              ? 'bg-amber-500'
-                              : teacher.status === 'unassigned'
-                                ? 'bg-slate-400'
-                                : 'bg-emerald-500'
-                        }`} />
-                        <div className="min-w-0">
-                          <div className="truncate text-xs font-bold text-[var(--color-text-title)]">{teacher.name}</div>
-                          {teacher.teacher?.positionTitle && (
-                            <div className="truncate text-[10px] text-[var(--color-text-muted)]">{teacher.teacher.positionTitle}</div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="min-w-24 max-w-48">
-                        <div className="flex items-baseline gap-2">
-                          <span className="font-mono text-sm font-bold tabular-nums text-[var(--color-text-title)]">
-                            {teacher.periodCount} <span className="font-sans text-[10px] font-medium">คาบ</span>
-                          </span>
-                          <span className="text-[10px] tabular-nums text-[var(--color-text-muted)]">
-                            {teacher.hours.toFixed(1)} ชม.
-                          </span>
-                        </div>
-                        <div
-                          role="progressbar"
-                          aria-label={`ภาระงานสอนของ${teacher.name}`}
-                          aria-valuemin={0}
-                          aria-valuemax={workloadMaxPeriods}
-                          aria-valuenow={Math.min(teacher.periodCount, workloadMaxPeriods)}
-                          aria-valuetext={`${teacher.periodCount} คาบต่อสัปดาห์; เกณฑ์เบื้องต้น ${workloadMinPeriods}–${workloadMaxPeriods} คาบ`}
-                          className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-card-subtle)]"
-                        >
-                          <div
-                            className={`h-full rounded-full ${
-                              teacher.status === 'high'
-                                ? 'bg-rose-500'
-                                : teacher.status === 'low'
-                                  ? 'bg-amber-500'
-                                  : teacher.status === 'unassigned'
-                                    ? 'bg-slate-400'
-                                    : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${Math.min((teacher.periodCount / Math.max(workloadMaxPeriods, 1)) * 100, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {teacher.status === 'unassigned' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                          ยังไม่มีคาบ
-                        </span>
-                      ) : teacher.status === 'low' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
-                          <AlertCircle className="h-3 w-3" /> ต่ำกว่า {workloadMinPeriods}
-                        </span>
-                      ) : teacher.status === 'high' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-900 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200">
-                          <AlertTriangle className="h-3 w-3" /> เกิน {workloadMaxPeriods}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
-                          <CheckCircle2 className="h-3 w-3" /> {workloadMinPeriods}–{workloadMaxPeriods}
-                        </span>
-                      )}
-
-                      <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap text-[10px] font-semibold text-[var(--color-primary-text)]">
-                        {teacher.subjects.length > 0 ? `${teacher.subjects.length} วิชา` : 'ดูข้อมูล'}
-                        <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
-                      </span>
-                    </summary>
-
-                    <div className="border-t border-[var(--color-border)] p-3">
-                      {teacher.subjects.length > 0 ? (
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {teacher.subjects.map((subject) => (
-                            <div key={`${subject.code}-${subject.title}`} className="min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2.5">
-                              <div className="flex flex-wrap items-baseline justify-between gap-1">
-                                <span className="min-w-0 break-words text-xs font-semibold text-[var(--color-text-body)]">
-                                  <span className="font-mono font-bold text-[var(--color-primary-text)]">{subject.code}</span>
-                                  {subject.title ? ` · ${subject.title}` : ''}
-                                  {subject.coTaughtPeriods > 0 && (
-                                    <span className="ml-1.5 inline-flex items-center rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                                      สอนคู่ ({subject.coTaughtPeriods} คาบ)
-                                    </span>
-                                  )}
-                                </span>
-                                <span className="whitespace-nowrap text-[10px] font-semibold text-[var(--color-text-muted)]">
-                                  {subject.periodCount} คาบ/สัปดาห์
-                                </span>
-                              </div>
-                              {subject.rooms.length > 0 && (
-                                <div className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-                                  ห้อง {subject.rooms.join(', ')}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-[var(--color-text-muted)]">ยังไม่มีรายวิชาในตารางสอน</p>
-                      )}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+        <TimetableWorkloadTab
+          isAdmin={isAdmin}
+          hasUpdateTeachingLoadThresholds={Boolean(onUpdateTeachingLoadThresholds)}
+          workloadMinPeriods={workloadMinPeriods}
+          workloadMaxPeriods={workloadMaxPeriods}
+          workloadMinDraft={workloadMinDraft}
+          setWorkloadMinDraft={setWorkloadMinDraft}
+          workloadMaxDraft={workloadMaxDraft}
+          setWorkloadMaxDraft={setWorkloadMaxDraft}
+          workloadSettingsError={workloadSettingsError}
+          setWorkloadSettingsError={setWorkloadSettingsError}
+          isSavingWorkloadSettings={isSavingWorkloadSettings}
+          handleSaveTeachingLoadThresholds={handleSaveTeachingLoadThresholds}
+          workloadStatusFilter={workloadStatusFilter}
+          setWorkloadStatusFilter={setWorkloadStatusFilter}
+          workloadSearchTerm={workloadSearchTerm}
+          setWorkloadSearchTerm={setWorkloadSearchTerm}
+          teacherWorkloadRows={teacherWorkloadRows}
+          filteredTeacherWorkloadRows={filteredTeacherWorkloadRows}
+          unassignedWorkloadCount={unassignedWorkloadCount}
+          lowWorkloadCount={lowWorkloadCount}
+          withinWorkloadCount={withinWorkloadCount}
+          highWorkloadCount={highWorkloadCount}
+          renderRoomAndTermControls={renderRoomAndTermControls}
+        />
       ) : viewMode === 'hours_criteria' ? (
-        /* TAB: Academic Hours Criteria & 80% Attendance Table */
-        <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col p-2.5 sm:p-3 space-y-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2">
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>เกณฑ์ชั่วโมงเรียน 80% ปพ.5</span>
-                  <span className="hidden xl:inline text-[11px] font-normal text-[var(--color-text-muted)]">
-                    · คำนวณจากภาคเรียน 20 สัปดาห์
-                  </span>
-                </h2>
-                <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 font-semibold">
-                  ขาดเรียนได้ไม่เกิน 20%
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {renderRoomAndTermControls()}
-                {!isPersonalViewer && hoursTeacherOptions.length > 0 && (
-                  <div className="fn-group">
-                    <span className="fn-group-label text-[var(--color-text-muted)]">ผู้สอน</span>
-                    <select
-                      aria-label="กรองวิชาตามรายชื่อครู"
-                      value={effectiveHoursTeacherFilter}
-                      onChange={(e) => setHoursTeacherFilter(e.target.value)}
-                      className="min-h-8 max-w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)] print:hidden"
-                    >
-                      <option value="all">ครูผู้สอนทุกคน ({hoursTeacherOptions.length})</option>
-                      {hoursTeacherOptions.map((opt) => (
-                        <option key={opt.key} value={opt.key}>
-                          {opt.label} ({opt.count} วิชา)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <table className="table-comfortable w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)] font-bold text-[11px]">
-                  <th className="p-3">รหัสวิชา</th>
-                  <th className="p-3">ชื่อวิชา (ไทย / EN)</th>
-                  <th className="p-3">ครูผู้สอน</th>
-                  {showCreditsColumn && <th className="p-3 text-center">หน่วยกิต</th>}
-                  <th className="p-3 text-center">คาบจัดสอนจริง</th>
-                  <th className="p-3 text-center">ชั่วโมงรวม/เทอม (20 สัปดาห์)</th>
-                  <th className="p-3 text-center">เกณฑ์เวลาเรียน 80%</th>
-                  <th className="p-3 text-center">ขาดได้สูงสุด (20%)</th>
-                  <th className="p-3 text-center">สถานะความครบถ้วน</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {classroomCoursesList.length === 0 ? (
-                  <tr>
-                    <td colSpan={showCreditsColumn ? 9 : 8} className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                      ยังไม่มีการจัดตารางสอนสำหรับห้องนี้ กดปุ่ม &quot;+ เพิ่มคาบเรียน&quot; เพื่อเริ่มต้นจัดตาราง
-                    </td>
-                  </tr>
-                ) : (
-                  classroomCoursesList.map((item) => {
-                    const credits = item.course?.credits ?? 1.5;
-                    const requiredWeeklyPeriods = item.course?.weeklyHours ?? (credits > 0 ? Math.round(credits * 2) : 1);
-                    const totalHours = item.scheduledPeriods * 20; // 20 weeks
-                    const minAttendanceHours = Math.round(totalHours * 0.8);
-                    const maxAllowedAbsentHours = totalHours - minAttendanceHours;
-                    const isComplete = item.scheduledPeriods === requiredWeeklyPeriods;
-                    const isUnder = item.scheduledPeriods < requiredWeeklyPeriods;
-
-                    return (
-                      <tr key={item.code} className="hover:bg-[var(--color-card-subtle)] transition">
-                        <td className="p-3 font-mono font-bold text-[var(--color-primary-text)]">
-                          {item.code}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-bold text-[var(--color-text-title)]">{item.titleTh}</div>
-                          <div className="text-[10px] text-[var(--color-text-muted)]">{item.titleEn}</div>
-                        </td>
-                        <td className="p-3 text-[var(--color-text-body)]">
-                          {item.teacher}
-                        </td>
-                        {showCreditsColumn && (
-                          <td className="p-3 text-center font-bold text-[var(--color-text-title)]">
-                            {shouldShowCourseCredits(item.code, showPrimaryCourseCredits) && (credits === 0 ? 'ไม่มีหน่วยกิต' : credits)}
-                          </td>
-                        )}
-                        <td className="p-3 text-center font-bold">
-                          <span className={`px-2 py-0.5 rounded ${
-                            isComplete
-                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200'
-                              : isUnder
-                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200'
-                                : 'bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200'
-                          }`}>
-                            {item.scheduledPeriods} คาบ/สัปดาห์
-                          </span>
-                        </td>
-                        <td className="p-3 text-center font-semibold text-[var(--color-text-title)]">
-                          {totalHours} ชั่วโมง
-                        </td>
-                        <td className="p-3 text-center font-bold text-emerald-700 dark:text-emerald-300">
-                          {minAttendanceHours} ชั่วโมง (80%)
-                        </td>
-                        <td className="p-3 text-center font-bold text-rose-700 dark:text-rose-300">
-                          {maxAllowedAbsentHours} ชั่วโมง
-                        </td>
-                        <td className="p-3 text-center">
-                          {isComplete ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>ครบตามเกณฑ์</span>
-                            </span>
-                          ) : isUnder ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                              <AlertCircle className="w-3.5 h-3.5" />
-                              <span>ขาดอีก {requiredWeeklyPeriods - item.scheduledPeriods} คาบ</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300">
-                              <Info className="w-3.5 h-3.5" />
-                              <span>จัดเสริม +{item.scheduledPeriods - requiredWeeklyPeriods} คาบ</span>
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : viewMode === 'calendar' ? (() => {
-        const monthHolidays = getHolidaysInMonth(calendarMonthCursor.year, calendarMonthCursor.month, schoolId);
-        const firstDayOfMonth = new Date(Date.UTC(calendarMonthCursor.year, calendarMonthCursor.month, 1));
-        const daysInMonth = new Date(Date.UTC(calendarMonthCursor.year, calendarMonthCursor.month + 1, 0)).getUTCDate();
-        const leadingBlanks = (firstDayOfMonth.getUTCDay() + 6) % 7; // Monday = 0
-        const monthCells: Array<{ dateStr: string; dayNum: number } | null> = [
-          ...Array.from({ length: leadingBlanks }, () => null),
-          ...Array.from({ length: daysInMonth }, (_, i) => {
-            const d = i + 1;
-            const dateStr = `${calendarMonthCursor.year}-${String(calendarMonthCursor.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            return { dateStr, dayNum: d };
-          }),
-        ];
-        const monthTitleTh = firstDayOfMonth.toLocaleDateString('th-TH', {
-          timeZone: 'UTC',
-          month: 'long',
-          year: 'numeric',
-        });
-
-        const selectedDateObj = new Date(`${selectedCalendarDate}T00:00:00Z`);
-        const selectedDayKeyMap: Array<DayOfWeek | null> = [null, 'mon', 'tue', 'wed', 'thu', 'fri', null];
-        const selectedDayKey = selectedDayKeyMap[selectedDateObj.getUTCDay()] || null;
-        const selectedDateHolidays: ThaiHoliday[] = getHolidaysForDate(selectedCalendarDate, schoolId);
-        const selectedDaySlots = selectedDayKey
-          ? activeSlots
-              .filter((slot) => slot.dayOfWeek === selectedDayKey)
-              .sort(
-                (a, b) =>
-                  (getSlotTimeRange(a)?.start ?? 0) - (getSlotTimeRange(b)?.start ?? 0) ||
-                  a.periodNumber - b.periodNumber
-              )
-          : [];
-        const selectedDayAssignments = assignments.filter(
-          (a) => a.status !== 'closed' && (a.dueDate || '').slice(0, 10) === selectedCalendarDate
-        );
-        void calendarNotesTick;
-        const monthNotesMap = getVisibleCalendarNotesMapForMonth(
-          schoolId,
-          calendarMonthCursor.year,
-          calendarMonthCursor.month,
-          currentUser?.id,
-          currentRole
-        );
-        const selectedDateNotes = getVisibleCalendarNotesForDate(
-          schoolId,
-          selectedCalendarDate,
-          currentUser?.id,
-          currentRole
-        );
-        const resetNoteForm = () => {
-          setShowNoteForm(false);
-          setEditingNoteId(null);
-          setNoteTitleDraft('');
-          setNoteContentDraft('');
-          setNoteScopeDraft('personal');
-          setNoteColorDraft('amber');
-        };
-        const handleStartNewNote = (targetDate?: string) => {
-          if (targetDate) setSelectedCalendarDate(targetDate);
-          setEditingNoteId(null);
-          setNoteTitleDraft('');
-          setNoteContentDraft('');
-          setNoteScopeDraft('personal');
-          setNoteColorDraft('amber');
-          setShowNoteForm(true);
-        };
-        const handleStartEditNote = (note: CalendarNote) => {
-          setEditingNoteId(note.id);
-          setNoteTitleDraft(note.title);
-          setNoteContentDraft(note.content);
-          setNoteScopeDraft(note.scope);
-          setNoteColorDraft(note.color);
-          setShowNoteForm(true);
-        };
-        const handleSaveNote = (e: React.FormEvent) => {
-          e.preventDefault();
-          const trimmedTitle = noteTitleDraft.trim();
-          const trimmedContent = noteContentDraft.trim();
-          if (!trimmedTitle && !trimmedContent) return;
-          saveCalendarNote({
-            id: editingNoteId || undefined,
-            schoolId,
-            date: selectedCalendarDate,
-            title: trimmedTitle || trimmedContent.slice(0, 40),
-            content: trimmedContent,
-            scope: isPersonalViewer ? 'personal' : noteScopeDraft,
-            color: noteColorDraft,
-            authorId: currentUser?.id || `role:${currentRole}`,
-            authorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentRole,
-            authorRole: currentRole,
-          });
-          resetNoteForm();
-          setCalendarNotesTick((v) => v + 1);
-        };
-
-        return (
-          <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
-            <header className="shrink-0 space-y-2 border-b border-[var(--color-border)] p-2.5 sm:px-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-                    {calendarLayoutMode === 'month' ? `ปฏิทินการศึกษา · ${monthTitleTh}` : 'ปฏิทินตารางสอนรายสัปดาห์'}
-                  </h2>
-                  <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                    {calendarLayoutMode === 'month'
-                      ? `วันหยุดเดือนนี้ ${monthHolidays.length} วัน · ${activeSlots.length} คาบ/สัปดาห์`
-                      : `${calendarWeekRangeLabel} · ${activeSlots.length} คาบ/สัปดาห์`}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Layout toggle: Month / Week */}
-                  <div className="seg-tab-group">
-                    <button
-                      type="button"
-                      data-active={calendarLayoutMode === 'month'}
-                      onClick={() => setCalendarLayoutMode('month')}
-                      className="seg-tab-btn text-xs cursor-pointer"
-                    >
-                      รายเดือน + วันหยุด
-                    </button>
-                    <button
-                      type="button"
-                      data-active={calendarLayoutMode === 'week'}
-                      onClick={() => setCalendarLayoutMode('week')}
-                      className="seg-tab-btn text-xs cursor-pointer"
-                    >
-                      รายสัปดาห์
-                    </button>
-                  </div>
-
-                  {calendarLayoutMode === 'month' ? (
-                    <div className="fn-group">
-                      <button
-                        type="button"
-                        aria-label="เดือนก่อนหน้า"
-                        onClick={() =>
-                          setCalendarMonthCursor((prev) =>
-                            prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 }
-                          )
-                        }
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <ChevronRight className="h-4 w-4 rotate-180" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const today = getBangkokDateInputValue();
-                          setCalendarMonthCursor({
-                            year: Number(today.slice(0, 4)),
-                            month: Number(today.slice(5, 7)) - 1,
-                          });
-                          setSelectedCalendarDate(today);
-                        }}
-                        className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        วันนี้
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="เดือนถัดไป"
-                        onClick={() =>
-                          setCalendarMonthCursor((prev) =>
-                            prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 }
-                          )
-                        }
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="fn-group">
-                      <span className="fn-group-label text-[var(--color-text-muted)]">สัปดาห์</span>
-                      <button
-                        type="button"
-                        aria-label="สัปดาห์ก่อนหน้า"
-                        onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, -7))}
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <ChevronRight className="h-4 w-4 rotate-180" />
-                      </button>
-                      <input
-                        id="timetable-calendar-week"
-                        type="date"
-                        value={calendarWeekStart}
-                        onChange={(event) => {
-                          if (event.target.value) setCalendarWeekStart(getCalendarWeekStart(event.target.value));
-                        }}
-                        className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setCalendarWeekStart(getCalendarWeekStart(getBangkokDateInputValue()))}
-                        className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        วันนี้
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="สัปดาห์ถัดไป"
-                        onClick={() => setCalendarWeekStart((previous) => addCalendarDays(previous, 7))}
-                        className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="fn-group">
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        disabled={isSyncingHolidays}
-                        onClick={() => void handleManualHolidaySync(calendarMonthCursor.year)}
-                        className="btn-tool-neutral px-2.5 py-1.5 disabled:opacity-60"
-                        title="ดึงวันหยุดราชการไทยล่าสุดจาก Public Holiday API"
-                      >
-                        <RefreshCw className={`h-3.5 w-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
-                        <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุดราชการ'}</span>
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddHolidayForm((v) => !v)}
-                        className="btn-tool-neutral px-2.5 py-1.5"
-                      >
-                        <CalendarDays className="h-3.5 w-3.5 text-rose-500" />
-                        <span>เพิ่มวันหยุดโรงเรียน</span>
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setShowImportExportModal(true)}
-                        className="btn-tool-neutral px-2.5 py-1.5"
-                      >
-                        <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                        <span>Export / Import</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={openGoogleCalendarModal}
-                      className="btn-action-primary px-2.5 py-1.5"
-                    >
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>เชื่อมต่อ Calendar (.ics)</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                {renderRoomAndTermControls()}
-                <div className="flex flex-wrap items-center gap-2">
-                  {!isPersonalViewer && (
-                    <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                      วันหยุดราชการ พ.ศ. {calendarMonthCursor.year + 543} ({getHolidaysForYear(calendarMonthCursor.year, schoolId).length} วัน)
-                      {holidaySyncStatus && holidaySyncStatus.year === calendarMonthCursor.year
-                        ? holidaySyncStatus.usedFallback
-                          ? ' · ปฏิทินมาตรฐานไทย'
-                          : ' · ซิงค์ Public Holiday API แล้ว'
-                        : ''}
-                    </span>
-                  )}
-                  {todayHoliday ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:text-rose-200">
-                      <CalendarDays className="w-3.5 h-3.5 shrink-0" />
-                      วันนี้หยุด: {todayHoliday.nameTh}
-                    </span>
-                  ) : upcomingHolidaysList.length > 0 ? (
-                    <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                      วันหยุดถัดไป: <strong className="text-rose-600 dark:text-rose-400">{upcomingHolidaysList[0].nameTh}</strong> ({upcomingHolidaysList[0].date})
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Admin / Teacher Custom School Holiday Form */}
-              {isAdmin && showAddHolidayForm && (
-                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 flex flex-wrap items-end gap-2 text-xs">
-                  <div>
-                    <label className="block text-[10px] font-bold text-[var(--color-text-muted)] mb-1">วันที่หยุดพิเศษ</label>
-                    <input
-                      type="date"
-                      value={newHolidayDate}
-                      onChange={(e) => setNewHolidayDate(e.target.value)}
-                      className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-[10px] font-bold text-[var(--color-text-muted)] mb-1">ชื่อวันหยุด / กิจกรรมงดเรียน</label>
-                    <input
-                      type="text"
-                      value={newHolidayNameTh}
-                      onChange={(e) => setNewHolidayNameTh(e.target.value)}
-                      placeholder="เช่น วันกีฬาสีโรงเรียน / วันหยุดพิเศษประจำปี"
-                      className="w-full h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-xs"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!newHolidayDate || !newHolidayNameTh.trim()) return;
-                      addSchoolCustomHoliday(schoolId, {
-                        date: newHolidayDate,
-                        nameTh: newHolidayNameTh.trim(),
-                      });
-                      setNewHolidayNameTh('');
-                      setShowAddHolidayForm(false);
-                      setSelectedCalendarDate(newHolidayDate);
-                      setHolidayRefreshTick((v) => v + 1);
-                    }}
-                    className="h-9 px-3.5 rounded-lg bg-[var(--color-primary)] text-white font-bold cursor-pointer"
-                  >
-                    บันทึกวันหยุด
-                  </button>
-                </div>
-              )}
-            </header>
-
-            <div className="min-h-0 flex-1 overflow-auto p-3">
-              {calendarLayoutMode === 'month' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                  {/* Left: 7-Column Monthly Grid */}
-                  <div className="lg:col-span-7 space-y-2">
-                    <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold text-[var(--color-text-muted)] pb-1">
-                      {['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'].map((dLabel, idx) => (
-                        <div key={dLabel} className={idx >= 5 ? 'text-rose-500' : ''}>
-                          {dLabel}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-1.5">
-                      {monthCells.map((cell, idx) => {
-                        if (!cell) {
-                          return <div key={`blank-${idx}`} className="min-h-[76px] rounded-xl bg-[var(--color-card-subtle)]/40" />;
-                        }
-                        const cellHolidays = monthHolidays.filter((h) => h.date === cell.dateStr);
-                        const primaryHoliday = cellHolidays[0] || null;
-                        const isToday = cell.dateStr === todayBangkokDate;
-                        const isSelected = cell.dateStr === selectedCalendarDate;
-                        const isWeekend = isWeekendDate(cell.dateStr);
-                        const cellUtcDay = new Date(`${cell.dateStr}T00:00:00Z`).getUTCDay();
-                        const cellDayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][cellUtcDay] || 'sun') as DayOfWeek | 'sun' | 'sat';
-                        const cellClassCount =
-                          !isWeekend && !primaryHoliday
-                            ? activeSlots.filter((s) => s.dayOfWeek === cellDayKey).length
-                            : 0;
-                        const cellAsgCount = assignments.filter(
-                          (a) => a.status !== 'closed' && (a.dueDate || '').slice(0, 10) === cell.dateStr
-                        ).length;
-                        const cellNotes = monthNotesMap.get(cell.dateStr) || [];
-
-                        return (
-                          <button
-                            key={cell.dateStr}
-                            type="button"
-                            onClick={() => setSelectedCalendarDate(cell.dateStr)}
-                            className={`min-h-[76px] rounded-xl border p-1.5 text-left flex flex-col justify-between transition cursor-pointer ${
-                              isSelected
-                                ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/25 bg-[var(--color-primary-light)]'
-                                : primaryHoliday
-                                  ? 'border-rose-300 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/30 hover:border-rose-400'
-                                  : isWeekend
-                                    ? 'border-[var(--color-border)] bg-[var(--color-card-subtle)]/70 opacity-80'
-                                    : 'border-[var(--color-border)] bg-[var(--color-card)] hover:border-blue-400'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1 w-full">
-                              <span
-                                className={`text-xs font-bold tabular-nums ${
-                                  isToday
-                                    ? 'w-6 h-6 rounded-lg bg-[var(--color-primary)] text-white inline-flex items-center justify-center'
-                                    : primaryHoliday || isWeekend
-                                      ? 'text-rose-600 dark:text-rose-400'
-                                      : 'text-[var(--color-text-title)]'
-                                }`}
-                              >
-                                {cell.dayNum}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                {cellNotes.length > 0 && (
-                                  <span
-                                    title={cellNotes.map((n) => n.title).join(', ')}
-                                    className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 tabular-nums"
-                                  >
-                                    <StickyNote className="w-2.5 h-2.5 shrink-0" />
-                                    <span>{cellNotes.length}</span>
-                                  </span>
-                                )}
-                                {cellAsgCount > 0 && (
-                                  <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-300 tabular-nums">
-                                    งาน {cellAsgCount}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="space-y-0.5 w-full">
-                              {primaryHoliday ? (
-                                <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 line-clamp-2 leading-tight">
-                                  {primaryHoliday.nameTh}
-                                </p>
-                              ) : cellNotes[0] ? (
-                                <p className="text-[10px] font-semibold text-amber-800 dark:text-amber-200 truncate leading-tight">
-                                  {cellNotes[0].title}
-                                </p>
-                              ) : cellClassCount > 0 ? (
-                                <p className="text-[10px] font-medium text-[var(--color-text-muted)] tabular-nums">
-                                  {cellClassCount} คาบ
-                                </p>
-                              ) : isWeekend ? (
-                                <p className="text-[9px] text-[var(--color-text-muted)]">เสาร์-อาทิตย์</p>
-                              ) : null}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Month Holidays List */}
-                    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2 mt-3">
-                      <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                        <CalendarDays className="w-4 h-4 text-rose-500" />
-                        <span>วันหยุดราชการและวันสำคัญประจำเดือนนี้ ({monthHolidays.length})</span>
-                      </h3>
-                      {monthHolidays.length === 0 ? (
-                        <p className="text-xs text-[var(--color-text-muted)]">ไม่มีวันหยุดราชการในเดือนนี้</p>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {monthHolidays.map((h) => (
-                            <div
-                              key={h.id}
-                              onClick={() => setSelectedCalendarDate(h.date)}
-                              className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs cursor-pointer hover:border-rose-300"
-                            >
-                              <div className="min-w-0">
-                                <p className="font-bold text-rose-700 dark:text-rose-300 truncate">{h.nameTh}</p>
-                                <p className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
-                                  {h.date} · {getThaiHolidayCategoryLabel(h, lang)}
-                                </p>
-                              </div>
-                              {!isPersonalViewer && h.type === 'school' && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeSchoolCustomHoliday(schoolId, h.id);
-                                    setHolidayRefreshTick((v) => v + 1);
-                                  }}
-                                  className="p-1 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
-                                  title="ลบวันหยุดโรงเรียน"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: Selected Day Agenda + Direct Check-in/Check-out */}
-                  <div className="lg:col-span-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4 flex flex-col gap-3">
-                    <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2.5">
-                      <div>
-                        <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                          {formatCalendarDate(selectedCalendarDate)}
-                        </h3>
-                        <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                          {selectedCalendarDate}
-                          {selectedDateHolidays.length > 0
-                            ? ` · วันหยุด (${selectedDateHolidays[0].nameTh})`
-                            : ` · ${selectedDaySlots.length} คาบ`}
-                        </p>
-                      </div>
-                      {selectedCalendarDate === todayBangkokDate && (
-                        <span className="text-[11px] font-bold text-[var(--color-primary-text)]">วันนี้</span>
-                      )}
-                    </div>
-
-                    {selectedDateHolidays.map((h) => (
-                      <div
-                        key={h.id}
-                        className="rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 p-3 text-xs space-y-1"
-                      >
-                        <p className="font-bold text-rose-800 dark:text-rose-200 flex items-center gap-1.5">
-                          <CalendarDays className="w-4 h-4 shrink-0" />
-                          {h.nameTh}
-                        </p>
-                        <p className="text-[11px] text-rose-700 dark:text-rose-300">
-                          {h.nameEn} · {h.isSchoolDayOff ? 'งดการเรียนการสอนตามปฏิทินวันหยุด' : 'กิจกรรมสำคัญของโรงเรียน'}
-                        </p>
-                      </div>
-                    ))}
-
-                    {selectedDayAssignments.length > 0 && (
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] font-bold text-[var(--color-text-muted)]">กำหนดส่งงานวันนี้</p>
-                        {selectedDayAssignments.map((a) => (
-                          <div key={a.id} className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-[var(--color-card)] p-2.5 text-xs">
-                            <p className="font-bold text-[var(--color-text-title)]">
-                              {a.courseCode ? `[${a.courseCode}] ` : ''}
-                              {a.titleTh || a.titleEn}
-                            </p>
-                            <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                              ครบกำหนด: {a.dueDate}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Calendar Notes Section for Selected Date */}
-                    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <StickyNote className="w-4 h-4 text-amber-500 shrink-0" />
-                          <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                            {lang === 'th' ? `โน้ตบันทึกประจำวัน (${selectedDateNotes.length})` : `Daily Notes (${selectedDateNotes.length})`}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => (showNoteForm ? resetNoteForm() : handleStartNewNote())}
-                          className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white px-2.5 py-1 text-[11px] font-bold cursor-pointer shrink-0 transition"
-                        >
-                          {showNoteForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                          <span>{showNoteForm ? 'ปิด' : 'เพิ่มโน้ต'}</span>
-                        </button>
-                      </div>
-
-                      {showNoteForm && (
-                        <form onSubmit={handleSaveNote} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-2.5 space-y-2 text-xs">
-                          <input
-                            type="text"
-                            value={noteTitleDraft}
-                            onChange={(e) => setNoteTitleDraft(e.target.value)}
-                            placeholder="หัวข้อโน้ต / เตือนความจำ (เช่น นัดประชุมผู้ปกครอง, เตรียมข้อสอบ)"
-                            className="w-full h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
-                          />
-                          <textarea
-                            rows={2}
-                            value={noteContentDraft}
-                            onChange={(e) => setNoteContentDraft(e.target.value)}
-                            placeholder="รายละเอียดเพิ่มเติม..."
-                            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)] resize-none"
-                          />
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-1">
-                              {CALENDAR_NOTE_COLORS.map((c) => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => setNoteColorDraft(c.id)}
-                                  title={c.labelTh}
-                                  className={`w-5 h-5 rounded-full ${c.dotClass} flex items-center justify-center cursor-pointer transition ${
-                                    noteColorDraft === c.id ? 'ring-2 ring-offset-1 ring-[var(--color-text-title)] scale-110' : 'opacity-70 hover:opacity-100'
-                                  }`}
-                                >
-                                  {noteColorDraft === c.id && <Check className="w-3 h-3 text-white" />}
-                                </button>
-                              ))}
-                            </div>
-
-                            {!isPersonalViewer && (
-                              <select
-                                aria-label="ขอบเขตโน้ต"
-                                value={noteScopeDraft}
-                                onChange={(e) => setNoteScopeDraft(e.target.value as CalendarNoteScope)}
-                                className="h-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-[11px] font-semibold text-[var(--color-text-title)]"
-                              >
-                                <option value="personal">โน้ตส่วนตัว</option>
-                                <option value="school">โน้ตโรงเรียน (ทุกคนเห็น)</option>
-                              </select>
-                            )}
-
-                            <button
-                              type="submit"
-                              disabled={!noteTitleDraft.trim() && !noteContentDraft.trim()}
-                              className="h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 text-[11px] font-bold cursor-pointer transition"
-                            >
-                              {editingNoteId ? 'อัปเดตโน้ต' : 'บันทึกโน้ต'}
-                            </button>
-                          </div>
-                        </form>
-                      )}
-
-                      {selectedDateNotes.length === 0 && !showNoteForm ? (
-                        <p className="text-[11px] text-[var(--color-text-muted)]">
-                          ยังไม่มีโน้ตสำหรับวันนี้ — กด &ldquo;+ เพิ่มโน้ต&rdquo; เพื่อบันทึกเตือนความจำหรือหมายเหตุประจำวัน
-                        </p>
-                      ) : selectedDateNotes.length > 0 ? (
-                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
-                          {selectedDateNotes.map((note) => {
-                            const colorMeta = getCalendarNoteColorMeta(note.color);
-                            const canModify =
-                              note.authorId === (currentUser?.id || `role:${currentRole}`) || isAdmin;
-                            return (
-                              <div
-                                key={note.id}
-                                className={`rounded-xl border p-2.5 text-xs space-y-1 ${colorMeta.cardClass}`}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className={`w-2 h-2 rounded-full ${colorMeta.dotClass} shrink-0`} />
-                                      <p className="font-bold text-[var(--color-text-title)] truncate">
-                                        {note.title}
-                                      </p>
-                                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${colorMeta.badgeClass}`}>
-                                        {note.scope === 'school' ? 'โรงเรียน' : 'ส่วนตัว'}
-                                      </span>
-                                    </div>
-                                    {note.content && (
-                                      <p className="text-[11px] text-[var(--color-text-body)] mt-0.5 whitespace-pre-line">
-                                        {note.content}
-                                      </p>
-                                    )}
-                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                                      บันทึกโดย {note.authorName}
-                                    </p>
-                                  </div>
-                                  {canModify && (
-                                    <div className="flex items-center gap-0.5 shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleStartEditNote(note)}
-                                        className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-                                        title="แก้ไขโน้ต"
-                                      >
-                                        <Edit3 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          deleteCalendarNote(schoolId, note.id);
-                                          if (editingNoteId === note.id) resetNoteForm();
-                                          setCalendarNotesTick((v) => v + 1);
-                                        }}
-                                        className="p-1 rounded hover:bg-rose-500/15 text-rose-600 cursor-pointer"
-                                        title="ลบโน้ต"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="space-y-2 overflow-y-auto">
-                      {!selectedDayKey ? (
-                        <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">
-                          วันหยุดสุดสัปดาห์ (ไม่มีตารางเรียนปกติ)
-                        </p>
-                      ) : selectedDaySlots.length === 0 ? (
-                        <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">
-                          ไม่มีคาบเรียนในตัวกรองที่เลือก
-                        </p>
-                      ) : (
-                        selectedDaySlots.map((slot) => {
-                          const slotColor = getTimetableSlotCardStyle(slot.colorTag);
-                          const status = getSlotCheckStatusForDate(slot, selectedCalendarDate);
-                          const slotActivity = getTimetableSlotActivityStatus({
-                            slot,
-                            schoolPeriods,
-                            now: bangkokClock,
-                            schoolId,
-                            targetDateStr: selectedCalendarDate,
-                          });
-                          const nextCheckType: 'check_in' | 'check_out' =
-                            status.hasCheckIn && !status.hasCheckOut ? 'check_out' : 'check_in';
-                          const canShowDateCheckin =
-                            canUsePeriodCheckin &&
-                            (slotActivity.isActive ||
-                              (selectedCalendarDate === todayBangkokDate &&
-                                slotActivity.isTodayWeekday &&
-                                !slotActivity.isHolidayOff));
-                          return (
-                            <div
-                              key={slot.id}
-                              style={slotColor.style}
-                              className={`rounded-xl border p-3 space-y-2 ${slotColor.className} ${
-                                slotActivity.isActive
-                                  ? 'border-rose-500 ring-2 ring-rose-500/45 shadow-md bg-rose-50/75 dark:bg-rose-950/35'
-                                  : ''
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => openSlotDetails(slot)}
-                                  className="text-left min-w-0 flex-1 cursor-pointer"
-                                >
-                                  <p className="text-[11px] font-semibold tabular-nums text-[var(--color-text-muted)] flex flex-wrap items-center gap-1.5">
-                                    <span>คาบ {slot.periodNumber} · {slotActivity.startTime}–{slotActivity.endTime} · {slot.classRoom}</span>
-                                    {slotActivity.isActive && (
-                                      <span className="inline-flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
-                                        ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}
-                                      </span>
-                                    )}
-                                  </p>
-                                  <p className="text-xs font-bold text-[var(--color-text-title)] mt-0.5">
-                                    {slot.courseCode} · {slot.courseTitleTh}
-                                  </p>
-                                  <p className="text-[11px] text-[var(--color-text-body)] mt-0.5">
-                                    {formatSlotTeachersDisplay(slot)} {slot.room ? `· ห้อง ${slot.room}` : ''}
-                                  </p>
-                                  {renderSlotStaffStatusBadges(
-                                    slot,
-                                    selectedCalendarDate,
-                                    selectedDateHolidays.some((h) => h.isSchoolDayOff)
-                                  )}
-                                </button>
-                                {(status.hasCheckIn || status.hasCheckOut) && (
-                                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
-                                    {status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
-                                  </span>
-                                )}
-                              </div>
-
-                              {canOpenPeriodRoster && (
-                                <div className="pt-1.5 border-t border-current/15 print:hidden">
-                                  <button
-                                    type="button"
-                                    onClick={() => setPeriodRosterTarget({ slot, date: selectedCalendarDate })}
-                                    className="w-full min-h-[34px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs cursor-pointer transition"
-                                  >
-                                    <UserCheck className="w-3.5 h-3.5 shrink-0" />
-                                    <span>รายชื่อ / เช็กชื่อนักเรียน</span>
-                                  </button>
-                                </div>
-                              )}
-
-                              {canShowDateCheckin && (
-                                <div className="flex items-center gap-2 pt-1.5 border-t border-current/15">
-                                  <button
-                                    type="button"
-                                    onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, nextCheckType)}
-                                    className={`flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-bold text-white shadow-sm cursor-pointer transition ${
-                                      slotActivity.isActive
-                                        ? 'bg-rose-600 hover:bg-rose-700'
-                                        : nextCheckType === 'check_out'
-                                          ? 'bg-slate-800 hover:bg-slate-900'
-                                          : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                                    }`}
-                                  >
-                                    {nextCheckType === 'check_out' ? (
-                                      <LogOut className="w-4 h-4" />
-                                    ) : (
-                                      <LogIn className="w-4 h-4" />
-                                    )}
-                                    <span>
-                                      {status.hasCheckIn && status.hasCheckOut
-                                        ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
-                                        : nextCheckType === 'check_out'
-                                          ? 'เช็คเอาท์คาบเรียน'
-                                          : 'เช็คอินเข้าคาบเรียน'}
-                                    </span>
-                                  </button>
-                                  {!status.hasCheckIn && (
-                                    <button
-                                      type="button"
-                                      onClick={() => triggerSlotCheckin(slot, selectedCalendarDate, 'check_out')}
-                                      className={`min-h-[40px] inline-flex items-center justify-center gap-1 rounded-lg border px-3 text-xs font-bold cursor-pointer transition ${
-                                        slotActivity.isActive
-                                          ? 'border-rose-400 dark:border-rose-700 bg-white/90 dark:bg-slate-900/80 text-rose-700 dark:text-rose-200 hover:bg-rose-50'
-                                          : 'border-[var(--color-border)] bg-white/85 dark:bg-slate-900/75 text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
-                                      }`}
-                                    >
-                                      <LogOut className="w-3.5 h-3.5" />
-                                      <span>เช็คเอาท์</span>
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : activeSlots.length === 0 ? (
-                <p className="p-8 text-center text-xs text-[var(--color-text-muted)]">
-                  ไม่มีคาบสอนในตัวกรองหรือภาคเรียนที่เลือก
-                </p>
-              ) : (
-                <div aria-label="ปฏิทินตารางสอนรายสัปดาห์" className="grid min-w-0 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 items-start gap-2">
-                  {calendarWeekDays.map((day) => {
-                    const dayHoliday = getHolidayForDate(day.date, schoolId);
-                    const dayNotes = getVisibleCalendarNotesForDate(
-                      schoolId,
-                      day.date,
-                      currentUser?.id,
-                      currentRole
-                    );
-                    const daySlots = activeSlots
-                      .filter((slot) => slot.dayOfWeek === day.key)
-                      .sort((a, b) => (
-                        (getSlotTimeRange(a)?.start ?? 0) - (getSlotTimeRange(b)?.start ?? 0)
-                          || a.periodNumber - b.periodNumber
-                      ));
-                    return (
-                      <section key={day.key} aria-label={formatCalendarDate(day.date)} className={`min-h-0 rounded-lg border p-1.5 ${dayHoliday ? 'border-rose-200 bg-rose-50/40 dark:border-rose-900 dark:bg-rose-950/20' : 'border-[var(--color-border)] bg-[var(--color-card)]'}`}>
-                        <header className={`sticky top-0 z-10 mb-1.5 border-b pb-1.5 ${day.date === todayBangkokDate ? 'border-[var(--color-primary)]/40' : 'border-[var(--color-border)]'}`}>
-                          <div className="flex items-center justify-between gap-1">
-                            <h3 className={`text-[11px] font-bold ${day.date === todayBangkokDate ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-title)]'}`}>{formatCalendarDate(day.date)}</h3>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCalendarLayoutMode('month');
-                                handleStartNewNote(day.date);
-                              }}
-                              aria-label={`เพิ่มโน้ต ${formatCalendarDate(day.date)}`}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer shrink-0"
-                              title="เพิ่มโน้ตวันนี้"
-                            >
-                              <StickyNote className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          {dayHoliday ? (
-                            <p className="mt-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-300">
-                              วันหยุด: {dayHoliday.nameTh}
-                            </p>
-                          ) : (
-                            <p className="mt-0.5 text-[9px] text-[var(--color-text-muted)] tabular-nums">
-                              {daySlots.length} คาบ{dayNotes.length > 0 ? ` · ${dayNotes.length} โน้ต` : ''}
-                            </p>
-                          )}
-                          {dayNotes.length > 0 && (
-                            <div className="mt-1.5 space-y-1">
-                              {dayNotes.slice(0, 2).map((n) => {
-                                const cm = getCalendarNoteColorMeta(n.color);
-                                return (
-                                  <button
-                                    key={n.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setCalendarLayoutMode('month');
-                                      setSelectedCalendarDate(day.date);
-                                    }}
-                                    className={`w-full text-left rounded border px-1.5 py-0.5 text-[9px] font-semibold truncate cursor-pointer ${cm.cardClass}`}
-                                  >
-                                    • {n.title}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </header>
-                        <div className="space-y-1.5">
-                          {daySlots.length === 0 ? (
-                            <p className="py-6 text-center text-[10px] text-[var(--color-text-muted)]">ไม่มีคาบ</p>
-                          ) : daySlots.map((slot) => {
-                            const timeRange = getSlotTimeRange(slot);
-                            const hasCoTeacher = getSlotTeachers(slot).length > 1;
-                            const slotColor = getTimetableSlotCardStyle(slot.colorTag);
-                            const hasConflict = conflictingSlotIds.has(slot.id);
-                            const slotActivity = getTimetableSlotActivityStatus({
-                              slot,
-                              schoolPeriods,
-                              now: bangkokClock,
-                              schoolId,
-                              targetDateStr: day.date,
-                            });
-                            const slotStatus = getSlotCheckStatusForDate(slot, day.date);
-                            const nextCheckType: 'check_in' | 'check_out' =
-                              slotStatus.hasCheckIn && !slotStatus.hasCheckOut ? 'check_out' : 'check_in';
-                            const canShowWeekSlotCheckin =
-                              canUsePeriodCheckin &&
-                              (slotActivity.isActive ||
-                                (day.date === todayBangkokDate &&
-                                  slotActivity.isTodayWeekday &&
-                                  !slotActivity.isHolidayOff));
-                            return (
-                              <div
-                                key={slot.id}
-                                onClick={() => openSlotDetails(slot)}
-                                style={!hasConflict ? slotColor.style : undefined}
-                                className={`w-full rounded-md border p-1.5 text-left transition cursor-pointer space-y-1 ${
-                                  hasConflict
-                                    ? 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50'
-                                    : slotColor.className
-                                } ${
-                                  slotActivity.isActive
-                                    ? 'border-rose-500 ring-2 ring-rose-500/45 shadow-md bg-rose-50/75 dark:bg-rose-950/35'
-                                    : ''
-                                }`}
-                              >
-                                <span className="flex items-center justify-between gap-1 text-[9px] font-semibold">
-                                  <span className="inline-flex items-center gap-1 tabular-nums">
-                                    <span
-                                      className="inline-block h-2 w-2 rounded-full border border-black/15 shrink-0"
-                                      style={{ backgroundColor: slotColor.swatchHex }}
-                                    />
-                                    <span>{timeRange ? `${formatTimeMinutes(timeRange.start)}–${formatTimeMinutes(timeRange.end)}` : `คาบ ${slot.periodNumber}`}</span>
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    {slotActivity.isActive && (
-                                      <span className="rounded bg-rose-600 px-1 py-0.5 text-[8px] font-bold text-white tabular-nums">
-                                        ถึงคาบ
-                                      </span>
-                                    )}
-                                    {hasCoTeacher && (
-                                      <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                                        สอนคู่
-                                      </span>
-                                    )}
-                                    {conflictingSlotIds.has(slot.id) && !isPersonalViewer && (
-                                      <button
-                                        type="button"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          setSelectedConflictSlotId(slot.id);
-                                        }}
-                                        aria-label={`ดูข้อขัดแย้งของคาบ ${slot.courseTitleTh}`}
-                                        title="ดูรายละเอียดข้อขัดแย้ง"
-                                        className="rounded p-0.5 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
-                                      >
-                                        <AlertTriangle className="h-3 w-3 shrink-0" />
-                                      </button>
-                                    )}
-                                  </span>
-                                </span>
-                                <span className="block text-[10px] font-bold text-[var(--color-text-title)]">
-                                  {slot.courseCode} · {slot.courseTitleTh}
-                                </span>
-                                <span className="block text-[9px] text-[var(--color-text-body)]">
-                                  {slot.classRoom} · {formatSlotTeachersDisplay(slot)}
-                                </span>
-                                {renderSlotStaffStatusBadges(
-                                  slot,
-                                  day.date,
-                                  Boolean(dayHoliday?.isSchoolDayOff)
-                                )}
-                                {canOpenPeriodRoster && (
-                                  <div className="pt-1 border-t border-current/15">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPeriodRosterTarget({ slot, date: day.date });
-                                      }}
-                                      className="w-full min-h-[28px] inline-flex items-center justify-center gap-1 rounded-md bg-emerald-700 hover:bg-emerald-800 px-2 py-1 text-[10px] font-bold text-white shadow-xs cursor-pointer"
-                                    >
-                                      <UserCheck className="w-3 h-3 shrink-0" />
-                                      <span>ดูรายชื่อ / เช็กชื่อคาบนี้</span>
-                                    </button>
-                                  </div>
-                                )}
-                                {canShowWeekSlotCheckin && (
-                                  <div className="pt-1 border-t border-current/15">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        triggerSlotCheckin(slot, day.date, nextCheckType);
-                                      }}
-                                      className={`w-full min-h-[30px] inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-white shadow-xs cursor-pointer ${
-                                        slotActivity.isActive
-                                          ? 'bg-rose-600 hover:bg-rose-700'
-                                          : nextCheckType === 'check_out'
-                                            ? 'bg-slate-800 hover:bg-slate-900'
-                                            : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                                      }`}
-                                    >
-                                      {nextCheckType === 'check_out' ? (
-                                        <LogOut className="w-3 h-3 shrink-0" />
-                                      ) : (
-                                        <LogIn className="w-3 h-3 shrink-0" />
-                                      )}
-                                      <span>
-                                        {slotStatus.hasCheckIn && slotStatus.hasCheckOut
-                                          ? 'เข้า+ออกแล้ว'
-                                          : nextCheckType === 'check_out'
-                                            ? 'เช็คเอาท์คาบ'
-                                            : 'เช็คอินเข้าคาบ'}
-                                      </span>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-        );
-      })() : (
-        /* TAB: Timetable 5-Day Weekly Grid View */
-        <div data-guide-id="timetable-grid-area" className="timetable-print-area print-area flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden flex flex-col">
-          <div data-guide-id="timetable-filters-bar" className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 bg-[var(--color-card)]">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                {renderRoomAndTermControls()}
-                <span className="print:hidden text-xs text-[var(--color-text-muted)] tabular-nums">
-                  แสดง <strong className="tone-text">{activeSlots.length}</strong> คาบ/สัปดาห์
-                  {myCoursesOnly && (
-                    <span className="ml-1 text-[11px] font-semibold tone-text">· เฉพาะวิชาที่สอน</span>
-                  )}
-                </span>
-              </div>
-              <p className="hidden print:block print:text-xs print:font-bold">
-                {activeScheduleFilters
-                  ? `ตารางสอน — ${activeScheduleFilters.gradeLevel || 'ทุกระดับชั้น'} · ${activeScheduleFilters.classRoom || 'ทุกห้อง'} · ${activeScheduleFilters.teacherName || 'ครูทุกคน'}`
-                  : selectedClassRoom === ALL_CLASSROOMS
-                    ? `ตารางรวมทุกห้อง (${uniqueClassRooms.length})`
-                    : selectedClassRoom
-                } — {formatSemesterLabel(viewSemester)} ปีการศึกษา {viewAcademicYear}
-              </p>
-            </div>
-            <div className="print:hidden flex flex-wrap items-center justify-end gap-1.5">
-              {canUsePeriodCheckin && onOpenPeriodCheckin && (() => {
-                const todayCandidates = activeSlots
-                  .filter((s) => s.dayOfWeek === todayDayKey)
-                  .slice()
-                  .sort((a, b) => a.periodNumber - b.periodNumber);
-                const activeSlotToday = todayCandidates.find((s) =>
-                  getTimetableSlotActivityStatus({
-                    slot: s,
-                    schoolPeriods,
-                    now: bangkokClock,
-                    schoolId,
-                  }).isActive
-                );
-                const targetSlot = activeSlotToday || todayCandidates[0] || activeSlots[0] || slots[0];
-                if (!targetSlot) return null;
-                const targetStatus = getSlotCheckStatusForDate(targetSlot, todayBangkokDate);
-                const nextType: 'check_in' | 'check_out' =
-                  targetStatus.hasCheckIn && !targetStatus.hasCheckOut ? 'check_out' : 'check_in';
-                return (
-                  <button
-                    type="button"
-                    onClick={() => triggerSlotCheckin(targetSlot, todayBangkokDate, nextType)}
-                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white shadow-sm cursor-pointer transition ${
-                      activeSlotToday
-                        ? 'bg-rose-600 hover:bg-rose-700'
-                        : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                    }`}
-                  >
-                    {nextType === 'check_out' ? (
-                      <LogOut className="h-3.5 w-3.5" />
-                    ) : (
-                      <LogIn className="h-3.5 w-3.5" />
-                    )}
-                    <span>
-                      {activeSlotToday
-                        ? `เช็คอินคาบ ${activeSlotToday.periodNumber} (ถึงเวลา)`
-                        : 'เช็คอิน/เอาท์รายคาบ'}
-                    </span>
-                  </button>
-                );
-              })()}
-              {isViewingCurrentTerm && canManageTimetable && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCourseSearchInput('');
-                    const initialTeacherFilter =
-                      myCoursesOnly && loggedInCourseTeacherKey ? loggedInCourseTeacherKey : 'all';
-                    setCatalogTeacherFilter(initialTeacherFilter);
-                    setNewClassRoom(activeScheduleFilters
-                      ? activeScheduleFilters.classRoom
-                      : selectedClassRoom === ALL_CLASSROOMS
-                        ? ''
-                        : selectedClassRoom);
-                    const matchingCourses =
-                      initialTeacherFilter === 'all'
-                        ? courses
-                        : courses.filter((c) =>
-                            courseMatchesTeacherFilter(
-                              c,
-                              initialTeacherFilter,
-                              courseCatalogTeacherOptions
-                            )
-                          );
-                    if (matchingCourses.length > 0) {
-                      handleSelectCourse(matchingCourses[0].id);
-                    } else if (courses.length > 0) {
-                      handleSelectCourse(courses[0].id);
-                    } else {
-                      handleSelectCourse('custom');
-                    }
-                    if (activeScheduleFilters?.teacherName) {
-                      setNewTeacher(activeScheduleFilters.teacherName);
-                      setNewCoTeacher('');
-                    }
-                    setNewPeriod(lessonPeriods[0]?.periodNumber || 1);
-                    setSlotActionError(null);
-                    setShowAddModal(true);
-                  }}
-                  className="btn-action-primary px-3 py-1.5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>เพิ่มคาบ</span>
-                </button>
-              )}
-
-              {/* Consolidated Secondary Schedule Tools Dropdown */}
-              <details className="group relative">
-                <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-                  <SlidersHorizontal className="h-3.5 w-3.5 tone-text" />
-                  <span>เครื่องมือ &amp; ส่งออก</span>
-                  <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)] transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-xl space-y-1 text-xs">
-                  <div className="px-2 pt-1 text-[10px] font-bold text-[var(--color-text-muted)]">
-                    การแสดงผล &amp; ตั้งค่า
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      openScheduleSettings();
-                    }}
-                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5 tone-text" />
-                    <span>กรองหลายเงื่อนไข / ตั้งค่าการแสดง</span>
-                  </button>
-                  {isViewingCurrentTerm && isAdmin && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        setPeriodDraft(schoolPeriods.map((period) => ({ ...period })));
-                        setPeriodSettingsError(null);
-                        setShowPeriodSettings(true);
-                      }}
-                      className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <Clock className="h-3.5 w-3.5 tone-text" />
-                      <span>ตั้งเวลาคาบเรียนมาตรฐาน</span>
-                    </button>
-                  )}
-
-                  {!isPersonalViewer && (
-                    <>
-                      <div className="my-1 border-t border-[var(--color-border)]" />
-                      <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
-                        ส่งออก &amp; พิมพ์
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          setShowImportExportModal(true);
-                        }}
-                        className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                        <span>Export / Import Excel &amp; CSV</span>
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      openGoogleCalendarModal();
-                    }}
-                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Calendar className="h-3.5 w-3.5 tone-text" />
-                    <span>เชื่อมต่อ Google Calendar (.ics)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      window.print();
-                    }}
-                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-                    <span>พิมพ์ตารางเรียน A4</span>
-                  </button>
-
-                  {!isPersonalViewer && (
-                    <>
-                      <div className="my-1 border-t border-[var(--color-border)]" />
-                      <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
-                        วันหยุดราชการไทย ({currentBangkokYear + 543})
-                      </div>
-                      <button
-                        type="button"
-                        disabled={isSyncingHolidays}
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          void handleManualHolidaySync(currentBangkokYear);
-                        }}
-                        className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-60 cursor-pointer"
-                      >
-                        <RefreshCw className={`h-3.5 w-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
-                        <span>{isSyncingHolidays ? 'กำลังซิงค์วันหยุด...' : 'ซิงค์วันหยุดราชการ'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          setCalendarLayoutMode('month');
-                          setViewMode('calendar');
-                        }}
-                        className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <CalendarDays className="h-3.5 w-3.5 tone-text" />
-                        <span>ปฏิทินวันหยุด ({yearHolidaysCount} วัน)</span>
-                      </button>
-                      <div className="my-1 border-t border-[var(--color-border)]" />
-                      <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
-                        ทดสอบแจ้งเตือน
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          sendEduVerseNotification({
-                            title: '[ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
-                            body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'}`,
-                            category: 'attendance',
-                            priority: 'urgent',
-                            schoolId,
-                            targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
-                          });
-                        }}
-                        className="w-full rounded-lg px-2.5 py-1.5 text-left text-emerald-700 hover:bg-[var(--color-card-subtle)] dark:text-emerald-300 cursor-pointer"
-                      >
-                        ทดสอบเริ่มคาบ &amp; เช็คอิน
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          sendEduVerseNotification({
-                            title: '[ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
-                            body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาเช็คชื่อออก (Check-out)`,
-                            category: 'attendance',
-                            priority: 'normal',
-                            schoolId,
-                            targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
-                          });
-                        }}
-                        className="w-full rounded-lg px-2.5 py-1.5 text-left text-indigo-700 hover:bg-[var(--color-card-subtle)] dark:text-indigo-300 cursor-pointer"
-                      >
-                        ทดสอบหมดคาบ &amp; เช็คเอาท์
-                      </button>
-                    </>
-                  )}
-                </div>
-              </details>
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto">
-          {/* Thai public holiday and period check-in reminders are emitted as popup toasts */}
-
-          <div className="max-lg:overflow-x-auto">
-            <table className="table-comfortable w-full table-fixed text-left border-collapse">
-              <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] shadow-[0_1px_0_var(--color-border)]">
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] text-[var(--color-text-body)] uppercase">
-                  <th className="p-1.5 w-24 text-center font-bold text-[var(--color-text-title)]">วัน / คาบ</th>
-                  {orderedSchoolPeriods.map((period) => (
-                      <th key={period.periodNumber} className={`p-1.5 text-center font-medium ${period.isBreak ? 'bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 w-20' : ''}`}>
-                        <div className={`font-bold leading-tight ${period.isBreak ? 'text-amber-950 dark:text-amber-200 text-[10px]' : 'text-[var(--color-text-title)]'}`}>
-                          {period.labelTh || (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
-                        </div>
-                        <div className={`text-[10px] font-mono mt-0.5 whitespace-nowrap ${period.isBreak ? 'text-amber-900 dark:text-amber-300 text-[9px]' : 'text-[var(--color-text-muted)]'}`}>
-                          {`${period.startTime} - ${period.endTime}`}
-                        </div>
-                      </th>
-                  ))}
-                  {!isPersonalViewer && (
-                    <th className="p-1.5 w-32 text-center font-bold text-[var(--color-text-title)] print:hidden">
-                      สถานะการเข้าเรียน
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-border)] text-xs">
-                {currentWeekDaysWithDates.map((day) => {
-                  const isTodayRow = day.key === todayDayKey;
-                  const rowHoliday = day.holiday;
-                  return (
-                  <tr
-                    key={day.key}
-                    className={`transition ${
-                      rowHoliday
-                        ? 'bg-rose-50/45 dark:bg-rose-950/20'
-                        : isTodayRow
-                          ? 'bg-rose-50/20 dark:bg-rose-950/10'
-                          : 'hover:bg-[var(--color-card-subtle)]'
-                    }`}
-                  >
-                    {/* Day Column */}
-                    <td className="p-1.5 text-center border-r border-[var(--color-border)] align-middle">
-                      <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-bold border ${day.color}`}>
-                        {day.th}
-                      </span>
-                      <div className="mt-1 text-[10px] font-semibold text-[var(--color-text-muted)] tabular-nums">
-                        {formatShortThaiDate(day.date)}
-                        {isTodayRow && (
-                          <span className="ml-1 text-rose-700 dark:text-rose-300 font-bold">· วันนี้</span>
-                        )}
-                      </div>
-                      {rowHoliday && (
-                        <div
-                          className="mt-1 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/70 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:text-rose-200 leading-tight"
-                          title={`${rowHoliday.nameTh} (${getThaiHolidayCategoryLabel(rowHoliday, lang)})`}
-                        >
-                          หยุด: {rowHoliday.nameTh}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Periods */}
-                    {orderedSchoolPeriods.map((period) => {
-                      if (period.isBreak) {
-                        return (
-                          <td key={period.periodNumber} className="p-2 text-center bg-amber-50 dark:bg-amber-950/60 border-r border-[var(--color-border)]">
-                            <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200 writing-vertical rotate-180">
-                              {period.labelTh || 'พักกลางวัน'}
-                            </span>
-                          </td>
-                        );
-                      }
-
-                      const periodSlots = activeSlots.filter(
-                        (s) => s.dayOfWeek === day.key && s.periodNumber === period.periodNumber
-                      );
-
-                      if (periodSlots.length === 0) {
-                        return (
-                          <td key={period.periodNumber} className="p-1.5 text-center border-r border-[var(--color-border)]">
-                            <div className="h-22 rounded-xl border border-dashed border-[var(--color-border)] flex items-center justify-center text-[10px] text-[var(--color-text-muted)] transition">
-                              ว่าง
-                            </div>
-                          </td>
-                        );
-                      }
-
-                      return (
-                        <td key={period.periodNumber} className="p-1 border-r border-[var(--color-border)] align-top">
-                          <div className={isAllClassroomsView ? 'space-y-1' : 'space-y-1.5'}>
-                            {periodSlots.map((slot) => {
-                              const hasConflict = conflictingSlotIds.has(slot.id);
-                              const slotColor = getTimetableSlotCardStyle(slot.colorTag);
-                              const slotActivity = getTimetableSlotActivityStatus({
-                                slot,
-                                schoolPeriods,
-                                now: bangkokClock,
-                                schoolId,
-                                targetDateStr: day.date,
-                              });
-                              const slotCheckStatus = getSlotCheckStatusForDate(slot, day.date);
-                              const nextCheckType: 'check_in' | 'check_out' =
-                                slotCheckStatus.hasCheckIn && !slotCheckStatus.hasCheckOut ? 'check_out' : 'check_in';
-                              const canShowGridCheckin =
-                                canUsePeriodCheckin &&
-                                (slotActivity.isActive ||
-                                  (isTodayRow && slotActivity.isTodayWeekday && !slotActivity.isHolidayOff));
-                              return (
-                                <div
-                                  key={slot.id}
-                                  onClick={() => openSlotDetails(slot)}
-                                  style={slotColor.style}
-                                  className={`${isAllClassroomsView ? 'min-h-14 p-1' : 'min-h-18 p-1.5'} rounded-md border transition group relative flex flex-col justify-between cursor-pointer ${slotColor.className} ${
-                                    slotActivity.isActive
-                                      ? 'border-rose-500 ring-2 ring-rose-500/45 shadow-md shadow-rose-500/20'
-                                      : hasConflict && !isPersonalViewer
-                                        ? 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20'
-                                        : ''
-                                  }`}
-                                >
-                                  <div className="min-w-0">
-                                    <div className="flex items-start justify-between gap-1">
-                                      <span className="shrink-0 font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
-                                        {slot.courseCode}
-                                      </span>
-                                      <span title="ชั้น/ห้องเรียน" className="max-w-[55%] truncate rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold text-slate-800 dark:bg-slate-900/70 dark:text-white">
-                                        {slot.classRoom}
-                                      </span>
-                                      {hasConflict && !isPersonalViewer && (
-                                        <button
-                                          type="button"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            setSelectedConflictSlotId(slot.id);
-                                          }}
-                                          aria-label={`ดูข้อขัดแย้งของคาบ ${slot.courseTitleTh}`}
-                                          title="ดูรายละเอียดข้อขัดแย้ง"
-                                          className="shrink-0 rounded p-0.5 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
-                                        >
-                                          <AlertTriangle className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    {slotActivity.isActive && (
-                                      <div className="mt-1 inline-flex items-center gap-1 rounded bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">
-                                        <span>ถึงคาบเรียน{slotActivity.remainingMinutes !== null ? ` · เหลือ ${slotActivity.remainingMinutes} น.` : ''}</span>
-                                      </div>
-                                    )}
-                                    <h4 className={`${isAllClassroomsView ? 'text-[10px]' : 'text-[11px]'} font-bold mt-1 line-clamp-1 leading-tight`}>
-                                      {slot.courseTitleTh}
-                                    </h4>
-                                  </div>
-
-                                  <div className={`pt-1 border-t border-current/20 space-y-0.5 ${isAllClassroomsView ? 'text-[9px]' : 'text-[10px]'} opacity-95`}>
-                                    <div className="flex items-center gap-1 min-w-0" title={formatSlotTeachersDisplay(slot)}>
-                                      {getSlotTeachers(slot).length > 1 ? (
-                                        <Users className="w-2.5 h-2.5 shrink-0" />
-                                      ) : (
-                                        <User className="w-2.5 h-2.5 shrink-0" />
-                                      )}
-                                      <span className="truncate">{formatSlotTeachersDisplay(slot)}</span>
-                                      {getSlotTeachers(slot).length > 1 && (
-                                        <span className="shrink-0 rounded bg-white/75 px-1 text-[8px] font-bold text-emerald-800 dark:bg-slate-900/70 dark:text-emerald-300">
-                                          สอนคู่
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1 truncate" title={`ห้องสถานที่: ${slot.room || 'ไม่ระบุ'}`}>
-                                      <MapPin className="w-2.5 h-2.5 shrink-0" />
-                                      <span className="truncate">{slot.room || 'ไม่ระบุห้องสถานที่'}</span>
-                                    </div>
-                                    {renderSlotStaffStatusBadges(
-                                      slot,
-                                      day.date,
-                                      Boolean(rowHoliday?.isSchoolDayOff)
-                                    )}
-                                  </div>
-
-                                  {canOpenPeriodRoster && (
-                                    <div className="pt-1.5 mt-1 border-t border-current/15 print:hidden">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setPeriodRosterTarget({ slot, date: day.date });
-                                        }}
-                                        className="w-full min-h-[28px] inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-2 py-1 text-[10px] font-bold text-white shadow-xs cursor-pointer transition"
-                                        title="ดูรายชื่อนักเรียนและเช็กชื่อรายคาบนี้ได้ทันที"
-                                      >
-                                        <UserCheck className="w-3 h-3 shrink-0" />
-                                        <span>รายชื่อ / เช็กชื่อ</span>
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {canShowGridCheckin && (
-                                    <div className="pt-1.5 mt-1 border-t border-current/15 print:hidden">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          triggerSlotCheckin(slot, day.date, nextCheckType);
-                                        }}
-                                        className={`w-full min-h-[32px] inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-white shadow-sm cursor-pointer transition ${
-                                          slotActivity.isActive
-                                            ? 'bg-rose-600 hover:bg-rose-700'
-                                            : nextCheckType === 'check_out'
-                                              ? 'bg-slate-800 hover:bg-slate-900'
-                                              : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                                        }`}
-                                      >
-                                        {nextCheckType === 'check_out' ? (
-                                          <LogOut className="w-3 h-3 shrink-0" />
-                                        ) : (
-                                          <LogIn className="w-3 h-3 shrink-0" />
-                                        )}
-                                        <span>
-                                          {slotCheckStatus.hasCheckIn && slotCheckStatus.hasCheckOut
-                                            ? 'เช็คอิน/เอาท์แล้ว'
-                                            : nextCheckType === 'check_out'
-                                              ? 'เช็คเอาท์คาบ'
-                                              : 'เช็คอินเข้าคาบ'}
-                                        </span>
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {isViewingCurrentTerm && canManageTimetable && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPendingSlotConfirm({
-                                          title: 'ยืนยันการลบคาบเรียน',
-                                          description: `ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) ออกจากตารางสอนหรือไม่?`,
-                                          confirmLabel: 'ลบคาบเรียน',
-                                          tone: 'danger',
-                                          onConfirm: async () => {
-                                            await onDeleteSlot(slot.id);
-                                          },
-                                        });
-                                      }}
-                                      className="absolute top-1 right-1 p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
-                                      title="ลบคาบนี้"
-                                    >
-                                      <Trash2 className="w-2.5 h-2.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </td>
-                      );
-                    })}
-                    {!isPersonalViewer && (() => {
-                      const dayAllSlots = activeSlots.filter((s) => s.dayOfWeek === day.key);
-                      const daySummaries = dayAllSlots.map((slot) =>
-                        getSlotAttendanceAndLeaveSummary({
-                          slot,
-                          dateStr: day.date,
-                          courses,
-                          students,
-                          teachers,
-                          attendance,
-                          periodAttendance,
-                          leaveRequests,
-                        })
-                      );
-                      const checkedSlotsCount = daySummaries.filter((sum) => sum.periodCheckedTotal > 0).length;
-                      const totalPresentMarks = daySummaries.reduce((acc, s) => acc + s.periodPresent + s.periodLate, 0);
-                      const totalLeaveMarks = daySummaries.reduce((acc, s) => acc + s.periodExcused, 0);
-                      const totalAbsentMarks = daySummaries.reduce((acc, s) => acc + s.periodAbsent, 0);
-                      const teacherLeaveSlots = daySummaries.filter((s) =>
-                        s.teacherStatuses.some((t) => t.status === 'on_leave_approved' || t.status === 'on_leave_pending')
-                      ).length;
-                      const teacherCheckedSlots = daySummaries.filter((s) =>
-                        s.teacherStatuses.some((t) => t.status === 'checked_in' || t.status === 'late')
-                      ).length;
-                      const maxStudentLeavesOnDay = daySummaries.reduce(
-                        (max, s) => Math.max(max, s.studentLeaveCount),
-                        0
-                      );
-
-                      return (
-                        <td className="p-2 border-l border-[var(--color-border)] align-middle text-[10px] print:hidden">
-                          {rowHoliday ? (
-                            <span className="inline-block rounded-md bg-rose-100 dark:bg-rose-950/70 px-2 py-1 text-[10px] font-bold text-rose-700 dark:text-rose-200">
-                              งดสอน (วันหยุด)
-                            </span>
-                          ) : dayAllSlots.length === 0 ? (
-                            <span className="text-[var(--color-text-muted)]">ไม่มีคาบสอน</span>
-                          ) : (
-                            <div className="space-y-1.5">
-                              <div className="flex flex-wrap gap-1 tabular-nums">
-                                {checkedSlotsCount > 0 ? (
-                                  <>
-                                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold">
-                                      เช็กแล้ว {checkedSlotsCount}/{dayAllSlots.length} คาบ
-                                    </span>
-                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 font-semibold">
-                                      มา {totalPresentMarks}
-                                    </span>
-                                    {totalLeaveMarks > 0 && (
-                                      <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 font-bold">
-                                        ลา {totalLeaveMarks}
-                                      </span>
-                                    )}
-                                    {totalAbsentMarks > 0 && (
-                                      <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
-                                        ขาด {totalAbsentMarks}
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                                    รอเช็ก {dayAllSlots.length} คาบ
-                                  </span>
-                                )}
-                                {teacherLeaveSlots > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
-                                    ครูลา {teacherLeaveSlots} คาบ
-                                  </span>
-                                )}
-                                {teacherCheckedSlots > 0 && day.date <= todayBangkokDate && (
-                                  <span className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-200 font-semibold">
-                                    ครูเข้า รร. {teacherCheckedSlots}/{dayAllSlots.length}
-                                  </span>
-                                )}
-                                {maxStudentLeavesOnDay > 0 && checkedSlotsCount === 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold">
-                                    นร.ลา {maxStudentLeavesOnDay}
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRollcallDate(day.date);
-                                  setRollcallSlotId(dayAllSlots[0]?.id || '');
-                                  setViewMode('period_rollcall');
-                                }}
-                                className="w-full inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/70 px-2 py-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-200 cursor-pointer transition"
-                              >
-                                <UserCheck className="w-3 h-3 shrink-0" />
-                                <span>เช็กชื่อรายคน</span>
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })()}
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          </div>
-        </div>
-      )}
-
-      {isAdmin && showPeriodSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs">
-          <div className="w-full max-w-xl max-h-[92vh] overflow-hidden rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] shadow-2xl flex flex-col">
-            <div className="p-4 border-b border-[var(--color-border)] shrink-0">
-              <h3 className="font-bold text-base text-[var(--color-text-title)] flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[var(--color-primary-text)]" />
-                ตั้งเวลาเรียนมาตรฐานของโรงเรียน
-              </h3>
-              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-                เฉพาะผู้ดูแลระบบโรงเรียนเท่านั้นที่กำหนดได้ การเปลี่ยนแปลงจะมีผลกับตารางเรียนและการเช็คชื่อรายคาบของทุกคนในโรงเรียนนี้
-              </p>
-            </div>
-            <form onSubmit={handleSavePeriodSettings} className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  เพิ่ม/ลบและเปลี่ยนชื่อได้ทั้งคาบเรียน (สูงสุด {MAX_LESSON_PERIODS} คาบ) และช่วงพัก
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleAddBreakPeriod}
-                    disabled={isSavingPeriods}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-200 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    เพิ่มช่วงพัก
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddPeriod}
-                    disabled={isSavingPeriods || periodDraft.filter((p) => !p.isBreak).length >= MAX_LESSON_PERIODS}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-50 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    เพิ่มคาบเรียน
-                  </button>
-                </div>
-              </div>
-              {periodDraft.slice().sort(
-                (a, b) => a.startTime.localeCompare(b.startTime)
-              ).map((period) => (
-                <div key={period.periodNumber} className={`grid grid-cols-[minmax(110px,1.2fr)_1fr_1fr_auto] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
-                  <label className="text-[10px] text-[var(--color-text-muted)]">
-                    {period.isBreak ? 'ชื่อช่วงพัก' : `ชื่อคาบ (${period.periodNumber})`}
-                    <input
-                      type="text"
-                      value={period.labelTh ?? (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
-                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, labelTh: event.target.value } : item))}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-bold text-[var(--color-text-title)]"
-                    />
-                  </label>
-                  <label className="text-[10px] text-[var(--color-text-muted)]">
-                    เริ่ม
-                    <input
-                      type="time"
-                      required
-                      value={period.startTime}
-                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, startTime: event.target.value } : item))}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
-                    />
-                  </label>
-                  <label className="text-[10px] text-[var(--color-text-muted)]">
-                    เลิก
-                    <input
-                      type="time"
-                      required
-                      value={period.endTime}
-                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, endTime: event.target.value } : item))}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePeriod(period.periodNumber)}
-                    disabled={isSavingPeriods}
-                    aria-label={`ลบ ${period.labelTh || `คาบที่ ${period.periodNumber}`}`}
-                    className="rounded-lg p-2 mt-4 text-rose-600 hover:bg-rose-100 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              {periodSettingsError && (
-                <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-2.5 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                  {periodSettingsError}
-                </p>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPeriodSettings(false)}
-                  disabled={isSavingPeriods}
-                  className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-xs font-semibold hover:bg-[var(--color-card-subtle)] disabled:opacity-50"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingPeriods}
-                  className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50"
-                >
-                  {isSavingPeriods ? 'กำลังบันทึก...' : 'บันทึกเวลาเรียน'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Detail Popover Modal for Clicked Slot */}
-      {selectedSlotForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="timetable-slot-detail-title"
-            className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
-                  {selectedSlotForDetail.courseCode}
-                </span>
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  คาบที่ {selectedSlotForDetail.periodNumber} ({getPeriodTime(selectedSlotForDetail.periodNumber)?.startTime || selectedSlotForDetail.startTime} - {getPeriodTime(selectedSlotForDetail.periodNumber)?.endTime || selectedSlotForDetail.endTime})
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={closeSlotDetails}
-                aria-label="ปิดรายละเอียดคาบเรียน"
-                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2 py-3 text-xs">
-              <h3 id="timetable-slot-detail-title" className="text-base font-bold text-[var(--color-text-title)]">
-                {selectedSlotForDetail.courseTitleTh}
-              </h3>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                {selectedSlotForDetail.courseTitleEn}
-              </p>
-
-              {isEditingSelectedSlot && editSlotDraft ? (
-                <form id="edit-timetable-slot-form" onSubmit={handleSaveEditedSlot} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                      วัน
-                      <select
-                        value={editSlotDraft.dayOfWeek}
-                          onChange={(event) => {
-                            const day = DAYS.find((option) => option.key === event.target.value)?.key;
-                            if (day) {
-                              setEditSlotDraft((previous) => previous
-                                ? { ...previous, dayOfWeek: day }
-                                : previous);
-                            }
-                          }}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
-                      >
-                        {DAYS.map((day) => <option key={day.key} value={day.key}>{day.th}</option>)}
-                      </select>
-                    </label>
-                    <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                      คาบ
-                      <select
-                        value={editSlotDraft.periodNumber}
-                        onChange={(event) => {
-                          const periodNumber = Number(event.target.value);
-                          const period = getPeriodTime(periodNumber);
-                          setEditSlotDraft((previous) => previous
-                            ? {
-                              ...previous,
-                              periodNumber,
-                              startTime: period?.startTime || previous.startTime,
-                              endTime: period?.endTime || previous.endTime,
-                            }
-                            : previous);
-                        }}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
-                      >
-                        {editSlotPeriodOptions.map((periodNumber) => {
-                          const period = getPeriodTime(periodNumber);
-                          return (
-                            <option key={periodNumber} value={periodNumber}>
-                              คาบ {periodNumber}{period ? ` (${period.startTime}–${period.endTime})` : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </label>
-                    <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                      ห้องเรียน
-                      <select
-                        value={editSlotDraft.classRoom}
-                        onChange={(event) => setEditSlotDraft((previous) => previous
-                          ? { ...previous, classRoom: event.target.value }
-                          : previous)}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
-                      >
-                        {editSlotClassRoomOptions.map((classRoom) => (
-                          <option key={classRoom} value={classRoom}>{classRoom}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                      ครูผู้สอนหลัก
-                      <select
-                        value={editSlotDraft.teacherName}
-                        onChange={(event) => setEditSlotDraft((previous) => previous
-                          ? { ...previous, teacherName: event.target.value }
-                          : previous)}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
-                      >
-                        <option value="">ไม่ระบุครู</option>
-                        {editSlotTeacherOptions.map((teacherName) => (
-                          <option key={teacherName} value={teacherName}>{teacherName}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="col-span-2 space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                      ครูสอนคู่ (ถ้ามี)
-                      <select
-                        value={editSlotDraft.coTeacherName || ''}
-                        onChange={(event) => setEditSlotDraft((previous) => previous
-                          ? { ...previous, coTeacherName: event.target.value || undefined }
-                          : previous)}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
-                      >
-                        <option value="">ไม่มีครูสอนคู่</option>
-                        {editSlotTeacherOptions
-                          .filter((name) => normalizeTeacherName(name) !== normalizeTeacherName(editSlotDraft.teacherName))
-                          .map((teacherName) => (
-                            <option key={teacherName} value={teacherName}>{teacherName}</option>
-                          ))}
-                      </select>
-                    </label>
-                    <label className="col-span-2 space-y-1 text-[10px] text-[var(--color-text-muted)]">
-                      สถานที่ / ห้องปฏิบัติการ
-                      <input
-                        value={editSlotDraft.room}
-                        onChange={(event) => setEditSlotDraft((previous) => previous
-                          ? { ...previous, room: event.target.value }
-                          : previous)}
-                        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-2 text-xs text-[var(--color-text-title)]"
-                      />
-                    </label>
-                    <div className="col-span-2 pt-1">
-                      {renderTimetableColorPicker(
-                        editSlotDraft.colorTag || 'sky',
-                        (nextColor) =>
-                          setEditSlotDraft((previous) =>
-                            previous ? { ...previous, colorTag: nextColor } : previous
-                          )
-                      )}
-                    </div>
-                  </div>
-                  {editSlotConflicts.length > 0 && (
-                    <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[10px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100">
-                      ยังพบคาบชนกับ {editSlotConflicts.map(({ slot, details }) => (
-                        `${slot.courseCode} (${details.reasons.join(', ')})`
-                      )).join(' · ')}
-                    </div>
-                  )}
-                  {slotActionError && (
-                    <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[10px] text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                      {slotActionError}
-                    </p>
-                  )}
-                </form>
-              ) : (
-                <div className="space-y-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-text-muted)]">ห้องเรียน (Classroom):</span>
-                    <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.classRoom}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-[var(--color-text-muted)]">ครูผู้สอนหลัก (Instructor):</span>
-                    <span className="font-bold text-[var(--color-text-title)] text-right">{selectedSlotForDetail.teacherName || 'ไม่ระบุ'}</span>
-                  </div>
-                  {selectedSlotForDetail.coTeacherName && (
-                    <div className="flex justify-between gap-2">
-                      <span className="text-[var(--color-text-muted)]">ครูสอนคู่ (Co-Teacher):</span>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-300 text-right">
-                        {selectedSlotForDetail.coTeacherName}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-text-muted)]">สถานที่/ห้องแล็บ (Room):</span>
-                    <span className="font-bold text-[var(--color-text-title)]">{selectedSlotForDetail.room}</span>
-                  </div>
-                  {shouldShowCourseCredits(selectedSlotForDetail.courseCode, showPrimaryCourseCredits) && (
-                    <div className="flex justify-between">
-                      <span className="text-[var(--color-text-muted)]">หน่วยกิต (Credits):</span>
-                      <span className="font-bold text-[var(--color-primary-text)]">
-                        {(selectedSlotForDetail.credits ?? 1.5) === 0 ? 'ไม่มีหน่วยกิต' : `${selectedSlotForDetail.credits ?? 1.5} หน่วยกิต`}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-text-muted)]">เกณฑ์เวลาเรียน 80% (สิทธิ์สอบ):</span>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                      {Math.round((selectedSlotForDetail.totalSemesterHours || ((selectedSlotForDetail.credits ?? 1.5) > 0 ? (selectedSlotForDetail.credits ?? 1.5) * 40 : 20)) * 0.8)} / {selectedSlotForDetail.totalSemesterHours || ((selectedSlotForDetail.credits ?? 1.5) > 0 ? (selectedSlotForDetail.credits ?? 1.5) * 40 : 20)} ชั่วโมง
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[var(--color-text-muted)]">สีในตารางสอน:</span>
-                    <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
-                      <span
-                        className="inline-block h-3 w-3 rounded-full border border-black/15"
-                        style={{ backgroundColor: getTimetableSlotCardStyle(selectedSlotForDetail.colorTag).swatchHex }}
-                      />
-                      <span>{getTimetableSlotCardStyle(selectedSlotForDetail.colorTag).labelTh}</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-              {slotActionError && !isEditingSelectedSlot && (
-                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[10px] text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                  {slotActionError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border)] pt-3">
-              {isEditingSelectedSlot ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingSelectedSlot(false);
-                      setEditSlotDraft(null);
-                      setSlotActionError(null);
-                    }}
-                    disabled={isSavingSlot}
-                    className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] disabled:opacity-50"
-                  >
-                    ยกเลิก
-                  </button>
-                  <button
-                    type="submit"
-                    form="edit-timetable-slot-form"
-                    disabled={isSavingSlot}
-                    className="ml-auto rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                  >
-                    {isSavingSlot ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {canOpenPeriodRoster && (
-                    <div className="w-full pb-2 mb-1 border-b border-[var(--color-border)]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const target = selectedSlotForDetail;
-                          closeSlotDetails();
-                          setPeriodRosterTarget({ slot: target, date: todayBangkokDate });
-                        }}
-                        className="w-full min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-2 text-xs font-bold text-white cursor-pointer transition"
-                      >
-                        <UserCheck className="w-4 h-4" />
-                        <span>ดูรายชื่อนักเรียน &amp; เช็กชื่อคาบนี้ทันที</span>
-                      </button>
-                    </div>
-                  )}
-                  {canUsePeriodCheckin && (() => {
-                    const detailActivity = getTimetableSlotActivityStatus({
-                      slot: selectedSlotForDetail,
-                      schoolPeriods,
-                      now: bangkokClock,
-                      schoolId,
-                    });
-                    if (!detailActivity.isActive && (!detailActivity.isTodayWeekday || detailActivity.isHolidayOff)) {
-                      return null;
-                    }
-                    return (
-                      <div className="w-full flex flex-wrap items-center gap-2 pb-2 mb-1 border-b border-[var(--color-border)]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const target = selectedSlotForDetail;
-                            closeSlotDetails();
-                            triggerSlotCheckin(target, todayBangkokDate, 'check_in');
-                          }}
-                          className={`flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer ${
-                            detailActivity.isActive
-                              ? 'bg-rose-600 hover:bg-rose-700'
-                              : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                          }`}
-                        >
-                          <LogIn className="w-4 h-4" />
-                          <span>
-                            {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckIn
-                              ? 'เช็คอินเข้าคาบ (บันทึกแล้ว)'
-                              : detailActivity.isActive
-                                ? 'เช็คอินเข้าคาบตอนนี้'
-                                : 'เช็คอินเข้าคาบ'}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const target = selectedSlotForDetail;
-                            closeSlotDetails();
-                            triggerSlotCheckin(target, todayBangkokDate, 'check_out');
-                          }}
-                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span>
-                            {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckOut
-                              ? 'เช็คเอาท์คาบ (บันทึกแล้ว)'
-                              : 'เช็คเอาท์ออกคาบ'}
-                          </span>
-                        </button>
-                      </div>
-                    );
-                  })()}
-                  {canEditTimetableSlots && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditSlotDraft({ ...selectedSlotForDetail });
-                        setIsEditingSelectedSlot(true);
-                        setSlotActionError(null);
-                      }}
-                      className="rounded-lg border border-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)]"
-                    >
-                      แก้ไขคาบนี้
-                    </button>
-                  )}
-                  {isViewingCurrentTerm && canManageTimetable && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSlotActionError(null);
-                    void onDeleteSlot(selectedSlotForDetail.id)
-                      .then(closeSlotDetails)
-                      .catch((error: unknown) => {
-                        setSlotActionError(error instanceof Error ? error.message : String(error));
-                      });
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs font-semibold hover:bg-rose-200 cursor-pointer"
-                >
-                  ลบคาบนี้ออกจากตาราง
-                </button>
-              )}
-                  <button
-                    type="button"
-                    onClick={closeSlotDetails}
-                    className="ml-auto rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white"
-                  >
-                    ปิด
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Slot Modal with Course Catalog Selector */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Plus className="w-5 h-5 text-[var(--color-primary-text)]" />
-                <span>เพิ่มคาบเรียนลงตาราง (Add Class Slot)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSlot} className="space-y-4 text-xs">
-              {slotActionError && (
-                <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-rose-800">
-                  {slotActionError}
-                </p>
-              )}
-              {/* Conflict Preview Warning inside Modal */}
-              {prospectiveConflict && (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">คำเตือน คาบนี้มีข้อขัดแย้ง:</span>
-                    <p className="text-[11px] mt-0.5">
-                      {prospectiveConflictDetails?.reasons.join(' · ')} กับ {prospectiveConflict.courseCode}
-                      {' · '}คาบ {newPeriod} ซ้อนกับคาบ {prospectiveConflict.periodNumber}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Course Selector from Course Catalog */}
-              <div className="space-y-2">
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
-                  ค้นหาและเลือกรายวิชาที่เปิดสอน
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <label className="relative block min-w-0">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                    <input
-                      type="search"
-                      value={courseSearchInput}
-                      onChange={(event) => setCourseSearchInput(event.target.value)}
-                      placeholder="ค้นหารหัสวิชา ชื่อวิชา หรือชื่อครู"
-                      aria-label="ค้นหารายวิชา"
-                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] py-2 pl-9 pr-3 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                    />
-                  </label>
-                  {courseCatalogTeacherOptions.length > 0 && (
-                    <select
-                      aria-label="กรองวิชาตามรายชื่อครู"
-                      value={catalogTeacherFilter}
-                      onChange={(event) => setCatalogTeacherFilter(event.target.value)}
-                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs font-medium text-[var(--color-text-title)] outline-none focus:border-[var(--color-primary)]"
-                    >
-                      <option value="all">ครูผู้สอนทุกคน ({courseCatalogTeacherOptions.length})</option>
-                      {courseCatalogTeacherOptions.map((opt) => (
-                        <option key={opt.key} value={opt.key}>
-                          {opt.label} ({opt.count} วิชา)
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <div className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCourse('custom')}
-                    aria-pressed={selectedCourseId === 'custom'}
-                    className={`w-full rounded-lg border px-2.5 py-2 text-left text-[11px] font-semibold transition ${
-                      selectedCourseId === 'custom'
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                        : 'border-transparent text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                    }`}
-                  >
-                    กรอกข้อมูลรายวิชาเอง
-                  </button>
-                  {filteredCourseCatalog.length > 0 ? filteredCourseCatalog.map((course) => (
-                    <button
-                      key={course.id}
-                      type="button"
-                      onClick={() => handleSelectCourse(course.id)}
-                      aria-pressed={selectedCourseId === course.id}
-                      className={`w-full rounded-lg border px-2.5 py-2 text-left transition ${
-                        selectedCourseId === course.id
-                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                          : 'border-transparent text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                      }`}
-                    >
-                      <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
-                        <span className="font-mono text-[11px] font-bold">{course.code}</span>
-                        {shouldShowCourseCredits(course.code, showPrimaryCourseCredits) && (
-                          <span className="text-[10px] text-[var(--color-text-muted)]">
-                            {course.credits === 0 ? 'ไม่มีหน่วยกิต' : `${course.credits} หน่วยกิต`}
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[11px] font-semibold">
-                        {course.titleTh || course.titleEn || 'ไม่ระบุชื่อวิชา'}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[10px] text-[var(--color-text-muted)]">
-                        ครูผู้สอน: {course.teacherName || 'ยังไม่ระบุ'}
-                      </span>
-                    </button>
-                  )) : (
-                    <p className="px-2.5 py-4 text-center text-[11px] text-[var(--color-text-muted)]">
-                      ไม่พบรายวิชาที่ตรงกับคำค้นหา
-                    </p>
-                  )}
-                </div>
-                <p className="text-[10px] text-[var(--color-text-muted)]">
-                  พบ {filteredCourseCatalog.length} จาก {courses.length} รายวิชา
-                  {selectedCatalogCourse && (
-                    <> · เลือกแล้ว: <strong className="font-mono">{selectedCatalogCourse.code}</strong></>
-                  )}
-                </p>
-              </div>
-
-              {/* Day & Period Selection */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">วันในสัปดาห์</label>
-                  <select
-                    value={newDay}
-                    onChange={(e) => setNewDay(e.target.value as DayOfWeek)}
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                  >
-                    {DAYS.map((d) => (
-                      <option key={d.key} value={d.key}>{d.th}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">คาบเรียนที่</label>
-                  <select
-                    value={newPeriod}
-                    onChange={(e) => setNewPeriod(Number(e.target.value))}
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                  >
-                    {lessonPeriods.map((period) => {
-                      return (
-                        <option key={period.periodNumber} value={period.periodNumber}>
-                          คาบที่ {period.periodNumber} ({period.startTime} - {period.endTime})
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              </div>
-
-              {/* Code & Title */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">รหัสวิชา</label>
-                  <input
-                    type="text"
-                    required
-                    value={newCourseCode}
-                    onChange={(e) => setNewCourseCode(e.target.value)}
-                    placeholder="เช่น ว30201"
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-primary-text)] font-mono font-bold"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ชื่อวิชา (ภาษาไทย)</label>
-                  <input
-                    type="text"
-                    required
-                    value={newTitleTh}
-                    onChange={(e) => setNewTitleTh(e.target.value)}
-                    placeholder="เช่น เคมี: สารอินทรีย์"
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                  />
-                </div>
-              </div>
-
-              {/* Teacher, Co-Teacher, and Room */}
-              <datalist id="timetable-teacher-options">
-                {teacherNames.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ครูผู้สอนหลัก</label>
-                  <input
-                    type="text"
-                    required
-                    list="timetable-teacher-options"
-                    value={newTeacher}
-                    onChange={(e) => setNewTeacher(e.target.value)}
-                    placeholder="ชื่อครูผู้สอนหลัก"
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ครูสอนคู่ (ถ้ามี)</label>
-                  <input
-                    type="text"
-                    list="timetable-teacher-options"
-                    value={newCoTeacher}
-                    onChange={(e) => setNewCoTeacher(e.target.value)}
-                    placeholder="เลือกหรือพิมพ์ชื่อครูสอนคู่"
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ห้องเรียน / แล็บ</label>
-                <input
-                  type="text"
-                  required
-                  value={newRoom}
-                  onChange={(e) => setNewRoom(e.target.value)}
-                  placeholder="เช่น ห้อง 401 หรือ Lab 2"
-                  className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                />
-              </div>
-
-              {/* Classroom destination & Color tag */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[var(--color-text-body)] mb-1 font-semibold">ห้องเรียนผู้เรียน</label>
-                  <select
-                    required
-                    value={newClassRoom}
-                    onChange={(e) => setNewClassRoom(e.target.value)}
-                    className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)] font-bold"
-                  >
-                    <option value="">เลือกห้องเรียนปลายทาง</option>
-                    {(activeScheduleFilters?.gradeLevel
-                      ? uniqueClassRooms.filter((room) => gradeRooms.get(activeScheduleFilters.gradeLevel)?.has(normalizeTeacherName(room)))
-                      : uniqueClassRooms
-                    ).map((room) => (
-                      <option key={room} value={room}>{room}</option>
-                    ))}
-                  </select>
-                </div>
-                {renderTimetableColorPicker(newColor, (nextColor) => setNewColor(nextColor))}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-medium cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingSlot}
-                  className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-semibold cursor-pointer shadow-sm"
-                >
-                  {isSavingSlot ? 'กำลังบันทึก...' : 'บันทึกคาบเรียนลงตาราง'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showGoogleCalendarModal && (
-        <GoogleCalendarSyncModal
-          slots={activeSlots}
+        <TimetableHoursCriteriaTab
+          isPersonalViewer={isPersonalViewer}
+          hoursTeacherOptions={hoursTeacherOptions}
+          effectiveHoursTeacherFilter={effectiveHoursTeacherFilter}
+          setHoursTeacherFilter={setHoursTeacherFilter}
+          classroomCoursesList={classroomCoursesList}
+          showCreditsColumn={showCreditsColumn}
+          showPrimaryCourseCredits={showPrimaryCourseCredits}
+          renderRoomAndTermControls={renderRoomAndTermControls}
+        />
+      ) : viewMode === 'calendar' ? (
+        <TimetableCalendarTab
+          schoolId={schoolId}
+          lang={lang}
+          isAdmin={isAdmin}
+          isPersonalViewer={isPersonalViewer}
+          currentRole={currentRole}
+          currentUser={currentUser}
+          todayBangkokDate={todayBangkokDate}
+          bangkokClock={bangkokClock}
+          activeSlots={activeSlots}
           assignments={assignments}
           courses={courses}
-          schoolId={schoolId}
-          schoolName={schoolName}
-          academicYear={viewAcademicYear}
-          semester={viewSemester}
-          filterLabel={
-            activeScheduleFilters
-              ? [activeScheduleFilters.gradeLevel, activeScheduleFilters.classRoom, activeScheduleFilters.teacherName]
-                  .filter(Boolean)
-                  .join(' · ') || 'ตารางที่กรอง'
-              : selectedClassRoom === ALL_CLASSROOMS
-                ? `ทุกห้อง (${uniqueClassRooms.length} ห้อง)`
-                : selectedClassRoom || 'ตารางเรียน'
-          }
-          defaultStartDate={calendarWeekStart}
-          defaultEndDate={addCalendarDays(calendarWeekStart, 15 * 7 + 4)}
-          calendarWeekStart={calendarWeekStart}
-          onClose={() => setShowGoogleCalendarModal(false)}
-        />
-      )}
-
-      {showImportExportModal && (
-        <TimetableImportExportModal
-          schoolId={schoolId}
-          academicYear={viewAcademicYear}
-          semester={viewSemester}
-          filteredSlots={activeSlots}
-          allSlots={allTimetableSlots}
-          existingSlotsForTerm={slots}
+          students={students}
+          teachers={teachers}
           schoolPeriods={schoolPeriods}
-          filterLabel={
-            activeScheduleFilters
-              ? [activeScheduleFilters.gradeLevel, activeScheduleFilters.classRoom, activeScheduleFilters.teacherName]
-                  .filter(Boolean)
-                  .join(' · ') || 'ตารางที่กรอง'
-              : selectedClassRoom === ALL_CLASSROOMS
-                ? `ทุกห้อง (${uniqueClassRooms.length} ห้อง)`
-                : selectedClassRoom || 'ทุกห้อง'
-          }
-          onImportSlots={async (importedSlots) => {
-            if (onImportSlots) {
-              await onImportSlots(importedSlots);
-            } else {
-              for (const slot of importedSlots) {
-                await onAddSlot(slot);
-              }
-            }
-          }}
-          onClose={() => setShowImportExportModal(false)}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          leaveRequests={leaveRequests}
+          conflictingSlotIds={conflictingSlotIds}
+          calendarLayoutMode={calendarLayoutMode}
+          setCalendarLayoutMode={setCalendarLayoutMode}
+          calendarMonthCursor={calendarMonthCursor}
+          setCalendarMonthCursor={setCalendarMonthCursor}
+          selectedCalendarDate={selectedCalendarDate}
+          setSelectedCalendarDate={setSelectedCalendarDate}
+          calendarWeekStart={calendarWeekStart}
+          setCalendarWeekStart={setCalendarWeekStart}
+          calendarWeekDays={calendarWeekDays}
+          calendarWeekRangeLabel={calendarWeekRangeLabel}
+          holidaySyncStatus={holidaySyncStatus}
+          isSyncingHolidays={isSyncingHolidays}
+          handleManualHolidaySync={handleManualHolidaySync}
+          todayHoliday={todayHoliday}
+          upcomingHolidaysList={upcomingHolidaysList}
+          showAddHolidayForm={showAddHolidayForm}
+          setShowAddHolidayForm={setShowAddHolidayForm}
+          newHolidayDate={newHolidayDate}
+          setNewHolidayDate={setNewHolidayDate}
+          newHolidayNameTh={newHolidayNameTh}
+          setNewHolidayNameTh={setNewHolidayNameTh}
+          setHolidayRefreshTick={setHolidayRefreshTick}
+          calendarNotesTick={calendarNotesTick}
+          setCalendarNotesTick={setCalendarNotesTick}
+          showNoteForm={showNoteForm}
+          setShowNoteForm={setShowNoteForm}
+          editingNoteId={editingNoteId}
+          setEditingNoteId={setEditingNoteId}
+          noteTitleDraft={noteTitleDraft}
+          setNoteTitleDraft={setNoteTitleDraft}
+          noteContentDraft={noteContentDraft}
+          setNoteContentDraft={setNoteContentDraft}
+          noteScopeDraft={noteScopeDraft}
+          setNoteScopeDraft={setNoteScopeDraft}
+          noteColorDraft={noteColorDraft}
+          setNoteColorDraft={setNoteColorDraft}
+          canUsePeriodCheckin={canUsePeriodCheckin}
+          canOpenPeriodRoster={canOpenPeriodRoster}
+          getSlotTimeRange={getSlotTimeRange}
+          getSlotCheckStatusForDate={getSlotCheckStatusForDate}
+          triggerSlotCheckin={triggerSlotCheckin}
+          openSlotDetails={openSlotDetails}
+          setSelectedConflictSlotId={setSelectedConflictSlotId}
+          setPeriodRosterTarget={setPeriodRosterTarget}
+          setShowImportExportModal={setShowImportExportModal}
+          openGoogleCalendarModal={openGoogleCalendarModal}
+          renderRoomAndTermControls={renderRoomAndTermControls}
+        />
+      ) : (
+        <TimetableClassroomGridTab
+          schoolId={schoolId}
+          lang={lang}
+          isAdmin={isAdmin}
+          isPersonalViewer={isPersonalViewer}
+          canManageTimetable={canManageTimetable}
+          isViewingCurrentTerm={isViewingCurrentTerm}
+          isAllClassroomsView={isAllClassroomsView}
+          canUsePeriodCheckin={canUsePeriodCheckin}
+          canOpenPeriodRoster={canOpenPeriodRoster}
+          hasOpenPeriodCheckinHandler={Boolean(onOpenPeriodCheckin)}
+          currentUser={currentUser}
+          schoolPeriods={schoolPeriods}
+          orderedSchoolPeriods={orderedSchoolPeriods}
+          slots={slots}
+          activeSlots={activeSlots}
+          courses={courses}
+          students={students}
+          teachers={teachers}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          leaveRequests={leaveRequests}
+          uniqueClassRooms={uniqueClassRooms}
+          selectedClassRoom={selectedClassRoom}
+          myCoursesOnly={myCoursesOnly}
+          activeScheduleFilters={activeScheduleFilters}
+          viewAcademicYear={viewAcademicYear}
+          viewSemester={viewSemester}
+          todayDayKey={todayDayKey}
+          todayBangkokDate={todayBangkokDate}
+          bangkokClock={bangkokClock}
+          currentWeekDaysWithDates={currentWeekDaysWithDates}
+          conflictingSlotIds={conflictingSlotIds}
+          currentBangkokYear={currentBangkokYear}
+          yearHolidaysCount={yearHolidaysCount}
+          isSyncingHolidays={isSyncingHolidays}
+          handleManualHolidaySync={handleManualHolidaySync}
+          renderRoomAndTermControls={renderRoomAndTermControls}
+          openAddSlotModal={openAddSlotModal}
+          openScheduleSettings={openScheduleSettings}
+          openPeriodSettingsModal={openPeriodSettingsModal}
+          setShowImportExportModal={setShowImportExportModal}
+          openGoogleCalendarModal={openGoogleCalendarModal}
+          setCalendarLayoutMode={setCalendarLayoutMode}
+          setViewMode={setViewMode}
+          openSlotDetails={openSlotDetails}
+          setSelectedConflictSlotId={setSelectedConflictSlotId}
+          setPeriodRosterTarget={setPeriodRosterTarget}
+          setRollcallDate={setRollcallDate}
+          setRollcallSlotId={setRollcallSlotId}
+          setPendingSlotConfirm={setPendingSlotConfirm}
+          onDeleteSlot={onDeleteSlot}
+          getSlotCheckStatusForDate={getSlotCheckStatusForDate}
+          triggerSlotCheckin={triggerSlotCheckin}
         />
       )}
 
-      {showScheduleSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="timetable-schedule-settings-title"
-            className="w-full max-w-lg space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-text-body)] shadow-2xl"
-          >
-            <div>
-              <h2 id="timetable-schedule-settings-title" className="text-sm font-bold text-[var(--color-text-title)]">
-                ตั้งค่าการแสดงและพิมพ์ตารางสอน
-              </h2>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                เลือกกรองได้หลายเงื่อนไขพร้อมกัน แล้วแสดงบนหน้าจอหรือพิมพ์เฉพาะตารางที่เลือก
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1 text-xs font-semibold">
-                <span>ระดับชั้น</span>
-                <select
-                  value={scheduleFilterDraft.gradeLevel}
-                  onChange={(event) => setScheduleFilterDraft((previous) => ({
-                    ...previous,
-                    gradeLevel: event.target.value,
-                    classRoom: '',
-                  }))}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
-                >
-                  <option value="">ทุกระดับชั้น</option>
-                  {gradeLevels.map((gradeLevel) => (
-                    <option key={gradeLevel} value={gradeLevel}>
-                      {gradeLevel === UNASSIGNED_GRADE_LEVEL ? 'ไม่ระบุระดับชั้น' : gradeLevel}
-                    </option>
-                  ))}
-                </select>
-                <span className="block text-[10px] font-normal text-[var(--color-text-muted)]">
-                  ห้องที่ไม่มีนักเรียนผูกระดับชั้นจะแสดงเป็น “ไม่ระบุระดับชั้น”
-                </span>
-              </label>
-
-              <label className="space-y-1 text-xs font-semibold">
-                <span>ห้องเรียน</span>
-                <select
-                  value={scheduleFilterDraft.classRoom}
-                  onChange={(event) => setScheduleFilterDraft((previous) => ({
-                    ...previous,
-                    classRoom: event.target.value,
-                  }))}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
-                >
-                  <option value="">
-                    {scheduleFilterDraft.gradeLevel ? 'ทุกห้องในระดับชั้น' : 'ทุกห้อง'}
-                  </option>
-                  {(scheduleFilterDraft.gradeLevel
-                    ? uniqueClassRooms.filter((room) => gradeRooms.get(scheduleFilterDraft.gradeLevel)?.has(normalizeTeacherName(room)))
-                    : uniqueClassRooms
-                  ).map((room) => (
-                    <option key={room} value={room}>{room}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1 text-xs font-semibold sm:col-span-2">
-                <span>ครูผู้สอน</span>
-                <select
-                  value={scheduleFilterDraft.teacherName}
-                  onChange={(event) => setScheduleFilterDraft((previous) => ({
-                    ...previous,
-                    teacherName: event.target.value,
-                  }))}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
-                >
-                  <option value="">ครูทุกคน</option>
-                  {scheduledTeacherNames.map((teacherName) => (
-                    <option key={normalizeTeacherName(teacherName)} value={teacherName}>{teacherName}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <p className="rounded-lg bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-body)]">
-              ตรงตามเงื่อนไข <strong className="text-[var(--color-primary-text)]">{filterSlotsByScheduleSettings(scheduleFilterDraft).length}</strong>
-              {' '}จาก {slots.length} คาบ/สัปดาห์
-            </p>
-
-            <div className="flex justify-end gap-2 border-t border-[var(--color-border)] pt-3">
-              <button
-                type="button"
-                onClick={() => setShowScheduleSettingsModal(false)}
-                className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                disabled={filterSlotsByScheduleSettings(scheduleFilterDraft).length === 0}
-                onClick={() => {
-                  setActiveScheduleFilters({ ...scheduleFilterDraft });
-                  setShowScheduleSettingsModal(false);
-                }}
-                className="rounded-lg border border-[var(--color-primary)] px-3.5 py-2 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                แสดงตาราง
-              </button>
-              <button
-                type="button"
-                disabled={filterSlotsByScheduleSettings(scheduleFilterDraft).length === 0}
-                onClick={() => {
-                  setActiveScheduleFilters({ ...scheduleFilterDraft });
-                  setShowScheduleSettingsModal(false);
-                  window.setTimeout(() => window.print(), 0);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                พิมพ์ A4
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {/* Academic Year & Semester Quick Edit Modal */}
-      {showPeriodEditor && onUpdateAcademicPeriod && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>แก้ไขภาคเรียนและปีการศึกษา</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowPeriodEditor(false)}
-                className="text-base font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!draftAcademicYear.trim() || !draftSemester.trim()) return;
-                setIsSavingAcademicPeriod(true);
-                try {
-                  const normalizedOptions = Array.from(
-                    new Set([...draftSemesterOptions.map((o) => o.trim()).filter(Boolean), draftSemester.trim()])
-                  );
-                  await onUpdateAcademicPeriod(draftAcademicYear.trim(), draftSemester.trim(), normalizedOptions);
-                  setShowPeriodEditor(false);
-                  setAcademicPeriodNotice(`อัปเดตเป็น ${formatSemesterLabel(draftSemester.trim())} ปีการศึกษา ${draftAcademicYear.trim()} เรียบร้อยแล้ว`);
-                } finally {
-                  setIsSavingAcademicPeriod(false);
-                }
-              }}
-              className="space-y-3 text-xs"
-            >
-              <div>
-                <label className="block font-semibold text-[var(--color-text-title)] mb-1">ปีการศึกษา (Academic Year)</label>
-                <input
-                  type="text"
-                  required
-                  value={draftAcademicYear}
-                  onChange={(e) => setDraftAcademicYear(e.target.value)}
-                  placeholder="เช่น 2569 (2026)"
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-[var(--color-text-title)] mb-1">ภาคเรียนที่ใช้งานปัจจุบัน &amp; รายการภาคเรียนของโรงเรียน</label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {draftSemesterOptions.map((opt) => (
-                    <div
-                      key={opt}
-                      className={`inline-flex items-center gap-1 rounded-lg border text-xs font-semibold ${
-                        draftSemester === opt
-                          ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                          : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setDraftSemester(opt)}
-                        className="px-2.5 py-1 cursor-pointer"
-                      >
-                        {formatSemesterLabel(opt)}
-                      </button>
-                      {draftSemesterOptions.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const remaining = draftSemesterOptions.filter((item) => item !== opt);
-                            setDraftSemesterOptions(remaining);
-                            if (draftSemester === opt && remaining[0]) {
-                              setDraftSemester(remaining[0]);
-                            }
-                          }}
-                          className="pr-2 py-1 text-[10px] opacity-80 hover:opacity-100 cursor-pointer"
-                          title="ลบตัวเลือกภาคเรียนนี้"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-1.5 mb-2">
-                  <input
-                    type="text"
-                    value={newSemesterOptionInput}
-                    onChange={(e) => setNewSemesterOptionInput(e.target.value)}
-                    placeholder="เพิ่มชื่อภาคเรียนใหม่ เช่น 3 หรือ ภาคฤดูร้อน"
-                    className="flex-1 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const val = newSemesterOptionInput.trim();
-                      if (!val) return;
-                      if (!draftSemesterOptions.includes(val)) {
-                        setDraftSemesterOptions((prev) => [...prev, val]);
-                      }
-                      setDraftSemester(val);
-                      setNewSemesterOptionInput('');
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-semibold cursor-pointer"
-                  >
-                    + เพิ่มเทอม
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={draftSemester}
-                  onChange={(e) => setDraftSemester(e.target.value)}
-                  placeholder="หรือพิมพ์แก้ชื่อภาคเรียนที่ใช้งานอยู่"
-                  className="w-full px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]"
-                />
-              </div>
-              <p className="text-[11px] text-[var(--color-text-muted)]">
-                การเปลี่ยนแปลงนี้จะอัปเดตหัวตารางเรียน ปพ.5/ปพ.6 รายวิชา และตัวเลือกภาคเรียนของโรงเรียน {schoolName} ทันที
-              </p>
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setShowPeriodEditor(false)}
-                  className="px-3.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingAcademicPeriod}
-                  className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-semibold disabled:opacity-50 cursor-pointer"
-                >
-                  {isSavingAcademicPeriod ? 'กำลังบันทึก...' : 'บันทึกภาคเรียน'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ConfirmActionModal
-        isOpen={Boolean(pendingSlotConfirm)}
-        title={pendingSlotConfirm?.title || ''}
-        description={pendingSlotConfirm?.description || ''}
-        confirmLabel={pendingSlotConfirm?.confirmLabel || 'ยืนยัน'}
-        tone={pendingSlotConfirm?.tone || 'primary'}
-        isBusy={isConfirmingSlotAction}
-        onCancel={() => {
-          if (!isConfirmingSlotAction) setPendingSlotConfirm(null);
-        }}
-        onConfirm={async () => {
-          if (!pendingSlotConfirm) return;
-          setIsConfirmingSlotAction(true);
-          try {
-            await pendingSlotConfirm.onConfirm();
-            setPendingSlotConfirm(null);
-          } finally {
-            setIsConfirmingSlotAction(false);
-          }
-        }}
-      />
-      <TimetablePeriodAttendanceModal
-        isOpen={Boolean(periodRosterTarget)}
-        onClose={() => setPeriodRosterTarget(null)}
-        slot={periodRosterTarget?.slot || null}
-        initialDate={periodRosterTarget?.date || todayBangkokDate}
+      <TimetableModals
         schoolId={schoolId}
+        schoolName={schoolName}
+        lang={lang}
+        isAdmin={isAdmin}
+        isPersonalViewer={isPersonalViewer}
+        canManageTimetable={canManageTimetable}
+        canEditTimetableSlots={canEditTimetableSlots}
+        isViewingCurrentTerm={isViewingCurrentTerm}
+        canOpenPeriodRoster={canOpenPeriodRoster}
+        canUsePeriodCheckin={canUsePeriodCheckin}
+        showPrimaryCourseCredits={showPrimaryCourseCredits}
+        currentUser={currentUser}
+        todayBangkokDate={todayBangkokDate}
+        bangkokClock={bangkokClock}
         courses={courses}
-        students={students}
+        assignments={assignments}
         teachers={teachers}
-        schoolPeriods={schoolPeriods}
+        students={students}
         attendance={attendance}
         periodAttendance={periodAttendance}
         leaveRequests={leaveRequests}
-        currentUser={currentUser}
-        lang={lang}
+        schoolPeriods={schoolPeriods}
+        lessonPeriods={lessonPeriods}
+        slots={slots}
+        allTimetableSlots={allTimetableSlots}
+        activeSlots={activeSlots}
+        uniqueClassRooms={uniqueClassRooms}
+        selectedClassRoom={selectedClassRoom}
+        teacherNames={teacherNames}
+        gradeLevels={gradeLevels}
+        gradeRooms={gradeRooms}
+        scheduledTeacherNames={scheduledTeacherNames}
+        viewAcademicYear={viewAcademicYear}
+        viewSemester={viewSemester}
+        calendarWeekStart={calendarWeekStart}
+        activeScheduleFilters={activeScheduleFilters}
+        setActiveScheduleFilters={setActiveScheduleFilters}
+        selectedConflictSlotId={selectedConflictSlotId}
+        setSelectedConflictSlotId={setSelectedConflictSlotId}
+        selectedSlotConflicts={selectedSlotConflicts}
+        openConflictSlot={openConflictSlot}
+        showPeriodSettings={showPeriodSettings}
+        setShowPeriodSettings={setShowPeriodSettings}
+        periodDraft={periodDraft}
+        setPeriodDraft={setPeriodDraft}
+        periodSettingsError={periodSettingsError}
+        isSavingPeriods={isSavingPeriods}
+        handleSavePeriodSettings={handleSavePeriodSettings}
+        handleAddBreakPeriod={handleAddBreakPeriod}
+        handleAddPeriod={handleAddPeriod}
+        handleRemovePeriod={handleRemovePeriod}
+        selectedSlotForDetail={selectedSlotForDetail}
+        closeSlotDetails={closeSlotDetails}
+        isEditingSelectedSlot={isEditingSelectedSlot}
+        setIsEditingSelectedSlot={setIsEditingSelectedSlot}
+        editSlotDraft={editSlotDraft}
+        setEditSlotDraft={setEditSlotDraft}
+        editSlotPeriodOptions={editSlotPeriodOptions}
+        editSlotClassRoomOptions={editSlotClassRoomOptions}
+        editSlotTeacherOptions={editSlotTeacherOptions}
+        editSlotConflicts={editSlotConflicts}
+        handleSaveEditedSlot={handleSaveEditedSlot}
+        slotActionError={slotActionError}
+        setSlotActionError={setSlotActionError}
+        isSavingSlot={isSavingSlot}
+        onDeleteSlot={onDeleteSlot}
+        getPeriodTime={getPeriodTime}
+        getSlotCheckStatusForDate={getSlotCheckStatusForDate}
+        triggerSlotCheckin={triggerSlotCheckin}
+        setPeriodRosterTarget={setPeriodRosterTarget}
+        showAddModal={showAddModal}
+        setShowAddModal={setShowAddModal}
+        handleCreateSlot={handleCreateSlot}
+        prospectiveConflict={prospectiveConflict}
+        prospectiveConflictDetails={prospectiveConflictDetails}
+        courseSearchInput={courseSearchInput}
+        setCourseSearchInput={setCourseSearchInput}
+        courseCatalogTeacherOptions={courseCatalogTeacherOptions}
+        catalogTeacherFilter={catalogTeacherFilter}
+        setCatalogTeacherFilter={setCatalogTeacherFilter}
+        selectedCourseId={selectedCourseId}
+        handleSelectCourse={handleSelectCourse}
+        filteredCourseCatalog={filteredCourseCatalog}
+        selectedCatalogCourse={selectedCatalogCourse}
+        newDay={newDay}
+        setNewDay={setNewDay}
+        newPeriod={newPeriod}
+        setNewPeriod={setNewPeriod}
+        newCourseCode={newCourseCode}
+        setNewCourseCode={setNewCourseCode}
+        newTitleTh={newTitleTh}
+        setNewTitleTh={setNewTitleTh}
+        newTeacher={newTeacher}
+        setNewTeacher={setNewTeacher}
+        newCoTeacher={newCoTeacher}
+        setNewCoTeacher={setNewCoTeacher}
+        newRoom={newRoom}
+        setNewRoom={setNewRoom}
+        newClassRoom={newClassRoom}
+        setNewClassRoom={setNewClassRoom}
+        newColor={newColor}
+        setNewColor={setNewColor}
+        showGoogleCalendarModal={showGoogleCalendarModal}
+        setShowGoogleCalendarModal={setShowGoogleCalendarModal}
+        showImportExportModal={showImportExportModal}
+        setShowImportExportModal={setShowImportExportModal}
+        onImportSlots={onImportSlots}
+        onAddSlot={onAddSlot}
+        showScheduleSettingsModal={showScheduleSettingsModal}
+        setShowScheduleSettingsModal={setShowScheduleSettingsModal}
+        scheduleFilterDraft={scheduleFilterDraft}
+        setScheduleFilterDraft={setScheduleFilterDraft}
+        filterSlotsByScheduleSettings={filterSlotsByScheduleSettings}
+        showPeriodEditor={showPeriodEditor}
+        setShowPeriodEditor={setShowPeriodEditor}
+        onUpdateAcademicPeriod={onUpdateAcademicPeriod}
+        draftAcademicYear={draftAcademicYear}
+        setDraftAcademicYear={setDraftAcademicYear}
+        draftSemester={draftSemester}
+        setDraftSemester={setDraftSemester}
+        draftSemesterOptions={draftSemesterOptions}
+        setDraftSemesterOptions={setDraftSemesterOptions}
+        newSemesterOptionInput={newSemesterOptionInput}
+        setNewSemesterOptionInput={setNewSemesterOptionInput}
+        isSavingAcademicPeriod={isSavingAcademicPeriod}
+        setIsSavingAcademicPeriod={setIsSavingAcademicPeriod}
+        setAcademicPeriodNotice={setAcademicPeriodNotice}
+        pendingSlotConfirm={pendingSlotConfirm}
+        setPendingSlotConfirm={setPendingSlotConfirm}
+        isConfirmingSlotAction={isConfirmingSlotAction}
+        setIsConfirmingSlotAction={setIsConfirmingSlotAction}
+        periodRosterTarget={periodRosterTarget}
         onRecordPeriodAttendance={onRecordPeriodAttendance}
       />
     </div>

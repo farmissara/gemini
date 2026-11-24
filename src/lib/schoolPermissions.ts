@@ -26,6 +26,8 @@ export interface SchoolRolePolicy {
   enabled: boolean;
 }
 
+export type SchoolPermissionsState = Record<SchoolPolicyId, boolean>;
+
 export const SCHOOL_PERMISSIONS_UPDATED_EVENT = 'eduverse:school-permissions-updated';
 
 export const DEFAULT_SCHOOL_ROLE_POLICIES: SchoolRolePolicy[] = [
