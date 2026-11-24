@@ -17,8 +17,6 @@ import {
   Award,
   AlertTriangle,
   TrendingUp,
-  Users,
-  BookOpen,
   FileDown,
 } from 'lucide-react';
 import { AppLanguage, Course, GradeRecord, GradingSystem, Student, Teacher } from '../types';
@@ -147,16 +145,6 @@ const INTL_TIER_ORDER: Array<{ tier: string; rangeTh: string; rangeEn: string; c
   { tier: 'มส.', rangeTh: 'เวลาเรียนไม่ถึงเกณฑ์', rangeEn: 'Ineligible (มส.)', color: '#be123c' },
 ];
 
-function computeMedian(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1] + sorted[mid]) / 2;
-  }
-  return sorted[mid];
-}
-
 export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProps> = ({
   courses,
   teachers = [],
@@ -254,9 +242,7 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
       return {
         totalCount: 0,
         meanScore: 0,
-        medianScore: 0,
         passRate: 0,
-        distinctionRate: 0,
         atRiskCount: 0,
       };
     }
@@ -264,10 +250,8 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
     const scores = scopedGrades.map((g) => Number(g.totalScore) || 0);
     const totalCount = scores.length;
     const meanScore = Math.round((scores.reduce((sum, s) => sum + s, 0) / totalCount) * 10) / 10;
-    const medianScore = Math.round(computeMedian(scores) * 10) / 10;
 
     let passCount = 0;
-    let distinctionCount = 0;
     let atRiskCount = 0;
 
     for (const grade of scopedGrades) {
@@ -282,17 +266,12 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
         atRiskCount += 1;
       }
 
-      if (!isFailingSpecial && score >= 80) {
-        distinctionCount += 1;
-      }
     }
 
     return {
       totalCount,
       meanScore,
-      medianScore,
       passRate: Math.round((passCount / totalCount) * 1000) / 10,
-      distinctionRate: Math.round((distinctionCount / totalCount) * 1000) / 10,
       atRiskCount,
     };
   }, [scopedGrades, courseById, selectedCourse, gradingSystem]);
@@ -523,15 +502,23 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
             </h3>
             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 font-mono tabular-nums">
               {scope === 'course' && selectedCourse
-                ? `${selectedCourse.code} · ${scopedGrades.length}`
+                ? `${selectedCourse.code}${summaryStats.totalCount > 0 ? ` · ${summaryStats.totalCount}` : ''}`
                 : scope === 'by_subject'
-                ? `${subjectComparisonData.length} ${lang === 'th' ? 'วิชา' : 'subj'}`
-                : `${scopedGrades.length}`}
+                ? subjectComparisonData.length > 0
+                  ? `${subjectComparisonData.length} ${lang === 'th' ? 'วิชา' : 'subj'}`
+                  : '—'
+                : summaryStats.totalCount > 0
+                  ? `${summaryStats.totalCount}`
+                  : '—'}
             </span>
             <span className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums hidden sm:inline">
-              {lang === 'th'
-                ? `เฉลี่ย ${summaryStats.meanScore}% · ผ่าน ${summaryStats.passRate}% · เสี่ยง ${summaryStats.atRiskCount} คน`
-                : `Mean ${summaryStats.meanScore}% · Pass ${summaryStats.passRate}% · Risk ${summaryStats.atRiskCount}`}
+              {summaryStats.totalCount > 0
+                ? lang === 'th'
+                  ? `เฉลี่ย ${summaryStats.meanScore}% · ผ่าน ${summaryStats.passRate}% · เสี่ยง ${summaryStats.atRiskCount} คน`
+                  : `Mean ${summaryStats.meanScore}% · Pass ${summaryStats.passRate}% · Risk ${summaryStats.atRiskCount}`
+                : lang === 'th'
+                  ? 'ยังไม่มีคะแนน'
+                  : 'No scores yet'}
             </span>
           </div>
         </button>
@@ -669,51 +656,26 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
       {isExpanded && (
         <div className="p-4 space-y-4">
           {/* KPI Summary Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-            <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-bold text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'จำนวนข้อมูลคะแนน' : 'Graded Records'}
-                </p>
-                <p className="text-lg font-black text-[var(--color-text-title)] font-mono tabular-nums">
-                  {summaryStats.totalCount}
-                </p>
-              </div>
-              <Users className="w-5 h-5 text-indigo-500 shrink-0" />
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div className="p-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/35 border border-sky-200 dark:border-sky-800/60 flex items-center justify-between gap-2">
               <div>
                 <p className="text-[10px] font-bold text-sky-900 dark:text-sky-200">
                   {lang === 'th' ? 'คะแนนเฉลี่ย (Mean)' : 'Mean Score'}
                 </p>
                 <p className="text-lg font-black text-sky-800 dark:text-sky-100 font-mono tabular-nums">
-                  {summaryStats.meanScore}%
+                  {summaryStats.totalCount > 0 ? `${summaryStats.meanScore}%` : '—'}
                 </p>
               </div>
               <TrendingUp className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0" />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/35 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-bold text-indigo-900 dark:text-indigo-200">
-                  {lang === 'th' ? 'ค่ามัธยฐาน (Median)' : 'Median Score'}
-                </p>
-                <p className="text-lg font-black text-indigo-800 dark:text-indigo-100 font-mono tabular-nums">
-                  {summaryStats.medianScore}%
-                </p>
-              </div>
-              <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            </div>
-
             <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/35 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between gap-2">
               <div>
                 <p className="text-[10px] font-bold text-emerald-900 dark:text-emerald-200">
-                  {lang === 'th' ? 'ผ่านเกณฑ์ / ดีเยี่ยม (80+)' : 'Pass / 80%+ Rate'}
+                  {lang === 'th' ? 'ผ่านเกณฑ์' : 'Pass Rate'}
                 </p>
                 <p className="text-base font-black text-emerald-800 dark:text-emerald-100 font-mono tabular-nums">
-                  {summaryStats.passRate}%{' '}
-                  <span className="text-[11px] font-semibold opacity-80">({summaryStats.distinctionRate}%)</span>
+                  {summaryStats.totalCount > 0 ? `${summaryStats.passRate}%` : '—'}
                 </p>
               </div>
               <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -725,7 +687,9 @@ export const GradeDistributionHistogram: React.FC<GradeDistributionHistogramProp
                   {lang === 'th' ? 'กลุ่มเสี่ยง (<50 / ร / มส.)' : 'At-Risk (<50 / Fail)'}
                 </p>
                 <p className="text-lg font-black text-rose-700 dark:text-rose-200 font-mono tabular-nums">
-                  {summaryStats.atRiskCount} {lang === 'th' ? 'คน' : ''}
+                  {summaryStats.totalCount > 0
+                    ? `${summaryStats.atRiskCount}${lang === 'th' ? ' คน' : ''}`
+                    : '—'}
                 </p>
               </div>
               <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />

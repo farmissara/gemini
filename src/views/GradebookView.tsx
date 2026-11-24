@@ -1844,26 +1844,61 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 </select>
               </div>
 
-              {/* Sub-mode Toggle inside Course Scoring (สมุดคะแนน ปพ.5 | ตัวชี้วัด สพฐ.) */}
+              {/* Evaluation settings and score modes */}
               {!isPersonalGradeViewer && (activeTab === 'gradebook' || activeTab === 'indicators') && (
-                <div className="seg-tab-group shrink-0">
-                  <button
-                    type="button"
-                    data-active={activeTab === 'gradebook'}
-                    onClick={() => setActiveTab('gradebook')}
-                    className="seg-tab-btn px-2.5 py-1 text-xs whitespace-nowrap"
-                  >
-                    สมุดคะแนน (ปพ.5)
-                  </button>
-                  <button
-                    type="button"
-                    data-active={activeTab === 'indicators'}
-                    onClick={() => setActiveTab('indicators')}
-                    className="seg-tab-btn px-2.5 py-1 text-xs whitespace-nowrap"
-                  >
-                    ตัวชี้วัด สพฐ.
-                  </button>
-                </div>
+                <details className="relative shrink-0">
+                  <summary className="btn-tool-tone list-none h-8 px-2.5 text-xs cursor-pointer">
+                    <Calculator className="w-3.5 h-3.5 tone-text" />
+                    <span>เกณฑ์ประเมิน</span>
+                    <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
+                  </summary>
+                  <div className="absolute right-0 z-40 mt-1 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-xl space-y-1.5">
+                    <button
+                      type="button"
+                      data-active={activeTab === 'gradebook'}
+                      onClick={(event) => {
+                        setActiveTab('gradebook');
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                      }}
+                      className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] data-[active=true]:bg-[var(--tone-soft)] data-[active=true]:text-[var(--tone)]"
+                    >
+                      สมุดคะแนน (ปพ.5)
+                    </button>
+                    <button
+                      type="button"
+                      data-active={activeTab === 'indicators'}
+                      onClick={(event) => {
+                        setActiveTab('indicators');
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                      }}
+                      className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] data-[active=true]:bg-[var(--tone-soft)] data-[active=true]:text-[var(--tone)]"
+                    >
+                      ตัวชี้วัด สพฐ.
+                    </button>
+                    {effectiveCanEditGrades && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          setActiveTab('gradebook');
+                          setShowWeightConfigPanel(
+                            activeTab === 'gradebook' ? !showWeightConfigPanel : true
+                          );
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                        }}
+                        className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
+                      >
+                        {activeTab === 'gradebook' && showWeightConfigPanel
+                          ? 'ซ่อนการตั้งค่าน้ำหนักคะแนน'
+                          : 'ตั้งค่าน้ำหนักคะแนน'}
+                      </button>
+                    )}
+                    <p className="border-t border-[var(--color-border)] px-2.5 pt-2 text-[11px] leading-relaxed text-[var(--color-text-muted)]">
+                      เกณฑ์ผลการเรียน: {isPrimaryCourse
+                        ? '80–100 ดีเยี่ยม · 70–79 ดีมาก · 60–69 ดี · 50–59 ผ่าน'
+                        : getGradingScaleLegend(systemConfig.gradingSystem)}
+                    </p>
+                  </div>
+                </details>
               )}
 
               {/* Student Live Search */}
@@ -1917,7 +1952,13 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
               {!isPersonalGradeViewer && (
                 <span className="h-11 inline-flex items-center px-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-sm font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
-                  {activeTab === 'gradebook' ? `${filteredGradebookRows.length}/${gradebookRows.length}` : `${courseGrades.length} คน`}
+                  {activeTab === 'gradebook'
+                    ? gradebookRows.length > 0
+                      ? `${filteredGradebookRows.length}/${gradebookRows.length}`
+                      : '—'
+                    : courseGrades.length > 0
+                      ? `${courseGrades.length} คน`
+                      : '—'}
                 </span>
               )}
 
@@ -2153,20 +2194,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               {effectiveCanEditGrades && (
               <button
                 type="button"
-                onClick={() => setShowWeightConfigPanel((prev) => !prev)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition whitespace-nowrap ${
-                  showWeightConfigPanel
-                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                    : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
-                }`}
-              >
-                <Calculator className="w-3 h-3" />
-                <span>ตั้งค่าน้ำหนักคะแนน สพฐ. ({normalizedWeightPercents.duringTerm}:{normalizedWeightPercents.final})</span>
-              </button>
-              )}
-              {effectiveCanEditGrades && (
-              <button
-                type="button"
                 onClick={() => setShowBatchPastePanel((prev) => !prev)}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition whitespace-nowrap ${
                   showBatchPastePanel
@@ -2178,11 +2205,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                 <span>วางคะแนนจาก Excel</span>
               </button>
               )}
-              <span className="text-[11px] text-[var(--color-text-muted)] hidden xl:inline ml-1">
-                {isPrimaryCourse
-                  ? '80–100 ดีเยี่ยม · 70–79 ดีมาก · 60–69 ดี · 50–59 ผ่าน'
-                  : getGradingScaleLegend(systemConfig.gradingSystem)}
-              </span>
             </div>
           </div>
 
