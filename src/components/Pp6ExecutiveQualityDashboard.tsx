@@ -468,31 +468,30 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
 
       {/* Filter Bar */}
       <div className="saas-card saas-card-body flex flex-wrap items-center justify-between gap-2.5 print:hidden">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold text-[var(--color-text-muted)] mr-1">ช่วงชั้น:</span>
-          {([
-            { id: 'all', label: 'ทั้งโรงเรียน' },
-            { id: 'primary', label: 'ประถมศึกษา' },
-            { id: 'lower_secondary', label: 'ม.ต้น' },
-            { id: 'upper_secondary', label: 'ม.ปลาย' },
-          ] as const).map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => {
-                setStageScope(opt.id);
-                setGradeLevelFilter('all');
-                setSelectedGroupKey(null);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer whitespace-nowrap ${
-                stageScope === opt.id
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-[var(--color-text-muted)]">ช่วงชั้น:</span>
+          <div className="seg-tab-group inline-flex flex-wrap">
+            {([
+              { id: 'all', label: 'ทั้งโรงเรียน' },
+              { id: 'primary', label: 'ประถมศึกษา' },
+              { id: 'lower_secondary', label: 'ม.ต้น' },
+              { id: 'upper_secondary', label: 'ม.ปลาย' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                data-active={stageScope === opt.id}
+                onClick={() => {
+                  setStageScope(opt.id);
+                  setGradeLevelFilter('all');
+                  setSelectedGroupKey(null);
+                }}
+                className="seg-tab-btn whitespace-nowrap shrink-0"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
 
           <select
             value={gradeLevelFilter}
@@ -513,57 +512,45 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 p-1 bg-[var(--color-card-subtle)] rounded-lg border border-[var(--color-border)]">
+          <div className="seg-tab-group inline-flex">
             <button
               type="button"
+              data-active={groupByMode === 'gradeLevel'}
               onClick={() => {
                 setGroupByMode('gradeLevel');
                 setSelectedGroupKey(null);
               }}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                groupByMode === 'gradeLevel'
-                  ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               เทียบรายระดับชั้น
             </button>
             <button
               type="button"
+              data-active={groupByMode === 'room'}
               onClick={() => {
                 setGroupByMode('room');
                 setSelectedGroupKey(null);
               }}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                groupByMode === 'room'
-                  ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               เทียบรายห้องเรียน
             </button>
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-[var(--color-card-subtle)] rounded-lg border border-[var(--color-border)]">
+          <div className="seg-tab-group inline-flex">
             <button
               type="button"
+              data-active={chartView === 'gpa_attendance'}
               onClick={() => setChartView('gpa_attendance')}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                chartView === 'gpa_attendance'
-                  ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               ผลการเรียน vs เวลาเรียน
             </button>
             <button
               type="button"
+              data-active={chartView === 'obec_pillars'}
               onClick={() => setChartView('obec_pillars')}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                chartView === 'obec_pillars'
-                  ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               4 ตัวชี้วัดคุณภาพ ปพ.6
             </button>
@@ -583,75 +570,87 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
           </p>
         </div>
 
-        {/* 4 KPI Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div className="saas-card saas-card-body space-y-1">
-            <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-              <span>ผลสัมฤทธิ์เฉลี่ย ปพ.6</span>
-              <Award className="w-4 h-4 text-[var(--color-primary-text)]" />
+        {/* 4 KPI Summary Strip (Unified Single-Elevation Hairline Grid) */}
+        <div className="saas-kpi-strip overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+            <div className="saas-kpi-cell space-y-1">
+              <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+                <span>ผลสัมฤทธิ์เฉลี่ย ปพ.6</span>
+                <Award className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold font-mono tabular-nums text-[var(--color-text-title)]">
+                  {schoolKpis.avgGpa.toFixed(2)}
+                </span>
+                <span className="text-xs font-mono tabular-nums text-[var(--color-text-muted)]">
+                  ({schoolKpis.avgRawScore.toFixed(1)}%)
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
+                นักเรียน {schoolKpis.total} คน · เสี่ยงวิชาการ {schoolKpis.academicRiskTotal} คน
+              </p>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold font-mono tabular-nums text-[var(--color-text-title)]">
-                {schoolKpis.avgGpa.toFixed(2)}
-              </span>
-              <span className="text-xs font-mono tabular-nums text-[var(--color-text-muted)]">
-                ({schoolKpis.avgRawScore.toFixed(1)}%)
-              </span>
-            </div>
-            <p className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
-              นักเรียน {schoolKpis.total} คน · เสี่ยงวิชาการ {schoolKpis.academicRiskTotal} คน
-            </p>
-          </div>
 
-          <div className="saas-card saas-card-body space-y-1">
-            <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-              <span>สถิติการมาเรียนเฉลี่ย</span>
-              <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="saas-kpi-cell space-y-1">
+              <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+                <span>สถิติการมาเรียนเฉลี่ย</span>
+                <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
+                  {schoolKpis.avgAttendance.toFixed(1)}%
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">เกณฑ์ สพฐ. ≥ 80%</span>
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
+                เสี่ยงเวลาเรียน (&lt;80% / มส.) {schoolKpis.msRiskTotal} คน
+              </p>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
-                {schoolKpis.avgAttendance.toFixed(1)}%
-              </span>
-              <span className="text-xs text-[var(--color-text-muted)]">เกณฑ์ สพฐ. ≥ 80%</span>
-            </div>
-            <p className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
-              เสี่ยงเวลาเรียน (&lt;80% / มส.) {schoolKpis.msRiskTotal} คน
-            </p>
-          </div>
 
-          <div className="saas-card saas-card-body space-y-1">
-            <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-              <span>คุณลักษณะฯ &amp; อ่านเขียน (ระดับดี+)</span>
-              <TrendingUp className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+            <div className="saas-kpi-cell space-y-1">
+              <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+                <span>คุณลักษณะฯ &amp; อ่านเขียน (ระดับดี+)</span>
+                <TrendingUp className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-3">
+                <span className="text-2xl font-extrabold font-mono tabular-nums text-sky-700 dark:text-sky-300">
+                  {schoolKpis.attrGoodPct}%
+                </span>
+                <span className="text-xs font-mono tabular-nums text-[var(--color-text-muted)]">
+                  อ่านเขียนดี+ {schoolKpis.readingGoodPct}%
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
+                สมรรถนะ 5 ประการ ผ่าน {schoolKpis.compPassPct}% · กิจกรรม ผ่าน {schoolKpis.activityPassPct}%
+              </p>
             </div>
-            <div className="flex items-baseline gap-3">
-              <span className="text-2xl font-extrabold font-mono tabular-nums text-sky-700 dark:text-sky-300">
-                {schoolKpis.attrGoodPct}%
-              </span>
-              <span className="text-xs font-mono tabular-nums text-[var(--color-text-muted)]">
-                อ่านเขียนดี+ {schoolKpis.readingGoodPct}%
-              </span>
-            </div>
-            <p className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
-              สมรรถนะ 5 ประการ ผ่าน {schoolKpis.compPassPct}% · กิจกรรม ผ่าน {schoolKpis.activityPassPct}%
-            </p>
-          </div>
 
-          <div className="saas-card saas-card-body space-y-1">
-            <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-              <span>ผ่านเกณฑ์ ปพ.6 ครบทุกองค์ประกอบ</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="saas-kpi-cell space-y-1">
+              <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+                <span>ผ่านเกณฑ์ ปพ.6 ครบทุกองค์ประกอบ</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold font-mono tabular-nums text-[var(--color-text-title)]">
+                  {schoolKpis.pp6ReadyPct}%
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">เป้าหมาย สพฐ. 80%+</span>
+              </div>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                ไม่ติด ร / มส. และผ่านคุณลักษณะฯ + กิจกรรม
+              </p>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold font-mono tabular-nums text-[var(--color-text-title)]">
-                {schoolKpis.pp6ReadyPct}%
-              </span>
-              <span className="text-xs text-[var(--color-text-muted)]">เป้าหมาย สพฐ. 80%+</span>
-            </div>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
-              ไม่ติด ร / มส. และผ่านคุณลักษณะฯ + กิจกรรม
-            </p>
           </div>
+        </div>
+
+        {/* Executive Readiness Summary Strip */}
+        <div className="saas-alert-bar text-xs">
+          <span className="font-semibold text-[var(--color-text-title)]">
+            สรุปความพร้อมคุณภาพผู้เรียน ({groupRows.length} {groupByMode === 'gradeLevel' ? 'ระดับชั้น' : 'ห้องเรียน'}): ผ่านครบองค์ประกอบ ปพ.6 {schoolKpis.pp6ReadyPct}%
+          </span>
+          <span className="type-meta tabular-nums">
+            กลุ่มเสี่ยงวิชาการ {schoolKpis.academicRiskTotal} คน · เสี่ยง มส. {schoolKpis.msRiskTotal} คน
+          </span>
         </div>
 
         {/* Main Comparative Chart */}

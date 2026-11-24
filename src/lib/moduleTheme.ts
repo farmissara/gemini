@@ -15,6 +15,7 @@ export type ModuleTone = 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 
 export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   // tone-1: Core Directory & Schedule & Executive Reports
   dashboard: 'tone-1',
+  realtime_daily: 'tone-4',
   executive_monitor: 'tone-1',
   report_insights: 'tone-1',
   students: 'tone-1',

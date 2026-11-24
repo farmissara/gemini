@@ -672,97 +672,122 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
           </p>
         </div>
 
-        {/* 4 Executive KPI Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
-              <span>เกรดเฉลี่ยรวมโรงเรียน (8 กลุ่มสาระฯ)</span>
-              <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            </div>
-            <div className="flex items-baseline gap-2 tabular-nums">
-              <span className="text-2xl font-extrabold font-mono text-[var(--color-text-title)]">
-                {overallStats.weightedGpa.toFixed(2)}
-              </span>
-              <span className="text-xs font-mono text-[var(--color-text-muted)]">
-                ({overallStats.weightedRaw}%)
-              </span>
-            </div>
-            <div className="text-[11px] flex items-center gap-1.5">
-              {overallStats.weightedGpa >= 2.5 ? (
-                <span className="text-emerald-700 dark:text-emerald-300 font-medium">
-                  สูงกว่าเกณฑ์มาตรฐาน สพฐ. (2.50)
+        {/* 4 Executive KPI Metrics (Unified Single-Elevation Hairline Strip) */}
+        <div className="saas-kpi-strip overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+            <div className="saas-kpi-cell space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
+                <span>เกรดเฉลี่ยรวมโรงเรียน (8 กลุ่มสาระฯ)</span>
+                <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2 tabular-nums">
+                <span className="text-2xl font-extrabold font-mono text-[var(--color-text-title)]">
+                  {overallStats.weightedGpa.toFixed(2)}
                 </span>
-              ) : overallStats.totalGradedRecords > 0 ? (
-                <span className="text-amber-700 dark:text-amber-300 font-medium">
-                  ต่ำกว่าเป้าหมาย สพฐ. 2.50 อยู่ {(2.5 - overallStats.weightedGpa).toFixed(2)}
+                <span className="text-xs font-mono text-[var(--color-text-muted)]">
+                  ({overallStats.weightedRaw}%)
                 </span>
-              ) : (
-                <span className="text-[var(--color-text-muted)]">รอข้อมูลบันทึกเกรด</span>
-              )}
+              </div>
+              <div className="text-[11px] flex items-center gap-1.5">
+                {overallStats.weightedGpa >= 2.5 ? (
+                  <span className="text-emerald-700 dark:text-emerald-300 font-medium">
+                    สูงกว่าเกณฑ์มาตรฐาน สพฐ. (2.50)
+                  </span>
+                ) : overallStats.totalGradedRecords > 0 ? (
+                  <span className="text-amber-700 dark:text-amber-300 font-medium">
+                    ต่ำกว่าเป้าหมาย สพฐ. 2.50 อยู่ {(2.5 - overallStats.weightedGpa).toFixed(2)}
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-text-muted)]">รอข้อมูลบันทึกเกรด</span>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
-              <span>สถิติเวลาเรียนเฉลี่ยรายวิชา</span>
-              <UserCheck className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+            <div className="saas-kpi-cell space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
+                <span>สถิติเวลาเรียนเฉลี่ยรายวิชา</span>
+                <UserCheck className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2 tabular-nums">
+                <span className="text-2xl font-extrabold font-mono text-[var(--color-text-title)]">
+                  {overallStats.weightedAttendance.toFixed(1)}%
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  (เกณฑ์ ≥ 80%)
+                </span>
+              </div>
+              <div className="text-[11px] text-[var(--color-text-body)] tabular-nums">
+                กลุ่มเสี่ยง มส. (&lt;80%):{' '}
+                <span className={overallStats.totalMsRisk > 0 ? 'font-bold text-rose-600 dark:text-rose-400' : 'font-semibold text-emerald-700 dark:text-emerald-300'}>
+                  {overallStats.totalMsRisk} รายการ
+                </span>
+              </div>
             </div>
-            <div className="flex items-baseline gap-2 tabular-nums">
-              <span className="text-2xl font-extrabold font-mono text-[var(--color-text-title)]">
-                {overallStats.weightedAttendance.toFixed(1)}%
-              </span>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                (เกณฑ์ ≥ 80%)
-              </span>
-            </div>
-            <div className="text-[11px] text-[var(--color-text-body)] tabular-nums">
-              กลุ่มเสี่ยง มส. (&lt;80%):{' '}
-              <span className={overallStats.totalMsRisk > 0 ? 'font-bold text-rose-600 dark:text-rose-400' : 'font-semibold text-emerald-700 dark:text-emerald-300'}>
-                {overallStats.totalMsRisk} รายการ
-              </span>
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
-              <span>คุณภาพมาตรฐาน สพฐ. (กลุ่มสาระฯ)</span>
-              <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="saas-kpi-cell space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
+                <span>คุณภาพมาตรฐาน สพฐ. (กลุ่มสาระฯ)</span>
+                <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2 tabular-nums">
+                <span className="text-2xl font-extrabold font-mono text-emerald-700 dark:text-emerald-300">
+                  {overallStats.areasMeetingObecStandard}/{overallStats.activeAreaCount || 8}
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  กลุ่มสาระฯ ผ่านเกณฑ์ดี–ดีเยี่ยม
+                </span>
+              </div>
+              <div className="text-[11px] text-[var(--color-text-body)] truncate">
+                {overallStats.topArea
+                  ? `โดดเด่นสุด: ${overallStats.topArea.shortTh} (GPA ${overallStats.topArea.avgGpa.toFixed(2)})`
+                  : 'ยังไม่มีข้อมูลกลุ่มสาระฯ'}
+              </div>
             </div>
-            <div className="flex items-baseline gap-2 tabular-nums">
-              <span className="text-2xl font-extrabold font-mono text-emerald-700 dark:text-emerald-300">
-                {overallStats.areasMeetingObecStandard}/{overallStats.activeAreaCount || 8}
-              </span>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                กลุ่มสาระฯ ผ่านเกณฑ์ดี–ดีเยี่ยม
-              </span>
-            </div>
-            <div className="text-[11px] text-[var(--color-text-body)] truncate">
-              {overallStats.topArea
-                ? `โดดเด่นสุด: ${overallStats.topArea.shortTh} (GPA ${overallStats.topArea.avgGpa.toFixed(2)})`
-                : 'ยังไม่มีข้อมูลกลุ่มสาระฯ'}
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
-              <span>ผู้เรียนระดับดีขึ้นไป vs กลุ่มเสี่ยง</span>
-              <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-            </div>
-            <div className="flex items-baseline gap-2 tabular-nums">
-              <span className="text-2xl font-extrabold font-mono text-[var(--color-text-title)]">
-                {overallStats.weightedGoodPct.toFixed(1)}%
-              </span>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                ได้ระดับ 3.0–4.0
-              </span>
-            </div>
-            <div className="text-[11px] text-[var(--color-text-body)] truncate tabular-nums">
-              {overallStats.priorityArea
-                ? `ควรนิเทศ: ${overallStats.priorityArea.shortTh} (เสี่ยง ${overallStats.totalFailRisk} รายการ)`
-                : `กลุ่มเสี่ยง (0/ร/มส.): ${overallStats.totalFailRisk} รายการ`}
+            <div className="saas-kpi-cell space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)]">
+                <span>ผู้เรียนระดับดีขึ้นไป vs กลุ่มเสี่ยง</span>
+                <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              </div>
+              <div className="flex items-baseline gap-2 tabular-nums">
+                <span className="text-2xl font-extrabold font-mono text-[var(--color-text-title)]">
+                  {overallStats.weightedGoodPct.toFixed(1)}%
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  ได้ระดับ 3.0–4.0
+                </span>
+              </div>
+              <div className="text-[11px] text-[var(--color-text-body)] truncate tabular-nums">
+                {overallStats.priorityArea
+                  ? `ควรนิเทศ: ${overallStats.priorityArea.shortTh} (เสี่ยง ${overallStats.totalFailRisk} รายการ)`
+                  : `กลุ่มเสี่ยง (0/ร/มส.): ${overallStats.totalFailRisk} รายการ`}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Concise Executive Insight Strip */}
+        {(overallStats.topArea || overallStats.priorityArea) && (
+          <div className="saas-alert-bar text-xs">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
+              {overallStats.topArea && (
+                <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>จุดแข็ง: {overallStats.topArea.shortTh} (GPA {overallStats.topArea.avgGpa.toFixed(2)})</span>
+                </span>
+              )}
+              {overallStats.priorityArea && (
+                <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold">
+                  <Award className="w-3.5 h-3.5 shrink-0" />
+                  <span>ควรนิเทศเสริม: {overallStats.priorityArea.shortTh} (GPA {overallStats.priorityArea.avgGpa.toFixed(2)})</span>
+                </span>
+              )}
+            </div>
+            <span className="type-meta tabular-nums shrink-0">
+              บันทึกเกรดรวม {overallStats.totalGradedRecords.toLocaleString()} รายการ
+            </span>
+          </div>
+        )}
 
         {/* Comparative Charts Section */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-4">

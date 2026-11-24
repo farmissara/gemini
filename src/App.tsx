@@ -1474,6 +1474,15 @@ export const App: React.FC = () => {
       return;
     }
 
+    if (tab === 'realtime_daily') {
+      if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
+        setDashboardInitialSubTab('realtime_daily');
+        setProgramMode('school_erp');
+        setCurrentTab('dashboard');
+      }
+      return;
+    }
+
     if (tab === 'executive_monitor') {
       if (['super_admin', 'admin', 'teacher'].includes(currentRole)) {
         setDashboardInitialSubTab('executive_monitor');
@@ -1592,6 +1601,7 @@ export const App: React.FC = () => {
       'announcements',
       'central_exam_hub',
       'attendance',
+      'realtime_daily',
       'executive_monitor',
       'report_insights',
       'obec_executive_dashboard',

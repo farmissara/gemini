@@ -333,76 +333,58 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
           </div>
 
           {/* Day Filter */}
-          <div className="flex flex-wrap max-w-full items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs font-medium">
+          <div className="seg-tab-group inline-flex flex-wrap max-w-full">
             <button
               type="button"
+              data-active={dayFilter === 'month_to_date'}
               onClick={() => setDayFilter('month_to_date')}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-bold ${
-                dayFilter === 'month_to_date'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               {lang === 'th' ? 'ถึงวันนี้' : 'To Date'}
             </button>
             <button
               type="button"
+              data-active={dayFilter === 'all_month'}
               onClick={() => setDayFilter('all_month')}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-bold ${
-                dayFilter === 'all_month'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               {lang === 'th' ? 'ทั้งเดือน' : 'All Days'}
             </button>
             <button
               type="button"
+              data-active={dayFilter === 'weekdays_only'}
               onClick={() => setDayFilter('weekdays_only')}
-              className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-bold ${
-                dayFilter === 'weekdays_only'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
             >
               {lang === 'th' ? 'เฉพาะวันเรียน' : 'Weekdays'}
             </button>
           </div>
 
           {/* Chart Display Mode */}
-          <div className="flex flex-wrap max-w-full items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 text-xs font-medium">
+          <div className="seg-tab-group inline-flex flex-wrap max-w-full">
             <button
               type="button"
+              data-active={chartType === 'composed'}
               onClick={() => setChartType('composed')}
-              className={`px-2 py-1 rounded-lg transition cursor-pointer font-bold ${
-                chartType === 'composed'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
               title={lang === 'th' ? 'กราฟแท่งผสมเส้นอัตราเข้าเรียน' : 'Composed Bar + Line'}
             >
               {lang === 'th' ? 'ผสม' : 'Combo'}
             </button>
             <button
               type="button"
+              data-active={chartType === 'stacked_bar'}
               onClick={() => setChartType('stacked_bar')}
-              className={`px-2 py-1 rounded-lg transition cursor-pointer font-bold ${
-                chartType === 'stacked_bar'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
               title={lang === 'th' ? 'กราฟแท่งแยกสถานะ' : 'Stacked Bars'}
             >
               {lang === 'th' ? 'แท่ง' : 'Bar'}
             </button>
             <button
               type="button"
+              data-active={chartType === 'rate_area'}
               onClick={() => setChartType('rate_area')}
-              className={`px-2 py-1 rounded-lg transition cursor-pointer font-bold ${
-                chartType === 'rate_area'
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
+              className="seg-tab-btn whitespace-nowrap shrink-0"
               title={lang === 'th' ? 'พื้นที่อัตราเข้าเรียน (%)' : 'Rate Area'}
             >
               {lang === 'th' ? 'อัตรา (%)' : 'Rate'}
@@ -411,91 +393,93 @@ export const MonthlyAttendanceChart: React.FC<MonthlyAttendanceChartProps> = ({
         </div>
       </div>
 
-      {/* Monthly Summary KPI Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Metric 1: Average Rate */}
-        <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-          <p className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-            <span>{lang === 'th' ? 'อัตราเข้าเรียนเฉลี่ย' : 'Avg. Attendance Rate'}</span>
-          </p>
-          <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-xl font-black text-blue-700 dark:text-blue-300 tabular-nums">
-              {stats.avgRate}%
-            </span>
-            <span className="text-[10px] text-[var(--color-text-muted)] font-medium">
-              ({stats.daysWithRecords} {lang === 'th' ? 'วันที่มีบันทึก' : 'days recorded'})
-            </span>
+      {/* Monthly Summary KPI Strip (Unified Hairline Grid) */}
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-[var(--color-border)]">
+          {/* Metric 1: Average Rate */}
+          <div className="p-3.5 space-y-1">
+            <p className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>{lang === 'th' ? 'อัตราเข้าเรียนเฉลี่ย' : 'Avg. Attendance Rate'}</span>
+            </p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-extrabold text-blue-700 dark:text-blue-300 tabular-nums">
+                {stats.avgRate}%
+              </span>
+              <span className="text-[10px] text-[var(--color-text-muted)] font-medium tabular-nums">
+                ({stats.daysWithRecords} {lang === 'th' ? 'วัน' : 'days'})
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Metric 2: Present Count */}
-        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60">
-          <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>{lang === 'th' ? 'ตรงเวลาสะสม' : 'Total On-Time'}</span>
-          </p>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-emerald-900 dark:text-emerald-100 tabular-nums">
-              {stats.totalMonthPresent.toLocaleString()}
-            </span>
-            <span className="text-[10px] text-emerald-700 dark:text-emerald-300">
-              {lang === 'th' ? 'ครั้ง' : 'times'}
-            </span>
+          {/* Metric 2: Present Count */}
+          <div className="p-3.5 space-y-1">
+            <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{lang === 'th' ? 'ตรงเวลาสะสม' : 'Total On-Time'}</span>
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-extrabold text-[var(--color-text-title)] tabular-nums">
+                {stats.totalMonthPresent.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'ครั้ง' : 'times'}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Metric 3: Late Count */}
-        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60">
-          <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>{lang === 'th' ? 'มาสายสะสม' : 'Total Late'}</span>
-          </p>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-amber-900 dark:text-amber-100 tabular-nums">
-              {stats.totalMonthLate.toLocaleString()}
-            </span>
-            <span className="text-[10px] text-amber-700 dark:text-amber-300">
-              {lang === 'th' ? 'ครั้ง' : 'times'}
-            </span>
+          {/* Metric 3: Late Count */}
+          <div className="p-3.5 space-y-1">
+            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>{lang === 'th' ? 'มาสายสะสม' : 'Total Late'}</span>
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-extrabold text-[var(--color-text-title)] tabular-nums">
+                {stats.totalMonthLate.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'ครั้ง' : 'times'}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Metric 4: Leave Count */}
-        <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60">
-          <p className="text-[11px] font-bold text-purple-800 dark:text-purple-300 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
-            <span>{lang === 'th' ? 'การลาสะสม' : 'Total Leaves'}</span>
-          </p>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-black text-purple-900 dark:text-purple-100 tabular-nums">
-              {stats.totalMonthLeave.toLocaleString()}
-            </span>
-            <span className="text-[10px] text-purple-700 dark:text-purple-300">
-              {lang === 'th' ? 'ครั้ง' : 'times'}
-            </span>
+          {/* Metric 4: Leave Count */}
+          <div className="p-3.5 space-y-1">
+            <p className="text-[11px] font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+              <span>{lang === 'th' ? 'การลาสะสม' : 'Total Leaves'}</span>
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-extrabold text-[var(--color-text-title)] tabular-nums">
+                {stats.totalMonthLeave.toLocaleString()}
+              </span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'ครั้ง' : 'times'}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Metric 5: Peak Day */}
-        <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] sm:col-span-2 lg:col-span-1">
-          <p className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
-            <BarChart3 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-            <span>{lang === 'th' ? 'วันที่เข้าเรียนสูงสุด' : 'Peak Attendance Day'}</span>
-          </p>
-          <div className="flex items-baseline gap-1 mt-1">
-            {stats.peakDay ? (
-              <>
-                <span className="text-base font-black text-[var(--color-text-title)]">
-                  {lang === 'th' ? `วันที่ ${stats.peakDay.day}` : `Day ${stats.peakDay.day}`}
-                </span>
-                <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold">
-                  ({stats.peakDay.count} {lang === 'th' ? 'คน' : 'students'})
-                </span>
-              </>
-            ) : (
-              <span className="text-xs text-[var(--color-text-muted)]">-</span>
-            )}
+          {/* Metric 5: Peak Day */}
+          <div className="p-3.5 space-y-1 sm:col-span-2 lg:col-span-1">
+            <p className="text-[11px] font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+              <span>{lang === 'th' ? 'วันที่เข้าเรียนสูงสุด' : 'Peak Attendance Day'}</span>
+            </p>
+            <div className="flex items-baseline gap-1">
+              {stats.peakDay ? (
+                <>
+                  <span className="text-base font-extrabold text-[var(--color-text-title)] tabular-nums">
+                    {lang === 'th' ? `วันที่ ${stats.peakDay.day}` : `Day ${stats.peakDay.day}`}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">
+                    ({stats.peakDay.count} {lang === 'th' ? 'คน' : 'students'})
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs text-[var(--color-text-muted)]">-</span>
+              )}
+            </div>
           </div>
         </div>
       </div>

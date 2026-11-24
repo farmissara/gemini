@@ -41,6 +41,7 @@ import {
   KeyRound,
   Sliders,
   Layers,
+  Activity,
   LucideIcon,
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -57,6 +58,7 @@ export type NavTab =
   | 'admin_student_accounts'
   | 'admin_saas_audit'
   | 'executive_warning'
+  | 'realtime_daily'
   | 'executive_monitor'
   | 'obec_executive_dashboard'
   | 'pp6_executive_dashboard'
@@ -150,6 +152,7 @@ export interface NavCategoryDef {
 // Focused daily teaching tools for Teachers (keeps student arcade & executive reports tucked away)
 const FOCUS_TEACHER_TABS = new Set<NavTab>([
   'dashboard',
+  'realtime_daily',
   'gradebook',
   'timetable',
   'courses',
@@ -165,6 +168,7 @@ const FOCUS_TEACHER_TABS = new Set<NavTab>([
 // Focused school administration tools for Admins (removes duplicate sub-tab links & student arcade)
 const ADMIN_FOCUS_TABS = new Set<NavTab>([
   'dashboard',
+  'realtime_daily',
   'gradebook',
   'students',
   'teachers',
@@ -580,6 +584,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: BarChart3,
       items: [
         {
+          id: 'realtime_daily',
+          labelTh: 'ภาพรวมเรียลไทม์ประจำวัน (Live)',
+          labelEn: 'Real-Time Daily Operations',
+          shortLabelTh: 'เรียลไทม์วันนี้',
+          shortLabelEn: 'Live Daily',
+          icon: Activity,
+          roles: ['super_admin', 'admin', 'teacher'],
+        },
+        {
           id: 'executive_monitor',
           labelTh: focusMode && supportsFocusMode ? 'รายงานผู้บริหาร & สพฐ.' : 'รายงานผู้บริหารและ สพฐ.',
           labelEn: 'Executive & OBEC Reports',
@@ -730,6 +743,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Resolve visual active tab in Sidebar
   const resolvedSidebarActiveTab: NavTab = useMemo(() => {
     if (currentTab === 'dashboard') {
+      if (activeDashboardSubTab === 'realtime_daily') return 'realtime_daily';
       if (activeDashboardSubTab === 'executive_monitor') return 'executive_monitor';
       if (activeDashboardSubTab === 'obec_learning_areas') {
         return focusMode && supportsFocusMode ? 'executive_monitor' : 'obec_executive_dashboard';

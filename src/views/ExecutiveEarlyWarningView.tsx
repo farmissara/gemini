@@ -660,106 +660,103 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       </div>
 
       {/* ======================================================== */}
-      {/* 2. 5-CARD EXECUTIVE KPI RADAR STRIP                      */}
+      {/* 2. 5-CARD EXECUTIVE KPI RADAR STRIP (Hairline Grid)      */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 shrink-0">
-        {/* 1. Critical High Risk */}
-        <div className="p-3 rounded-2xl bg-[var(--color-card)] border border-rose-300 dark:border-rose-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
-              {lang === 'th' ? 'เสี่ยงวิกฤต (High Risk)' : 'Critical Risk'}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
+      <div className="saas-kpi-strip shrink-0 overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-[var(--color-border)]">
+          {/* 1. Critical High Risk */}
+          <div className="saas-kpi-cell flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400 truncate">
+                {lang === 'th' ? 'เสี่ยงวิกฤต (High Risk)' : 'Critical Risk'}
+              </span>
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-extrabold tabular-nums text-rose-700 dark:text-rose-300">
+                {highRiskCount}{' '}
+                <span className="text-xs font-normal text-[var(--color-text-muted)]">/ {totalStudents}</span>
+              </h3>
+              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
+                {lang === 'th' ? 'เสี่ยงหมดสิทธิ์สอบและตกค้าง' : 'At-risk of retention'}
+              </p>
             </div>
           </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-[var(--color-text-title)]">
-              {highRiskCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">/ {totalStudents}</span>
-            </h3>
-            <p className="text-[10px] text-rose-600 dark:text-rose-400 font-medium truncate">
-              {lang === 'th' ? 'เสี่ยงหมดสิทธิ์สอบและตกค้าง' : 'At-risk of retention'}
-            </p>
-          </div>
-        </div>
 
-        {/* 2. Attendance Hazard */}
-        <div className="p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
-              {lang === 'th' ? `ขาดเรียน > ${absenceThresholdPct}%` : `Absence > ${absenceThresholdPct}%`}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
+          {/* 2. Attendance Hazard */}
+          <div className="saas-kpi-cell flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 truncate">
+                {lang === 'th' ? `ขาดเรียน > ${absenceThresholdPct}%` : `Absence > ${absenceThresholdPct}%`}
+              </span>
+              <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-extrabold tabular-nums text-[var(--color-text-title)]">
+                {attendanceDangerCount}{' '}
+                <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'stu'}</span>
+              </h3>
+              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
+                {lang === 'th' ? `ต่ำกว่าเกณฑ์ ${100 - absenceThresholdPct}% จากที่บันทึก` : `Below ${100 - absenceThresholdPct}%`}
+              </p>
             </div>
           </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-[var(--color-text-title)]">
-              {attendanceDangerCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'stu'}</span>
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
-              {lang === 'th' ? `ต่ำกว่าเกณฑ์ ${100 - absenceThresholdPct}% จากรายการที่บันทึก` : `Below ${100 - absenceThresholdPct}% of recorded entries`}
-            </p>
-          </div>
-        </div>
 
-        {/* 3. Academic Hazard */}
-        <div className="p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
-              {lang === 'th' ? 'ผลสัมฤทธิ์ตกต่ำ' : 'Academic Hazard'}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
-              <BookOpen className="w-4 h-4" />
+          {/* 3. Academic Hazard */}
+          <div className="saas-kpi-cell flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 truncate">
+                {lang === 'th' ? 'ผลสัมฤทธิ์ตกต่ำ' : 'Academic Hazard'}
+              </span>
+              <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-extrabold tabular-nums text-[var(--color-text-title)]">
+                {academicDangerCount}{' '}
+                <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'stu'}</span>
+              </h3>
+              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
+                {lang === 'th' ? 'GPA < 2.00 หรือสอบตก' : 'GPA < 2.00 or failing marks'}
+              </p>
             </div>
           </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-[var(--color-text-title)]">
-              {academicDangerCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'stu'}</span>
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
-              {lang === 'th' ? 'GPA < 2.00 หรือสอบตก' : 'GPA < 2.00 or failing marks'}
-            </p>
-          </div>
-        </div>
 
-        {/* 4. Behavior / SDQ Hazard */}
-        <div className="p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400">
-              {lang === 'th' ? 'พฤติกรรม & SDQ' : 'Behavior & SDQ'}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center">
-              <Activity className="w-4 h-4" />
+          {/* 4. Behavior / SDQ Hazard */}
+          <div className="saas-kpi-cell flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 truncate">
+                {lang === 'th' ? 'พฤติกรรม & SDQ' : 'Behavior & SDQ'}
+              </span>
+              <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-extrabold tabular-nums text-[var(--color-text-title)]">
+                {behaviorDangerCount + sdqDangerCount}{' '}
+                <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'stu'}</span>
+              </h3>
+              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
+                {lang === 'th' ? 'ตัดคะแนน ≥ 10 หรือ SDQ เสี่ยง' : 'Demerits >= 10 or SDQ stress'}
+              </p>
             </div>
           </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-[var(--color-text-title)]">
-              {behaviorDangerCount + sdqDangerCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'stu'}</span>
-            </h3>
-            <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
-              {lang === 'th' ? 'ตัดคะแนน >= 10 หรือ SDQ เสี่ยง' : 'Demerits >= 10 or SDQ stress'}
-            </p>
-          </div>
-        </div>
 
-        {/* 5. Compound Multidimensional Risk */}
-        <div className="p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-              {lang === 'th' ? 'บันทึกการติดตาม' : 'Follow-up Records'}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
+          {/* 5. Follow-up Records */}
+          <div className="saas-kpi-cell flex flex-col justify-between gap-2 col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">
+                {lang === 'th' ? 'บันทึกการติดตาม' : 'Follow-up Records'}
+              </span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             </div>
-          </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-emerald-800 dark:text-emerald-300">
-              {totalInterventionsTaken} <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'ครั้ง' : 'actions'}</span>
-            </h3>
-            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium truncate">
-              {lang === 'th' ? 'บันทึกในหน้าจอนี้เท่านั้น' : 'Session-only records'}
-            </p>
+            <div>
+              <h3 className="text-2xl font-extrabold tabular-nums text-emerald-700 dark:text-emerald-300">
+                {totalInterventionsTaken}{' '}
+                <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'ครั้ง' : 'actions'}</span>
+              </h3>
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium truncate">
+                {lang === 'th' ? 'บันทึกในหน้าจอนี้เท่านั้น' : 'Session-only records'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -822,7 +819,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       {/* ======================================================== */}
       {/* 4. MAIN ACTIONABLE AT-RISK MATRIX & CONTROLS             */}
       {/* ======================================================== */}
-      <div className="flex-1 min-h-0 bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] p-3.5 shadow-xs flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 saas-card p-3.5 flex flex-col overflow-hidden">
         {/* Controls Bar */}
         <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2">
@@ -830,24 +827,21 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               <ShieldAlert className="w-4 h-4 text-rose-600" />
               <span>{lang === 'th' ? 'ตารางรายชื่อนักเรียนในข่ายเฝ้าระวัง' : 'Watchlist Student Roster'}</span>
             </h2>
-            <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+            <span className="text-xs font-semibold text-[var(--color-text-muted)] tabular-nums">
               ({filteredProfiles.length} {lang === 'th' ? 'คน' : 'students'})
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Risk Level Segmented Switcher */}
-            <div className="inline-flex p-0.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
+            <div className="seg-tab-group inline-flex flex-wrap">
               {(['all', 'high', 'moderate', 'low', 'unknown'] as const).map(lvl => (
                 <button
                   key={lvl}
                   type="button"
+                  data-active={selectedRiskFilter === lvl}
                   onClick={() => setSelectedRiskFilter(lvl)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    selectedRiskFilter === lvl
-                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
+                  className="seg-tab-btn whitespace-nowrap shrink-0"
                 >
                   {lvl === 'all' ? 'ทั้งหมด' : lvl === 'high' ? 'วิกฤต' : lvl === 'moderate' ? 'เฝ้าระวัง' : lvl === 'low' ? 'ปกติ' : 'ข้อมูลไม่ครบ'}
                 </button>
@@ -858,13 +852,13 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
             <select
               value={selectedFactorFilter}
               onChange={(e) => setSelectedFactorFilter(e.target.value as any)}
-              className="px-2.5 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer"
             >
               <option value="all">ทุกมิติความเสี่ยง</option>
-              <option value="attendance">🕒 เวลาเรียน (เสี่ยง มส.)</option>
-              <option value="academic">📚 ผลการเรียน</option>
-              <option value="behavior">⚠️ พฤติกรรม & SDQ</option>
-              <option value="compound">🚨 ความเสี่ยงพหุมิติ (2+ ด้าน)</option>
+              <option value="attendance">เวลาเรียน (เสี่ยง มส.)</option>
+              <option value="academic">ผลการเรียน</option>
+              <option value="behavior">พฤติกรรมและ SDQ</option>
+              <option value="compound">ความเสี่ยงพหุมิติ (2+ ด้าน)</option>
             </select>
 
             {/* Room Selector */}
@@ -943,7 +937,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               renderItem={(stu) => (
                 <div
                   key={stu.studentId}
-                  className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3 text-xs mb-2.5 shadow-2xs hover:border-[var(--color-primary)] transition"
+                  className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-3 text-xs mb-2.5 hover:border-[var(--color-primary)] transition"
                 >
                   {/* Top Row: Avatar, Student Info, Risk Level, Indicators */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -1148,28 +1142,29 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       {/* ======================================================== */}
       {activeDetailStudent && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-[var(--color-card)] text-[var(--color-text-body)] rounded-3xl border border-[var(--color-border)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-2xl bg-[var(--color-card)] text-[var(--color-text-body)] rounded-2xl border border-[var(--color-border)] shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-indigo-950 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl border-2 border-rose-400 bg-slate-800 flex items-center justify-center overflow-hidden">
+            <div className="p-4 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-center overflow-hidden shrink-0">
                   {activeDetailStudent.avatarUrl ? (
                     <img src={activeDetailStudent.avatarUrl} alt={activeDetailStudent.studentName} className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-6 h-6 text-slate-300" aria-hidden="true" />
+                    <User className="w-6 h-6 text-[var(--color-text-muted)]" aria-hidden="true" />
                   )}
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-white">{activeDetailStudent.studentName}</h3>
-                  <p className="text-xs text-slate-300">
-                    เลขประจำตัว: {activeDetailStudent.studentNumber} · ชั้นมัธยมศึกษาปีที่ {activeDetailStudent.studentRoom}
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-[var(--color-text-title)] truncate">{activeDetailStudent.studentName}</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
+                    เลขประจำตัว: {activeDetailStudent.studentNumber} · ห้องเรียน {activeDetailStudent.studentRoom}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveDetailStudent(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] flex items-center justify-center transition cursor-pointer shrink-0"
+                aria-label="ปิดหน้าต่าง"
               >
                 <X className="w-4 h-4" />
               </button>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Activity,
   AlertTriangle,
   Award,
   BarChart3,
@@ -48,6 +49,7 @@ import {
   SchoolPeriodTime,
   SdqAssessment,
   Student,
+  SystemConfig,
   Teacher,
   TimetableSlot,
   TuitionInvoice,
@@ -58,8 +60,10 @@ import { calculateGrade } from '../lib/schoolSettings';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
+import AttendancePhoto from '../components/AttendancePhoto';
+import { ExecutiveRealtimeDailyPanel } from '../components/ExecutiveRealtimeDailyPanel';
 
-type MonitorLens = 'overview' | 'rooms' | 'academics' | 'tv';
+type MonitorLens = 'overview' | 'realtime' | 'rooms' | 'academics' | 'tv';
 type TimeframeScope = 'today' | '7d' | '30d' | 'term';
 type RoomSortKey = 'room' | 'attendance_asc' | 'gpa_asc' | 'homework_desc';
 type RoomStatusFilter = 'all' | 'watch' | 'normal';
@@ -67,6 +71,7 @@ type PeriodAuditFilter = 'all' | 'pending' | 'submitted';
 
 interface ExecutiveMonitorViewProps {
   activeSchool: School;
+  systemConfig?: SystemConfig;
   students: Student[];
   teachers: Teacher[];
   courses: Course[];
@@ -101,6 +106,7 @@ const DAY_KEY_LABELS_TH: Record<string, string> = {
 
 export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
   activeSchool,
+  systemConfig,
   students,
   teachers,
   courses,
@@ -117,6 +123,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
   sdqAssessments,
   homeworkSubmissions,
   leaveRequests,
+  lang = 'th',
   onOpenGradebookCourse,
   onNavigate,
   onLoadAttendanceRange,
@@ -148,6 +155,28 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
   const todayStr = getLocalDateString();
   const bangkokNow = useMemo(() => getBangkokClockSnapshot(now), [now]);
   const isTvMode = lens === 'tv';
+
+  const resolvedSystemConfig = useMemo<SystemConfig>(() => {
+    if (systemConfig) return systemConfig;
+    return {
+      schoolNameTh: activeSchool.nameTh,
+      schoolNameEn: activeSchool.nameEn,
+      academicYear: activeSchool.academicYear || '2569',
+      currentSemester: activeSchool.currentSemester || '1',
+      semesterOptions: ['1', '2', 'ฤดูร้อน'],
+      gradingSystem: activeSchool.gradingSystem || 'thai',
+      staffPositionOptions: [],
+      lineOaAddFriendUrl: '',
+      lineChannelId: '',
+      lineMessagingConfigured: false,
+      resendApiKeyConfigured: false,
+      resendFromEmail: '',
+      supabaseConnected: false,
+      thaiPdfFontEnabled: true,
+      backupBucket: '',
+      lastBackupDate: '',
+    };
+  }, [activeSchool, systemConfig]);
 
   // Live digital clock
   useEffect(() => {
@@ -1147,14 +1176,15 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
         <div className="pt-2 border-t border-current/10 flex flex-col lg:flex-row lg:items-center justify-between gap-2 print:hidden">
           {/* Lens Switcher */}
           <div
-            className={`inline-flex p-0.5 rounded-lg border overflow-x-auto max-w-full ${
+            className={
               isTvMode
-                ? 'bg-slate-950 border-slate-800'
-                : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
-            }`}
+                ? 'inline-flex p-0.5 rounded-lg border bg-slate-950 border-slate-800 overflow-x-auto max-w-full'
+                : 'seg-tab-group inline-flex overflow-x-auto max-w-full'
+            }
           >
             {[
               { id: 'overview' as const, label: 'ภาพรวม & เรดาร์สด', icon: ActivityIcon },
+              { id: 'realtime' as const, label: 'เรียลไทม์วันนี้ (Live)', icon: Activity },
               { id: 'rooms' as const, label: `เทียบรายห้อง (${roomMatrix.length})`, icon: FileSpreadsheet },
               { id: 'academics' as const, label: 'วินัยคาบสอน & รายวิชา', icon: BookOpen },
               { id: 'tv' as const, label: 'โหมดจอทีวี (TV)', icon: Monitor },
@@ -1165,16 +1195,15 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                 <button
                   key={tab.id}
                   type="button"
+                  data-active={!isTvMode ? active : undefined}
                   onClick={() => setLens(tab.id)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
-                    active
-                      ? isTvMode
-                        ? 'bg-sky-600 text-white'
-                        : 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs'
-                      : isTvMode
-                        ? 'text-slate-300 hover:text-white'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
+                  className={
+                    isTvMode
+                      ? `px-3 py-1.5 rounded-md text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                          active ? 'bg-sky-600 text-white' : 'text-slate-300 hover:text-white'
+                        }`
+                      : 'seg-tab-btn inline-flex items-center gap-1.5 whitespace-nowrap shrink-0'
+                  }
                 >
                   <Icon className="w-3.5 h-3.5 shrink-0" />
                   <span>{tab.label}</span>
@@ -1270,88 +1299,127 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
         </div>
       </div>
 
-      {/* Unified Top 6-KPI Strip (Clickable drill-downs, tabular-nums) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        {[
-          {
-            label: `เช็กชื่อ (${timeframe === 'today' ? 'วันนี้' : timeframeLabel})`,
-            value: `${metrics.studentCheckinRate}%`,
-            sub: `ตรงเวลา ${metrics.presentStudents} · สาย ${metrics.lateStudents} · ขาด ${metrics.absentOrLeaveStudents}`,
-            icon: UserCheck,
-            accent: isTvMode ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400',
-            onClick: () => onNavigate('attendance'),
-          },
-          {
-            label: 'เช็กชื่อรายคาบวันนี้',
-            value: metrics.scheduledTodayCount > 0 ? `${metrics.periodComplianceRate}%` : `${metrics.periodLogsCount}`,
-            sub:
-              metrics.scheduledTodayCount > 0
-                ? `บันทึกแล้ว ${metrics.submittedTodayPeriodsCount}/${metrics.scheduledTodayCount} คาบ`
-                : 'รายการเช็กชื่อรายคาบในระบบ',
-            icon: Calendar,
-            accent: isTvMode ? 'text-sky-400' : 'text-blue-600 dark:text-blue-400',
-            onClick: () => setLens('academics'),
-          },
-          {
-            label: 'GPAX เฉลี่ย & ห้องเฝ้าระวัง',
-            value: metrics.avgGpa.toFixed(2),
-            sub: `เฝ้าระวัง ${metrics.watchRoomsCount} ห้อง · ${metrics.coursesCount} วิชา`,
-            icon: Award,
-            accent: isTvMode ? 'text-amber-400' : 'text-amber-600 dark:text-amber-400',
-            onClick: () => setLens('rooms'),
-          },
-          {
-            label: 'ภาระงาน & รอตรวจ',
-            value: `${metrics.hwCompletionRate}%`,
-            sub: `ส่งแล้ว ${metrics.hwCompleted}/${metrics.hwTotal} · รอตรวจ ${metrics.hwUngraded}`,
-            icon: BookOpen,
-            accent: isTvMode ? 'text-violet-400' : 'text-violet-600 dark:text-violet-400',
-            onClick: () => onNavigate('homework'),
-          },
-          {
-            label: 'คิวอนุมัติ & ดูแลนักเรียน',
-            value: `${metrics.pendingLeaves + metrics.pendingSlips}`,
-            sub: `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · SDQ เสี่ยง ${metrics.sdqRisk + metrics.sdqProblem}`,
-            icon: HeartPulse,
-            accent: isTvMode ? 'text-rose-400' : 'text-rose-600 dark:text-rose-400',
-            onClick: () => onNavigate('executive_warning'),
-          },
-          canViewFinancials
-            ? {
-                label: 'จัดเก็บค่าเทอม',
-                value: `${metrics.collectionRate}%`,
-                sub: `รับแล้ว ฿${metrics.totalPaid.toLocaleString()} · ค้าง ฿${(metrics.pendingAmount + metrics.overdueAmount).toLocaleString()}`,
-                icon: Receipt,
-                accent: isTvMode ? 'text-teal-400' : 'text-teal-600 dark:text-teal-400',
-                onClick: () => onNavigate('billing'),
-              }
-            : {
-                label: 'บุคลากร & LINE ผู้ปกครอง',
-                value: `${metrics.teacherAttCount}/${metrics.totalTeachers}`,
-                sub: `ครูลงเวลา · LINE ${metrics.lineLinkedStudents}/${metrics.totalStudents}`,
-                icon: Users,
-                accent: isTvMode ? 'text-teal-400' : 'text-teal-600 dark:text-teal-400',
-                onClick: () => onNavigate('teachers'),
-              },
-        ].map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <button
-              key={kpi.label}
-              type="button"
-              onClick={kpi.onClick}
-              className={`text-left rounded-xl p-3.5 space-y-1 transition cursor-pointer hover:border-[var(--color-primary)] ${cardSurface}`}
-            >
-              <div className="flex items-center justify-between gap-1.5">
-                <span className={`text-[11px] font-bold truncate ${mutedText}`}>{kpi.label}</span>
-                <Icon className={`w-4 h-4 shrink-0 ${kpi.accent}`} />
-              </div>
-              <div className={`text-2xl font-extrabold tabular-nums ${titleText}`}>{kpi.value}</div>
-              <div className={`text-[10px] tabular-nums truncate ${mutedText}`}>{kpi.sub}</div>
-            </button>
-          );
-        })}
+      {/* Unified Top 6-KPI Strip (Single-Elevation Hairline Grid, clickable drill-downs, tabular-nums) */}
+      <div
+        className={
+          isTvMode
+            ? 'rounded-xl border border-slate-800 bg-slate-900 overflow-hidden'
+            : 'saas-kpi-strip overflow-hidden'
+        }
+      >
+        <div
+          className={`grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 divide-y sm:divide-y-0 sm:divide-x ${
+            isTvMode ? 'divide-slate-800' : 'divide-[var(--color-border)]'
+          }`}
+        >
+          {[
+            {
+              label: `เช็กชื่อ (${timeframe === 'today' ? 'วันนี้' : timeframeLabel})`,
+              value: `${metrics.studentCheckinRate}%`,
+              sub: `ตรงเวลา ${metrics.presentStudents} · สาย ${metrics.lateStudents} · ขาด ${metrics.absentOrLeaveStudents}`,
+              icon: UserCheck,
+              accent: isTvMode ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400',
+              onClick: () => setLens('realtime'),
+            },
+            {
+              label: 'เช็กชื่อรายคาบวันนี้',
+              value: metrics.scheduledTodayCount > 0 ? `${metrics.periodComplianceRate}%` : `${metrics.periodLogsCount}`,
+              sub:
+                metrics.scheduledTodayCount > 0
+                  ? `บันทึกแล้ว ${metrics.submittedTodayPeriodsCount}/${metrics.scheduledTodayCount} คาบ`
+                  : 'รายการเช็กชื่อรายคาบในระบบ',
+              icon: Calendar,
+              accent: isTvMode ? 'text-sky-400' : 'text-blue-600 dark:text-blue-400',
+              onClick: () => setLens('academics'),
+            },
+            {
+              label: 'GPAX เฉลี่ย & ห้องเฝ้าระวัง',
+              value: metrics.avgGpa.toFixed(2),
+              sub: `เฝ้าระวัง ${metrics.watchRoomsCount} ห้อง · ${metrics.coursesCount} วิชา`,
+              icon: Award,
+              accent: isTvMode ? 'text-amber-400' : 'text-amber-600 dark:text-amber-400',
+              onClick: () => setLens('rooms'),
+            },
+            {
+              label: 'ภาระงาน & รอตรวจ',
+              value: `${metrics.hwCompletionRate}%`,
+              sub: `ส่งแล้ว ${metrics.hwCompleted}/${metrics.hwTotal} · รอตรวจ ${metrics.hwUngraded}`,
+              icon: BookOpen,
+              accent: isTvMode ? 'text-violet-400' : 'text-violet-600 dark:text-violet-400',
+              onClick: () => onNavigate('homework'),
+            },
+            {
+              label: 'คิวอนุมัติ & ดูแลนักเรียน',
+              value: `${metrics.pendingLeaves + metrics.pendingSlips}`,
+              sub: `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · SDQ เสี่ยง ${metrics.sdqRisk + metrics.sdqProblem}`,
+              icon: HeartPulse,
+              accent: isTvMode ? 'text-rose-400' : 'text-rose-600 dark:text-rose-400',
+              onClick: () => onNavigate('executive_warning'),
+            },
+            canViewFinancials
+              ? {
+                  label: 'จัดเก็บค่าเทอม',
+                  value: `${metrics.collectionRate}%`,
+                  sub: `รับแล้ว ฿${metrics.totalPaid.toLocaleString()} · ค้าง ฿${(metrics.pendingAmount + metrics.overdueAmount).toLocaleString()}`,
+                  icon: Receipt,
+                  accent: isTvMode ? 'text-teal-400' : 'text-teal-600 dark:text-teal-400',
+                  onClick: () => onNavigate('billing'),
+                }
+              : {
+                  label: 'บุคลากร & LINE ผู้ปกครอง',
+                  value: `${metrics.teacherAttCount}/${metrics.totalTeachers}`,
+                  sub: `ครูลงเวลา · LINE ${metrics.lineLinkedStudents}/${metrics.totalStudents}`,
+                  icon: Users,
+                  accent: isTvMode ? 'text-teal-400' : 'text-teal-600 dark:text-teal-400',
+                  onClick: () => onNavigate('teachers'),
+                },
+          ].map((kpi) => {
+            const Icon = kpi.icon;
+            return (
+              <button
+                key={kpi.label}
+                type="button"
+                onClick={kpi.onClick}
+                className={
+                  isTvMode
+                    ? 'text-left p-3.5 space-y-1 transition cursor-pointer hover:bg-slate-800/60'
+                    : 'saas-kpi-cell saas-kpi-cell-interactive text-left space-y-1'
+                }
+              >
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className={`text-[11px] font-bold truncate ${mutedText}`}>{kpi.label}</span>
+                  <Icon className={`w-4 h-4 shrink-0 ${kpi.accent}`} />
+                </div>
+                <div className={`text-2xl font-extrabold tabular-nums ${titleText}`}>{kpi.value}</div>
+                <div className={`text-[10px] tabular-nums truncate ${mutedText}`}>{kpi.sub}</div>
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {/* ===================================================================== */}
+      {/* LENS 0: REAL-TIME DAILY OPERATIONS (FACE CHECK-INS & CLASS READINESS) */}
+      {/* ===================================================================== */}
+      {lens === 'realtime' && !isTvMode && (
+        <ExecutiveRealtimeDailyPanel
+          school={activeSchool}
+          systemConfig={resolvedSystemConfig}
+          students={students}
+          teachers={teachers}
+          courses={courses}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          timetableSlots={timetableSlots}
+          schoolPeriods={schoolPeriods}
+          leaveRequests={leaveRequests}
+          infirmaryVisits={infirmaryVisits}
+          invoices={canViewFinancials ? invoices : []}
+          canViewFinancials={canViewFinancials}
+          lang={lang}
+          onNavigate={onNavigate}
+        />
+      )}
 
       {/* ===================================================================== */}
       {/* LENS 1: EXECUTIVE LIVE COMMAND & EXCEPTION RADAR                      */}
@@ -1520,13 +1588,20 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               ) : (
                 <div className="divide-y divide-current/10">
                   {metrics.recentScans.map((rec) => (
-                    <div key={rec.id} className="py-2 flex items-center justify-between gap-2 text-xs">
-                      <div className="min-w-0">
-                        <div className={`font-bold truncate ${titleText}`}>
-                          {rec.userName || 'นักเรียน/บุคลากร'}
-                        </div>
-                        <div className={`text-[11px] truncate ${mutedText}`}>
-                          {rec.userDepartmentOrRoom || '-'} · {rec.remarks || rec.checkinMethod}
+                    <div key={rec.id} className="py-2 flex items-center justify-between gap-2.5 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <AttendancePhoto
+                          src={rec.photoUrl || rec.userAvatar}
+                          alt={rec.userName || 'ผู้เช็กอิน'}
+                          className="w-8 h-8 rounded-lg object-cover border border-[var(--color-border)] bg-[var(--color-card-subtle)] shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className={`font-bold truncate ${titleText}`}>
+                            {rec.userName || 'นักเรียน/บุคลากร'}
+                          </div>
+                          <div className={`text-[11px] truncate ${mutedText}`}>
+                            {rec.userDepartmentOrRoom || '-'} · {rec.remarks || rec.checkinMethod}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 tabular-nums">

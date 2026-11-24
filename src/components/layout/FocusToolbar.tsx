@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import {
+  Activity,
   ArrowLeft,
   Award,
   BellRing,
@@ -148,6 +149,13 @@ const TOOL_CATALOG: Record<string, FocusToolMeta> = {
     icon: Receipt,
     roles: ['super_admin', 'admin', 'parent'],
   },
+  realtime_daily: {
+    id: 'realtime_daily',
+    labelTh: 'เรียลไทม์ประจำวัน',
+    labelEn: 'Live Daily Radar',
+    icon: Activity,
+    roles: ['super_admin', 'admin', 'teacher'],
+  },
   executive_monitor: {
     id: 'executive_monitor',
     labelTh: 'มอนิเตอร์ & สพฐ.',
@@ -179,6 +187,7 @@ const TOOL_CATALOG: Record<string, FocusToolMeta> = {
 };
 
 const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> = {
+  realtime_daily: { th: 'ภาพรวมเรียลไทม์ประจำวัน', en: 'Real-Time Daily Radar' },
   obec_executive_dashboard: { th: 'รายงาน 8 กลุ่มสาระฯ สพฐ.', en: 'OBEC 8-Area Analytics' },
   pp6_executive_dashboard: { th: 'ภาพรวมคุณภาพ ปพ.6', en: 'Pp.6 Executive Overview' },
   qualitative_summary: { th: 'สรุปคุณลักษณะ & อ่านคิดวิเคราะห์', en: 'Qualitative Summary' },
@@ -208,7 +217,7 @@ const CONTEXTUAL_CLUSTERS: Record<string, NavTab[]> = {
   grading: ['students', 'homework', 'central_exam_hub', 'courses', 'timetable'],
   directory: ['students', 'teachers', 'timetable', 'courses', 'attendance'],
   care_ops: ['behavior_sdq', 'infirmary', 'attendance', 'announcements', 'billing'],
-  executive_admin: ['dashboard', 'executive_monitor', 'executive_warning', 'attendance', 'system_settings'],
+  executive_admin: ['dashboard', 'realtime_daily', 'executive_monitor', 'executive_warning', 'attendance'],
   executive_teacher: ['dashboard', 'timetable', 'attendance', 'homework', 'students'],
   student_parent_home: ['dashboard', 'timetable', 'homework', 'gradebook', 'announcements'],
   settings: ['system_settings', 'students', 'teachers', 'admin_superadmin_desk', 'dashboard'],

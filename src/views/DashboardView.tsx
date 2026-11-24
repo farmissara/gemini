@@ -93,6 +93,7 @@ import { SchoolPolicyId } from '../lib/schoolPermissions';
 import { isProgramModeEnabledByFeatureFlags, isTabEnabledByFeatureFlags } from '../lib/schoolFeatureFlags';
 import { ExecutiveMonitorView } from './ExecutiveMonitorView';
 import { ExecutiveEarlyWarningView } from './ExecutiveEarlyWarningView';
+import { ExecutiveRealtimeDailyPanel } from '../components/ExecutiveRealtimeDailyPanel';
 import { StudentDesktopDashboard } from '../components/student/StudentDesktopDashboard';
 import { AdminDashboardWorkspace } from '../components/admin/AdminDashboardWorkspace';
 import { ObecLearningAreaExecutiveDashboard } from '../components/ObecLearningAreaExecutiveDashboard';
@@ -101,6 +102,7 @@ import type { SystemSettingsTab } from './SystemSettingsView';
 
 export type DashboardSubTab =
   | 'overview'
+  | 'realtime_daily'
   | 'insights'
   | 'live_attendance'
   | 'executive_monitor'
@@ -239,8 +241,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       currentRole === 'parent' ||
       (currentRole === 'teacher' && (schoolPermissions?.teacher_view_financials ?? true)));
 
+  const isStaffRole = !currentRole || currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
   const resolveAllowedSubTab = (candidate?: DashboardSubTab): DashboardSubTab => {
     if (!candidate) return 'overview';
+    if (candidate === 'realtime_daily' && !isStaffRole) return 'overview';
     if (candidate === 'executive_monitor' && !canViewExecutiveMonitor) return 'overview';
     if (candidate === 'obec_learning_areas' && !canViewExecutiveMonitor) return 'overview';
     if (candidate === 'pp6_quality_overview' && !canViewExecutiveMonitor) return 'overview';
@@ -827,7 +831,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     ? (lang === 'th' ? 'ภาพรวมการเรียนของฉัน' : 'My Learning Overview')
                     : (lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn)}
           </h1>
-          {dashboardTab !== 'overview' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
+          {dashboardTab !== 'overview' && dashboardTab !== 'realtime_daily' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
             <button
               type="button"
               onClick={() => setDashboardTab('overview')}
@@ -852,6 +856,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ? (lang === 'th' ? 'ภาพรวม' : 'Overview')
                 : (lang === 'th' ? 'วันนี้' : 'Today')}
             </button>
+
+            {isStaffUser && (
+              <button
+                type="button"
+                data-active={dashboardTab === 'realtime_daily'}
+                onClick={() => setDashboardTab('realtime_daily')}
+                className="seg-tab-btn whitespace-nowrap shrink-0 inline-flex items-center gap-1"
+              >
+                <Activity className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'เรียลไทม์ประจำวัน' : 'Live Daily'}</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -2104,11 +2120,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           )}
 
+        {/* UNIFIED LENS: REAL-TIME DAILY OPERATIONS RADAR (08:00-09:00 Check-ins & Period Readiness) */}
+        {dashboardTab === 'realtime_daily' && isStaffUser && (
+          <div className="dash-scroll-stack animate-in fade-in duration-150">
+            <ExecutiveRealtimeDailyPanel
+              school={school}
+              systemConfig={systemConfig}
+              students={students}
+              teachers={teachers}
+              courses={courses}
+              attendance={attendance}
+              periodAttendance={periodAttendance}
+              timetableSlots={timetableSlots}
+              schoolPeriods={schoolPeriods}
+              leaveRequests={leaveRequests}
+              infirmaryVisits={infirmaryVisits}
+              invoices={canViewFinancials ? invoices : []}
+              canViewFinancials={canViewFinancials}
+              lang={lang}
+              onNavigate={(tab) => {
+                if (tab === 'executive_monitor' && canViewExecutiveMonitor) {
+                  setDashboardTab('executive_monitor');
+                } else if (tab === 'executive_warning' && canViewEarlyWarning) {
+                  setDashboardTab('early_warning');
+                } else {
+                  onNavigate(tab);
+                }
+              }}
+              onOpenPhotoRecord={openPhotoRecord}
+            />
+            <div className="no-print flex items-center justify-end gap-3 text-xs text-[var(--color-text-muted)]">
+              <button
+                type="button"
+                onClick={() => setDashboardTab('live_attendance')}
+                className="font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                {lang === 'th'
+                  ? 'เปิดคลังภาพถ่ายเซลฟี่ & แผนที่พิกัดย้อนหลังหลายวัน →'
+                  : 'Open Multi-Day Selfie & GPS Audit Archive →'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* UNIFIED LENS: EXECUTIVE MONITOR */}
         {dashboardTab === 'executive_monitor' && canViewExecutiveMonitor && school && (
           <div className="animate-in fade-in duration-150">
             <ExecutiveMonitorView
               activeSchool={school}
+              systemConfig={systemConfig}
               students={students}
               teachers={teachers}
               courses={courses}

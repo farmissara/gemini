@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import AttendancePhoto from '../AttendancePhoto';
 import {
+  Activity,
   AlertTriangle,
   ArrowUpRight,
   Award,
@@ -529,6 +530,15 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
             <span>{lang === 'th' ? 'ส่งออก CSV วันนี้' : 'Export CSV'}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => onSelectSubTab('realtime_daily')}
+            className="btn-tool-tone px-3.5 py-2 whitespace-nowrap"
+            title={lang === 'th' ? 'เปิดเรดาร์เช็กอินใบหน้า ขาด/ลา/สาย และความพร้อมห้องเรียนแบบเรียลไทม์' : 'Open Real-Time Daily Radar'}
+          >
+            <Activity className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'เรียลไทม์ประจำวัน' : 'Live Daily Radar'}</span>
+          </button>
           {isModuleEnabled('attendance') && (
             <button
               type="button"
@@ -779,10 +789,10 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
                 </div>
                 <button
                   type="button"
-                  onClick={() => onSelectSubTab('live_attendance')}
+                  onClick={() => onSelectSubTab('realtime_daily')}
                   className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap"
                 >
-                  {lang === 'th' ? 'ดูทั้งหมด →' : 'View all →'}
+                  {lang === 'th' ? 'เรดาร์เรียลไทม์ →' : 'Live Radar →'}
                 </button>
               </div>
             </div>

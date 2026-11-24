@@ -554,6 +554,7 @@ const PROTECTED_SYSTEM_TABS = new Set<string>([
   'admin_line_control',
   'admin_student_accounts',
   'admin_saas_audit',
+  'realtime_daily',
   'executive_monitor',
   'obec_executive_dashboard',
   'pp6_executive_dashboard',
