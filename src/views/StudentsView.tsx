@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   AdaptivePracticeTopic,
   AppLanguage,
@@ -25,7 +25,6 @@ import {
 import { 
   Users, 
   Search, 
-  Filter, 
   Plus, 
   MessageSquare, 
   Award, 
@@ -41,9 +40,6 @@ import {
   FileSpreadsheet, 
   Camera,
   GraduationCap,
-  Sparkles,
-  ArrowRight,
-  ArrowUpDown,
   Check,
   RefreshCw,
   ShieldCheck,
@@ -74,7 +70,7 @@ import {
   TeacherParentInviteResult,
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
-import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
+import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
@@ -97,6 +93,60 @@ import { MoeDocViewSelection, MoeStudentDocumentCenter } from '../components/Moe
 import { GradeAlertRecord } from '../lib/gradeNotifications';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+
+const StudentAvatar: React.FC<{
+  src?: string;
+  firstNameTh?: string;
+  lastNameTh?: string;
+  firstNameEn?: string;
+  size?: 'sm' | 'lg';
+}> = ({ src, firstNameTh, lastNameTh, firstNameEn, size = 'sm' }) => {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  const initials = useMemo(() => {
+    const f = (firstNameTh || firstNameEn || '').replace(/^(เด็กชาย|เด็กหญิง|นาย|นางสาว|นาง|ด\.ช\.|ด\.ญ\.)\s*/u, '').trim();
+    const l = (lastNameTh || '').trim();
+    const c1 = f.charAt(0);
+    const c2 = l.charAt(0);
+    return (c1 + c2).toUpperCase() || 'ST';
+  }, [firstNameTh, lastNameTh, firstNameEn]);
+
+  const sizeClasses = size === 'lg' ? 'w-14 h-14 rounded-2xl text-base' : 'w-9 h-9 rounded-full text-xs';
+
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={firstNameTh || firstNameEn || 'Student'}
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className={`${sizeClasses} object-cover border border-[var(--color-border)] shrink-0 bg-[var(--color-card-subtle)]`}
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`${sizeClasses} inline-flex items-center justify-center font-semibold shrink-0 border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] select-none`}
+    >
+      {initials}
+    </span>
+  );
+};
+
+function formatCompactGradeLabel(gradeLevel: string): string {
+  const g = (gradeLevel || '').trim();
+  if (!g) return '';
+  if (/อนุบาล\s*([1-3])/i.test(g)) return g.replace(/.*อนุบาล\s*([1-3]).*/i, 'อ.$1');
+  if (/ประถมศึกษาปีที่\s*([1-6])/i.test(g)) return g.replace(/.*ประถมศึกษาปีที่\s*([1-6]).*/i, 'ป.$1');
+  if (/มัธยมศึกษาปีที่\s*([1-6])/i.test(g)) return g.replace(/.*มัธยมศึกษาปีที่\s*([1-6]).*/i, 'ม.$1');
+  return g;
+}
 
 export type StudentsViewSubTab =
   | 'roster'
@@ -230,10 +280,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
+  const [roomFilter, setRoomFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'default' | 'id_asc' | 'id_desc' | 'last_name_asc' | 'grade_level'>('default');
-  const [showQuickSortMenu, setShowQuickSortMenu] = useState(false);
-  const quickSortMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTabState] = useState<StudentsViewSubTab>(externalSubTab || 'roster');
   const [focusedStudentId, setFocusedStudentId] = useState<string | undefined>(targetStudentId || students[0]?.id);
   const [localGradebookJump, setLocalGradebookJump] = useState<StudentsGradebookJumpTarget | null>(gradebookJumpTarget || null);
@@ -401,24 +450,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   useEffect(() => {
     void refreshAccountLinks();
   }, [refreshAccountLinks]);
-
-  useEffect(() => {
-    if (!showQuickSortMenu) return;
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (quickSortMenuRef.current && !quickSortMenuRef.current.contains(event.target as Node)) {
-        setShowQuickSortMenu(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowQuickSortMenu(false);
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [showQuickSortMenu]);
 
   const pendingAccountsCount = useMemo(
     () => accountLinks.filter((a) => a.status === 'pending').length,
@@ -669,7 +700,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     guardianPhone: '081-',
     guardianEmail: '',
     gpa: 0,
-    avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+    avatarUrl: '',
   });
 
   // Multiple guardians state (ผู้ปกครองมากกว่า 1 คน)
@@ -711,72 +742,79 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     return 999;
   }, []);
 
-  const quickSortOptions: ReadonlyArray<{
-    key: 'default' | 'id_asc' | 'id_desc' | 'last_name_asc' | 'grade_level';
-    label: string;
-    subtitle: string;
-  }> = [
-    { key: 'default', label: 'Default', subtitle: 'ลำดับตามค่าเริ่มต้นในระบบ' },
-    { key: 'id_asc', label: 'ID ASC', subtitle: 'รหัสนักเรียน น้อย → มาก' },
-    { key: 'id_desc', label: 'ID DESC', subtitle: 'รหัสนักเรียน มาก → น้อย' },
-    { key: 'last_name_asc', label: 'Last Name A-Z', subtitle: 'นามสกุล A → Z / ก → ฮ' },
-    { key: 'grade_level', label: 'Grade Level', subtitle: 'ระดับชั้น & ห้องเรียน' },
-  ];
+  const matchesGradeFilterValue = useCallback((gradeLevel: string, filterVal: string) => {
+    if (filterVal === 'all') return true;
+    const g = gradeLevel || '';
+    if (filterVal === 'cat_kindergarten') {
+      return g.includes('อนุบาล') || g.includes('K.') || g.includes('อ.');
+    }
+    if (filterVal === 'cat_primary') {
+      return g.includes('ประถมศึกษา') || g.includes('P.') || g.includes('ป.');
+    }
+    if (filterVal === 'cat_lower_sec') {
+      return (
+        g.includes('มัธยมศึกษาปีที่ 1') ||
+        g.includes('มัธยมศึกษาปีที่ 2') ||
+        g.includes('มัธยมศึกษาปีที่ 3') ||
+        g.includes('M.1') ||
+        g.includes('M.2') ||
+        g.includes('M.3') ||
+        g.includes('ม.1') ||
+        g.includes('ม.2') ||
+        g.includes('ม.3')
+      );
+    }
+    if (filterVal === 'cat_upper_sec') {
+      return (
+        g.includes('มัธยมศึกษาปีที่ 4') ||
+        g.includes('มัธยมศึกษาปีที่ 5') ||
+        g.includes('มัธยมศึกษาปีที่ 6') ||
+        g.includes('M.4') ||
+        g.includes('M.5') ||
+        g.includes('M.6') ||
+        g.includes('ม.4') ||
+        g.includes('ม.5') ||
+        g.includes('ม.6') ||
+        g.includes('Grade 10') ||
+        g.includes('Grade 11') ||
+        g.includes('Grade 12')
+      );
+    }
+    return g.includes(filterVal) || g === filterVal;
+  }, []);
 
-  const activeQuickSortLabel =
-    quickSortOptions.find((opt) => opt.key === sortBy)?.label || 'Default';
+  const availableRooms = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach((s) => {
+      if (!matchesGradeFilterValue(s.gradeLevel || '', gradeFilter)) return;
+      if (s.room && s.room.trim()) set.add(s.room.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [students, gradeFilter, matchesGradeFilterValue]);
+
+  useEffect(() => {
+    if (roomFilter !== 'all' && !availableRooms.includes(roomFilter)) {
+      setRoomFilter('all');
+    }
+  }, [availableRooms, roomFilter]);
 
   const filteredStudents = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
     const filtered = students.filter((s) => {
-      // 1. Search filter
       const matchesSearch =
-        (s.firstNameEn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.lastNameEn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.firstNameTh || '').includes(searchTerm) ||
-        (s.lastNameTh || '').includes(searchTerm) ||
-        (s.studentIdNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.room || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.nationalId && s.nationalId.includes(searchTerm));
+        !query ||
+        (s.firstNameEn || '').toLowerCase().includes(query) ||
+        (s.lastNameEn || '').toLowerCase().includes(query) ||
+        (s.firstNameTh || '').toLowerCase().includes(query) ||
+        (s.lastNameTh || '').toLowerCase().includes(query) ||
+        `${s.firstNameTh || ''} ${s.lastNameTh || ''}`.toLowerCase().includes(query) ||
+        (s.studentIdNumber || '').toLowerCase().includes(query) ||
+        (s.room || '').toLowerCase().includes(query) ||
+        (s.nationalId && s.nationalId.toLowerCase().includes(query));
 
-      // 2. Grade level filter
-      let matchesGrade = true;
-      if (gradeFilter !== 'all') {
-        const g = s.gradeLevel || '';
-        if (gradeFilter === 'cat_kindergarten') {
-          matchesGrade = g.includes('อนุบาล') || g.includes('K.') || g.includes('อ.');
-        } else if (gradeFilter === 'cat_primary') {
-          matchesGrade = g.includes('ประถมศึกษา') || g.includes('P.') || g.includes('ป.');
-        } else if (gradeFilter === 'cat_lower_sec') {
-          matchesGrade =
-            g.includes('มัธยมศึกษาปีที่ 1') ||
-            g.includes('มัธยมศึกษาปีที่ 2') ||
-            g.includes('มัธยมศึกษาปีที่ 3') ||
-            g.includes('M.1') ||
-            g.includes('M.2') ||
-            g.includes('M.3') ||
-            g.includes('ม.1') ||
-            g.includes('ม.2') ||
-            g.includes('ม.3');
-        } else if (gradeFilter === 'cat_upper_sec') {
-          matchesGrade =
-            g.includes('มัธยมศึกษาปีที่ 4') ||
-            g.includes('มัธยมศึกษาปีที่ 5') ||
-            g.includes('มัธยมศึกษาปีที่ 6') ||
-            g.includes('M.4') ||
-            g.includes('M.5') ||
-            g.includes('M.6') ||
-            g.includes('ม.4') ||
-            g.includes('ม.5') ||
-            g.includes('ม.6') ||
-            g.includes('Grade 10') ||
-            g.includes('Grade 11') ||
-            g.includes('Grade 12');
-        } else {
-          matchesGrade = g.includes(gradeFilter) || g === gradeFilter;
-        }
-      }
+      const matchesGrade = matchesGradeFilterValue(s.gradeLevel || '', gradeFilter);
+      const matchesRoom = roomFilter === 'all' || (s.room || '').trim() === roomFilter;
 
-      // 3. Status filter
       let matchesStatus = true;
       if (statusFilter !== 'all') {
         if (statusFilter === 'transferred') {
@@ -786,7 +824,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         }
       }
 
-      return matchesSearch && matchesGrade && matchesStatus;
+      return matchesSearch && matchesGrade && matchesRoom && matchesStatus;
     });
 
     if (sortBy === 'default') return filtered;
@@ -833,7 +871,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       }
       return 0;
     });
-  }, [students, searchTerm, gradeFilter, statusFilter, sortBy, getGradeLevelRank]);
+  }, [students, searchTerm, gradeFilter, roomFilter, statusFilter, sortBy, getGradeLevelRank, matchesGradeFilterValue]);
 
   const selectedQrStudentSet = useMemo(() => new Set(selectedQrStudentIds), [selectedQrStudentIds]);
   const allFilteredSelected =
@@ -875,7 +913,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       guardianPhone: '081-',
       guardianEmail: '',
       gpa: 0,
-      avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+      avatarUrl: '',
     });
     setGuardiansList([
       {
@@ -1039,9 +1077,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       gradeLevel: formData.gradeLevel.trim() || 'มัธยมศึกษาปีที่ 4 (M.4)',
       room: formData.room.trim() || 'ม.4/1',
       status: formData.status || 'active',
-      avatarUrl: formData.avatarUrl || (formData.gender === 'female' 
-        ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80'),
+      avatarUrl: formData.avatarUrl || '',
       gpa: Number(formData.gpa),
       guardianName: finalGuardianName,
       guardianRelation: finalGuardianRelation,
@@ -1213,368 +1249,361 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     }
   };
 
-  const studentsGroup = getModuleGroupMeta('students');
+  const activeStudentsCount = useMemo(
+    () => students.filter((s) => (s.status || 'active') === 'active').length,
+    [students]
+  );
+  const lineLinkedCount = useMemo(
+    () => students.filter((s) => s.lineLinked).length,
+    [students]
+  );
+  const graduatedCount = useMemo(
+    () => students.filter((s) => s.status === 'graduated').length,
+    [students]
+  );
+  const hasActiveRosterFilters =
+    searchTerm.trim() !== '' || gradeFilter !== 'all' || roomFilter !== 'all' || statusFilter !== 'all' || sortBy !== 'default';
+
+  const statusTextToneMap: Record<StudentStatus, string> = {
+    active: 'text-emerald-700 dark:text-emerald-400',
+    transferred_in: 'text-cyan-700 dark:text-cyan-300',
+    transferred_out: 'text-amber-700 dark:text-amber-300',
+    transferred: 'text-amber-700 dark:text-amber-300',
+    graduated: 'text-violet-700 dark:text-violet-300',
+    suspended: 'text-amber-700 dark:text-amber-300',
+    resigned: 'text-rose-700 dark:text-rose-300',
+    dropped: 'text-[var(--color-text-muted)]',
+  };
 
   return (
-    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
+    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden gap-3`}>
       {accountsError && (
-        <div role="alert" className="shrink-0 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium">
-          {accountsError}
+        <div role="alert" className="shrink-0 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium flex items-center justify-between gap-2">
+          <span>{accountsError}</span>
+          <button type="button" onClick={() => setAccountsError(null)} className="text-xs font-bold cursor-pointer">✕</button>
         </div>
       )}
       {accountsSuccess && (
-        <div role="status" className="shrink-0 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 font-medium">
-          {accountsSuccess}
-        </div>
-      )}
-      {/* Compact Single-Row Header */}
-      <div className="shrink-0 px-3.5 py-2.5 sm:px-4 app-page-header flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-6 h-6 rounded-lg">
-            <Users className="w-3.5 h-3.5" />
-          </span>
-          <div className="min-w-0 flex items-baseline gap-2">
-            <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
-              ทะเบียนนักเรียน (DMC / SIS)
-              <span className="ml-1.5 text-xs font-normal text-[var(--color-text-muted)] font-mono tabular-nums">
-                · {filteredStudents.length} คน
-              </span>
-            </h1>
-            <span className="hidden xl:inline module-category-kicker">
-              {studentsGroup.labelTh}
-            </span>
-          </div>
-        </div>
-
-        {activeTab === 'roster' && (
-          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-            <ModuleTourTrigger moduleId="students" lang="th" />
-            <div ref={quickSortMenuRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setShowQuickSortMenu((prev) => !prev)}
-                aria-haspopup="menu"
-                aria-expanded={showQuickSortMenu}
-                data-active={sortBy !== 'default'}
-                className="btn-tool-neutral px-2.5 py-1.5"
-              >
-                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
-                <span>Quick Sort{sortBy !== 'default' ? `: ${activeQuickSortLabel}` : ''}</span>
-                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-              </button>
-              {showQuickSortMenu && (
-                <div
-                  role="menu"
-                  aria-label="Quick Sort Students"
-                  className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5"
-                >
-                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                    จัดเรียงข้อมูลนักเรียน (Quick Sort)
-                  </div>
-                  {quickSortOptions.map((opt) => {
-                    const isActive = sortBy === opt.key;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={isActive}
-                        onClick={() => {
-                          setSortBy((prev) => (prev === opt.key && opt.key !== 'default' ? 'default' : opt.key));
-                          if (activeTab !== 'roster') setActiveTab('roster');
-                          setShowQuickSortMenu(false);
-                        }}
-                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition cursor-pointer ${
-                          isActive
-                            ? 'tone-active font-bold'
-                            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <div className="truncate">{opt.label}</div>
-                          <div className="text-[10px] font-normal text-[var(--color-text-muted)] truncate">
-                            {opt.subtitle}
-                          </div>
-                        </div>
-                        {isActive && <Check className="w-3.5 h-3.5 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <details className="relative" data-guide-id="students-import-export">
-              <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-                <span>เครื่องมือ / นำเข้าชุด</span>
-                {selectedQrStudentIds.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded bg-[var(--tone-solid)] text-white text-[10px] font-bold tabular-nums">
-                    {selectedQrStudentIds.length}
-                  </span>
-                )}
-                <ChevronDown className="h-3.5 w-3.5" />
-              </summary>
-              <div className="absolute right-0 top-full z-30 mt-1.5 min-w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-                {canManageStudentRecords && (
-                  <button
-                    type="button"
-                    data-guide-id="students-add-bulk"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      handleOpenBulkModal();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
-                  >
-                    <Users className="w-3.5 h-3.5 shrink-0" />
-                    <span>เพิ่มนักเรียนทั้งห้อง (Batch)</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    setShowBatchQrModal(true);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <QrCode className="w-3.5 h-3.5 tone-text shrink-0" />
-                  <span>
-                    พิมพ์ QR ชุด (PDF)
-                    {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
-                  </span>
-                </button>
-
-                {canManageStudentRecords && onOpenImportExport && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      onOpenImportExport();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                    <span>นำเข้า/ส่งออก Excel</span>
-                  </button>
-                )}
-
-                {canManageStudentRecords && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      setShowPromotionModal(true);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
-                    <span>เลื่อนชั้นเรียนข้ามปี (Promotion)</span>
-                  </button>
-                )}
-
-                {['admin', 'super_admin'].includes(currentRole) && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      setShowRoomPresetModal(true);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
-                    <span>ตั้งค่าระดับชั้น/ห้องเรียน</span>
-                  </button>
-                )}
-
-                {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      handleRequestPurgeSampleStudents();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>ล้างข้อมูลตัวอย่าง</span>
-                  </button>
-                )}
-              </div>
-            </details>
-
-            {canManageStudentRecords && (
-              <button
-                type="button"
-                data-guide-id="students-add-single"
-                onClick={handleOpenAdd}
-                className="btn-action-primary px-3 py-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มนักเรียน</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Unified Student Management Tabs (Includes Roster, Grading, MOE Registrar Docs & Student Dev Book) */}
-      <div data-guide-id="students-tabs" className="shrink-0 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-1 print:hidden">
-        <div className="seg-tab-group overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            data-active={activeTab === 'roster'}
-            onClick={() => setActiveTab('roster')}
-            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>รายชื่อนักเรียน ({filteredStudents.length})</span>
-          </button>
-          <button
-            type="button"
-            data-active={activeTab === 'gradebook'}
-            onClick={() => setActiveTab('gradebook')}
-            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <Award className="w-3.5 h-3.5" />
-            <span>บันทึกคะแนน &amp; รายงาน (ปพ.)</span>
-          </button>
-          <button
-            type="button"
-            data-active={activeTab === 'moe_registry'}
-            onClick={() => setActiveTab('moe_registry')}
-            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>งานทะเบียน &amp; เอกสาร (ปพ.1–8)</span>
-          </button>
-          <button
-            type="button"
-            data-active={activeTab === 'dev_book'}
-            onClick={() => setActiveTab('dev_book')}
-            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <BookMarked className="w-3.5 h-3.5" />
-            <span>สมุดคุณภาพผู้เรียน</span>
-          </button>
-          {canManageApprovals && (
-            <button
-              type="button"
-              data-guide-id="students-approvals-tab"
-              data-active={activeTab === 'approvals'}
-              onClick={() => setActiveTab('approvals')}
-              className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>อนุมัติบัญชี</span>
-              {pendingAccountsCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[10px] font-bold tabular-nums">
-                  {pendingAccountsCount}
-                </span>
-              )}
-            </button>
-          )}
-          <button
-            type="button"
-            data-active={activeTab === 'analytics'}
-            onClick={() => setActiveTab('analytics')}
-            className="seg-tab-btn flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>สถิติระดับชั้น</span>
-          </button>
-        </div>
-      </div>
-
-      {activeTab === 'roster' && accountsSuccess && (
-        <div role="status" className="shrink-0 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-3.5 py-2 text-xs text-emerald-800 dark:text-emerald-200 font-medium flex items-center justify-between gap-2">
+        <div role="status" className="shrink-0 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 font-medium flex items-center justify-between gap-2">
           <span>{accountsSuccess}</span>
           <button type="button" onClick={() => setAccountsSuccess(null)} className="text-xs font-bold cursor-pointer">✕</button>
         </div>
       )}
 
-      {activeTab === 'roster' && (
-        <>
-          {/* Compact Filter and Search Bar */}
-          <div data-guide-id="students-search-bar" className="shrink-0 toolbar-filter-zone app-filter-bar flex flex-wrap items-center justify-between gap-2">
-            <div className="fn-group-tone w-full md:w-auto">
-              <span className="fn-group-label">ค้นหา</span>
-              <div className="relative flex-1 md:w-64 min-w-[180px]">
-                <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="ชื่อ, รหัสนักเรียน, ปชช. หรือห้อง..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
-                />
+      {/* Clean Unified Workspace Header + Underline Tabs */}
+      <div className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] print:hidden">
+        <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="tone-chip w-8 h-8 rounded-lg">
+              <Users className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+                ทะเบียนนักเรียน (DMC / SIS)
+              </h1>
+              <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--color-text-muted)] tabular-nums truncate">
+                <span>ทั้งหมด {students.length} คน</span>
+                <span aria-hidden="true">·</span>
+                <span>กำลังศึกษา {activeStudentsCount} คน</span>
+                {pendingAccountsCount > 0 && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('approvals')}
+                      className="text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
+                    >
+                      รออนุมัติ {pendingAccountsCount} บัญชี
+                    </button>
+                  </>
+                )}
               </div>
             </div>
+          </div>
 
-            <div className="fn-divider" />
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <ModuleTourTrigger moduleId="students" lang="th" />
+            {activeTab === 'roster' && (
+              <>
+                <details className="relative" data-guide-id="students-import-export">
+                  <summary className="btn-tool-neutral list-none px-3 py-1.5 whitespace-nowrap shrink-0">
+                    <span>เครื่องมือชุด</span>
+                    {selectedQrStudentIds.length > 0 && (
+                      <span className="font-mono font-bold tone-text tabular-nums">
+                        ({selectedQrStudentIds.length})
+                      </span>
+                    )}
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </summary>
+                  <div className="absolute right-0 top-full z-30 mt-1.5 min-w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+                    {canManageStudentRecords && (
+                      <button
+                        type="button"
+                        data-guide-id="students-add-bulk"
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          handleOpenBulkModal();
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                      >
+                        <Users className="w-3.5 h-3.5 shrink-0" />
+                        <span>เพิ่มนักเรียนทั้งห้อง (Batch)</span>
+                      </button>
+                    )}
 
-            <div className="fn-group flex-1 justify-between md:justify-start">
-              <span className="fn-group-label text-[var(--color-text-muted)]">คัดกรอง</span>
-              <select
-                aria-label="กรองตามระดับชั้น"
-                value={gradeFilter}
-                onChange={(e) => setGradeFilter(e.target.value)}
-                className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--tone)]"
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        setShowBatchQrModal(true);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    >
+                      <QrCode className="w-3.5 h-3.5 tone-text shrink-0" />
+                      <span>
+                        พิมพ์ QR ชุด (PDF)
+                        {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
+                      </span>
+                    </button>
+
+                    {canManageStudentRecords && onOpenImportExport && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          onOpenImportExport();
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                        <span>นำเข้า/ส่งออก Excel</span>
+                      </button>
+                    )}
+
+                    {canManageStudentRecords && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          setShowPromotionModal(true);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                      >
+                        <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
+                        <span>เลื่อนชั้นเรียนข้ามปี</span>
+                      </button>
+                    )}
+
+                    {['admin', 'super_admin'].includes(currentRole) && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          setShowRoomPresetModal(true);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                      >
+                        <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
+                        <span>ตั้งค่าระดับชั้น/ห้องเรียน</span>
+                      </button>
+                    )}
+
+                    {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          handleRequestPurgeSampleStudents();
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>ล้างข้อมูลตัวอย่าง</span>
+                      </button>
+                    )}
+                  </div>
+                </details>
+
+                {canManageStudentRecords && (
+                  <button
+                    type="button"
+                    data-guide-id="students-add-single"
+                    onClick={handleOpenAdd}
+                    className="btn-action-primary px-3.5 py-1.5 whitespace-nowrap shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>เพิ่มนักเรียน</span>
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Clean Underline Tabs */}
+        <nav
+          aria-label="หมวดหมู่งานทะเบียนนักเรียน"
+          data-guide-id="students-tabs"
+          className="border-t border-[var(--color-border)] px-3 sm:px-4 flex items-center gap-1 overflow-x-auto no-scrollbar"
+        >
+          {[
+            { id: 'roster' as const, label: 'รายชื่อนักเรียน', icon: Users },
+            { id: 'gradebook' as const, label: 'บันทึกคะแนน & ปพ.', icon: Award },
+            { id: 'moe_registry' as const, label: 'เอกสาร สพฐ. (ปพ.1–8)', icon: FileText },
+            { id: 'dev_book' as const, label: 'สมุดคุณภาพผู้เรียน', icon: BookMarked },
+            ...(canManageApprovals
+              ? [{ id: 'approvals' as const, label: 'อนุมัติบัญชี', icon: UserCheck, count: pendingAccountsCount }]
+              : []),
+            { id: 'analytics' as const, label: 'สถิติระดับชั้น', icon: GraduationCap },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                data-guide-id={tab.id === 'approvals' ? 'students-approvals-tab' : undefined}
+                data-active={isActive}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative inline-flex items-center gap-1.5 px-3 py-2.5 text-xs whitespace-nowrap shrink-0 border-b-2 transition-colors cursor-pointer ${
+                  isActive
+                    ? 'border-[var(--tone)] text-[var(--tone)] font-semibold'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
+                }`}
               >
-                <option value="all">ทุกระดับชั้น (All)</option>
-                <optgroup label="หมวดการศึกษา">
-                  <option value="cat_kindergarten">ชั้นปฐมวัย (อนุบาล 1–3)</option>
-                  <option value="cat_primary">ชั้นประถมศึกษา (ป.1–ป.6)</option>
-                  <option value="cat_lower_sec">ชั้นมัธยมศึกษาตอนต้น (ม.1–ม.3)</option>
-                  <option value="cat_upper_sec">ชั้นมัธยมศึกษาตอนปลาย (ม.4–ม.6)</option>
-                </optgroup>
-                <optgroup label="ระดับชั้นที่พบในโรงเรียน">
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{tab.label}</span>
+                {'count' in tab && typeof tab.count === 'number' && tab.count > 0 && (
+                  <span className="ml-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                    ({tab.count})
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {activeTab === 'roster' && (
+        <>
+          {/* Flat Single-Row Search & Filter Strip (No nested boxes) */}
+          <div
+            data-guide-id="students-search-bar"
+            className="shrink-0 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2"
+          >
+            <div className="relative flex-1 min-w-[220px] max-w-md">
+              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="ค้นหาชื่อ, รหัสนักเรียน, เลข ปชช. หรือห้อง..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  aria-label="ล้างคำค้นหา"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <select
+              aria-label="กรองตามระดับชั้น"
+              value={gradeFilter}
+              onChange={(e) => setGradeFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
+            >
+              <option value="all">ทุกระดับชั้น</option>
+              <optgroup label="ช่วงชั้น">
+                <option value="cat_kindergarten">อนุบาล 1–3</option>
+                <option value="cat_primary">ประถมศึกษา (ป.1–ป.6)</option>
+                <option value="cat_lower_sec">มัธยมต้น (ม.1–ม.3)</option>
+                <option value="cat_upper_sec">มัธยมปลาย (ม.4–ม.6)</option>
+              </optgroup>
+              {existingGradeLevels.length > 0 && (
+                <optgroup label="ระดับชั้นในโรงเรียน">
                   {existingGradeLevels.map((g) => (
                     <option key={g} value={g}>
                       {g}
                     </option>
                   ))}
                 </optgroup>
-              </select>
+              )}
+            </select>
 
-              <select
-                aria-label="กรองตามสถานะนักเรียน"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold focus:outline-none focus:border-[var(--tone)]"
-              >
-                <option value="all">ทุกสถานะนักเรียน</option>
-                {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
-                  <option key={st.value} value={st.value}>
-                    {st.labelTh} ({st.labelEn})
-                  </option>
-                ))}
-              </select>
+            <select
+              aria-label="กรองตามห้องเรียน"
+              value={roomFilter}
+              onChange={(e) => setRoomFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
+            >
+              <option value="all">ทุกห้องเรียน</option>
+              {availableRooms.map((room) => (
+                <option key={room} value={room}>
+                  ห้อง {room}
+                </option>
+              ))}
+            </select>
 
-              {(searchTerm.trim() !== '' || gradeFilter !== 'all' || statusFilter !== 'all') && (
+            <select
+              aria-label="กรองตามสถานะนักเรียน"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
+            >
+              <option value="all">ทุกสถานะ</option>
+              {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
+                <option key={st.value} value={st.value}>
+                  {st.labelTh}
+                </option>
+              ))}
+            </select>
+
+            <select
+              aria-label="เรียงลำดับนักเรียน"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
+            >
+              <option value="default">เรียง: ค่าเริ่มต้น</option>
+              <option value="grade_level">เรียง: ชั้นและห้องเรียน</option>
+              <option value="id_asc">เรียง: รหัส น้อย → มาก</option>
+              <option value="id_desc">เรียง: รหัส มาก → น้อย</option>
+              <option value="last_name_asc">เรียง: นามสกุล A–Z / ก–ฮ</option>
+            </select>
+
+            <div className="ml-auto flex items-center gap-2.5 text-xs text-[var(--color-text-muted)] tabular-nums">
+              <span>
+                แสดง <strong className="text-[var(--color-text-title)]">{filteredStudents.length}</strong> จาก {students.length} คน
+              </span>
+              {hasActiveRosterFilters && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchTerm('');
                     setGradeFilter('all');
+                    setRoomFilter('all');
                     setStatusFilter('all');
+                    setSortBy('default');
                   }}
-                  className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                  className="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap"
                 >
-                  ล้าง
+                  ล้างตัวกรอง
                 </button>
               )}
-
-              <span className="text-xs text-[var(--color-text-muted)] ml-auto font-mono tabular-nums pl-1">
-                พบ <strong className="tone-text">{filteredStudents.length}</strong> คน
-              </span>
             </div>
           </div>
 
           {selectedQrStudentIds.length > 0 && (
-            <div className="shrink-0 px-3.5 py-2.5 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
-                <QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>เลือกนักเรียนแล้ว {selectedQrStudentIds.length} คน สำหรับพิมพ์/ส่งออก QR Code</span>
+            <div className="shrink-0 px-3.5 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--tone)]/35 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-title)] tabular-nums">
+                <QrCode className="w-4 h-4 tone-text shrink-0" />
+                <span>เลือกแล้ว {selectedQrStudentIds.length} คน</span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -1589,15 +1618,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       });
                     }
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                  className="btn-action-success px-3 py-1.5"
                 >
                   <FileDown className="w-3.5 h-3.5" />
-                  <span>ดาวน์โหลด PDF QR รวม ({selectedQrStudentIds.length})</span>
+                  <span>ดาวน์โหลด PDF QR ({selectedQrStudentIds.length})</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowBatchQrModal(true)}
-                  className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                  className="btn-action-primary px-3 py-1.5"
                 >
                   <QrCode className="w-3.5 h-3.5" />
                   <span>จัดหน้า &amp; พิมพ์ชุด QR</span>
@@ -1605,20 +1634,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedQrStudentIds([])}
-                  className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] text-xs font-semibold transition cursor-pointer"
+                  className="btn-tool-neutral px-2.5 py-1.5"
                 >
-                  ล้างที่เลือก
+                  ยกเลิกที่เลือก
                 </button>
               </div>
             </div>
           )}
 
-          {/* Students Table with Sticky Header */}
+          {/* Clean High-Density Students Table */}
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]">
             <table className="table-comfortable w-full text-left text-xs">
-              <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] text-[var(--color-text-title)] uppercase tracking-wider font-semibold border-b border-[var(--color-border)]">
+              <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] font-semibold border-b border-[var(--color-border)]">
                 <tr>
-                  <th className="py-3 pl-4 pr-2 w-10">
+                  <th className="py-2.5 pl-4 pr-2 w-10">
                     <input
                       type="checkbox"
                       checked={allFilteredSelected}
@@ -1628,252 +1657,281 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] cursor-pointer accent-[var(--color-primary)]"
                     />
                   </th>
-                  <th className="py-3 px-4">Student</th>
-                  <th className="py-3 px-4">Thai Name</th>
-                  <th className="py-3 px-4">Class &amp; Room</th>
-                  <th className="py-3 px-4">สถานะ (Status)</th>
-                  <th className="py-3 px-4">GPA</th>
-                  <th className="py-3.5 px-4">Guardian / LINE OA</th>
-                  <th className="py-3.5 px-4 text-right w-16">จัดการ</th>
+                  <th className="py-2.5 px-3">นักเรียน</th>
+                  <th className="py-2.5 px-3">ชั้น / ห้อง</th>
+                  <th className="py-2.5 px-3">สถานะ</th>
+                  <th className="py-2.5 px-3 text-right">ผลการเรียน</th>
+                  <th className="py-2.5 px-3">ผู้ปกครอง &amp; ติดต่อ</th>
+                  <th className="py-2.5 pl-3 pr-4 text-right w-14">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
                 <PaginatedTableRows
                   items={filteredStudents}
-                  colSpan={8}
+                  colSpan={7}
+                  pageSize={12}
                   emptyState={(
                     <EmptyState
                       icon={Users}
-                      title={students.length === 0 ? 'ยังไม่มีข้อมูลนักเรียนในระบบ' : 'ไม่พบนักเรียนที่ตรงกับการค้นหาหรือตัวกรอง'}
-                      description="ลองปรับคำค้นหา ห้องเรียน หรือสถานะ หรือกดเพิ่มนักเรียนใหม่"
+                      title={students.length === 0 ? 'ยังไม่มีข้อมูลนักเรียนในระบบ' : 'ไม่พบนักเรียนที่ตรงกับตัวกรอง'}
+                      description="ลองปรับคำค้นหา ระดับชั้น หรือห้องเรียน หรือกดเพิ่มนักเรียนใหม่"
                     />
                   )}
                   renderRow={(student) => {
-                  const statusCfg = STUDENT_STATUS_DETAILS[student.status || 'active'] || STUDENT_STATUS_DETAILS.active;
-                  const summary = calculateStudentAcademicSummary({
-                    student,
-                    courses,
-                    grades,
-                    gradingSystem,
-                    currentAcademicYear: activeSchool?.academicYear,
-                    currentSemester: activeSchool?.currentSemester,
-                  });
-                  const hasRealGrades = summary.hasRecordedGrades && summary.gpax !== null;
-                  const displayGpa = hasRealGrades ? summary.gpax! : 0;
-                  const isQrSelected = selectedQrStudentSet.has(student.id);
-                  return (
-                    <tr key={student.id} className={`hover:bg-[var(--color-card-subtle)] transition-colors group ${isQrSelected ? 'bg-[var(--color-primary-light)]/40' : ''}`}>
-                      <td className="py-2.5 pl-4 pr-2 align-middle">
-                        <input
-                          type="checkbox"
-                          checked={isQrSelected}
-                          onChange={() => toggleSelectStudentForQr(student.id)}
-                          aria-label={`เลือก ${student.firstNameTh} ${student.lastNameTh} สำหรับพิมพ์ QR`}
-                          className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] cursor-pointer accent-[var(--color-primary)]"
-                        />
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={student.avatarUrl}
-                            alt={student.firstNameEn}
-                            className="w-9 h-9 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                    const statusKey = (student.status || 'active') as StudentStatus;
+                    const statusCfg = STUDENT_STATUS_DETAILS[statusKey] || STUDENT_STATUS_DETAILS.active;
+                    const summary = calculateStudentAcademicSummary({
+                      student,
+                      courses,
+                      grades,
+                      gradingSystem,
+                      currentAcademicYear: activeSchool?.academicYear,
+                      currentSemester: activeSchool?.currentSemester,
+                    });
+                    const hasRealGrades = summary.hasRecordedGrades && summary.gpax !== null;
+                    const displayGpa = hasRealGrades ? summary.gpax! : 0;
+                    const isQrSelected = selectedQrStudentSet.has(student.id);
+                    const thaiFullName = `${student.firstNameTh || ''} ${student.lastNameTh || ''}`.trim();
+                    const engFullName = `${student.firstNameEn || ''} ${student.lastNameEn || ''}`.trim();
+                    const showEnglishSubtitle = Boolean(engFullName) && engFullName.toLowerCase() !== thaiFullName.toLowerCase();
+                    const compactGrade = formatCompactGradeLabel(student.gradeLevel);
+
+                    return (
+                      <tr
+                        key={student.id}
+                        className={`hover:bg-[var(--color-card-subtle)] transition-colors group ${
+                          isQrSelected ? 'bg-[var(--color-primary-light)]/35' : ''
+                        }`}
+                      >
+                        <td className="py-2.5 pl-4 pr-2 align-middle">
+                          <input
+                            type="checkbox"
+                            checked={isQrSelected}
+                            onChange={() => toggleSelectStudentForQr(student.id)}
+                            aria-label={`เลือก ${thaiFullName} สำหรับพิมพ์ QR`}
+                            className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] cursor-pointer accent-[var(--color-primary)]"
                           />
-                          <div>
-                            <div className="font-semibold text-[var(--color-text-title)] group-hover:text-[var(--color-primary-text)] transition-colors">
-                              {student.firstNameEn} {student.lastNameEn}
+                        </td>
+
+                        <td className="py-2.5 px-3 align-middle">
+                          <button
+                            type="button"
+                            onClick={() => onSelectStudent(student)}
+                            className="flex items-center gap-3 text-left min-w-0 w-full cursor-pointer group/name"
+                          >
+                            <StudentAvatar
+                              src={student.avatarUrl}
+                              firstNameTh={student.firstNameTh}
+                              lastNameTh={student.lastNameTh}
+                              firstNameEn={student.firstNameEn}
+                            />
+                            <div className="min-w-0">
+                              <div className="font-semibold text-[var(--color-text-title)] group-hover/name:text-[var(--tone)] group-hover/name:underline truncate">
+                                {thaiFullName || engFullName || 'ไม่ระบุชื่อ'}
+                              </div>
+                              <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5 truncate">
+                                <span className="font-mono tabular-nums text-[var(--color-text-body)]">
+                                  {student.studentIdNumber}
+                                </span>
+                                {showEnglishSubtitle && (
+                                  <>
+                                    <span aria-hidden="true">·</span>
+                                    <span className="truncate">{engFullName}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-[11px] font-mono text-[var(--color-primary-text)] tabular-nums">
-                              {student.studentIdNumber}
-                            </div>
+                          </button>
+                        </td>
+
+                        <td className="py-2.5 px-3 align-middle whitespace-nowrap">
+                          <div className="font-semibold text-[var(--color-text-title)] tabular-nums">
+                            {student.room || '—'}
                           </div>
-                        </div>
-                      </td>
+                          {compactGrade && (
+                            <div className="text-[11px] text-[var(--color-text-muted)]">
+                              {compactGrade}
+                            </div>
+                          )}
+                        </td>
 
-                      <td className="py-2.5 px-4">
-                        <div className="text-[var(--color-text-title)] font-medium">
-                          {student.firstNameTh} {student.lastNameTh}
-                        </div>
-                        <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
-                          ID: {student.nationalId || 'N/A'}
-                        </div>
-                      </td>
+                        <td className="py-2.5 px-3 align-middle whitespace-nowrap">
+                          <span
+                            className={`text-xs font-medium ${statusTextToneMap[statusKey] || 'text-[var(--color-text-body)]'}`}
+                            title={statusCfg.descriptionTh}
+                          >
+                            {statusCfg.labelTh}
+                          </span>
+                        </td>
 
-                      <td className="py-2.5 px-4">
-                        <div className="text-[var(--color-text-title)] font-semibold">{student.gradeLevel}</div>
-                        <div className="text-[11px] text-[var(--color-text-muted)] font-medium">{student.room}</div>
-                      </td>
-
-                      <td className="py-2.5 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${statusCfg.badgeClasses}`}
-                          title={statusCfg.descriptionTh}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dotColor}`} />
-                          {statusCfg.labelTh}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-4">
-                        {summary.hideGpaCalculations ? (
-                          summary.averageRawScore !== null ? (
-                            <div className="space-y-0.5">
-                              <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 tabular-nums">
-                                {summary.averageRawScore}%
-                              </span>
-                              <div className="text-[10px] text-[var(--color-text-muted)] font-semibold">
-                                {getRawScoreFeedback(summary.averageRawScore).labelTh} ({summary.gradedSubjectCount} วิชา)
+                        <td className="py-2.5 px-3 align-middle text-right whitespace-nowrap">
+                          {summary.hideGpaCalculations ? (
+                            summary.averageRawScore !== null ? (
+                              <div>
+                                <div className="font-mono font-semibold text-sm text-[var(--color-text-title)] tabular-nums">
+                                  {summary.averageRawScore}%
+                                </div>
+                                <div className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                                  {getRawScoreFeedback(summary.averageRawScore).labelTh} · {summary.gradedSubjectCount} วิชา
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums">—</span>
+                            )
+                          ) : hasRealGrades ? (
+                            <div
+                              title={`คำนวณจริงจากสมุดคะแนน/ปพ.5 (${summary.gradedSubjectCount} วิชา · ${summary.registeredCredits.toFixed(1)} หน่วยกิต)`}
+                            >
+                              <div
+                                className={`font-mono font-semibold text-sm tabular-nums ${
+                                  displayGpa >= 3.5
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : 'text-[var(--color-text-title)]'
+                                }`}
+                              >
+                                {displayGpa.toFixed(2)}
+                              </div>
+                              <div className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                                {summary.gradedSubjectCount} วิชา · {summary.registeredCredits} นก.
                               </div>
                             </div>
                           ) : (
-                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
-                              ยังไม่มีผล ปพ.5
-                            </span>
-                          )
-                        ) : hasRealGrades ? (
-                          <div className="space-y-0.5">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border tabular-nums ${
-                                displayGpa >= 3.5
-                                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                                  : displayGpa >= 3.0
-                                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border-[var(--color-border)]'
-                                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                              }`}
-                              title={`คำนวณจริงจากสมุดคะแนน/ปพ.5 (${summary.gradedSubjectCount} วิชา · ${summary.registeredCredits.toFixed(1)} หน่วยกิต)`}
+                              className="font-mono text-xs text-[var(--color-text-muted)] tabular-nums"
+                              title="ยังไม่มีคะแนนในสมุดวัดผล ปพ.5"
                             >
-                              {displayGpa.toFixed(2)}
-                            </span>
-                            <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums">
-                              ปพ.5 · {summary.gradedSubjectCount} วิชา ({summary.registeredCredits} นก.)
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-0.5" title="ยังไม่มีคะแนนรายวิชาในระบบวัดผล (ปพ.5) — ระบบจึงไม่แสดงค่า GPA สมมติ">
-                            <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs border bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border-[var(--color-border)] tabular-nums">
                               —
                             </span>
-                            <div className="text-[10px] text-[var(--color-text-muted)]">
-                              ยังไม่ตัดเกรด (ปพ.5)
-                            </div>
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="py-2.5 px-4">
-                        <div className="text-[var(--color-text-body)] font-medium">{student.guardianName} ({student.guardianRelation})</div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {canManageStudentRecords && (
-                            <button
-                              type="button"
-                              onClick={() => onToggleLineSync(student.id)}
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors border cursor-pointer ${
-                                student.lineLinked
-                                  ? 'bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-500/30'
-                                  : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-primary-light)]'
-                              }`}
-                              title={student.lineLinked ? 'LINE Connected (Click to toggle)' : 'Not Connected to LINE (Click to link)'}
-                            >
-                              <MessageSquare className="w-2.5 h-2.5 fill-current" />
-                              {student.lineLinked ? 'LINE Linked' : 'Connect LINE'}
-                            </button>
                           )}
-                          <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-0.5 tabular-nums">
-                            <Phone className="w-2.5 h-2.5" /> {student.guardianPhone}
-                          </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="py-3 px-4 text-right">
-                        {(() => {
-                          const actionItems: TableActionItem[] = [
-                            {
-                              id: 'edit_student_grades',
-                              label: 'บันทึกคะแนนรายบุคคล (ปพ.5 / รายวิชา)',
-                              icon: <Award className="w-3.5 h-3.5" />,
-                              variant: 'primary',
-                              onClick: () => openStudentInRegistryWorkspace(student, 'database', 'grades'),
-                            },
-                            {
-                              id: 'moe_docs',
-                              label: 'งานทะเบียน & ออกเอกสาร สพฐ. (ปพ.1–8)',
-                              icon: <FileText className="w-3.5 h-3.5" />,
-                              variant: 'primary',
-                              onClick: () => {
-                                openStudentInRegistryWorkspace(student, 'docs', 'profile', 'pp1');
-                                onOpenMoeDocumentCenter?.(student);
+                        <td className="py-2.5 px-3 align-middle">
+                          <div className="text-[var(--color-text-title)] font-medium truncate max-w-[230px]">
+                            {student.guardianName || 'ไม่ระบุผู้ปกครอง'}
+                            {student.guardianRelation && (
+                              <span className="text-[var(--color-text-muted)] font-normal"> · {student.guardianRelation}</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5 flex-wrap tabular-nums mt-0.5">
+                            <span>{student.guardianPhone || '—'}</span>
+                            {canManageStudentRecords ? (
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleLineSync(student.id)}
+                                  className={`font-medium hover:underline cursor-pointer whitespace-nowrap ${
+                                    student.lineLinked
+                                      ? 'text-emerald-700 dark:text-emerald-400'
+                                      : 'text-[var(--tone)]'
+                                  }`}
+                                  title={student.lineLinked ? 'คลิกเพื่อยกเลิกสถานะเชื่อมต่อ LINE' : 'คลิกเพื่อเชื่อม LINE'}
+                                >
+                                  {student.lineLinked ? 'LINE เชื่อมแล้ว' : 'เชื่อม LINE'}
+                                </button>
+                              </>
+                            ) : (
+                              student.lineLinked && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">LINE เชื่อมแล้ว</span>
+                                </>
+                              )
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-2.5 pl-3 pr-4 align-middle text-right">
+                          {(() => {
+                            const actionItems: TableActionItem[] = [
+                              {
+                                id: 'edit_student_grades',
+                                label: 'บันทึกคะแนนรายบุคคล (ปพ.5)',
+                                icon: <Award className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => openStudentInRegistryWorkspace(student, 'database', 'grades'),
                               },
-                            },
-                            {
-                              id: 'dev_book',
-                              label: 'สมุดคุณภาพผู้เรียน',
-                              icon: <BookMarked className="w-3.5 h-3.5" />,
-                              onClick: () => openStudentInDevBook(student),
-                            },
-                            {
-                              id: 'report_card',
-                              label: 'ดู / พิมพ์ใบรายงานผล (ปพ.1 / ปพ.6)',
-                              icon: <Printer className="w-3.5 h-3.5" />,
-                              onClick: () => onOpenReportCard(student),
-                            },
-                            {
-                              id: 'profile',
-                              label: 'ดูโปรไฟล์ / ประวัตินักเรียน',
-                              icon: <UserCheck className="w-3.5 h-3.5" />,
-                              dividerBefore: true,
-                              onClick: () => onSelectStudent(student),
-                            },
-                            ...(canManageStudentRecords
-                              ? [{
-                                  id: 'edit',
-                                  label: 'แก้ไขข้อมูลพื้นฐาน / ห้อง / สถานะ',
-                                  icon: <Edit3 className="w-3.5 h-3.5" />,
-                                  onClick: () => handleOpenEdit(student),
-                                }]
-                              : []),
-                            ...(canManageApprovals
-                              ? [
-                                  {
-                                    id: 'invite_student',
-                                    label: 'ส่งคำเชิญให้นักเรียนตั้งค่าบัญชี',
-                                    icon: <Mail className="w-3.5 h-3.5" />,
-                                    disabled: invitingStudentId === student.id,
-                                    onClick: () => handleOpenInviteModal(student, 'student'),
-                                  },
-                                  {
-                                    id: 'invite_parent',
-                                    label: 'เชิญผู้ปกครองเข้าใช้งาน',
-                                    icon: <Send className="w-3.5 h-3.5" />,
-                                    variant: 'success' as const,
-                                    disabled: invitingStudentId === student.id,
-                                    onClick: () => handleOpenInviteModal(student, 'parent'),
-                                  },
-                                ]
-                              : []),
-                            ...(onDeleteStudent
-                              ? [
-                                  {
-                                    id: 'delete',
-                                    label: 'ยกเลิก / ลบข้อมูลนักเรียน',
-                                    icon: <Trash2 className="w-3.5 h-3.5" />,
-                                    variant: 'danger' as const,
-                                    dividerBefore: true,
-                                    onClick: () => handleRequestDeleteStudent(student),
-                                  },
-                                ]
-                              : []),
-                          ];
-                          return (
-                            <TableActionMenu
-                              items={actionItems}
-                              ariaLabel={`จัดการข้อมูล ${student.firstNameTh} ${student.lastNameTh}`}
-                            />
-                          );
-                        })()}
-                      </td>
-                    </tr>
-                  );
-                }} />
+                              {
+                                id: 'moe_docs',
+                                label: 'ออกเอกสาร สพฐ. (ปพ.1–8)',
+                                icon: <FileText className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => {
+                                  openStudentInRegistryWorkspace(student, 'docs', 'profile', 'pp1');
+                                  onOpenMoeDocumentCenter?.(student);
+                                },
+                              },
+                              {
+                                id: 'dev_book',
+                                label: 'สมุดคุณภาพผู้เรียน',
+                                icon: <BookMarked className="w-3.5 h-3.5" />,
+                                onClick: () => openStudentInDevBook(student),
+                              },
+                              {
+                                id: 'report_card',
+                                label: 'พิมพ์ใบรายงานผล (ปพ.1 / ปพ.6)',
+                                icon: <Printer className="w-3.5 h-3.5" />,
+                                onClick: () => onOpenReportCard(student),
+                              },
+                              {
+                                id: 'profile',
+                                label: 'ดูประวัตินักเรียน',
+                                icon: <UserCheck className="w-3.5 h-3.5" />,
+                                dividerBefore: true,
+                                onClick: () => onSelectStudent(student),
+                              },
+                              ...(canManageStudentRecords
+                                ? [{
+                                    id: 'edit',
+                                    label: 'แก้ไขข้อมูล / ห้อง / สถานะ',
+                                    icon: <Edit3 className="w-3.5 h-3.5" />,
+                                    onClick: () => handleOpenEdit(student),
+                                  }]
+                                : []),
+                              ...(canManageApprovals
+                                ? [
+                                    {
+                                      id: 'invite_student',
+                                      label: 'เชิญนักเรียนตั้งค่าบัญชี',
+                                      icon: <Mail className="w-3.5 h-3.5" />,
+                                      disabled: invitingStudentId === student.id,
+                                      onClick: () => handleOpenInviteModal(student, 'student'),
+                                    },
+                                    {
+                                      id: 'invite_parent',
+                                      label: 'เชิญผู้ปกครองเข้าใช้งาน',
+                                      icon: <Send className="w-3.5 h-3.5" />,
+                                      variant: 'success' as const,
+                                      disabled: invitingStudentId === student.id,
+                                      onClick: () => handleOpenInviteModal(student, 'parent'),
+                                    },
+                                  ]
+                                : []),
+                              ...(onDeleteStudent
+                                ? [
+                                    {
+                                      id: 'delete',
+                                      label: 'ลบข้อมูลนักเรียน',
+                                      icon: <Trash2 className="w-3.5 h-3.5" />,
+                                      variant: 'danger' as const,
+                                      dividerBefore: true,
+                                      onClick: () => handleRequestDeleteStudent(student),
+                                    },
+                                  ]
+                                : []),
+                            ];
+                            return (
+                              <TableActionMenu
+                                items={actionItems}
+                                ariaLabel={`จัดการข้อมูล ${thaiFullName}`}
+                              />
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    );
+                  }}
+                />
               </tbody>
             </table>
           </div>
@@ -1882,94 +1940,135 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {activeTab === 'analytics' && (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">นักเรียนทั้งหมด</span>
-              <div className="text-2xl font-bold text-[var(--color-text-title)] mt-1">{students.length} คน</div>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">ในโรงเรียนปัจจุบัน</p>
-            </div>
-            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">กำลังศึกษา (Active)</span>
-              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
-                {students.filter(s => (s.status || 'active') === 'active').length} คน
+          {/* 1-Row Unified KPI Strip */}
+          <div className="saas-kpi-strip grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+            <div className="saas-kpi-cell">
+              <div className="text-xs font-medium text-[var(--color-text-muted)]">นักเรียนทั้งหมด</div>
+              <div className="mt-1 text-2xl font-bold text-[var(--color-text-title)] tabular-nums">
+                {students.length} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
               </div>
-              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                ย้ายเข้า: {students.filter(s => s.status === 'transferred_in').length} • ย้ายออก: {students.filter(s => s.status === 'transferred_out' || s.status === 'transferred').length}
-              </p>
+              <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">ในทะเบียนโรงเรียนปัจจุบัน</div>
             </div>
-            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">เชื่อมต่อ LINE OA</span>
-              <div className="text-2xl font-bold text-[var(--color-primary-text)] mt-1">
-                {students.filter(s => s.lineLinked).length} คน
+            <div className="saas-kpi-cell">
+              <div className="text-xs font-medium text-[var(--color-text-muted)]">กำลังศึกษา</div>
+              <div className="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                {activeStudentsCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
               </div>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                {students.length > 0 ? Math.round((students.filter(s => s.lineLinked).length / students.length) * 100) : 0}% อัตราเชื่อมต่อ
-              </p>
+              <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                ย้ายเข้า {students.filter((s) => s.status === 'transferred_in').length} · ย้ายออก {students.filter((s) => s.status === 'transferred_out' || s.status === 'transferred').length}
+              </div>
             </div>
-            <div className="p-4 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)]">
-              <span className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase">สำเร็จการศึกษาแล้ว</span>
-              <div className="text-2xl font-bold text-[var(--color-primary-text)] mt-1">
-                {students.filter(s => s.status === 'graduated').length} คน
+            <div className="saas-kpi-cell">
+              <div className="text-xs font-medium text-[var(--color-text-muted)]">เชื่อมต่อ LINE OA</div>
+              <div className="mt-1 text-2xl font-bold text-[var(--color-text-title)] tabular-nums">
+                {lineLinkedCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
               </div>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">บันทึกจบการศึกษา</p>
+              <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                {students.length > 0 ? Math.round((lineLinkedCount / students.length) * 100) : 0}% ของนักเรียนทั้งหมด
+              </div>
+            </div>
+            <div className="saas-kpi-cell">
+              <div className="text-xs font-medium text-[var(--color-text-muted)]">สำเร็จการศึกษาแล้ว</div>
+              <div className="mt-1 text-2xl font-bold text-[var(--color-text-title)] tabular-nums">
+                {graduatedCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
+              </div>
+              <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">บันทึกจบการศึกษาในระบบ</div>
             </div>
           </div>
 
-          {/* Breakdown by Student Status */}
-          <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
-            <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>สรุปภาพรวมตามสถานะนักเรียน (Student Status Distribution)</span>
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-              {Object.values(STUDENT_STATUS_DETAILS).map((st) => {
-                const count = students.filter(s => (s.status || 'active') === st.value).length;
-                return (
-                  <div key={st.value} className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
-                    <div className="flex items-center gap-1.5 font-bold text-[var(--color-text-title)]">
-                      <span className={`w-2 h-2 rounded-full ${st.dotColor}`} />
-                      <span>{st.labelTh}</span>
-                    </div>
-                    <div className="text-lg font-mono font-bold text-[var(--color-text-title)]">
-                      {count} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
-                    </div>
-                    <p className="text-[10px] text-[var(--color-text-muted)] truncate">{st.descriptionTh}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            {/* Status Breakdown */}
+            <section className="lg:col-span-5 saas-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text-title)]">สัดส่วนตามสถานะนักเรียน</h2>
+                <span className="text-xs text-[var(--color-text-muted)] tabular-nums">{students.length} คน</span>
+              </div>
+              <div className="divide-y divide-[var(--color-border)]">
+                {Object.values(STUDENT_STATUS_DETAILS).map((st) => {
+                  const count = students.filter((s) => (s.status || 'active') === st.value).length;
+                  const pct = students.length > 0 ? Math.round((count / students.length) * 100) : 0;
+                  return (
+                    <button
+                      key={st.value}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(st.value);
+                        setActiveTab('roster');
+                      }}
+                      className="w-full px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] transition-colors cursor-pointer"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className={`font-medium ${statusTextToneMap[st.value] || 'text-[var(--color-text-title)]'}`}>
+                            {st.labelTh}
+                          </span>
+                          <span className="font-mono font-semibold text-[var(--color-text-title)] tabular-nums">
+                            {count} <span className="text-[11px] font-normal text-[var(--color-text-muted)]">({pct}%)</span>
+                          </span>
+                        </div>
+                        <div className="mt-1.5 w-full h-1.5 rounded-full bg-[var(--color-card-subtle)] overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[var(--tone)] transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
 
-          {/* Breakdown by Grade and Room */}
-          <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3">
-            <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-              <Users className="w-4 h-4 text-[var(--color-primary-text)]" />
-              <span>การกระจายตัวของนักเรียนตามระดับชั้น (อนุบาล ถึง ม.6)</span>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-              {existingGradeLevels.map((grade) => {
-                const count = students.filter(s => s.gradeLevel === grade).length;
-                const activeCount = students.filter(s => s.gradeLevel === grade && (s.status === 'active' || !s.status)).length;
-                return (
-                  <div key={grade} className="p-3.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
-                    <div className="flex items-center justify-between font-bold text-[var(--color-text-title)]">
-                      <span className="truncate max-w-[180px]">{grade}</span>
-                      <span className="text-[var(--color-primary-text)] font-mono">{count} คน</span>
-                    </div>
-                    <div className="w-full bg-[var(--color-border)] h-2 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-[var(--color-primary)] h-full rounded-full transition-all"
-                        style={{ width: `${students.length > 0 ? (count / students.length) * 100 : 0}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
-                      <span>กำลังศึกษา: {activeCount} คน</span>
-                      <span>LINE: {students.filter(s => s.gradeLevel === grade && s.lineLinked).length} คน</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Grade Level Breakdown */}
+            <section className="lg:col-span-7 saas-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text-title)]">จำนวนนักเรียนแยกตามระดับชั้น</h2>
+                <span className="text-xs text-[var(--color-text-muted)] tabular-nums">{existingGradeLevels.length} ระดับชั้น</span>
+              </div>
+              {existingGradeLevels.length === 0 ? (
+                <div className="p-6 text-center text-xs text-[var(--color-text-muted)]">ยังไม่มีข้อมูลระดับชั้นในโรงเรียน</div>
+              ) : (
+                <div className="divide-y divide-[var(--color-border)]">
+                  {existingGradeLevels.map((grade) => {
+                    const count = students.filter((s) => s.gradeLevel === grade).length;
+                    const activeCount = students.filter((s) => s.gradeLevel === grade && (s.status === 'active' || !s.status)).length;
+                    const lineCount = students.filter((s) => s.gradeLevel === grade && s.lineLinked).length;
+                    const pct = students.length > 0 ? Math.round((count / students.length) * 100) : 0;
+                    return (
+                      <button
+                        key={grade}
+                        type="button"
+                        onClick={() => {
+                          setGradeFilter(grade);
+                          setActiveTab('roster');
+                        }}
+                        className="w-full px-4 py-3 flex items-center justify-between gap-4 text-left hover:bg-[var(--color-card-subtle)] transition-colors cursor-pointer"
+                      >
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <span className="font-semibold text-[var(--color-text-title)] truncate">{grade}</span>
+                            <span className="font-mono font-semibold text-[var(--color-text-title)] tabular-nums shrink-0">
+                              {count} คน
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-[var(--color-card-subtle)] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[var(--tone)] transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                            <span>กำลังศึกษา {activeCount} คน</span>
+                            <span aria-hidden="true">·</span>
+                            <span>LINE {lineCount} คน</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
           </div>
         </div>
       )}
@@ -2094,15 +2193,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           </td>
                           <td className="py-3 px-3 text-center whitespace-nowrap">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              className={`text-xs font-medium ${
                                 acc.status === 'active'
-                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                  ? 'text-emerald-700 dark:text-emerald-400'
                                   : acc.status === 'suspended'
-                                  ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                                  : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                  ? 'text-rose-700 dark:text-rose-400'
+                                  : 'text-amber-700 dark:text-amber-300'
                               }`}
                             >
-                              {acc.status === 'active' ? 'อนุมัติแล้ว (ใช้งานได้)' : acc.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติเข้าโรงเรียน'}
+                              {acc.status === 'active' ? 'อนุมัติแล้ว' : acc.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติ'}
                             </span>
                           </td>
                           <td className="py-3 px-3">
@@ -2171,11 +2270,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           <span className="font-bold text-[var(--color-text-title)]">
                             {parent.full_name_th || parent.full_name_en || 'ผู้ปกครอง'}
                           </span>
+                          <span aria-hidden="true" className="text-[var(--color-text-muted)]">·</span>
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            className={`text-xs font-medium ${
                               parent.status === 'active'
-                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                                : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                ? 'text-emerald-700 dark:text-emerald-400'
+                                : 'text-amber-700 dark:text-amber-300'
                             }`}
                           >
                             {parent.status === 'active' ? 'ใช้งานได้' : parent.status}
@@ -2767,10 +2867,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <div className="space-y-4">
                   {/* Photo Preview & Capture */}
                   <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                    <img
-                      src={formData.avatarUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200'}
-                      alt="Student Avatar"
-                      className="w-14 h-14 rounded-2xl object-cover border-2 border-[var(--color-primary)] shadow-sm"
+                    <StudentAvatar
+                      src={formData.avatarUrl}
+                      firstNameTh={formData.firstNameTh}
+                      lastNameTh={formData.lastNameTh}
+                      firstNameEn={formData.firstNameEn}
+                      size="lg"
                     />
                     <div className="flex-1 space-y-1">
                       <span className="font-bold text-[var(--color-text-title)] block">รูปถ่ายประจำตัวนักเรียน</span>
