@@ -750,11 +750,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const pendingLeaveCount = scopedLeaveRequests.filter((r) => r.status === 'pending').length;
 
   return (
-    <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-1.5`}>
+    <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-4`}>
       {/* Compact SaaS Top Header */}
-      <div className="shrink-0 px-3 py-2.5 sm:px-4 app-page-header flex flex-wrap items-center justify-between gap-2.5 text-[var(--color-text-body)]">
-        <div className="min-w-0 flex items-center gap-2.5">
-          <span className="tone-chip w-7 h-7 rounded-lg">
+      <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3 text-[var(--color-text-body)]">
+        <div className="min-w-0 flex items-center gap-3">
+          <span className="tone-chip w-8 h-8 rounded-lg">
             <QrCode className="w-4 h-4 shrink-0" />
           </span>
           <h1 className="type-page-title truncate">
@@ -778,7 +778,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               type="button"
               data-active={activeTab === 'leave_approval'}
               onClick={() => setActiveTab('leave_approval')}
-              className="seg-tab-btn flex items-center gap-1.5"
+              className="seg-tab-btn"
               title="ตรวจสอบและอนุมัติคำขอลาออนไลน์"
             >
               <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -793,7 +793,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               type="button"
               data-active={activeTab === 'export_reports'}
               onClick={() => setActiveTab('export_reports')}
-              className="seg-tab-btn flex items-center gap-1.5"
+              className="seg-tab-btn"
               title="สรุปรายงานสถิติ กราฟแนวโน้ม และส่งออกไฟล์ Excel/CSV"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
@@ -804,7 +804,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 type="button"
                 data-active={activeTab === 'period_qr'}
                 onClick={() => setActiveTab('period_qr')}
-                className="seg-tab-btn flex items-center gap-1.5"
+                className="seg-tab-btn"
                 title="สร้างรหัส QR เช็คชื่อประจำคาบเรียน"
               >
                 <QrCode className="w-3.5 h-3.5 shrink-0" />
@@ -816,7 +816,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 type="button"
                 data-active={activeTab === 'school_gps'}
                 onClick={() => setActiveTab('school_gps')}
-                className="seg-tab-btn flex items-center gap-1.5"
+                className="seg-tab-btn"
                 title="ตั้งค่าพิกัด GPS และรัศมีประตูโรงเรียน (เฉพาะผู้ดูแลระบบโรงเรียน)"
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -843,7 +843,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}
       {/* ========================================================================= */}
       {activeTab === 'gate_scanner' && (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-4">
           {/* 1-Row Executive KPI Strip */}
           {(() => {
             const presentCount = displayedFilteredLogs.filter((l) => l.status === 'present').length;

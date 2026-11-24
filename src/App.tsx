@@ -669,8 +669,8 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${nav.useImmersiveGameLayout ? 'p-0 overflow-hidden' : `app-workspace ${getModuleTone(nav.currentTab)} p-2.5 sm:p-3.5 lg:p-4 pb-20 md:pb-5 ${nav.currentTab === 'students' ? 'overflow-hidden' : 'overflow-y-auto'}`}`}>
-            <div className={`${nav.useImmersiveGameLayout ? 'max-w-none h-full' : 'w-full'} min-w-0 flex-1 min-h-0 flex flex-col`}>
+          <main className={`flex-1 w-full max-w-full min-w-0 min-h-0 flex flex-col ${nav.useImmersiveGameLayout ? 'p-0 overflow-hidden' : `app-workspace ${getModuleTone(nav.currentTab)} p-4 sm:p-5 lg:p-7 pb-20 md:pb-8 ${nav.currentTab === 'students' ? 'overflow-hidden' : 'overflow-y-auto'}`}`}>
+            <div className={`${nav.useImmersiveGameLayout ? 'max-w-none h-full' : 'w-full max-w-[1440px] mx-auto'} min-w-0 flex-1 min-h-0 flex flex-col`}>
               {!nav.useImmersiveGameLayout && prefs.focusMode && (
                 <FocusToolbar
                   currentTab={nav.currentTab}
@@ -687,16 +687,17 @@ export const App: React.FC = () => {
               )}
 
               {!nav.useImmersiveGameLayout && !prefs.focusMode && data.currentRole === 'super_admin' && data.isSuperAdminSchoolView && (
-                <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1">
-                  <div className="text-[11px] font-semibold text-blue-900 dark:text-blue-100 truncate">
-                    โหมดตรวจสอบรายโรงเรียน: <strong>{data.activeSchool.nameTh}</strong>
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-2.5">
+                  <div className="text-xs font-medium text-[var(--color-text-body)] truncate">
+                    {prefs.lang === 'th' ? 'กำลังตรวจสอบโรงเรียน:' : 'Inspecting school:'}{' '}
+                    <strong className="font-semibold text-[var(--color-text-title)]">{data.activeSchool.nameTh}</strong>
                   </div>
                   <button
                     type="button"
                     onClick={() => nav.navigateToAppTab('super_admin_console')}
-                    className="shrink-0 rounded-md border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-[11px] font-bold text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap"
+                    className="btn-tool-neutral h-8 px-3 shrink-0 whitespace-nowrap"
                   >
-                    กลับศูนย์ควบคุม
+                    {prefs.lang === 'th' ? 'กลับศูนย์ควบคุม' : 'Back to Console'}
                   </button>
                 </div>
               )}

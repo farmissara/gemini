@@ -987,22 +987,21 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
 
   return (
     <div className={`space-y-5 ${getModuleTone('central_exam_hub')}`}>
-      {/* Header Banner */}
-      <div className="app-page-header border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-50 via-cyan-50 to-white p-5 shadow-sm dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0">
+      {/* Clean SaaS Header */}
+      <div className="app-page-header p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5 min-w-0">
           <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
             <BookOpen className="w-5 h-5" />
           </div>
           <div className="space-y-1 min-w-0">
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ · {schoolName}</span>
+            <div className="text-xs font-medium text-[var(--color-text-muted)] truncate">
+              คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ · {schoolName}
             </div>
-            <h2 className="text-xl font-extrabold text-[var(--color-text-title)]">
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] tracking-tight">
               ศูนย์รับและสั่งซื้อชุดข้อสอบกลางเข้าโรงเรียน
             </h2>
             <p className="text-xs text-[var(--color-text-body)]">
-              ชุดข้อสอบที่กดรับฟรีหรือสั่งซื้อแล้ว จะถูกเพิ่มเข้าคลังข้อสอบของโรงเรียนสำหรับใช้สอน แข่ง EduBattle และออกสอบทันที (ปัจจุบันในคลังโรงเรียนมี {schoolQuestions.length} ข้อ)
+              ชุดข้อสอบที่กดรับฟรีหรือสั่งซื้อแล้ว จะถูกเพิ่มเข้าคลังข้อสอบของโรงเรียนทันที (ปัจจุบันมี {schoolQuestions.length} ข้อ)
             </p>
           </div>
         </div>
@@ -1015,23 +1014,23 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
               className="btn-action-primary"
             >
               <Swords className="w-4 h-4" />
-              <span>ไปที่คลังข้อสอบ & เกม EduBattle</span>
+              <span>ไปที่คลังข้อสอบ &amp; เกม EduBattle</span>
             </button>
           )}
         </div>
       </div>
 
       {toastMessage && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center justify-between gap-2">
+        <div className="ui-alert ui-alert-success justify-between">
           <span>{toastMessage}</span>
-          <button type="button" onClick={() => setToastMessage(null)} className="cursor-pointer">
+          <button type="button" onClick={() => setToastMessage(null)} className="cursor-pointer opacity-80 hover:opacity-100">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
       {/* 8-Strand Filter Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
         {strandStats.map((s) => {
           const isSelected = selectedStrand === s.id;
           const palette = STRAND_PALETTE[s.id];
@@ -1041,12 +1040,12 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
               type="button"
               aria-pressed={isSelected}
               onClick={() => setSelectedStrand(isSelected ? 'all' : s.id)}
-              className={`p-2.5 rounded-xl border text-left transition cursor-pointer hover:-translate-y-0.5 hover:shadow-sm ${
+              className={`p-3 rounded-xl border text-left transition-colors cursor-pointer ${
                 palette.filter
               } ${
                 isSelected
-                  ? `${palette.selectedFilter} text-[var(--color-text-title)] shadow-sm`
-                  : 'text-[var(--color-text-title)]'
+                  ? `${palette.selectedFilter} text-[var(--color-text-title)]`
+                  : 'text-[var(--color-text-title)] hover:border-[var(--color-border-strong)]'
               }`}
             >
               <div className="flex items-center justify-between text-[11px] font-bold">
@@ -1057,7 +1056,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                   {s.claimedPackCount}/{s.packCount}
                 </span>
               </div>
-              <div className="text-xs font-bold text-[var(--color-text-title)] mt-1.5 line-clamp-1">
+              <div className="text-xs font-semibold text-[var(--color-text-title)] mt-2 line-clamp-1">
                 {s.nameTh}
               </div>
               <div className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">

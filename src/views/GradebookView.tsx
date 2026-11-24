@@ -1505,17 +1505,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   };
 
   return (
-    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden ${embeddedInStudentManagement ? 'space-y-1.5' : 'space-y-2.5'}`}>
+    <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden ${embeddedInStudentManagement ? 'space-y-2' : 'space-y-4'}`}>
       {/* Gradebook Header: Slim sub-toolbar when embedded inside StudentsView; clean single header standalone */}
       <div className={`shrink-0 flex flex-wrap items-center justify-between gap-2.5 print:hidden ${
         embeddedInStudentManagement
-          ? 'px-1 py-1 border-b border-[var(--color-border)]'
-          : 'app-page-header px-4 py-2.5'
+          ? 'px-1 py-1.5 border-b border-[var(--color-border)]'
+          : 'app-page-header px-5 py-3'
       }`}>
-        <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap">
+        <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
           {!embeddedInStudentManagement && (
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="tone-chip w-7 h-7 rounded-lg shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="tone-chip w-8 h-8 rounded-lg shrink-0">
                 <Award className="w-4 h-4" />
               </span>
               <h1 className="text-base md:text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">

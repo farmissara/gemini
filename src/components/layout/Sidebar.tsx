@@ -912,9 +912,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setCurrentTab(item.id);
           onClick?.();
         }}
-        className={`${tone} group relative w-full flex min-h-10 sm:min-h-9 items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
+        className={`${tone} group relative w-full flex min-h-9 items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${
           isActive
-            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
+            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
@@ -922,8 +922,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Icon
             className={`w-4 h-4 shrink-0 transition-colors ${
               isActive
-                ? 'text-[var(--tone)]'
-                : 'text-[var(--color-text-muted)] group-hover:text-[var(--tone)]'
+                ? 'text-[var(--color-primary-text)]'
+                : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-title)]'
             }`}
           />
           <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
@@ -1089,40 +1089,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 type="button"
                 data-nav-tab={dashboardItem.id}
                 onClick={() => setCurrentTab(dashboardItem.id)}
-                className={`${getModuleTone(dashboardItem.id)} w-full flex min-h-10 items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-bold transition cursor-pointer border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
+                className={`w-full flex min-h-9 items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${
                   resolvedSidebarActiveTab === dashboardItem.id
-                    ? 'bg-[var(--tone-soft)] text-[var(--tone)] border-[color-mix(in_srgb,var(--tone)_32%,transparent)]'
-                    : 'bg-[var(--color-card)] text-[var(--color-text-title)] border-[var(--color-border)] hover:bg-[var(--tone-soft)]/50'
+                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
+                    : 'text-[var(--color-text-body)] font-medium hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                 }`}
               >
-                <LayoutDashboard className="w-4 h-4 shrink-0 text-[var(--tone)]" />
+                <LayoutDashboard
+                  className={`w-4 h-4 shrink-0 ${
+                    resolvedSidebarActiveTab === dashboardItem.id
+                      ? 'text-[var(--color-primary-text)]'
+                      : 'text-[var(--color-text-muted)]'
+                  }`}
+                />
                 <span className="truncate">{lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}</span>
               </button>
             </div>
 
             {/* Expand/Collapse All shown only when viewing All Menus */}
             {!isSimplifiedAdmin && (!focusMode || !supportsFocusMode) && visibleCategories.length > 2 && (
-              <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between px-1">
-                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'หมวดงานทั้งหมด' : 'All Workspaces'}
+              <div className="pt-2.5 mt-1 border-t border-[var(--color-border)] flex items-center justify-between px-2">
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'หมวดงาน' : 'Workspaces'}
                 </span>
                 <button
                   type="button"
                   onClick={handleToggleExpandAll}
-                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer transition"
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer transition"
                 >
-                  <ChevronsUpDown className="w-3.5 h-3.5" />
+                  <ChevronsUpDown className="w-3 h-3" />
                   <span>
                     {anyCategoryExpanded
-                      ? (lang === 'th' ? 'ย่อทั้งหมด' : 'Collapse all')
-                      : (lang === 'th' ? 'ขยายทั้งหมด' : 'Expand all')}
+                      ? (lang === 'th' ? 'ย่อ' : 'Collapse')
+                      : (lang === 'th' ? 'ขยาย' : 'Expand')}
                   </span>
                 </button>
               </div>
             )}
 
             {/* Work Groups */}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {visibleCategories.map((cat) => {
                 const isCollapsed = isCategoryCollapsed(cat.id);
                 const catTone = getCategoryTone(cat.id);
@@ -1132,7 +1138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )?.badge;
 
                 return (
-                  <div key={cat.id} className={`${catTone} space-y-1`}>
+                  <div key={cat.id} className="space-y-0.5">
                     <button
                       type="button"
                       aria-expanded={!isCollapsed}
@@ -1145,11 +1151,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         }));
                       }}
                       data-expanded={!isCollapsed}
-                      className="sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition cursor-pointer hover:bg-[var(--color-card-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/30"
+                      className="sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-left transition cursor-pointer hover:bg-[var(--color-card-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30"
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <CategoryIcon className="h-3.5 w-3.5 shrink-0 text-[var(--tone)]" aria-hidden="true" />
-                        <span className="truncate text-xs leading-5 font-bold tracking-tight text-[var(--color-text-title)]">
+                        <CategoryIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+                        <span className="truncate text-[11px] leading-5 font-semibold text-[var(--color-text-muted)]">
                           {lang === 'th' ? cat.labelTh : cat.labelEn}
                         </span>
                       </span>
@@ -1159,13 +1165,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {alertBadge}
                           </span>
                         )}
-                        <span className="text-[11px] font-medium tabular-nums">
+                        <span className="text-[11px] font-medium tabular-nums opacity-75">
                           {cat.items.length}
                         </span>
                         {isCollapsed ? (
-                          <ChevronRight className="w-3.5 h-3.5" />
+                          <ChevronRight className="w-3.5 h-3.5 opacity-70" />
                         ) : (
-                          <ChevronDown className="w-3.5 h-3.5" />
+                          <ChevronDown className="w-3.5 h-3.5 opacity-70" />
                         )}
                       </span>
                     </button>
@@ -1173,7 +1179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {!isCollapsed && (
                       <div
                         id={`sidebar-category-${cat.id}`}
-                        className="sidebar-category-items space-y-0.5 pl-2"
+                        className="sidebar-category-items space-y-0.5"
                       >
                         {cat.items.map((item) => renderItem(item, undefined, catTone))}
                       </div>

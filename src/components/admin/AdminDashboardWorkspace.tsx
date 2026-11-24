@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import AttendancePhoto from '../AttendancePhoto';
 import {
-  Activity,
   AlertTriangle,
   ArrowUpRight,
   Award,
@@ -440,35 +439,30 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
 
   return (
     <div className="dash-scroll-stack animate-in fade-in duration-150">
-      {/* 1. CLEAN EXECUTIVE BRIEF HEADER */}
-      <section
+      {/* 1. UNBOXED ACTION BAR (No redundant school/date card box stacked below header) */}
+      <div
         aria-label={lang === 'th' ? 'ทางลัดผู้บริหารสถานศึกษา' : 'Executive shortcuts'}
-        className="no-print morning-brief-strip px-4 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5"
+        className="no-print flex flex-wrap items-center justify-between gap-2.5"
       >
         <div className="flex flex-wrap items-center gap-2 min-w-0 text-xs text-[var(--color-text-muted)] tabular-nums">
-          <span className="font-semibold text-[var(--color-text-title)] truncate">
-            {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
-          </span>
-          <span aria-hidden="true">·</span>
-          <span>
-            {lang === 'th' ? `วันที่ ${selectedDate}` : selectedDate}
-            {todayHoliday
-              ? ` (${todayHoliday.nameTh})`
-              : isTodayWeekend
-                ? (lang === 'th' ? ' (วันหยุดสุดสัปดาห์)' : ' (Weekend)')
-                : ''}
-          </span>
+          {(todayHoliday || isTodayWeekend) && (
+            <span>
+              {todayHoliday
+                ? (lang === 'th' ? `วันหยุด: ${todayHoliday.nameTh}` : `Holiday: ${todayHoliday.nameTh}`)
+                : (lang === 'th' ? 'วันหยุดสุดสัปดาห์' : 'Weekend')}
+            </span>
+          )}
           {teacherLeavesTodayCount > 0 && (
             <>
-              <span aria-hidden="true">·</span>
+              {(todayHoliday || isTodayWeekend) && <span aria-hidden="true">·</span>}
               <span className="font-medium text-amber-700 dark:text-amber-300">
-                {lang === 'th' ? `ครูลาวันนี้ ${teacherLeavesTodayCount} ท่าน` : `${teacherLeavesTodayCount} staff on leave`}
+                {lang === 'th' ? `ครูลาวันนี้ ${teacherLeavesTodayCount} ท่าน` : `${teacherLeavesTodayCount} staff on leave today`}
               </span>
             </>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 ml-auto">
           {onToggleSimplifiedView && (
             <button
               type="button"
@@ -482,9 +476,10 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               }
               className={
                 simplifiedView
-                  ? 'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap'
-                  : 'btn-tool-neutral h-9 px-3 whitespace-nowrap'
+                  ? 'btn-tool-neutral'
+                  : 'btn-tool-neutral'
               }
+              data-active={simplifiedView ? 'true' : undefined}
             >
               <Layers className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'มุมมองกระชับ' : 'Simplified'}</span>
@@ -493,34 +488,25 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
           <button
             type="button"
             onClick={onExportCsv}
-            className="btn-tool-neutral h-9 px-3 whitespace-nowrap"
+            className="btn-tool-neutral"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+            <Download className="w-3.5 h-3.5 shrink-0" />
             <span>{lang === 'th' ? 'ส่งออก CSV' : 'Export CSV'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectSubTab('realtime_daily')}
-            className="btn-tool-tone h-9 px-3 whitespace-nowrap"
-            title={lang === 'th' ? 'เปิดเรดาร์เช็กอินใบหน้า ขาด/ลา/สาย และความพร้อมห้องเรียนแบบเรียลไทม์' : 'Open Real-Time Daily Radar'}
-          >
-            <Activity className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'เรียลไทม์วันนี้' : 'Live Radar'}</span>
           </button>
           {isModuleEnabled('attendance') && (
             <button
               type="button"
               onClick={() => onNavigate('attendance')}
-              className="btn-action-primary h-9 px-3 whitespace-nowrap"
+              className="btn-action-primary"
             >
               <QrCode className="w-3.5 h-3.5" />
               <span>{lang === 'th' ? 'เช็คชื่อ' : 'Attendance'}</span>
             </button>
           )}
         </div>
-      </section>
+      </div>
 
-      {/* 2. 4 KPI CELLS (Single-Elevation Hairline Grid) */}
+      {/* 2. 4 KPI CELLS (Calm Neutral Hairline Grid) */}
       <section
         data-guide-id="dashboard-kpis"
         aria-label={lang === 'th' ? 'ตัวชี้วัดหลักสถานศึกษา' : 'Key Campus Metrics'}
@@ -533,16 +519,16 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             onClick={() => {
               if (isModuleEnabled('attendance')) onNavigate('attendance');
             }}
-            className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
+            className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="type-meta font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="type-meta font-medium">
                 {lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
             </div>
             <div className="flex items-baseline gap-2.5 min-w-0">
-              <span className="type-kpi tabular-nums text-emerald-700 dark:text-emerald-300">{onTimePercent}%</span>
+              <span className="type-kpi tabular-nums">{onTimePercent}%</span>
               <span className="type-meta tabular-nums truncate">
                 {lang === 'th' ? `เช็ค ${presentCount}/${totalForDate} · สาย ${lateCount}` : `${presentCount}/${totalForDate} · ${lateCount} late`}
               </span>
@@ -557,10 +543,10 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               else if (pendingSlipCount > 0 && canViewFinancials) onNavigate('billing');
               else if (isModuleEnabled('homework')) onNavigate('homework');
             }}
-            className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
+            className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="type-meta font-semibold text-amber-700 dark:text-amber-300">
+              <span className="type-meta font-medium">
                 {lang === 'th' ? 'รอดำเนินการ & อนุมัติ' : 'Pending Actions'}
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
@@ -583,16 +569,16 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             onClick={() => {
               if (isModuleEnabled('students')) onNavigate('students');
             }}
-            className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
+            className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="type-meta font-semibold text-blue-700 dark:text-blue-300">
+              <span className="type-meta font-medium">
                 {lang === 'th' ? 'ผู้เรียน & วิชาการ' : 'Students & Academics'}
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
             </div>
             <div className="flex items-baseline gap-2.5 min-w-0">
-              <span className="type-kpi tabular-nums text-blue-700 dark:text-blue-300">{totalStudents}</span>
+              <span className="type-kpi tabular-nums">{totalStudents}</span>
               <span className="type-meta tabular-nums truncate">
                 {lang === 'th' ? `ครู ${teachersCount} · วิชา ${coursesCount} · คาบ ${todayScheduledSlots.length}` : `${teachersCount} staff · ${coursesCount} courses`}
               </span>
@@ -606,16 +592,16 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               onClick={() => {
                 if (isModuleEnabled('courses')) onNavigate('courses');
               }}
-              className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
+              className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="type-meta font-semibold text-violet-700 dark:text-violet-300">
+                <span className="type-meta font-medium">
                   {lang === 'th' ? 'รายวิชา & ตารางสอน' : 'Courses & Schedule'}
                 </span>
                 <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
               </div>
               <div className="flex items-baseline gap-2.5 min-w-0">
-                <span className="type-kpi tabular-nums text-violet-700 dark:text-violet-300">{coursesCount}</span>
+                <span className="type-kpi tabular-nums">{coursesCount}</span>
                 <span className="type-meta tabular-nums truncate">
                   {lang === 'th' ? `วิชา · คาบวันนี้ ${todayScheduledSlots.length} · ครู ${teachersCount}` : `${todayScheduledSlots.length} slots · ${teachersCount} staff`}
                 </span>
@@ -625,16 +611,16 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             <button
               type="button"
               onClick={() => onOpenDrawer('guardian_line')}
-              className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
+              className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="type-meta font-semibold text-violet-700 dark:text-violet-300">
+                <span className="type-meta font-medium">
                   {lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition'}
                 </span>
                 <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
               </div>
               <div className="flex items-baseline gap-2.5 min-w-0">
-                <span className="type-kpi tabular-nums text-violet-700 dark:text-violet-300">{linePercent}%</span>
+                <span className="type-kpi tabular-nums">{linePercent}%</span>
                 <span className="type-meta tabular-nums truncate">
                   {canViewFinancials
                     ? (lang === 'th' ? `${lineConnectedCount}/${totalStudents} บ้าน · เก็บค่าเทอม ${collectionRate}%` : `${lineConnectedCount} LINE · ${collectionRate}% paid`)

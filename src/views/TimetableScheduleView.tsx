@@ -1799,12 +1799,12 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
 
   return (
-    <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
+    <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-4`}>
       {/* Single-Row Page Heading and Schedule Mode Switcher */}
-      <div className="shrink-0 px-4 py-2.5 app-page-header print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="tone-chip w-7 h-7 rounded-lg shrink-0">
+      <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="tone-chip w-8 h-8 rounded-lg shrink-0">
               <Calendar className="w-4 h-4 shrink-0" />
             </span>
             <h1 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
@@ -1812,16 +1812,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             </h1>
             <ModuleTourTrigger moduleId="timetable" lang={lang} floating />
           </div>
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="seg-tab-group max-w-full overflow-x-auto no-scrollbar">
               <button
                 type="button"
                 aria-pressed={viewMode === 'classroom'}
                 data-active={viewMode === 'classroom'}
                 onClick={() => handleViewModeChange('classroom')}
-                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+                className="seg-tab-btn"
               >
-                <Layers className="h-3.5 w-3.5" />
+                <Layers className="h-3.5 w-3.5 shrink-0" />
                 <span>ตารางห้อง</span>
               </button>
               {!isPersonalViewer && (
@@ -1830,9 +1830,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   aria-pressed={viewMode === 'period_rollcall'}
                   data-active={viewMode === 'period_rollcall'}
                   onClick={() => handleViewModeChange('period_rollcall')}
-                  className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+                  className="seg-tab-btn"
                 >
-                  <UserCheck className="h-3.5 w-3.5" />
+                  <UserCheck className="h-3.5 w-3.5 shrink-0" />
                   <span>เช็กชื่อรายคาบ</span>
                 </button>
               )}
@@ -1841,9 +1841,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 aria-pressed={viewMode === 'calendar'}
                 data-active={viewMode === 'calendar'}
                 onClick={() => handleViewModeChange('calendar')}
-                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+                className="seg-tab-btn"
               >
-                <Calendar className="h-3.5 w-3.5" />
+                <Calendar className="h-3.5 w-3.5 shrink-0" />
                 <span>ปฏิทิน</span>
               </button>
               <button
@@ -1851,9 +1851,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 aria-pressed={viewMode === 'hours_criteria'}
                 data-active={viewMode === 'hours_criteria'}
                 onClick={() => handleViewModeChange('hours_criteria')}
-                className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+                className="seg-tab-btn"
               >
-                <ShieldCheck className="h-3.5 w-3.5" />
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                 <span>เวลาเรียน 80%</span>
               </button>
               {!isPersonalViewer && (
@@ -1863,9 +1863,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     aria-pressed={viewMode === 'workload'}
                     data-active={viewMode === 'workload'}
                     onClick={() => handleViewModeChange('workload')}
-                    className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+                    className="seg-tab-btn"
                   >
-                    <Users className="h-3.5 w-3.5" />
+                    <Users className="h-3.5 w-3.5 shrink-0" />
                     <span>ภาระงานครู</span>
                     {(lowWorkloadCount > 0 || highWorkloadCount > 0) && (
                       <span className="text-[11px] font-bold text-amber-600 dark:text-amber-300 tabular-nums">
@@ -1878,9 +1878,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     aria-pressed={viewMode === 'substitute'}
                     data-active={viewMode === 'substitute'}
                     onClick={() => handleViewModeChange('substitute')}
-                    className="seg-tab-btn inline-flex shrink-0 items-center gap-1"
+                    className="seg-tab-btn"
                   >
-                    <RefreshCw className="h-3.5 w-3.5" />
+                    <RefreshCw className="h-3.5 w-3.5 shrink-0" />
                     <span>หาครูสอนแทน</span>
                     {teacherLeavesToday.length > 0 && (
                       <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">

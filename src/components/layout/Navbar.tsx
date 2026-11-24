@@ -229,7 +229,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     !focusMode;
 
   return (
-    <header className="app-topbar h-14 sm:h-16 border-b border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-md shadow-[0_1px_2px_rgba(15,23,42,0.04)] text-[var(--color-text-body)] sticky top-0 z-30 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full">
+    <header className="app-topbar h-14 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-4 w-full max-w-full">
       {/* Zone 1: Brand + School Context + Consolidated Workspace Mode Dropdown */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {!focusMode && onToggleMobileMenu && (
@@ -288,7 +288,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setIsWorkspaceMenuOpen((prev) => !prev);
                 setIsAccountMenuOpen(false);
               }}
-              className="inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs hover:bg-[var(--color-primary-light)]/60 hover:border-[var(--color-primary)]/40 text-[13px] font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
+              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-border)]/50 text-[13px] font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
             >
               <ActiveWorkspaceIcon className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
               <span className="hidden xs:inline sm:inline">
@@ -385,29 +385,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {onToggleFocusMode && (
+        {onToggleFocusMode && focusMode && (
           <button
             type="button"
             data-guide-id="header-focus-toggle"
             onClick={onToggleFocusMode}
-            aria-pressed={focusMode}
-            title={
-              focusMode
-                ? (lang === 'th' ? 'แสดงแถบเมนูทั้งหมด (Ctrl+Shift+F)' : 'Show sidebar & menus (Ctrl+Shift+F)')
-                : (lang === 'th' ? 'ซ่อนแถบเมนูที่ไม่จำเป็น (โหมดโฟกัส · Ctrl+Shift+F)' : 'Hide non-essential menus (Focus Mode · Ctrl+Shift+F)')
-            }
-            className={
-              focusMode
-                ? 'inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] shadow-xs text-white text-[13px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-2'
-                : 'inline-flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-[13px] font-medium transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40'
-            }
+            aria-pressed={true}
+            title={lang === 'th' ? 'แสดงแถบเมนูทั้งหมด (Ctrl+Shift+F)' : 'Show sidebar & menus (Ctrl+Shift+F)'}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
           >
-            <Focus className="w-4 h-4 shrink-0" />
-            <span>
-              {focusMode
-                ? (lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus')
-                : (lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode')}
-            </span>
+            <Focus className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus'}</span>
           </button>
         )}
 
@@ -417,10 +405,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => onOpenGuide(currentRole === 'student' || currentRole === 'parent' ? 'student' : 'teacher')}
             aria-label={lang === 'th' ? 'เปิดคู่มือการใช้งาน' : 'Open user guide'}
             title={lang === 'th' ? 'คู่มือการใช้งาน' : 'User guide'}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
           >
-            <HelpCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">{lang === 'th' ? 'ช่วยเหลือ' : 'Help'}</span>
+            <HelpCircle className="h-[18px] w-[18px]" />
           </button>
         )}
 

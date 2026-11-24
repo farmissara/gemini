@@ -1278,15 +1278,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   };
 
   return (
-    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden gap-3`}>
+    <div className={`${getModuleTone('students')} h-full flex flex-col min-h-0 overflow-hidden gap-4`}>
       {accountsError && (
-        <div role="alert" className="shrink-0 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 px-3 py-2 text-xs text-rose-800 dark:text-rose-200 font-medium flex items-center justify-between gap-2">
+        <div role="alert" className="ui-alert ui-alert-danger shrink-0 justify-between">
           <span>{accountsError}</span>
           <button type="button" onClick={() => setAccountsError(null)} className="text-xs font-bold cursor-pointer">✕</button>
         </div>
       )}
       {accountsSuccess && (
-        <div role="status" className="shrink-0 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200 font-medium flex items-center justify-between gap-2">
+        <div role="status" className="ui-alert ui-alert-success shrink-0 justify-between">
           <span>{accountsSuccess}</span>
           <button type="button" onClick={() => setAccountsSuccess(null)} className="text-xs font-bold cursor-pointer">✕</button>
         </div>
@@ -1294,7 +1294,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* Clean Unified Workspace Header + Underline Tabs */}
       <div className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] print:hidden">
-        <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <span className="tone-chip w-8 h-8 rounded-lg">
               <Users className="w-4 h-4" />

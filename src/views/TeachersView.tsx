@@ -650,10 +650,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   };
 
   return (
-    <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
+    <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-4`}>
       {/* Compact Header and Controls */}
-      <div className="shrink-0 px-3.5 py-2.5 sm:px-4 app-page-header flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+      <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap min-w-0">
           <span className="tone-chip w-8 h-8 rounded-lg">
             <GraduationCap className="w-4 h-4" />
           </span>
@@ -670,7 +670,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               aria-pressed={staffPage === 'directory'}
               data-active={staffPage === 'directory'}
               onClick={() => setStaffPage('directory')}
-              className="seg-tab-btn inline-flex items-center gap-1.5"
+              className="seg-tab-btn"
             >
               <span>ทำเนียบบุคลากร</span>
             </button>
@@ -679,7 +679,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               aria-pressed={staffPage === 'organization'}
               data-active={staffPage === 'organization'}
               onClick={() => setStaffPage('organization')}
-              className="seg-tab-btn inline-flex items-center gap-1.5"
+              className="seg-tab-btn"
             >
               <Building2 className="h-3.5 w-3.5" />
               <span>ผังองค์กร</span>

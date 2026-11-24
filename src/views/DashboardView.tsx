@@ -893,10 +893,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Clean Role-Aware Top Bar: View Title + Unified Sub-Lenses + Direct Print/Fullscreen Actions */}
-      <div className="no-print shrink-0 saas-card px-3.5 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-3 min-w-0">
-          <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+      {/* Clean Editorial Header: View Title + Context + Unified Sub-Lenses + Direct Print/Focus Actions */}
+      <div className="no-print shrink-0 pb-3.5 border-b border-[var(--color-border)] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text-title)] truncate">
             {currentRole === 'teacher'
               ? (lang === 'th' ? 'โต๊ะทำงานครูวันนี้' : "Teacher's Desk")
               : (currentRole === 'admin' || currentRole === 'super_admin')
@@ -907,6 +907,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     ? (lang === 'th' ? 'ภาพรวมการเรียนของฉัน' : 'My Learning Overview')
                     : (lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn)}
           </h1>
+          {isStaffUser && (
+            <span className="text-xs text-[var(--color-text-muted)] truncate tabular-nums">
+              {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn} · {selectedDate}
+            </span>
+          )}
           {dashboardTab !== 'overview' && dashboardTab !== 'realtime_daily' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
             <button
               type="button"
@@ -920,13 +925,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto min-w-0 justify-between sm:justify-end">
-          <div data-guide-id="dashboard-subtabs" className="seg-tab-group inline-flex gap-0.5 overflow-x-auto max-w-full">
+        <div className="flex items-center gap-2 w-full xl:w-auto min-w-0 justify-between xl:justify-end">
+          <div data-guide-id="dashboard-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar max-w-full">
             <button
               type="button"
               data-active={dashboardTab === 'overview'}
               onClick={() => setDashboardTab('overview')}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
+              className="seg-tab-btn"
             >
               {(currentRole === 'admin' || currentRole === 'super_admin')
                 ? (lang === 'th' ? 'ภาพรวม' : 'Overview')
@@ -938,10 +943,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 data-active={dashboardTab === 'realtime_daily'}
                 onClick={() => setDashboardTab('realtime_daily')}
-                className="seg-tab-btn whitespace-nowrap shrink-0 inline-flex items-center gap-1"
+                className="seg-tab-btn"
               >
                 <Activity className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'เรียลไทม์ประจำวัน' : 'Live Daily'}</span>
+                <span>{lang === 'th' ? 'เรียลไทม์วันนี้' : 'Live Daily'}</span>
               </button>
             )}
 
@@ -1444,14 +1449,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 >
                   <div>
                     <div className="saas-card-header">
-                      <div className="min-w-0">
-                        <p className="type-meta font-semibold text-[var(--color-primary-text)]">
-                          {lang === 'th' ? '01 · เตรียมก่อนสอน' : '01 · Prepare'}
-                        </p>
-                        <h2 className="type-section-title truncate">
-                          {lang === 'th' ? 'ตารางสอนวันนี้ของฉัน' : "Today's Teaching Schedule"}
-                        </h2>
-                      </div>
+                      <h2 className="type-section-title truncate">
+                        {lang === 'th' ? 'ตารางสอนวันนี้ของฉัน' : "Today's Teaching Schedule"}
+                      </h2>
                       <button
                         type="button"
                         onClick={() => onNavigate('timetable')}
@@ -1569,9 +1569,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div>
                     <div className="saas-card-header">
                       <div className="min-w-0">
-                        <p className="type-meta font-semibold text-[var(--color-primary-text)] mb-1">
-                          {lang === 'th' ? '02 · เช็คชื่อและติดตามงาน' : '02 · Attendance & follow-up'}
-                        </p>
                         <div className="seg-tab-group">
                           <button
                             type="button"

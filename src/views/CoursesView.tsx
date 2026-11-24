@@ -539,10 +539,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   };
 
   return (
-    <div className={`${getModuleTone('courses')} h-full flex flex-col min-h-0 overflow-hidden space-y-2.5`}>
+    <div className={`${getModuleTone('courses')} h-full flex flex-col min-h-0 overflow-hidden space-y-4`}>
       {/* Compact Single-Row Header */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 sm:px-4 app-page-header">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 app-page-header">
+        <div className="flex items-center gap-3 min-w-0">
           <span className="tone-chip w-8 h-8 rounded-lg">
             <BookOpen className="w-4 h-4" />
           </span>
@@ -947,35 +947,35 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
 
                 {/* Academic Hours & 80% Criteria Box */}
-                <div className="p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-blue-950 dark:text-blue-100">
+                <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-[var(--color-text-title)]">
                     <span className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <ShieldCheck className="w-4 h-4 text-[var(--color-primary-text)]" />
                       <span>หลักเกณฑ์ชั่วโมงเรียนและการมีสิทธิ์สอบ (ปพ.5)</span>
                     </span>
                     {shouldShowCourseCredits(activeCourse.code, showPrimaryCourseCredits) && (
-                      <span className="font-mono text-blue-800 dark:text-blue-200">
+                      <span className="font-mono text-[var(--color-text-body)] tabular-nums">
                         {activeCourse.credits === 0 ? 'ไม่มีหน่วยกิต' : `${activeCourse.credits} หน่วยกิต`}
                       </span>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-text-muted)]">ชั่วโมง/สัปดาห์</div>
-                      <div className="font-bold text-[var(--color-text-title)]">
-                        {activeCourse.weeklyHours ?? (activeCourse.credits > 0 ? Math.round(activeCourse.credits * 2) : 1)} ชั่วโมง
+                  <div className="grid grid-cols-3 gap-2.5 text-center text-xs">
+                    <div className="p-2.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
+                      <div className="text-[11px] text-[var(--color-text-muted)]">ชั่วโมง/สัปดาห์</div>
+                      <div className="font-bold text-[var(--color-text-title)] tabular-nums mt-0.5">
+                        {activeCourse.weeklyHours ?? (activeCourse.credits > 0 ? Math.round(activeCourse.credits * 2) : 1)} ชม.
                       </div>
                     </div>
-                    <div className="p-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-text-muted)]">ชั่วโมงรวม/เทอม</div>
-                      <div className="font-bold text-[var(--color-text-title)]">
+                    <div className="p-2.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
+                      <div className="text-[11px] text-[var(--color-text-muted)]">ชั่วโมงรวม/เทอม</div>
+                      <div className="font-bold text-[var(--color-text-title)] tabular-nums mt-0.5">
                         {activeCourse.totalHours ?? (activeCourse.credits > 0 ? activeCourse.credits * 40 : 20)} ชม.
                       </div>
                     </div>
-                    <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700">
-                      <div className="text-[10px] text-emerald-800 dark:text-emerald-200">เกณฑ์ 80% มีสิทธิ์สอบ</div>
-                      <div className="font-bold text-emerald-900 dark:text-emerald-100">
+                    <div className="p-2.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
+                      <div className="text-[11px] text-[var(--color-text-muted)]">เกณฑ์ 80% มีสิทธิ์สอบ</div>
+                      <div className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums mt-0.5">
                         {activeCourse.minAttendanceHours ?? Math.round((activeCourse.totalHours ?? (activeCourse.credits > 0 ? activeCourse.credits * 40 : 20)) * 0.8)} ชม.
                       </div>
                     </div>
