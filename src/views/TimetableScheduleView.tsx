@@ -1862,11 +1862,29 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               setHoursTeacherFilter('all');
             }
           }}
-          className="btn-tool-neutral min-h-8 px-2.5 py-1 text-xs"
-          title={myCoursesOnly ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูทั้งโรงเรียน' : 'กรองเฉพาะวิชาที่ฉันสอน'}
+          className={`btn-tool-neutral min-h-8 px-2.5 py-1 text-xs ${
+            myCoursesOnly
+              ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
+              : ''
+          }`}
+          title={
+            myCoursesOnly
+              ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูวิชาของครูทุกคน'
+              : currentRole === 'teacher'
+                ? 'กำลังแสดงตารางทั้งหมดที่คุณมีสิทธิ์ดู คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
+                : 'กำลังแสดงวิชาของครูทุกคน คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
+          }
         >
-          <UserCheck className="h-3.5 w-3.5 tone-text" />
-          <span>เฉพาะวิชาที่ฉันสอน</span>
+          {myCoursesOnly
+            ? <UserCheck className="h-3.5 w-3.5 tone-text" />
+            : <Users className="h-3.5 w-3.5 tone-text" />}
+          <span>
+            {myCoursesOnly
+              ? 'เฉพาะวิชาที่ฉันสอน'
+              : currentRole === 'teacher'
+                ? 'ทุกวิชาที่เข้าถึงได้'
+                : 'วิชาของครูทุกคน'}
+          </span>
         </button>
       )}
       {showRoomFilter && (activeScheduleFilters ? (
