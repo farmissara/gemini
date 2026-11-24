@@ -830,7 +830,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             type="button"
             data-guide-id="attendance-rapid-scanner"
             onClick={() => setShowRapidScannerModal(true)}
-            className="btn-action-primary px-3 py-1.5"
+            className="btn-action-primary h-9 px-3"
             title="เปิดโหมดกล้องสแกน QR / บาร์โค้ดต่อเนื่อง (1 วินาที/คน)"
           >
             <Camera className="w-3.5 h-3.5" />
@@ -1042,46 +1042,24 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           {/* Realtime Attendance Logs & Filter Component */}
           <div className="lg:col-span-2 saas-card text-[var(--color-text-body)]">
             <div className="saas-card-header">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="type-section-title flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                    <span>บันทึกการเข้า-ออก</span>
-                  </h2>
-                  <span className="type-meta">
-                    ·{' '}
-                    {startDateFilter && endDateFilter
-                      ? startDateFilter === endDateFilter
-                        ? startDateFilter
-                        : `${startDateFilter} – ${endDateFilter}`
-                      : startDateFilter
-                        ? `ตั้งแต่ ${startDateFilter}`
-                        : endDateFilter
-                          ? `ถึง ${endDateFilter}`
-                          : 'ทุกวันที่'}{' '}
-                    · {displayedFilteredLogs.length} รายการ
-                  </span>
-                </div>
-                {!isRestrictedViewer && (
-                  <div className="seg-tab-group mt-1.5">
-                    <button
-                      type="button"
-                      data-active={logScopeFilter === 'all'}
-                      onClick={() => setLogScopeFilter('all')}
-                      className="seg-tab-btn px-2 py-0.5 text-[11px]"
-                    >
-                      ทั้งหมด ({filteredLogs.length})
-                    </button>
-                    <button
-                      type="button"
-                      data-active={logScopeFilter === 'mine'}
-                      onClick={() => setLogScopeFilter('mine')}
-                      className="seg-tab-btn px-2 py-0.5 text-[11px]"
-                    >
-                      เฉพาะฉัน ({filteredLogs.filter(a => a.studentId === loggedInProfile.targetId || a.userName === loggedInProfile.userName || (currentUser && (a.studentId === currentUser.id || a.studentId === currentUser.studentRecordId))).length})
-                    </button>
-                  </div>
-                )}
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <h2 className="type-section-title flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                  <span>บันทึกการเข้า-ออก</span>
+                </h2>
+                <span className="type-meta tabular-nums">
+                  ·{' '}
+                  {startDateFilter && endDateFilter
+                    ? startDateFilter === endDateFilter
+                      ? startDateFilter
+                      : `${startDateFilter} – ${endDateFilter}`
+                    : startDateFilter
+                      ? `ตั้งแต่ ${startDateFilter}`
+                      : endDateFilter
+                        ? `ถึง ${endDateFilter}`
+                        : 'ทุกวันที่'}{' '}
+                  · {displayedFilteredLogs.length} รายการ
+                </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1173,10 +1151,31 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </div>
               )}
 
-              {/* Clean Filter Component: Primary presets + Room + Expandable Advanced Filters */}
+              {/* Clean Filter Component: Scope + Presets + Room + Expandable Filters */}
               <div className="app-filter-bar space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
+                    {!isRestrictedViewer && (
+                      <div className="seg-tab-group">
+                        <button
+                          type="button"
+                          data-active={logScopeFilter === 'all'}
+                          onClick={() => setLogScopeFilter('all')}
+                          className="seg-tab-btn"
+                        >
+                          ทั้งหมด ({filteredLogs.length})
+                        </button>
+                        <button
+                          type="button"
+                          data-active={logScopeFilter === 'mine'}
+                          onClick={() => setLogScopeFilter('mine')}
+                          className="seg-tab-btn"
+                        >
+                          เฉพาะฉัน ({filteredLogs.filter(a => a.studentId === loggedInProfile.targetId || a.userName === loggedInProfile.userName || (currentUser && (a.studentId === currentUser.id || a.studentId === currentUser.studentRecordId))).length})
+                        </button>
+                      </div>
+                    )}
+
                     <div className="saas-control-group">
                       <button
                         type="button"
@@ -1212,7 +1211,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       aria-label="กรองตามห้องเรียน"
                       value={classFilter}
                       onChange={(e) => setClassFilter(e.target.value)}
-                      className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card-subtle)] font-medium"
+                      className="h-8 px-2.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-title)] bg-[var(--color-card)] font-medium"
                     >
                       <option value="all">ทุกห้อง ({availableClasses.length})</option>
                       {availableClasses.map((room) => (
@@ -1228,7 +1227,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       type="button"
                       data-active={showMoreFilters || teacherFilter !== 'all' || courseFilter !== 'all'}
                       onClick={() => setShowMoreFilters((v) => !v)}
-                      className="btn-tool-neutral px-2.5 py-1.5"
+                      className="btn-tool-neutral h-8 px-2.5"
                       title="ตัวกรองเพิ่มเติม (ช่วงวันที่ ครู รายวิชา)"
                     >
                       <Filter className="w-3.5 h-3.5" />

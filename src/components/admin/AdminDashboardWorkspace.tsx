@@ -443,9 +443,32 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
       {/* 1. CLEAN EXECUTIVE BRIEF HEADER */}
       <section
         aria-label={lang === 'th' ? 'ทางลัดผู้บริหารสถานศึกษา' : 'Executive shortcuts'}
-        className="no-print morning-brief-strip px-5 py-3 flex justify-end"
+        className="no-print morning-brief-strip px-4 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5"
       >
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 text-xs text-[var(--color-text-muted)] tabular-nums">
+          <span className="font-semibold text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {lang === 'th' ? `วันที่ ${selectedDate}` : selectedDate}
+            {todayHoliday
+              ? ` (${todayHoliday.nameTh})`
+              : isTodayWeekend
+                ? (lang === 'th' ? ' (วันหยุดสุดสัปดาห์)' : ' (Weekend)')
+                : ''}
+          </span>
+          {teacherLeavesTodayCount > 0 && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="font-medium text-amber-700 dark:text-amber-300">
+                {lang === 'th' ? `ครูลาวันนี้ ${teacherLeavesTodayCount} ท่าน` : `${teacherLeavesTodayCount} staff on leave`}
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {onToggleSimplifiedView && (
             <button
               type="button"
@@ -459,39 +482,39 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               }
               className={
                 simplifiedView
-                  ? 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap'
-                  : 'btn-tool-neutral px-3.5 py-2 whitespace-nowrap'
+                  ? 'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap'
+                  : 'btn-tool-neutral h-9 px-3 whitespace-nowrap'
               }
             >
               <Layers className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'มุมมองแบบกระชับ' : 'Simplified View'}</span>
+              <span>{lang === 'th' ? 'มุมมองกระชับ' : 'Simplified'}</span>
             </button>
           )}
           <button
             type="button"
             onClick={onExportCsv}
-            className="btn-tool-neutral px-3.5 py-2 whitespace-nowrap"
+            className="btn-tool-neutral h-9 px-3 whitespace-nowrap"
           >
             <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-            <span>{lang === 'th' ? 'ส่งออก CSV วันนี้' : 'Export CSV'}</span>
+            <span>{lang === 'th' ? 'ส่งออก CSV' : 'Export CSV'}</span>
           </button>
           <button
             type="button"
             onClick={() => onSelectSubTab('realtime_daily')}
-            className="btn-tool-tone px-3.5 py-2 whitespace-nowrap"
+            className="btn-tool-tone h-9 px-3 whitespace-nowrap"
             title={lang === 'th' ? 'เปิดเรดาร์เช็กอินใบหน้า ขาด/ลา/สาย และความพร้อมห้องเรียนแบบเรียลไทม์' : 'Open Real-Time Daily Radar'}
           >
             <Activity className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'เรียลไทม์ประจำวัน' : 'Live Daily Radar'}</span>
+            <span>{lang === 'th' ? 'เรียลไทม์วันนี้' : 'Live Radar'}</span>
           </button>
           {isModuleEnabled('attendance') && (
             <button
               type="button"
               onClick={() => onNavigate('attendance')}
-              className="btn-action-primary px-3.5 py-2 whitespace-nowrap"
+              className="btn-action-primary h-9 px-3 whitespace-nowrap"
             >
               <QrCode className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เช็คชื่อโรงเรียน' : 'Attendance'}</span>
+              <span>{lang === 'th' ? 'เช็คชื่อ' : 'Attendance'}</span>
             </button>
           )}
         </div>

@@ -894,7 +894,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Clean Role-Aware Top Bar: View Title + Unified Sub-Lenses + Direct Print/Fullscreen Actions */}
-      <div className="no-print shrink-0 saas-card px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="no-print shrink-0 saas-card px-3.5 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
             {currentRole === 'teacher'
@@ -1008,7 +1008,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="btn-icon-tool cursor-pointer"
+                className="btn-icon-tool h-9 w-9 cursor-pointer"
                 title={lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF Report'}
                 aria-label={lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF Report'}
               >
@@ -1032,8 +1032,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }
               className={
                 isFocusMode
-                  ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0'
-                  : 'btn-icon-tool cursor-pointer'
+                  ? 'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0'
+                  : 'btn-icon-tool h-9 w-9 cursor-pointer'
               }
             >
               <Focus className={isFocusMode ? 'w-3.5 h-3.5 shrink-0' : 'w-4 h-4'} />

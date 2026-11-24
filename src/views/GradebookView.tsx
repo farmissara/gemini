@@ -1506,25 +1506,28 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden ${embeddedInStudentManagement ? 'space-y-1.5' : 'space-y-2.5'}`}>
-      {/* Gradebook title, clean tab switcher, and actions */}
-      <div className={`shrink-0 app-page-header flex flex-wrap items-center justify-between gap-x-4 gap-y-2 print:hidden ${
-        embeddedInStudentManagement ? 'px-2.5 py-1.5' : 'px-4 py-2.5'
+      {/* Gradebook Header: Slim sub-toolbar when embedded inside StudentsView; clean single header standalone */}
+      <div className={`shrink-0 flex flex-wrap items-center justify-between gap-2.5 print:hidden ${
+        embeddedInStudentManagement
+          ? 'px-1 py-1 border-b border-[var(--color-border)]'
+          : 'app-page-header px-4 py-2.5'
       }`}>
-        <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
+        <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap">
           {!embeddedInStudentManagement && (
-            <>
+            <div className="flex items-center gap-2.5 min-w-0">
               <span className="tone-chip w-7 h-7 rounded-lg shrink-0">
                 <Award className="w-4 h-4" />
               </span>
-              <h1 className="text-base md:text-xl font-bold text-[var(--color-text-title)] leading-tight truncate">
+              <h1 className="text-base md:text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
                 {isPersonalGradeViewer
                   ? 'ผลการเรียน & ใบ ปพ.6'
                   : 'บันทึกคะแนน & งานทะเบียน'}
               </h1>
-            </>
+            </div>
           )}
+
           {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
-            <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-sm shrink-0">
+            <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-xs shrink-0">
               <button
                 type="button"
                 disabled={isUpdatingGradingMode}
@@ -1558,7 +1561,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </span>
           )}
 
-          {/* Clean Top-Level Tabs */}
+          {/* Clean Inline Tabs */}
           {isPersonalGradeViewer ? (
             <div data-guide-id="gradebook-tabs" className="seg-tab-group text-[11px]">
               <button
@@ -1581,11 +1584,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           ) : (
             <div
               data-guide-id="gradebook-tabs"
-              className={`flex flex-wrap items-center justify-between gap-2 ${
-                embeddedInStudentManagement
-                  ? ''
-                  : 'w-full basis-full pt-1 border-t border-[var(--color-border)]/70'
-              }`}
+              className="flex flex-wrap items-center gap-2"
             >
               <div className="seg-tab-group overflow-x-auto no-scrollbar">
                 <button
@@ -1596,7 +1595,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   }}
                   className="seg-tab-btn whitespace-nowrap"
                 >
-                  {lang === 'th' ? 'บันทึกคะแนนรายวิชา' : 'Course Grading'}
+                  {lang === 'th' ? 'บันทึกคะแนน' : 'Course Grading'}
                 </button>
                 {!embeddedInStudentManagement && (
                   <button
@@ -1605,7 +1604,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     onClick={() => setActiveTab('moe_student_hub')}
                     className="seg-tab-btn whitespace-nowrap"
                   >
-                    {lang === 'th' ? 'รายชื่อเด็ก & งานทะเบียน (ปพ.1–8)' : 'Student Registry & Docs'}
+                    {lang === 'th' ? 'ทะเบียน ปพ.1–8' : 'Registry & Docs'}
                   </button>
                 )}
                 <button
@@ -1616,32 +1615,30 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                   }}
                   className="seg-tab-btn whitespace-nowrap"
                 >
-                  {lang === 'th' ? 'รายงานสรุป & ส่งออก สพฐ.' : 'Reports & OBEC Export'}
+                  {lang === 'th' ? 'รายงาน สพฐ.' : 'OBEC Reports'}
                 </button>
               </div>
 
               {primarySection === 'reports' && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    aria-label={lang === 'th' ? 'เลือกแบบรายงาน' : 'Select report'}
-                    value={activeTab}
-                    onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
-                    className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-xs font-bold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
-                  >
-                    {REPORT_VIEW_OPTIONS.map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {lang === 'th' ? opt.labelTh : opt.labelEn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  aria-label={lang === 'th' ? 'เลือกแบบรายงาน' : 'Select report'}
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
+                  className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
+                >
+                  {REPORT_VIEW_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {lang === 'th' ? opt.labelTh : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
           )}
         </div>
 
         <div className="shrink-0 flex items-center justify-end gap-1.5 flex-wrap">
-          <ModuleTourTrigger moduleId="gradebook" lang={lang} />
+          {!embeddedInStudentManagement && <ModuleTourTrigger moduleId="gradebook" lang={lang} />}
 
           {activeTab === 'pp3_online' && (
             <button
@@ -1781,9 +1778,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
         return (
           <div data-guide-id="gradebook-course-bar" className={`shrink-0 toolbar-filter-zone print:hidden ${
-            embeddedInStudentManagement ? 'space-y-1 py-1.5 px-2.5' : 'space-y-2 py-3 px-4'
+            embeddedInStudentManagement ? 'space-y-1.5 py-1.5 px-2.5' : 'space-y-2 py-2 px-3'
           }`}>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               {loggedInTeacherFilterKey && (
                 <button
                   type="button"
@@ -1800,14 +1797,14 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     setPp5Page(0);
                   }}
                   data-active={isMyCoursesFilterActive}
-                  className="btn-tool-neutral px-2 py-1 text-[11px] shrink-0"
+                  className="btn-tool-neutral h-9 px-2.5 text-xs shrink-0"
                   title={
                     isMyCoursesFilterActive
                       ? 'คลิกเพื่อดูรายวิชาของครูทุกคนในโรงเรียน'
                       : 'คลิกเพื่อกรองเฉพาะรายวิชาที่คุณสอน'
                   }
                 >
-                  <UserCheck className="w-3 h-3" />
+                  <UserCheck className="w-3.5 h-3.5" />
                   <span>
                     {isMyCoursesFilterActive
                       ? `วิชาของฉัน (${loggedInTeacherOption?.count ?? filteredCourses.length})`
@@ -1817,7 +1814,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               )}
 
               {/* Primary Course Select */}
-              <div className="flex items-center gap-1.5 flex-1 min-w-[220px]">
+              <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
                 <BookOpen className="w-3.5 h-3.5 text-[var(--tone)] shrink-0" />
                 <select
                   aria-label="เลือกรายวิชา"
@@ -1832,7 +1829,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     setGradeStatusFilter('all');
                   }}
                   disabled={courseSelectOptions.length === 0}
-                  className="w-full h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] disabled:opacity-60"
+                  className="w-full h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] disabled:opacity-60"
                 >
                   {courseSelectOptions.length === 0 ? (
                     <option value="">ไม่พบรายวิชาที่ตรงกับตัวกรอง</option>
@@ -1851,7 +1848,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               {/* Evaluation settings and score modes */}
               {!isPersonalGradeViewer && (activeTab === 'gradebook' || activeTab === 'indicators') && (
                 <details className="relative shrink-0">
-                  <summary className="btn-tool-tone list-none h-8 px-2.5 text-xs cursor-pointer">
+                  <summary className="btn-tool-tone list-none h-9 px-2.5 text-xs cursor-pointer">
                     <Calculator className="w-3.5 h-3.5 tone-text" />
                     <span>เกณฑ์ประเมิน</span>
                     <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
@@ -1907,8 +1904,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
               {/* Student Live Search */}
               {!isPersonalGradeViewer && (
-                <div className="relative w-full sm:w-60 shrink-0">
-                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                <div className="relative w-full sm:w-52 shrink-0">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]" />
                   <input
                     type="text"
                     value={studentSearchTerm}
@@ -1918,9 +1915,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                       setPp5Page(0);
                     }}
                     placeholder="ค้นหานักเรียน / ห้อง..."
-                    className={`w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] pl-9 pr-8 text-sm text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] ${
-                      embeddedInStudentManagement ? 'h-9' : 'h-11'
-                    }`}
+                    className="w-full h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] pl-8 pr-7 text-xs text-[var(--color-text-title)] outline-none focus:border-[var(--tone)]"
                   />
                   {studentSearchTerm && (
                     <button
@@ -1943,28 +1938,21 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               {!isPersonalGradeViewer && (
                 <button
                   type="button"
+                  data-active={showMoreFilters || extraFilterCount > 0}
                   onClick={() => setShowMoreFilters((prev) => !prev)}
-                  className={`inline-flex items-center gap-2 rounded-xl border font-semibold cursor-pointer transition shrink-0 ${
-                    embeddedInStudentManagement ? 'h-9 px-2.5 text-xs' : 'h-11 px-4 text-sm'
-                  } ${
-                    showMoreFilters || extraFilterCount > 0
-                      ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
-                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                  }`}
+                  className="btn-tool-neutral h-9 px-3 text-xs shrink-0"
                 >
-                  <Filter className="w-3 h-3" />
+                  <Filter className="w-3.5 h-3.5" />
                   <span>ตัวกรอง{extraFilterCount > 0 ? ` (${extraFilterCount})` : ''}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${showMoreFilters ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreFilters ? 'rotate-180' : ''}`} />
                 </button>
               )}
 
               {!isPersonalGradeViewer && (
-                <span className={`inline-flex items-center rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] font-mono font-bold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap ${
-                  embeddedInStudentManagement ? 'h-9 px-2.5 text-xs' : 'h-11 px-4 text-sm'
-                }`}>
+                <span className="text-xs font-semibold text-[var(--color-text-muted)] tabular-nums whitespace-nowrap px-1">
                   {activeTab === 'gradebook'
                     ? gradebookRows.length > 0
-                      ? `${filteredGradebookRows.length}/${gradebookRows.length}`
+                      ? `${filteredGradebookRows.length}/${gradebookRows.length} คน`
                       : '—'
                     : courseGrades.length > 0
                       ? `${courseGrades.length} คน`

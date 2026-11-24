@@ -10,6 +10,7 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -1077,84 +1078,94 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     >
       {/* Top Executive Command Header */}
       <div
-        className={`rounded-xl p-3 sm:p-3.5 space-y-2 ${
+        className={`rounded-xl px-3.5 py-2.5 sm:px-4 space-y-2.5 ${
           isTvMode ? 'bg-slate-900 border border-slate-800 text-slate-100' : 'app-page-header'
         }`}
       >
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2">
-          <div className="flex items-start gap-3 min-w-0">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             {!isTvMode && (
-              <div className="w-8 h-8 rounded-lg tone-chip shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
                 <Monitor className="w-4 h-4" />
               </div>
             )}
-            <div className="space-y-0.5 min-w-0">
-              <div className={`text-xs font-medium flex flex-wrap items-center gap-2 ${mutedText}`}>
-                <span className="font-bold text-[var(--tone)]">
-                  {isTvMode ? 'โหมดจอทีวีผู้บริหาร' : 'ศูนย์ติดตามรายงานผู้บริหาร'}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span className="truncate">{activeSchool.nameTh}</span>
-                <span aria-hidden="true">·</span>
-                <span className="tabular-nums">
-                  ปีการศึกษา {activeSchool.academicYear || '2569'}/{activeSchool.currentSemester || '1'}
-                </span>
-              </div>
-              <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight ${titleText}`}>
+            <div className="min-w-0">
+              <h1 className={`text-base sm:text-lg font-bold tracking-tight truncate ${titleText}`}>
                 {isTvMode
                   ? 'ศูนย์แสดงผลรายงานภาพรวมโรงเรียนแบบเรียลไทม์'
-                  : 'แดชบอร์ดติดตามรายงานผู้บริหาร (Executive Report Monitor)'}
+                  : 'แดชบอร์ดติดตามรายงานผู้บริหาร'}
               </h1>
+              <p className={`text-xs truncate tabular-nums ${mutedText}`}>
+                {activeSchool.nameTh} · ปีการศึกษา {activeSchool.academicYear || '2569'}/{activeSchool.currentSemester || '1'}
+              </p>
             </div>
           </div>
 
           {/* Right: Live Clock + Export & TV Actions */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className={`px-3 py-1.5 rounded-lg border text-right tabular-nums ${subtleSurface}`}>
-              <div className={`text-sm font-extrabold leading-tight flex items-center gap-1.5 justify-end ${titleText}`}>
-                <Clock className="w-3.5 h-3.5 text-[var(--tone)]" />
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className={`text-right tabular-nums leading-tight pr-2.5 border-r ${isTvMode ? 'border-slate-800' : 'border-[var(--color-border)]'}`}>
+              <div className={`text-xs sm:text-sm font-bold flex items-center gap-1.5 justify-end ${titleText}`}>
+                <Clock className="w-3.5 h-3.5 text-[var(--tone)] shrink-0" />
                 <span>{formattedClock}</span>
               </div>
-              <div className={`text-[10px] ${mutedText}`}>{formattedThaiDate}</div>
+              <div className={`text-[11px] ${mutedText}`}>{formattedThaiDate}</div>
             </div>
 
             {!isTvMode ? (
-              <div className="flex flex-wrap items-center gap-1.5 print:hidden">
-                <button
-                  type="button"
-                  onClick={() => void handleCopyExecutiveBrief()}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-xs font-bold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap"
-                >
-                  {copiedBrief ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                  )}
-                  <span>{copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportCsv}
-                  className="btn-action-success whitespace-nowrap"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>ส่งออก CSV</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="btn-action-primary whitespace-nowrap"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>พิมพ์ A4</span>
-                </button>
+              <div className="flex items-center gap-1.5 print:hidden">
+                <details className="relative">
+                  <summary className="btn-tool-neutral list-none h-9 px-3 cursor-pointer whitespace-nowrap">
+                    <Download className="w-3.5 h-3.5 text-[var(--tone)]" />
+                    <span>{copiedBrief ? 'คัดลอกสรุปแล้ว' : 'ส่งออก / พิมพ์'}</span>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </summary>
+                  <div className="absolute right-0 top-full z-30 mt-1.5 min-w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        void handleCopyExecutiveBrief();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                    >
+                      {copiedBrief ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                      )}
+                      <span>{copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        handleExportCsv();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                      <span>ส่งออก CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        window.print();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                      <span>พิมพ์รายงาน A4</span>
+                    </button>
+                  </div>
+                </details>
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setAutoRotate((v) => !v)}
-                  className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-100 cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-100 cursor-pointer whitespace-nowrap"
                 >
                   {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                   <span>{autoRotate ? 'หยุดหมุน' : 'เล่นสไลด์'}</span>
@@ -1162,7 +1173,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                 <button
                   type="button"
                   onClick={() => void toggleFullscreen()}
-                  className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-semibold text-white cursor-pointer whitespace-nowrap"
                 >
                   {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                   <span>{isFullscreen ? 'ย่อหน้าจอ' : 'เต็มจอ TV'}</span>
@@ -1173,7 +1184,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
         </div>
 
         {/* Second Toolbar Row: Monitor Lenses + Scope Filters + Auto-Refresh */}
-        <div className="pt-2 border-t border-current/10 flex flex-col lg:flex-row lg:items-center justify-between gap-2 print:hidden">
+        <div className={`pt-2 border-t flex flex-col lg:flex-row lg:items-center justify-between gap-2 print:hidden ${isTvMode ? 'border-slate-800' : 'border-[var(--color-border)]'}`}>
           {/* Lens Switcher */}
           <div
             className={
@@ -1183,11 +1194,11 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             }
           >
             {[
-              { id: 'overview' as const, label: 'ภาพรวม & เรดาร์สด', icon: ActivityIcon },
-              { id: 'realtime' as const, label: 'เรียลไทม์วันนี้ (Live)', icon: Activity },
-              { id: 'rooms' as const, label: `เทียบรายห้อง (${roomMatrix.length})`, icon: FileSpreadsheet },
-              { id: 'academics' as const, label: 'วินัยคาบสอน & รายวิชา', icon: BookOpen },
-              { id: 'tv' as const, label: 'โหมดจอทีวี (TV)', icon: Monitor },
+              { id: 'overview' as const, label: 'ภาพรวม', icon: ActivityIcon },
+              { id: 'realtime' as const, label: 'เรียลไทม์วันนี้', icon: Activity },
+              { id: 'rooms' as const, label: `รายห้อง (${roomMatrix.length})`, icon: FileSpreadsheet },
+              { id: 'academics' as const, label: 'คาบสอน & รายวิชา', icon: BookOpen },
+              { id: 'tv' as const, label: 'โหมด TV', icon: Monitor },
             ].map((tab) => {
               const Icon = tab.icon;
               const active = lens === tab.id;
@@ -1199,7 +1210,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                   onClick={() => setLens(tab.id)}
                   className={
                     isTvMode
-                      ? `px-3 py-1.5 rounded-md text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      ? `px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
                           active ? 'bg-sky-600 text-white' : 'text-slate-300 hover:text-white'
                         }`
                       : 'seg-tab-btn inline-flex items-center gap-1.5 whitespace-nowrap shrink-0'
@@ -1216,7 +1227,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           <div className="flex flex-wrap items-center gap-1.5 text-xs min-w-0">
             {/* Timeframe */}
             <div
-              className={`inline-flex p-0.5 rounded-lg border ${
+              className={`inline-flex h-8 items-center p-0.5 rounded-lg border ${
                 isTvMode
                   ? 'bg-slate-950 border-slate-800'
                   : 'bg-[var(--color-card)] border-[var(--color-border)]'
@@ -1234,7 +1245,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                   key={tf.id}
                   type="button"
                   onClick={() => setTimeframe(tf.id)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer whitespace-nowrap ${
                     timeframe === tf.id
                       ? 'bg-[var(--color-primary)] text-white'
                       : `${mutedText} hover:opacity-100`
@@ -1250,41 +1261,41 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               aria-label="กรองตามระดับชั้น"
               value={selectedGradeLevel}
               onChange={(e) => setSelectedGradeLevel(e.target.value)}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold ${
+              className={`h-8 px-2.5 rounded-lg border text-xs font-medium ${
                 isTvMode
                   ? 'bg-slate-950 border-slate-700 text-slate-100'
                   : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)]'
               }`}
             >
-              <option value="all">ทุกระดับชั้น ({students.length} คน)</option>
+              <option value="all">ทุกระดับชั้น ({students.length})</option>
               {gradeLevelOptions.map((g) => (
                 <option key={g} value={g}>
-                  ระดับชั้น {g}
+                  ชั้น {g}
                 </option>
               ))}
             </select>
 
             {/* Auto-Refresh Monitor Timer */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <select
                 aria-label="รอบอัปเดตรายงานอัตโนมัติ"
                 value={autoRefreshSec}
                 onChange={(e) => setAutoRefreshSec(Number(e.target.value) as 0 | 30 | 60 | 300)}
-                className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold tabular-nums ${
+                className={`h-8 px-2 rounded-lg border text-[11px] font-medium tabular-nums ${
                   isTvMode
                     ? 'bg-slate-950 border-slate-700 text-slate-200'
                     : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)]'
                 }`}
               >
-                <option value={0}>อัปเดตอัตโนมัติ: ปิด</option>
-                <option value={30}>รีเฟรชทุก 30 วิ</option>
-                <option value={60}>รีเฟรชทุก 1 นาที</option>
-                <option value={300}>รีเฟรชทุก 5 นาที</option>
+                <option value={0}>รีเฟรช: ปิด</option>
+                <option value={30}>ทุก 30 วิ</option>
+                <option value={60}>ทุก 1 นาที</option>
+                <option value={300}>ทุก 5 นาที</option>
               </select>
               <button
                 type="button"
                 onClick={handleManualRefresh}
-                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold cursor-pointer transition whitespace-nowrap ${
+                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-[11px] font-semibold cursor-pointer transition whitespace-nowrap ${
                   isTvMode
                     ? 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700'
                     : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'

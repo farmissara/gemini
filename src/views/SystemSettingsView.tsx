@@ -728,283 +728,165 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     },
   ];
 
-  const isSchoolGroup = activeTab === 'school_general' || activeTab === 'school_gps';
-  const isLineGroup =
-    activeTab === 'line_events' ||
-    activeTab === 'line_connection' ||
-    activeTab === 'preview_simulator' ||
-    activeTab === 'subscribers';
-  const isStudentGroup = activeTab === 'student_accounts' || activeTab === 'student_login_config';
+  const rawSettingsNavSections: Array<{
+    groupLabel: string;
+    items: Array<{
+      id: SystemSettingsTab;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+      adminOnly?: boolean;
+    }>;
+  }> = [
+    {
+      groupLabel: lang === 'th' ? 'ศูนย์ควบคุม' : 'Control',
+      items: [
+        { id: 'control_overview', label: lang === 'th' ? 'ภาพรวมระบบ' : 'Overview', icon: LayoutGrid },
+        { id: 'school_permissions', label: lang === 'th' ? 'สิทธิ์บทบาท' : 'Permissions', icon: Shield, adminOnly: true },
+        { id: 'saas_audit', label: lang === 'th' ? 'แพ็กเกจ AI & Audit Log' : 'Packages & Audit', icon: Sliders, adminOnly: true },
+      ],
+    },
+    {
+      groupLabel: lang === 'th' ? 'สถานศึกษา & GPS' : 'Campus & GPS',
+      items: [
+        { id: 'school_general', label: lang === 'th' ? 'ข้อมูลโรงเรียน & สำรองข้อมูล' : 'General & Backup', icon: Building2 },
+        { id: 'school_gps', label: lang === 'th' ? 'พิกัด GPS & ประตู' : 'Campus GPS & Gates', icon: MapPin },
+      ],
+    },
+    {
+      groupLabel: lang === 'th' ? 'LINE OA & เวลาเรียน' : 'LINE & Cutoff',
+      items: [
+        { id: 'line_events', label: lang === 'th' ? 'เงื่อนไขแจ้งเตือน & ตัดสาย' : 'Events & Cutoff', icon: BellRing },
+        { id: 'line_connection', label: lang === 'th' ? 'LINE API & Webhook' : 'LINE API & Webhook', icon: MessageSquare },
+        { id: 'preview_simulator', label: lang === 'th' ? 'จำลองการ์ด Flex' : 'Flex Simulator', icon: Smartphone },
+        { id: 'subscribers', label: lang === 'th' ? 'ผู้รับแจ้งเตือน' : 'Subscribers', icon: Users },
+      ],
+    },
+    {
+      groupLabel: lang === 'th' ? 'บัญชีนักเรียน' : 'Student Accounts',
+      items: [
+        { id: 'student_accounts', label: lang === 'th' ? 'อนุมัติ & ผูกบัญชี' : 'Approve & Link', icon: KeyRound, adminOnly: true },
+        { id: 'student_login_config', label: lang === 'th' ? 'ลิงก์ล็อกอินนักเรียน' : 'Student Login Link', icon: GraduationCap, adminOnly: true },
+      ],
+    },
+  ];
+
+  const settingsNavSections = rawSettingsNavSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.adminOnly || ['admin', 'super_admin'].includes(currentRole)),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  const allVisibleNavItems = settingsNavSections.flatMap((s) => s.items);
 
   return (
-    <div className={`flex flex-col space-y-4 ${getModuleTone('system_settings')}`}>
-      {/* Top Header Card */}
-      <div className="shrink-0 app-page-header p-4 sm:p-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-start gap-3.5 min-w-0">
-            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
-              <Settings className="w-5 h-5" />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--color-text-title)]">
-                {lang === 'th' ? 'ตั้งค่าระบบโรงเรียน' : 'School System Settings'}
-              </h1>
-              <p className="text-[var(--color-text-body)] text-xs sm:text-sm max-w-2xl leading-relaxed">
-                {lang === 'th'
-                  ? 'จัดการข้อมูลโรงเรียน พิกัด GPS สิทธิ์บทบาท การแจ้งเตือน LINE OA บัญชีนักเรียน และนโยบาย AI จากจุดเดียว'
-                  : 'Manage campus info, GPS gates, role permissions, LINE OA triggers, student accounts, and AI policies.'}
-              </p>
-            </div>
+    <div className={`flex flex-col space-y-3 ${getModuleTone('system_settings')}`}>
+      {/* Slim Single-Row Header */}
+      <div className="shrink-0 app-page-header px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
+            <Settings className="w-4 h-4" />
           </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <ModuleTourTrigger moduleId="system_settings" lang={lang} />
-            <button
-              type="button"
-              onClick={handleSave}
-              className="btn-action-primary px-5 py-2.5 whitespace-nowrap"
-            >
-              <Save className="w-4 h-4" />
-              <span>{lang === 'th' ? 'บันทึกการตั้งค่า' : 'Save Settings'}</span>
-            </button>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+              {lang === 'th' ? 'ตั้งค่าระบบโรงเรียน' : 'School System Settings'}
+            </h1>
+            <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
+              {lang === 'th'
+                ? `LINE ผู้ปกครอง ${connectedCount}/${students.length} (${connectedPct}%) · ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น.`
+                : `LINE ${connectedCount}/${students.length} (${connectedPct}%) · Late ${lineSettings.lateCutoffTime} · Absent ${lineSettings.absenceCutoffTime}`}
+            </p>
           </div>
         </div>
 
-        {/* Quick Stats Strip */}
-        <div className="mt-4 pt-3.5 border-t border-[var(--color-border)] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div>
-            <div className="text-[var(--color-text-muted)] text-[11px]">สถานะ LINE OA</div>
-            <div className="font-bold mt-0.5 text-emerald-700 dark:text-emerald-400">
-              เชื่อมต่อพร้อมใช้งาน
-            </div>
-          </div>
-          <div>
-            <div className="text-[var(--color-text-muted)] text-[11px]">นักเรียนที่ผูก LINE</div>
-            <div className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-              {connectedCount} จาก {students.length} คน ({connectedPct}%)
-            </div>
-          </div>
-          <div>
-            <div className="text-[var(--color-text-muted)] text-[11px]">เวลาตัดสาย / ขาด</div>
-            <div className="font-bold text-[var(--color-text-title)] mt-0.5 tabular-nums">
-              {lineSettings.lateCutoffTime} น. / {lineSettings.absenceCutoffTime} น.
-            </div>
-          </div>
-          <div>
-            <div className="text-[var(--color-text-muted)] text-[11px]">ความเร็วส่งแจ้งเตือน</div>
-            <div className="font-bold text-[var(--tone)] mt-0.5 tabular-nums">
-              Instant (&lt; 0.8 วินาที)
-            </div>
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <ModuleTourTrigger moduleId="system_settings" lang={lang} />
+          <button
+            type="button"
+            onClick={handleSave}
+            className="btn-action-primary px-4 py-2 whitespace-nowrap shrink-0"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'บันทึกการตั้งค่า' : 'Save Settings'}</span>
+          </button>
         </div>
       </div>
 
       {/* Save Success Banner */}
       {saveSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-medium flex items-center justify-between shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-            <div>
-              <span className="font-bold">บันทึกการตั้งค่าระบบและเงื่อนไขการแจ้งเตือน LINE เรียบร้อยแล้ว!</span>
-              <p className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">ระบบจะใช้การตั้งค่าใหม่นี้ในการส่งการแจ้งเตือนอัตโนมัติไปยังผู้ปกครองทันที</p>
-            </div>
+        <div className="px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-medium flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300 shrink-0" />
+            <span>บันทึกการตั้งค่าระบบและเงื่อนไขการแจ้งเตือน LINE เรียบร้อยแล้ว</span>
           </div>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => setSaveSuccess(false)}
-            className="text-emerald-800 dark:text-emerald-200 hover:text-emerald-950 dark:hover:text-white font-bold px-2 py-1 cursor-pointer"
+            className="text-emerald-800 dark:text-emerald-200 hover:text-emerald-950 dark:hover:text-white font-bold px-2 py-0.5 cursor-pointer"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Primary Grouped Navigation (6 clean groups instead of 11 overflowing tabs) */}
-      <div className="shrink-0 flex flex-col gap-2">
-        <div data-guide-id="settings-tabs" className="seg-tab-group overflow-x-auto no-scrollbar w-fit max-w-full">
-          <button
-            type="button"
-            data-active={activeTab === 'control_overview'}
-            onClick={() => setActiveTab('control_overview')}
-            className="seg-tab-btn whitespace-nowrap shrink-0"
+      {/* 2-Column Settings Architecture: Clean Left Navigation Rail + Content Viewport */}
+      <div className="grid grid-cols-1 lg:grid-cols-[232px_minmax(0,1fr)] gap-4 items-start">
+        {/* Mobile Section Switcher */}
+        <div className="lg:hidden saas-card p-2">
+          <label htmlFor="mobile-settings-nav" className="sr-only">
+            {lang === 'th' ? 'เลือกหมวดตั้งค่าระบบ' : 'Select settings section'}
+          </label>
+          <select
+            id="mobile-settings-nav"
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value as SystemSettingsTab)}
+            className="w-full h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 text-xs font-semibold text-[var(--color-text-title)]"
           >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'ภาพรวมระบบ' : 'Overview'}</span>
-          </button>
-
-          <button
-            type="button"
-            data-active={isSchoolGroup}
-            onClick={() => setActiveTab(isSchoolGroup ? activeTab : 'school_general')}
-            className="seg-tab-btn whitespace-nowrap shrink-0"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'โรงเรียน & GPS' : 'School & GPS'}</span>
-          </button>
-
-          {['admin', 'super_admin'].includes(currentRole) && (
-            <button
-              type="button"
-              data-active={activeTab === 'school_permissions'}
-              onClick={() => setActiveTab('school_permissions')}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'สิทธิ์บทบาท' : 'Permissions'}</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            data-active={isLineGroup}
-            onClick={() => setActiveTab(isLineGroup ? activeTab : 'line_events')}
-            className="seg-tab-btn whitespace-nowrap shrink-0"
-          >
-            <BellRing className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'LINE OA & เวลาเรียน' : 'LINE & Cutoff'}</span>
-          </button>
-
-          {['admin', 'super_admin'].includes(currentRole) && (
-            <button
-              type="button"
-              data-active={isStudentGroup}
-              onClick={() => setActiveTab(isStudentGroup ? activeTab : 'student_accounts')}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'บัญชีนักเรียน' : 'Student Accounts'}</span>
-            </button>
-          )}
-
-          {['admin', 'super_admin'].includes(currentRole) && (
-            <button
-              type="button"
-              data-active={activeTab === 'saas_audit'}
-              onClick={() => setActiveTab('saas_audit')}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'แพ็กเกจ AI & Audit Log' : 'Packages & Audit'}</span>
-            </button>
-          )}
+            {allVisibleNavItems.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Contextual Sub-Switcher for Grouped Tabs */}
-        {isSchoolGroup && (
-          <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('school_general')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'school_general'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <Settings className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'ข้อมูลสถานศึกษา & สำรองข้อมูล' : 'General & Backup'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('school_gps')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'school_gps'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'พิกัด GPS & ประตูโรงเรียน' : 'Campus GPS & Geofence'}</span>
-            </button>
-          </div>
-        )}
-
-        {isLineGroup && (
-          <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('line_events')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'line_events'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <BellRing className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เงื่อนไขแจ้งเตือน & เวลาตัดสาย' : 'Events & Cutoff'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('line_connection')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'line_connection'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เชื่อมต่อ LINE API & Webhook' : 'LINE API & Webhook'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('preview_simulator')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'preview_simulator'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'จำลองการ์ด Flex' : 'Flex Simulator'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('subscribers')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'subscribers'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'ผู้รับแจ้งเตือน' : 'Subscribers'}</span>
-            </button>
-          </div>
-        )}
-
-        {isStudentGroup && ['admin', 'super_admin'].includes(currentRole) && (
-          <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('student_accounts')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'student_accounts'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'อนุมัติ & ผูกบัญชีนักเรียน' : 'Approve & Link Accounts'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('student_login_config')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap border ${
-                activeTab === 'student_login_config'
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary-border)] text-[var(--color-primary-text)]'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <GraduationCap className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'ลิงก์ล็อกอินนักเรียน' : 'Student Login Link'}</span>
-            </button>
-          </div>
-        )}
-      </div>
-
+        {/* Desktop Left Navigation Rail */}
+        <aside
+          data-guide-id="settings-tabs"
+          aria-label={lang === 'th' ? 'หมวดตั้งค่าระบบ' : 'Settings navigation'}
+          className="hidden lg:block saas-card p-2.5 space-y-3 sticky top-3"
+        >
+          {settingsNavSections.map((section, idx) => (
+            <div key={section.groupLabel} className={idx > 0 ? 'pt-2.5 border-t border-[var(--color-border)] space-y-1' : 'space-y-1'}>
+              <div className="px-2.5 py-1 text-[11px] font-bold text-[var(--color-text-muted)]">
+                {section.groupLabel}
+              </div>
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    data-active={isActive}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-left transition cursor-pointer ${
+                      isActive
+                        ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
+                        : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[var(--tone)]' : 'text-[var(--color-text-muted)]'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </aside>
 
       {/* Tab Panels Container */}
-      <div data-guide-id="settings-overview-panel" className="space-y-4">
+      <div data-guide-id="settings-overview-panel" className="min-w-0 space-y-4">
       {/* TAB 0: UNIFIED SYSTEM CONTROL OPERATIONS OVERVIEW */}
       {activeTab === 'control_overview' && (() => {
         const policies = getSchoolRolePolicies(activeSchool.id);
@@ -3149,6 +3031,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </div>
           );
         })()}
+      </div>
       </div>
 
       <ConfirmActionModal

@@ -2071,7 +2071,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     >
       {/* Top Header */}
       {embeddedMobile ? (
-        <div className="shrink-0 flex items-center justify-between px-1 py-1 text-[var(--color-text-title)]">
+        <div className="shrink-0 flex items-center justify-between px-1 py-0.5 text-[var(--color-text-title)]">
           <h1 className="type-section-title truncate">
             {lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Attendance'}
           </h1>
@@ -2082,39 +2082,32 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="btn-icon-tool min-h-[36px] min-w-[36px]"
+              className="btn-icon-tool min-h-[40px] min-w-[40px]"
               title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
               aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
             >
               {soundEnabled ? (
-                <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
+                <Volume2 className="w-4 h-4 text-[var(--tone)]" />
               ) : (
-                <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                <VolumeX className="w-4 h-4 text-[var(--color-text-muted)]" />
               )}
             </button>
           </div>
         </div>
       ) : (
-        <div className="app-page-header px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl tone-chip shrink-0">
-              <Smartphone className="w-4.5 h-4.5" />
+        <div className="app-page-header px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
+              <Smartphone className="w-4 h-4" />
             </div>
-            <div className="min-w-0">
-              <h1 className="type-page-title truncate">
-                {lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
-              </h1>
-              <p className="type-meta truncate">
-                {lang === 'th'
-                  ? 'เซลฟี่ GPS · แตะบัตร NFC · ใบลา · เช็คชื่อรายคาบ'
-                  : 'Selfie GPS · NFC ID tap · Leave · Period check-in'}
-              </p>
-            </div>
+            <h1 className="text-base font-bold text-[var(--color-text-title)] truncate">
+              {lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
+            </h1>
           </div>
 
-          <div className="saas-control-group shrink-0 self-start sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0">
             <ModuleTourTrigger moduleId="mobile_checkin" lang={lang} />
-            <span className="type-meta px-2 tabular-nums">
+            <span className="type-meta px-1 tabular-nums">
               {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
             <button
@@ -2287,59 +2280,49 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         )}
 
-      {/* 1-Line Compact Context Strip for Mobile Selfie */}
+      {/* Compact Single-Line Context Bar for Mobile Selfie (replaces tall 2-row box) */}
       {embeddedMobile && subTab === 'selfie_mobile' && (
-        <div className="shrink-0 saas-kpi-strip grid grid-cols-2 divide-x divide-[var(--color-border)]">
+        <div className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 flex items-center justify-between gap-1.5">
           <button
             type="button"
             onClick={() => setShowIdentitySheet(true)}
-            className="px-2.5 py-2 text-left flex items-center justify-between gap-1.5 hover:bg-[var(--color-card-subtle)] cursor-pointer min-w-0"
+            className="min-h-[40px] flex-1 min-w-0 px-2 rounded-lg flex items-center gap-1.5 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
           >
-            <div className="flex items-center gap-1.5 min-w-0">
-              <User className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-              <div className="min-w-0">
-                <p className="type-meta truncate">
-                  {isSelfCheckin ? (lang === 'th' ? 'บัญชีฉัน' : 'Self') : lang === 'th' ? 'สแกนแทน' : 'Proxy'}
-                </p>
-                <p className="type-label truncate">{activePersonName}</p>
-              </div>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+            <User className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+            <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+              {activePersonName}
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ml-auto" />
           </button>
+
+          <span className="h-5 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
 
           <button
             type="button"
             onClick={() => setShowGeofenceSheet(true)}
-            className="px-2.5 py-2 text-left flex items-center justify-between gap-1.5 hover:bg-[var(--color-card-subtle)] cursor-pointer min-w-0"
+            className="min-h-[40px] flex-1 min-w-0 px-2 rounded-lg flex items-center gap-1.5 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
           >
-            <div className="flex items-center gap-1.5 min-w-0">
-              <MapPin
-                className={`w-3.5 h-3.5 shrink-0 ${
-                  !hasSchoolGpsConfigured || isGpsLoading
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : isInGeofence
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-rose-600 dark:text-rose-400'
-                }`}
-              />
-              <div className="min-w-0">
-                <p className="type-meta truncate">
-                  {selectedGate ? selectedGate.nameTh : lang === 'th' ? 'พิกัด GPS โรงเรียน' : 'School GPS'}
-                </p>
-                <p
-                  className={`type-label tabular-nums truncate ${
-                    !hasSchoolGpsConfigured || isGpsLoading
-                      ? 'text-amber-700 dark:text-amber-300'
-                      : isInGeofence
-                        ? 'text-emerald-700 dark:text-emerald-300'
-                        : 'text-rose-700 dark:text-rose-300'
-                  }`}
-                >
-                  {gpsStatusShortLabel}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+            <MapPin
+              className={`w-3.5 h-3.5 shrink-0 ${
+                !hasSchoolGpsConfigured || isGpsLoading
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : isInGeofence
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-rose-600 dark:text-rose-400'
+              }`}
+            />
+            <span
+              className={`text-xs font-semibold tabular-nums truncate ${
+                !hasSchoolGpsConfigured || isGpsLoading
+                  ? 'text-amber-700 dark:text-amber-300'
+                  : isInGeofence
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : 'text-rose-700 dark:text-rose-300'
+              }`}
+            >
+              {gpsStatusShortLabel}
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ml-auto" />
           </button>
         </div>
       )}

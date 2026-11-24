@@ -48,7 +48,7 @@ import { StaffOrganizationView } from './StaffOrganizationView';
 import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
-import { getModuleGroupMeta, getModuleTone } from '../lib/moduleTheme';
+import { getModuleTone } from '../lib/moduleTheme';
 import { loadStaffInviteRpcSql, saveTeachersToDb } from '../lib/supabase';
 import {
   approveStaffParentAccountInSupabase,
@@ -649,27 +649,20 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     await submitTeacherInvite();
   };
 
-  const teachersGroup = getModuleGroupMeta('teachers');
-
   return (
-    <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
+    <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Header and Controls */}
       <div className="shrink-0 px-3.5 py-2.5 sm:px-4 app-page-header flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-          <span className="tone-chip w-7 h-7 rounded-lg">
+          <span className="tone-chip w-8 h-8 rounded-lg">
             <GraduationCap className="w-4 h-4" />
           </span>
-          <div className="min-w-0">
-            <div className="module-category-kicker">
-              {lang === 'th' ? `หมวด: ${teachersGroup.labelTh}` : teachersGroup.labelEn}
-            </div>
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
-              {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
-              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] font-mono tabular-nums">
-                · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
-              </span>
-            </h1>
-          </div>
+          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+            {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
+            <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
+              · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
+            </span>
+          </h1>
 
           <div data-guide-id="teachers-tabs" role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group ml-1">
             <button
@@ -688,7 +681,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               onClick={() => setStaffPage('organization')}
               className="seg-tab-btn inline-flex items-center gap-1.5"
             >
-              <Building2 className="h-3 w-3" />
+              <Building2 className="h-3.5 w-3.5" />
               <span>ผังองค์กร</span>
             </button>
           </div>
@@ -697,11 +690,11 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         <div data-guide-id="teachers-tools" className="flex flex-wrap items-center gap-1.5">
           <ModuleTourTrigger moduleId="teachers" lang={lang} />
           <details className="relative">
-            <summary className="btn-tool-neutral list-none px-2.5 py-1.5">
-              <span>{lang === 'th' ? 'เครื่องมือข้อมูล' : 'Data actions'}</span>
+            <summary className="btn-tool-neutral list-none h-9 px-3">
+              <span>{lang === 'th' ? 'เครื่องมือจัดการ' : 'Manage'}</span>
               <ChevronDown className="h-3.5 w-3.5" />
             </summary>
-            <div className="absolute right-0 top-full z-30 mt-1 min-w-48 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
               {onOpenImportExport && (
                 <button
                   type="button"
@@ -709,9 +702,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     event.currentTarget.closest('details')?.removeAttribute('open');
                     onOpenImportExport();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
                   <span>{lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel'}</span>
                 </button>
               )}
@@ -721,37 +714,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   event.currentTarget.closest('details')?.removeAttribute('open');
                   handleExportCSV();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
-                <Download className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />
+                <Download className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
                 <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
               </button>
-              {canPurgeSampleTeachers && onPurgeSampleTeachers && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    onPurgeSampleTeachers();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50 cursor-pointer"
-                  title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>{lang === 'th' ? 'ล้างข้อมูลตัวอย่าง' : 'Remove sample data'}</span>
-                </button>
-              )}
-            </div>
-          </details>
-
-          {canManage && (
-            <>
-              <details className="relative">
-                <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-                  <Briefcase className="h-3.5 w-3.5 tone-text" />
-                  <span>{lang === 'th' ? 'ตั้งค่าและบัญชี' : 'Settings & Accounts'}</span>
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </summary>
-                <div className="absolute right-0 top-full z-30 mt-1 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg">
+              {canManage && (
+                <>
+                  <div className="my-1 border-t border-[var(--color-border)]" />
                   <button
                     type="button"
                     onClick={(event) => {
@@ -759,9 +729,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       setShowAccountsPanel((prev) => !prev);
                       void refreshTeacherAccounts();
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <Mail className="h-3.5 w-3.5 tone-text" />
+                    <Mail className="h-3.5 w-3.5 tone-text shrink-0" />
                     <span>{lang === 'th' ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})` : `Teacher accounts (${teacherAccounts.length})`}</span>
                   </button>
                   <button
@@ -771,9 +741,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       setShowPositionConfigPanel((prev) => !prev);
                     }}
                     aria-expanded={showPositionConfigPanel}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <Briefcase className="h-3.5 w-3.5 tone-text" />
+                    <Briefcase className="h-3.5 w-3.5 tone-text shrink-0" />
                     <span>{lang === 'th' ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})` : `Staff positions (${configuredPositionOptions.length})`}</span>
                   </button>
                   <button
@@ -782,22 +752,42 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       event.currentTarget.closest('details')?.removeAttribute('open');
                       setShowStaffMetaModal(true);
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
                   >
-                    <Tag className="h-3.5 w-3.5 tone-text" />
+                    <Tag className="h-3.5 w-3.5 tone-text shrink-0" />
                     <span>{lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings'}</span>
                   </button>
-                </div>
-              </details>
-              <button
-                type="button"
-                onClick={handleOpenAdd}
-                className="btn-action-primary px-3 py-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>
-              </button>
-            </>
+                </>
+              )}
+              {canPurgeSampleTeachers && onPurgeSampleTeachers && (
+                <>
+                  <div className="my-1 border-t border-[var(--color-border)]" />
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                      onPurgeSampleTeachers();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50 cursor-pointer"
+                    title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>{lang === 'th' ? 'ล้างข้อมูลตัวอย่าง' : 'Remove sample data'}</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </details>
+
+          {canManage && (
+            <button
+              type="button"
+              onClick={handleOpenAdd}
+              className="btn-action-primary h-9 px-3"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>
+            </button>
           )}
         </div>
       </div>
@@ -911,9 +901,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       )}
 
       {/* Filter and Search Bar */}
-      <div className="shrink-0 toolbar-filter-zone app-filter-bar flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="fn-group-tone flex-1 w-full">
-          <span className="fn-group-label">{lang === 'th' ? 'ค้นหา & สังกัด' : 'Filter'}</span>
+      <div className="shrink-0 app-filter-bar flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
           <div className="relative flex-1 min-w-44">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
             <input
@@ -921,7 +910,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส ตำแหน่ง หรือวิชาที่สอน...' : 'Search by name, ID, position, or subject...'}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+              className="h-9 w-full pl-8 pr-3 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
             />
           </div>
 
@@ -929,7 +918,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             aria-label={lang === 'th' ? 'กรองตามตำแหน่งบุคลากร' : 'Filter by staff position'}
             value={positionFilter}
             onChange={(e) => setPositionFilter(e.target.value)}
-            className="w-full sm:w-44 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+            className="h-9 w-full sm:w-44 px-2.5 text-xs font-medium rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
           >
             <option value="all">{lang === 'th' ? 'ทุกตำแหน่งบุคลากร' : 'All Staff Positions'}</option>
             {resolvedPositionOptions.map((pos) => (
@@ -941,7 +930,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             aria-label={lang === 'th' ? 'กรองตามกลุ่มสาระหรือฝ่ายงาน' : 'Filter by department'}
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="w-full sm:w-48 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+            className="h-9 w-full sm:w-48 px-2.5 text-xs font-medium rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
           >
             <option value="all">{lang === 'th' ? 'ทุกกลุ่มสาระ/ฝ่ายงาน' : 'All Departments'}</option>
             {departments.map((dept) => (
@@ -959,16 +948,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 setPositionFilter('all');
                 setDepartmentFilter('all');
               }}
-              className="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+              className="h-9 px-2.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer whitespace-nowrap"
             >
               {lang === 'th' ? 'ล้าง' : 'Clear'}
             </button>
           )}
         </div>
 
-        <div className="fn-divider" />
-
-        <div className="seg-tab-group shrink-0 self-end sm:self-center">
+        <div className="seg-tab-group shrink-0 self-end lg:self-center">
           <button
             type="button"
             data-active={viewMode === 'cards'}
@@ -1031,22 +1018,17 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                         </span>
                       )}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-[var(--color-text-title)] tracking-tight">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-sm text-[var(--color-text-title)] tracking-tight truncate">
                         {teacher.fullNameTh}
                       </h3>
                       {teacher.fullNameEn.trim() && (
-                        <p className="text-[11px] text-[var(--color-text-muted)]">{teacher.fullNameEn}</p>
+                        <p className="text-[11px] text-[var(--color-text-muted)] truncate">{teacher.fullNameEn}</p>
                       )}
-                      {teacher.positionTitle && (
-                        <span className="inline-block mt-0.5 mr-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-semibold border border-blue-300 dark:border-blue-700">
-                          {teacher.positionTitle}
-                        </span>
-                      )}
-                      {teacher.academicStanding.trim() && (
-                        <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold border border-[var(--color-border)]">
-                          {teacher.academicStanding}
-                        </span>
+                      {(teacher.positionTitle || teacher.academicStanding.trim()) && (
+                        <p className="mt-0.5 text-xs font-medium text-[var(--color-primary-text)] truncate">
+                          {[teacher.positionTitle, teacher.academicStanding.trim()].filter(Boolean).join(' · ')}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -1132,18 +1114,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     </div>
                   )}
 
-                  {/* Other skills badge preview */}
+                  {/* Other skills summary */}
                   {teacher.otherSkills && teacher.otherSkills.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {teacher.otherSkills.slice(0, 3).map((skill, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border border-[var(--color-border)] font-medium">
-                          {skill}
-                        </span>
-                      ))}
-                      {teacher.otherSkills.length > 3 && (
-                        <span className="text-[10px] text-[var(--color-text-muted)] font-semibold tabular-nums">+{teacher.otherSkills.length - 3}</span>
-                      )}
-                    </div>
+                    <p className="text-[11px] text-[var(--color-text-muted)] truncate pt-0.5">
+                      ความถนัด: {teacher.otherSkills.slice(0, 3).join(' · ')}
+                      {teacher.otherSkills.length > 3 ? ` (+${teacher.otherSkills.length - 3})` : ''}
+                    </p>
                   )}
                 </div>
               </div>

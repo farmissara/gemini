@@ -203,6 +203,14 @@ const ADMIN_SIMPLIFIED_TABS = new Set<NavTab>([
 ]);
 
 const ARCADE_TABS = new Set<NavTab>(['games', 'boss_raid', 'study_streak', 'hall_of_fame']);
+// Settings sub-routes remain searchable via sidebar search and global Cmd+K, without cluttering the default tree
+const SETTINGS_DEEP_LINK_TABS = new Set<NavTab>([
+  'school_permissions',
+  'school_gps',
+  'admin_line_control',
+  'admin_student_accounts',
+  'admin_saas_audit',
+]);
 const SIDEBAR_FOCUS_STORAGE_KEY = 'baanpakkru_sidebar_focus_mode';
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -798,7 +806,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
   }), [currentRole]);
 
-  // Visible items per category
+  // Visible items per category (redundant settings deep-links are excluded unless active; still searchable)
   const visibleCategories = useMemo(() => {
     return categories
       .map((cat) => {
@@ -807,6 +815,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             i.roles.includes(currentRole) &&
             isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
             isAllowedBySchoolPolicy(i.id) &&
+            (!SETTINGS_DEEP_LINK_TABS.has(i.id) || i.id === resolvedSidebarActiveTab) &&
             (isSimplifiedAdmin
               ? ADMIN_SIMPLIFIED_TABS.has(i.id)
               : !focusMode || !supportsFocusMode || focusTabs.has(i.id) || i.id === resolvedSidebarActiveTab)
@@ -905,7 +914,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }}
         className={`${tone} group relative w-full flex min-h-10 sm:min-h-9 items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
           isActive
-            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold shadow-[inset_3px_0_0_var(--tone)]'
+            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
             : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
@@ -921,8 +930,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </span>
         {item.badge && (
           <span
-            className={isNumericBadge ? 'ui-count-badge shrink-0' : 'ui-status shrink-0'}
-            data-state={isAiBadge ? 'info' : isNumericBadge ? undefined : 'danger'}
+            className={`shrink-0 text-[11px] font-semibold tabular-nums ${
+              isAiBadge
+                ? 'text-[var(--color-primary-text)]'
+                : isNumericBadge
+                  ? 'text-[var(--color-text-muted)]'
+                  : 'text-rose-600 dark:text-rose-400'
+            }`}
           >
             {item.badge}
           </span>
@@ -1123,6 +1137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       type="button"
                       aria-expanded={!isCollapsed}
                       aria-controls={`sidebar-category-${cat.id}`}
+                      title={lang === 'th' ? cat.helperTh : cat.helperEn}
                       onClick={() => {
                         setCollapsed((previous) => ({
                           ...previous,
@@ -1130,30 +1145,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         }));
                       }}
                       data-expanded={!isCollapsed}
-                      className="sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/30"
+                      className="sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition cursor-pointer hover:bg-[var(--color-card-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/30"
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="ui-icon-tile h-7 w-7 shrink-0 rounded-lg">
-                          <CategoryIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                        </span>
-                        <span className="block min-w-0">
-                          <span className="block truncate text-[13px] leading-5 font-extrabold tracking-tight text-[var(--tone)]">
-                            {lang === 'th' ? cat.labelTh : cat.labelEn}
-                          </span>
-                          {(lang === 'th' ? cat.helperTh : cat.helperEn) && (
-                            <span className="block truncate text-[11px] leading-4 font-medium text-[var(--color-text-muted)]">
-                              {lang === 'th' ? cat.helperTh : cat.helperEn}
-                            </span>
-                          )}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <CategoryIcon className="h-3.5 w-3.5 shrink-0 text-[var(--tone)]" aria-hidden="true" />
+                        <span className="truncate text-xs leading-5 font-bold tracking-tight text-[var(--color-text-title)]">
+                          {lang === 'th' ? cat.labelTh : cat.labelEn}
                         </span>
                       </span>
-                      <span className="flex items-center gap-1.5 shrink-0">
+                      <span className="flex items-center gap-1.5 shrink-0 text-[var(--color-text-muted)]">
                         {isCollapsed && alertBadge && (
-                          <span className="ui-status shrink-0" data-state="danger">
+                          <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 shrink-0">
                             {alertBadge}
                           </span>
                         )}
-                        <span className="ui-count-badge min-w-5 min-h-5 px-1.5 text-[10px]">
+                        <span className="text-[11px] font-medium tabular-nums">
                           {cat.items.length}
                         </span>
                         {isCollapsed ? (
@@ -1167,7 +1173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {!isCollapsed && (
                       <div
                         id={`sidebar-category-${cat.id}`}
-                        className="sidebar-category-items ml-3 space-y-0.5 border-l border-[color-mix(in_srgb,var(--tone)_24%,var(--color-border))] pl-2"
+                        className="sidebar-category-items space-y-0.5 pl-2"
                       >
                         {cat.items.map((item) => renderItem(item, undefined, catTone))}
                       </div>

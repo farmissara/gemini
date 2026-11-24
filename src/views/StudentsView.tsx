@@ -25,6 +25,7 @@ import {
 import { 
   Users, 
   Search, 
+  Filter,
   Plus, 
   MessageSquare, 
   Award, 
@@ -283,6 +284,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [roomFilter, setRoomFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'default' | 'id_asc' | 'id_desc' | 'last_name_asc' | 'grade_level'>('default');
+  const [showMoreRosterFilters, setShowMoreRosterFilters] = useState(false);
   const [activeTab, setActiveTabState] = useState<StudentsViewSubTab>(externalSubTab || 'roster');
   const [focusedStudentId, setFocusedStudentId] = useState<string | undefined>(targetStudentId || students[0]?.id);
   const [localGradebookJump, setLocalGradebookJump] = useState<StudentsGradebookJumpTarget | null>(gradebookJumpTarget || null);
@@ -1484,119 +1486,143 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </nav>
       </div>
 
-      {activeTab === 'roster' && (
+      {activeTab === 'roster' && (() => {
+        const extraRosterFilterCount =
+          (gradeFilter !== 'all' ? 1 : 0) +
+          (statusFilter !== 'all' ? 1 : 0) +
+          (sortBy !== 'default' ? 1 : 0);
+
+        return (
         <>
-          {/* Flat Single-Row Search & Filter Strip (No nested boxes) */}
+          {/* Clean Primary Search + Room + Expandable Secondary Filters */}
           <div
             data-guide-id="students-search-bar"
-            className="shrink-0 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2"
+            className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 space-y-2"
           >
-            <div className="relative flex-1 min-w-[220px] max-w-md">
-              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อ, รหัสนักเรียน, เลข ปชช. หรือห้อง..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  aria-label="ล้างคำค้นหา"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="ค้นหาชื่อ, รหัสนักเรียน, เลข ปชช. หรือห้อง..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-9 pl-8 pr-7 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    aria-label="ล้างคำค้นหา"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                aria-label="กรองตามห้องเรียน"
+                value={roomFilter}
+                onChange={(e) => setRoomFilter(e.target.value)}
+                className="h-9 px-2.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
+              >
+                <option value="all">ทุกห้องเรียน</option>
+                {availableRooms.map((room) => (
+                  <option key={room} value={room}>
+                    ห้อง {room}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                aria-expanded={showMoreRosterFilters}
+                data-active={showMoreRosterFilters || extraRosterFilterCount > 0}
+                onClick={() => setShowMoreRosterFilters((prev) => !prev)}
+                className="btn-tool-neutral h-9 px-3 text-xs"
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span>ตัวกรอง{extraRosterFilterCount > 0 ? ` (${extraRosterFilterCount})` : ''}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreRosterFilters ? 'rotate-180' : ''}`} />
+              </button>
+
+              <div className="ml-auto flex items-center gap-2.5 text-xs text-[var(--color-text-muted)] tabular-nums">
+                <span>
+                  แสดง <strong className="text-[var(--color-text-title)]">{filteredStudents.length}</strong> จาก {students.length} คน
+                </span>
+                {hasActiveRosterFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setGradeFilter('all');
+                      setRoomFilter('all');
+                      setStatusFilter('all');
+                      setSortBy('default');
+                    }}
+                    className="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap"
+                  >
+                    ล้างตัวกรอง
+                  </button>
+                )}
+              </div>
             </div>
 
-            <select
-              aria-label="กรองตามระดับชั้น"
-              value={gradeFilter}
-              onChange={(e) => setGradeFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
-            >
-              <option value="all">ทุกระดับชั้น</option>
-              <optgroup label="ช่วงชั้น">
-                <option value="cat_kindergarten">อนุบาล 1–3</option>
-                <option value="cat_primary">ประถมศึกษา (ป.1–ป.6)</option>
-                <option value="cat_lower_sec">มัธยมต้น (ม.1–ม.3)</option>
-                <option value="cat_upper_sec">มัธยมปลาย (ม.4–ม.6)</option>
-              </optgroup>
-              {existingGradeLevels.length > 0 && (
-                <optgroup label="ระดับชั้นในโรงเรียน">
-                  {existingGradeLevels.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
+            {showMoreRosterFilters && (
+              <div className="pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center gap-2">
+                <select
+                  aria-label="กรองตามระดับชั้น"
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="h-8 px-2.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
+                >
+                  <option value="all">ทุกระดับชั้น</option>
+                  <optgroup label="ช่วงชั้น">
+                    <option value="cat_kindergarten">อนุบาล 1–3</option>
+                    <option value="cat_primary">ประถมศึกษา (ป.1–ป.6)</option>
+                    <option value="cat_lower_sec">มัธยมต้น (ม.1–ม.3)</option>
+                    <option value="cat_upper_sec">มัธยมปลาย (ม.4–ม.6)</option>
+                  </optgroup>
+                  {existingGradeLevels.length > 0 && (
+                    <optgroup label="ระดับชั้นในโรงเรียน">
+                      {existingGradeLevels.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+
+                <select
+                  aria-label="กรองตามสถานะนักเรียน"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-8 px-2.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
+                >
+                  <option value="all">ทุกสถานะ</option>
+                  {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
+                    <option key={st.value} value={st.value}>
+                      {st.labelTh}
                     </option>
                   ))}
-                </optgroup>
-              )}
-            </select>
+                </select>
 
-            <select
-              aria-label="กรองตามห้องเรียน"
-              value={roomFilter}
-              onChange={(e) => setRoomFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
-            >
-              <option value="all">ทุกห้องเรียน</option>
-              {availableRooms.map((room) => (
-                <option key={room} value={room}>
-                  ห้อง {room}
-                </option>
-              ))}
-            </select>
-
-            <select
-              aria-label="กรองตามสถานะนักเรียน"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
-            >
-              <option value="all">ทุกสถานะ</option>
-              {Object.values(STUDENT_STATUS_DETAILS).map((st) => (
-                <option key={st.value} value={st.value}>
-                  {st.labelTh}
-                </option>
-              ))}
-            </select>
-
-            <select
-              aria-label="เรียงลำดับนักเรียน"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="px-2.5 py-1.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
-            >
-              <option value="default">เรียง: ค่าเริ่มต้น</option>
-              <option value="grade_level">เรียง: ชั้นและห้องเรียน</option>
-              <option value="id_asc">เรียง: รหัส น้อย → มาก</option>
-              <option value="id_desc">เรียง: รหัส มาก → น้อย</option>
-              <option value="last_name_asc">เรียง: นามสกุล A–Z / ก–ฮ</option>
-            </select>
-
-            <div className="ml-auto flex items-center gap-2.5 text-xs text-[var(--color-text-muted)] tabular-nums">
-              <span>
-                แสดง <strong className="text-[var(--color-text-title)]">{filteredStudents.length}</strong> จาก {students.length} คน
-              </span>
-              {hasActiveRosterFilters && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setGradeFilter('all');
-                    setRoomFilter('all');
-                    setStatusFilter('all');
-                    setSortBy('default');
-                  }}
-                  className="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap"
+                <select
+                  aria-label="เรียงลำดับนักเรียน"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="h-8 px-2.5 text-xs rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] font-medium focus:outline-none focus:border-[var(--tone)]"
                 >
-                  ล้างตัวกรอง
-                </button>
-              )}
-            </div>
+                  <option value="default">เรียง: ค่าเริ่มต้น</option>
+                  <option value="grade_level">เรียง: ชั้นและห้องเรียน</option>
+                  <option value="id_asc">เรียง: รหัส น้อย → มาก</option>
+                  <option value="id_desc">เรียง: รหัส มาก → น้อย</option>
+                  <option value="last_name_asc">เรียง: นามสกุล A–Z / ก–ฮ</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {selectedQrStudentIds.length > 0 && (
@@ -1936,7 +1962,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </table>
           </div>
         </>
-      )}
+        );
+      })()}
 
       {activeTab === 'analytics' && (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">

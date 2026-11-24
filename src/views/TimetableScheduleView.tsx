@@ -1565,54 +1565,42 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   };
 
   const renderRoomAndTermControls = (showRoomFilter = true) => (
-    <div className="fn-group-tone print:hidden">
-      <span className="fn-group-label">
-        {lang === 'th' ? 'ขอบเขตตาราง' : 'Scope'}
-      </span>
+    <div className="flex flex-wrap items-center gap-2 print:hidden">
       {hasTeacherTimetableMatch && (
         currentRole === 'admin' || currentRole === 'super_admin' ? (
           <div
             role="group"
             aria-label="ขอบเขตวิชาตามผู้สอน"
-            className="inline-flex min-h-8 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5"
+            className="seg-tab-group h-9"
           >
             <button
               type="button"
+              data-active={!myCoursesOnly}
               aria-pressed={!myCoursesOnly}
               onClick={() => setTimetableTeacherScope(false)}
-              className={`inline-flex min-h-7 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                !myCoursesOnly
-                  ? 'bg-[var(--tone)] text-white shadow-sm'
-                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
+              className="seg-tab-btn inline-flex items-center gap-1.5 text-xs"
             >
               <Users className="h-3.5 w-3.5" />
-              <span>ดูทั้งโรงเรียน</span>
+              <span>ทั้งโรงเรียน</span>
             </button>
             <button
               type="button"
+              data-active={myCoursesOnly}
               aria-pressed={myCoursesOnly}
               onClick={() => setTimetableTeacherScope(true)}
-              className={`inline-flex min-h-7 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                myCoursesOnly
-                  ? 'bg-[var(--tone)] text-white shadow-sm'
-                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
-              }`}
+              className="seg-tab-btn inline-flex items-center gap-1.5 text-xs"
             >
               <UserCheck className="h-3.5 w-3.5" />
-              <span>เฉพาะวิชาที่ฉันสอน</span>
+              <span>วิชาที่ฉันสอน</span>
             </button>
           </div>
         ) : (
           <button
             type="button"
             aria-pressed={myCoursesOnly}
+            data-active={myCoursesOnly}
             onClick={() => setTimetableTeacherScope(!myCoursesOnly)}
-            className={`btn-tool-neutral min-h-8 px-2.5 py-1 text-xs ${
-              myCoursesOnly
-                ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
-                : ''
-            }`}
+            className="btn-tool-neutral h-9 px-2.5 text-xs"
             title={
               myCoursesOnly
                 ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูตารางที่คุณมีสิทธิ์เข้าถึง'
@@ -1626,8 +1614,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           </button>
         )
       )}
+
       {showRoomFilter && (activeScheduleFilters ? (
-        <div className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs">
+        <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs">
           <span className="max-w-64 truncate font-semibold text-[var(--color-text-body)]">
             {activeScheduleFilters.gradeLevel || 'ทุกระดับชั้น'} · {activeScheduleFilters.classRoom || 'ทุกห้อง'} · {activeScheduleFilters.teacherName || 'ครูทุกคน'}
           </span>
@@ -1649,7 +1638,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               setSelectedClassRoom(e.target.value);
               setActiveScheduleFilters(null);
             }}
-            className="min-h-8 max-w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
+            className="h-9 max-w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
           >
             {(!isPersonalViewer || uniqueClassRooms.length > 1) && (
               <option value={ALL_CLASSROOMS} disabled={viewMode === 'hours_criteria' && !myCoursesOnly}>
@@ -1658,7 +1647,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             )}
             {uniqueClassRooms.map((room) => (
               <option key={room} value={room}>
-                {isPersonalViewer ? room : `${room} (${students.filter((student) => student.room === room).length} นักเรียน)`}
+                {isPersonalViewer ? room : `${room} (${students.filter((student) => student.room === room).length} คน)`}
               </option>
             ))}
           </select>
@@ -1671,7 +1660,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   onChange={(e) => setNewCustomRoomName(e.target.value)}
                   placeholder="เช่น ม.4/3"
                   aria-label="ชื่อห้องเรียนใหม่"
-                  className="min-h-9 w-24 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 text-xs text-[var(--color-text-title)]"
+                  className="h-9 w-24 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
                 />
                 <button
                   type="button"
@@ -1701,14 +1690,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     })();
                   }}
                   disabled={isSavingRoomOption}
-                  className="min-h-9 rounded-lg bg-[var(--color-primary)] px-2 py-1 text-[11px] font-bold text-white disabled:opacity-50"
+                  className="h-9 rounded-lg bg-[var(--color-primary)] px-2.5 text-xs font-semibold text-white disabled:opacity-50"
                 >
                   เพิ่ม
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddRoomInput(false)}
-                  className="min-h-9 px-1.5 py-1 text-[11px] text-[var(--color-text-muted)]"
+                  className="h-9 px-1.5 text-xs text-[var(--color-text-muted)]"
                   aria-label="ยกเลิกเพิ่มห้อง"
                 >
                   ✕
@@ -1718,10 +1707,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAddRoomInput(true)}
-                className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-dashed border-[var(--color-border)] px-2 py-1 text-[11px] font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)]"
+                className="btn-tool-neutral h-9 px-2.5 text-xs"
+                title="เพิ่มห้องเรียนใหม่"
               >
-                <Plus className="h-3 w-3" />
-                เพิ่มห้อง
+                <Plus className="h-3.5 w-3.5" />
+                <span>เพิ่มห้อง</span>
               </button>
             )
           )}
@@ -1732,7 +1722,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         id="timetable-academic-period"
         value={selectedAcademicPeriodKey}
         onChange={(event) => handleAcademicPeriodChange(event.target.value)}
-        className="min-h-9 max-w-64 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
+        className="h-9 max-w-64 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
       >
         {academicPeriodOptions.map((period) => (
           <option key={period.key} value={period.key}>
@@ -1742,7 +1732,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         ))}
       </select>
       {!isViewingCurrentTerm && (
-        <span className="inline-flex min-h-9 items-center rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-[10px] font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100">
+        <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 whitespace-nowrap px-1">
           ดูย้อนหลัง · อ่านอย่างเดียว
         </span>
       )}
@@ -1755,11 +1745,11 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             setDraftSemesterOptions(semesterOptions.length > 0 ? semesterOptions : ['1', '2', 'Summer']);
             setShowPeriodEditor(true);
           }}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 text-xs font-semibold text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)]"
+          className="btn-tool-neutral h-9 px-2.5 text-xs"
           title="แก้ไขปีการศึกษาและภาคเรียนปัจจุบันของโรงเรียน"
         >
           <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-          <span>ตั้งค่าเทอมปัจจุบัน</span>
+          <span>ตั้งค่าเทอม</span>
         </button>
       )}
       {showRoomFilter && roomOptionsError && <span role="alert" className="text-xs text-rose-700">{roomOptionsError}</span>}
@@ -1810,21 +1800,16 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   return (
     <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
-      {/* Ultra-Compact Single-Row Page Heading and Schedule Controls */}
-      <div className="shrink-0 px-3 py-1.5 app-page-header print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="tone-chip w-6 h-6 rounded-lg">
-              <Calendar className="w-3.5 h-3.5 shrink-0" />
+      {/* Single-Row Page Heading and Schedule Mode Switcher */}
+      <div className="shrink-0 px-4 py-2.5 app-page-header print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="tone-chip w-7 h-7 rounded-lg shrink-0">
+              <Calendar className="w-4 h-4 shrink-0" />
             </span>
-            <div className="min-w-0 flex items-baseline gap-2">
-              <h1 className="text-sm font-bold text-[var(--color-text-title)] leading-tight truncate">
-                ตารางเรียนและตารางสอน
-              </h1>
-              <span className="hidden xl:inline module-category-kicker">
-                {lang === 'th' ? timetableGroup.labelTh : timetableGroup.labelEn}
-              </span>
-            </div>
+            <h1 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              ตารางเรียนและตารางสอน
+            </h1>
             <ModuleTourTrigger moduleId="timetable" lang={lang} floating />
           </div>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
@@ -1883,8 +1868,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     <Users className="h-3.5 w-3.5" />
                     <span>ภาระงานครู</span>
                     {(lowWorkloadCount > 0 || highWorkloadCount > 0) && (
-                      <span className="rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-slate-950">
-                        {lowWorkloadCount + highWorkloadCount}
+                      <span className="text-[11px] font-bold text-amber-600 dark:text-amber-300 tabular-nums">
+                        ({lowWorkloadCount + highWorkloadCount})
                       </span>
                     )}
                   </button>
@@ -1898,8 +1883,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                     <RefreshCw className="h-3.5 w-3.5" />
                     <span>หาครูสอนแทน</span>
                     {teacherLeavesToday.length > 0 && (
-                      <span className="rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">
-                        {teacherLeavesToday.length}
+                      <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                        ({teacherLeavesToday.length})
                       </span>
                     )}
                   </button>
