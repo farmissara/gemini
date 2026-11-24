@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { Lock } from 'lucide-react';
 import type { NavTab } from '../../components/layout/Sidebar';
 import type { DashboardSubTab } from '../../views/DashboardView';
@@ -55,13 +55,7 @@ import { saveSuperAdminSetting, saveSuperAdminSettings } from '../../lib/superAd
 import { appendAuditLog } from '../../lib/auditLog';
 import { ViewErrorBoundary } from '../../components/common/ViewErrorBoundary';
 import { PageSkeleton } from '../../components/common/PageSkeleton';
-
-function lazyNamed<T extends Record<string, any>, K extends keyof T>(
-  factory: () => Promise<T>,
-  exportName: K,
-): React.LazyExoticComponent<T[K]> {
-  return lazy(() => factory().then((mod) => ({ default: mod[exportName] })));
-}
+import { lazyNamedWithRetry as lazyNamed } from '../../lib/lazyWithRetry';
 
 const DashboardView = lazyNamed(() => import('../../views/DashboardView'), 'DashboardView');
 const StudentsView = lazyNamed(() => import('../../views/StudentsView'), 'StudentsView');

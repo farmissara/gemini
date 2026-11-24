@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { RotateCw, X } from 'lucide-react';
 import type { NavTab } from './components/layout/Sidebar';
 import type { Student } from './types';
@@ -31,8 +31,11 @@ import {
   type NavCallbacks,
 } from './features/school/useSchoolDataManager';
 
-const MobileAppShell = lazy(() =>
-  import('./components/layout/MobileAppShell').then((mod) => ({ default: mod.MobileAppShell })),
+import { lazyNamedWithRetry } from './lib/lazyWithRetry';
+
+const MobileAppShell = lazyNamedWithRetry(
+  () => import('./components/layout/MobileAppShell'),
+  'MobileAppShell',
 );
 
 export const App: React.FC = () => {

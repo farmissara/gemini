@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import type { NavTab } from '../../components/layout/Sidebar';
 import type { GuideModuleId, ModuleGuideRoleView } from '../../components/modals/ModuleGuideModal';
 import type { ConfirmModalConfig } from '../school/useSchoolDataManager';
@@ -28,13 +28,7 @@ import type { OfflineQueueItem } from '../../lib/offlineSync';
 import { ConfirmActionModal } from '../../components/modals/ConfirmActionModal';
 import { OfflineIndicator } from '../../components/layout/OfflineIndicator';
 import { SchemaMigrationModal } from '../school/SchemaMigrationModal';
-
-function lazyNamed<T extends Record<string, any>, K extends keyof T>(
-  factory: () => Promise<T>,
-  exportName: K,
-): React.LazyExoticComponent<T[K]> {
-  return lazy(() => factory().then((mod) => ({ default: mod[exportName] })));
-}
+import { lazyNamedWithRetry as lazyNamed } from '../../lib/lazyWithRetry';
 
 const SchoolSwitcherModal = lazyNamed(() => import('../../components/modals/SchoolSwitcherModal'), 'SchoolSwitcherModal');
 const ReportCardModal = lazyNamed(() => import('../../components/modals/ReportCardModal'), 'ReportCardModal');

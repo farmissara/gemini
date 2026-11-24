@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import { ToastProvider } from './components/common/ToastProvider';
+import { triggerSingleChunkRecoveryReload } from './lib/lazyWithRetry';
 import './index.css';
 
 // Automatically register PWA Service Worker for offline support & installability
@@ -16,10 +17,20 @@ if ('serviceWorker' in navigator && import.meta.env.DEV) {
     if (wasControlled) window.location.reload();
   }).catch(() => undefined);
 } else if ('serviceWorker' in navigator) {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let swUpdateReloadPending = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && swUpdateReloadPending) {
+      swUpdateReloadPending = false;
+      window.location.reload();
+    }
+  });
+
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      // A new version is ready: switch to it right away
+      // A new version is ready: switch to it right away and reload once it takes control
+      swUpdateReloadPending = true;
       void updateSW(true);
     },
     onRegisteredSW(_swUrl, registration) {
@@ -39,16 +50,9 @@ if ('serviceWorker' in navigator && import.meta.env.DEV) {
 
 // Recover gracefully if an outdated cached PWA chunk fails to preload after deploy
 if (typeof window !== 'undefined') {
-  window.addEventListener('vite:preloadError', () => {
-    try {
-      const flagKey = 'baanpakkru_preload_reloaded';
-      if (!window.sessionStorage.getItem(flagKey)) {
-        window.sessionStorage.setItem(flagKey, '1');
-        window.location.reload();
-      }
-    } catch {
-      window.location.reload();
-    }
+  window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault();
+    triggerSingleChunkRecoveryReload();
   });
 }
 

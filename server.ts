@@ -751,8 +751,28 @@ async function createApp() {
     (process.argv.includes('--prod') && fs.existsSync(distDir));
 
   if (isProd && fs.existsSync(distDir)) {
-    app.use(express.static(distDir));
-    app.get('/{*splat}', (_req: Request, res: Response) => {
+    app.use('/assets', express.static(path.join(distDir, 'assets'), {
+      immutable: true,
+      maxAge: '1y',
+      fallthrough: false,
+    }));
+    app.use(express.static(distDir, {
+      setHeaders: (res, filePath) => {
+        const base = path.basename(filePath);
+        if (base === 'index.html' || base === 'sw.js' || base === 'push-sw.js' || base === 'manifest.webmanifest') {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      },
+    }));
+    app.use('/assets', (_err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+      res.status(404).type('text/plain').send('Asset not found');
+    });
+    app.get('/{*splat}', (req: Request, res: Response) => {
+      if (req.path.startsWith('/assets/') || /\.(js|mjs|css|map|png|jpg|jpeg|svg|ico|webp|woff2?)$/i.test(req.path)) {
+        res.status(404).type('text/plain').send('Not found');
+        return;
+      }
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distDir, 'index.html'));
     });
   } else {

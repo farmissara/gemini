@@ -58,7 +58,12 @@ export default defineConfig(() => {
           clientsClaim: true,
           skipWaiting: true,
           importScripts: ['/push-sw.js'],
-          navigateFallbackDenylist: [/^\/api\//, /^\/manifest\.webmanifest$/],
+          navigateFallbackDenylist: [
+            /^\/api\//,
+            /^\/manifest\.webmanifest$/,
+            /^\/assets\//,
+            /\.(?:js|mjs|css|map|png|jpg|jpeg|svg|ico|webp|woff2?)$/i,
+          ],
           maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [
