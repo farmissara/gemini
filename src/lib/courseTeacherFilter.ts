@@ -361,7 +361,7 @@ export function resolveTeacherFilterKeyForUser(
  * (matching either slot teacher names or linked Course ownership).
  */
 export function slotMatchesLoggedInTeacher(
-  slot: Pick<TimetableSlot, 'courseId' | 'courseCode' | 'teacherName' | 'coTeacherName'>,
+  slot: Pick<TimetableSlot, 'courseId' | 'courseCode' | 'courseTitleTh' | 'courseTitleEn' | 'teacherName' | 'coTeacherName'>,
   currentUser: AuthUser | null | undefined,
   matchedTeacher: Teacher | undefined,
   courses: readonly Course[] = []
@@ -369,12 +369,19 @@ export function slotMatchesLoggedInTeacher(
   if (!currentUser && !matchedTeacher) return false;
 
   const slotCourseCode = (slot.courseCode || '').trim().toUpperCase();
+  const slotCourseTitle = `${slot.courseTitleTh || ''} ${slot.courseTitleEn || ''}`.normalize('NFC').toLocaleLowerCase();
   const slotTeacherNames = getSlotTeachers(slot)
     .map((name) => normalizeTeacherName(name))
     .join(' ');
   const isSchoolWideActivity =
     slotCourseCode.includes('SCOUT') ||
     slotCourseCode.includes('LADYSCOUT') ||
+    slotCourseCode.includes('NETRA') ||
+    slotCourseTitle.includes('ลูกเสือ') ||
+    slotCourseTitle.includes('เนตรนารี') ||
+    slotCourseTitle.includes('ยุกา') ||
+    slotCourseTitle.includes('บำเพ็ญประโยชน์') ||
+    slotCourseTitle.includes('พัฒนาผู้เรียน') ||
     slotTeacherNames.includes('ครูทุกคน') ||
     slotTeacherNames.includes('อาจารย์ทุกคน') ||
     slotTeacherNames.includes('ทุกครู');

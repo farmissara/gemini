@@ -980,13 +980,20 @@ export const App: React.FC = () => {
   const schoolQuestions = questions.filter((q) => !q.schoolId || q.schoolId === activeSchool.id);
   const schoolPeriodAttendance = periodAttendance.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
   const schoolPortfolioItems = portfolioItems.filter((p) => !p.schoolId || p.schoolId === activeSchool.id);
-  const timetableAcademicYear = activeSchool.academicYear || systemConfig.academicYear;
+  const normalizeTimetableAcademicYear = (value?: string) => {
+    const raw = (value || '').trim();
+    const gregorianYear = raw.match(/\d{4}/)?.[0];
+    if (!gregorianYear) return raw;
+    const yearNumber = Number(gregorianYear);
+    return String(yearNumber < 2400 ? yearNumber + 543 : yearNumber);
+  };
+  const timetableAcademicYear = normalizeTimetableAcademicYear(activeSchool.academicYear || systemConfig.academicYear);
   const timetableSemester = activeSchool.currentSemester || systemConfig.currentSemester;
   const schoolTimetableSlotsAllTerms = timetableSlots
     .filter((slot) => !slot.schoolId || slot.schoolId === activeSchool.id)
     .map((slot) => ({
       ...slot,
-      academicYear: slot.academicYear || timetableAcademicYear,
+      academicYear: normalizeTimetableAcademicYear(slot.academicYear || timetableAcademicYear),
       semester: slot.semester || timetableSemester,
     }));
   const schoolTimetableSlots = schoolTimetableSlotsAllTerms.filter((slot) => (
@@ -5277,8 +5284,8 @@ export const App: React.FC = () => {
     ? teacherScopedTimetableSlots
     : filterTimetableSlotsForPersonalRole(schoolTimetableSlotsAllTerms, currentUser, schoolStudents, schoolCourses);
   const canSwitchAdminTeacherMode =
-    ['admin', 'teacher'].includes(currentRole) &&
-    Boolean(resolveOwnTeacher(currentUser, schoolTeachers));
+    (currentRole === 'admin') ||
+    (currentRole === 'teacher' && Boolean(resolveOwnTeacher(currentUser, schoolTeachers)));
   const handleSwitchOperationalRole = (nextRole: 'admin' | 'teacher') => {
     if (nextRole === currentRole) return;
     if (nextRole === 'teacher' && !resolveOwnTeacher(currentUser, schoolTeachers)) return;

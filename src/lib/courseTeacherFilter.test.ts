@@ -163,6 +163,7 @@ test('slotMatchesLoggedInTeacher includes school-wide scout and all-teacher slot
   const scoutSlot = makeSlot({
     id: 'slot-scout',
     courseCode: 'SCOUT101',
+    courseTitleTh: 'กิจกรรมลูกเสือ-เนตรนารี',
     teacherName: 'ครูประจำกิจกรรม',
   });
   const allTeacherSlot = makeSlot({
