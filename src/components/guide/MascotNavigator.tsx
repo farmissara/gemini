@@ -20,32 +20,22 @@ import { AppLanguage, UserRole } from '../../types';
 import { MascotMood } from '../../data/interactiveGuideTopics';
 import { MODULE_GUIDED_TOURS } from '../../data/moduleGuidedTours';
 
-interface MascotAvatarProps {
+export type MascotBuddyMode = 'duo' | 'chaco' | 'mee';
+
+interface DogAvatarProps {
   mood?: MascotMood;
   size?: number;
   className?: string;
-  animated?: boolean;
 }
 
 /**
- * Illustrated SVG cartoon mascot ("น้องฮูกบ้านพักครู" / Kru Owl Buddy)
- * Crisp vector illustration that adapts cleanly to light and dark themes.
+ * ชาโค (Chaco): หมาดำ ตัวอ้วนมาก เขี้ยวข้างซ้ายเหยิน ฟันขาวมาก
  */
-export const MascotAvatar: React.FC<MascotAvatarProps> = ({
+export const ChacoAvatar: React.FC<DogAvatarProps> = ({
   mood = 'happy',
-  size = 48,
+  size = 52,
   className = '',
-  animated = true,
 }) => {
-  const accentColor =
-    mood === 'celebrate' || mood === 'success'
-      ? '#10b981'
-      : mood === 'warning' || mood === 'concerned'
-        ? '#f59e0b'
-        : mood === 'error'
-          ? '#ef4444'
-          : '#2563eb';
-
   const isWinking = mood === 'celebrate' || mood === 'success';
   const isThinking = mood === 'thinking';
   const isPointing = mood === 'pointing';
@@ -54,100 +44,256 @@ export const MascotAvatar: React.FC<MascotAvatarProps> = ({
     <svg
       width={size}
       height={size}
-      viewBox="0 0 64 64"
+      viewBox="0 0 72 68"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      className={`${animated ? 'transition-transform duration-300' : ''} ${className}`}
+      aria-label="ชาโค"
+      className={`transition-transform duration-300 ${className}`}
     >
-      {/* Soft ambient aura */}
-      <circle cx="32" cy="34" r="27" fill={accentColor} fillOpacity="0.14" />
+      {/* Ground shadow */}
+      <ellipse cx="36" cy="63" rx="22" ry="3.5" fill="#0f172a" fillOpacity="0.16" />
 
-      {/* Graduation mortarboard cap */}
-      <path d="M16 14L32 7L48 14L32 21L16 14Z" fill="#1e293b" stroke="#0f172a" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M23 17.5V22.5C23 24.5 27 26 32 26C37 26 41 24.5 41 22.5V17.5" fill="#334155" stroke="#0f172a" strokeWidth="1.4" />
-      {/* Gold tassel */}
-      <path d="M46 15V22" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="46" cy="23.5" r="2" fill="#f59e0b" />
-
-      {/* Owl ears / tufts */}
-      <path d="M15 24L20 19L23 25Z" fill="#1d4ed8" />
-      <path d="M49 24L44 19L41 25Z" fill="#1d4ed8" />
-
-      {/* Main rounded body */}
-      <rect x="14" y="20" width="36" height="36" rx="18" fill="#2563eb" stroke="#1e40af" strokeWidth="1.6" />
-
-      {/* Belly cream patch */}
-      <ellipse cx="32" cy="43.5" rx="12" ry="10.5" fill="#eff6ff" />
-      <path d="M26 42C27.5 43.2 29 43.2 30.5 42" stroke="#93c5fd" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M33.5 42C35 43.2 36.5 43.2 38 42" stroke="#93c5fd" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M29.5 46.5C31 47.7 33 47.7 34.5 46.5" stroke="#93c5fd" strokeWidth="1.5" strokeLinecap="round" />
-
-      {/* Left & Right Wings */}
+      {/* Wagging black tail */}
       <path
-        d={isPointing ? 'M14 35C9 32 7 28 10 25C13 23 16 28 16 34Z' : 'M14 32C9.5 34 9 42 13 46C15.5 44 16 38 15.5 32Z'}
-        fill="#1d4ed8"
-        stroke="#1e40af"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path
-        d={isWinking ? 'M50 34C55 30 57 25 53 23C50 22 48 27 48 34Z' : 'M50 32C54.5 34 55 42 51 46C48.5 44 48 38 48.5 32Z'}
-        fill="#1d4ed8"
-        stroke="#1e40af"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
+        d="M55 47C62 44 65 37 61 33"
+        stroke="#18181b"
+        strokeWidth="5.5"
+        strokeLinecap="round"
       />
 
-      {/* Big Owl Eye Circles */}
-      <circle cx="24.5" cy="30.5" r="7.2" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.2" />
-      <circle cx="39.5" cy="30.5" r="7.2" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.2" />
+      {/* Extra chubby, round black dog body */}
+      <ellipse cx="36" cy="43" rx="23.5" ry="18.5" fill="#18181b" stroke="#09090b" strokeWidth="1.6" />
+      {/* Subtle glossy fur highlight */}
+      <path
+        d="M21 31C25 27 32 26 37 27"
+        stroke="#3f3f46"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
 
-      {/* Glasses bridge */}
-      <path d="M31.5 30.5H32.5" stroke="#0f172a" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="24.5" cy="30.5" r="7.4" stroke="#0f172a" strokeWidth="1.4" />
-      <circle cx="39.5" cy="30.5" r="7.4" stroke="#0f172a" strokeWidth="1.4" />
+      {/* Floppy chubby black ears */}
+      <ellipse cx="14.5" cy="24" rx="5.5" ry="9.5" transform="rotate(18 14.5 24)" fill="#111827" stroke="#09090b" strokeWidth="1.5" />
+      <ellipse cx="57.5" cy="24" rx="5.5" ry="9.5" transform="rotate(-18 57.5 24)" fill="#111827" stroke="#09090b" strokeWidth="1.5" />
 
-      {/* Eyes by mood */}
+      {/* Round chubby head */}
+      <ellipse cx="36" cy="26.5" rx="20.5" ry="17" fill="#1f2937" stroke="#09090b" strokeWidth="1.6" />
+
+      {/* Cute little collar */}
+      <path d="M21 39.5C27 42.5 45 42.5 51 39.5" stroke="#ef4444" strokeWidth="3.2" strokeLinecap="round" />
+      <circle cx="36" cy="42.5" r="2.6" fill="#fbbf24" stroke="#b45309" strokeWidth="1" />
+
+      {/* Chubby front paws */}
+      <ellipse cx="25.5" cy="58" rx="6" ry="4.5" fill="#18181b" stroke="#09090b" strokeWidth="1.4" />
+      <ellipse cx="46.5" cy="58" rx="6" ry="4.5" fill="#18181b" stroke="#09090b" strokeWidth="1.4" />
+      {isPointing && (
+        <path
+          d="M14 45C8 42 7 37 11 35C14 33.5 17 37 17 42Z"
+          fill="#18181b"
+          stroke="#09090b"
+          strokeWidth="1.4"
+        />
+      )}
+
+      {/* Expressive eyes */}
       {isWinking ? (
         <>
-          <path d="M21.5 31C22.5 29 26.5 29 27.5 31" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" />
-          <path d="M36.5 31C37.5 29 41.5 29 42.5 31" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" />
-        </>
-      ) : isThinking ? (
-        <>
-          <circle cx="25.5" cy="29.5" r="2.8" fill="#0f172a" />
-          <circle cx="40.5" cy="29.5" r="2.8" fill="#0f172a" />
-          <circle cx="26.5" cy="28.5" r="1" fill="#ffffff" />
-          <circle cx="41.5" cy="28.5" r="1" fill="#ffffff" />
-          <path d="M20.5 24.5L27.5 25.5" stroke="#0f172a" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M24 22.5C25.5 20 29.5 20 31 22.5" stroke="#f8fafc" strokeWidth="2.3" strokeLinecap="round" />
+          <path d="M41 22.5C42.5 20 46.5 20 48 22.5" stroke="#f8fafc" strokeWidth="2.3" strokeLinecap="round" />
         </>
       ) : (
         <>
-          <circle cx="25" cy="30.8" r="3" fill="#0f172a" />
-          <circle cx="39" cy="30.8" r="3" fill="#0f172a" />
-          <circle cx="26" cy="29.6" r="1.1" fill="#ffffff" />
-          <circle cx="40" cy="29.6" r="1.1" fill="#ffffff" />
+          <circle cx="27.5" cy="22.5" r="4" fill="#ffffff" />
+          <circle cx="44.5" cy="22.5" r="4" fill="#ffffff" />
+          <circle cx={isThinking ? '28.5' : '27.8'} cy={isThinking ? '21.5' : '22.6'} r="2.3" fill="#09090b" />
+          <circle cx={isThinking ? '45.5' : '44.8'} cy={isThinking ? '21.5' : '22.6'} r="2.3" fill="#09090b" />
+          <circle cx="28.6" cy="21.6" r="0.9" fill="#ffffff" />
+          <circle cx="45.6" cy="21.6" r="0.9" fill="#ffffff" />
         </>
       )}
 
       {/* Rosy cheeks */}
-      <ellipse cx="19" cy="35.5" rx="2.2" ry="1.3" fill="#fb7185" fillOpacity="0.65" />
-      <ellipse cx="45" cy="35.5" rx="2.2" ry="1.3" fill="#fb7185" fillOpacity="0.65" />
+      <ellipse cx="20.5" cy="28" rx="2.7" ry="1.6" fill="#fb7185" fillOpacity="0.65" />
+      <ellipse cx="51.5" cy="28" rx="2.7" ry="1.6" fill="#fb7185" fillOpacity="0.65" />
 
-      {/* Cute beak */}
-      <path d="M29.5 33.5L34.5 33.5L32 37.5Z" fill="#f59e0b" stroke="#d97706" strokeWidth="1" strokeLinejoin="round" />
+      {/* Plump muzzle */}
+      <ellipse cx="36" cy="30.5" rx="11.5" ry="7.2" fill="#27272a" stroke="#09090b" strokeWidth="1.2" />
+      {/* Shiny black nose */}
+      <ellipse cx="36" cy="26.8" rx="4.2" ry="2.7" fill="#030712" />
+      <ellipse cx="34.8" cy="26.1" rx="1.2" ry="0.6" fill="#6b7280" />
 
-      {/* Little feet */}
-      <path d="M24 55.5L22.5 58.5M26 55.5L26 59M28 55.5L29 58.5" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M36 55.5L35 58.5M38 55.5L38 59M40 55.5L41.5 58.5" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" />
+      {/* Wide toothy smile (ฟันขาวมาก) */}
+      <path
+        d="M25.5 32.2C29.5 36.2 42.5 36.2 46.5 32.2"
+        stroke="#09090b"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        fill="#be123c"
+      />
+      {/* Bright pure-white teeth row */}
+      <rect x="29" y="32.1" width="14" height="3.2" rx="1.2" fill="#ffffff" stroke="#cbd5e1" strokeWidth="0.6" />
+      <line x1="33.5" y1="32.2" x2="33.5" y2="35.1" stroke="#cbd5e1" strokeWidth="0.7" />
+      <line x1="38.5" y1="32.2" x2="38.5" y2="35.1" stroke="#cbd5e1" strokeWidth="0.7" />
 
-      {/* Sparkle star on celebrate */}
-      {isWinking && (
-        <path d="M55 11L56.2 13.8L59 15L56.2 16.2L55 19L53.8 16.2L51 15L53.8 13.8Z" fill="#fbbf24" />
-      )}
+      {/* Prominent crooked bright-white LEFT canine fang (เขี้ยวข้างซ้ายเหยิน) */}
+      <path
+        d="M42.2 35.5L46.8 25.2L49.4 33.4Z"
+        fill="#ffffff"
+        stroke="#09090b"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+      />
+      {/* Gleaming sparkle on the bright white fang */}
+      <path d="M51 22L51.9 24.1L54 25L51.9 25.9L51 28L50.1 25.9L48 25L50.1 24.1Z" fill="#ffffff" stroke="#38bdf8" strokeWidth="0.5" />
     </svg>
   );
+};
+
+/**
+ * หมี (Mee): หมาดำสี่ตา (มีจุดสีน้ำตาลตรงคิ้ว) อกขาว ข้อเท้าสีน้ำตาลทั้งสี่ขา ตัวยาวเหมือนไส้กรอก
+ */
+export const MeeAvatar: React.FC<DogAvatarProps> = ({
+  mood = 'happy',
+  size = 56,
+  className = '',
+}) => {
+  const isWinking = mood === 'celebrate' || mood === 'success';
+  const isThinking = mood === 'thinking';
+  const isPointing = mood === 'pointing';
+
+  return (
+    <svg
+      width={Math.round(size * 1.25)}
+      height={size}
+      viewBox="0 0 92 68"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="หมี"
+      className={`transition-transform duration-300 ${className}`}
+    >
+      {/* Ground shadow */}
+      <ellipse cx="48" cy="63" rx="34" ry="3.5" fill="#0f172a" fillOpacity="0.16" />
+
+      {/* Happy wagging tail at rear right */}
+      <path
+        d="M78 36C85 31 87 24 83 20"
+        stroke="#18181b"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+      />
+
+      {/* Back-far leg (4th leg visible) with BROWN ankle/paw (ข้อเท้าสีน้ำตาลทั้งสี่ขา) */}
+      <rect x="61" y="45" width="6.5" height="12" rx="3.2" fill="#18181b" />
+      <rect x="60.5" y="52.5" width="7.2" height="6.5" rx="3.2" fill="#d97706" stroke="#78350f" strokeWidth="1" />
+
+      {/* Front-far leg (2nd leg visible) with BROWN ankle/paw */}
+      <rect x="34" y="46" width="6.5" height="12" rx="3.2" fill="#18181b" />
+      <rect x="33.5" y="53" width="7.2" height="6.5" rx="3.2" fill="#d97706" stroke="#78350f" strokeWidth="1" />
+
+      {/* Long sausage-shaped dachshund body (ตัวยาวเหมือนไส้กรอก) */}
+      <rect x="19" y="29" width="60" height="22" rx="11" fill="#18181b" stroke="#09090b" strokeWidth="1.6" />
+      <path d="M35 33H68" stroke="#3f3f46" strokeWidth="2.2" strokeLinecap="round" />
+
+      {/* White chest patch (อกขาว) */}
+      <path
+        d="M19.5 34C19.5 34 29 34 31 41C32.2 45.2 28.5 50.5 23 50.5C19.5 50.5 19.5 43 19.5 34Z"
+        fill="#ffffff"
+        stroke="#e2e8f0"
+        strokeWidth="0.9"
+      />
+
+      {/* Front-near leg (1st leg) with BROWN ankle/paw (ข้อเท้าสีน้ำตาลทั้งสี่ขา) */}
+      <rect x="24" y="46" width="7.2" height="12" rx="3.5" fill="#1f2937" stroke="#09090b" strokeWidth="1.1" />
+      <rect x="23.5" y="53.5" width="8" height="6.5" rx="3.2" fill="#d97706" stroke="#78350f" strokeWidth="1.1" />
+      {isPointing && (
+        <path
+          d="M17 45L10 41.5"
+          stroke="#d97706"
+          strokeWidth="4.5"
+          strokeLinecap="round"
+        />
+      )}
+
+      {/* Back-near leg (3rd leg) with BROWN ankle/paw */}
+      <rect x="69" y="45" width="7.2" height="12" rx="3.5" fill="#1f2937" stroke="#09090b" strokeWidth="1.1" />
+      <rect x="68.5" y="53" width="8" height="6.5" rx="3.2" fill="#d97706" stroke="#78350f" strokeWidth="1.1" />
+
+      {/* Dachshund Head */}
+      <ellipse cx="23.5" cy="23.5" rx="14.5" ry="13" fill="#1f2937" stroke="#09090b" strokeWidth="1.5" />
+      {/* Snout */}
+      <ellipse cx="14" cy="26.8" rx="8.5" ry="5.5" fill="#18181b" stroke="#09090b" strokeWidth="1.3" />
+      {/* Tan/brown muzzle highlight */}
+      <ellipse cx="14" cy="28.5" rx="5.5" ry="2.8" fill="#d97706" fillOpacity="0.85" />
+      {/* Cute nose */}
+      <ellipse cx="8" cy="24.8" rx="2.8" ry="2.1" fill="#030712" />
+
+      {/* Long floppy dachshund ear */}
+      <path
+        d="M29 17C35 17 38 25 36 33C34.5 36 29.5 35 28.5 30C27.5 25 26 17 29 17Z"
+        fill="#111827"
+        stroke="#09090b"
+        strokeWidth="1.4"
+      />
+
+      {/* Four-eyed tan eyebrow dots (หมาดำสี่ตา คือมีจุดสีน้ำตาลตรงคิ้ว) */}
+      <ellipse cx="16.5" cy="15.8" rx="2.6" ry="1.8" transform="rotate(-12 16.5 15.8)" fill="#f59e0b" stroke="#92400e" strokeWidth="0.7" />
+      <ellipse cx="24.5" cy="15.8" rx="2.6" ry="1.8" transform="rotate(10 24.5 15.8)" fill="#f59e0b" stroke="#92400e" strokeWidth="0.7" />
+
+      {/* Eyes */}
+      {isWinking ? (
+        <>
+          <path d="M14 21.5C15.2 19.8 18 19.8 19.2 21.5" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+          <path d="M22 21.5C23.2 19.8 26 19.8 27.2 21.5" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+        </>
+      ) : (
+        <>
+          <circle cx="16.6" cy="21" r="3" fill="#ffffff" />
+          <circle cx="24.4" cy="21" r="3" fill="#ffffff" />
+          <circle cx={isThinking ? '17.3' : '16.5'} cy="21" r="1.7" fill="#09090b" />
+          <circle cx={isThinking ? '25.1' : '24.3'} cy="21" r="1.7" fill="#09090b" />
+          <circle cx="17.1" cy="20.2" r="0.7" fill="#ffffff" />
+          <circle cx="24.9" cy="20.2" r="0.7" fill="#ffffff" />
+        </>
+      )}
+
+      {/* Happy collar */}
+      <path d="M19 32.5C24 34.2 31 33.5 34.5 31" stroke="#0ea5e9" strokeWidth="2.8" strokeLinecap="round" />
+
+      {/* Happy smile */}
+      <path d="M11 29.8C13.5 31.6 16.5 31.6 18.5 29.8" stroke="#09090b" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+};
+
+interface MascotAvatarProps {
+  mood?: MascotMood;
+  size?: number;
+  className?: string;
+  animated?: boolean;
+  character?: MascotBuddyMode;
+}
+
+/**
+ * Displays either ชาโค, หมี, or both buddies side-by-side.
+ */
+export const MascotAvatar: React.FC<MascotAvatarProps> = ({
+  mood = 'happy',
+  size = 48,
+  className = '',
+  animated = true,
+  character = 'chaco',
+}) => {
+  if (character === 'duo') {
+    return (
+      <span className={`inline-flex items-end -space-x-2 ${animated ? 'transition-transform duration-300' : ''} ${className}`}>
+        <ChacoAvatar mood={mood} size={size} />
+        <MeeAvatar mood={mood} size={Math.round(size * 0.92)} />
+      </span>
+    );
+  }
+  if (character === 'mee') {
+    return <MeeAvatar mood={mood} size={size} className={className} />;
+  }
+  return <ChacoAvatar mood={mood} size={size} className={className} />;
 };
 
 interface QuickShortcut {
@@ -197,27 +343,27 @@ const ROLE_SHORTCUTS: Record<UserRole, QuickShortcut[]> = {
 
 const MODULE_FRIENDLY_TIP: Record<string, { th: string; en: string }> = {
   dashboard: {
-    th: 'สรุปงานสำคัญวันนี้และตัวชี้วัดหลักอยู่ที่นี่ครับ',
-    en: 'Daily KPIs and your priority tasks are right here.',
+    th: 'โฮ่ง! ชาโคกับหมีรวมสรุปงานสำคัญวันนี้ไว้ให้ที่หน้านี้แล้วครับ',
+    en: 'Woof! Chaco & Mee gathered your daily overview right here.',
   },
   timetable: {
-    th: 'ดูตารางสอนแนวนอนเต็มจอ หรือกดพิมพ์ A4 แนวนอนได้เลยครับ!',
-    en: 'Switch to wide landscape view or print in A4 landscape anytime!',
+    th: 'กด "มุมมองแนวนอน" หรือ "พิมพ์แนวนอน (A4)" ได้เลย ชาโคกับหมีจัดให้เต็มหน้า!',
+    en: 'Try Wide Landscape or Print Landscape (A4) right from the toolbar!',
   },
   students: {
-    th: 'จัดการทะเบียนนักเรียน คะแนนเก็บ และเอกสาร ปพ. ในหน้าเดียว',
-    en: 'Manage student records, grades, and official forms in one place.',
+    th: 'จัดการทะเบียนนักเรียน คะแนนเก็บ และเอกสาร ปพ. ในหน้าเดียวเลยครับ',
+    en: 'Manage student records, grades, and official forms in one spot.',
   },
   attendance: {
-    th: 'เช็คชื่อด้วย QR, กล้องเร็ว หรือตรวจสอบสถิติรายวันได้ที่นี่',
-    en: 'Check attendance via QR, rapid scanner, or daily logs.',
+    th: 'เช็คชื่อด้วย QR, กล้องเร็ว หรือดูสถิติการมาเรียนรายวันได้ที่นี่ครับ',
+    en: 'Check attendance via QR, rapid scanner, or daily logs here.',
   },
   homework: {
     th: 'ติดตามภาระงาน สั่งการบ้าน และตรวจให้คะแนนได้รวดเร็วครับ',
     en: 'Track homework, assign tasks, and grade submissions quickly.',
   },
   system_settings: {
-    th: 'ตั้งค่า GPS, เวลาตัดสาย, LINE OA และบัญชีนักเรียนได้ครบที่นี่',
+    th: 'ตั้งค่า GPS, เวลาตัดสาย, LINE OA และบัญชีนักเรียนได้ครบที่นี่ครับ',
     en: 'Configure GPS gates, cutoff times, LINE OA, and accounts here.',
   },
 };
@@ -228,6 +374,8 @@ interface FloatingMascotNavigatorProps {
   lang: AppLanguage;
   isGuideEnabled: boolean;
   isTourActive: boolean;
+  activeBuddy: MascotBuddyMode;
+  onChangeBuddy: (buddy: MascotBuddyMode) => void;
   onToggleGuideEnabled: () => void;
   onStartModuleTour: (moduleId: string) => void;
   onEndTour: () => void;
@@ -241,6 +389,8 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
   lang,
   isGuideEnabled,
   isTourActive,
+  activeBuddy,
+  onChangeBuddy,
   onToggleGuideEnabled,
   onStartModuleTour,
   onEndTour,
@@ -256,10 +406,17 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
   // While the detailed step-by-step tour card is open at bottom-right, avoid double floating UI
   if (isTourActive) return null;
 
+  const buddyTitle =
+    activeBuddy === 'chaco'
+      ? (lang === 'th' ? 'ชาโค (หมาดำอ้วนเขี้ยวขาว)' : 'Chaco')
+      : activeBuddy === 'mee'
+        ? (lang === 'th' ? 'หมี (ไส้กรอกดำสี่ตา)' : 'Mee')
+        : (lang === 'th' ? 'ชาโค & หมี นำทาง' : 'Chaco & Mee Guide');
+
   const pageTip = MODULE_FRIENDLY_TIP[currentTab]?.[lang] || (
     lang === 'th'
-      ? 'สวัสดีครับ! น้องฮูกพร้อมช่วยนำทางและแนะนำหน้านี้'
-      : 'Hi there! I am Kru Owl, ready to guide you!'
+      ? 'โฮ่ง! ชาโคกับหมีพร้อมช่วยนำทางและแนะนำการใช้งานหน้านี้ครับ'
+      : 'Woof! Chaco & Mee are ready to guide you!'
   );
 
   return (
@@ -267,28 +424,28 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
       {isOpen && (
         <div
           role="dialog"
-          aria-label={lang === 'th' ? 'ตัวการ์ตูนนำทางระบบ' : 'Cartoon navigation assistant'}
-          className="w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden animate-in fade-in duration-150"
+          aria-label={lang === 'th' ? 'ชาโคและหมี ตัวการ์ตูนนำทางระบบ' : 'Chaco & Mee navigation assistant'}
+          className="w-[min(21.5rem,calc(100vw-1.5rem))] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden animate-in fade-in duration-150"
         >
           {/* Mascot Header */}
-          <div className="flex items-center justify-between gap-2.5 bg-[var(--color-primary-light)]/75 px-3.5 py-2.5 border-b border-[var(--color-border)]">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-[var(--color-card)] border border-[var(--color-primary)]/25 flex items-center justify-center shrink-0 shadow-xs">
-                <MascotAvatar mood="happy" size={36} />
+          <div className="flex items-center justify-between gap-2 bg-[var(--color-primary-light)]/80 px-3.5 py-2.5 border-b border-[var(--color-border)]">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="px-2 py-1 rounded-xl bg-amber-50 dark:bg-slate-100 border border-[var(--color-primary)]/30 flex items-center justify-center shrink-0 shadow-xs">
+                <MascotAvatar mood="happy" size={34} character={activeBuddy} />
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'น้องฮูกนำทาง · บ้านพักครู' : 'Kru Owl Navigator'}
+                  {buddyTitle}
                 </p>
                 <p className="text-[11px] text-[var(--color-primary-text)] truncate">
-                  {lang === 'th' ? 'ผู้ช่วยนำทางและสอนใช้งาน' : 'Interactive guide & shortcuts'}
+                  {lang === 'th' ? 'คู่หูตัวการ์ตูนนำทางระบบ' : 'Interactive dog guide duo'}
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              aria-label={lang === 'th' ? 'ปิดหน้าต่างน้องฮูก' : 'Close mascot navigator'}
+              aria-label={lang === 'th' ? 'ปิดหน้าต่างนำทาง' : 'Close mascot navigator'}
               className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card)] transition cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -296,6 +453,30 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
           </div>
 
           <div className="p-3 space-y-3">
+            {/* Buddy Switcher: Chaco / Mee / Duo */}
+            <div className="grid grid-cols-3 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1 text-[11px] font-bold">
+              {(
+                [
+                  { id: 'duo', labelTh: 'ชาโค & หมี', labelEn: 'Both' },
+                  { id: 'chaco', labelTh: 'ชาโค', labelEn: 'Chaco' },
+                  { id: 'mee', labelTh: 'หมี', labelEn: 'Mee' },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onChangeBuddy(option.id)}
+                  className={`rounded-lg py-1.5 px-2 transition cursor-pointer truncate ${
+                    activeBuddy === option.id
+                      ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                      : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                  }`}
+                >
+                  {lang === 'th' ? option.labelTh : option.labelEn}
+                </button>
+              ))}
+            </div>
+
             {/* Contextual Speech Tip */}
             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-body)] leading-relaxed">
               {pageTip}
@@ -312,7 +493,13 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-3 py-2.5 text-xs font-bold text-white shadow-sm transition cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'ให้น้องฮูกพาทัวร์จุดสำคัญหน้านี้' : 'Start Interactive Page Tour'}</span>
+                <span>
+                  {activeBuddy === 'mee'
+                    ? (lang === 'th' ? 'ให้หมีพาทัวร์จุดสำคัญหน้านี้' : 'Start Tour with Mee')
+                    : activeBuddy === 'chaco'
+                      ? (lang === 'th' ? 'ให้ชาโคพาทัวร์จุดสำคัญหน้านี้' : 'Start Tour with Chaco')
+                      : (lang === 'th' ? 'ให้ชาโค & หมีพาทัวร์หน้านี้' : 'Start Interactive Page Tour')}
+                </span>
               </button>
             )}
 
@@ -397,9 +584,13 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
             <button
               type="button"
               onClick={() => setIsOpen(true)}
-              className="text-left hover:text-[var(--color-primary-text)] cursor-pointer max-w-[190px] truncate"
+              className="text-left hover:text-[var(--color-primary-text)] cursor-pointer max-w-[210px] truncate"
             >
-              {lang === 'th' ? 'น้องฮูกช่วยนำทางไหม?' : 'Need Kru Owl guide?'}
+              {activeBuddy === 'chaco'
+                ? (lang === 'th' ? 'ชาโคช่วยนำทางไหม?' : 'Ask Chaco!')
+                : activeBuddy === 'mee'
+                  ? (lang === 'th' ? 'หมีช่วยนำทางไหม?' : 'Ask Mee!')
+                  : (lang === 'th' ? 'ชาโค & หมี ช่วยนำทางไหม?' : 'Need Chaco & Mee?')}
             </button>
             <button
               type="button"
@@ -416,13 +607,13 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           aria-expanded={isOpen}
-          aria-label={lang === 'th' ? 'เปิดน้องฮูกนำทางและช่วยเหลือ' : 'Open Kru Owl navigation guide'}
-          className="group relative w-13 h-13 rounded-full border-2 border-[var(--color-primary)] bg-[var(--color-card)] shadow-xl hover:scale-105 active:scale-95 transition flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/30"
+          aria-label={lang === 'th' ? 'เปิดชาโคและหมี ตัวการ์ตูนนำทาง' : 'Open Chaco and Mee navigation guide'}
+          className="group relative h-14 px-3 rounded-full border-2 border-[var(--color-primary)] bg-amber-50 dark:bg-slate-100 shadow-xl hover:scale-105 active:scale-95 transition flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/30"
         >
-          <MascotAvatar mood={isOpen ? 'pointing' : 'happy'} size={44} />
+          <MascotAvatar mood={isOpen ? 'pointing' : 'happy'} size={42} character={activeBuddy} />
           {hasTourForPage && !isOpen && (
             <span
-              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[var(--color-card)]"
+              className="absolute -top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[var(--color-card)]"
               aria-hidden="true"
             />
           )}

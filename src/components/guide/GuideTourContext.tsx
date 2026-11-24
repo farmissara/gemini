@@ -18,7 +18,9 @@ import {
   ModuleTourStep,
   resolveTourStepsForPage,
 } from '../../data/moduleGuidedTours';
-import { FloatingMascotNavigator, MascotAvatar } from './MascotNavigator';
+import { FloatingMascotNavigator, MascotAvatar, MascotBuddyMode } from './MascotNavigator';
+
+const MASCOT_BUDDY_STORAGE_KEY = 'baanpakkru_mascot_buddy';
 
 export interface TourNavigationTarget {
   moduleId: string;
@@ -91,6 +93,22 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
   const [activePlaybookId, setActivePlaybookId] = useState<string | null>(null);
   const [activePlaybookStepIndex, setActivePlaybookStepIndex] = useState(0);
   const [spotlightRect, setSpotlightRect] = useState<SpotlightRect | null>(null);
+  const [activeBuddy, setActiveBuddy] = useState<MascotBuddyMode>(() => {
+    if (typeof window === 'undefined') return 'duo';
+    const saved = window.localStorage.getItem(MASCOT_BUDDY_STORAGE_KEY);
+    return saved === 'chaco' || saved === 'mee' || saved === 'duo' ? saved : 'duo';
+  });
+
+  const handleChangeBuddy = useCallback((buddy: MascotBuddyMode) => {
+    setActiveBuddy(buddy);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(MASCOT_BUDDY_STORAGE_KEY, buddy);
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, []);
 
   const pendingTourRef = useRef<PendingTourRequest | null>(null);
   const suppressTabResetRef = useRef(false);
@@ -475,15 +493,35 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
             className="fixed z-40 pointer-events-none inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] pl-1.5 pr-3 py-0.5 text-[11px] font-bold text-white shadow-lg print:hidden transition-all duration-200"
             style={{
               top: spotlightRect.top > 38 ? spotlightRect.top - 34 : spotlightRect.top + spotlightRect.height + 8,
-              left: Math.min(Math.max(12, spotlightRect.left), Math.max(12, window.innerWidth - 230)),
+              left: Math.min(Math.max(12, spotlightRect.left), Math.max(12, window.innerWidth - 250)),
             }}
           >
-            <MascotAvatar mood="pointing" size={20} animated={false} className="shrink-0 rounded-full bg-white" />
-            <span>
-              {lang === 'th'
-                ? `น้องฮูกชี้ตรงนี้ · ขั้นที่ ${activeTourStepIndex + 1}/${activeTourSteps.length}`
-                : `Look here · Step ${activeTourStepIndex + 1}/${activeTourSteps.length}`}
-            </span>
+            {(() => {
+              const stepDog: 'chaco' | 'mee' =
+                activeBuddy === 'chaco'
+                  ? 'chaco'
+                  : activeBuddy === 'mee'
+                    ? 'mee'
+                    : activeTourStepIndex % 2 === 0
+                      ? 'chaco'
+                      : 'mee';
+              return (
+                <>
+                  <MascotAvatar
+                    mood="pointing"
+                    size={22}
+                    animated={false}
+                    character={stepDog}
+                    className="shrink-0 rounded-full bg-white p-0.5"
+                  />
+                  <span>
+                    {lang === 'th'
+                      ? `${stepDog === 'chaco' ? 'ชาโค' : 'หมี'}ชี้ตรงนี้ · ขั้นที่ ${activeTourStepIndex + 1}/${activeTourSteps.length}`
+                      : `${stepDog === 'chaco' ? 'Chaco' : 'Mee'} points here · ${activeTourStepIndex + 1}/${activeTourSteps.length}`}
+                  </span>
+                </>
+              );
+            })()}
           </div>
         </>
       )}
@@ -522,13 +560,37 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
           <div className="p-4 space-y-3 overflow-y-auto min-h-0">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2.5 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-[var(--color-primary-light)] border border-[var(--color-primary)]/20 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-                  <MascotAvatar mood={currentStep.mood} size={40} />
-                </div>
+                {(() => {
+                  const stepDog: 'chaco' | 'mee' =
+                    activeBuddy === 'chaco'
+                      ? 'chaco'
+                      : activeBuddy === 'mee'
+                        ? 'mee'
+                        : activeTourStepIndex % 2 === 0
+                          ? 'chaco'
+                          : 'mee';
+                  return (
+                    <div className="px-2 py-1 rounded-2xl bg-amber-50 dark:bg-slate-100 border border-[var(--color-primary)]/30 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                      <MascotAvatar mood={currentStep.mood} size={40} character={stepDog} />
+                    </div>
+                  );
+                })()}
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums flex flex-wrap items-center gap-1.5">
                     <span>
-                      {lang === 'th' ? 'ขั้นตอนที่' : 'Step'} {activeTourStepIndex + 1} / {activeTourSteps.length}
+                      {(() => {
+                        const stepDog: 'chaco' | 'mee' =
+                          activeBuddy === 'chaco'
+                            ? 'chaco'
+                            : activeBuddy === 'mee'
+                              ? 'mee'
+                              : activeTourStepIndex % 2 === 0
+                                ? 'chaco'
+                                : 'mee';
+                        return lang === 'th'
+                          ? `${stepDog === 'chaco' ? 'ชาโค' : 'หมี'}แนะนำ · ขั้นที่ ${activeTourStepIndex + 1}/${activeTourSteps.length}`
+                          : `${stepDog === 'chaco' ? 'Chaco' : 'Mee'} · Step ${activeTourStepIndex + 1}/${activeTourSteps.length}`;
+                      })()}
                     </span>
                     {activeDefinition && (
                       <>
@@ -664,6 +726,8 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
           lang={lang}
           isGuideEnabled={isGuideEnabled}
           isTourActive={Boolean(currentStep)}
+          activeBuddy={activeBuddy}
+          onChangeBuddy={handleChangeBuddy}
           onToggleGuideEnabled={toggleGuideEnabled}
           onStartModuleTour={(moduleId) => {
             startModuleTour(moduleId);
