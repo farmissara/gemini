@@ -1841,51 +1841,80 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   const timetableGroup = getModuleGroupMeta('timetable');
 
+  const setTimetableTeacherScope = (myCoursesOnlyNext: boolean) => {
+    setMyCoursesOnly(myCoursesOnlyNext);
+    if (myCoursesOnlyNext) {
+      setActiveScheduleFilters(null);
+      setSelectedClassRoom(ALL_CLASSROOMS);
+      setHoursTeacherFilter(
+        currentRole === 'teacher' ? 'all' : (loggedInCourseTeacherKey || 'all')
+      );
+    } else {
+      setHoursTeacherFilter('all');
+    }
+  };
+
   const renderRoomAndTermControls = (showRoomFilter = true) => (
     <div className="fn-group-tone print:hidden">
       <span className="fn-group-label">
         {lang === 'th' ? 'ขอบเขตตาราง' : 'Scope'}
       </span>
       {hasTeacherTimetableMatch && (
-        <button
-          type="button"
-          aria-pressed={myCoursesOnly}
-          data-active={myCoursesOnly}
-          onClick={() => {
-            const next = !myCoursesOnly;
-            setMyCoursesOnly(next);
-            if (next) {
-              setActiveScheduleFilters(null);
-              setSelectedClassRoom(ALL_CLASSROOMS);
-              setHoursTeacherFilter(currentRole === 'teacher' ? 'all' : (loggedInCourseTeacherKey || 'all'));
-            } else {
-              setHoursTeacherFilter('all');
+        currentRole === 'admin' || currentRole === 'super_admin' ? (
+          <div
+            role="group"
+            aria-label="ขอบเขตวิชาตามผู้สอน"
+            className="inline-flex min-h-8 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-0.5"
+          >
+            <button
+              type="button"
+              aria-pressed={!myCoursesOnly}
+              onClick={() => setTimetableTeacherScope(false)}
+              className={`inline-flex min-h-7 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                !myCoursesOnly
+                  ? 'bg-[var(--tone)] text-white shadow-sm'
+                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>ดูทั้งโรงเรียน</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={myCoursesOnly}
+              onClick={() => setTimetableTeacherScope(true)}
+              className={`inline-flex min-h-7 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                myCoursesOnly
+                  ? 'bg-[var(--tone)] text-white shadow-sm'
+                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
+              }`}
+            >
+              <UserCheck className="h-3.5 w-3.5" />
+              <span>เฉพาะวิชาที่ฉันสอน</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            aria-pressed={myCoursesOnly}
+            onClick={() => setTimetableTeacherScope(!myCoursesOnly)}
+            className={`btn-tool-neutral min-h-8 px-2.5 py-1 text-xs ${
+              myCoursesOnly
+                ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
+                : ''
+            }`}
+            title={
+              myCoursesOnly
+                ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูตารางที่คุณมีสิทธิ์เข้าถึง'
+                : 'กำลังแสดงตารางที่คุณมีสิทธิ์เข้าถึง คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
             }
-          }}
-          className={`btn-tool-neutral min-h-8 px-2.5 py-1 text-xs ${
-            myCoursesOnly
-              ? 'border-[var(--tone)] bg-[var(--tone-soft)] text-[var(--tone)]'
-              : ''
-          }`}
-          title={
-            myCoursesOnly
-              ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูวิชาของครูทุกคน'
-              : currentRole === 'teacher'
-                ? 'กำลังแสดงตารางทั้งหมดที่คุณมีสิทธิ์ดู คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
-                : 'กำลังแสดงวิชาของครูทุกคน คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
-          }
-        >
-          {myCoursesOnly
-            ? <UserCheck className="h-3.5 w-3.5 tone-text" />
-            : <Users className="h-3.5 w-3.5 tone-text" />}
-          <span>
+          >
             {myCoursesOnly
-              ? 'เฉพาะวิชาที่ฉันสอน'
-              : currentRole === 'teacher'
-                ? 'ทุกวิชาที่เข้าถึงได้'
-                : 'วิชาของครูทุกคน'}
-          </span>
-        </button>
+              ? <UserCheck className="h-3.5 w-3.5 tone-text" />
+              : <Users className="h-3.5 w-3.5 tone-text" />}
+            <span>{myCoursesOnly ? 'เฉพาะวิชาที่ฉันสอน' : 'ทุกวิชาที่เข้าถึงได้'}</span>
+          </button>
+        )
       )}
       {showRoomFilter && (activeScheduleFilters ? (
         <div className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1 text-xs">
