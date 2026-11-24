@@ -30,7 +30,6 @@ import type {
 import type { NavTab } from '../layout/Sidebar';
 import type { DashboardSubTab } from '../../views/DashboardView';
 import type { SystemSettingsTab } from '../../views/SystemSettingsView';
-import { formatSemesterLabel } from '../../lib/schoolSettings';
 import type { SchoolPolicyId } from '../../lib/schoolPermissions';
 import type { ThaiHoliday } from '../../lib/thaiHolidays';
 
@@ -48,15 +47,11 @@ interface AdminDashboardWorkspaceProps {
   systemConfig: SystemConfig;
   school?: School;
   currentUser?: AuthUser | null;
-  timeGreeting: string;
-  userDisplayName: string;
-  formattedTodayDate: string;
   todayStr: string;
   yesterdayStr: string;
   selectedDate: string;
   onSelectDate: (date: string) => void;
   todayHoliday: ThaiHoliday | null;
-  upcomingHoliday: ThaiHoliday | null;
   isTodayWeekend: boolean;
   // Counts & KPIs
   totalStudents: number;
@@ -117,15 +112,11 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   systemConfig,
   school,
   currentUser,
-  timeGreeting,
-  userDisplayName,
-  formattedTodayDate,
   todayStr,
   yesterdayStr,
   selectedDate,
   onSelectDate,
   todayHoliday,
-  upcomingHoliday,
   isTodayWeekend,
   totalStudents,
   activeStudents,
@@ -451,55 +442,9 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     <div className="dash-scroll-stack animate-in fade-in duration-150">
       {/* 1. CLEAN EXECUTIVE BRIEF HEADER */}
       <section
-        aria-label={lang === 'th' ? 'สรุปผู้บริหารสถานศึกษา' : 'Executive Summary'}
-        className="no-print morning-brief-strip px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+        aria-label={lang === 'th' ? 'ทางลัดผู้บริหารสถานศึกษา' : 'Executive shortcuts'}
+        className="no-print morning-brief-strip px-5 py-3 flex justify-end"
       >
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            <span className="font-semibold text-[var(--color-primary-text)]">
-              {lang === 'th' ? 'ผู้บริหารสถานศึกษา' : 'School Admin'}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span className="tabular-nums">{formattedTodayDate}</span>
-            <span aria-hidden="true">·</span>
-            <span className="tabular-nums">
-              {lang === 'th'
-                ? `ปีการศึกษา ${systemConfig.academicYear} (${formatSemesterLabel(systemConfig.currentSemester)})`
-                : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`}
-            </span>
-            {(todayHoliday || upcomingHoliday) && (
-              <>
-                <span aria-hidden="true">·</span>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('timetable')}
-                  className={`font-semibold hover:underline cursor-pointer ${
-                    todayHoliday ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'
-                  }`}
-                >
-                  {todayHoliday
-                    ? (lang === 'th' ? `วันหยุดวันนี้: ${todayHoliday.nameTh}` : `Holiday: ${todayHoliday.nameEn}`)
-                    : upcomingHoliday
-                      ? (lang === 'th' ? `วันหยุดถัดไป (${upcomingHoliday.date}): ${upcomingHoliday.nameTh}` : `Upcoming (${upcomingHoliday.date}): ${upcomingHoliday.nameEn}`)
-                      : null}
-                </button>
-              </>
-            )}
-          </div>
-          <h2 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
-            {timeGreeting}, {userDisplayName}
-          </h2>
-          <p className="text-xs text-[var(--color-text-muted)] truncate tabular-nums">
-            {totalPendingActions > 0
-              ? (lang === 'th'
-                  ? `มีรายการรอดำเนินการ ${totalPendingActions} รายการ · นักเรียน ${totalStudents} คน · ครู ${teachersCount} คน`
-                  : `${totalPendingActions} pending items · ${totalStudents} students · ${teachersCount} staff`)
-              : (lang === 'th'
-                  ? `ทุกฝ่ายเรียบร้อย · นักเรียน ${totalStudents} คน · ครู ${teachersCount} คน · ${coursesCount} รายวิชา`
-                  : `All clear · ${totalStudents} students · ${teachersCount} staff · ${coursesCount} courses`)}
-          </p>
-        </div>
-
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {onToggleSimplifiedView && (
             <button

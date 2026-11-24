@@ -664,7 +664,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           : lang === 'th'
             ? 'วันนี้ยังไม่มีคาบสอนในตาราง · พร้อมตรวจงานและบันทึกคะแนน ปพ.5'
             : 'No classes scheduled today · Ready for grading and student support'
-        : currentRole === 'parent'
+        : currentRole === 'admin' || currentRole === 'super_admin'
+          ? [
+              lang === 'th'
+                ? `ภาพรวมสถานศึกษาประจำวัน · นักเรียนในระบบ ${totalStudents} คน · ครู ${teachers.length} คน · ${courses.length} รายวิชา`
+                : `Daily campus summary · ${totalStudents} students · ${teachers.length} staff · ${courses.length} courses`,
+              upcomingHoliday
+                ? lang === 'th'
+                  ? `วันหยุดถัดไป (${upcomingHoliday.date}): ${upcomingHoliday.nameTh}`
+                  : `Upcoming holiday (${upcomingHoliday.date}): ${upcomingHoliday.nameEn}`
+                : null,
+            ].filter(Boolean).join('\n')
+          : currentRole === 'parent'
           ? primaryScopedStudent
             ? lang === 'th'
               ? `ข้อมูลผู้เรียนในความดูแล: ${primaryScopedStudent.firstNameTh} ${primaryScopedStudent.lastNameTh} (ชั้น ${primaryScopedStudent.gradeLevel} ${primaryScopedStudent.room})`
@@ -680,9 +691,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     : `AY ${systemConfig.academicYear} · ${systemConfig.currentSemester}`;
 
   useEffect(() => {
-    if (!currentUser || isAdminSimplified) return;
+    if (!currentUser) return;
 
-    const welcomeKey = `eduverse_dashboard_welcome_${school?.id || 'default'}_${currentUser.id}_${currentRole}_${todayStr}`;
+    const welcomeKey = `eduverse_dashboard_welcome_v2_${school?.id || 'default'}_${currentUser.id}_${currentRole}_${todayStr}`;
     try {
       if (window.sessionStorage.getItem(welcomeKey)) return;
       window.sessionStorage.setItem(welcomeKey, '1');
@@ -704,7 +715,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     currentUser,
     dailyBriefText,
     formattedTodayDate,
-    isAdminSimplified,
     roleBadgeLabel,
     school?.id,
     timeGreeting,
@@ -1102,15 +1112,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               systemConfig={systemConfig}
               school={school}
               currentUser={currentUser}
-              timeGreeting={timeGreeting}
-              userDisplayName={userDisplayName}
-              formattedTodayDate={formattedTodayDate}
               todayStr={todayStr}
               yesterdayStr={yesterdayStr}
               selectedDate={selectedDate}
               onSelectDate={setSelectedDate}
               todayHoliday={todayHoliday}
-              upcomingHoliday={upcomingHoliday}
               isTodayWeekend={isTodayWeekend}
               totalStudents={totalStudents}
               activeStudents={activeStudents}
