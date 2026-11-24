@@ -307,7 +307,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [selfieFilterId, setSelfieFilterId] = useState<SelfieFilterId>('normal');
   const [selfieFrameId, setSelfieFrameId] = useState<SelfieFrameId>('mascot_duo');
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([
-    { uid: 'init-1', stickerId: 'sparkle_heart', xPct: 82, yPct: 24, rotation: 10 },
+    { uid: 'init-1', stickerId: 'sparkle_heart', xPct: 77, yPct: 26, rotation: 10 },
   ]);
   const [selfieTimerSeconds, setSelfieTimerSeconds] = useState<0 | 3>(0);
   const [selfieCountdown, setSelfieCountdown] = useState<number | null>(null);
@@ -2128,6 +2128,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   })();
 
   const hideFloatingToolbar =
+    subTab === 'selfie_mobile' ||
     showRapidScanner ||
     showPeriodQrModal ||
     showGpsAdminModal ||
@@ -2140,7 +2141,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   return (
     <div
-      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-2 overflow-x-hidden w-full max-w-full pb-20' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}
+      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'min-h-full flex flex-col gap-2 overflow-x-hidden w-full max-w-full pb-24' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}
     >
       {/* Top Header */}
       {embeddedMobile ? (
@@ -2495,6 +2496,21 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </span>
             <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ml-auto" />
           </button>
+
+          {isStaffUser && (
+            <>
+              <span className="h-5 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => setShowQuickRosterSheet(true)}
+                className="min-h-[40px] px-2.5 rounded-lg flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition shrink-0"
+                title={lang === 'th' ? 'เปิดรายชื่อนักเรียน' : 'Open Student Roster'}
+              >
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
+              </button>
+            </>
+          )}
         </div>
       )}
 

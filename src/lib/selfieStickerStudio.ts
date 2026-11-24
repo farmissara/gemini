@@ -14,9 +14,23 @@ export type SelfieStickerId =
 export interface PlacedSticker {
   uid: string;
   stickerId: SelfieStickerId;
-  xPct: number; // 12..88
-  yPct: number; // 14..84
+  xPct: number; // 14..86
+  yPct: number; // 16..84
   rotation: number; // degrees
+}
+
+export const STICKER_BOUNDS = {
+  minX: 14,
+  maxX: 86,
+  minY: 16,
+  maxY: 84,
+} as const;
+
+export function clampStickerPosition(xPct: number, yPct: number): { xPct: number; yPct: number } {
+  return {
+    xPct: Math.max(STICKER_BOUNDS.minX, Math.min(STICKER_BOUNDS.maxX, xPct)),
+    yPct: Math.max(STICKER_BOUNDS.minY, Math.min(STICKER_BOUNDS.maxY, yPct)),
+  };
 }
 
 export interface SelfieFilterOption {
@@ -115,7 +129,7 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     labelEn: 'Chaco',
     bgColor: '#1e293b',
     textColor: '#ffffff',
-    defaultPos: { xPct: 80, yPct: 24, rotation: 8 },
+    defaultPos: { xPct: 77, yPct: 26, rotation: 8 },
   },
   {
     id: 'mee_hi',
@@ -123,7 +137,7 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     labelEn: 'Mee',
     bgColor: '#292524',
     textColor: '#fef3c7',
-    defaultPos: { xPct: 20, yPct: 24, rotation: -8 },
+    defaultPos: { xPct: 23, yPct: 26, rotation: -8 },
   },
   {
     id: 'early_bird',
@@ -131,7 +145,7 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     labelEn: 'Early Bird',
     bgColor: '#fef3c7',
     textColor: '#92400e',
-    defaultPos: { xPct: 22, yPct: 72, rotation: -6 },
+    defaultPos: { xPct: 25, yPct: 74, rotation: -6 },
   },
   {
     id: 'full_energy',
@@ -139,7 +153,7 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     labelEn: '100% Energy',
     bgColor: '#dcfce7',
     textColor: '#166534',
-    defaultPos: { xPct: 78, yPct: 72, rotation: 6 },
+    defaultPos: { xPct: 75, yPct: 74, rotation: 6 },
   },
   {
     id: 'sparkle_heart',
@@ -147,7 +161,7 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     labelEn: 'Heart Glow',
     bgColor: '#fce7f3',
     textColor: '#be185d',
-    defaultPos: { xPct: 24, yPct: 46, rotation: -10 },
+    defaultPos: { xPct: 23, yPct: 50, rotation: -10 },
   },
   {
     id: 'star_crown',
@@ -155,7 +169,7 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     labelEn: 'Star Crown',
     bgColor: '#fef08a',
     textColor: '#854d0e',
-    defaultPos: { xPct: 50, yPct: 18, rotation: 0 },
+    defaultPos: { xPct: 50, yPct: 22, rotation: 0 },
   },
   {
     id: 'cool_shades',
@@ -163,7 +177,7 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     labelEn: 'Cool Shades',
     bgColor: '#0f172a',
     textColor: '#38bdf8',
-    defaultPos: { xPct: 50, yPct: 42, rotation: -2 },
+    defaultPos: { xPct: 50, yPct: 45, rotation: -2 },
   },
 ];
 
@@ -317,15 +331,73 @@ function drawMeeHeadOnCanvas(ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.restore();
 }
 
+interface StageRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  border: number;
+  bottomBar: number;
+}
+
+function getFrameStageRect(frameId: SelfieFrameId, width: number, height: number): StageRect {
+  const minDim = Math.min(width, height);
+  if (frameId === 'polaroid') {
+    const border = Math.round(minDim * 0.036);
+    const bottomBar = Math.round(minDim * 0.14);
+    return {
+      x: border,
+      y: border,
+      w: Math.max(10, width - border * 2),
+      h: Math.max(10, height - border - bottomBar),
+      border,
+      bottomBar,
+    };
+  }
+  if (frameId === 'pastel_cute') {
+    const border = Math.round(minDim * 0.022);
+    const bottomBar = Math.round(minDim * 0.11);
+    return {
+      x: border,
+      y: border,
+      w: Math.max(10, width - border * 2),
+      h: Math.max(10, height - border - bottomBar),
+      border,
+      bottomBar,
+    };
+  }
+  if (frameId === 'mascot_duo') {
+    const border = Math.round(minDim * 0.02);
+    const bottomBar = Math.round(minDim * 0.13);
+    return {
+      x: border,
+      y: border,
+      w: Math.max(10, width - border * 2),
+      h: Math.max(10, height - border - bottomBar),
+      border,
+      bottomBar,
+    };
+  }
+  const bottomBar = Math.round(minDim * 0.08);
+  return {
+    x: 0,
+    y: 0,
+    w: width,
+    h: Math.max(10, height - bottomBar),
+    border: 0,
+    bottomBar,
+  };
+}
+
 function drawStickerOnCanvas(
   ctx: CanvasRenderingContext2D,
   sticker: PlacedSticker,
-  width: number,
-  height: number
+  stage: StageRect
 ) {
-  const x = (sticker.xPct / 100) * width;
-  const y = (sticker.yPct / 100) * height;
-  const baseUnit = Math.min(width, height);
+  const clamped = clampStickerPosition(sticker.xPct, sticker.yPct);
+  const x = stage.x + (clamped.xPct / 100) * stage.w;
+  const y = stage.y + (clamped.yPct / 100) * stage.h;
+  const baseUnit = Math.min(stage.w, stage.h);
   const opt = getStickerOption(sticker.stickerId);
 
   ctx.save();
@@ -333,14 +405,12 @@ function drawStickerOnCanvas(
   ctx.rotate((sticker.rotation * Math.PI) / 180);
 
   if (sticker.stickerId === 'chaco_cheer') {
-    const r = baseUnit * 0.085;
-    // White sticker outline
+    const r = baseUnit * 0.082;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(0, 0, r * 1.24, 0, Math.PI * 2);
     ctx.fill();
     drawChacoHeadOnCanvas(ctx, 0, -r * 0.08, r);
-    // Label pill below head
     ctx.fillStyle = '#f59e0b';
     drawRoundedRect(ctx, -r * 1.1, r * 0.72, r * 2.2, r * 0.56, r * 0.28);
     ctx.fill();
@@ -354,7 +424,7 @@ function drawStickerOnCanvas(
   }
 
   if (sticker.stickerId === 'mee_hi') {
-    const r = baseUnit * 0.085;
+    const r = baseUnit * 0.082;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(0, 0, r * 1.24, 0, Math.PI * 2);
@@ -373,8 +443,8 @@ function drawStickerOnCanvas(
   }
 
   if (sticker.stickerId === 'star_crown') {
-    const w = baseUnit * 0.19;
-    const h = baseUnit * 0.12;
+    const w = baseUnit * 0.18;
+    const h = baseUnit * 0.115;
     ctx.fillStyle = '#facc15';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = Math.max(2, baseUnit * 0.008);
@@ -394,8 +464,8 @@ function drawStickerOnCanvas(
   }
 
   if (sticker.stickerId === 'cool_shades') {
-    const w = baseUnit * 0.28;
-    const h = baseUnit * 0.095;
+    const w = baseUnit * 0.26;
+    const h = baseUnit * 0.09;
     ctx.fillStyle = '#09090b';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = Math.max(2, baseUnit * 0.006);
@@ -406,7 +476,6 @@ function drawStickerOnCanvas(
     ctx.fill();
     ctx.stroke();
     ctx.fillRect(-w * 0.08, -h * 0.2, w * 0.16, h * 0.18);
-    // Cyan shine stripe
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = Math.max(2, baseUnit * 0.007);
     ctx.beginPath();
@@ -420,7 +489,7 @@ function drawStickerOnCanvas(
   }
 
   if (sticker.stickerId === 'sparkle_heart') {
-    const s = baseUnit * 0.095;
+    const s = baseUnit * 0.09;
     ctx.fillStyle = '#f43f5e';
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = Math.max(2, baseUnit * 0.008);
@@ -434,9 +503,8 @@ function drawStickerOnCanvas(
     return;
   }
 
-  // Pill word stickers ('early_bird', 'full_energy')
-  const padX = baseUnit * 0.036;
-  const fontSize = Math.round(baseUnit * 0.04);
+  const padX = baseUnit * 0.034;
+  const fontSize = Math.round(baseUnit * 0.038);
   ctx.font = `800 ${fontSize}px sans-serif`;
   const textWidth = ctx.measureText(opt.labelTh).width;
   const boxW = textWidth + padX * 2;
@@ -471,57 +539,87 @@ export interface ComposeSelfieOptions {
   timeText: string;
 }
 
-export function drawFrameOverlayOnCanvas(
+function drawFrameChromeBackground(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  options: ComposeSelfieOptions
+  frameId: SelfieFrameId
 ) {
-  const { frameId, personName, gateName, checkTypeLabel, timeText } = options;
-  const minDim = Math.min(width, height);
-
   if (frameId === 'polaroid') {
-    const border = Math.round(minDim * 0.038);
-    const bottomBar = Math.round(minDim * 0.15);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, border);
-    ctx.fillRect(0, 0, border, height);
-    ctx.fillRect(width - border, 0, border, height);
-    ctx.fillRect(0, height - bottomBar, width, bottomBar);
-
-    ctx.fillStyle = '#0f172a';
-    ctx.font = `700 ${Math.round(minDim * 0.04)}px sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${checkTypeLabel} · ${personName}`, border + 6, height - bottomBar * 0.58);
-
-    ctx.fillStyle = '#64748b';
-    ctx.font = `500 ${Math.round(minDim * 0.03)}px sans-serif`;
-    ctx.fillText(`${timeText} · ${gateName}`, border + 6, height - bottomBar * 0.28);
+    ctx.fillRect(0, 0, width, height);
     return;
   }
-
   if (frameId === 'pastel_cute') {
-    const border = Math.round(minDim * 0.025);
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, '#f472b6');
     grad.addColorStop(0.5, '#a78bfa');
     grad.addColorStop(1, '#38bdf8');
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = border * 2;
-    ctx.strokeRect(0, 0, width, height);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+    return;
+  }
+  if (frameId === 'mascot_duo') {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = Math.max(4, Math.round(Math.min(width, height) * 0.014));
+    ctx.strokeRect(
+      ctx.lineWidth / 2,
+      ctx.lineWidth / 2,
+      width - ctx.lineWidth,
+      height - ctx.lineWidth
+    );
+    return;
+  }
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, 0, width, height);
+}
 
-    // Bottom pastel ribbon
-    const pillW = Math.min(width - border * 4, Math.round(width * 0.78));
-    const pillH = Math.round(minDim * 0.09);
+export function drawFrameOverlayOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  options: ComposeSelfieOptions,
+  stage: StageRect = getFrameStageRect(options.frameId, width, height)
+) {
+  const { frameId, personName, gateName, checkTypeLabel, timeText } = options;
+  const minDim = Math.min(width, height);
+  const footerTop = stage.y + stage.h;
+
+  if (frameId === 'polaroid') {
+    ctx.fillStyle = '#0f172a';
+    ctx.font = `700 ${Math.round(minDim * 0.038)}px sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      `${checkTypeLabel} · ${personName}`,
+      stage.x + 4,
+      footerTop + stage.bottomBar * 0.38
+    );
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = `500 ${Math.round(minDim * 0.028)}px sans-serif`;
+    ctx.fillText(`${timeText} · ${gateName}`, stage.x + 4, footerTop + stage.bottomBar * 0.72);
+
+    ctx.fillStyle = '#2563eb';
+    ctx.font = `700 ${Math.round(minDim * 0.028)}px sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.fillText('BaanPakKru', stage.x + stage.w - 4, footerTop + stage.bottomBar * 0.52);
+    return;
+  }
+
+  if (frameId === 'pastel_cute') {
+    const pillW = Math.min(stage.w, Math.round(width * 0.84));
+    const pillH = Math.round(stage.bottomBar * 0.76);
     const px = (width - pillW) / 2;
-    const py = height - pillH - border - 6;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    const py = footerTop + (stage.bottomBar - pillH) / 2;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
     drawRoundedRect(ctx, px, py, pillW, pillH, pillH / 2);
     ctx.fill();
 
     ctx.fillStyle = '#be185d';
-    ctx.font = `700 ${Math.round(minDim * 0.032)}px sans-serif`;
+    ctx.font = `700 ${Math.round(minDim * 0.03)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`${checkTypeLabel} · ${personName} · ${timeText}`, width / 2, py + pillH / 2);
@@ -529,50 +627,34 @@ export function drawFrameOverlayOnCanvas(
   }
 
   if (frameId === 'mascot_duo') {
-    // Sleek warm amber border + Chaco & Mee stamp card
-    const border = Math.round(minDim * 0.02);
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = border * 2;
-    ctx.strokeRect(0, 0, width, height);
-
-    // Bottom stamp bar
-    const barH = Math.round(minDim * 0.115);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
-    drawRoundedRect(ctx, border + 8, height - barH - border - 4, width - (border + 8) * 2, barH, 14);
-    ctx.fill();
-
-    const mascotR = barH * 0.36;
-    drawChacoHeadOnCanvas(ctx, border + 16 + mascotR, height - border - 4 - barH / 2, mascotR);
-    drawMeeHeadOnCanvas(
-      ctx,
-      width - border - 16 - mascotR,
-      height - border - 4 - barH / 2,
-      mascotR
-    );
+    const barCenterY = footerTop + stage.bottomBar / 2;
+    const mascotR = stage.bottomBar * 0.34;
+    drawChacoHeadOnCanvas(ctx, stage.x + 8 + mascotR, barCenterY, mascotR);
+    drawMeeHeadOnCanvas(ctx, stage.x + stage.w - 8 - mascotR, barCenterY, mascotR);
 
     ctx.fillStyle = '#fef3c7';
-    ctx.font = `700 ${Math.round(minDim * 0.033)}px sans-serif`;
+    ctx.font = `700 ${Math.round(minDim * 0.032)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${checkTypeLabel} · ${personName}`, width / 2, height - border - 4 - barH * 0.62);
+    ctx.fillText(`${checkTypeLabel} · ${personName}`, width / 2, footerTop + stage.bottomBar * 0.36);
 
     ctx.fillStyle = '#cbd5e1';
-    ctx.font = `500 ${Math.round(minDim * 0.026)}px sans-serif`;
-    ctx.fillText(`${timeText} · ${gateName}`, width / 2, height - border - 4 - barH * 0.28);
+    ctx.font = `500 ${Math.round(minDim * 0.025)}px sans-serif`;
+    ctx.fillText(`${timeText} · ${gateName}`, width / 2, footerTop + stage.bottomBar * 0.72);
     return;
   }
 
-  // 'clean' studio subtle corner tag
-  const pad = Math.round(minDim * 0.03);
-  const tagH = Math.round(minDim * 0.08);
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.68)';
-  drawRoundedRect(ctx, pad, height - tagH - pad, Math.min(width - pad * 2, width * 0.72), tagH, 10);
-  ctx.fill();
-  ctx.fillStyle = '#f8fafc';
+  // 'clean' footer bar
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, footerTop, width, stage.bottomBar);
+  ctx.fillStyle = '#e2e8f0';
   ctx.font = `600 ${Math.round(minDim * 0.028)}px sans-serif`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`${checkTypeLabel} · ${personName} · ${timeText}`, pad + 12, height - pad - tagH / 2);
+  ctx.fillText(`${checkTypeLabel} · ${personName}`, 16, footerTop + stage.bottomBar / 2);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText(`${timeText} · ${gateName}`, width - 16, footerTop + stage.bottomBar / 2);
 }
 
 export function composeLiveVideoSnapshot(
@@ -589,23 +671,35 @@ export function composeLiveVideoSnapshot(
   if (!ctx) return null;
 
   const filterOpt = getFilterOption(options.filterId);
+  const stage = getFrameStageRect(options.frameId, width, height);
+
+  drawFrameChromeBackground(ctx, width, height, options.frameId);
 
   ctx.save();
+  drawRoundedRect(ctx, stage.x, stage.y, stage.w, stage.h, Math.min(12, stage.border * 0.5));
+  ctx.clip();
+
   if (filterOpt.cssFilter !== 'none' && 'filter' in ctx) {
     ctx.filter = filterOpt.cssFilter;
   }
   if (isMirrored) {
-    ctx.translate(width, 0);
+    ctx.translate(stage.x + stage.w, stage.y);
     ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, stage.w, stage.h);
+  } else {
+    ctx.drawImage(video, stage.x, stage.y, stage.w, stage.h);
   }
-  ctx.drawImage(video, 0, 0, width, height);
   ctx.restore();
 
+  ctx.save();
+  drawRoundedRect(ctx, stage.x, stage.y, stage.w, stage.h, Math.min(12, stage.border * 0.5));
+  ctx.clip();
   for (const sticker of options.stickers) {
-    drawStickerOnCanvas(ctx, sticker, width, height);
+    drawStickerOnCanvas(ctx, sticker, stage);
   }
+  ctx.restore();
 
-  drawFrameOverlayOnCanvas(ctx, width, height, options);
+  drawFrameOverlayOnCanvas(ctx, width, height, options, stage);
   return canvas.toDataURL('image/jpeg', 0.88);
 }
 
@@ -621,45 +715,50 @@ export function composeSimulatedStudioSnapshot(
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  // Stylish playful pastel/studio backdrop for simulated mode
-  const bg = ctx.createLinearGradient(0, 0, width, height);
+  const stage = getFrameStageRect(options.frameId, width, height);
+  drawFrameChromeBackground(ctx, width, height, options.frameId);
+
+  ctx.save();
+  drawRoundedRect(ctx, stage.x, stage.y, stage.w, stage.h, Math.min(12, stage.border * 0.5));
+  ctx.clip();
+
+  const bg = ctx.createLinearGradient(stage.x, stage.y, stage.x + stage.w, stage.y + stage.h);
   bg.addColorStop(0, '#1e1b4b');
   bg.addColorStop(0.55, '#312e81');
   bg.addColorStop(1, '#0f172a');
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(stage.x, stage.y, stage.w, stage.h);
 
-  // Soft studio spotlight circles
   ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
   ctx.beginPath();
-  ctx.arc(width * 0.25, height * 0.28, 150, 0, Math.PI * 2);
+  ctx.arc(stage.x + stage.w * 0.25, stage.y + stage.h * 0.28, 130, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = 'rgba(244, 114, 182, 0.16)';
   ctx.beginPath();
-  ctx.arc(width * 0.78, height * 0.65, 170, 0, Math.PI * 2);
+  ctx.arc(stage.x + stage.w * 0.78, stage.y + stage.h * 0.65, 150, 0, Math.PI * 2);
   ctx.fill();
 
-  // Center avatar monogram badge
   const initials = personName.trim().slice(0, 2) || 'BP';
   ctx.fillStyle = 'rgba(255,255,255,0.14)';
   ctx.beginPath();
-  ctx.arc(width / 2, height * 0.44, 78, 0, Math.PI * 2);
+  ctx.arc(stage.x + stage.w / 2, stage.y + stage.h * 0.48, 72, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.35)';
   ctx.lineWidth = 3;
   ctx.stroke();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = '700 44px sans-serif';
+  ctx.font = '700 40px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(initials, width / 2, height * 0.44);
+  ctx.fillText(initials, stage.x + stage.w / 2, stage.y + stage.h * 0.48);
 
   for (const sticker of options.stickers) {
-    drawStickerOnCanvas(ctx, sticker, width, height);
+    drawStickerOnCanvas(ctx, sticker, stage);
   }
+  ctx.restore();
 
-  drawFrameOverlayOnCanvas(ctx, width, height, options);
+  drawFrameOverlayOnCanvas(ctx, width, height, options, stage);
   return canvas.toDataURL('image/jpeg', 0.88);
 }

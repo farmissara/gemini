@@ -551,7 +551,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       />
 
       {/* 2. MAIN ACTIVE VIEW CONTAINER (Generous spacing, 1 task per screen) */}
-      <main className="flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto p-5 sm:p-6 overflow-y-auto">
+      <main
+        className={`flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto overflow-y-auto ${
+          activeTab === 'checkin' || activeTab === 'leave' ? 'px-3 py-3 sm:p-6' : 'p-5 sm:p-6'
+        }`}
+      >
         <ViewErrorBoundary
           resetKey={`${activeTab}:${activeGameView}:${profilePage}`}
           lang={lang}
@@ -746,7 +750,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
           {/* TAB B: CHECK-IN */}
           {activeTab === 'checkin' && (
-            <div className="h-full min-h-0 animate-in fade-in duration-200">
+            <div className="min-h-full animate-in fade-in duration-200">
               <MobileAttendanceView
                 embeddedMobile
                 initialSubTab={mobileAttendanceInitialSubTab}
@@ -788,7 +792,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
           {/* TAB C: LEAVE REQUESTS */}
           {activeTab === 'leave' && (
-            <div className="h-full min-h-0 animate-in fade-in duration-200">
+            <div className="min-h-full animate-in fade-in duration-200">
               <MobileAttendanceView
                 embeddedMobile
                 initialSubTab="leave_request"
