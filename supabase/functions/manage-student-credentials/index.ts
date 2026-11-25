@@ -73,12 +73,37 @@ async function getSyntheticStudentEmail(schoolId: string, studentId: string): Pr
   return `student-${hash}@accounts.eduverse.invalid`;
 }
 
+function createAuthEmailLookup(serviceClient: ReturnType<typeof createClient>): () => Promise<Map<string, string>> {
+  let cachedPromise: Promise<Map<string, string>> | null = null;
+  return () => {
+    if (cachedPromise) return cachedPromise;
+    cachedPromise = (async () => {
+      const map = new Map<string, string>();
+      for (let page = 1; page <= 50; page += 1) {
+        const { data, error } = await serviceClient.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error) {
+          console.error('Could not list auth users for recovery:', error.message);
+          break;
+        }
+        const users = data?.users || [];
+        for (const user of users) {
+          if (user.email) map.set(user.email.toLowerCase(), user.id);
+        }
+        if (users.length < 1000) break;
+      }
+      return map;
+    })();
+    return cachedPromise;
+  };
+}
+
 async function createStudentAccount(
   serviceClient: ReturnType<typeof createClient>,
   schoolId: string,
   student: StudentRecord,
-  passwordConfig?: { defaultPasswordType?: string | null; shortIdPasswordPrefix?: string | null }
-): Promise<{ credential?: StudentCredential; reason?: string }> {
+  passwordConfig?: { defaultPasswordType?: string | null; shortIdPasswordPrefix?: string | null },
+  getAuthEmailIndex?: () => Promise<Map<string, string>>
+): Promise<{ credential?: StudentCredential; alreadyExists?: boolean; reason?: string }> {
   const cleanStudentId = (student.student_id_number || '').trim();
   const temporaryPassword = getStudentInitialPassword(cleanStudentId, {
     defaultPasswordType: passwordConfig?.defaultPasswordType,
@@ -91,24 +116,7 @@ async function createStudentAccount(
   const issuedAt = new Date().toISOString();
   const expiresAt: string | null = null;
   const email = await getSyntheticStudentEmail(schoolId, student.id);
-  const { data: createdAuthUser, error: createUserError } = await serviceClient.auth.admin.createUser({
-    email,
-    password: temporaryPassword,
-    email_confirm: true,
-  });
-  if (createUserError || !createdAuthUser.user) {
-    const detail = formatStudentPasswordPolicyError(
-      temporaryPassword,
-      createUserError?.message || 'Missing user response.',
-      cleanStudentId
-    );
-    console.error(`Could not create student auth user ${student.id}:`, detail);
-    return { reason: detail };
-  }
-
-  const accountId = createdAuthUser.user.id;
-  const { error: profileError } = await serviceClient.from('user_profiles').insert({
-    id: accountId,
+  const profileRowPayload = {
     school_id: schoolId,
     role: 'student',
     student_id: student.id,
@@ -119,6 +127,92 @@ async function createStudentAccount(
     must_change_password: true,
     temporary_password_issued_at: issuedAt,
     temporary_password_expires_at: expiresAt,
+  };
+
+  const { data: createdAuthUser, error: createUserError } = await serviceClient.auth.admin.createUser({
+    email,
+    password: temporaryPassword,
+    email_confirm: true,
+  });
+  if (createUserError || !createdAuthUser.user) {
+    const rawMsg = createUserError?.message || 'Missing user response.';
+    const isAlreadyRegistered = /already been registered|already exists|email_exists/i.test(rawMsg);
+
+    if (isAlreadyRegistered && getAuthEmailIndex) {
+      const emailIndex = await getAuthEmailIndex();
+      const existingAuthUserId = emailIndex.get(email.toLowerCase());
+      if (existingAuthUserId) {
+        const { data: existingProfile, error: existingProfileErr } = await serviceClient
+          .from('user_profiles')
+          .select('id, school_id, role, student_id')
+          .eq('id', existingAuthUserId)
+          .maybeSingle();
+
+        if (existingProfileErr) return { reason: existingProfileErr.message };
+
+        if (existingProfile) {
+          if (existingProfile.school_id === schoolId && existingProfile.student_id === student.id) {
+            return { alreadyExists: true, reason: 'บัญชีมีอยู่แล้ว' };
+          }
+          if (existingProfile.school_id === schoolId && existingProfile.role === 'student' && !existingProfile.student_id) {
+            const { error: pwdErr } = await serviceClient.auth.admin.updateUserById(existingAuthUserId, {
+              password: temporaryPassword,
+              email_confirm: true,
+            });
+            if (pwdErr) {
+              return { reason: formatStudentPasswordPolicyError(temporaryPassword, pwdErr.message, cleanStudentId) };
+            }
+            const { error: relinkErr } = await serviceClient
+              .from('user_profiles')
+              .update(profileRowPayload)
+              .eq('id', existingAuthUserId);
+            if (relinkErr) return { reason: relinkErr.message };
+            return {
+              credential: {
+                studentIdNumber: cleanStudentId,
+                temporaryPassword,
+                expiresAt,
+              },
+            };
+          }
+          return { reason: 'พบบัญชี Auth ที่ใช้อีเมลอ้างอิงเดียวกัน แต่ผูกกับบัญชีอื่นในระบบแล้ว' };
+        }
+
+        const { error: repairPwdErr } = await serviceClient.auth.admin.updateUserById(existingAuthUserId, {
+          password: temporaryPassword,
+          email_confirm: true,
+        });
+        if (repairPwdErr) {
+          return { reason: formatStudentPasswordPolicyError(temporaryPassword, repairPwdErr.message, cleanStudentId) };
+        }
+        const { error: repairProfileErr } = await serviceClient.from('user_profiles').insert({
+          id: existingAuthUserId,
+          ...profileRowPayload,
+        });
+        if (repairProfileErr) return { reason: repairProfileErr.message };
+        return {
+          credential: {
+            studentIdNumber: cleanStudentId,
+            temporaryPassword,
+            expiresAt,
+          },
+        };
+      }
+    }
+
+    const detail = formatStudentPasswordPolicyError(
+      temporaryPassword,
+      rawMsg,
+      cleanStudentId
+    );
+    console.error(`Could not create student auth user ${student.id}:`, detail);
+    return { reason: detail };
+  }
+
+  const accountId = createdAuthUser.user.id;
+  const { error: profileError } = await serviceClient.from('user_profiles').insert({
+    id: accountId,
+    ...profileRowPayload,
   });
   if (profileError) {
     const { error: cleanupError } = await serviceClient.auth.admin.deleteUser(accountId);
@@ -161,7 +255,13 @@ Deno.serve(async (request) => {
   const { data: authData, error: authError } = await authClient.auth.getUser(token);
   if (authError || !authData.user) return respond(401, { error: 'Your session is invalid or expired.' });
 
-  let payload: { operation?: unknown; schoolId?: unknown; studentId?: unknown };
+  let payload: {
+    operation?: unknown;
+    schoolId?: unknown;
+    studentId?: unknown;
+    studentIds?: unknown;
+    passwordConfig?: { defaultPasswordType?: unknown; shortIdPasswordPrefix?: unknown };
+  };
   try {
     payload = await request.json();
   } catch {
@@ -174,6 +274,29 @@ Deno.serve(async (request) => {
       : null;
   const schoolId = typeof payload.schoolId === 'string' ? payload.schoolId.trim() : '';
   const studentId = typeof payload.studentId === 'string' ? payload.studentId.trim() : '';
+  const studentIds = Array.isArray(payload.studentIds)
+    ? Array.from(
+        new Set(
+          payload.studentIds
+            .filter((item): item is string => typeof item === 'string')
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0 && item.length <= 128)
+        )
+      )
+    : [];
+  const requestedPasswordType =
+    payload.passwordConfig &&
+    (payload.passwordConfig.defaultPasswordType === 'student_id' ||
+      payload.passwordConfig.defaultPasswordType === 'birthdate' ||
+      payload.passwordConfig.defaultPasswordType === 'custom' ||
+      payload.passwordConfig.defaultPasswordType === 'pin')
+      ? payload.passwordConfig.defaultPasswordType
+      : undefined;
+  const requestedShortPrefix =
+    payload.passwordConfig && typeof payload.passwordConfig.shortIdPasswordPrefix === 'string'
+      ? payload.passwordConfig.shortIdPasswordPrefix.replace(/\s+/g, '').slice(0, 12)
+      : undefined;
+
   if (!operation || !schoolId || (operation !== 'create_all_missing' && !studentId)) {
     return respond(400, { error: 'An operation and school are required; single-student operations also require a student.' });
   }
@@ -248,9 +371,12 @@ Deno.serve(async (request) => {
   }
 
   const schoolPasswordConfig = {
-    defaultPasswordType: school.student_default_password_type || 'student_id',
-    shortIdPasswordPrefix: school.student_short_id_password_prefix || '',
+    defaultPasswordType: requestedPasswordType || school.student_default_password_type || 'student_id',
+    shortIdPasswordPrefix:
+      requestedShortPrefix !== undefined ? requestedShortPrefix : school.student_short_id_password_prefix || '',
   };
+
+  const getAuthEmailIndex = createAuthEmailLookup(serviceClient);
 
   if (operation === 'create_all_missing') {
     const studentColumns = 'id, student_id_number, date_of_birth, first_name_th, last_name_th, first_name_en, last_name_en, avatar_url';
@@ -323,7 +449,12 @@ Deno.serve(async (request) => {
       }
     }
 
-    for (const student of students) {
+    const requestedStudentIdSet = studentIds.length > 0 ? new Set(studentIds) : null;
+    const targetStudents = requestedStudentIdSet
+      ? students.filter((student) => requestedStudentIdSet.has(student.id))
+      : students;
+
+    for (const student of targetStudents) {
       const normalizedNumber = student.student_id_number.trim().toLowerCase();
       if (!normalizedNumber) {
         skipped.push({ studentIdNumber: '(ไม่ระบุ)', reason: 'ไม่มีรหัสนักเรียนในทะเบียน' });
@@ -344,15 +475,22 @@ Deno.serve(async (request) => {
       const batch = eligibleStudents.slice(offset, offset + BULK_CREATE_CONCURRENCY);
       const results = await Promise.all(batch.map(async (student) => {
         try {
-          const result = await createStudentAccount(serviceClient, schoolId, student, schoolPasswordConfig);
-          return result.credential
-            ? { credential: result.credential }
-            : {
-                failure: {
-                  studentIdNumber: student.student_id_number,
-                  reason: result.reason || 'สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบและลองใหม่',
-                },
-              };
+          const result = await createStudentAccount(serviceClient, schoolId, student, schoolPasswordConfig, getAuthEmailIndex);
+          if (result.credential) return { credential: result.credential };
+          if (result.alreadyExists) {
+            return {
+              skipped: {
+                studentIdNumber: student.student_id_number,
+                reason: result.reason || 'บัญชีมีอยู่แล้ว',
+              },
+            };
+          }
+          return {
+            failure: {
+              studentIdNumber: student.student_id_number,
+              reason: result.reason || 'สร้างบัญชีไม่สำเร็จ กรุณาตรวจสอบและลองใหม่',
+            },
+          };
         } catch (error) {
           console.error(`Unexpected error creating student account ${student.id}:`, error);
           return { failure: { studentIdNumber: student.student_id_number, reason: 'เกิดข้อผิดพลาดระหว่างสร้างบัญชี กรุณาลองใหม่' } };
@@ -360,6 +498,7 @@ Deno.serve(async (request) => {
       }));
       for (const result of results) {
         if (result.credential) created.push(result.credential);
+        else if (result.skipped) skipped.push(result.skipped);
         else if (result.failure) failed.push(result.failure);
       }
     }
@@ -368,6 +507,7 @@ Deno.serve(async (request) => {
       created,
       skipped,
       failed,
+      appliedStudentIdsFilter: Boolean(requestedStudentIdSet),
     });
   }
 
@@ -416,7 +556,8 @@ Deno.serve(async (request) => {
     if (!getStudentInitialPassword(student.student_id_number)) {
       return respond(400, { error: 'นักเรียนคนนี้ยังไม่มีรหัสนักเรียนในทะเบียน จึงไม่สามารถสร้างบัญชีได้' });
     }
-    const result = await createStudentAccount(serviceClient, schoolId, student as StudentRecord, schoolPasswordConfig);
+    const result = await createStudentAccount(serviceClient, schoolId, student as StudentRecord, schoolPasswordConfig, getAuthEmailIndex);
+    if (result.alreadyExists) return respond(409, { error: 'This student already has an account.' });
     if (!result.credential) return respond(500, { error: result.reason || 'Could not finish creating the student account.' });
     return respond(200, result.credential);
   }

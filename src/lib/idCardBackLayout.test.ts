@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import type { Course, SchoolPeriodTime, Student, Teacher, TimetableSlot } from '../types';
 import {
   buildCompactCardTimetableMatrix,
+  buildMirroredDuplexBackSlots,
+  chunkPrintItems,
+  formatMaskedNationalId,
   getSavedIdCardBackMode,
   getStudentTimetableSlots,
   getTeacherTimetableSlots,
@@ -156,4 +159,14 @@ test('buildCompactCardTimetableMatrix skips breaks, keeps weekdays, and maps cel
   assert.equal(matrix.cellMap.get('mon::1')?.[0]?.courseCode, 'ท11101');
   assert.equal(matrix.cellMap.get('fri::3')?.[0]?.courseCode, 'ค11101');
   assert.equal(matrix.cellMap.get('tue::1'), undefined);
+});
+
+test('formatMaskedNationalId masks 13-digit Thai national IDs and handles empty values', () => {
+  assert.equal(formatMaskedNationalId('1100200300405'), '1-1002-XXXXX-40-5');
+  assert.equal(formatMaskedNationalId(''), '-');
+});
+
+test('chunkPrintItems and buildMirroredDuplexBackSlots paginate and mirror rows for duplex printing', () => {
+  assert.deepEqual(chunkPrintItems(['A', 'B', 'C', 'D', 'E'], 2), [['A', 'B'], ['C', 'D'], ['E']]);
+  assert.deepEqual(buildMirroredDuplexBackSlots(['A', 'B', 'C'], 2), ['B', 'A', null, 'C']);
 });

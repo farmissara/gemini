@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   BellRing, 
   MessageSquare, 
@@ -40,6 +40,10 @@ import {
   ArrowRight,
   Lock,
   Activity,
+  Search,
+  Filter,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { AttendanceRecord, Course, GradeRecord, SystemConfig, LineNotificationSettings, Student, Teacher, TimetableSlot, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
@@ -64,6 +68,7 @@ import { SchoolPermissionSettingsView } from './SchoolPermissionSettingsView';
 import { SchoolPackagesAndAiPanel } from '../components/admin/SchoolPackagesAndAiPanel';
 import { AcademicTermRolloverPanel } from '../components/admin/AcademicTermRolloverPanel';
 import {
+  buildInitialStudentPassword,
   formatStudentIdPolicySummary,
   normalizeSchoolStudentIdPolicy,
   validateStudentIdAgainstPolicy,
@@ -194,6 +199,21 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [temporaryCredential, setTemporaryCredential] = useState<TemporaryStudentCredential | null>(null);
   const [bulkCredentialResult, setBulkCredentialResult] = useState<BulkStudentCredentialResult | null>(null);
   const [showBulkCreateConfirm, setShowBulkCreateConfirm] = useState(false);
+  const [bulkTargetStudentIds, setBulkTargetStudentIds] = useState<string[] | null>(null);
+  const [missingGradeFilter, setMissingGradeFilter] = useState<string>('all');
+  const [missingRoomFilter, setMissingRoomFilter] = useState<string>('all');
+  const [missingSearchQuery, setMissingSearchQuery] = useState<string>('');
+  const [selectedMissingStudentIds, setSelectedMissingStudentIds] = useState<Set<string>>(() => new Set());
+  const [inlinePasswordType, setInlinePasswordType] = useState<'student_id' | 'birthdate' | 'custom' | 'pin'>(
+    () => activeSchool.studentDefaultPasswordType || 'student_id'
+  );
+  const [inlineShortIdPrefix, setInlineShortIdPrefix] = useState<string>(
+    () => activeSchool.studentShortIdPasswordPrefix || ''
+  );
+  const [savingInlinePasswordConfig, setSavingInlinePasswordConfig] = useState(false);
+  const [existingAccountRoomFilter, setExistingAccountRoomFilter] = useState<string>('all');
+  const [existingAccountStatusFilter, setExistingAccountStatusFilter] = useState<'all' | 'active' | 'pending' | 'suspended'>('all');
+  const [existingAccountSearch, setExistingAccountSearch] = useState<string>('');
   const [schoolLogoUploading, setSchoolLogoUploading] = useState(false);
   const [schoolLogoError, setSchoolLogoError] = useState<string | null>(null);
   const [schoolLogoSuccess, setSchoolLogoSuccess] = useState<string | null>(null);
@@ -202,6 +222,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [savingPrimaryCourseCreditSetting, setSavingPrimaryCourseCreditSetting] = useState(false);
   const [primaryCourseCreditSettingError, setPrimaryCourseCreditSettingError] = useState<string | null>(null);
   const schoolLogoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setInlinePasswordType(activeSchool.studentDefaultPasswordType || 'student_id');
+    setInlineShortIdPrefix(activeSchool.studentShortIdPasswordPrefix || '');
+  }, [activeSchool.id, activeSchool.studentDefaultPasswordType, activeSchool.studentShortIdPasswordPrefix]);
 
   useEffect(() => {
     if (activeSchool.roomOptions?.length) {
@@ -316,8 +341,55 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     }
   };
 
-  const handleCreateStudentLoginAccount = async () => {
-    if (!credentialStudentId) {
+  const getEffectivePasswordConfig = () => ({
+    defaultPasswordType: inlinePasswordType,
+    shortIdPasswordPrefix: inlineShortIdPrefix.replace(/\s+/g, '').slice(0, 12),
+  });
+
+  const handleSaveInlinePasswordPolicy = async (
+    nextType: 'student_id' | 'birthdate' | 'custom' | 'pin',
+    nextPrefix: string
+  ) => {
+    const cleanPrefix = nextPrefix.replace(/\s+/g, '').slice(0, 12);
+    setInlinePasswordType(nextType);
+    setInlineShortIdPrefix(cleanPrefix);
+    setStudentAccountError(null);
+    setStudentAccountSuccess(null);
+
+    if (!onUpdateSchool) {
+      setStudentAccountSuccess(
+        nextType === 'birthdate'
+          ? 'เลือกใช้วันเดือนปีเกิด 8 หลักเป็นรหัสผ่านเริ่มต้นสำหรับรอบนี้แล้ว'
+          : cleanPrefix
+            ? `กำหนดคำนำหน้ารหัสผ่านเริ่มต้น "${cleanPrefix}" สำหรับการสร้างบัญชีรอบนี้แล้ว`
+            : 'ใช้รหัสนักเรียนตรงๆ เป็นรหัสผ่านเริ่มต้น'
+      );
+      return;
+    }
+
+    setSavingInlinePasswordConfig(true);
+    try {
+      await onUpdateSchool({
+        studentDefaultPasswordType: nextType,
+        studentShortIdPasswordPrefix: cleanPrefix,
+      });
+      setStudentAccountSuccess(
+        nextType === 'birthdate'
+          ? 'บันทึกการใช้วันเดือนปีเกิด พ.ศ. 8 หลัก เป็นรหัสผ่านเริ่มต้นของโรงเรียนเรียบร้อยแล้ว'
+          : cleanPrefix
+            ? `บันทึกคำนำหน้ารหัสผ่านเริ่มต้น "${cleanPrefix}" สำหรับรหัสสั้นกว่า 6 ตัวเรียบร้อยแล้ว`
+            : 'บันทึกการใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้นเรียบร้อยแล้ว'
+      );
+    } catch (error) {
+      setStudentAccountError(error instanceof Error ? error.message : 'ไม่สามารถบันทึกตั้งค่ารหัสผ่านเริ่มต้นได้');
+    } finally {
+      setSavingInlinePasswordConfig(false);
+    }
+  };
+
+  const handleCreateStudentLoginAccount = async (targetId?: string) => {
+    const targetStudentId = targetId || credentialStudentId;
+    if (!targetStudentId) {
       setStudentAccountError('กรุณาเลือกรายชื่อนักเรียน');
       return;
     }
@@ -327,10 +399,20 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setTemporaryCredential(null);
     setBulkCredentialResult(null);
     try {
-      const credential = await createStudentLoginAccount(activeSchool.id, credentialStudentId);
+      const credential = await createStudentLoginAccount(
+        activeSchool.id,
+        targetStudentId,
+        getEffectivePasswordConfig()
+      );
       setTemporaryCredential(credential);
       setStudentAccountSuccess(`สร้างบัญชีให้นักเรียน ${credential.studentIdNumber} เรียบร้อยแล้ว`);
-      setCredentialStudentId('');
+      if (!targetId) setCredentialStudentId('');
+      setSelectedMissingStudentIds((prev) => {
+        if (!prev.has(targetStudentId)) return prev;
+        const next = new Set(prev);
+        next.delete(targetStudentId);
+        return next;
+      });
       await reloadStudentAccounts();
     } catch (error) {
       setStudentAccountError(error instanceof Error ? error.message : 'สร้างบัญชีนักเรียนไม่สำเร็จ');
@@ -339,30 +421,98 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     }
   };
 
-  const activeStudentsWithoutAccounts = students.filter(
-    (student) =>
-      (student.status === 'active' || student.status === 'transferred_in') &&
-      !studentAccounts.some((account) => account.student_id === student.id)
+  const activeStudentsWithoutAccounts = useMemo(
+    () =>
+      students.filter(
+        (student) =>
+          (student.status === 'active' || student.status === 'transferred_in') &&
+          !studentAccounts.some((account) => account.student_id === student.id)
+      ),
+    [students, studentAccounts]
   );
 
+  const missingGradeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(activeStudentsWithoutAccounts.map((s) => (s.gradeLevel || '').trim()).filter(Boolean))
+      ).sort((a, b) => a.localeCompare(b, 'th', { numeric: true })),
+    [activeStudentsWithoutAccounts]
+  );
+
+  const missingRoomOptions = useMemo(() => {
+    const base =
+      missingGradeFilter === 'all'
+        ? activeStudentsWithoutAccounts
+        : activeStudentsWithoutAccounts.filter((s) => (s.gradeLevel || '').trim() === missingGradeFilter);
+    return Array.from(new Set(base.map((s) => (s.room || '').trim()).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, 'th', { numeric: true })
+    );
+  }, [activeStudentsWithoutAccounts, missingGradeFilter]);
+
+  const filteredMissingStudents = useMemo(() => {
+    const q = missingSearchQuery.trim().toLowerCase();
+    return activeStudentsWithoutAccounts.filter((student) => {
+      if (missingGradeFilter !== 'all' && (student.gradeLevel || '').trim() !== missingGradeFilter) return false;
+      if (missingRoomFilter !== 'all' && (student.room || '').trim() !== missingRoomFilter) return false;
+      if (q) {
+        const hay = `${student.firstNameTh || ''} ${student.lastNameTh || ''} ${student.firstNameEn || ''} ${student.lastNameEn || ''} ${student.studentIdNumber || ''} ${student.room || ''} ${student.gradeLevel || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [activeStudentsWithoutAccounts, missingGradeFilter, missingRoomFilter, missingSearchQuery]);
+
+  useEffect(() => {
+    const validIds = new Set(activeStudentsWithoutAccounts.map((s) => s.id));
+    setSelectedMissingStudentIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) next.add(id);
+        else changed = true;
+      });
+      return changed || next.size !== prev.size ? next : prev;
+    });
+  }, [activeStudentsWithoutAccounts]);
+
   const handleCreateMissingStudentLoginAccounts = async () => {
+    const targetIds = bulkTargetStudentIds && bulkTargetStudentIds.length > 0 ? bulkTargetStudentIds : undefined;
+    const studentIdNumbersById: Record<string, string> = {};
+    activeStudentsWithoutAccounts.forEach((s) => {
+      studentIdNumbersById[s.id] = s.studentIdNumber || s.id;
+    });
+
     setStudentAccountSaving(true);
     setStudentAccountError(null);
     setStudentAccountSuccess(null);
     setTemporaryCredential(null);
     setBulkCredentialResult(null);
     try {
-      const result = await createMissingStudentLoginAccounts(activeSchool.id);
+      const result = await createMissingStudentLoginAccounts(activeSchool.id, {
+        studentIds: targetIds,
+        studentIdNumbersById,
+        passwordConfig: getEffectivePasswordConfig(),
+      });
       setBulkCredentialResult(result);
       setStudentAccountSuccess(
         `สร้างบัญชีสำเร็จ ${result.created.length} คน · ข้าม ${result.skipped.length} คน · ล้มเหลว ${result.failed.length} คน`
       );
+      if (targetIds) {
+        setSelectedMissingStudentIds((prev) => {
+          const next = new Set(prev);
+          targetIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      } else {
+        setSelectedMissingStudentIds(new Set());
+      }
       await reloadStudentAccounts();
     } catch (error) {
       setStudentAccountError(error instanceof Error ? error.message : 'สร้างบัญชีนักเรียนเป็นชุดไม่สำเร็จ');
     } finally {
       setStudentAccountSaving(false);
       setShowBulkCreateConfirm(false);
+      setBulkTargetStudentIds(null);
     }
   };
 
@@ -396,9 +546,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setTemporaryCredential(null);
     setBulkCredentialResult(null);
     try {
-      const credential = await resetStudentLoginPassword(activeSchool.id, studentId);
+      const credential = await resetStudentLoginPassword(activeSchool.id, studentId, getEffectivePasswordConfig());
       setTemporaryCredential(credential);
-      setStudentAccountSuccess(`รีเซ็ตรหัสผ่านเริ่มต้นให้นักเรียน ${credential.studentIdNumber} เป็นรหัสนักเรียนเรียบร้อยแล้ว`);
+      setStudentAccountSuccess(`รีเซ็ตรหัสผ่านเริ่มต้นให้นักเรียน ${credential.studentIdNumber} เป็นรหัสผ่านเริ่มต้นเรียบร้อยแล้ว`);
       await reloadStudentAccounts();
     } catch (error) {
       setStudentAccountError(error instanceof Error ? error.message : 'รีเซ็ตรหัสผ่านนักเรียนไม่สำเร็จ');
@@ -2568,24 +2718,40 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
       {activeTab === 'student_accounts' &&
         ['admin', 'super_admin'].includes(currentRole) && (() => {
-          const studentIdPolicy = normalizeSchoolStudentIdPolicy(activeSchool);
+          const studentIdPolicy = {
+            ...normalizeSchoolStudentIdPolicy(activeSchool),
+            defaultPasswordType: inlinePasswordType,
+            shortIdPasswordPrefix: inlineShortIdPrefix.replace(/\s+/g, '').slice(0, 12),
+          };
           const studentsViolatingSchoolRule = activeStudentsWithoutAccounts.filter(
             (student) => !validateStudentIdAgainstPolicy(student.studentIdNumber || '', studentIdPolicy).valid
           );
+          const studentsWithShortIds = activeStudentsWithoutAccounts.filter((student) => {
+            const idLen = (student.studentIdNumber || '').trim().length;
+            return idLen > 0 && idLen < 6;
+          });
           const studentsWithShortIdsWithoutPrefix =
             studentIdPolicy.defaultPasswordType === 'student_id' && !studentIdPolicy.shortIdPasswordPrefix
-              ? activeStudentsWithoutAccounts.filter((student) => {
-                  const idLen = (student.studentIdNumber || '').trim().length;
-                  return idLen > 0 && idLen < 6;
-                })
+              ? studentsWithShortIds
               : [];
+
+          const sampleShortStudent = studentsWithShortIds[0];
+          const sampleShortId = (sampleShortStudent?.studentIdNumber || studentIdPolicy.example || '2804').trim();
 
           const initialPasswordDesc =
             studentIdPolicy.defaultPasswordType === 'birthdate'
               ? 'วันเดือนปีเกิด พ.ศ. 8 หลัก (ววดดปปปป)'
               : studentIdPolicy.shortIdPasswordPrefix
-                ? `"${studentIdPolicy.shortIdPasswordPrefix}" + รหัสนักเรียน (เช่น ${studentIdPolicy.shortIdPasswordPrefix}${studentIdPolicy.example})`
+                ? `"${studentIdPolicy.shortIdPasswordPrefix}" + รหัสนักเรียน (เช่น ${studentIdPolicy.shortIdPasswordPrefix}${sampleShortId})`
                 : 'รหัสนักเรียนตามทะเบียน';
+
+          const isFilteredMissing =
+            missingGradeFilter !== 'all' || missingRoomFilter !== 'all' || missingSearchQuery.trim() !== '';
+          const selectedFilteredMissingCount = filteredMissingStudents.filter((s) =>
+            selectedMissingStudentIds.has(s.id)
+          ).length;
+          const allFilteredMissingSelected =
+            filteredMissingStudents.length > 0 && selectedFilteredMissingCount === filteredMissingStudents.length;
 
           return (
           <div className="space-y-4 animate-in fade-in duration-200">
@@ -2596,7 +2762,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     บัญชีเข้าสู่ระบบสำหรับนักเรียน (รหัสผ่านเริ่มต้น: {initialPasswordDesc})
                   </h3>
                   <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว หรือรีเซ็ตรหัสผ่านบัญชีเดิม โดยระบบกำหนดรหัสผ่านเริ่มต้นเป็น{' '}
+                    สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว แยกกรองตามห้องเรียนหรือเลือกรายบุคคลได้ โดยระบบกำหนดรหัสผ่านเริ่มต้นเป็น{' '}
                     <strong className="text-[var(--color-text-title)]">{initialPasswordDesc}</strong>{' '}
                     และเมื่อนักเรียนเข้าสู่ระบบครั้งแรก ระบบจะให้ตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษร
                   </p>
@@ -2619,19 +2785,84 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 </p>
               )}
 
-              {studentsWithShortIdsWithoutPrefix.length > 0 && (
-                <p className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-                  คำแนะนำสำหรับรหัสนักเรียน {studentsWithShortIdsWithoutPrefix.length} คน ที่สั้นกว่า 6 ตัว (เช่น "{studentsWithShortIdsWithoutPrefix[0]?.studentIdNumber}"):
-                  รหัสเหล่านี้ใช้เป็น <strong>ชื่อผู้ใช้ล็อกอินได้ตามปกติ</strong> แต่หากระบบยืนยันตัวตนยังตั้งความยาวรหัสผ่านขั้นต่ำไว้ที่ 6 ตัวอักษร แนะนำให้ตั้ง{' '}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('student_login_config')}
-                    className="underline font-bold cursor-pointer"
-                  >
-                    คำนำหน้ารหัสผ่านเริ่มต้น (เช่น 00) หรือเปลี่ยนเป็นวันเดือนปีเกิด
-                  </button>{' '}
-                  หรือปรับ Minimum password length ใน Supabase Auth ให้เหลือ 4 ตัว
-                </p>
+              {/* Inline Short-ID & Default Password Selector */}
+              {(studentsWithShortIds.length > 0 || inlineShortIdPrefix || inlinePasswordType === 'birthdate') && (
+                <div
+                  className={`rounded-xl border p-3.5 text-xs space-y-2.5 ${
+                    studentsWithShortIdsWithoutPrefix.length > 0
+                      ? 'border-amber-300 bg-amber-50/90 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
+                      : 'border-emerald-300 bg-emerald-50/80 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="font-bold">
+                        {studentsWithShortIdsWithoutPrefix.length > 0
+                          ? `พบรหัสนักเรียน ${studentsWithShortIdsWithoutPrefix.length} คน ที่สั้นกว่า 6 ตัว (เช่น "${sampleShortId}") — ตั้งค่ารหัสผ่านเริ่มต้นได้ทันทีที่นี่:`
+                          : `ตั้งค่ารหัสผ่านเริ่มต้นพร้อมใช้งาน (ตัวอย่างรหัส "${sampleShortId}" → รหัสผ่านเริ่มต้น "${buildInitialStudentPassword({
+                              studentIdNumber: sampleShortId,
+                              defaultPasswordType: inlinePasswordType,
+                              shortIdPasswordPrefix: inlineShortIdPrefix,
+                              dateOfBirth: sampleShortStudent?.dateOfBirth,
+                            }) || 'ววดดปปปป'}")`}
+                      </p>
+                      <p className="text-[11px] opacity-90">
+                        รหัสนักเรียนใช้เป็น <strong>ชื่อผู้ใช้ล็อกอินได้ตามปกติ</strong> แต่ระบบ Auth กำหนดรหัสผ่านขั้นต่ำ 6 ตัวอักษร หากเติมคำนำหน้าเช่น <code className="px-1 rounded bg-white/70 dark:bg-black/30 font-mono">00</code> นักเรียนจะใช้รหัสผ่านเริ่มต้นเป็น <code className="px-1 rounded bg-white/70 dark:bg-black/30 font-mono">00{sampleShortId}</code> (หรือใช้วันเดือนปีเกิด 8 หลัก)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      disabled={savingInlinePasswordConfig}
+                      onClick={() => void handleSaveInlinePasswordPolicy('student_id', '00')}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                        inlinePasswordType === 'student_id' && inlineShortIdPrefix === '00'
+                          ? 'bg-emerald-700 text-white border-emerald-700'
+                          : 'bg-white dark:bg-slate-900 border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                      }`}
+                    >
+                      ใช้คำนำหน้า "00" (เช่น 00{sampleShortId})
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={savingInlinePasswordConfig}
+                      onClick={() => void handleSaveInlinePasswordPolicy('birthdate', inlineShortIdPrefix)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                        inlinePasswordType === 'birthdate'
+                          ? 'bg-emerald-700 text-white border-emerald-700'
+                          : 'bg-white dark:bg-slate-900 border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                      }`}
+                    >
+                      ใช้วันเดือนปีเกิด พ.ศ. 8 หลัก
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        maxLength={12}
+                        value={inlineShortIdPrefix}
+                        onChange={(e) => {
+                          setInlinePasswordType('student_id');
+                          setInlineShortIdPrefix(e.target.value.replace(/\s+/g, ''));
+                        }}
+                        placeholder="คำนำหน้าเอง เช่น 00 / std"
+                        aria-label="คำนำหน้ารหัสผ่านเริ่มต้น"
+                        className="w-36 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-white dark:bg-slate-900 text-[11px] font-mono text-[var(--color-text-title)]"
+                      />
+                      <button
+                        type="button"
+                        disabled={savingInlinePasswordConfig}
+                        onClick={() => void handleSaveInlinePasswordPolicy('student_id', inlineShortIdPrefix)}
+                        className="px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-[11px] font-bold hover:opacity-90 cursor-pointer disabled:opacity-50"
+                      >
+                        {savingInlinePasswordConfig ? 'กำลังบันทึก...' : 'บันทึกค่านี้'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {studentAccountError && (
@@ -2645,39 +2876,269 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 </p>
               )}
 
-              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
-                <label className="space-y-1 text-xs font-semibold text-[var(--color-text-body)]">
-                  <span>นักเรียนที่ยังไม่มีบัญชี (เฉพาะสถานะกำลังศึกษา)</span>
-                  <select
-                    value={credentialStudentId}
-                    onChange={(event) => setCredentialStudentId(event.target.value)}
-                    disabled={studentAccountsLoading || studentAccountSaving}
-                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
-                  >
-                    <option value="">เลือกรายชื่อนักเรียน</option>
-                    {activeStudentsWithoutAccounts.map((student) => (
-                        <option key={student.id} value={student.id}>
-                          {student.firstNameTh} {student.lastNameTh} · {student.studentIdNumber}
+              {/* Filters & Selection for Students Without Accounts */}
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-title)]">
+                    <Filter className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                    <span>ตัวกรองและเลือกรายชื่อนักเรียนที่ยังไม่มีบัญชี (กำลังศึกษา {activeStudentsWithoutAccounts.length} คน)</span>
+                  </div>
+                  {isFilteredMissing && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMissingGradeFilter('all');
+                        setMissingRoomFilter('all');
+                        setMissingSearchQuery('');
+                      }}
+                      className="text-[11px] font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                    >
+                      ล้างตัวกรอง
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <label className="space-y-1 text-[11px] font-semibold text-[var(--color-text-body)]">
+                    <span>ระดับชั้น</span>
+                    <select
+                      value={missingGradeFilter}
+                      onChange={(e) => {
+                        setMissingGradeFilter(e.target.value);
+                        setMissingRoomFilter('all');
+                      }}
+                      disabled={studentAccountsLoading || studentAccountSaving}
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกระดับชั้น ({activeStudentsWithoutAccounts.length})</option>
+                      {missingGradeOptions.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
                         </option>
                       ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => void handleCreateStudentLoginAccount()}
-                  disabled={studentAccountsLoading || studentAccountSaving || !credentialStudentId}
-                  className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {studentAccountSaving ? 'กำลังดำเนินการ...' : 'สร้างบัญชีนักเรียน'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowBulkCreateConfirm(true)}
-                  disabled={studentAccountsLoading || studentAccountSaving || activeStudentsWithoutAccounts.length === 0}
-                  className="rounded-xl border border-[var(--color-primary)] px-4 py-2 text-xs font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  สร้างบัญชีที่ยังไม่มีทั้งหมด ({activeStudentsWithoutAccounts.length})
-                </button>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-[11px] font-semibold text-[var(--color-text-body)]">
+                    <span>ห้องเรียน</span>
+                    <select
+                      value={missingRoomFilter}
+                      onChange={(e) => setMissingRoomFilter(e.target.value)}
+                      disabled={studentAccountsLoading || studentAccountSaving}
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกห้องเรียน</option>
+                      {missingRoomOptions.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-[11px] font-semibold text-[var(--color-text-body)]">
+                    <span>ค้นหารายคน (ชื่อ / รหัสนักเรียน)</span>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={missingSearchQuery}
+                        onChange={(e) => setMissingSearchQuery(e.target.value)}
+                        placeholder="พิมพ์ชื่อ นามสกุล หรือรหัส..."
+                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] pl-8 pr-3 py-2 text-xs text-[var(--color-text-title)]"
+                      />
+                    </div>
+                  </label>
+                </div>
+
+                {/* Selection toolbar + action buttons */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      disabled={filteredMissingStudents.length === 0 || studentAccountSaving}
+                      onClick={() => {
+                        setSelectedMissingStudentIds((prev) => {
+                          const next = new Set(prev);
+                          if (allFilteredMissingSelected) {
+                            filteredMissingStudents.forEach((s) => next.delete(s.id));
+                          } else {
+                            filteredMissingStudents.forEach((s) => next.add(s.id));
+                          }
+                          return next;
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-[11px] font-bold text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] disabled:opacity-50 cursor-pointer"
+                    >
+                      {allFilteredMissingSelected ? (
+                        <CheckSquare className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                      ) : (
+                        <Square className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                      )}
+                      <span>
+                        {allFilteredMissingSelected
+                          ? `ยกเลิกเลือกที่กรอง (${filteredMissingStudents.length})`
+                          : `เลือกทั้งหมดที่กรอง (${filteredMissingStudents.length})`}
+                      </span>
+                    </button>
+
+                    {selectedMissingStudentIds.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMissingStudentIds(new Set())}
+                        className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                      >
+                        ล้างที่เลือก ({selectedMissingStudentIds.size})
+                      </button>
+                    )}
+
+                    <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                      พบ {filteredMissingStudents.length} คน · เลือกไว้ {selectedMissingStudentIds.size} คน
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkTargetStudentIds(Array.from(selectedMissingStudentIds));
+                        setShowBulkCreateConfirm(true);
+                      }}
+                      disabled={studentAccountsLoading || studentAccountSaving || selectedMissingStudentIds.size === 0}
+                      className="rounded-xl bg-[var(--color-primary)] px-3.5 py-2 text-xs font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                    >
+                      {studentAccountSaving
+                        ? 'กำลังดำเนินการ...'
+                        : `สร้างบัญชีที่เลือก (${selectedMissingStudentIds.size})`}
+                    </button>
+
+                    {isFilteredMissing && filteredMissingStudents.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkTargetStudentIds(filteredMissingStudents.map((s) => s.id));
+                          setShowBulkCreateConfirm(true);
+                        }}
+                        disabled={studentAccountsLoading || studentAccountSaving}
+                        className="rounded-xl border border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3.5 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                      >
+                        สร้างตามตัวกรอง ({filteredMissingStudents.length})
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkTargetStudentIds(null);
+                        setShowBulkCreateConfirm(true);
+                      }}
+                      disabled={studentAccountsLoading || studentAccountSaving || activeStudentsWithoutAccounts.length === 0}
+                      className="rounded-xl border border-[var(--color-primary)] px-3.5 py-2 text-xs font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                    >
+                      สร้างบัญชีที่ยังไม่มีทั้งหมด ({activeStudentsWithoutAccounts.length})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Scrollable Checklist Table */}
+                {filteredMissingStudents.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] py-6 text-center text-xs text-[var(--color-text-muted)]">
+                    {activeStudentsWithoutAccounts.length === 0
+                      ? 'นักเรียนสถานะกำลังศึกษาทุกคนมีบัญชีเข้าสู่ระบบครบแล้ว'
+                      : 'ไม่พบรายชื่อนักเรียนตามตัวกรองที่เลือก'}
+                  </div>
+                ) : (
+                  <div className="max-h-72 overflow-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+                    <table className="table-comfortable w-full min-w-[600px] text-left text-xs">
+                      <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
+                        <tr>
+                          <th className="py-2 px-3 w-10 text-center">เลือก</th>
+                          <th className="py-2 px-3">ชื่อ-นามสกุล</th>
+                          <th className="py-2 px-3">รหัสนักเรียน</th>
+                          <th className="py-2 px-3">ห้องเรียน</th>
+                          <th className="py-2 px-3">รหัสผ่านเริ่มต้น</th>
+                          <th className="py-2 px-3 text-right">รายคน</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {filteredMissingStudents.map((student) => {
+                          const checked = selectedMissingStudentIds.has(student.id);
+                          const previewPwd = buildInitialStudentPassword({
+                            studentIdNumber: student.studentIdNumber || '',
+                            defaultPasswordType: studentIdPolicy.defaultPasswordType,
+                            shortIdPasswordPrefix: studentIdPolicy.shortIdPasswordPrefix,
+                            dateOfBirth: student.dateOfBirth,
+                          });
+                          const isTooShort = previewPwd.length > 0 && previewPwd.length < 6;
+                          return (
+                            <tr
+                              key={student.id}
+                              onClick={() => {
+                                setSelectedMissingStudentIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(student.id)) next.delete(student.id);
+                                  else next.add(student.id);
+                                  return next;
+                                });
+                              }}
+                              className={`cursor-pointer transition ${
+                                checked
+                                  ? 'bg-[var(--color-primary-light)]/50'
+                                  : 'hover:bg-[var(--color-card-subtle)]'
+                              }`}
+                            >
+                              <td className="py-2 px-3 text-center">
+                                {checked ? (
+                                  <CheckSquare className="w-4 h-4 text-[var(--color-primary)] mx-auto" />
+                                ) : (
+                                  <Square className="w-4 h-4 text-[var(--color-text-muted)] mx-auto" />
+                                )}
+                              </td>
+                              <td className="py-2 px-3 font-semibold text-[var(--color-text-title)]">
+                                {student.firstNameTh} {student.lastNameTh}
+                              </td>
+                              <td className="py-2 px-3 font-mono tabular-nums text-[var(--color-text-body)]">
+                                {student.studentIdNumber || '-'}
+                              </td>
+                              <td className="py-2 px-3 text-[var(--color-text-muted)]">
+                                {student.room || student.gradeLevel || '-'}
+                              </td>
+                              <td className="py-2 px-3 font-mono tabular-nums">
+                                <span
+                                  className={
+                                    isTooShort
+                                      ? 'text-amber-700 dark:text-amber-300 font-bold'
+                                      : 'text-emerald-700 dark:text-emerald-300 font-semibold'
+                                  }
+                                >
+                                  {previewPwd || '(ไม่มีรหัส)'}
+                                </span>
+                                {isTooShort && (
+                                  <span className="ml-1.5 text-[10px] text-amber-700 dark:text-amber-300">
+                                    (&lt;6 ตัว)
+                                  </span>
+                                )}
+                              </td>
+                              <td
+                                className="py-2 px-3 text-right"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  disabled={studentAccountsLoading || studentAccountSaving}
+                                  onClick={() => void handleCreateStudentLoginAccount(student.id)}
+                                  className="rounded-lg border border-[var(--color-primary)] px-2.5 py-1 text-[11px] font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-primary)] hover:text-white transition disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                                >
+                                  สร้างรายคน
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {bulkCredentialResult && (
@@ -2743,9 +3204,12 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   )}
 
                   {(bulkCredentialResult.skipped.length > 0 || bulkCredentialResult.failed.length > 0) && (
-                    <details className="rounded-lg border border-amber-300 p-3 text-xs dark:border-amber-800">
+                    <details
+                      open={bulkCredentialResult.failed.length > 0 && bulkCredentialResult.created.length === 0}
+                      className="rounded-lg border border-amber-300 p-3 text-xs dark:border-amber-800"
+                    >
                       <summary className="cursor-pointer font-bold">รายละเอียดรายการที่ข้ามหรือล้มเหลว</summary>
-                      <ul className="mt-2 space-y-1">
+                      <ul className="mt-2 space-y-1 max-h-60 overflow-y-auto pr-1">
                         {bulkCredentialResult.skipped.map((item, index) => (
                           <li key={`skipped-${item.studentIdNumber}-${index}`}>ข้าม {item.studentIdNumber}: {item.reason}</li>
                         ))}
@@ -2868,10 +3332,80 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 <p className="text-xs text-[var(--color-text-muted)]">กำลังโหลดบัญชีนักเรียน...</p>
               ) : studentAccounts.length === 0 ? (
                 <p className="text-xs text-[var(--color-text-muted)]">ไม่พบบัญชีนักเรียนของโรงเรียนนี้</p>
-              ) : (
-                <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
+              ) : (() => {
+                const accountRoomOptions = Array.from(
+                  new Set(
+                    studentAccounts
+                      .map((acc) => students.find((s) => s.id === acc.student_id)?.room?.trim() || '')
+                      .filter(Boolean)
+                  )
+                ).sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
+
+                const eq = existingAccountSearch.trim().toLowerCase();
+                const filteredExistingAccounts = studentAccounts.filter((account) => {
+                  const linkedStudent = students.find((s) => s.id === account.student_id);
+                  if (existingAccountRoomFilter !== 'all') {
+                    if ((linkedStudent?.room || '').trim() !== existingAccountRoomFilter) return false;
+                  }
+                  if (existingAccountStatusFilter !== 'all' && account.status !== existingAccountStatusFilter) {
+                    return false;
+                  }
+                  if (eq) {
+                    const hay = `${account.full_name_th || ''} ${account.full_name_en || ''} ${account.email || ''} ${linkedStudent?.firstNameTh || ''} ${linkedStudent?.lastNameTh || ''} ${linkedStudent?.studentIdNumber || ''} ${linkedStudent?.room || ''}`.toLowerCase();
+                    if (!hay.includes(eq)) return false;
+                  }
+                  return true;
+                });
+
+                return (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <select
+                      value={existingAccountRoomFilter}
+                      onChange={(e) => setExistingAccountRoomFilter(e.target.value)}
+                      aria-label="กรองบัญชีตามห้องเรียน"
+                      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกห้องเรียน ({studentAccounts.length} บัญชี)</option>
+                      {accountRoomOptions.map((room) => (
+                        <option key={room} value={room}>
+                          ห้อง {room}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={existingAccountStatusFilter}
+                      onChange={(e) =>
+                        setExistingAccountStatusFilter(e.target.value as 'all' | 'active' | 'pending' | 'suspended')
+                      }
+                      aria-label="กรองบัญชีตามสถานะ"
+                      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกสถานะ</option>
+                      <option value="active">ใช้งานได้</option>
+                      <option value="pending">รออนุมัติ</option>
+                      <option value="suspended">ระงับสิทธิ์</option>
+                    </select>
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={existingAccountSearch}
+                        onChange={(e) => setExistingAccountSearch(e.target.value)}
+                        placeholder="ค้นหาชื่อ รหัส หรืออีเมลบัญชี..."
+                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] pl-8 pr-3 py-2 text-xs text-[var(--color-text-title)]"
+                      />
+                    </div>
+                  </div>
+
+                  {filteredExistingAccounts.length === 0 ? (
+                    <p className="py-4 text-center text-xs text-[var(--color-text-muted)]">
+                      ไม่พบบัญชีนักเรียนที่ตรงกับตัวกรอง
+                    </p>
+                  ) : (
+                  <div className="max-h-96 overflow-auto border border-[var(--color-border)] rounded-xl">
                   <table className="table-comfortable w-full text-left text-xs">
-                    <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
+                    <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                       <tr>
                         <th className="py-2.5 px-3">บัญชีผู้สมัคร / อีเมล</th>
                         <th className="py-2.5 px-3">ระเบียนนักเรียน DMC</th>
@@ -2880,7 +3414,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
-                      {studentAccounts.map((account) => {
+                      {filteredExistingAccounts.map((account) => {
                         const linkedStudent = students.find((student) => student.id === account.student_id);
                         const actionItems: TableActionItem[] = [
                           {
@@ -2916,7 +3450,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                           ...(account.status === 'active' && account.student_id
                             ? [{
                                 id: 'reset_student_password',
-                                label: 'รีเซ็ตรหัสผ่านเป็นรหัสนักเรียน',
+                                label: 'รีเซ็ตรหัสผ่านเป็นรหัสผ่านเริ่มต้น',
                                 icon: <KeyRound className="w-3.5 h-3.5" />,
                                 variant: 'warning' as const,
                                 disabled: studentAccountSaving,
@@ -2953,6 +3487,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                                 <span>
                                   {linkedStudent.firstNameTh} {linkedStudent.lastNameTh}{' '}
                                   <span className="font-mono text-[10px] text-[var(--color-primary-text)]">({linkedStudent.studentIdNumber})</span>
+                                  {linkedStudent.room ? (
+                                    <span className="ml-1.5 text-[10px] text-[var(--color-text-muted)]">· {linkedStudent.room}</span>
+                                  ) : null}
                                 </span>
                               ) : (
                                 <span className="text-amber-700 dark:text-amber-300">ยังไม่ผูกกับรายชื่อนักเรียน</span>
@@ -2982,8 +3519,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                       })}
                     </tbody>
                   </table>
+                  </div>
+                  )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           </div>
           );
@@ -3093,15 +3633,36 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
       <ConfirmActionModal
         isOpen={showBulkCreateConfirm}
-        title="ยืนยันสร้างบัญชีนักเรียนที่ยังไม่มี"
-        description={`ระบบจะสร้างบัญชีให้กับนักเรียนสถานะกำลังศึกษาที่ยังไม่มีบัญชี จำนวน ${activeStudentsWithoutAccounts.length} คน โดยไม่สร้างซ้ำให้บัญชีที่มีอยู่แล้ว`}
-        detailNote="ระบบจะตั้งรหัสผ่านเริ่มต้นเป็นรหัสนักเรียนของแต่ละคน และบังคับให้นักเรียนเปลี่ยนเป็นรหัสผ่านส่วนตัวทันทีเมื่อเข้าสู่ระบบครั้งแรก"
-        confirmLabel="สร้างบัญชีทั้งหมด"
+        title={
+          bulkTargetStudentIds && bulkTargetStudentIds.length > 0
+            ? 'ยืนยันสร้างบัญชีนักเรียนตามรายการที่เลือก'
+            : 'ยืนยันสร้างบัญชีนักเรียนที่ยังไม่มีทั้งหมด'
+        }
+        description={`ระบบจะสร้างบัญชีให้กับนักเรียนสถานะกำลังศึกษาที่ยังไม่มีบัญชี จำนวน ${
+          bulkTargetStudentIds && bulkTargetStudentIds.length > 0
+            ? bulkTargetStudentIds.length
+            : activeStudentsWithoutAccounts.length
+        } คน โดยไม่สร้างซ้ำให้บัญชีที่มีอยู่แล้ว`}
+        detailNote={
+          inlinePasswordType === 'birthdate'
+            ? 'รหัสผ่านเริ่มต้นที่เลือกไว้: วันเดือนปีเกิด พ.ศ. 8 หลัก (ววดดปปปป) และบังคับให้นักเรียนเปลี่ยนรหัสใหม่เมื่อเข้าสู่ระบบครั้งแรก'
+            : inlineShortIdPrefix
+              ? `รหัสผ่านเริ่มต้นที่เลือกไว้: คำนำหน้า "${inlineShortIdPrefix}" + รหัสนักเรียน (สำหรับรหัสสั้นกว่า 6 ตัว) และบังคับเปลี่ยนรหัสใหม่เมื่อเข้าครั้งแรก`
+              : 'ระบบจะตั้งรหัสผ่านเริ่มต้นเป็นรหัสนักเรียนของแต่ละคน และบังคับให้นักเรียนเปลี่ยนเป็นรหัสผ่านส่วนตัวทันทีเมื่อเข้าสู่ระบบครั้งแรก'
+        }
+        confirmLabel={
+          bulkTargetStudentIds && bulkTargetStudentIds.length > 0
+            ? `สร้างบัญชีที่เลือก (${bulkTargetStudentIds.length})`
+            : `สร้างบัญชีทั้งหมด (${activeStudentsWithoutAccounts.length})`
+        }
         cancelLabel="ยกเลิก"
         tone="primary"
         isBusy={studentAccountSaving}
         onCancel={() => {
-          if (!studentAccountSaving) setShowBulkCreateConfirm(false);
+          if (!studentAccountSaving) {
+            setShowBulkCreateConfirm(false);
+            setBulkTargetStudentIds(null);
+          }
         }}
         onConfirm={handleCreateMissingStudentLoginAccounts}
       />

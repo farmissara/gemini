@@ -1141,10 +1141,70 @@ async function extractEdgeFunctionError(error: unknown): Promise<{
   };
 }
 
+export interface StudentCredentialPasswordConfig {
+  defaultPasswordType?: 'student_id' | 'birthdate' | 'custom' | 'pin';
+  shortIdPasswordPrefix?: string;
+}
+
+type StudentCredentialManagerPayload =
+  | {
+      operation: 'create' | 'reset';
+      schoolId: string;
+      studentId: string;
+      passwordConfig?: StudentCredentialPasswordConfig;
+    }
+  | {
+      operation: 'create_all_missing';
+      schoolId: string;
+      studentIds?: string[];
+      passwordConfig?: StudentCredentialPasswordConfig;
+    };
+
+async function callExpressStudentCredentials(
+  accessToken: string,
+  payload: StudentCredentialManagerPayload
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; unreachable: boolean; message: string }> {
+  try {
+    const response = await fetch('/api/student-credentials', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    const serverPayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    if (response.ok) {
+      return { ok: true, data: serverPayload };
+    }
+
+    const serverErrorCode = typeof serverPayload.error === 'string' ? serverPayload.error : '';
+    const serverMessage =
+      typeof serverPayload.message === 'string'
+        ? serverPayload.message
+        : typeof serverPayload.error === 'string'
+          ? serverPayload.error
+          : `HTTP ${response.status}`;
+
+    const unreachable =
+      response.status === 404 ||
+      response.status === 502 ||
+      response.status === 504 ||
+      (response.status === 503 && serverErrorCode === 'STUDENT_CREDENTIALS_SERVER_NOT_CONFIGURED');
+
+    return { ok: false, unreachable, message: serverMessage };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      unreachable: /failed to fetch|networkerror/i.test(msg),
+      message: msg,
+    };
+  }
+}
+
 async function invokeStudentCredentialManager(
-  payload:
-    | { operation: 'create' | 'reset'; schoolId: string; studentId: string }
-    | { operation: 'create_all_missing'; schoolId: string }
+  payload: StudentCredentialManagerPayload
 ): Promise<Record<string, unknown>> {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
@@ -1176,52 +1236,33 @@ async function invokeStudentCredentialManager(
   }
 
   // Tier 2: Express backend fallback when Edge Function is not deployed or unreachable
-  try {
-    const response = await fetch('/api/student-credentials', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-    const serverPayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    if (response.ok) {
-      return serverPayload;
-    }
+  const serverResult = await callExpressStudentCredentials(accessToken, payload);
+  if (serverResult.ok) {
+    return serverResult.data;
+  }
 
-    const serverErrorCode = typeof serverPayload.error === 'string' ? serverPayload.error : '';
-    const serverMessage =
-      typeof serverPayload.message === 'string'
-        ? serverPayload.message
-        : typeof serverPayload.error === 'string'
-          ? serverPayload.error
-          : `HTTP ${response.status}`;
-
-    if (response.status === 503 && serverErrorCode === 'STUDENT_CREDENTIALS_SERVER_NOT_CONFIGURED') {
-      throw new Error(
-        `ไม่สามารถติดต่อ Edge Function "manage-student-credentials" ของ Supabase (${edgeDetails.message}) และเซิร์ฟเวอร์ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY — กรุณา Deploy Edge Function "manage-student-credentials" ใน Supabase (พร้อมรัน migration 20261120_student_temporary_credentials.sql) หรือกำหนดค่า SUPABASE_SERVICE_ROLE_KEY บนเซิร์ฟเวอร์`
-      );
-    }
-
-    throw new Error(serverMessage);
-  } catch (fallbackErr) {
-    if (fallbackErr instanceof Error && !/failed to fetch|networkerror/i.test(fallbackErr.message)) {
-      throw fallbackErr;
-    }
+  if (serverResult.unreachable) {
     throw new Error(
-      `ไม่สามารถติดต่อทั้ง Edge Function "manage-student-credentials" (${edgeDetails.message}) และเซิร์ฟเวอร์สำรอง (/api/student-credentials)`
+      `ไม่สามารถติดต่อ Edge Function "manage-student-credentials" (${edgeDetails.message}) และเซิร์ฟเวอร์สำรอง (/api/student-credentials: ${serverResult.message})`
     );
   }
+
+  throw new Error(serverResult.message);
 }
 
 async function manageStudentTemporaryCredential(
   operation: 'create' | 'reset',
   schoolId: string,
-  studentId: string
+  studentId: string,
+  passwordConfig?: StudentCredentialPasswordConfig
 ): Promise<TemporaryStudentCredential> {
   try {
-    const data = await invokeStudentCredentialManager({ operation, schoolId, studentId });
+    const data = await invokeStudentCredentialManager({
+      operation,
+      schoolId,
+      studentId,
+      ...(passwordConfig ? { passwordConfig } : {}),
+    });
     if (
       typeof data?.studentIdNumber !== 'string' ||
       typeof data?.temporaryPassword !== 'string' ||
@@ -1242,20 +1283,96 @@ async function manageStudentTemporaryCredential(
 
 export function createStudentLoginAccount(
   schoolId: string,
-  studentId: string
+  studentId: string,
+  passwordConfig?: StudentCredentialPasswordConfig
 ): Promise<TemporaryStudentCredential> {
-  return manageStudentTemporaryCredential('create', schoolId, studentId);
+  return manageStudentTemporaryCredential('create', schoolId, studentId, passwordConfig);
 }
 
 export async function createMissingStudentLoginAccounts(
-  schoolId: string
+  schoolId: string,
+  options?: {
+    studentIds?: string[];
+    studentIdNumbersById?: Record<string, string>;
+    passwordConfig?: StudentCredentialPasswordConfig;
+  }
 ): Promise<BulkStudentCredentialResult> {
-  let data: Record<string, unknown>;
-  try {
-    data = await invokeStudentCredentialManager({ operation: 'create_all_missing', schoolId });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`ไม่สามารถสร้างบัญชีนักเรียนเป็นชุดได้: ${message}`);
+  const cleanedStudentIds = options?.studentIds?.length
+    ? Array.from(new Set(options.studentIds.map((id) => id.trim()).filter(Boolean)))
+    : undefined;
+  const passwordConfig = options?.passwordConfig;
+
+  let data: Record<string, unknown> | null = null;
+
+  // When creating for a filtered subset (e.g. specific room/individuals), prefer /api/student-credentials
+  // first so server-side studentIds filtering and orphan-auth recovery are guaranteed. If unavailable,
+  // run bounded per-student 'create' calls so unselected students are never touched even against older Edge Functions.
+  if (cleanedStudentIds && cleanedStudentIds.length > 0) {
+    const client = getSupabaseClient();
+    if (!client) throw new Error('Supabase is not configured.');
+    const { data: sessionData } = await client.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      throw new Error('โหมดสาธิตไม่สามารถจัดการบัญชีหรือรหัสผ่านนักเรียนได้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase');
+    }
+
+    const expressAttempt = await callExpressStudentCredentials(accessToken, {
+      operation: 'create_all_missing',
+      schoolId,
+      studentIds: cleanedStudentIds,
+      ...(passwordConfig ? { passwordConfig } : {}),
+    });
+
+    if (expressAttempt.ok) {
+      data = expressAttempt.data;
+    } else if (!expressAttempt.unreachable) {
+      throw new Error(`ไม่สามารถสร้างบัญชีนักเรียนเป็นชุดได้: ${expressAttempt.message}`);
+    } else {
+      const created: TemporaryStudentCredential[] = [];
+      const skipped: Array<{ studentIdNumber: string; reason: string }> = [];
+      const failed: Array<{ studentIdNumber: string; reason: string }> = [];
+      const CONCURRENCY = 4;
+      for (let i = 0; i < cleanedStudentIds.length; i += CONCURRENCY) {
+        const chunk = cleanedStudentIds.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(
+          chunk.map(async (sid) => {
+            const label = options?.studentIdNumbersById?.[sid] || sid;
+            try {
+              const cred = await createStudentLoginAccount(schoolId, sid, passwordConfig);
+              return { status: 'created' as const, cred };
+            } catch (err) {
+              const reason = err instanceof Error ? err.message.replace(/^ไม่สามารถจัดการรหัสผ่านนักเรียนได้:\s*/, '') : String(err);
+              if (/already has an account|มีบัญชีเข้าสู่ระบบอยู่แล้ว|ACCOUNT_EXISTS/i.test(reason)) {
+                return { status: 'skipped' as const, label, reason: 'บัญชีมีอยู่แล้ว' };
+              }
+              if (/invitation is already pending|มีคำเชิญทางอีเมล/i.test(reason)) {
+                return { status: 'skipped' as const, label, reason: 'มีคำเชิญทางอีเมลที่ยังไม่หมดอายุ' };
+              }
+              return { status: 'failed' as const, label, reason };
+            }
+          })
+        );
+        for (const r of results) {
+          if (r.status === 'created') created.push(r.cred);
+          else if (r.status === 'skipped') skipped.push({ studentIdNumber: r.label, reason: r.reason });
+          else failed.push({ studentIdNumber: r.label, reason: r.reason });
+        }
+      }
+      return { created, skipped, failed };
+    }
+  }
+
+  if (!data) {
+    try {
+      data = await invokeStudentCredentialManager({
+        operation: 'create_all_missing',
+        schoolId,
+        ...(passwordConfig ? { passwordConfig } : {}),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`ไม่สามารถสร้างบัญชีนักเรียนเป็นชุดได้: ${message}`);
+    }
   }
 
   if (!Array.isArray(data?.created) || !Array.isArray(data?.skipped) || !Array.isArray(data?.failed)) {
@@ -1297,9 +1414,10 @@ export async function createMissingStudentLoginAccounts(
 
 export function resetStudentLoginPassword(
   schoolId: string,
-  studentId: string
+  studentId: string,
+  passwordConfig?: StudentCredentialPasswordConfig
 ): Promise<TemporaryStudentCredential> {
-  return manageStudentTemporaryCredential('reset', schoolId, studentId);
+  return manageStudentTemporaryCredential('reset', schoolId, studentId, passwordConfig);
 }
 
 export async function restoreSupabaseSession(): Promise<AuthContext | null> {

@@ -218,3 +218,38 @@ export function buildCompactCardTimetableMatrix(
     totalWeeklyPeriods: personSlots.length,
   };
 }
+
+export function formatMaskedNationalId(raw?: string): string {
+  const digits = (raw || '').replace(/\D/g, '');
+  if (digits.length !== 13) return raw || '-';
+  return `${digits.slice(0, 1)}-${digits.slice(1, 5)}-XXXXX-${digits.slice(10, 12)}-${digits.slice(12)}`;
+}
+
+export function chunkPrintItems<T>(items: readonly T[], pageSize: number): T[][] {
+  if (items.length === 0) return [];
+  const size = Math.max(1, Math.floor(pageSize));
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    pages.push(items.slice(i, i + size));
+  }
+  return pages;
+}
+
+/**
+ * Mirrors a 2-column A4 page of cards horizontally per row so that when the
+ * sheet is fed back into a duplex printer (long-edge flip), each back card
+ * aligns directly behind its corresponding front card.
+ */
+export function buildMirroredDuplexBackSlots<T>(pageItems: readonly T[], columns = 2): Array<T | null> {
+  const cols = Math.max(1, Math.floor(columns));
+  const slots: Array<T | null> = [];
+  for (let i = 0; i < pageItems.length; i += cols) {
+    const row: Array<T | null> = pageItems.slice(i, i + cols);
+    while (row.length < cols) {
+      row.push(null);
+    }
+    slots.push(...row.reverse());
+  }
+  return slots;
+}
+

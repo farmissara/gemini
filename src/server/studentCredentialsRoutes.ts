@@ -74,8 +74,20 @@ export function getSyntheticStudentEmail(schoolId: string, studentId: string): s
   return `student-${hash}@accounts.eduverse.invalid`;
 }
 
+export interface StudentCredentialPasswordConfigInput {
+  defaultPasswordType?: 'student_id' | 'birthdate' | 'custom' | 'pin';
+  shortIdPasswordPrefix?: string;
+}
+
 export function validateStudentCredentialPayload(body: unknown):
-  | { ok: true; operation: StudentCredentialOperation; schoolId: string; studentId: string }
+  | {
+      ok: true;
+      operation: StudentCredentialOperation;
+      schoolId: string;
+      studentId: string;
+      studentIds?: string[];
+      passwordConfig?: StudentCredentialPasswordConfigInput;
+    }
   | { ok: false; error: string } {
   if (!body || typeof body !== 'object') {
     return { ok: false, error: 'Request body must be valid JSON.' };
@@ -94,7 +106,50 @@ export function validateStudentCredentialPayload(body: unknown):
   if (operation !== 'create_all_missing' && (!studentId || studentId.length > 128)) {
     return { ok: false, error: 'A valid studentId is required for single-student operations.' };
   }
-  return { ok: true, operation, schoolId, studentId };
+
+  let parsedStudentIds: string[] | undefined;
+  if (Array.isArray(record.studentIds)) {
+    const cleaned = Array.from(
+      new Set(
+        record.studentIds
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0 && item.length <= 128)
+      )
+    );
+    if (cleaned.length > 0) {
+      parsedStudentIds = cleaned;
+    }
+  }
+
+  let parsedPasswordConfig: StudentCredentialPasswordConfigInput | undefined;
+  if (record.passwordConfig && typeof record.passwordConfig === 'object') {
+    const rawCfg = record.passwordConfig as Record<string, unknown>;
+    const cfg: StudentCredentialPasswordConfigInput = {};
+    if (
+      rawCfg.defaultPasswordType === 'student_id' ||
+      rawCfg.defaultPasswordType === 'birthdate' ||
+      rawCfg.defaultPasswordType === 'custom' ||
+      rawCfg.defaultPasswordType === 'pin'
+    ) {
+      cfg.defaultPasswordType = rawCfg.defaultPasswordType;
+    }
+    if (typeof rawCfg.shortIdPasswordPrefix === 'string') {
+      cfg.shortIdPasswordPrefix = rawCfg.shortIdPasswordPrefix.replace(/\s+/g, '').slice(0, 12);
+    }
+    if (Object.keys(cfg).length > 0) {
+      parsedPasswordConfig = cfg;
+    }
+  }
+
+  return {
+    ok: true,
+    operation,
+    schoolId,
+    studentId,
+    ...(parsedStudentIds ? { studentIds: parsedStudentIds } : {}),
+    ...(parsedPasswordConfig ? { passwordConfig: parsedPasswordConfig } : {}),
+  };
 }
 
 function getSupabaseServerClients(env: EnvReader, token: string): {
@@ -121,12 +176,39 @@ function getSupabaseServerClients(env: EnvReader, token: string): {
   return { userClient, serviceClient };
 }
 
+function createAuthEmailLookup(serviceClient: SupabaseClient): () => Promise<Map<string, string>> {
+  let cachedPromise: Promise<Map<string, string>> | null = null;
+  return () => {
+    if (cachedPromise) return cachedPromise;
+    cachedPromise = (async () => {
+      const map = new Map<string, string>();
+      for (let page = 1; page <= 50; page += 1) {
+        const { data, error } = await serviceClient.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error) {
+          console.error('[Student Credentials] Could not list auth users for recovery:', error.message);
+          break;
+        }
+        const users = data?.users || [];
+        for (const user of users) {
+          if (user.email) {
+            map.set(user.email.toLowerCase(), user.id);
+          }
+        }
+        if (users.length < 1000) break;
+      }
+      return map;
+    })();
+    return cachedPromise;
+  };
+}
+
 async function createStudentAccount(
   serviceClient: SupabaseClient,
   schoolId: string,
   student: StudentRecord,
-  passwordConfig?: { defaultPasswordType?: string | null; shortIdPasswordPrefix?: string | null }
-): Promise<{ credential?: StudentCredential; reason?: string }> {
+  passwordConfig?: { defaultPasswordType?: string | null; shortIdPasswordPrefix?: string | null },
+  getAuthEmailIndex?: () => Promise<Map<string, string>>
+): Promise<{ credential?: StudentCredential; alreadyExists?: boolean; reason?: string }> {
   const cleanStudentId = (student.student_id_number || '').trim();
   const temporaryPassword = getStudentInitialPassword(cleanStudentId, {
     defaultPasswordType: passwordConfig?.defaultPasswordType,
@@ -140,24 +222,7 @@ async function createStudentAccount(
   const expiresAt: string | null = null;
   const email = getSyntheticStudentEmail(schoolId, student.id);
 
-  const { data: createdAuthUser, error: createUserError } = await serviceClient.auth.admin.createUser({
-    email,
-    password: temporaryPassword,
-    email_confirm: true,
-  });
-  if (createUserError || !createdAuthUser.user) {
-    const detail = formatStudentPasswordPolicyError(
-      temporaryPassword,
-      createUserError?.message || 'Missing user response.',
-      cleanStudentId
-    );
-    console.error(`[Student Credentials] Could not create auth user ${student.id}:`, detail);
-    return { reason: detail };
-  }
-
-  const accountId = createdAuthUser.user.id;
-  const { error: profileError } = await serviceClient.from('user_profiles').insert({
-    id: accountId,
+  const profileRowPayload = {
     school_id: schoolId,
     role: 'student',
     student_id: student.id,
@@ -168,6 +233,104 @@ async function createStudentAccount(
     must_change_password: true,
     temporary_password_issued_at: issuedAt,
     temporary_password_expires_at: expiresAt,
+  };
+
+  const { data: createdAuthUser, error: createUserError } = await serviceClient.auth.admin.createUser({
+    email,
+    password: temporaryPassword,
+    email_confirm: true,
+  });
+
+  if (createUserError || !createdAuthUser.user) {
+    const rawMsg = createUserError?.message || 'Missing user response.';
+    const isAlreadyRegistered = /already been registered|already exists|email_exists/i.test(rawMsg);
+
+    if (isAlreadyRegistered && getAuthEmailIndex) {
+      const emailIndex = await getAuthEmailIndex();
+      const existingAuthUserId = emailIndex.get(email.toLowerCase());
+      if (existingAuthUserId) {
+        const { data: existingProfile, error: existingProfileErr } = await serviceClient
+          .from('user_profiles')
+          .select('id, school_id, role, student_id')
+          .eq('id', existingAuthUserId)
+          .maybeSingle();
+
+        if (existingProfileErr) {
+          return { reason: existingProfileErr.message };
+        }
+
+        if (existingProfile) {
+          if (existingProfile.school_id === schoolId && existingProfile.student_id === student.id) {
+            return { alreadyExists: true, reason: 'บัญชีมีอยู่แล้ว' };
+          }
+          if (existingProfile.school_id === schoolId && existingProfile.role === 'student' && !existingProfile.student_id) {
+            const { error: pwdErr } = await serviceClient.auth.admin.updateUserById(existingAuthUserId, {
+              password: temporaryPassword,
+              email_confirm: true,
+            });
+            if (pwdErr) {
+              return {
+                reason: formatStudentPasswordPolicyError(temporaryPassword, pwdErr.message, cleanStudentId),
+              };
+            }
+            const { error: relinkErr } = await serviceClient
+              .from('user_profiles')
+              .update(profileRowPayload)
+              .eq('id', existingAuthUserId);
+            if (relinkErr) {
+              return { reason: relinkErr.message };
+            }
+            return {
+              credential: {
+                studentIdNumber: cleanStudentId,
+                temporaryPassword,
+                expiresAt,
+              },
+            };
+          }
+          return { reason: 'พบบัญชี Auth ที่ใช้อีเมลอ้างอิงเดียวกัน แต่ผูกกับบัญชีอื่นในระบบแล้ว' };
+        }
+
+        // Orphan auth user (auth.users exists without user_profiles row): repair & provision profile
+        const { error: repairPwdError } = await serviceClient.auth.admin.updateUserById(existingAuthUserId, {
+          password: temporaryPassword,
+          email_confirm: true,
+        });
+        if (repairPwdError) {
+          return {
+            reason: formatStudentPasswordPolicyError(temporaryPassword, repairPwdError.message, cleanStudentId),
+          };
+        }
+        const { error: repairProfileError } = await serviceClient.from('user_profiles').insert({
+          id: existingAuthUserId,
+          ...profileRowPayload,
+        });
+        if (repairProfileError) {
+          return { reason: repairProfileError.message };
+        }
+        return {
+          credential: {
+            studentIdNumber: cleanStudentId,
+            temporaryPassword,
+            expiresAt,
+          },
+        };
+      }
+    }
+
+    const detail = formatStudentPasswordPolicyError(
+      temporaryPassword,
+      rawMsg,
+      cleanStudentId
+    );
+    console.error(`[Student Credentials] Could not create auth user ${student.id}:`, detail);
+    return { reason: detail };
+  }
+
+  const accountId = createdAuthUser.user.id;
+  const { error: profileError } = await serviceClient.from('user_profiles').insert({
+    id: accountId,
+    ...profileRowPayload,
   });
 
   if (profileError) {
@@ -212,7 +375,7 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
     if (parsed.ok === false) {
       return res.status(400).json({ error: 'INVALID_REQUEST', message: parsed.error });
     }
-    const { operation, schoolId, studentId } = parsed;
+    const { operation, schoolId, studentId, studentIds, passwordConfig } = parsed;
 
     try {
       const { data: authData, error: authError } = await clients.userClient.auth.getUser(token);
@@ -301,9 +464,14 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
       }
 
       const schoolPasswordConfig = {
-        defaultPasswordType: school.student_default_password_type || 'student_id',
-        shortIdPasswordPrefix: school.student_short_id_password_prefix || '',
+        defaultPasswordType: passwordConfig?.defaultPasswordType || school.student_default_password_type || 'student_id',
+        shortIdPasswordPrefix:
+          passwordConfig?.shortIdPasswordPrefix !== undefined
+            ? passwordConfig.shortIdPasswordPrefix
+            : school.student_short_id_password_prefix || '',
       };
+
+      const getAuthEmailIndex = createAuthEmailLookup(clients.serviceClient);
 
       if (operation === 'create_all_missing') {
         const studentColumns =
@@ -377,7 +545,12 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
           }
         }
 
-        for (const student of students) {
+        const requestedStudentIdSet = studentIds?.length ? new Set(studentIds) : null;
+        const targetStudents = requestedStudentIdSet
+          ? students.filter((student) => requestedStudentIdSet.has(student.id))
+          : students;
+
+        for (const student of targetStudents) {
           const normalizedNumber = (student.student_id_number || '').trim().toLowerCase();
           if (!normalizedNumber) {
             skipped.push({ studentIdNumber: '(ไม่ระบุ)', reason: 'ไม่มีรหัสนักเรียนในทะเบียน' });
@@ -399,8 +572,22 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
           const results = await Promise.all(
             batch.map(async (student) => {
               try {
-                const result = await createStudentAccount(clients.serviceClient, schoolId, student, schoolPasswordConfig);
+                const result = await createStudentAccount(
+                  clients.serviceClient,
+                  schoolId,
+                  student,
+                  schoolPasswordConfig,
+                  getAuthEmailIndex
+                );
                 if (result.credential) return { credential: result.credential };
+                if (result.alreadyExists) {
+                  return {
+                    skipped: {
+                      studentIdNumber: student.student_id_number,
+                      reason: result.reason || 'บัญชีมีอยู่แล้ว',
+                    },
+                  };
+                }
                 return {
                   failure: {
                     studentIdNumber: student.student_id_number,
@@ -420,11 +607,12 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
           );
           for (const item of results) {
             if (item.credential) created.push(item.credential);
+            else if (item.skipped) skipped.push(item.skipped);
             else if (item.failure) failed.push(item.failure);
           }
         }
 
-        return res.json({ created, skipped, failed });
+        return res.json({ created, skipped, failed, appliedStudentIdsFilter: Boolean(requestedStudentIdSet) });
       }
 
       const { data: student, error: studentError } = await clients.serviceClient
@@ -486,8 +674,12 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
           clients.serviceClient,
           schoolId,
           student as StudentRecord,
-          schoolPasswordConfig
+          schoolPasswordConfig,
+          getAuthEmailIndex
         );
+        if (result.alreadyExists) {
+          return res.status(409).json({ error: 'ACCOUNT_EXISTS', message: 'นักเรียนคนนี้มีบัญชีเข้าสู่ระบบอยู่แล้ว' });
+        }
         if (!result.credential) {
           return res.status(500).json({
             error: 'CREATE_ACCOUNT_FAILED',

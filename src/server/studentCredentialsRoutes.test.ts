@@ -50,7 +50,7 @@ describe('student credentials route helpers', () => {
     );
   });
 
-  it('validates operation, schoolId, and studentId payloads', () => {
+  it('validates operation, schoolId, and studentId payloads including batch filters and passwordConfig', () => {
     assert.deepEqual(
       validateStudentCredentialPayload({ operation: 'create', schoolId: ' s1 ', studentId: ' st1 ' }),
       { ok: true, operation: 'create', schoolId: 's1', studentId: 'st1' }
@@ -58,6 +58,22 @@ describe('student credentials route helpers', () => {
     assert.deepEqual(
       validateStudentCredentialPayload({ operation: 'create_all_missing', schoolId: 's1' }),
       { ok: true, operation: 'create_all_missing', schoolId: 's1', studentId: '' }
+    );
+    assert.deepEqual(
+      validateStudentCredentialPayload({
+        operation: 'create_all_missing',
+        schoolId: 's1',
+        studentIds: [' stu-1 ', 'stu-2', 'stu-1', ''],
+        passwordConfig: { defaultPasswordType: 'student_id', shortIdPasswordPrefix: ' 00 ' },
+      }),
+      {
+        ok: true,
+        operation: 'create_all_missing',
+        schoolId: 's1',
+        studentId: '',
+        studentIds: ['stu-1', 'stu-2'],
+        passwordConfig: { defaultPasswordType: 'student_id', shortIdPasswordPrefix: '00' },
+      }
     );
     assert.equal(
       validateStudentCredentialPayload({ operation: 'reset', schoolId: 's1' }).ok,

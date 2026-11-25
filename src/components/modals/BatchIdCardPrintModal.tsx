@@ -5,9 +5,14 @@ import {
   Filter,
   Search,
   CreditCard,
-  Sparkles,
   User,
   GraduationCap,
+  CheckSquare,
+  Square,
+  ChevronLeft,
+  ChevronRight,
+  Scissors,
+  Layers,
 } from 'lucide-react';
 import {
   Student,
@@ -20,9 +25,12 @@ import {
 } from '../../types';
 import { QrCodeMatrix } from '../QrCodeMatrix';
 import { Barcode128Svg } from '../Barcode128Svg';
+import { IdCardFrontContent } from '../id-card/IdCardFrontContent';
 import { IdCardBackContent } from '../id-card/IdCardBackContent';
 import {
   ID_CARD_BACK_MODE_OPTIONS,
+  buildMirroredDuplexBackSlots,
+  chunkPrintItems,
   getSavedIdCardBackMode,
   saveIdCardBackMode,
   type IdCardBackMode,
@@ -42,6 +50,32 @@ interface BatchIdCardPrintModalProps {
   lang?: AppLanguage;
 }
 
+type PrintPageDescriptor =
+  | {
+      key: string;
+      kind: 'front_grid';
+      label: string;
+      items: Array<Student | Teacher>;
+    }
+  | {
+      key: string;
+      kind: 'back_grid';
+      label: string;
+      items: Array<Student | Teacher | null>;
+    }
+  | {
+      key: string;
+      kind: 'fold_pairs';
+      label: string;
+      items: Array<Student | Teacher>;
+    }
+  | {
+      key: string;
+      kind: 'stickers';
+      label: string;
+      items: Array<Student | Teacher>;
+    };
+
 export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   isOpen,
   onClose,
@@ -60,22 +94,66 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   const [selectedRoom, setSelectedRoom] = useState<string>('all');
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(() => new Set(students.map((s) => s.id)));
-  const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(() => new Set(teachers.map((t) => t.id)));
-  const [cardSide, setCardSide] = useState<'front' | 'back' | 'both'>('front');
+
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(
+    () => new Set(students.map((s) => s.id)),
+  );
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(
+    () => new Set(teachers.map((t) => t.id)),
+  );
+  const [studentSelectionTouched, setStudentSelectionTouched] = useState(false);
+  const [teacherSelectionTouched, setTeacherSelectionTouched] = useState(false);
+
+  const [cardSide, setCardSide] = useState<'front' | 'back' | 'both'>('both');
+  const [bothSideLayout, setBothSideLayout] = useState<'fold_pair' | 'duplex_sheets'>('fold_pair');
   const [backMode, setBackMode] = useState<IdCardBackMode>(
     () => initialBackMode || getSavedIdCardBackMode(school.id, initialPersonType),
   );
   const [layoutMode, setLayoutMode] = useState<'grid_a4' | 'sticker_a4'>('grid_a4');
-  const [includeBarcode] = useState<boolean>(true);
-  const [includeQrCode] = useState<boolean>(true);
-  const [includeBloodType] = useState<boolean>(true);
-  const accentColor = school.primaryColor || '#1d4ed8';
+  const [includeBarcode, setIncludeBarcode] = useState<boolean>(true);
+  const [includeQrCode, setIncludeQrCode] = useState<boolean>(true);
+  const [includeBloodType, setIncludeBloodType] = useState<boolean>(true);
+  const [maskNationalId, setMaskNationalId] = useState<boolean>(true);
+
+  const [previewPageIndex, setPreviewPageIndex] = useState(0);
+  const [showAllPreviewPages, setShowAllPreviewPages] = useState(false);
+
+  // Keep selections automatically populated if data loads asynchronously after mount
+  useEffect(() => {
+    if (!studentSelectionTouched) {
+      setSelectedStudentIds(new Set(students.map((s) => s.id)));
+      return;
+    }
+    const validIds = new Set(students.map((s) => s.id));
+    setSelectedStudentIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [students, studentSelectionTouched]);
+
+  useEffect(() => {
+    if (!teacherSelectionTouched) {
+      setSelectedTeacherIds(new Set(teachers.map((t) => t.id)));
+      return;
+    }
+    const validIds = new Set(teachers.map((t) => t.id));
+    setSelectedTeacherIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [teachers, teacherSelectionTouched]);
 
   useEffect(() => {
     if (isOpen) {
       setPersonType(initialPersonType);
       setBackMode(initialBackMode || getSavedIdCardBackMode(school.id, initialPersonType));
+      setPreviewPageIndex(0);
     }
   }, [isOpen, initialPersonType, initialBackMode, school.id]);
 
@@ -93,7 +171,7 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
 
   const gradeLevels = useMemo(
     () => Array.from(new Set(students.map((s) => s.gradeLevel).filter(Boolean))),
-    [students]
+    [students],
   );
   const rooms = useMemo(() => {
     const list =
@@ -103,19 +181,20 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
 
   const departments = useMemo(
     () => Array.from(new Set(teachers.map((t) => t.department).filter(Boolean))),
-    [teachers]
+    [teachers],
   );
 
   const filteredStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return students.filter((s) => {
       if (selectedGrade !== 'all' && s.gradeLevel !== selectedGrade) return false;
       if (selectedRoom !== 'all' && s.room !== selectedRoom) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+      if (q) {
         return (
-          (s.firstNameTh || '').toLowerCase().includes(q) ||
-          (s.lastNameTh || '').toLowerCase().includes(q) ||
-          (s.studentIdNumber || '').toLowerCase().includes(q)
+          `${s.firstNameTh || ''} ${s.lastNameTh || ''}`.toLowerCase().includes(q) ||
+          `${s.firstNameEn || ''} ${s.lastNameEn || ''}`.toLowerCase().includes(q) ||
+          (s.studentIdNumber || '').toLowerCase().includes(q) ||
+          (s.room || '').toLowerCase().includes(q)
         );
       }
       return true;
@@ -123,91 +202,230 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   }, [students, selectedGrade, selectedRoom, searchQuery]);
 
   const filteredTeachers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return teachers.filter((t) => {
       if (selectedDept !== 'all' && t.department !== selectedDept) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+      if (q) {
         return (
           (t.fullNameTh || '').toLowerCase().includes(q) ||
+          (t.fullNameEn || '').toLowerCase().includes(q) ||
           (t.teacherIdNumber || '').toLowerCase().includes(q) ||
-          (t.department || '').toLowerCase().includes(q)
+          (t.department || '').toLowerCase().includes(q) ||
+          (t.positionTitle || '').toLowerCase().includes(q)
         );
       }
       return true;
     });
   }, [teachers, selectedDept, searchQuery]);
 
+  const printableStudents = useMemo(
+    () => filteredStudents.filter((s) => selectedStudentIds.has(s.id)),
+    [filteredStudents, selectedStudentIds],
+  );
+  const printableTeachers = useMemo(
+    () => filteredTeachers.filter((t) => selectedTeacherIds.has(t.id)),
+    [filteredTeachers, selectedTeacherIds],
+  );
+
+  const activeFilteredList = personType === 'student' ? filteredStudents : filteredTeachers;
+  const activePrintableList: Array<Student | Teacher> =
+    personType === 'student' ? printableStudents : printableTeachers;
+  const activeTotalCount = personType === 'student' ? students.length : teachers.length;
+  const activeSelectedIds = personType === 'student' ? selectedStudentIds : selectedTeacherIds;
+  const activePrintCount = activePrintableList.length;
+
+  const hasActiveFilter =
+    personType === 'student'
+      ? selectedGrade !== 'all' || selectedRoom !== 'all' || searchQuery.trim() !== ''
+      : selectedDept !== 'all' || searchQuery.trim() !== '';
+
+  // Build explicit A4 pages for both WYSIWYG screen preview and crisp @media print pagination
+  const printPages = useMemo<PrintPageDescriptor[]>(() => {
+    if (activePrintableList.length === 0) return [];
+
+    if (layoutMode === 'sticker_a4') {
+      return chunkPrintItems(activePrintableList, 24).map((chunk, idx) => ({
+        key: `sticker-page-${idx}`,
+        kind: 'stickers',
+        label: lang === 'th' ? `สติกเกอร์หน้า ${idx + 1}` : `Sticker Sheet ${idx + 1}`,
+        items: chunk,
+      }));
+    }
+
+    if (cardSide === 'front') {
+      return chunkPrintItems(activePrintableList, 8).map((chunk, idx) => ({
+        key: `front-page-${idx}`,
+        kind: 'front_grid',
+        label: lang === 'th' ? `ด้านหน้า · แผ่นที่ ${idx + 1}` : `Front · Page ${idx + 1}`,
+        items: chunk,
+      }));
+    }
+
+    if (cardSide === 'back') {
+      return chunkPrintItems(activePrintableList, 8).map((chunk, idx) => ({
+        key: `back-page-${idx}`,
+        kind: 'back_grid',
+        label: lang === 'th' ? `ด้านหลัง · แผ่นที่ ${idx + 1}` : `Back · Page ${idx + 1}`,
+        items: chunk,
+      }));
+    }
+
+    if (bothSideLayout === 'fold_pair') {
+      return chunkPrintItems(activePrintableList, 4).map((chunk, idx) => ({
+        key: `pair-page-${idx}`,
+        kind: 'fold_pairs',
+        label: lang === 'th' ? `คู่หน้า-หลังพับประกบ · แผ่นที่ ${idx + 1}` : `Fold Pairs · Page ${idx + 1}`,
+        items: chunk,
+      }));
+    }
+
+    // Duplex mode: All front sheets followed by mirrored back sheets
+    const chunks = chunkPrintItems(activePrintableList, 8);
+    const pages: PrintPageDescriptor[] = [];
+    chunks.forEach((chunk, idx) => {
+      pages.push({
+        key: `duplex-front-${idx}`,
+        kind: 'front_grid',
+        label:
+          lang === 'th'
+            ? `ชุดที่ ${idx + 1} (แผ่นด้านหน้า)`
+            : `Sheet ${idx + 1} (Fronts)`,
+        items: chunk,
+      });
+      pages.push({
+        key: `duplex-back-${idx}`,
+        kind: 'back_grid',
+        label:
+          lang === 'th'
+            ? `ชุดที่ ${idx + 1} (แผ่นด้านหลัง — กลับด้านสำหรับพิมพ์ 2 หน้า)`
+            : `Sheet ${idx + 1} (Mirrored Backs)`,
+        items: buildMirroredDuplexBackSlots(chunk, 2),
+      });
+    });
+    return pages;
+  }, [activePrintableList, layoutMode, cardSide, bothSideLayout, lang]);
+
+  useEffect(() => {
+    if (previewPageIndex >= printPages.length) {
+      setPreviewPageIndex(Math.max(0, printPages.length - 1));
+    }
+  }, [printPages.length, previewPageIndex]);
+
   if (!isOpen) return null;
+
+  const toggleSinglePerson = (id: string) => {
+    if (personType === 'student') {
+      setStudentSelectionTouched(true);
+      setSelectedStudentIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    } else {
+      setTeacherSelectionTouched(true);
+      setSelectedTeacherIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    }
+  };
 
   const handleSelectAllFiltered = () => {
     if (personType === 'student') {
-      const next = new Set(selectedStudentIds);
-      filteredStudents.forEach((s) => next.add(s.id));
-      setSelectedStudentIds(next);
+      setStudentSelectionTouched(true);
+      setSelectedStudentIds((prev) => {
+        const next = new Set(prev);
+        filteredStudents.forEach((s) => next.add(s.id));
+        return next;
+      });
     } else {
-      const next = new Set(selectedTeacherIds);
-      filteredTeachers.forEach((t) => next.add(t.id));
-      setSelectedTeacherIds(next);
+      setTeacherSelectionTouched(true);
+      setSelectedTeacherIds((prev) => {
+        const next = new Set(prev);
+        filteredTeachers.forEach((t) => next.add(t.id));
+        return next;
+      });
     }
+  };
+
+  const handleSelectWholeSchool = () => {
+    setSearchQuery('');
+    if (personType === 'student') {
+      setSelectedGrade('all');
+      setSelectedRoom('all');
+      setStudentSelectionTouched(false);
+      setSelectedStudentIds(new Set(students.map((s) => s.id)));
+    } else {
+      setSelectedDept('all');
+      setTeacherSelectionTouched(false);
+      setSelectedTeacherIds(new Set(teachers.map((t) => t.id)));
+    }
+    setPreviewPageIndex(0);
   };
 
   const handleDeselectAllFiltered = () => {
     if (personType === 'student') {
-      const next = new Set(selectedStudentIds);
-      filteredStudents.forEach((s) => next.delete(s.id));
-      setSelectedStudentIds(next);
+      setStudentSelectionTouched(true);
+      setSelectedStudentIds((prev) => {
+        const next = new Set(prev);
+        filteredStudents.forEach((s) => next.delete(s.id));
+        return next;
+      });
     } else {
-      const next = new Set(selectedTeacherIds);
-      filteredTeachers.forEach((t) => next.delete(t.id));
-      setSelectedTeacherIds(next);
+      setTeacherSelectionTouched(true);
+      setSelectedTeacherIds((prev) => {
+        const next = new Set(prev);
+        filteredTeachers.forEach((t) => next.delete(t.id));
+        return next;
+      });
     }
   };
 
-  const printableStudents = filteredStudents.filter((s) => selectedStudentIds.has(s.id));
-  const printableTeachers = filteredTeachers.filter((t) => selectedTeacherIds.has(t.id));
-  const activePrintCount = personType === 'student' ? printableStudents.length : printableTeachers.length;
-
   const handlePrint = () => {
+    if (activePrintCount === 0) return;
     window.print();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-5xl rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl flex flex-col max-h-[95vh] overflow-hidden text-[var(--color-text-body)]">
-        {/* Top Modal Controls */}
-        <div className="p-4 sm:p-5 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[var(--color-card-subtle)] no-print">
-          <div className="flex items-center gap-3">
+      <div className="w-full max-w-6xl rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl flex flex-col max-h-[95vh] overflow-hidden text-[var(--color-text-body)]">
+        {/* Top Modal Header */}
+        <div className="p-3.5 sm:p-4 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[var(--color-card-subtle)] no-print">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className={`w-10 h-10 rounded-2xl text-white flex items-center justify-center shadow-md shrink-0 ${
+              className={`w-10 h-10 rounded-2xl text-white flex items-center justify-center shadow-sm shrink-0 ${
                 personType === 'staff' ? 'bg-emerald-700' : 'bg-[var(--color-primary)]'
               }`}
             >
               <Printer className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-[var(--color-text-title)]">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-black text-[var(--color-text-title)] truncate">
                 {personType === 'staff'
-                  ? lang === 'th'
-                    ? 'ระบบพิมพ์บัตรครูและบุคลากร CR80 (บาร์โค้ด & QR จริง)'
-                    : 'Staff ID Card Print Sheet'
-                  : lang === 'th'
-                    ? 'ระบบพิมพ์บัตรนักเรียนมาตรฐาน CR80 (บาร์โค้ด & QR จริง)'
-                    : 'Student ID Card Print Sheet'}
+                  ? (lang === 'th' ? 'ระบบพิมพ์บัตรครูและบุคลากร CR80 (A4)' : 'Staff ID Card Print Sheet')
+                  : (lang === 'th' ? 'ระบบพิมพ์บัตรนักเรียนมาตรฐาน CR80 (A4)' : 'Student ID Card Print Sheet')}
               </h2>
-              <p className="text-xs text-[var(--color-text-muted)]">
+              <p className="text-xs text-[var(--color-text-muted)] truncate tabular-nums">
                 {lang === 'th'
-                  ? `เลือกประเภทบัตรและจัดหน้า A4 พร้อมรหัส Code 128 และ QR จริง (${activePrintCount} ใบ)`
-                  : `${activePrintCount} cards ready for A4 print`}
+                  ? `เลือกพิมพ์แล้ว ${activePrintCount} คน (${printPages.length} แผ่น A4) · มาตรฐาน 85.60 × 53.98 มม.`
+                  : `${activePrintCount} selected (${printPages.length} A4 pages) · CR80 85.60 × 53.98 mm`}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <div className="seg-tab-group">
               <button
                 type="button"
                 data-active={personType === 'student'}
-                onClick={() => setPersonType('student')}
+                onClick={() => {
+                  setPersonType('student');
+                  setSearchQuery('');
+                  setPreviewPageIndex(0);
+                }}
                 className="seg-tab-btn"
               >
                 นักเรียน ({students.length})
@@ -215,7 +433,11 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               <button
                 type="button"
                 data-active={personType === 'staff'}
-                onClick={() => setPersonType('staff')}
+                onClick={() => {
+                  setPersonType('staff');
+                  setSearchQuery('');
+                  setPreviewPageIndex(0);
+                }}
                 className="seg-tab-btn"
               >
                 ครู/บุคลากร ({teachers.length})
@@ -226,10 +448,14 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               type="button"
               onClick={handlePrint}
               disabled={activePrintCount === 0}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold shadow-md transition cursor-pointer disabled:opacity-40"
+              className="btn-action-primary px-4 py-2"
             >
               <Printer className="w-4 h-4" />
-              <span>{lang === 'th' ? 'สั่งพิมพ์ / PDF (A4)' : 'Print / PDF'}</span>
+              <span>
+                {lang === 'th'
+                  ? `สั่งพิมพ์ทั้งหมด (${activePrintCount} ใบ)`
+                  : `Print All (${activePrintCount})`}
+              </span>
             </button>
             <button
               type="button"
@@ -242,21 +468,172 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
           </div>
         </div>
 
-        {/* Filters & Customization Toolbar */}
-        <div className="p-3 sm:p-4 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-3 shrink-0 text-xs no-print">
+        {/* Customization & Format Toolbar */}
+        <div className="px-3.5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2.5 shrink-0 text-xs no-print">
           <div className="flex flex-wrap items-center gap-2">
-            {personType === 'student' ? (
+            {/* Format: CR80 vs Stickers */}
+            <div className="seg-tab-group">
+              <button
+                type="button"
+                data-active={layoutMode === 'grid_a4'}
+                onClick={() => setLayoutMode('grid_a4')}
+                className="seg-tab-btn !min-h-[26px] !px-2.5 !py-0.5 !text-[11px]"
+              >
+                บัตร CR80 (85.6×54 มม.)
+              </button>
+              <button
+                type="button"
+                data-active={layoutMode === 'sticker_a4'}
+                onClick={() => setLayoutMode('sticker_a4')}
+                className="seg-tab-btn !min-h-[26px] !px-2.5 !py-0.5 !text-[11px]"
+              >
+                สติกเกอร์ QR/บาร์โค้ด
+              </button>
+            </div>
+
+            {layoutMode === 'grid_a4' && (
               <>
-                <label className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
-                  <Filter className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                  <span>ระดับชั้น:</span>
+                <div className="seg-tab-group">
+                  <button
+                    type="button"
+                    data-active={cardSide === 'front'}
+                    onClick={() => setCardSide('front')}
+                    className="seg-tab-btn !min-h-[26px] !px-2.5 !py-0.5 !text-[11px]"
+                  >
+                    เฉพาะหน้าบัตร
+                  </button>
+                  <button
+                    type="button"
+                    data-active={cardSide === 'back'}
+                    onClick={() => setCardSide('back')}
+                    className="seg-tab-btn !min-h-[26px] !px-2.5 !py-0.5 !text-[11px]"
+                  >
+                    เฉพาะหลังบัตร
+                  </button>
+                  <button
+                    type="button"
+                    data-active={cardSide === 'both'}
+                    onClick={() => setCardSide('both')}
+                    className="seg-tab-btn !min-h-[26px] !px-2.5 !py-0.5 !text-[11px]"
+                  >
+                    ทั้งสองหน้า
+                  </button>
+                </div>
+
+                {cardSide === 'both' && (
+                  <div className="seg-tab-group">
+                    <button
+                      type="button"
+                      data-active={bothSideLayout === 'fold_pair'}
+                      onClick={() => setBothSideLayout('fold_pair')}
+                      className="seg-tab-btn !min-h-[26px] !px-2.5 !py-0.5 !text-[11px]"
+                      title="วางหน้าบัตรและหลังบัตรคู่กันในแถวเดียว ตัดแล้วพับครึ่งเคลือบบัตรได้ทันที"
+                    >
+                      <Scissors className="w-3 h-3" />
+                      <span>พับประกบ (4 คู่/แผ่น)</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-active={bothSideLayout === 'duplex_sheets'}
+                      onClick={() => setBothSideLayout('duplex_sheets')}
+                      className="seg-tab-btn !min-h-[26px] !px-2.5 !py-0.5 !text-[11px]"
+                      title="แยกแผ่นหน้าและแผ่นหลังแบบกลับด้านซ้าย-ขวาสำหรับเครื่องพิมพ์ 2 หน้า"
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>แยกแผ่น 2 หน้า (Duplex)</span>
+                    </button>
+                  </div>
+                )}
+
+                {cardSide !== 'front' && (
+                  <label className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
+                    <span className="text-[11px]">รูปแบบหลังบัตร:</span>
+                    <select
+                      value={backMode}
+                      onChange={(e) => handleChangeBackMode(e.target.value as IdCardBackMode)}
+                      className="px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold cursor-pointer"
+                    >
+                      {ID_CARD_BACK_MODE_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {lang === 'th'
+                            ? personType === 'staff'
+                              ? opt.labelThStaff
+                              : opt.labelThStudent
+                            : personType === 'staff'
+                              ? opt.labelEnStaff
+                              : opt.labelEnStudent}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </>
+            )}
+          </div>
+
+          {layoutMode === 'grid_a4' && cardSide !== 'back' && (
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-[var(--color-text-body)]">
+              <label className="inline-flex items-center gap-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeBarcode}
+                  onChange={(e) => setIncludeBarcode(e.target.checked)}
+                  className="rounded border-[var(--color-border)]"
+                />
+                <span>บาร์โค้ด</span>
+              </label>
+              <label className="inline-flex items-center gap-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeQrCode}
+                  onChange={(e) => setIncludeQrCode(e.target.checked)}
+                  className="rounded border-[var(--color-border)]"
+                />
+                <span>QR Code</span>
+              </label>
+              {personType === 'student' && (
+                <>
+                  <label className="inline-flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeBloodType}
+                      onChange={(e) => setIncludeBloodType(e.target.checked)}
+                      className="rounded border-[var(--color-border)]"
+                    />
+                    <span>หมู่เลือด</span>
+                  </label>
+                  <label className="inline-flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={maskNationalId}
+                      onChange={(e) => setMaskNationalId(e.target.checked)}
+                      className="rounded border-[var(--color-border)]"
+                    />
+                    <span>ปิดบังเลข ปชช.</span>
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Main Body: Left Selection Roster + Right Printable A4 Preview */}
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[296px_1fr] overflow-hidden">
+          {/* Left Selection Sidebar (Hidden on Print) */}
+          <div className="border-b lg:border-b-0 lg:border-r border-[var(--color-border)] bg-[var(--color-card)] p-3 flex flex-col min-h-[210px] max-h-[280px] lg:max-h-none lg:min-h-0 overflow-hidden no-print">
+            {/* Filters */}
+            <div className="space-y-2 shrink-0 pb-2.5 border-b border-[var(--color-border)]">
+              {personType === 'student' ? (
+                <div className="grid grid-cols-2 gap-1.5">
                   <select
                     value={selectedGrade}
                     onChange={(e) => {
                       setSelectedGrade(e.target.value);
                       setSelectedRoom('all');
+                      setPreviewPageIndex(0);
                     }}
-                    className="px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-medium cursor-pointer"
+                    aria-label="กรองระดับชั้น"
+                    className="px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-medium cursor-pointer"
                   >
                     <option value="all">ทุกระดับชั้น ({students.length})</option>
                     {gradeLevels.map((g) => (
@@ -265,14 +642,14 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
                       </option>
                     ))}
                   </select>
-                </label>
-
-                <label className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
-                  <span>ห้อง:</span>
                   <select
                     value={selectedRoom}
-                    onChange={(e) => setSelectedRoom(e.target.value)}
-                    className="px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-medium cursor-pointer"
+                    onChange={(e) => {
+                      setSelectedRoom(e.target.value);
+                      setPreviewPageIndex(0);
+                    }}
+                    aria-label="กรองห้องเรียน"
+                    className="px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-medium cursor-pointer"
                   >
                     <option value="all">ทุกห้อง</option>
                     {rooms.map((r) => (
@@ -281,477 +658,432 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
                       </option>
                     ))}
                   </select>
-                </label>
-              </>
-            ) : (
-              <label className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
-                <Filter className="w-3.5 h-3.5 text-emerald-600" />
-                <span>กลุ่มสาระ/ฝ่าย:</span>
-                <select
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                  className="px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-medium cursor-pointer"
-                >
-                  <option value="all">ทุกกลุ่มสาระฯ ({teachers.length})</option>
-                  {departments.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <select
+                    value={selectedDept}
+                    onChange={(e) => {
+                      setSelectedDept(e.target.value);
+                      setPreviewPageIndex(0);
+                    }}
+                    aria-label="กรองกลุ่มสาระ"
+                    className="w-full px-2 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-medium cursor-pointer"
+                  >
+                    <option value="all">ทุกกลุ่มสาระฯ ({teachers.length})</option>
+                    {departments.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder={personType === 'staff' ? 'ค้นหาชื่อหรือรหัสครู...' : 'ค้นหาชื่อหรือรหัสนักเรียน...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs"
-              />
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={personType === 'staff' ? 'ค้นหาชื่อหรือรหัสครู...' : 'ค้นหาชื่อ รหัส หรือห้อง...'}
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPreviewPageIndex(0);
+                  }}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs"
+                />
+              </div>
+
+              {/* Bulk Select Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 text-[11px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSelectAllFiltered}
+                    className="inline-flex items-center gap-1 text-[var(--color-primary-text)] font-bold hover:underline cursor-pointer"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>เลือกทั้งหมด ({activeFilteredList.length})</span>
+                  </button>
+                  {hasActiveFilter && (
+                    <button
+                      type="button"
+                      onClick={handleSelectWholeSchool}
+                      className="text-emerald-700 dark:text-emerald-300 font-bold hover:underline cursor-pointer"
+                    >
+                      ทั้งโรงเรียน ({activeTotalCount})
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDeselectAllFiltered}
+                  className="text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
+                >
+                  ล้างที่เลือก
+                </button>
+              </div>
+            </div>
+
+            {/* Individual Checkboxes List */}
+            <div className="flex-1 min-h-0 overflow-y-auto pt-2 space-y-1 pr-1">
+              {activeFilteredList.length === 0 ? (
+                <p className="py-6 text-center text-xs text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'ไม่พบรายชื่อตามตัวกรอง' : 'No matching records'}
+                </p>
+              ) : personType === 'student' ? (
+                filteredStudents.map((stu) => {
+                  const isChecked = activeSelectedIds.has(stu.id);
+                  return (
+                    <button
+                      key={`pick-${stu.id}`}
+                      type="button"
+                      onClick={() => toggleSinglePerson(stu.id)}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition cursor-pointer border ${
+                        isChecked
+                          ? 'bg-[var(--color-primary-light)]/60 border-[var(--color-primary)]/40 text-[var(--color-text-title)]'
+                          : 'hover:bg-[var(--color-card-subtle)] border-transparent text-[var(--color-text-muted)]'
+                      }`}
+                    >
+                      {isChecked ? (
+                        <CheckSquare className="w-4 h-4 text-[var(--color-primary)] shrink-0" />
+                      ) : (
+                        <Square className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      )}
+                      {stu.avatarUrl ? (
+                        <img
+                          src={stu.avatarUrl}
+                          alt={stu.firstNameTh}
+                          className="w-6 h-6 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
+                          <User className="w-3 h-3" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold truncate leading-tight">
+                          {stu.firstNameTh} {stu.lastNameTh}
+                        </p>
+                        <p className="text-[10px] font-mono opacity-80 truncate tabular-nums">
+                          {stu.studentIdNumber} · {stu.room}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                filteredTeachers.map((t) => {
+                  const isChecked = activeSelectedIds.has(t.id);
+                  return (
+                    <button
+                      key={`pick-t-${t.id}`}
+                      type="button"
+                      onClick={() => toggleSinglePerson(t.id)}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition cursor-pointer border ${
+                        isChecked
+                          ? 'bg-emerald-500/10 border-emerald-500/40 text-[var(--color-text-title)]'
+                          : 'hover:bg-[var(--color-card-subtle)] border-transparent text-[var(--color-text-muted)]'
+                      }`}
+                    >
+                      {isChecked ? (
+                        <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                      ) : (
+                        <Square className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+                      )}
+                      {t.avatarUrl ? (
+                        <img
+                          src={t.avatarUrl}
+                          alt={t.fullNameTh}
+                          className="w-6 h-6 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
+                          <GraduationCap className="w-3 h-3" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold truncate leading-tight">
+                          {t.fullNameTh}
+                        </p>
+                        <p className="text-[10px] font-mono opacity-80 truncate tabular-nums">
+                          {t.teacherIdNumber} · {t.department || t.positionTitle || '-'}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <button
-                type="button"
-                onClick={() => setCardSide('front')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                  cardSide === 'front' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)]'
-                }`}
-              >
-                หน้าบัตร
-              </button>
-              <button
-                type="button"
-                onClick={() => setCardSide('back')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                  cardSide === 'back' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)]'
-                }`}
-              >
-                หลังบัตร
-              </button>
-              <button
-                type="button"
-                onClick={() => setCardSide('both')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                  cardSide === 'both' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)]'
-                }`}
-              >
-                ทั้งสองหน้า
-              </button>
-            </div>
+          {/* Right: WYSIWYG A4 Print Preview & Actual Print Container */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 bg-slate-100 dark:bg-slate-950/80 space-y-3">
+            {/* Preview Pagination Bar (Hidden on Print) */}
+            {printPages.length > 0 && (
+              <div className="no-print max-w-[210mm] mx-auto flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-xs">
+                <div className="flex items-center gap-2 font-semibold text-[var(--color-text-title)] tabular-nums">
+                  <span>
+                    {showAllPreviewPages
+                      ? `แสดงทุกแผ่น (${printPages.length} แผ่น A4)`
+                      : `ตัวอย่างแผ่นที่ ${previewPageIndex + 1} / ${printPages.length}`}
+                  </span>
+                  <span className="text-[var(--color-text-muted)] font-normal">
+                    · {printPages[previewPageIndex]?.label}
+                  </span>
+                </div>
 
-            <div className="flex p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-              <button
-                type="button"
-                onClick={() => setLayoutMode('grid_a4')}
-                className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                  layoutMode === 'grid_a4' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)]'
-                }`}
-              >
-                บัตร CR80
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutMode('sticker_a4')}
-                className={`px-2 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                  layoutMode === 'sticker_a4' ? 'bg-[var(--color-primary)] text-white shadow-xs' : 'text-[var(--color-text-muted)]'
-                }`}
-              >
-                สติกเกอร์ QR/บาร์โค้ด
-              </button>
-            </div>
-
-            {layoutMode === 'grid_a4' && (
-              <label className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
-                <span className="text-[11px]">ด้านหลังบัตร:</span>
-                <select
-                  value={backMode}
-                  onChange={(e) => handleChangeBackMode(e.target.value as IdCardBackMode)}
-                  className="px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold cursor-pointer"
-                >
-                  {ID_CARD_BACK_MODE_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {lang === 'th'
-                        ? personType === 'staff'
-                          ? opt.labelThStaff
-                          : opt.labelThStudent
-                        : personType === 'staff'
-                          ? opt.labelEnStaff
-                          : opt.labelEnStudent}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <button
-              type="button"
-              onClick={handleSelectAllFiltered}
-              className="text-[11px] text-[var(--color-primary-text)] font-semibold hover:underline cursor-pointer"
-            >
-              เลือกทั้งหมด ({personType === 'student' ? filteredStudents.length : filteredTeachers.length})
-            </button>
-            <span>·</span>
-            <button
-              type="button"
-              onClick={handleDeselectAllFiltered}
-              className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
-            >
-              ยกเลิก
-            </button>
-          </div>
-        </div>
-
-        {/* Printable Area */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-slate-100 dark:bg-slate-950/80 print-area">
-          {activePrintCount === 0 ? (
-            <div className="text-center py-16 space-y-2 text-[var(--color-text-muted)]">
-              <CreditCard className="w-10 h-10 mx-auto text-slate-400" />
-              <p className="text-sm font-bold text-[var(--color-text-title)]">
-                ไม่มีรายชื่อที่เลือกสำหรับพิมพ์บัตร
-              </p>
-              <p className="text-xs">กรุณากด "เลือกทั้งหมด" หรือเลือกตัวกรองด้านบน</p>
-            </div>
-          ) : layoutMode === 'sticker_a4' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto">
-              {personType === 'student'
-                ? printableStudents.map((student) => (
-                    <div
-                      key={`sticker-${student.id}`}
-                      className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white p-2.5 flex flex-col items-center text-center gap-1.5 text-slate-900 print:border-slate-800 print:break-inside-avoid"
-                    >
-                      <div className="flex items-center gap-1.5 w-full justify-center pb-1 border-b border-slate-200">
-                        <span className="text-[9px] font-bold text-slate-700 truncate">
-                          {school.nameTh}
-                        </span>
-                      </div>
-                      <QrCodeMatrix
-                        value={`EDUVERSE:STU:${student.studentIdNumber}:${school.code}`}
-                        size={74}
-                        label={`QR: ${student.studentIdNumber}`}
-                      />
-                      <Barcode128Svg
-                        value={student.studentIdNumber || student.id}
-                        height={20}
-                        showValueText={false}
-                        className="w-full max-w-[130px]"
-                      />
-                      <div className="w-full min-w-0">
-                        <p className="text-[11px] font-bold text-slate-900 truncate">
-                          {student.firstNameTh} {student.lastNameTh}
-                        </p>
-                        <p className="text-[9px] font-mono text-slate-600">
-                          {student.studentIdNumber} · {student.room}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                : printableTeachers.map((teacher) => (
-                    <div
-                      key={`sticker-t-${teacher.id}`}
-                      className="rounded-xl border border-emerald-400 bg-white p-2.5 flex flex-col items-center text-center gap-1.5 text-slate-900 print:border-slate-800 print:break-inside-avoid"
-                    >
-                      <div className="flex items-center gap-1.5 w-full justify-center pb-1 border-b border-emerald-200">
-                        <span className="text-[9px] font-bold text-emerald-900 truncate">
-                          {school.nameTh}
-                        </span>
-                      </div>
-                      <QrCodeMatrix
-                        value={`EDUVERSE:STF:${teacher.teacherIdNumber}:${school.code}`}
-                        size={74}
-                        label={`QR: ${teacher.teacherIdNumber}`}
-                      />
-                      <Barcode128Svg
-                        value={teacher.teacherIdNumber || teacher.id}
-                        height={20}
-                        showValueText={false}
-                        className="w-full max-w-[130px]"
-                      />
-                      <div className="w-full min-w-0">
-                        <p className="text-[11px] font-bold text-slate-900 truncate">
-                          {teacher.fullNameTh}
-                        </p>
-                        <p className="text-[9px] font-mono text-emerald-800">
-                          {teacher.teacherIdNumber} · ครู/บุคลากร
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-              {personType === 'student'
-                ? printableStudents.map((student) => {
-                    const renderFront = (
-                      <div
-                        key={`front-${student.id}`}
-                        className="relative w-full aspect-[85.6/53.98] rounded-xl border border-slate-300 bg-white text-slate-900 p-3 shadow-md flex flex-col justify-between overflow-hidden print:border-slate-800 print:shadow-none print:break-inside-avoid"
+                <div className="flex items-center gap-2">
+                  {printPages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowAllPreviewPages((v) => !v)}
+                        className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold hover:bg-[var(--color-card)] cursor-pointer"
                       >
-                        <div
-                          className="flex items-center justify-between border-b pb-1.5 shrink-0"
-                          style={{ borderColor: accentColor }}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {school.logoUrl ? (
-                              <img
-                                src={school.logoUrl}
-                                alt={school.nameTh}
-                                className="w-6 h-6 rounded-md object-cover border border-slate-200 shrink-0"
-                              />
-                            ) : (
-                              <div
-                                className="w-6 h-6 rounded-md text-white flex items-center justify-center text-[10px] font-black shrink-0"
-                                style={{ backgroundColor: accentColor }}
-                              >
-                                {school.code.slice(0, 2) || 'EV'}
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <h4 className="text-[10px] font-black leading-tight truncate text-slate-900">
-                                {school.nameTh}
-                              </h4>
-                              <span className="text-[8px] text-slate-500 font-medium block truncate">
-                                {school.nameEn || school.code}
-                              </span>
-                            </div>
-                          </div>
-                          <span
-                            className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white shrink-0"
-                            style={{ backgroundColor: accentColor }}
+                        {showAllPreviewPages ? 'ดูทีละแผ่น' : `ดูทุกแผ่น (${printPages.length})`}
+                      </button>
+                      {!showAllPreviewPages && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={previewPageIndex <= 0}
+                            onClick={() => setPreviewPageIndex((p) => Math.max(0, p - 1))}
+                            className="p-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer"
+                            aria-label="แผ่นก่อนหน้า"
                           >
-                            STUDENT CARD
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={previewPageIndex >= printPages.length - 1}
+                            onClick={() => setPreviewPageIndex((p) => Math.min(printPages.length - 1, p + 1))}
+                            className="p-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] disabled:opacity-40 cursor-pointer"
+                            aria-label="แผ่นถัดไป"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activePrintCount === 0 ? (
+              <div className="text-center py-16 space-y-2 text-[var(--color-text-muted)]">
+                <CreditCard className="w-10 h-10 mx-auto text-slate-400" />
+                <p className="text-sm font-bold text-[var(--color-text-title)]">
+                  ไม่มีรายชื่อที่เลือกสำหรับพิมพ์บัตร
+                </p>
+                <p className="text-xs">กรุณาติ๊กเลือกรายชื่อทางซ้าย หรือกด &quot;เลือกทั้งหมด&quot;</p>
+              </div>
+            ) : (
+              <div className="id-card-print-area space-y-5 print:space-y-0" data-printable="true">
+                {printPages.map((page, pageIdx) => {
+                  const isPreviewVisible = showAllPreviewPages || pageIdx === previewPageIndex;
+                  return (
+                    <div
+                      key={page.key}
+                      data-preview-visible={isPreviewVisible ? 'true' : 'false'}
+                      className="id-card-print-page max-w-[210mm] mx-auto bg-white text-slate-900 rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6"
+                    >
+                      {/* A4 Sheet Header */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-300 pb-1.5 mb-3 text-[10px] text-slate-700">
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-900 truncate block">
+                            {school.nameTh} · {page.label}
                           </span>
                         </div>
-
-                        <div className="flex gap-2.5 items-center my-auto">
-                          <div className="relative shrink-0">
-                            {student.avatarUrl ? (
-                              <img
-                                src={student.avatarUrl}
-                                alt={student.firstNameTh}
-                                className="w-14 h-18 sm:w-16 sm:h-20 rounded-lg object-cover border border-slate-300 shadow-2xs"
-                              />
-                            ) : (
-                              <div className="w-14 h-18 sm:w-16 sm:h-20 rounded-lg border border-slate-300 bg-slate-100 flex items-center justify-center text-slate-500">
-                                <User className="w-7 h-7" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0 space-y-0.5 text-left">
-                            <p className="text-xs sm:text-sm font-black text-slate-900 truncate">
-                              {student.firstNameTh} {student.lastNameTh}
-                            </p>
-                            <p className="text-[10px] text-slate-600 font-medium truncate">
-                              {student.firstNameEn} {student.lastNameEn}
-                            </p>
-                            <div className="pt-0.5 flex items-center gap-2 text-[9px] font-mono">
-                              <span className="px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200 font-bold text-slate-900">
-                                ID: {student.studentIdNumber}
-                              </span>
-                              <span className="font-bold text-blue-700">
-                                {student.gradeLevel} {student.room}
-                              </span>
-                            </div>
-                            {student.nationalId && (
-                              <p className="text-[8px] text-slate-500 font-mono truncate">
-                                ปชช.: {student.nationalId}
-                              </p>
-                            )}
-                          </div>
-
-                          {includeQrCode && (
-                            <div className="shrink-0">
-                              <QrCodeMatrix
-                                value={`EDUVERSE:STU:${student.studentIdNumber}:${school.code}`}
-                                size={54}
-                                label={`QR: ${student.studentIdNumber}`}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="border-t border-slate-200 pt-1 flex items-center justify-between gap-2 text-[8px] font-mono shrink-0">
-                          {includeBarcode && (
-                            <Barcode128Svg
-                              value={student.studentIdNumber || student.id}
-                              height={18}
-                              className="max-w-[160px]"
-                            />
-                          )}
-                          <div className="flex flex-col items-end text-right text-slate-600">
-                            {includeBloodType && <span>กรุ๊ปเลือด: {student.bloodType || '-'}</span>}
-                            <span>ปีการศึกษา {school.academicYear || '2569'}</span>
-                          </div>
-                        </div>
+                        <span className="font-mono shrink-0 text-slate-500 tabular-nums">
+                          แผ่น {pageIdx + 1}/{printPages.length} · ปีการศึกษา {school.academicYear || '2569'}
+                        </span>
                       </div>
-                    );
 
-                    const renderBack = (
-                      <IdCardBackContent
-                        key={`back-${student.id}`}
-                        mode={backMode}
-                        personType="student"
-                        student={student}
-                        teachers={teachers}
-                        school={school}
-                        lang={lang}
-                        timetableSlots={timetableSlots}
-                        courses={courses}
-                        schoolPeriods={schoolPeriods}
-                        variant="print"
-                        issueTermLabel={issueTermLabel}
-                        expiryTermLabel={expiryTermLabel}
-                      />
-                    );
-
-                    if (cardSide === 'front') return renderFront;
-                    if (cardSide === 'back') return renderBack;
-                    return (
-                      <React.Fragment key={student.id}>
-                        {renderFront}
-                        {renderBack}
-                      </React.Fragment>
-                    );
-                  })
-                : printableTeachers.map((teacher) => {
-                    const renderFront = (
-                      <div
-                        key={`t-front-${teacher.id}`}
-                        className="relative w-full aspect-[85.6/53.98] rounded-xl border border-emerald-500 bg-white text-slate-900 p-3 shadow-md flex flex-col justify-between overflow-hidden print:border-slate-800 print:shadow-none print:break-inside-avoid"
-                      >
-                        <div className="flex items-center justify-between border-b border-emerald-700 pb-1.5 shrink-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {school.logoUrl ? (
-                              <img
-                                src={school.logoUrl}
-                                alt={school.nameTh}
-                                className="w-6 h-6 rounded-md object-cover border border-slate-200 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 rounded-md bg-emerald-700 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                                {school.code.slice(0, 2) || 'EV'}
+                      {page.kind === 'stickers' ? (
+                        <div className="id-card-sticker-grid grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {page.items.map((person) => {
+                            if (personType === 'student') {
+                              const student = person as Student;
+                              return (
+                                <div
+                                  key={`sticker-${student.id}`}
+                                  className="id-card-sticker-card rounded-xl border border-slate-300 bg-white p-2 flex flex-col items-center justify-between text-center gap-1 text-slate-900"
+                                >
+                                  <span className="text-[8.5px] font-bold text-slate-700 truncate w-full border-b border-slate-200 pb-0.5">
+                                    {school.nameTh}
+                                  </span>
+                                  <QrCodeMatrix
+                                    value={`EDUVERSE:STU:${student.studentIdNumber || student.id}:${school.code}`}
+                                    size={64}
+                                    className="p-0.5 rounded-md shadow-none"
+                                    label={`QR: ${student.studentIdNumber}`}
+                                  />
+                                  <Barcode128Svg
+                                    value={student.studentIdNumber || student.id}
+                                    height={16}
+                                    showValueText={false}
+                                    className="w-full max-w-[120px] px-1 py-0.5"
+                                  />
+                                  <div className="w-full min-w-0 leading-tight">
+                                    <p className="text-[10px] font-bold text-slate-900 truncate">
+                                      {student.firstNameTh} {student.lastNameTh}
+                                    </p>
+                                    <p className="text-[8.5px] font-mono text-slate-600 truncate tabular-nums">
+                                      {student.studentIdNumber} · {student.room}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            const teacher = person as Teacher;
+                            return (
+                              <div
+                                key={`sticker-t-${teacher.id}`}
+                                className="id-card-sticker-card rounded-xl border border-emerald-500 bg-white p-2 flex flex-col items-center justify-between text-center gap-1 text-slate-900"
+                              >
+                                <span className="text-[8.5px] font-bold text-emerald-900 truncate w-full border-b border-emerald-200 pb-0.5">
+                                  {school.nameTh}
+                                </span>
+                                <QrCodeMatrix
+                                  value={`EDUVERSE:STF:${teacher.teacherIdNumber || teacher.id}:${school.code}`}
+                                  size={64}
+                                  className="p-0.5 rounded-md shadow-none"
+                                  label={`QR: ${teacher.teacherIdNumber}`}
+                                />
+                                <Barcode128Svg
+                                  value={teacher.teacherIdNumber || teacher.id}
+                                  height={16}
+                                  showValueText={false}
+                                  className="w-full max-w-[120px] px-1 py-0.5"
+                                />
+                                <div className="w-full min-w-0 leading-tight">
+                                  <p className="text-[10px] font-bold text-slate-900 truncate">
+                                    {teacher.fullNameTh}
+                                  </p>
+                                  <p className="text-[8.5px] font-mono text-emerald-800 truncate tabular-nums">
+                                    {teacher.teacherIdNumber} · ครู/บุคลากร
+                                  </p>
+                                </div>
                               </div>
-                            )}
-                            <div className="min-w-0">
-                              <h4 className="text-[10px] font-black leading-tight truncate text-slate-900">
-                                {school.nameTh}
-                              </h4>
-                              <span className="text-[8px] text-slate-500 font-medium block truncate">
-                                {school.nameEn || school.code}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-800 text-amber-200 shrink-0">
-                            TEACHER / STAFF
-                          </span>
+                            );
+                          })}
                         </div>
-
-                        <div className="flex gap-2.5 items-center my-auto">
-                          <div className="relative shrink-0">
-                            {teacher.avatarUrl ? (
-                              <img
-                                src={teacher.avatarUrl}
-                                alt={teacher.fullNameTh}
-                                className="w-14 h-18 sm:w-16 sm:h-20 rounded-lg object-cover border border-emerald-500 shadow-2xs"
-                              />
-                            ) : (
-                              <div className="w-14 h-18 sm:w-16 sm:h-20 rounded-lg border border-emerald-500 bg-emerald-50 flex items-center justify-center text-emerald-700">
-                                <GraduationCap className="w-7 h-7" />
+                      ) : page.kind === 'fold_pairs' ? (
+                        <div className="id-card-print-pair-grid flex flex-col gap-4">
+                          {page.items.map((person) => {
+                            const student = personType === 'student' ? (person as Student) : null;
+                            const teacher = personType === 'staff' ? (person as Teacher) : null;
+                            return (
+                              <div
+                                key={`pair-${person.id}`}
+                                className="id-card-print-pair-row grid grid-cols-1 md:grid-cols-[1fr_16px_1fr] gap-2 md:gap-0 items-center"
+                              >
+                                <IdCardFrontContent
+                                  personType={personType}
+                                  student={student}
+                                  teacher={teacher}
+                                  school={school}
+                                  lang={lang}
+                                  variant="print"
+                                  includeBarcode={includeBarcode}
+                                  includeQrCode={includeQrCode}
+                                  includeBloodType={includeBloodType}
+                                  maskNationalId={maskNationalId}
+                                  issueTermLabel={issueTermLabel}
+                                  expiryTermLabel={expiryTermLabel}
+                                />
+                                <div className="hidden md:flex print:flex h-full min-h-[120px] flex-col items-center justify-center">
+                                  <div className="flex-1 border-l border-dashed border-slate-400" />
+                                  <Scissors className="w-3 h-3 text-slate-400 my-0.5 rotate-90" />
+                                  <div className="flex-1 border-l border-dashed border-slate-400" />
+                                </div>
+                                <IdCardBackContent
+                                  mode={backMode}
+                                  personType={personType}
+                                  student={student}
+                                  teacher={teacher}
+                                  teachers={teachers}
+                                  school={school}
+                                  lang={lang}
+                                  timetableSlots={timetableSlots}
+                                  courses={courses}
+                                  schoolPeriods={schoolPeriods}
+                                  variant="print"
+                                  issueTermLabel={issueTermLabel}
+                                  expiryTermLabel={expiryTermLabel}
+                                />
                               </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0 space-y-0.5 text-left">
-                            <p className="text-xs sm:text-sm font-black text-slate-900 truncate">
-                              {teacher.fullNameTh}
-                            </p>
-                            <p className="text-[10px] text-emerald-800 font-semibold truncate">
-                              {teacher.positionTitle || teacher.academicStanding || 'ครูผู้สอน'}
-                            </p>
-                            <div className="pt-0.5 flex items-center gap-2 text-[9px] font-mono">
-                              <span className="px-1.5 py-0.2 rounded bg-emerald-50 border border-emerald-200 font-bold text-emerald-900">
-                                ID: {teacher.teacherIdNumber}
-                              </span>
-                              <span className="font-bold text-slate-700 truncate">
-                                {teacher.department}
-                              </span>
-                            </div>
-                            {teacher.teacherLicenseNo && (
-                              <p className="text-[8px] text-slate-500 font-mono truncate">
-                                ใบอนุญาต: {teacher.teacherLicenseNo}
-                              </p>
-                            )}
-                          </div>
-
-                          {includeQrCode && (
-                            <div className="shrink-0">
-                              <QrCodeMatrix
-                                value={`EDUVERSE:STF:${teacher.teacherIdNumber}:${school.code}`}
-                                size={54}
-                                label={`QR: ${teacher.teacherIdNumber}`}
-                              />
-                            </div>
-                          )}
+                            );
+                          })}
                         </div>
-
-                        <div className="border-t border-slate-200 pt-1 flex items-center justify-between gap-2 text-[8px] font-mono shrink-0">
-                          {includeBarcode && (
-                            <Barcode128Svg
-                              value={teacher.teacherIdNumber || teacher.id}
-                              height={18}
-                              className="max-w-[160px]"
+                      ) : page.kind === 'front_grid' ? (
+                        <div className="id-card-print-grid grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          {page.items.map((person) => (
+                            <IdCardFrontContent
+                              key={`front-${person.id}`}
+                              personType={personType}
+                              student={personType === 'student' ? (person as Student) : null}
+                              teacher={personType === 'staff' ? (person as Teacher) : null}
+                              school={school}
+                              lang={lang}
+                              variant="print"
+                              includeBarcode={includeBarcode}
+                              includeQrCode={includeQrCode}
+                              includeBloodType={includeBloodType}
+                              maskNationalId={maskNationalId}
+                              issueTermLabel={issueTermLabel}
+                              expiryTermLabel={expiryTermLabel}
                             />
-                          )}
-                          <div className="flex flex-col items-end text-right text-slate-600">
-                            <span>{teacher.homeroomClasses?.join(', ') || 'บุคลากร'}</span>
-                            <span>ปีการศึกษา {school.academicYear || '2569'}</span>
-                          </div>
+                          ))}
                         </div>
-                      </div>
-                    );
-
-                    const renderBack = (
-                      <IdCardBackContent
-                        key={`t-back-${teacher.id}`}
-                        mode={backMode}
-                        personType="staff"
-                        teacher={teacher}
-                        teachers={teachers}
-                        school={school}
-                        lang={lang}
-                        timetableSlots={timetableSlots}
-                        courses={courses}
-                        schoolPeriods={schoolPeriods}
-                        variant="print"
-                        issueTermLabel={issueTermLabel}
-                        expiryTermLabel={expiryTermLabel}
-                      />
-                    );
-
-                    if (cardSide === 'front') return renderFront;
-                    if (cardSide === 'back') return renderBack;
-                    return (
-                      <React.Fragment key={teacher.id}>
-                        {renderFront}
-                        {renderBack}
-                      </React.Fragment>
-                    );
-                  })}
-            </div>
-          )}
+                      ) : (
+                        <div className="id-card-print-grid grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          {page.items.map((person, slotIdx) => {
+                            if (!person) {
+                              return (
+                                <div
+                                  key={`empty-slot-${page.key}-${slotIdx}`}
+                                  className="id-card-cr80-card rounded-xl border border-dashed border-slate-200 bg-slate-50/40"
+                                  aria-hidden="true"
+                                />
+                              );
+                            }
+                            return (
+                              <IdCardBackContent
+                                key={`back-${person.id}`}
+                                mode={backMode}
+                                personType={personType}
+                                student={personType === 'student' ? (person as Student) : null}
+                                teacher={personType === 'staff' ? (person as Teacher) : null}
+                                teachers={teachers}
+                                school={school}
+                                lang={lang}
+                                timetableSlots={timetableSlots}
+                                courses={courses}
+                                schoolPeriods={schoolPeriods}
+                                variant="print"
+                                issueTermLabel={issueTermLabel}
+                                expiryTermLabel={expiryTermLabel}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer Controls */}
-        <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between text-xs shrink-0 no-print">
-          <div className="flex items-center gap-2 text-[11px] text-[var(--color-text-muted)]">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>มาตรฐาน CR80 (85.60 × 53.98 มม.) · บาร์โค้ด Code 128 และ QR Code สแกนได้จริง</span>
+        <div className="px-4 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 no-print">
+          <div className="text-[11px] text-[var(--color-text-muted)]">
+            มาตรฐาน CR80 (85.60 × 53.98 มม.) · จัดหน้า A4 อัตโนมัติ (ตั้งค่า Margin: Default หรือ Minimum)
           </div>
 
           <div className="flex items-center gap-2">
@@ -759,9 +1091,14 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               type="button"
               onClick={handlePrint}
               disabled={activePrintCount === 0}
-              className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold transition cursor-pointer disabled:opacity-40"
+              className="btn-action-primary px-4 py-2"
             >
-              {lang === 'th' ? 'พิมพ์บัตร (Print)' : 'Print Now'}
+              <Printer className="w-3.5 h-3.5" />
+              <span>
+                {lang === 'th'
+                  ? `พิมพ์ทั้งหมด (${activePrintCount} ใบ)`
+                  : `Print All (${activePrintCount})`}
+              </span>
             </button>
             <button
               type="button"

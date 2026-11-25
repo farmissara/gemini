@@ -1459,6 +1459,11 @@ textarea::placeholder {
     size: A4 landscape;
   }
 
+  @page idcard {
+    margin: 8mm;
+    size: A4 portrait;
+  }
+
   html, body, #root {
     height: auto !important;
     overflow: visible !important;
@@ -1669,8 +1674,145 @@ textarea::placeholder {
     print-color-adjust: exact !important;
   }
 
+  /* Printable Digital / Batch ID Card Isolation (Exact CR80 85.6mm x 53.98mm on A4 Portrait) */
+  body:has(.id-card-print-area) {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body:has(.id-card-print-area) #root,
+  body:has(.id-card-print-area) *:has(.id-card-print-area) {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  body:has(.id-card-print-area) > *:not(:has(.id-card-print-area)):not(.id-card-print-area),
+  body:has(.id-card-print-area) *:has(.id-card-print-area) > *:not(.id-card-print-area):not(:has(.id-card-print-area)) {
+    display: none !important;
+  }
+
+  body:has(.id-card-print-area) .id-card-print-area {
+    page: idcard;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .id-card-print-area .no-print {
+    display: none !important;
+  }
+
+  .id-card-print-area .id-card-print-page {
+    display: block !important;
+    width: 194mm !important;
+    max-width: 194mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  .id-card-print-area .id-card-print-page:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  .id-card-print-area .id-card-print-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 85.6mm) !important;
+    justify-content: center !important;
+    column-gap: 6mm !important;
+    row-gap: 5mm !important;
+  }
+
+  .id-card-print-area .id-card-print-pair-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 5mm !important;
+  }
+
+  .id-card-print-area .id-card-print-pair-row {
+    display: grid !important;
+    grid-template-columns: 85.6mm 4mm 85.6mm !important;
+    align-items: center !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .id-card-print-area .id-card-cr80-card {
+    width: 85.6mm !important;
+    height: 53.98mm !important;
+    min-height: 53.98mm !important;
+    max-height: 53.98mm !important;
+    aspect-ratio: auto !important;
+    padding: 2.4mm 2.8mm !important;
+    border-radius: 2.5mm !important;
+    border-color: #64748b !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .id-card-print-area .id-card-sticker-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 44mm) !important;
+    justify-content: center !important;
+    gap: 3.5mm !important;
+  }
+
+  .id-card-print-area .id-card-sticker-card {
+    width: 44mm !important;
+    height: 41mm !important;
+    padding: 2mm !important;
+    border-color: #64748b !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .id-card-print-area table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
   /* Printable Administrative Dashboard Export (A4 Landscape, Paginated Cards & Charts) */
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) {
     background: #ffffff !important;
     color: #0f172a !important;
     font-size: 9.5pt !important;
@@ -1678,10 +1820,10 @@ textarea::placeholder {
     print-color-adjust: exact !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) #root,
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) #root :has(.dashboard-print-area),
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area,
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-scroll {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) #root,
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) #root :has(.dashboard-print-area),
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area,
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-scroll {
     height: auto !important;
     max-height: none !important;
     min-height: 0 !important;
@@ -1690,7 +1832,7 @@ textarea::placeholder {
     position: static !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area {
     --dash-grid-gap: 10px;
     --dash-subgrid-gap: 8px;
     --dash-card-pad: 11px;
@@ -1705,18 +1847,18 @@ textarea::placeholder {
     border-radius: 0 !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area button.print-keep {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area button.print-keep {
     display: flex !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-grid {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: var(--dash-grid-gap) !important;
     align-items: start !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-card {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area .frosted-card {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     background: #ffffff !important;
@@ -1727,42 +1869,117 @@ textarea::placeholder {
     padding: var(--dash-card-pad) !important;
   }
 
-  :where(html.dark) body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area :is(h1, h2, h3, h4, p, span, div) {
+  :where(html.dark) body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area :is(h1, h2, h3, h4, p, span, div) {
     color: #1e293b !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-blue {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area .frosted-blue {
     border-color: #93c5fd !important;
     background: #f8fbff !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-green {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area .frosted-green {
     border-color: #6ee7b7 !important;
     background: #f6fef9 !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-purple {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area .frosted-purple {
     border-color: #c4b5fd !important;
     background: #faf8ff !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-orange {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area .frosted-orange {
     border-color: #fdba74 !important;
     background: #fffaf5 !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .frosted-amber {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area .frosted-amber {
     border-color: #fcd34d !important;
     background: #fffdf5 !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area .print-avoid-break {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area .print-avoid-break {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, [data-printable="true"])) .dashboard-print-area svg {
+  body:has(.dashboard-print-area):not(:has(.timetable-print-area, .student-qr-print-area, .batch-qr-print-area, .id-card-print-area, [data-printable="true"])) .dashboard-print-area svg {
     max-width: 100% !important;
+  }
+}
+
+/* ========================================================
+   DIGITAL ID CARD 3D FLIP & SCREEN PREVIEW HELPERS
+   ======================================================== */
+.id-card-scene {
+  perspective: 1200px;
+}
+
+.id-card-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.id-card-flipper.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.id-card-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.id-card-face-front {
+  transform: rotateY(0deg) translateZ(1px);
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.id-card-face-back {
+  transform: rotateY(180deg) translateZ(1px);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.id-card-flipper.is-flipped .id-card-face-front {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.id-card-flipper.is-flipped .id-card-face-back {
+  z-index: 2;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .id-card-flipper {
+    transition: none;
+  }
+  .id-card-flipper .id-card-face-back {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .id-card-flipper.is-flipped .id-card-face-front {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .id-card-flipper.is-flipped .id-card-face-back {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media screen {
+  .id-card-print-page[data-preview-visible="false"] {
+    display: none;
   }
 }
 
