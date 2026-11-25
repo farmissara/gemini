@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock,
   CloudUpload,
+  Copy,
   DatabaseBackup,
   Download,
   ExternalLink,
@@ -25,7 +26,10 @@ import type { School } from '../../types';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { emitAppToast } from '../common/ToastProvider';
 import {
+  FIREBASE_AUTHORIZED_DOMAINS_URL,
+  GCP_OAUTH_CREDENTIALS_URL,
   GoogleCalendarAuthUser,
+  GoogleUnauthorizedDomainError,
   clearGoogleCalendarAccessToken,
   disconnectGoogleCalendarUser,
   getCurrentGoogleCalendarUser,
@@ -69,6 +73,7 @@ type Report = {
   missingAccounts?: Array<{ email: string; role?: string | null }>;
   message?: string;
   error?: string;
+  unauthorizedHostname?: string;
   passwordsIncluded?: boolean;
 };
 
@@ -281,7 +286,9 @@ export const BackupCenterModal: React.FC<Props> = ({
       void refreshDriveBackups(accessToken);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'เชื่อมต่อ Google ไม่สำเร็จ';
-      setReport({ error: msg });
+      const unauthorizedHostname =
+        err instanceof GoogleUnauthorizedDomainError ? err.hostname : undefined;
+      setReport({ error: msg, unauthorizedHostname });
       emitAppToast({ tone: 'error', title: 'เชื่อมต่อ Google ไม่สำเร็จ', message: msg });
     } finally {
       setIsConnectingGoogle(false);
@@ -1342,6 +1349,57 @@ export const BackupCenterModal: React.FC<Props> = ({
                 {report.error ||
                   report.message ||
                   (report.valid ? 'ไฟล์ผ่านการตรวจสอบ' : report.ok ? 'เสร็จเรียบร้อย' : '')}
+                {report.unauthorizedHostname && (
+                  <div className="mt-2.5 space-y-2 rounded-lg border border-rose-300/70 dark:border-rose-700/70 bg-[var(--color-card)] p-2.5 text-xs text-[var(--color-text-body)]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        โดเมนที่ต้องเพิ่มสิทธิ์:{' '}
+                        <code className="rounded bg-[var(--color-card-subtle)] px-1.5 py-0.5 font-mono font-semibold text-[var(--color-text-title)]">
+                          {report.unauthorizedHostname}
+                        </code>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard
+                            ?.writeText(report.unauthorizedHostname || '')
+                            .then(() =>
+                              emitAppToast({
+                                tone: 'success',
+                                title: 'คัดลอกชื่อโดเมนแล้ว',
+                                message: report.unauthorizedHostname || '',
+                              })
+                            )
+                            .catch(() => undefined);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2 py-1 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card)] cursor-pointer"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>คัดลอกโดเมน</span>
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={FIREBASE_AUTHORIZED_DOMAINS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-primary-text)] hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>เพิ่มใน Firebase Authorized domains</span>
+                      </a>
+                      <a
+                        href={GCP_OAUTH_CREDENTIALS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-primary-text)] hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>เพิ่มใน Google Cloud OAuth Origins</span>
+                      </a>
+                    </div>
+                  </div>
+                )}
                 {report.valid && (
                   <div className="mt-2 text-xs text-[var(--color-text-muted)]">
                     {report.sourceProject && `ต้นทาง ${report.sourceProject} · `}

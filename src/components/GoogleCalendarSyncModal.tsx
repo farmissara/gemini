@@ -32,7 +32,10 @@ import {
   syncTimetableToGoogleCalendar,
 } from '../lib/googleCalendar';
 import {
+  FIREBASE_AUTHORIZED_DOMAINS_URL,
+  GCP_OAUTH_CREDENTIALS_URL,
   GoogleCalendarAuthUser,
+  GoogleUnauthorizedDomainError,
   clearGoogleCalendarAccessToken,
   disconnectGoogleCalendarUser,
   getCurrentGoogleCalendarUser,
@@ -136,6 +139,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
   const [isExportingWallpaper, setIsExportingWallpaper] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState('');
+  const [unauthorizedHostname, setUnauthorizedHostname] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
 
   const coTaughtCount = useMemo(
@@ -203,6 +207,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
 
   const handleConnectGoogleAccount = async () => {
     setErrorMsg('');
+    setUnauthorizedHostname('');
     setStatusMsg('');
     setSyncCompletedCount(null);
     setIsConnectingGoogle(true);
@@ -212,6 +217,9 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
       setGoogleToken(result.accessToken);
       setStatusMsg(`เชื่อมต่อบัญชี Google (${result.user.email || result.user.displayName}) สำเร็จ พร้อมซิงค์เข้าปฏิทินแล้ว`);
     } catch (err) {
+      if (err instanceof GoogleUnauthorizedDomainError) {
+        setUnauthorizedHostname(err.hostname);
+      }
       const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         setErrorMsg('ยกเลิกการเลือกบัญชี Google กรุณากดปุ่มเชื่อมต่อใหม่อีกครั้งเมื่อพร้อม');
@@ -430,9 +438,36 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
 
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
           {errorMsg && (
-            <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-700 dark:text-rose-200">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+            <div className="space-y-2 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-700 dark:text-rose-200">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+              {unauthorizedHostname && (
+                <div className="flex flex-wrap items-center gap-2 pl-6">
+                  <code className="rounded bg-[var(--color-card)] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--color-text-title)]">
+                    {unauthorizedHostname}
+                  </code>
+                  <a
+                    href={FIREBASE_AUTHORIZED_DOMAINS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 underline font-semibold"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Firebase Authorized domains</span>
+                  </a>
+                  <a
+                    href={GCP_OAUTH_CREDENTIALS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 underline font-semibold"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Google Cloud OAuth</span>
+                  </a>
+                </div>
+              )}
             </div>
           )}
           {statusMsg && (
