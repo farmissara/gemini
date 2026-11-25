@@ -29,9 +29,18 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   homework: 'tone-2',
   central_exam_hub: 'tone-2',
 
-  // tone-3 (Amber): Master Console & Early Warning
+  // tone-3 (Amber): Master Console, Developer Governance & Early Warning
   executive_warning: 'tone-3',
   super_admin_console: 'tone-3',
+  super_admin_approvals: 'tone-3',
+  super_admin_audit: 'tone-3',
+  super_admin_schools: 'tone-1',
+  super_admin_central_exams: 'tone-2',
+  super_admin_packages: 'tone-5',
+  super_admin_promotions: 'tone-6',
+  super_admin_exam_payment: 'tone-6',
+  super_admin_permissions: 'tone-7',
+  super_admin_backup: 'tone-7',
 
   // tone-4 (Rose): Attendance, Student Care, Health & Digital ID
   realtime_daily: 'tone-4',
@@ -167,6 +176,9 @@ export const TONE_GROUP_META: Record<ModuleTone, ModuleGroupMeta> = {
 
 export const CATEGORY_TONE_MAP: Record<NavCategoryId, ModuleTone> = {
   super_admin: 'tone-3',
+  dev_platform: 'tone-3',
+  dev_saas: 'tone-5',
+  dev_infra: 'tone-7',
   daily_work: 'tone-2',
   academic_setup: 'tone-1',
   report_monitor: 'tone-8',

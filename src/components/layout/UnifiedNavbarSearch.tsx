@@ -53,6 +53,7 @@ interface UnifiedNavbarSearchProps {
   activeSchool: School;
   gradingSystem?: GradingSystem;
   currentRole: UserRole;
+  isSuperAdminSchoolView?: boolean;
   currentUser?: AuthUser | null;
   currentStudentRecordId?: string;
   featureFlags?: SchoolFeatureFlags;
@@ -72,6 +73,7 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   activeSchool,
   gradingSystem = 'thai',
   currentRole,
+  isSuperAdminSchoolView = false,
   currentUser,
   currentStudentRecordId,
   featureFlags,
@@ -193,8 +195,8 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
   }, [courses, deptFilter, courseTeacherFilter, courseTeacherOptions, normalizedQuery]);
 
   const availableQuickPages = useMemo(
-    () => getQuickNavEntries(currentRole, featureFlags),
-    [currentRole, featureFlags],
+    () => getQuickNavEntries(currentRole, featureFlags, isSuperAdminSchoolView),
+    [currentRole, featureFlags, isSuperAdminSchoolView],
   );
 
   const matchedPages = useMemo(() => {

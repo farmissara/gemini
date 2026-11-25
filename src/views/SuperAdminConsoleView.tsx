@@ -92,6 +92,7 @@ interface SuperAdminConsoleViewProps {
   onOpenCoordinationDesk?: () => void;
   onOpenBackupCenter?: () => void;
   initialSubTab?: 'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs';
+  onSubTabChange?: (subTab: 'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs') => void;
 }
 
 export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
@@ -113,10 +114,16 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   onOpenCoordinationDesk,
   onOpenBackupCenter,
   initialSubTab,
+  onSubTabChange,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs'>(
+  type ConsoleSubTab = 'approvals' | 'packages' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment' | 'audit_logs';
+  const [activeSubTab, setActiveSubTab] = useState<ConsoleSubTab>(
     initialSubTab || 'approvals'
   );
+  const selectSubTab = (next: ConsoleSubTab) => {
+    setActiveSubTab(next);
+    onSubTabChange?.(next);
+  };
   const [packageCatalog, setPackageCatalog] = useState<PackageLevelConfig[]>(() => getStoredPackageCatalog() || DEFAULT_PACKAGE_CATALOG);
   const [flagEditorSchool, setFlagEditorSchool] = useState<School | null>(null);
   const [flagDraft, setFlagDraft] = useState<SchoolFeatureFlags | null>(null);
@@ -531,7 +538,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         </div>
       )}
 
-      {/* Super Admin Editorial Header */}
+      {/* Super Admin Developer Editorial Header */}
       <div className="app-page-header px-4 py-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="tone-chip w-10 h-10 rounded-xl shrink-0">
@@ -539,13 +546,13 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           </div>
           <div className="min-w-0 space-y-0.5">
             <div className="module-category-kicker">
-              03 · {lang === 'th' ? 'ศูนย์ควบคุมแม่ข่าย (Master Console)' : 'Master Console'}
+              03 · {lang === 'th' ? 'ระบบผู้พัฒนาระบบ (Developer & Platform Console)' : 'Developer & Platform Console'}
             </div>
             <h1 className="type-page-title truncate">
-              ศูนย์ควบคุมระบบและสถานศึกษา
+              ศูนย์ควบคุมระบบผู้พัฒนาและแพ็กเกจ SaaS
             </h1>
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] flex-wrap">
-              <span>Super Admin Console</span>
+              <span>Platform Owner Workspace</span>
               <span aria-hidden="true">·</span>
               <button
                 type="button"
@@ -567,7 +574,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           {onOpenBackupCenter && (
             <button type="button" onClick={onOpenBackupCenter} className="btn-tool-neutral">
               <DatabaseBackup className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />
-              <span>สำรอง/กู้คืน</span>
+              <span>สำรอง/กู้คืนระบบ</span>
             </button>
           )}
           {onOpenCoordinationDesk && (
@@ -593,7 +600,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 divide-x divide-[var(--color-border)]">
           <button
             type="button"
-            onClick={() => setActiveSubTab('schools')}
+            onClick={() => selectSubTab('schools')}
             className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
           >
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
@@ -608,7 +615,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveSubTab('approvals')}
+            onClick={() => selectSubTab('approvals')}
             className="tone-3 saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
           >
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
@@ -625,7 +632,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveSubTab('packages')}
+            onClick={() => selectSubTab('packages')}
             className="tone-5 saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
           >
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
@@ -662,7 +669,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <button
           type="button"
           data-active={activeSubTab === 'approvals'}
-          onClick={() => setActiveSubTab('approvals')}
+          onClick={() => selectSubTab('approvals')}
           className="tone-3 seg-tab-btn"
         >
           <MailCheck className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
@@ -675,17 +682,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         </button>
         <button
           type="button"
-          data-active={activeSubTab === 'packages'}
-          onClick={() => setActiveSubTab('packages')}
-          className="tone-5 seg-tab-btn"
-        >
-          <Package className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
-          <span>แพ็กเกจ &amp; โมดูล</span>
-        </button>
-        <button
-          type="button"
           data-active={activeSubTab === 'schools'}
-          onClick={() => setActiveSubTab('schools')}
+          onClick={() => selectSubTab('schools')}
           className="tone-1 seg-tab-btn"
         >
           <Building2 className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
@@ -693,8 +691,35 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         </button>
         <button
           type="button"
+          data-active={activeSubTab === 'packages'}
+          onClick={() => selectSubTab('packages')}
+          className="tone-5 seg-tab-btn"
+        >
+          <Package className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+          <span>แพ็กเกจ &amp; โมดูล</span>
+        </button>
+        <button
+          type="button"
+          data-active={activeSubTab === 'promotions'}
+          onClick={() => selectSubTab('promotions')}
+          className="tone-6 seg-tab-btn"
+        >
+          <Tag className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+          <span>โปรโมชัน &amp; แผน</span>
+        </button>
+        <button
+          type="button"
+          data-active={activeSubTab === 'permissions'}
+          onClick={() => selectSubTab('permissions')}
+          className="tone-7 seg-tab-btn"
+        >
+          <KeyRound className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+          <span>สิทธิ์ &amp; บัญชี</span>
+        </button>
+        <button
+          type="button"
           data-active={activeSubTab === 'central_exams'}
-          onClick={() => setActiveSubTab('central_exams')}
+          onClick={() => selectSubTab('central_exams')}
           className="tone-2 seg-tab-btn"
         >
           <BookOpen className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
@@ -703,7 +728,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <button
           type="button"
           data-active={activeSubTab === 'exam_payment'}
-          onClick={() => setActiveSubTab('exam_payment')}
+          onClick={() => selectSubTab('exam_payment')}
           className="tone-6 seg-tab-btn"
         >
           <CreditCard className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
@@ -712,8 +737,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <button
           type="button"
           data-active={activeSubTab === 'audit_logs'}
-          onClick={() => setActiveSubTab('audit_logs')}
-          className="tone-7 seg-tab-btn"
+          onClick={() => selectSubTab('audit_logs')}
+          className="tone-3 seg-tab-btn"
         >
           <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
           <span>Audit Log</span>

@@ -5,19 +5,23 @@ import {
   Award,
   BellRing,
   BookOpen,
+  Building2,
   Calendar,
   FileCheck2,
   Focus,
   GraduationCap,
   HeartHandshake,
   HeartPulse,
+  KeyRound,
   LayoutDashboard,
   Mail,
   Monitor,
   MonitorPlay,
+  Package,
   QrCode,
   Receipt,
   ShieldAlert,
+  ShieldCheck,
   SlidersHorizontal,
   Smartphone,
   Users,
@@ -34,6 +38,7 @@ interface FocusToolbarProps {
   currentTab: NavTab;
   programMode: AppProgramMode;
   currentRole: UserRole;
+  isSuperAdminSchoolView?: boolean;
   lang: AppLanguage;
   featureFlags?: SchoolFeatureFlags;
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
@@ -185,6 +190,41 @@ const TOOL_CATALOG: Record<string, FocusToolMeta> = {
     icon: Mail,
     roles: ['admin', 'super_admin'],
   },
+  super_admin_approvals: {
+    id: 'super_admin_approvals',
+    labelTh: 'อนุมัติโรงเรียนใหม่',
+    labelEn: 'Approvals',
+    icon: ShieldCheck,
+    roles: ['super_admin'],
+  },
+  super_admin_schools: {
+    id: 'super_admin_schools',
+    labelTh: 'สถานศึกษาในระบบ',
+    labelEn: 'Schools',
+    icon: Building2,
+    roles: ['super_admin'],
+  },
+  super_admin_packages: {
+    id: 'super_admin_packages',
+    labelTh: 'แพ็กเกจ & Feature Flags',
+    labelEn: 'SaaS Packages',
+    icon: Package,
+    roles: ['super_admin'],
+  },
+  super_admin_permissions: {
+    id: 'super_admin_permissions',
+    labelTh: 'สิทธิ์ & บัญชีผู้ใช้',
+    labelEn: 'Roles & Accounts',
+    icon: KeyRound,
+    roles: ['super_admin'],
+  },
+  super_admin_audit: {
+    id: 'super_admin_audit',
+    labelTh: 'Audit Log ส่วนกลาง',
+    labelEn: 'Global Audit',
+    icon: Activity,
+    roles: ['super_admin'],
+  },
 };
 
 const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> = {
@@ -209,7 +249,11 @@ const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> =
   games: { th: 'เกมฝึกทักษะ', en: 'Learning Games' },
   boss_raid: { th: 'โหมดรวมพลังตอบคำถาม', en: 'Co-op Quiz' },
   hall_of_fame: { th: 'หอเกียรติยศ', en: 'Hall of Fame' },
-  super_admin_console: { th: 'ศูนย์ควบคุมระบบแม่ข่าย', en: 'Super Admin Console' },
+  super_admin_console: { th: 'ศูนย์ควบคุมผู้พัฒนาระบบ', en: 'Developer Console' },
+  super_admin_promotions: { th: 'โปรโมชัน & สัญญาสมาชิก', en: 'Promotions & Plans' },
+  super_admin_central_exams: { th: 'คลังข้อสอบกลาง (ผู้พัฒนา)', en: 'Central Exam Bank' },
+  super_admin_exam_payment: { th: 'ตั้งค่ารับเงิน PromptPay', en: 'Exam Payment Setup' },
+  super_admin_backup: { th: 'สำรอง & กู้คืนระบบ', en: 'Backup & Restore' },
 };
 
 const CONTEXTUAL_CLUSTERS: Record<string, NavTab[]> = {
@@ -262,10 +306,20 @@ function getContextualClusterIds(tab: NavTab, role: UserRole): NavTab[] {
   return CONTEXTUAL_CLUSTERS.executive_admin;
 }
 
+const DEVELOPER_ONLY_TOOL_IDS = new Set<NavTab>([
+  'super_admin_approvals',
+  'super_admin_schools',
+  'super_admin_packages',
+  'super_admin_permissions',
+  'super_admin_audit',
+  'admin_superadmin_desk',
+]);
+
 export const FocusToolbar: React.FC<FocusToolbarProps> = ({
   currentTab,
   programMode,
   currentRole,
+  isSuperAdminSchoolView = false,
   lang,
   featureFlags,
   schoolPermissions,
@@ -274,8 +328,12 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
   onExitFocusMode,
   adminSimplifiedView = false,
 }) => {
+  const isDeveloperPlatformMode = currentRole === 'super_admin' && !isSuperAdminSchoolView;
   const isSimplifiedAdmin = currentRole === 'admin' && adminSimplifiedView;
   const isAllowedTool = (tabId: NavTab): boolean => {
+    if (isDeveloperPlatformMode) {
+      return DEVELOPER_ONLY_TOOL_IDS.has(tabId);
+    }
     if (isSimplifiedAdmin && !ADMIN_SIMPLIFIED_CORE_TABS.has(tabId)) return false;
     const meta = TOOL_CATALOG[tabId];
     if (!meta || !meta.roles.includes(currentRole)) return false;
@@ -298,6 +356,17 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
   };
 
   const quickTools = useMemo(() => {
+    if (isDeveloperPlatformMode) {
+      const devSuggestions: NavTab[] = [
+        'super_admin_approvals',
+        'super_admin_schools',
+        'super_admin_packages',
+        'super_admin_audit',
+      ];
+      return devSuggestions
+        .filter((id) => isAllowedTool(id))
+        .map((id) => TOOL_CATALOG[id]);
+    }
     if (programMode !== 'school_erp') {
       const lmsSuggestions: NavTab[] = ['timetable', 'homework', 'gradebook'];
       return lmsSuggestions
@@ -313,7 +382,7 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
       .filter((id) => isAllowedTool(id))
       .slice(0, 4)
       .map((id) => TOOL_CATALOG[id]);
-  }, [currentTab, currentRole, programMode, featureFlags, schoolPermissions, isSimplifiedAdmin]);
+  }, [isDeveloperPlatformMode, currentTab, currentRole, programMode, featureFlags, schoolPermissions, isSimplifiedAdmin]);
 
   const activeTitle = useMemo(() => {
     if (programMode === 'lms_classroom') {
@@ -349,7 +418,8 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
     return currentTab;
   }, [currentTab]);
 
-  const canGoHome = programMode !== 'school_erp' || currentTab !== 'dashboard';
+  const homeTargetTab: NavTab = isDeveloperPlatformMode ? 'super_admin_console' : 'dashboard';
+  const canGoHome = programMode !== 'school_erp' || currentTab !== homeTargetTab;
   const activeTone = getModuleTone(currentTab);
   const activeGroupMeta = getModuleGroupMeta(currentTab);
 
@@ -369,12 +439,12 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
                 if (programMode !== 'school_erp') {
                   onChangeProgramMode('school_erp');
                 }
-                onNavigateTab('dashboard');
+                onNavigateTab(homeTargetTab);
               }}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'หน้าหลัก' : 'Home'}</span>
+              <span>{isDeveloperPlatformMode ? (lang === 'th' ? 'ศูนย์ควบคุม' : 'Console') : (lang === 'th' ? 'หน้าหลัก' : 'Home')}</span>
             </button>
             <span className="h-4 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
           </>

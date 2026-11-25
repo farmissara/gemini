@@ -82,11 +82,13 @@ export const App: React.FC = () => {
   const nav = useTabNavigation({
     deepLinkParams,
     currentRole: data.currentRole,
+    isSuperAdminSchoolView: data.isSuperAdminSchoolView,
     lang: prefs.lang,
     rolePermissions: data.rolePermissions,
     activeFeatureFlags,
     schoolPermissions: data.schoolPermissions,
     onSetSuperAdminSchoolView: data.setIsSuperAdminSchoolView,
+    onOpenBackupCenter: () => setShowBackupCenterModal(true),
     onSyncError: data.setDataSyncError,
   });
 
@@ -289,6 +291,7 @@ export const App: React.FC = () => {
       isMobileMode={prefs.shouldShowMobileView}
       currentUser={data.currentUser}
       currentRole={data.currentRole}
+      isSuperAdminSchoolView={data.isSuperAdminSchoolView}
       activeSchool={data.activeSchool}
       schools={data.schools}
       lang={prefs.lang}
@@ -348,7 +351,11 @@ export const App: React.FC = () => {
       isConfirmModalBusy={isConfirmModalBusy}
       setIsConfirmModalBusy={setIsConfirmModalBusy}
       setDataSyncError={data.setDataSyncError}
-      onSelectSchool={data.handleSelectActiveSchool}
+      onSelectSchool={
+        data.currentRole === 'super_admin' && !data.isSuperAdminSchoolView
+          ? data.handleViewSchool
+          : data.handleSelectActiveSchool
+      }
       onNavigateToTab={nav.navigateToAppTab}
       onChangeProgramMode={nav.handleChangeProgramMode}
       onSwitchToDesktopMode={() => prefs.setDeviceViewPreference('desktop')}
@@ -563,6 +570,7 @@ export const App: React.FC = () => {
         {!nav.useImmersiveGameLayout && (
           <Navbar
             currentTab={nav.currentTab}
+            superAdminSubTab={nav.superAdminSubTab}
             currentUser={data.currentUser}
             activeSchool={data.activeSchool}
             currentRole={data.currentRole}
@@ -654,6 +662,7 @@ export const App: React.FC = () => {
                   isSuperAdminSchoolView={data.isSuperAdminSchoolView}
                   activeSettingsSubTab={nav.systemSettingsInitialTab}
                   activeDashboardSubTab={nav.dashboardInitialSubTab}
+                  activeSuperAdminSubTab={nav.superAdminSubTab}
                   studentsCount={scope.viewStudents.length}
                   teachersCount={scope.schoolTeachers.length}
                   coursesCount={scope.viewCourses.length}
@@ -682,6 +691,7 @@ export const App: React.FC = () => {
                 isSuperAdminSchoolView={data.isSuperAdminSchoolView}
                 activeSettingsSubTab={nav.systemSettingsInitialTab}
                 activeDashboardSubTab={nav.dashboardInitialSubTab}
+                activeSuperAdminSubTab={nav.superAdminSubTab}
                 studentsCount={scope.viewStudents.length}
                 teachersCount={scope.schoolTeachers.length}
                 coursesCount={scope.viewCourses.length}
@@ -711,6 +721,7 @@ export const App: React.FC = () => {
                   currentTab={nav.currentTab}
                   programMode={nav.programMode}
                   currentRole={data.currentRole}
+                  isSuperAdminSchoolView={data.isSuperAdminSchoolView}
                   lang={prefs.lang}
                   featureFlags={scope.activeFeatureFlags}
                   schoolPermissions={scope.schoolPermissions}
@@ -732,7 +743,7 @@ export const App: React.FC = () => {
                     onClick={() => nav.navigateToAppTab('super_admin_console')}
                     className="btn-tool-neutral h-8 px-3 shrink-0 whitespace-nowrap"
                   >
-                    {prefs.lang === 'th' ? 'กลับศูนย์ควบคุม' : 'Back to Console'}
+                    {prefs.lang === 'th' ? 'ออกจากโหมดโรงเรียน (กลับหน้าผู้พัฒนา)' : 'Exit School View (Developer Mode)'}
                   </button>
                 </div>
               )}
@@ -745,6 +756,7 @@ export const App: React.FC = () => {
                 setCurrentTab={nav.setCurrentTab}
                 navigateToAppTab={nav.navigateToAppTab}
                 currentRole={data.currentRole}
+                isSuperAdminSchoolView={data.isSuperAdminSchoolView}
                 currentUser={data.currentUser}
                 activeSchool={data.activeSchool}
                 schools={data.schools}
@@ -806,6 +818,7 @@ export const App: React.FC = () => {
                 systemSettingsInitialTab={nav.systemSettingsInitialTab}
                 setSystemSettingsInitialTab={nav.setSystemSettingsInitialTab}
                 superAdminSubTab={nav.superAdminSubTab}
+                onSuperAdminSubTabChange={nav.setSuperAdminSubTab}
                 studentsSubTab={nav.studentsSubTab}
                 setStudentsSubTab={nav.setStudentsSubTab}
                 studentsTargetStudentId={nav.studentsTargetStudentId}

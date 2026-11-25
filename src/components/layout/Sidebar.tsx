@@ -42,15 +42,30 @@ import {
   Sliders,
   Layers,
   Activity,
+  Building2,
+  DatabaseBackup,
+  MailCheck,
+  Package,
+  Tag,
   LucideIcon,
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone, getCategoryTone, getCategoryGroupMeta } from '../../lib/moduleTheme';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
+import type { SuperAdminSubTab } from '../../features/navigation/useTabNavigation';
 
 export type NavTab =
   | 'super_admin_console'
+  | 'super_admin_approvals'
+  | 'super_admin_schools'
+  | 'super_admin_packages'
+  | 'super_admin_promotions'
+  | 'super_admin_permissions'
+  | 'super_admin_central_exams'
+  | 'super_admin_exam_payment'
+  | 'super_admin_audit'
+  | 'super_admin_backup'
   | 'school_permissions'
   | 'system_settings'
   | 'school_gps'
@@ -94,6 +109,9 @@ export type NavTab =
 
 export type NavCategoryId =
   | 'super_admin'
+  | 'dev_platform'
+  | 'dev_saas'
+  | 'dev_infra'
   | 'daily_work'
   | 'academic_setup'
   | 'report_monitor'
@@ -111,6 +129,7 @@ interface SidebarProps {
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
   activeSettingsSubTab?: string;
   activeDashboardSubTab?: string;
+  activeSuperAdminSubTab?: SuperAdminSubTab;
   studentsCount: number;
   coursesCount: number;
   teachersCount?: number;
@@ -225,6 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isSuperAdminSchoolView,
   activeSettingsSubTab,
   activeDashboardSubTab,
+  activeSuperAdminSubTab = 'approvals',
   studentsCount,
   coursesCount,
   teachersCount = 0,
@@ -240,6 +260,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const isDeveloperPlatformMode = currentRole === 'super_admin' && !isSuperAdminSchoolView;
   const isSimplifiedAdmin = currentRole === 'admin' && adminSimplifiedView;
   const supportsFocusMode = (currentRole === 'teacher' || currentRole === 'admin') && !isSimplifiedAdmin;
   const focusStorageKey = currentRole === 'teacher'
@@ -312,19 +333,153 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const categories: NavCategoryDef[] = useMemo(() => {
     const list: NavCategoryDef[] = [];
 
+    if (isDeveloperPlatformMode) {
+      list.push({
+        id: 'dev_platform',
+        labelTh: 'แพลตฟอร์ม & กำกับดูแลระบบ',
+        labelEn: 'Platform & Governance',
+        helperTh: 'อนุมัติโรงเรียน ตรวจสอบผู้เช่า สิทธิ์มาตรฐาน และ Audit Log',
+        helperEn: 'Approvals, tenants, RBAC policies & system audit',
+        shortLabelTh: 'แพลตฟอร์ม',
+        shortLabelEn: 'Platform',
+        icon: ShieldCheck,
+        items: [
+          {
+            id: 'super_admin_approvals',
+            labelTh: 'อนุมัติเปิดใช้โรงเรียนใหม่',
+            labelEn: 'School Approvals',
+            shortLabelTh: 'อนุมัติ',
+            shortLabelEn: 'Approvals',
+            icon: MailCheck,
+            roles: ['super_admin'],
+          },
+          {
+            id: 'super_admin_schools',
+            labelTh: 'สถานศึกษาในระบบ & เข้าตรวจสอบ',
+            labelEn: 'Schools & Inspection',
+            shortLabelTh: 'โรงเรียน',
+            shortLabelEn: 'Schools',
+            icon: Building2,
+            roles: ['super_admin'],
+          },
+          {
+            id: 'super_admin_permissions',
+            labelTh: 'สิทธิ์มาตรฐาน & บัญชีผู้ใช้',
+            labelEn: 'RBAC & Accounts',
+            shortLabelTh: 'สิทธิ์/บัญชี',
+            shortLabelEn: 'RBAC',
+            icon: KeyRound,
+            roles: ['super_admin'],
+          },
+          {
+            id: 'super_admin_audit',
+            labelTh: 'Audit Log ส่วนกลางทั้งระบบ',
+            labelEn: 'Global Audit Log',
+            shortLabelTh: 'Audit',
+            shortLabelEn: 'Audit',
+            icon: ShieldAlert,
+            roles: ['super_admin'],
+          },
+        ],
+      });
+
+      list.push({
+        id: 'dev_saas',
+        labelTh: 'SaaS แพ็กเกจ คลังข้อสอบ & รายได้',
+        labelEn: 'SaaS, Exam Bank & Billing',
+        helperTh: 'จัดการแพ็กเกจระดับ 1–4 โปรโมชัน คลังข้อสอบกลาง และ PromptPay',
+        helperEn: 'Tiers, promotions, central exam packs & PromptPay',
+        shortLabelTh: 'SaaS',
+        shortLabelEn: 'SaaS',
+        icon: Package,
+        items: [
+          {
+            id: 'super_admin_packages',
+            labelTh: 'แพ็กเกจ SaaS & Feature Flags',
+            labelEn: 'SaaS Packages & Flags',
+            shortLabelTh: 'แพ็กเกจ',
+            shortLabelEn: 'Packages',
+            icon: Package,
+            roles: ['super_admin'],
+          },
+          {
+            id: 'super_admin_promotions',
+            labelTh: 'โปรโมชัน & สัญญาสมาชิก',
+            labelEn: 'Promotions & Plans',
+            shortLabelTh: 'โปรโมชัน',
+            shortLabelEn: 'Promos',
+            icon: Tag,
+            roles: ['super_admin'],
+          },
+          {
+            id: 'super_admin_central_exams',
+            labelTh: 'คลังข้อสอบกลาง (ผู้พัฒนา)',
+            labelEn: 'Central Exam Bank',
+            shortLabelTh: 'ข้อสอบกลาง',
+            shortLabelEn: 'Exams',
+            icon: BookOpen,
+            roles: ['super_admin'],
+          },
+          {
+            id: 'super_admin_exam_payment',
+            labelTh: 'ตั้งค่ารับเงิน PromptPay',
+            labelEn: 'PromptPay Settings',
+            shortLabelTh: 'PromptPay',
+            shortLabelEn: 'Payment',
+            icon: CreditCard,
+            roles: ['super_admin'],
+          },
+        ],
+      });
+
+      list.push({
+        id: 'dev_infra',
+        labelTh: 'โครงสร้างพื้นฐาน & ประสานงาน',
+        labelEn: 'Infrastructure & Support',
+        helperTh: 'สำรอง/กู้คืนฐานข้อมูล Google Drive และตอบกลับโรงเรียน',
+        helperEn: 'Database backups, Google Drive & school desk',
+        shortLabelTh: 'ระบบ/ดูแล',
+        shortLabelEn: 'Infra',
+        icon: DatabaseBackup,
+        items: [
+          {
+            id: 'super_admin_backup',
+            labelTh: 'สำรอง & กู้คืนระบบ (Google Drive)',
+            labelEn: 'System Backup & Drive',
+            shortLabelTh: 'Backup',
+            shortLabelEn: 'Backup',
+            icon: DatabaseBackup,
+            roles: ['super_admin'],
+          },
+          {
+            id: 'admin_superadmin_desk',
+            labelTh: 'กล่องประสานงานโรงเรียนทุกแห่ง',
+            labelEn: 'School Coordination Desk',
+            shortLabelTh: 'ประสานงาน',
+            shortLabelEn: 'Desk',
+            icon: Mail,
+            badge: coordinationUnreadCount > 0 ? `${coordinationUnreadCount} ใหม่` : null,
+            roles: ['super_admin'],
+          },
+        ],
+      });
+
+      return list;
+    }
+
     if (currentRole === 'super_admin') {
       list.push({
         id: 'super_admin',
-        labelTh: 'ศูนย์ควบคุมแม่ข่าย',
-        labelEn: 'Master Console',
+        labelTh: 'โหมดผู้พัฒนาระบบ (แม่ข่าย)',
+        labelEn: 'Developer Console',
         shortLabelTh: 'แม่ข่าย',
         shortLabelEn: 'Master',
         icon: ShieldCheck,
         items: [
           {
             id: 'super_admin_console',
-            labelTh: isSuperAdminSchoolView ? 'กลับศูนย์ควบคุมแม่ข่าย' : 'ศูนย์ควบคุมระบบแม่ข่าย',
-            labelEn: isSuperAdminSchoolView ? 'Back to Control Center' : 'System Control Center',
+            labelTh: isSuperAdminSchoolView ? 'ออกจากโหมดโรงเรียน (กลับหน้าผู้พัฒนา)' : 'ศูนย์ควบคุมระบบแม่ข่าย',
+            labelEn: isSuperAdminSchoolView ? 'Exit School View (Developer)' : 'System Control Center',
             icon: ShieldCheck,
             roles: ['super_admin'],
           },
@@ -742,6 +897,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ];
     return list.sort((a, b) => categoryOrder.indexOf(a.id) - categoryOrder.indexOf(b.id));
   }, [
+    isDeveloperPlatformMode,
     currentRole,
     isSuperAdminSchoolView,
     studentsCount,
@@ -755,6 +911,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Resolve visual active tab in Sidebar
   const resolvedSidebarActiveTab: NavTab = useMemo(() => {
+    if (isDeveloperPlatformMode && currentTab === 'super_admin_console') {
+      const subTabMap: Record<SuperAdminSubTab, NavTab> = {
+        approvals: 'super_admin_approvals',
+        schools: 'super_admin_schools',
+        packages: 'super_admin_packages',
+        promotions: 'super_admin_promotions',
+        permissions: 'super_admin_permissions',
+        central_exams: 'super_admin_central_exams',
+        exam_payment: 'super_admin_exam_payment',
+        audit_logs: 'super_admin_audit',
+      };
+      return subTabMap[activeSuperAdminSubTab] || 'super_admin_approvals';
+    }
     if (currentTab === 'dashboard') {
       if (activeDashboardSubTab === 'realtime_daily') return 'realtime_daily';
       if (activeDashboardSubTab === 'executive_monitor') return 'executive_monitor';
@@ -788,28 +957,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     if (activeSettingsSubTab === 'saas_audit') return 'admin_saas_audit';
     return 'system_settings';
-  }, [currentTab, activeSettingsSubTab, activeDashboardSubTab, focusMode, supportsFocusMode]);
+  }, [isDeveloperPlatformMode, activeSuperAdminSubTab, currentTab, activeSettingsSubTab, activeDashboardSubTab, focusMode, supportsFocusMode]);
 
-  // Dashboard standalone entry
-  const dashboardItem: NavItemDef = useMemo(() => ({
-    id: 'dashboard',
-    labelTh: currentRole === 'teacher'
-      ? 'โต๊ะทำงานครู'
-      : currentRole === 'admin' || currentRole === 'super_admin'
-        ? 'ภาพรวมโรงเรียน'
-        : currentRole === 'student'
-          ? 'หน้าหลักนักเรียน'
-          : 'ภาพรวมผู้ปกครอง',
-    labelEn: currentRole === 'teacher'
-      ? "Teacher's Desk"
-      : currentRole === 'admin' || currentRole === 'super_admin'
-        ? 'School Overview'
-        : currentRole === 'student'
-          ? 'Student Home'
-          : 'Parent Overview',
-    icon: LayoutDashboard,
-    roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
-  }), [currentRole]);
+  // Dashboard / Developer Home standalone entry
+  const dashboardItem: NavItemDef = useMemo(() => (
+    isDeveloperPlatformMode
+      ? {
+          id: 'super_admin_console',
+          labelTh: 'ศูนย์ควบคุมผู้พัฒนาระบบ',
+          labelEn: 'Developer Console',
+          icon: ShieldCheck,
+          roles: ['super_admin'],
+        }
+      : {
+          id: 'dashboard',
+          labelTh: currentRole === 'teacher'
+            ? 'โต๊ะทำงานครู'
+            : currentRole === 'admin' || currentRole === 'super_admin'
+              ? 'ภาพรวมโรงเรียน'
+              : currentRole === 'student'
+                ? 'หน้าหลักนักเรียน'
+                : 'ภาพรวมผู้ปกครอง',
+          labelEn: currentRole === 'teacher'
+            ? "Teacher's Desk"
+            : currentRole === 'admin' || currentRole === 'super_admin'
+              ? 'School Overview'
+              : currentRole === 'student'
+                ? 'Student Home'
+                : 'Parent Overview',
+          icon: LayoutDashboard,
+          roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
+        }
+  ), [currentRole, isDeveloperPlatformMode]);
 
   // Visible items per category (redundant settings/report deep-links are excluded unless active; still searchable)
   const visibleCategories = useMemo(() => {
@@ -869,8 +1048,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (Object.prototype.hasOwnProperty.call(collapsed, catId)) {
       return Boolean(collapsed[catId]);
     }
-    // In Simplified Admin or Focus Mode for Admin/Teacher, keep core groups open so staff never hunt inside accordions
-    if (isSimplifiedAdmin || (focusMode && supportsFocusMode)) {
+    // Keep Developer Platform groups and Admin/Teacher Focus/Simplified groups open for immediate scanability
+    if (isDeveloperPlatformMode || isSimplifiedAdmin || (focusMode && supportsFocusMode)) {
       return false;
     }
     return catId !== activeCatId;
@@ -997,12 +1176,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
             aria-label={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
             className={`${getModuleTone(dashboardItem.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
-              resolvedSidebarActiveTab === dashboardItem.id
+              resolvedSidebarActiveTab === dashboardItem.id || (isDeveloperPlatformMode && currentTab === 'super_admin_console')
                 ? 'bg-[var(--tone-soft)] text-[var(--tone)] shadow-xs'
                 : 'text-[var(--tone)]/80 hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
             }`}
           >
-            <LayoutDashboard className="w-[18px] h-[18px]" />
+            {isDeveloperPlatformMode ? <ShieldCheck className="w-[18px] h-[18px]" /> : <LayoutDashboard className="w-[18px] h-[18px]" />}
           </button>
 
           {visibleCategories.map((cat) => (
@@ -1099,19 +1278,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 data-nav-tab={dashboardItem.id}
                 onClick={() => setCurrentTab(dashboardItem.id)}
                 className={`${getModuleTone(dashboardItem.id)} w-full flex min-h-9 items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] border transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
-                  resolvedSidebarActiveTab === dashboardItem.id
+                  resolvedSidebarActiveTab === dashboardItem.id || (isDeveloperPlatformMode && currentTab === 'super_admin_console' && activeSuperAdminSubTab === 'approvals')
                     ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold border-[color-mix(in_srgb,var(--tone)_26%,transparent)]'
                     : 'border-transparent text-[var(--color-text-title)] font-semibold hover:bg-[var(--color-card-subtle)]'
                 }`}
               >
                 <span
                   className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors ${
-                    resolvedSidebarActiveTab === dashboardItem.id
+                    resolvedSidebarActiveTab === dashboardItem.id || (isDeveloperPlatformMode && currentTab === 'super_admin_console' && activeSuperAdminSubTab === 'approvals')
                       ? 'bg-[var(--color-card)] text-[var(--tone)] shadow-2xs'
                       : 'bg-[var(--tone-soft)] text-[var(--tone)]'
                   }`}
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
+                  {isDeveloperPlatformMode ? <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> : <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />}
                 </span>
                 <span className="truncate">{lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}</span>
               </button>
@@ -1121,7 +1300,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!isSimplifiedAdmin && (!focusMode || !supportsFocusMode) && visibleCategories.length > 2 && (
               <div className="pt-2.5 mt-1 border-t border-[var(--color-border)] flex items-center justify-between px-2">
                 <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'กลุ่มงานระบบ' : 'Workspaces'}
+                  {isDeveloperPlatformMode
+                    ? (lang === 'th' ? 'ระบบผู้พัฒนาระบบ' : 'Developer Platform')
+                    : (lang === 'th' ? 'กลุ่มงานระบบ' : 'Workspaces')}
                 </span>
                 <button
                   type="button"

@@ -5,7 +5,7 @@ import type { DashboardSubTab } from '../../views/DashboardView';
 import type { StudentsMoeJumpTarget, StudentsViewSubTab } from '../../views/StudentsView';
 import type { SystemSettingsTab } from '../../views/SystemSettingsView';
 import type { DeepLinkParams } from './useDeepLinkParams';
-import type { GradebookJumpTarget, TimetableCheckinTarget } from './useTabNavigation';
+import type { GradebookJumpTarget, SuperAdminSubTab, TimetableCheckinTarget } from './useTabNavigation';
 import type {
   AdaptivePracticeTopic,
   Announcement,
@@ -98,6 +98,7 @@ export interface SchoolErpViewSwitchProps {
   setCurrentTab: (tab: NavTab) => void;
   navigateToAppTab: (tab: NavTab) => void;
   currentRole: UserRole;
+  isSuperAdminSchoolView: boolean;
   currentUser: AuthUser;
   activeSchool: School;
   schools: School[];
@@ -161,7 +162,8 @@ export interface SchoolErpViewSwitchProps {
   dashboardInitialSubTab: DashboardSubTab;
   systemSettingsInitialTab: SystemSettingsTab;
   setSystemSettingsInitialTab: React.Dispatch<React.SetStateAction<SystemSettingsTab>>;
-  superAdminSubTab: 'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment';
+  superAdminSubTab: SuperAdminSubTab;
+  onSuperAdminSubTabChange?: (subTab: SuperAdminSubTab) => void;
   studentsSubTab: StudentsViewSubTab;
   setStudentsSubTab: React.Dispatch<React.SetStateAction<StudentsViewSubTab>>;
   studentsTargetStudentId?: string;
@@ -314,6 +316,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
     setCurrentTab,
     navigateToAppTab,
     currentRole,
+    isSuperAdminSchoolView,
     currentUser,
     activeSchool,
     schools,
@@ -375,6 +378,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
     systemSettingsInitialTab,
     setSystemSettingsInitialTab,
     superAdminSubTab,
+    onSuperAdminSubTabChange,
     studentsSubTab,
     setStudentsSubTab,
     studentsTargetStudentId,
@@ -400,6 +404,8 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
     setAdminSimplifiedView,
   } = props;
 
+  const isDeveloperPlatformMode = currentRole === 'super_admin' && !isSuperAdminSchoolView;
+
   return (
     <ViewErrorBoundary
       resetKey={`${programMode}:${currentTab}:${activeSchool.id}`}
@@ -407,13 +413,65 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
       viewName={`${programMode}:${currentTab}`}
       onBackHome={() => {
         setProgramMode('school_erp');
-        navigateToAppTab('dashboard');
+        navigateToAppTab(isDeveloperPlatformMode ? 'super_admin_console' : 'dashboard');
       }}
     >
       <Suspense fallback={<PageSkeleton />}>
         <div key={`${programMode}:${currentTab}`} className="view-stage flex-1 min-h-0 flex flex-col">
+          {/* Developer / Platform Owner Mode (when super_admin is not inspecting a specific school) */}
+          {isDeveloperPlatformMode && (
+            currentTab === 'admin_superadmin_desk' ? (
+              <AdminSuperAdminDeskView
+                currentUser={currentUser}
+                activeSchool={activeSchool}
+                schools={schools}
+                currentRole={currentRole}
+                lang={lang}
+                onUnreadCountChange={setCoordinationUnreadCount}
+              />
+            ) : (
+              <SuperAdminConsoleView
+                schools={schools}
+                onUpdateSchools={setSchools}
+                rolePermissions={rolePermissions}
+                onUpdateRolePermissions={async (next) => {
+                  await saveSuperAdminSetting('role_permissions', next);
+                  setRolePermissions(next);
+                  setSuperAdminConfigError(null);
+                }}
+                promotions={promotions}
+                onUpdatePromotions={async (next) => {
+                  await saveSuperAdminSetting('promotions', next);
+                  setPromotions(next);
+                  setSuperAdminConfigError(null);
+                }}
+                subscriptionPlans={subscriptionPlans}
+                configError={superAdminConfigError}
+                onSavePromoAssignment={async (nextPromotions, nextPlans) => {
+                  await saveSuperAdminSettings({
+                    promotions: nextPromotions,
+                    subscription_plans: nextPlans,
+                  });
+                  setPromotions(nextPromotions);
+                  setSubscriptionPlans(nextPlans);
+                  setSuperAdminConfigError(null);
+                }}
+                lang={lang}
+                isDemoMode={isDemoMode}
+                onViewSchool={props.onViewSchool}
+                onToggleSchoolStatus={props.onToggleSchoolStatus}
+                coordinationUnreadCount={coordinationUnreadCount}
+                onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
+                onOpenBackupCenter={props.onOpenBackupCenter}
+                initialSubTab={superAdminSubTab}
+                onSubTabChange={onSuperAdminSubTabChange}
+                onUpdateSchoolFeatureFlags={props.onUpdateSchoolFeatureFlags}
+              />
+            )
+          )}
+
           {/* Mode 1: School ERP / SIS */}
-          {programMode === 'school_erp' && (
+          {!isDeveloperPlatformMode && programMode === 'school_erp' && (
             <>
               {currentTab === 'super_admin_console' && currentRole === 'super_admin' && (
                 <SuperAdminConsoleView
@@ -450,6 +508,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   onOpenCoordinationDesk={() => navigateToAppTab('admin_superadmin_desk')}
                   onOpenBackupCenter={props.onOpenBackupCenter}
                   initialSubTab={superAdminSubTab}
+                  onSubTabChange={onSuperAdminSubTabChange}
                   onUpdateSchoolFeatureFlags={props.onUpdateSchoolFeatureFlags}
                 />
               )}
@@ -1205,7 +1264,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
           )}
 
           {/* Mode 2: Virtual Classroom / LMS */}
-          {programMode === 'lms_classroom' && (
+          {!isDeveloperPlatformMode && programMode === 'lms_classroom' && (
             <LmsClassroomView
               schoolId={activeSchool.id}
               courses={viewCourses}
@@ -1225,7 +1284,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
           )}
 
           {/* Mode 3: Parent & Student Portal */}
-          {programMode === 'parent_portal' && (
+          {!isDeveloperPlatformMode && programMode === 'parent_portal' && (
             isProgramModeEnabledByFeatureFlags('parent_portal', activeFeatureFlags) ? (
               <ParentPortalView
                 students={viewStudents}

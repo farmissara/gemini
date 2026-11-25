@@ -46,6 +46,7 @@ export interface AppModalsHostProps {
   isMobileMode?: boolean;
   currentUser: AuthUser;
   currentRole: UserRole;
+  isSuperAdminSchoolView?: boolean;
   activeSchool: School;
   schools: School[];
   lang: AppLanguage;
@@ -142,6 +143,7 @@ export const AppModalsHost: React.FC<AppModalsHostProps> = (props) => {
     isMobileMode = false,
     currentUser,
     currentRole,
+    isSuperAdminSchoolView = false,
     activeSchool,
     schools,
     lang,
@@ -213,6 +215,7 @@ export const AppModalsHost: React.FC<AppModalsHostProps> = (props) => {
             onSelectSchool={props.onSelectSchool}
             onClose={() => setShowSchoolSwitcher(false)}
             lang={lang}
+            isInspectionPrompt={!isSuperAdminSchoolView}
           />
         )}
 

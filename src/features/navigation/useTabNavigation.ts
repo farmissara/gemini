@@ -46,34 +46,58 @@ export interface TimetableCheckinTarget {
   checkType: 'check_in' | 'check_out';
 }
 
+export type SuperAdminSubTab =
+  | 'approvals'
+  | 'packages'
+  | 'permissions'
+  | 'promotions'
+  | 'schools'
+  | 'central_exams'
+  | 'exam_payment'
+  | 'audit_logs';
+
+const SUPER_ADMIN_TAB_TO_SUBTAB: Partial<Record<NavTab, SuperAdminSubTab>> = {
+  super_admin_console: 'approvals',
+  super_admin_approvals: 'approvals',
+  super_admin_schools: 'schools',
+  super_admin_packages: 'packages',
+  super_admin_promotions: 'promotions',
+  super_admin_permissions: 'permissions',
+  super_admin_central_exams: 'central_exams',
+  super_admin_exam_payment: 'exam_payment',
+  super_admin_audit: 'audit_logs',
+};
+
 interface UseTabNavigationParams {
   deepLinkParams: DeepLinkParams | null;
   currentRole: UserRole;
+  isSuperAdminSchoolView: boolean;
   lang: AppLanguage;
   rolePermissions: RolePermissionConfig[];
   activeFeatureFlags?: SchoolFeatureFlags;
   schoolPermissions: SchoolPermissionsState;
   onSetSuperAdminSchoolView: (value: boolean) => void;
+  onOpenBackupCenter?: () => void;
   onSyncError: (message: string | null) => void;
 }
 
 export function useTabNavigation({
   deepLinkParams,
   currentRole,
+  isSuperAdminSchoolView,
   lang,
   rolePermissions,
   activeFeatureFlags,
   schoolPermissions,
   onSetSuperAdminSchoolView,
+  onOpenBackupCenter,
   onSyncError,
 }: UseTabNavigationParams) {
   const [currentTab, setCurrentTab] = useState<NavTab>(deepLinkParams ? 'mobile_checkin' : 'dashboard');
   const [timetableCheckinTarget, setTimetableCheckinTarget] = useState<TimetableCheckinTarget | null>(null);
   const [dashboardInitialSubTab, setDashboardInitialSubTab] = useState<DashboardSubTab>('overview');
   const [systemSettingsInitialTab, setSystemSettingsInitialTab] = useState<SystemSettingsTab>('school_general');
-  const [superAdminSubTab, setSuperAdminSubTab] = useState<
-    'approvals' | 'permissions' | 'promotions' | 'schools' | 'central_exams' | 'exam_payment'
-  >('approvals');
+  const [superAdminSubTab, setSuperAdminSubTab] = useState<SuperAdminSubTab>('approvals');
   const [isGamePlaying, setIsGamePlaying] = useState(false);
   const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
   const [lmsLessonJumpTarget, setLmsLessonJumpTarget] = useState<{ courseId: string; lessonId: string } | null>(null);
@@ -107,6 +131,15 @@ export function useTabNavigation({
   }, [currentTab, currentRole, rolePermissions]);
 
   useEffect(() => {
+    if (currentRole === 'super_admin' && !isSuperAdminSchoolView) {
+      if (programMode !== 'school_erp') {
+        setProgramMode('school_erp');
+      }
+      if (currentTab !== 'super_admin_console' && currentTab !== 'admin_superadmin_desk') {
+        setCurrentTab('super_admin_console');
+      }
+      return;
+    }
     if (programMode === 'lms_classroom' && !isProgramModeEnabledByFeatureFlags('lms_classroom', activeFeatureFlags)) {
       setProgramMode('school_erp');
       setCurrentTab('dashboard');
@@ -128,7 +161,7 @@ export function useTabNavigation({
     ) {
       setCurrentTab('dashboard');
     }
-  }, [programMode, currentTab, activeFeatureFlags, currentRole]);
+  }, [programMode, currentTab, activeFeatureFlags, currentRole, isSuperAdminSchoolView]);
 
   const handleChangeProgramMode = (nextMode: AppProgramMode) => {
     if (!isAllowedProgramModeForRole(currentRole, nextMode)) return;
@@ -162,6 +195,32 @@ export function useTabNavigation({
 
     if (currentRole === 'parent') {
       setProgramMode('parent_portal');
+      return;
+    }
+
+    if (tab === 'super_admin_backup') {
+      if (currentRole === 'super_admin') {
+        onOpenBackupCenter?.();
+      }
+      return;
+    }
+
+    const mappedSuperAdminSubTab = SUPER_ADMIN_TAB_TO_SUBTAB[tab];
+    if (mappedSuperAdminSubTab) {
+      if (currentRole === 'super_admin') {
+        onSetSuperAdminSchoolView(false);
+        setProgramMode('school_erp');
+        if (tab !== 'super_admin_console') {
+          setSuperAdminSubTab(mappedSuperAdminSubTab);
+        }
+        setCurrentTab('super_admin_console');
+      }
+      return;
+    }
+
+    if (currentRole === 'super_admin' && !isSuperAdminSchoolView && tab !== 'admin_superadmin_desk') {
+      setProgramMode('school_erp');
+      setCurrentTab('super_admin_console');
       return;
     }
 
@@ -302,6 +361,15 @@ export function useTabNavigation({
       'system_settings',
       'admin_superadmin_desk',
       'super_admin_console',
+      'super_admin_approvals',
+      'super_admin_schools',
+      'super_admin_packages',
+      'super_admin_promotions',
+      'super_admin_permissions',
+      'super_admin_central_exams',
+      'super_admin_exam_payment',
+      'super_admin_audit',
+      'super_admin_backup',
     ];
     if (currentRole === 'student' && staffOnlyTabs.includes(tab)) {
       setDashboardInitialSubTab('overview');

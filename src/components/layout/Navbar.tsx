@@ -30,12 +30,14 @@ import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import type { NavTab } from './Sidebar';
+import type { SuperAdminSubTab } from '../../features/navigation/useTabNavigation';
 import { isAllowedProgramModeForRole } from '../../lib/attendanceScope';
 import { isProgramModeEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleGroupMeta, getModuleTone, MODULE_TONE_MAP } from '../../lib/moduleTheme';
 
 interface NavbarProps {
   currentTab?: string;
+  superAdminSubTab?: SuperAdminSubTab;
   currentUser: AuthUser | null;
   activeSchool: School;
   currentRole: UserRole;
@@ -118,6 +120,7 @@ const WORKSPACE_MODES = [
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
+  superAdminSubTab = 'approvals',
   currentUser,
   activeSchool,
   currentRole,
@@ -164,7 +167,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const isLight = !themePalette?.includes('dark') && themePalette !== 'sapphire';
-  const canAccessSchoolOperations = currentRole !== 'super_admin' || isSuperAdminSchoolView;
+  const isDeveloperPlatformMode = currentRole === 'super_admin' && !isSuperAdminSchoolView;
+  const canAccessSchoolOperations = !isDeveloperPlatformMode;
   const canSwitchSchool = currentRole === 'super_admin';
   const allowedWorkspaceModes = WORKSPACE_MODES
     .map((mode) =>
@@ -181,7 +185,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   const activeWorkspaceMode =
     allowedWorkspaceModes.find((m) => m.id === programMode) || allowedWorkspaceModes[0];
   const ActiveWorkspaceIcon = activeWorkspaceMode?.icon || Building2;
-  const activeTabKey = currentTab && currentTab in MODULE_TONE_MAP ? (currentTab as NavTab) : null;
+  const subTabToNavTab: Record<SuperAdminSubTab, NavTab> = {
+    approvals: 'super_admin_approvals',
+    schools: 'super_admin_schools',
+    packages: 'super_admin_packages',
+    promotions: 'super_admin_promotions',
+    permissions: 'super_admin_permissions',
+    central_exams: 'super_admin_central_exams',
+    exam_payment: 'super_admin_exam_payment',
+    audit_logs: 'super_admin_audit',
+  };
+  const effectiveTabForTone =
+    isDeveloperPlatformMode && currentTab === 'super_admin_console'
+      ? subTabToNavTab[superAdminSubTab]
+      : currentTab;
+  const activeTabKey =
+    effectiveTabForTone && effectiveTabForTone in MODULE_TONE_MAP
+      ? (effectiveTabForTone as NavTab)
+      : null;
   const activeGroupMeta = activeTabKey ? getModuleGroupMeta(activeTabKey) : null;
   const activeModuleTone = activeTabKey ? getModuleTone(activeTabKey) : 'tone-1';
 
@@ -237,14 +258,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     showImportExportAction ||
     Boolean(onOpenOnboardingTutor) ||
     Boolean(onOpenLoginGuide) ||
-    (canAccessSchoolOperations && Boolean(onOpenCoordinationDesk)) ||
+    ((canAccessSchoolOperations || currentRole === 'super_admin') && Boolean(onOpenCoordinationDesk)) ||
     Boolean(onOpenExamPaymentSettings) ||
     Boolean(onToggleMascotHidden) ||
     !focusMode;
 
   return (
     <header className="app-topbar h-14 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-4 w-full max-w-full">
-      {/* Zone 1: Brand + School Context + Consolidated Workspace Mode Dropdown */}
+      {/* Zone 1: Brand + School Context / Developer Mode Switcher */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {!focusMode && onToggleMobileMenu && (
           <button
@@ -263,6 +284,28 @@ export const Navbar: React.FC<NavbarProps> = ({
             BaanPakKru
           </span>
         </div>
+
+        {isDeveloperPlatformMode && (
+          <>
+            <span className="hidden sm:inline h-5 w-px bg-[var(--color-border)] select-none" aria-hidden="true" />
+            <span className="tone-7 hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[var(--tone-soft)] border border-[color-mix(in_srgb,var(--tone)_24%,transparent)] text-[12px] font-bold text-[var(--tone)] whitespace-nowrap shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'โหมดผู้พัฒนาระบบ' : 'Developer Console'}</span>
+            </span>
+            {!focusMode && (
+              <button
+                type="button"
+                data-guide-id="nav-school-switcher"
+                onClick={onOpenSchoolSwitcher}
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
+                title={lang === 'th' ? 'เลือกโรงเรียนเพื่อเข้าตรวจสอบข้อมูล' : 'Select a school to inspect'}
+              >
+                <Building2 className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                <span>{lang === 'th' ? 'เข้าตรวจสอบโรงเรียน' : 'Inspect School'}</span>
+              </button>
+            )}
+          </>
+        )}
 
         {canAccessSchoolOperations && (
           <>
@@ -396,6 +439,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               activeSchool={activeSchool}
               gradingSystem={activeSchool.gradingSystem}
               currentRole={currentRole}
+              isSuperAdminSchoolView={isSuperAdminSchoolView}
               currentUser={currentUser}
               currentStudentRecordId={currentUser?.studentRecordId}
               featureFlags={featureFlags}
@@ -641,7 +685,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   )}
 
-                  {canAccessSchoolOperations && onOpenCoordinationDesk && (
+                  {(canAccessSchoolOperations || currentRole === 'super_admin') && onOpenCoordinationDesk && (
                     <button
                       type="button"
                       onClick={() => {

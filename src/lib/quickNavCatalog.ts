@@ -247,15 +247,116 @@ export const QUICK_NAV_CATALOG: QuickNavEntry[] = [
     keywords: ['desk', 'support', 'ประสานงาน', 'ติดต่อส่วนกลาง'],
     roles: ['super_admin', 'admin'],
   },
+  {
+    tab: 'super_admin_approvals',
+    labelTh: 'อนุมัติเปิดใช้โรงเรียนใหม่',
+    labelEn: 'Pending School Approvals',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['approve', 'school', 'registration', 'อนุมัติ', 'โรงเรียนใหม่'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_schools',
+    labelTh: 'สถานศึกษาในระบบ & เข้าตรวจสอบ',
+    labelEn: 'Schools & Tenant Inspection',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['schools', 'tenant', 'inspect', 'สถานศึกษา', 'ตรวจสอบโรงเรียน'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_packages',
+    labelTh: 'แพ็กเกจ SaaS & Feature Flags',
+    labelEn: 'SaaS Packages & Feature Flags',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['package', 'tier', 'feature', 'flag', 'แพ็กเกจ', 'โมดูล'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_promotions',
+    labelTh: 'โปรโมชัน & สัญญาโรงเรียน',
+    labelEn: 'Promotions & Subscriptions',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['promo', 'subscription', 'โปรโมชัน', 'สมาชิก'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_permissions',
+    labelTh: 'สิทธิ์มาตรฐานบทบาท & บัญชีผู้ใช้',
+    labelEn: 'Global RBAC & User Accounts',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['rbac', 'permission', 'account', 'สิทธิ์', 'บัญชีผู้ใช้'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_central_exams',
+    labelTh: 'คลังข้อสอบกลาง (ผู้พัฒนา)',
+    labelEn: 'Central Exam Bank Manager',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['exam', 'central', 'คลังข้อสอบกลาง'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_exam_payment',
+    labelTh: 'ตั้งค่ารับเงิน PromptPay ผู้พัฒนา',
+    labelEn: 'Developer PromptPay Settings',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['promptpay', 'payment', 'รับเงิน'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_audit',
+    labelTh: 'Audit Log ส่วนกลางทั้งระบบ',
+    labelEn: 'Platform Audit Logs',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['audit', 'log', 'ประวัติระบบ'],
+    roles: ['super_admin'],
+  },
+  {
+    tab: 'super_admin_backup',
+    labelTh: 'สำรอง & กู้คืนระบบ (Google Drive)',
+    labelEn: 'System Backup & Google Drive',
+    categoryTh: 'ผู้พัฒนาระบบ',
+    categoryEn: 'Developer',
+    keywords: ['backup', 'restore', 'drive', 'สำรองข้อมูล', 'กู้คืน'],
+    roles: ['super_admin'],
+  },
 ];
+
+const DEVELOPER_ONLY_TABS = new Set<NavTab>([
+  'super_admin_console',
+  'super_admin_approvals',
+  'super_admin_schools',
+  'super_admin_packages',
+  'super_admin_promotions',
+  'super_admin_permissions',
+  'super_admin_central_exams',
+  'super_admin_exam_payment',
+  'super_admin_audit',
+  'super_admin_backup',
+  'admin_superadmin_desk',
+]);
 
 export function getQuickNavEntries(
   role: UserRole,
   featureFlags?: SchoolFeatureFlags,
+  isSuperAdminSchoolView = false,
 ): QuickNavEntry[] {
-  return QUICK_NAV_CATALOG.filter(
-    (entry) =>
-      entry.roles.includes(role) &&
-      isTabEnabledByFeatureFlags(entry.tab, featureFlags, role),
-  );
+  return QUICK_NAV_CATALOG.filter((entry) => {
+    if (!entry.roles.includes(role)) return false;
+    if (role === 'super_admin' && !isSuperAdminSchoolView) {
+      return DEVELOPER_ONLY_TABS.has(entry.tab);
+    }
+    if (role === 'super_admin' && isSuperAdminSchoolView && entry.tab.startsWith('super_admin_') && entry.tab !== 'super_admin_schools') {
+      return false;
+    }
+    return isTabEnabledByFeatureFlags(entry.tab, featureFlags, role);
+  });
 }

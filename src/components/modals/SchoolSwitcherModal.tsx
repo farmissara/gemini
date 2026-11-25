@@ -17,6 +17,7 @@ interface SchoolSwitcherModalProps {
   onSelectSchool: (school: School) => void;
   onClose: () => void;
   lang: AppLanguage;
+  isInspectionPrompt?: boolean;
 }
 
 export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
@@ -25,6 +26,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
   onSelectSchool,
   onClose,
   lang,
+  isInspectionPrompt = false,
 }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -36,10 +38,22 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-semibold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'ข้อมูลสถาบันการศึกษา (School Institution)' : 'School Institution Info'}
+                {isInspectionPrompt
+                  ? lang === 'th'
+                    ? 'เลือกโรงเรียนเพื่อเข้าตรวจสอบข้อมูล (School Inspection)'
+                    : 'Select School to Inspect'
+                  : lang === 'th'
+                    ? 'ข้อมูลสถาบันการศึกษา (School Institution)'
+                    : 'School Institution Info'}
               </h3>
               <p className="text-sm text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'แสดงเฉพาะโรงเรียนที่บัญชีของคุณมีสิทธิ์เข้าถึง' : 'Only schools your account is authorized to access are shown.'}
+                {isInspectionPrompt
+                  ? lang === 'th'
+                    ? 'เข้าสู่ระบบภายในของโรงเรียนเพื่อตรวจสอบการทำงาน (สามารถกลับมาหน้าผู้พัฒนาได้ตลอด)'
+                    : 'Inspect a school workspace directly and exit back to Developer Mode anytime.'
+                  : lang === 'th'
+                    ? 'แสดงเฉพาะโรงเรียนที่บัญชีของคุณมีสิทธิ์เข้าถึง'
+                    : 'Only schools your account is authorized to access are shown.'}
               </p>
             </div>
           </div>
@@ -55,7 +69,7 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
         {/* List of Schools */}
         <div className="space-y-2">
           <PagedList items={schools} pageSize={3} renderItem={(sch) => {
-            const isActive = activeSchool.id === sch.id;
+            const isActive = !isInspectionPrompt && activeSchool.id === sch.id;
             return (
               <div
                 key={sch.id}
@@ -105,8 +119,15 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
                       {lang === 'th' ? 'ใช้งานอยู่' : 'Active'}
                     </span>
                   ) : (
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-text)] transition-colors">
-                      {lang === 'th' ? 'สลับ' : 'Select'}
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-text-muted)] group-hover:text-[var(--color-primary-text)] transition-colors">
+                      {isInspectionPrompt && <ExternalLink className="w-3.5 h-3.5" />}
+                      {isInspectionPrompt
+                        ? lang === 'th'
+                          ? 'เข้าตรวจสอบ'
+                          : 'Inspect'
+                        : lang === 'th'
+                          ? 'สลับ'
+                          : 'Select'}
                     </span>
                   )}
                 </div>
