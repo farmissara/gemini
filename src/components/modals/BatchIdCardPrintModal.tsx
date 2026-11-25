@@ -9,9 +9,24 @@ import {
   User,
   GraduationCap,
 } from 'lucide-react';
-import { Student, Teacher, School, AppLanguage } from '../../types';
+import {
+  Student,
+  Teacher,
+  School,
+  AppLanguage,
+  TimetableSlot,
+  Course,
+  SchoolPeriodTime,
+} from '../../types';
 import { QrCodeMatrix } from '../QrCodeMatrix';
 import { Barcode128Svg } from '../Barcode128Svg';
+import { IdCardBackContent } from '../id-card/IdCardBackContent';
+import {
+  ID_CARD_BACK_MODE_OPTIONS,
+  getSavedIdCardBackMode,
+  saveIdCardBackMode,
+  type IdCardBackMode,
+} from '../../lib/idCardBackLayout';
 
 interface BatchIdCardPrintModalProps {
   isOpen: boolean;
@@ -19,6 +34,10 @@ interface BatchIdCardPrintModalProps {
   students: Student[];
   teachers?: Teacher[];
   initialPersonType?: 'student' | 'staff';
+  initialBackMode?: IdCardBackMode;
+  timetableSlots?: TimetableSlot[];
+  courses?: Course[];
+  schoolPeriods?: SchoolPeriodTime[];
   school: School;
   lang?: AppLanguage;
 }
@@ -29,6 +48,10 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   students,
   teachers = [],
   initialPersonType = 'student',
+  initialBackMode,
+  timetableSlots = [],
+  courses = [],
+  schoolPeriods = [],
   school,
   lang = 'th',
 }) => {
@@ -40,6 +63,9 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(() => new Set(students.map((s) => s.id)));
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(() => new Set(teachers.map((t) => t.id)));
   const [cardSide, setCardSide] = useState<'front' | 'back' | 'both'>('front');
+  const [backMode, setBackMode] = useState<IdCardBackMode>(
+    () => initialBackMode || getSavedIdCardBackMode(school.id, initialPersonType),
+  );
   const [layoutMode, setLayoutMode] = useState<'grid_a4' | 'sticker_a4'>('grid_a4');
   const [includeBarcode] = useState<boolean>(true);
   const [includeQrCode] = useState<boolean>(true);
@@ -49,8 +75,17 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setPersonType(initialPersonType);
+      setBackMode(initialBackMode || getSavedIdCardBackMode(school.id, initialPersonType));
     }
-  }, [isOpen, initialPersonType]);
+  }, [isOpen, initialPersonType, initialBackMode, school.id]);
+
+  const handleChangeBackMode = (nextMode: IdCardBackMode) => {
+    setBackMode(nextMode);
+    saveIdCardBackMode(school.id, personType, nextMode);
+    if (cardSide === 'front') {
+      setCardSide('both');
+    }
+  };
 
   const numericAcademicYear = Number(school.academicYear || '2569') || 2569;
   const issueTermLabel = `05/${numericAcademicYear}`;
@@ -331,6 +366,29 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               </button>
             </div>
 
+            {layoutMode === 'grid_a4' && (
+              <label className="flex items-center gap-1.5 font-semibold text-[var(--color-text-title)]">
+                <span className="text-[11px]">ด้านหลังบัตร:</span>
+                <select
+                  value={backMode}
+                  onChange={(e) => handleChangeBackMode(e.target.value as IdCardBackMode)}
+                  className="px-2 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-semibold cursor-pointer"
+                >
+                  {ID_CARD_BACK_MODE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {lang === 'th'
+                        ? personType === 'staff'
+                          ? opt.labelThStaff
+                          : opt.labelThStudent
+                        : personType === 'staff'
+                          ? opt.labelEnStaff
+                          : opt.labelEnStudent}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             <button
               type="button"
               onClick={handleSelectAllFiltered}
@@ -535,34 +593,21 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
                     );
 
                     const renderBack = (
-                      <div
+                      <IdCardBackContent
                         key={`back-${student.id}`}
-                        className="relative w-full aspect-[85.6/53.98] rounded-xl border border-slate-300 bg-white text-slate-900 p-3 shadow-md flex flex-col justify-between overflow-hidden print:border-slate-800 print:shadow-none print:break-inside-avoid"
-                      >
-                        <div className="w-full h-4 bg-slate-900 rounded-sm mb-1 shrink-0" />
-                        <div className="text-[8px] space-y-1 text-slate-600 flex-1 leading-snug">
-                          <p className="font-bold text-slate-900">
-                            เงื่อนไขและข้อปฏิบัติการใช้บัตรประจำตัวนักเรียน:
-                          </p>
-                          <p>1. บัตรนี้เป็นกรรมสิทธิ์ของ {school.nameTh} นักเรียนต้องพกติดตัวตลอดเวลา</p>
-                          <p>2. ใช้สแกนบาร์โค้ด/QR เข้า-ออกโรงเรียน เช็คชื่อรายคาบ และห้องสมุด</p>
-                          <p className="font-semibold text-blue-900">
-                            โทร.สถานศึกษา: {school.phone || '-'} | ผู้ปกครอง: {student.guardianName || '-'} ({student.guardianPhone || '-'})
-                          </p>
-                        </div>
-                        <div className="border-t border-slate-200 pt-1 flex items-end justify-between text-[8px] shrink-0 font-mono">
-                          <div>
-                            <span>STU-CODE: {student.studentIdNumber}</span>
-                            <span className="block text-[7px] text-slate-500">
-                              ออกบัตร: {issueTermLabel} • หมดอายุ: {expiryTermLabel}
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <div className="w-16 border-b border-slate-400 mb-0.5" />
-                            <span className="text-[7px] text-slate-600">ผู้อำนวยการสถานศึกษา</span>
-                          </div>
-                        </div>
-                      </div>
+                        mode={backMode}
+                        personType="student"
+                        student={student}
+                        teachers={teachers}
+                        school={school}
+                        lang={lang}
+                        timetableSlots={timetableSlots}
+                        courses={courses}
+                        schoolPeriods={schoolPeriods}
+                        variant="print"
+                        issueTermLabel={issueTermLabel}
+                        expiryTermLabel={expiryTermLabel}
+                      />
                     );
 
                     if (cardSide === 'front') return renderFront;
@@ -672,34 +717,21 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
                     );
 
                     const renderBack = (
-                      <div
+                      <IdCardBackContent
                         key={`t-back-${teacher.id}`}
-                        className="relative w-full aspect-[85.6/53.98] rounded-xl border border-emerald-500 bg-white text-slate-900 p-3 shadow-md flex flex-col justify-between overflow-hidden print:border-slate-800 print:shadow-none print:break-inside-avoid"
-                      >
-                        <div className="w-full h-4 bg-emerald-950 rounded-sm mb-1 shrink-0" />
-                        <div className="text-[8px] space-y-1 text-slate-600 flex-1 leading-snug">
-                          <p className="font-bold text-slate-900">
-                            บัตรประจำตัวข้าราชการครูและบุคลากรทางการศึกษา:
-                          </p>
-                          <p>1. ใช้สแกนลงเวลาปฏิบัติงาน เข้า-ออกสถานศึกษา และยืนยันสิทธิ์การอนุมัติวิชาการ</p>
-                          <p>2. กรณีเก็บบัตรได้ โปรดนำส่งฝ่ายบริหารงานบุคคล {school.nameTh}</p>
-                          <p className="font-semibold text-emerald-900">
-                            โทร. {teacher.phone || school.phone || '-'} | {teacher.email || '-'}
-                          </p>
-                        </div>
-                        <div className="border-t border-slate-200 pt-1 flex items-end justify-between text-[8px] shrink-0 font-mono">
-                          <div>
-                            <span>STF-CODE: {teacher.teacherIdNumber}</span>
-                            <span className="block text-[7px] text-slate-500">
-                              ออกบัตร: {issueTermLabel} • หมดอายุ: {expiryTermLabel}
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <div className="w-16 border-b border-slate-400 mb-0.5" />
-                            <span className="text-[7px] text-slate-600">ผู้อำนวยการสถานศึกษา</span>
-                          </div>
-                        </div>
-                      </div>
+                        mode={backMode}
+                        personType="staff"
+                        teacher={teacher}
+                        teachers={teachers}
+                        school={school}
+                        lang={lang}
+                        timetableSlots={timetableSlots}
+                        courses={courses}
+                        schoolPeriods={schoolPeriods}
+                        variant="print"
+                        issueTermLabel={issueTermLabel}
+                        expiryTermLabel={expiryTermLabel}
+                      />
                     );
 
                     if (cardSide === 'front') return renderFront;

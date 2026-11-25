@@ -24,9 +24,11 @@ import type {
   PlayerScore,
   PortfolioItem,
   School,
+  SchoolPeriodTime,
   Student,
   Teacher,
   ThemePalette,
+  TimetableSlot,
   UserRole,
 } from '../../types';
 import {
@@ -65,6 +67,9 @@ interface MobileProfileTabProps {
   linkedStudents: Student[];
   students: Student[];
   teachers: Teacher[];
+  courses?: Course[];
+  timetableSlots?: TimetableSlot[];
+  schoolPeriods?: SchoolPeriodTime[];
   onUpdateStudent?: (student: Student) => void;
   onUpdateTeacher?: (teacher: Teacher) => void;
   onUpdateOwnAvatar?: (avatarUrl: string) => void;
@@ -94,6 +99,9 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   linkedStudents,
   students,
   teachers,
+  courses = [],
+  timetableSlots = [],
+  schoolPeriods = [],
   onUpdateStudent,
   onUpdateTeacher,
   onUpdateOwnAvatar,
@@ -211,6 +219,9 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
           lang={lang}
           currentRole={currentRole}
           currentUser={currentUser}
+          timetableSlots={timetableSlots}
+          courses={courses}
+          schoolPeriods={schoolPeriods}
           onUpdateStudent={onUpdateStudent}
           onUpdateTeacher={onUpdateTeacher}
           onUpdateOwnAvatar={onUpdateOwnAvatar}

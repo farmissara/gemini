@@ -968,6 +968,9 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   lang={lang}
                   currentRole={currentRole}
                   currentUser={currentUser}
+                  timetableSlots={viewTimetableSlots}
+                  courses={viewCourses}
+                  schoolPeriods={schoolPeriods}
                   onUpdateStudent={currentRole === 'teacher' ? undefined : props.onUpdateStudent}
                   onUpdateTeacher={currentRole === 'teacher' ? undefined : props.onUpdateTeacher}
                   onUpdateOwnAvatar={props.onUpdateOwnAvatar}

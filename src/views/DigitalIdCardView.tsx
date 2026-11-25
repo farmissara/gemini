@@ -9,15 +9,36 @@ import {
   Camera,
   AlertCircle,
   GraduationCap,
+  CalendarDays,
+  HeartPulse,
+  QrCode,
+  FileText,
 } from 'lucide-react';
-import { Student, Teacher, School, AppLanguage, UserRole, AuthUser } from '../types';
+import {
+  Student,
+  Teacher,
+  School,
+  AppLanguage,
+  UserRole,
+  AuthUser,
+  TimetableSlot,
+  Course,
+  SchoolPeriodTime,
+} from '../types';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { PagedList } from '../components/PagedList';
 import { BatchIdCardPrintModal } from '../components/modals/BatchIdCardPrintModal';
+import { IdCardBackContent } from '../components/id-card/IdCardBackContent';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
 import { Barcode128Svg } from '../components/Barcode128Svg';
 import { getModuleTone } from '../lib/moduleTheme';
 import { resolveLinkedStudentsForUser, resolveOwnStudent, resolveOwnTeacher } from '../lib/attendanceScope';
+import {
+  ID_CARD_BACK_MODE_OPTIONS,
+  getSavedIdCardBackMode,
+  saveIdCardBackMode,
+  type IdCardBackMode,
+} from '../lib/idCardBackLayout';
 import { emitAppToast } from '../components/common/ToastProvider';
 
 function formatMaskedNationalId(raw?: string): string {
@@ -33,6 +54,9 @@ interface DigitalIdCardViewProps {
   lang: AppLanguage;
   currentRole: UserRole;
   currentUser?: AuthUser | null;
+  timetableSlots?: TimetableSlot[];
+  courses?: Course[];
+  schoolPeriods?: SchoolPeriodTime[];
   onUpdateStudent?: (student: Student) => void;
   onUpdateTeacher?: (teacher: Teacher) => void;
   onUpdateOwnAvatar?: (avatarUrl: string) => void;
@@ -45,6 +69,9 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   lang,
   currentRole,
   currentUser,
+  timetableSlots = [],
+  courses = [],
+  schoolPeriods = [],
   onUpdateStudent,
   onUpdateTeacher,
   onUpdateOwnAvatar,
@@ -159,6 +186,20 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
     : isAdminViewer
       ? cardType
       : 'student';
+
+  const [backMode, setBackMode] = useState<IdCardBackMode>(() =>
+    getSavedIdCardBackMode(school.id, activeCardType),
+  );
+
+  useEffect(() => {
+    setBackMode(getSavedIdCardBackMode(school.id, activeCardType));
+  }, [school.id, activeCardType]);
+
+  const handleSelectBackMode = (nextMode: IdCardBackMode) => {
+    setBackMode(nextMode);
+    saveIdCardBackMode(school.id, activeCardType, nextMode);
+    setIsFlipped(true);
+  };
 
   const selectedStudent: Student | null =
     visibleStudents.find((s) => s.id === selectedStudentId) || visibleStudents[0] || null;
@@ -480,6 +521,63 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                 </button>
               </div>
 
+              {/* Selectable Back-Side Mode Bar */}
+              <div className="w-full max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1.5 space-y-1">
+                <div className="flex items-center justify-between px-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
+                  <span>{lang === 'th' ? 'รูปแบบด้านหลังบัตร (เลือกได้)' : 'Back-Side Layout'}</span>
+                  <span className="text-[var(--color-primary-text)]">
+                    {activeCardType === 'staff'
+                      ? (lang === 'th' ? 'บัตรครู/บุคลากร' : 'Staff Card')
+                      : (lang === 'th' ? 'บัตรนักเรียน' : 'Student Card')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                  {ID_CARD_BACK_MODE_OPTIONS.map((opt) => {
+                    const isSelected = backMode === opt.id;
+                    const label =
+                      lang === 'th'
+                        ? activeCardType === 'staff'
+                          ? opt.shortThStaff
+                          : opt.shortThStudent
+                        : activeCardType === 'staff'
+                          ? opt.shortEnStaff
+                          : opt.shortEnStudent;
+                    const Icon =
+                      opt.id === 'timetable'
+                        ? CalendarDays
+                        : opt.id === 'medical_emergency'
+                          ? HeartPulse
+                          : opt.id === 'qr_gate_pass'
+                            ? QrCode
+                            : FileText;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleSelectBackMode(opt.id)}
+                        className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                          isSelected
+                            ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
+                            : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
+                        }`}
+                        title={
+                          lang === 'th'
+                            ? activeCardType === 'staff'
+                              ? opt.labelThStaff
+                              : opt.labelThStudent
+                            : activeCardType === 'staff'
+                              ? opt.labelEnStaff
+                              : opt.labelEnStudent
+                        }
+                      >
+                        <Icon className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Realistic Card Container (ISO/IEC 7810 ID-1 CR80 proportions) */}
               <div className="perspective-1000 w-full max-w-md h-[288px] sm:h-[296px]">
                 <div
@@ -697,80 +795,19 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   </div>
 
                   {/* BACK OF CARD */}
-                  <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl p-5 shadow-2xl overflow-hidden border border-slate-700 flex flex-col justify-between bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-                    {/* Magnetic Stripe */}
-                    <div className="-mx-5 -mt-2 h-8 bg-slate-950 border-y border-slate-700 flex items-center justify-between px-4">
-                      <span className="text-[9px] font-mono tracking-widest text-slate-200">
-                        {activeCardType === 'staff' ? 'OFFICIAL PERSONNEL PASS · NFC' : 'OFFICIAL STUDENT PASS · NFC'}
-                      </span>
-                      <span className="text-[9px] font-mono text-cyan-300">
-                        {school.code}
-                      </span>
-                    </div>
-
-                    {/* Rules & Info */}
-                    <div className="space-y-1 text-[9px] text-slate-100 pt-1">
-                      <p className="font-bold text-cyan-200">
-                        {activeCardType === 'staff'
-                          ? 'ข้อกำหนดการใช้บัตรประจำตัวครูและบุคลากร:'
-                          : 'ข้อกำหนดการใช้บัตรประจำตัวนักเรียน:'}
-                      </p>
-                      <ul className="list-disc list-inside space-y-0.5 text-slate-200 text-[8.5px]">
-                        <li>บัตรนี้เป็นเอกสารยืนยันตัวตนของ {school.nameTh}</li>
-                        <li>
-                          {activeCardType === 'staff'
-                            ? 'ใช้ลงเวลาปฏิบัติงานเข้า-ออกโรงเรียน เบิกจ่ายห้องสมุด และแสดงตัวตนราชการ'
-                            : 'ใช้สแกนบาร์โค้ด/QR เข้า-ออกโรงเรียน เช็คชื่อรายคาบ และยืม-คืนหนังสือห้องสมุด'}
-                        </li>
-                        <li>หากเก็บบัตรนี้ได้ กรุณาส่งคืนห้องธุรการ โทร. {school.phone || '-'}</li>
-                      </ul>
-                    </div>
-
-                    {/* Contact / License & Verification */}
-                    {activeCardType === 'staff' && selectedTeacher ? (
-                      <div className="p-2 rounded-xl bg-slate-950/90 border border-slate-700 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <span className="text-[8px] text-slate-300">โทรศัพท์ / อีเมลบุคลากร:</span>
-                          <p className="text-[10px] font-mono font-bold text-emerald-300 truncate">
-                            {selectedTeacher.phone || selectedTeacher.email || school.phone || '-'}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-[8px] text-slate-300">เลขใบอนุญาตประกอบวิชาชีพ:</span>
-                          <p className="text-[10px] font-mono font-bold text-amber-200">
-                            {selectedTeacher.teacherLicenseNo || selectedTeacher.teacherIdNumber || '-'}
-                          </p>
-                        </div>
-                      </div>
-                    ) : selectedStudent ? (
-                      <div className="p-2 rounded-xl bg-slate-950/90 border border-slate-700 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <span className="text-[8px] text-slate-300">ผู้ปกครอง / เบอร์ติดต่อฉุกเฉิน:</span>
-                          <p className="text-[10px] font-mono font-bold text-emerald-300 truncate">
-                            {selectedStudent.guardianName ? `${selectedStudent.guardianName} · ` : ''}
-                            {selectedStudent.guardianPhone || '-'}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-[8px] text-slate-300">ที่ปรึกษาประจำชั้น:</span>
-                          <p className="text-[10px] font-bold text-cyan-200 truncate max-w-[125px]">
-                            {selectedStudent.advisorName || selectedStudent.room || '-'}
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* School Verification Footer */}
-                    <div className="flex items-center justify-between text-[8px] text-slate-200 border-t border-slate-700 pt-1.5 gap-2">
-                      <span className="truncate">{school.nameTh} · ปีการศึกษา {school.academicYear || '2569'}</span>
-                      <span className="font-mono text-cyan-200 shrink-0">
-                        CODE:{' '}
-                        {activeCardType === 'staff'
-                          ? selectedTeacher?.teacherIdNumber || selectedTeacher?.id
-                          : selectedStudent?.studentIdNumber || selectedStudent?.id}
-                      </span>
-                    </div>
-                  </div>
+                  <IdCardBackContent
+                    mode={backMode}
+                    personType={activeCardType}
+                    student={selectedStudent}
+                    teacher={selectedTeacher}
+                    teachers={teachers}
+                    school={school}
+                    lang={lang}
+                    timetableSlots={timetableSlots}
+                    courses={courses}
+                    schoolPeriods={schoolPeriods}
+                    variant="digital"
+                  />
                 </div>
               </div>
 
@@ -808,6 +845,10 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
           students={visibleStudents}
           teachers={visibleTeachers}
           initialPersonType={activeCardType}
+          initialBackMode={backMode}
+          timetableSlots={timetableSlots}
+          courses={courses}
+          schoolPeriods={schoolPeriods}
           school={school}
           lang={lang}
         />
