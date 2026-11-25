@@ -299,7 +299,7 @@ export interface SchoolErpViewSwitchProps {
   onRejectInvoiceSlip: (invoiceId: string, reason: string) => void;
   onSubmitInvoiceSlip: (invoiceId: string, slipDataUrl: string, note: string) => void;
   onAddAnnouncement: (newAnn: Announcement) => void;
-  onBroadcastLine: (announcementId: string) => void;
+  onBroadcastLine: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onCompleteLesson: (lessonId: string) => Promise<void>;
   onSaveLesson: (lesson: Lesson) => Promise<void>;
   onSubmitAssignment: (assignmentId: string) => Promise<void>;
@@ -740,6 +740,10 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   lang={lang}
                   currentRole={currentRole}
                   currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                  schoolId={activeSchool.id}
+                  currentUser={currentUser}
+                  playerScores={viewPlayerScores}
+                  onEarnRewards={props.onEarnRewards}
                 />
               )}
 
@@ -752,6 +756,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   onExit={() => setCurrentTab('dashboard')}
                   schoolId={activeSchool.id}
                   currentUser={currentUser}
+                  onEarnRewards={props.onEarnRewards}
                   onAwardPortfolioItem={(item) => {
                     props.onAddPortfolioItem(item);
                     navigateToAppTab('portfolio');
@@ -787,6 +792,12 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   lang={lang}
                   currentRole={currentRole}
                   currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                  currentUser={currentUser}
+                  students={viewStudents}
+                  courses={viewCourses}
+                  grades={viewGrades}
+                  homeworkSubmissions={viewHomeworkSubmissions}
+                  attendance={viewAttendance}
                   initialFocusTopic={adaptivePracticeTopic}
                   onPracticeInSocraticTutor={(topic) => {
                     setAdaptivePracticeTopic(topic);
@@ -799,6 +810,9 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                 <SubjectLabSimulationView
                   currentUserRole={currentUser?.role}
                   currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+                  schoolId={activeSchool.id}
+                  userId={currentUser?.id}
+                  studentId={currentUser?.studentRecordId}
                   lang={lang}
                   onEarnRewards={props.onEarnRewards}
                   onBackToGames={() => setCurrentTab('dashboard')}
@@ -965,6 +979,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   onUpdateCampusGates={['admin', 'super_admin'].includes(currentRole) ? props.onUpdateCampusGates : undefined}
                   onSaveCampusGates={['admin', 'super_admin'].includes(currentRole) ? props.onSaveCampusGates : undefined}
                   onUpdateSchoolCoordinates={['admin', 'super_admin'].includes(currentRole) ? props.onUpdateSchoolCoordinates : undefined}
+                  isDemoMode={isDemoMode}
                 />
               )}
 
@@ -994,6 +1009,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   onAddSdqAssessment={props.onAddSdqAssessment}
                   lang={lang}
                   currentRole={currentRole}
+                  currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email}
                   schoolId={activeSchool.id}
                   academicYear={systemConfig.academicYear}
                   currentSemester={systemConfig.currentSemester}
@@ -1006,6 +1022,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   students={viewStudents}
                   onAddVisit={props.onAddInfirmaryVisit}
                   currentUserId={currentUser?.id || ''}
+                  currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email}
                   lang={lang}
                   currentRole={currentRole}
                   schoolId={activeSchool.id}
@@ -1164,6 +1181,12 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   onAddAnnouncement={props.onAddAnnouncement}
                   onBroadcastLine={props.onBroadcastLine}
                   schoolId={activeSchool.id}
+                  currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email}
+                  currentUserRoleLabel={
+                    currentRole === 'admin' || currentRole === 'super_admin'
+                      ? 'ผู้บริหาร / ผู้ดูแลโรงเรียน'
+                      : 'ครูผู้สอน'
+                  }
                   onConsentPublished={(title) => {
                     if (currentUser) {
                       appendAuditLog(activeSchool.id, {

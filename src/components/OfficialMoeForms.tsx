@@ -47,6 +47,7 @@ import {
   getStudentQualitativeRecord,
   loadPp5CourseSettings,
   loadQualitativeAssessments,
+  MOE_QUALITATIVE_UPDATED_EVENT,
   Pp5CourseSettings,
   savePp5CourseSettings,
   saveQualitativeAssessments,
@@ -157,11 +158,17 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
 
   useEffect(() => {
     setCourseCfg(loadPp5CourseSettings(selectedCourse.id, academicYear));
-  }, [selectedCourse.id, academicYear]);
-
-  useEffect(() => {
     setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
-  }, [schoolId, academicYear, semester]);
+    const onUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ schoolId?: string }>).detail;
+      if (!detail?.schoolId || detail.schoolId === schoolId) {
+        setCourseCfg(loadPp5CourseSettings(selectedCourse.id, academicYear));
+        setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
+      }
+    };
+    window.addEventListener(MOE_QUALITATIVE_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(MOE_QUALITATIVE_UPDATED_EVENT, onUpdated);
+  }, [schoolId, selectedCourse.id, academicYear, semester]);
 
   useEffect(() => {
     let mounted = true;
@@ -192,7 +199,7 @@ export const Pp5OfficialForm: React.FC<Pp5OfficialFormProps> = ({
   const updateCourseCfg = (patch: Partial<Pp5CourseSettings>) => {
     setCourseCfg((prev) => {
       const next = { ...prev, ...patch };
-      savePp5CourseSettings(selectedCourse.id, next);
+      savePp5CourseSettings(selectedCourse.id, next, schoolId);
       return next;
     });
   };
@@ -1903,6 +1910,14 @@ export const Pp6OfficialForm: React.FC<Pp6OfficialFormProps> = ({
 
   useEffect(() => {
     setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
+    const onUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ schoolId?: string }>).detail;
+      if (!detail?.schoolId || detail.schoolId === schoolId) {
+        setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
+      }
+    };
+    window.addEventListener(MOE_QUALITATIVE_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(MOE_QUALITATIVE_UPDATED_EVENT, onUpdated);
   }, [schoolId, academicYear, semester]);
 
   const filteredStudents = useMemo(() => {

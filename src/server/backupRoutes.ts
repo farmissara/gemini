@@ -17,8 +17,8 @@ const DIRECT_SCHOOL_TABLES = [
   'arcade_reward_redemptions', 'attendance', 'audit_logs',
   'courses', 'grades', 'homework_submissions', 'invoices', 'learning_indicator_sets',
   'learning_indicators', 'leave_requests', 'parent_notifications', 'parent_student_links',
-  'period_attendance', 'school_assignments', 'school_campus_gates', 'school_exam_entitlements',
-  'school_lesson_completions', 'school_lms_lessons', 'school_package_orders',
+  'period_attendance', 'school_assignments', 'school_campus_gates', 'school_campus_records', 'school_exam_entitlements',
+  'school_lesson_completions', 'school_lms_lessons', 'school_moe_qualitative', 'school_package_orders',
   'school_period_times', 'school_questions', 'school_student_records', 'school_ai_requests',
   'staff_parent_invitations', 'student_account_invitations', 'student_career_quests',
   'student_learning_indicator_scores', 'students', 'teachers', 'timetable_slots',
@@ -34,8 +34,8 @@ const RESTORE_ORDER = [
   'school_ai_requests',
   'moe_standard_catalog', 'package_catalog', 'school_period_times', 'learning_indicator_sets',
   'learning_indicators', 'school_questions', 'school_lms_lessons',
-  'school_campus_gates', 'school_exam_entitlements', 'school_package_orders',
-  'school_student_records', 'student_account_invitations', 'staff_parent_invitations',
+  'school_campus_gates', 'school_campus_records', 'school_exam_entitlements', 'school_package_orders',
+  'school_moe_qualitative', 'school_student_records', 'student_account_invitations', 'staff_parent_invitations',
   'parent_student_links', 'parent_notification_preferences', 'announcements', 'timetable_slots',
   'school_assignments', 'attendance', 'period_attendance', 'grades', 'homework_submissions',
   'leave_requests', 'invoices', 'student_career_quests', 'student_learning_indicator_scores',
@@ -450,13 +450,18 @@ export function createBackupRouter(getEnv: EnvReader) {
     if (!scope) return;
     const imported: Record<string, number> = {};
     const skipped: Record<string, number> = {};
+    let cachedAuthUsers: User[] | null = null;
+    const getCachedAuthUsers = async () => {
+      if (!cachedAuthUsers) cachedAuthUsers = await listAuthUsers(access.admin);
+      return cachedAuthUsers;
+    };
     try {
       for (const table of RESTORE_ORDER) {
         const sourceRows = backup.tables[table] as any[] | undefined;
         if (!sourceRows?.length) continue;
         let rows = sourceRows;
         if (table === 'user_profiles') {
-          const authUsers = await listAuthUsers(access.admin);
+          const authUsers = await getCachedAuthUsers();
           const existingIds = new Set(authUsers.map((user) => user.id));
           rows = sourceRows.filter((row) => existingIds.has(String(row.id)));
           if (rows.length !== sourceRows.length) skipped[table] = sourceRows.length - rows.length;
@@ -484,7 +489,7 @@ export function createBackupRouter(getEnv: EnvReader) {
         restoredFiles.push(`${file.bucket}/${file.path}`);
       }
       const sourceAccounts = Array.isArray(backup.accounts) ? backup.accounts : [];
-      const existingAuth = await listAuthUsers(access.admin);
+      const existingAuth = await getCachedAuthUsers();
       const existingEmails = new Set(existingAuth.map((user) => (user.email || '').toLowerCase()).filter(Boolean));
       const missingAccounts = sourceAccounts.filter((account: any) => account.email && !existingEmails.has(String(account.email).toLowerCase())).map((account: any) => ({
         email: account.email, role: account.role || null,

@@ -260,7 +260,9 @@ export function createCorrectionRequest(params: {
     targetUserIds: newReq.homeroomTeacherId ? [newReq.homeroomTeacherId] : undefined,
     targetRoles: ['teacher', 'admin', 'super_admin'],
     metadata: { correctionRequestId: newReq.id },
-  }).catch(() => {});
+  }).catch((err) => {
+    console.warn('[AttendanceCorrections] Failed to send new correction notification:', err);
+  });
 
   return newReq;
 }
@@ -359,7 +361,9 @@ export function reviewCorrectionRequest(params: {
     targetStudentIds: nextItem.requesterRole === 'student' ? [nextItem.requesterId] : undefined,
     targetRoles: ['student', 'parent', 'teacher', 'admin', 'super_admin'],
     metadata: { correctionRequestId: nextItem.id, stage: nextItem.stage },
-  }).catch(() => {});
+  }).catch((err) => {
+    console.warn('[AttendanceCorrections] Failed to send correction review notification:', err);
+  });
 
   return { updated: nextItem, all: nextList };
 }

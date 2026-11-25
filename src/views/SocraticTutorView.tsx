@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   BrainCircuit, 
   Sparkles, 
@@ -10,13 +10,10 @@ import {
   Lightbulb, 
   BarChart3, 
   MessageSquare, 
-  ArrowRight, 
-  Clock, 
+  Loader2,
   User, 
-  CheckCircle2, 
-  Flame,
+  AlertTriangle,
   FileText,
-  SlidersHorizontal,
   ChevronRight
 } from 'lucide-react';
 import { 
@@ -32,6 +29,19 @@ import {
 } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
+import { postLearningAi } from '../lib/learningAiClient';
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
 
 interface SocraticTutorViewProps {
   lang?: AppLanguage;
@@ -44,11 +54,11 @@ interface SocraticTutorViewProps {
 export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   lang = 'th',
   currentRole = 'student',
-  currentUserName = 'ด.ช. ภูมิใจ รักเรียน',
+  currentUserName = 'นักเรียน',
   initialFocusTopic = null,
   onClearFocusTopic,
 }) => {
-  const canViewTeacherInsights = currentRole === 'teacher' || currentRole === 'admin';
+  const canViewTeacherInsights = currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
   const [activeTab, setActiveTab] = useState<'tutor_chat' | 'teacher_insights'>(
     initialFocusTopic
       ? 'tutor_chat'
@@ -60,13 +70,29 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   // Chat State
   const [messages, setMessages] = useState<SocraticChatMessage[]>(INITIAL_SOCRATIC_MESSAGES);
   const [inputText, setInputText] = useState('');
+  const [focusSubject, setFocusSubject] = useState<string>('');
+  const [isSending, setIsSending] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeakingId, setIsSpeakingId] = useState<string | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   // Teacher Insights State
-  const [insights, setInsights] = useState<TeacherStruggleInsight[]>(INITIAL_TEACHER_INSIGHTS);
+  const [insights] = useState<TeacherStruggleInsight[]>(INITIAL_TEACHER_INSIGHTS);
   const [selectedInsight, setSelectedInsight] = useState<TeacherStruggleInsight | null>(INITIAL_TEACHER_INSIGHTS[0]);
   const [generatedTalkingPoints, setGeneratedTalkingPoints] = useState<string | null>(null);
+  const [isGeneratingRecap, setIsGeneratingRecap] = useState(false);
+  const [recapError, setRecapError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!initialFocusTopic) return;
@@ -75,24 +101,25 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
       typeof initialFocusTopic.score === 'number'
         ? ` (คะแนนปัจจุบัน ${initialFocusTopic.score}/100)`
         : '';
-    const focusSubject = initialFocusTopic.subjectName || initialFocusTopic.subject;
+    const focusTitle = initialFocusTopic.subjectName || initialFocusTopic.subject;
+    setFocusSubject(focusTitle);
     const focusMsg: SocraticChatMessage = {
       id: `focus-${Date.now()}`,
       sender: 'socratic_tutor',
-      textTh: `ยินดีต้อนรับสู่โหมดซ่อมเสริมเจาะจงสำหรับวิชา "${focusSubject}"${scoreText}${initialFocusTopic.studentName ? ` · นักเรียน: ${initialFocusTopic.studentName}` : ''}`,
+      textTh: `ยินดีต้อนรับสู่โหมดซ่อมเสริมเจาะจงสำหรับวิชา "${focusTitle}"${scoreText}${initialFocusTopic.studentName ? ` · นักเรียน: ${initialFocusTopic.studentName}` : ''}`,
       timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
       scaffoldingHint: 'ระบุหัวข้อหรือบทที่รู้สึกสับสน แล้วมาช่วยกันไล่ทีละขั้นตอนโดยไม่ข้ามขั้นครับ',
-      followUpPrompt: `ในวิชา ${focusSubject} เรื่องใดที่อยากทบทวนก่อนเป็นอันดับแรก?`,
+      followUpPrompt: `ในวิชา ${focusTitle} เรื่องใดที่อยากทบทวนก่อนเป็นอันดับแรก?`,
     };
     setMessages((prev) => [...prev, focusMsg]);
-    setInputText(`ขอทบทวนเนื้อหาพื้นฐานวิชา ${focusSubject} เพื่อเตรียมซ่อมเสริม`);
+    setInputText(`ขอทบทวนเนื้อหาพื้นฐานวิชา ${focusTitle} เพื่อเตรียมซ่อมเสริม`);
     onClearFocusTopic?.();
-  }, [initialFocusTopic]);
+  }, [initialFocusTopic, onClearFocusTopic]);
 
-  // Send message in chat
-  const handleSendMessage = (textToSend?: string) => {
-    const text = textToSend || inputText;
-    if (!text.trim()) return;
+  // Send message to real Gemini Socratic Tutor
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || inputText).trim();
+    if (!text || isSending) return;
 
     const newStudentMsg: SocraticChatMessage = {
       id: `msg-${Date.now()}`,
@@ -101,73 +128,168 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
       timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages(prev => [...prev, newStudentMsg]);
+    const nextHistory = [...messages, newStudentMsg];
+    setMessages(nextHistory);
     setInputText('');
+    setAiError(null);
+    setIsSending(true);
 
-    // Generate simulated Socratic AI response
-    setTimeout(() => {
-      let aiText = 'เป็นคำถามที่น่าสนใจมากครับน้องภูมิใจ! ลองค่อยๆ แยกแยะองค์ประกอบดูนะครับ 💡';
-      let hint = 'ลองตรวจสอบตัวแปรที่โจทย์ให้มาว่ามีอะไรบ้าง';
-      let followUp = 'ก. ความเร็ว หรือ ข. ความเร่ง?';
-
-      if (text.includes('ตก') || text.includes('ฟิสิกส์') || text.includes('ความเร่ง')) {
-        aiText = 'ทำไมวัตถุเบาและหนักถึงตกถึงพื้นพร้อมกันในสุญญากาศ? ลองนึกถึงกฎของนิวตัน $F = ma$ และ $F_g = mg$ ดูสิครับ';
-        hint = 'มวล $m$ ปรากฏอยู่ทั้งสองข้างของสมการ สามารถตัดกันได้!';
-        followUp = 'แปลว่าความเร่ง $a$ ขึ้นอยู่กับมวลของวัตถุหรือไม่?';
-      } else if (text.includes('กรด') || text.includes('เบส') || text.includes('เคมี')) {
-        aiText = 'หลักการสำคัญของกรด-เบสคือ การถ่ายโอนโปรตอน (H+) เมื่อกรดแก่แตกตัวหมด จะไม่มีการแย่ง H+ คืนกลับมา';
-        hint = 'พิจารณาว่า HCl แตกตัวให้ H+ และ Cl- ในน้ำอย่างสมบูรณ์';
-        followUp = 'สารละลายที่ได้จะมีค่า pH ต่ำกว่า 7 หรือเท่ากับ 7?';
-      } else if (text.includes('either') || text.includes('neither') || text.includes('อังกฤษ')) {
-        aiText = 'สำหรับโครงสร้าง "Either A or B" หรือ "Neither A nor B" ภาษาอังกฤษใช้หลัก Proximity Rule (ความใกล้ชิด)';
-        hint = 'มองหากริยา แล้วถอยหลังกลับไปหาประธานตัวที่อยู่ติดกริยาที่สุด';
-        followUp = 'ถ้าประธานตัวหลังเป็นเอกพจน์ กริยาต้องเติม -s หรือไม่?';
-      }
+    try {
+      const data = await postLearningAi<{
+        reply: {
+          replyTh: string;
+          scaffoldingHint?: string;
+          followUpPrompt?: string;
+        };
+      }>('/api/learning-ai/socratic-chat', {
+        message: text,
+        subjectContext: focusSubject || undefined,
+        studentName: currentUserName,
+        lang,
+        chatHistory: nextHistory.slice(-10).map((m) => ({
+          sender: m.sender,
+          text: m.textTh,
+        })),
+      });
 
       const newAiMsg: SocraticChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'socratic_tutor',
-        textTh: aiText,
+        textTh: data.reply.replyTh,
         timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
-        scaffoldingHint: hint,
-        followUpPrompt: followUp,
+        scaffoldingHint: data.reply.scaffoldingHint,
+        followUpPrompt: data.reply.followUpPrompt,
       };
-
-      setMessages(prev => [...prev, newAiMsg]);
-    }, 700);
+      setMessages((prev) => [...prev, newAiMsg]);
+    } catch (error) {
+      setAiError(
+        error instanceof Error
+          ? error.message
+          : lang === 'th'
+          ? 'ไม่สามารถติดต่อพี่รหัส AI ได้ในขณะนี้'
+          : 'Unable to reach AI Tutor right now.'
+      );
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  // Mic Simulation
+  // Real Web Speech API Voice Input
   const handleToggleMic = () => {
-    if (!isRecording) {
-      setIsRecording(true);
-      setTimeout(() => {
-        setIsRecording(false);
-        setInputText('พี่รหัส AI ครับ ทำไมวัตถุเบากับหนักถึงตกถึงพื้นพร้อมกัน?');
-      }, 2500);
-    } else {
+    setVoiceNotice(null);
+    if (isRecording) {
+      recognitionRef.current?.stop();
       setIsRecording(false);
+      return;
+    }
+
+    if (typeof window === 'undefined') return;
+    const SpeechRecCtor =
+      (window as unknown as { SpeechRecognition?: new () => BrowserSpeechRecognition; webkitSpeechRecognition?: new () => BrowserSpeechRecognition }).SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => BrowserSpeechRecognition }).webkitSpeechRecognition;
+
+    if (!SpeechRecCtor) {
+      setVoiceNotice(
+        lang === 'th'
+          ? 'เบราว์เซอร์นี้ยังไม่รองรับการพิมพ์ด้วยเสียง กรุณาพิมพ์คำถามลงในช่องข้อความ'
+          : 'Voice dictation is not supported in this browser. Please type your question.'
+      );
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecCtor();
+      recognition.lang = lang === 'th' ? 'th-TH' : 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+        if (transcript) {
+          setInputText((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+      };
+      recognition.onerror = () => {
+        setIsRecording(false);
+        setVoiceNotice(
+          lang === 'th'
+            ? 'ไม่สามารถรับเสียงจากไมโครโฟนได้ กรุณาตรวจสอบสิทธิ์ไมโครโฟนของเบราว์เซอร์'
+            : 'Microphone capture failed. Please check browser microphone permissions.'
+        );
+      };
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+      recognitionRef.current = recognition;
+      setIsRecording(true);
+      recognition.start();
+    } catch {
+      setIsRecording(false);
+      setVoiceNotice(
+        lang === 'th'
+          ? 'ไม่สามารถเริ่มรับเสียงจากไมโครโฟนได้'
+          : 'Could not start voice recognition.'
+      );
     }
   };
 
-  // TTS Simulation
-  const handleToggleSpeak = (msgId: string) => {
-    if (isSpeakingId === msgId) {
+  // Real Web SpeechSynthesis TTS
+  const handleToggleSpeak = (msg: SocraticChatMessage) => {
+    setVoiceNotice(null);
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setVoiceNotice(
+        lang === 'th'
+          ? 'เบราว์เซอร์นี้ไม่รองรับการอ่านออกเสียง'
+          : 'Speech synthesis is not supported in this browser.'
+      );
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    if (isSpeakingId === msg.id) {
       setIsSpeakingId(null);
-    } else {
-      setIsSpeakingId(msgId);
-      setTimeout(() => setIsSpeakingId(null), 4000);
+      return;
     }
+
+    const spokenText = [msg.textTh, msg.scaffoldingHint, msg.followUpPrompt].filter(Boolean).join('. ');
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+    utterance.rate = 1;
+    utterance.onend = () => setIsSpeakingId(null);
+    utterance.onerror = () => setIsSpeakingId(null);
+    setIsSpeakingId(msg.id);
+    window.speechSynthesis.speak(utterance);
   };
 
-  // Teacher Generate Recap
-  const handleGenerateRecapPoints = (insight: TeacherStruggleInsight) => {
-    setGeneratedTalkingPoints(
-      `📌 แผนสรุปจุดเข้าใจผิด 2 นาที (Micro-Recap) สำหรับคาบถัดไป:\n\n` +
-      `1. [Hook 30 วินาที] ทักทายนักเรียนพร้อมชูบีกเกอร์หรือภาพ: "ใครจำได้บ้างว่าทำไมหยดฟีนอล์ฟทาลีนแล้วถึงไม่เปลี่ยนสีทันที?"\n` +
-      `2. [Clarify 1 นาที] เน้นความต่าง: จุดสมมูล (โมลกรด = โมลเบส) VS จุดยุติ (สีเปลี่ยนเพราะอินดิเคเตอร์เปลี่ยนรูป)\n` +
-      `3. [Check 30 วินาที] ถามเร็ว 1 คำถามเพื่อเช็คความเข้าใจ: "ถ้าไทเทรต HCl กับ NaOH จุดสมมูลคือ pH เท่าใด?" -> ให้นักเรียนชูนิ้ว 7 นิ้วพร้อมกัน`
-    );
+  // Teacher Generate Recap via real Gemini API
+  const handleGenerateRecapPoints = async (insight: TeacherStruggleInsight) => {
+    if (isGeneratingRecap) return;
+    setIsGeneratingRecap(true);
+    setRecapError(null);
+
+    try {
+      const data = await postLearningAi<{ microRecapPlanTh: string }>(
+        '/api/learning-ai/socratic-talking-points',
+        {
+          subject: insight.subject,
+          topicTh: insight.topicTh,
+          commonMisconceptionTh: insight.commonMisconceptionTh,
+          suggestedLessonPlanTh: insight.suggestedLessonPlanTh,
+          strugglePercent: insight.studentStrugglePercent,
+          lang,
+        }
+      );
+      setGeneratedTalkingPoints(data.microRecapPlanTh);
+    } catch (error) {
+      setRecapError(
+        error instanceof Error
+          ? error.message
+          : lang === 'th'
+          ? 'ไม่สามารถสร้างสคริปต์สอนสรุปได้'
+          : 'Failed to generate lesson recap script.'
+      );
+    } finally {
+      setIsGeneratingRecap(false);
+    }
   };
 
   return (
@@ -182,15 +304,15 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
             <div className="space-y-1 min-w-0">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ข้อสงสัยครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
+                <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
               </div>
               <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--color-text-title)]">
-                <span>{lang === 'th' ? 'AI Socratic Voice Tutor & Teacher Insights' : 'AI Socratic Tutor'}</span>
+                <span>{lang === 'th' ? 'AI Socratic Tutor & Teacher Insights' : 'AI Socratic Tutor'}</span>
               </h1>
               <p className="text-[var(--color-text-body)] text-xs leading-relaxed">
-                {lang === 'th' 
-                  ? 'โหมดตัวอย่าง: บทสนทนาใช้คำตอบจำลอง ยังไม่ได้เชื่อม AI จริง ส่วนแดชบอร์ดครูแสดงข้อมูลตัวอย่าง'
-                  : 'Demo mode: responses are simulated, not connected to a live AI. Teacher insights use sample data.'}
+                {lang === 'th'
+                  ? 'ถาม-ตอบชวนคิดทีละขั้นด้วย Gemini ระดับโรงเรียน พร้อมสคริปต์สอนซ้ำ 2 นาทีสำหรับครูผู้สอน'
+                  : 'Step-by-step Socratic tutoring powered by your school Gemini AI key with 2-minute micro-recap generation.'}
               </p>
             </div>
           </div>
@@ -279,11 +401,11 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
                         {!isStudent && (
                           <button
                             type="button"
-                            onClick={() => handleToggleSpeak(msg.id)}
+                            onClick={() => handleToggleSpeak(msg)}
                             className="text-teal-800 dark:text-teal-300 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                           >
                             <Volume2 className="w-3 h-3" />
-                            <span>{isSpeakingId === msg.id ? (lang === 'th' ? 'กำลังอ่าน...' : 'Playing...') : (lang === 'th' ? 'ฟังเสียง' : 'Listen')}</span>
+                            <span>{isSpeakingId === msg.id ? (lang === 'th' ? 'กำลังอ่าน (กดหยุด)' : 'Speaking (Stop)') : (lang === 'th' ? 'ฟังเสียง' : 'Listen')}</span>
                           </button>
                         )}
                       </div>
@@ -295,11 +417,31 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
             </div>
 
             {/* Input Bar with Voice Button */}
-            <div className="pt-4 border-t border-[var(--color-border)]">
+            <div className="pt-4 border-t border-[var(--color-border)] space-y-2">
+              {aiError && (
+                <div role="alert" className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-300 shrink-0 mt-0.5" />
+                  <span>{aiError}</span>
+                </div>
+              )}
+
+              {voiceNotice && (
+                <div role="status" className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100 text-xs">
+                  {voiceNotice}
+                </div>
+              )}
+
               {isRecording && (
-                <div className="mb-2 p-2 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs flex items-center gap-2 animate-pulse">
+                <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs flex items-center gap-2 animate-pulse">
                   <Mic className="w-4 h-4 text-rose-700 dark:text-rose-300" />
                   <span>{lang === 'th' ? 'กำลังรับฟังเสียงพูดของคุณ... (พูดคำถามได้เลยครับ)' : 'Listening to your voice query...'}</span>
+                </div>
+              )}
+
+              {isSending && (
+                <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-300 dark:border-teal-700 text-teal-900 dark:text-teal-100 text-xs flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-teal-700 dark:text-teal-300" />
+                  <span>{lang === 'th' ? 'พี่รหัส AI กำลังคิดคำใบ้ชวนวิเคราะห์...' : 'AI Tutor is crafting a Socratic hint...'}</span>
                 </div>
               )}
 
@@ -307,12 +449,13 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleMic}
-                  className={`p-3 rounded-xl border transition cursor-pointer ${
+                  disabled={isSending}
+                  className={`p-3 rounded-xl border transition cursor-pointer disabled:opacity-50 ${
                     isRecording 
                       ? 'bg-rose-700 border-rose-700 text-white animate-bounce' 
                       : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-title)] hover:opacity-90'
                   }`}
-                  title="Voice Input"
+                  title={lang === 'th' ? 'พิมพ์คำถามด้วยเสียง' : 'Voice Input'}
                 >
                   {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                 </button>
@@ -320,18 +463,20 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
                 <input
                   type="text"
                   value={inputText}
+                  disabled={isSending}
                   onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyDown={(e) => e.key === 'Enter' && void handleSendMessage()}
                   placeholder={lang === 'th' ? 'พิมพ์คำถาม หรือกดไมค์เพื่อพูดคุยกับพี่รหัส AI...' : 'Ask a question or use voice mic...'}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs sm:text-sm text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs sm:text-sm text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-60"
                 />
 
                 <button
                   type="button"
-                  onClick={() => handleSendMessage()}
-                  className="p-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-slate-950 font-bold transition shadow-xs cursor-pointer"
+                  disabled={isSending || !inputText.trim()}
+                  onClick={() => void handleSendMessage()}
+                  className="p-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 disabled:opacity-50 text-slate-950 font-bold transition shadow-xs cursor-pointer"
                 >
-                  <Send className="w-5 h-5" />
+                  {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>
               </div>
             </div>
@@ -473,12 +618,31 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => handleGenerateRecapPoints(selectedInsight)}
-                    className="w-full py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+                    disabled={isGeneratingRecap}
+                    onClick={() => void handleGenerateRecapPoints(selectedInsight)}
+                    className="w-full py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
                   >
-                    <Sparkles className="w-4 h-4 text-yellow-300" />
-                    <span>{lang === 'th' ? 'สร้างสคริปต์สอนสรุป 2 นาทีทันที' : 'Generate 2-Min Lecture Script'}</span>
+                    {isGeneratingRecap ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 text-yellow-300" />
+                    )}
+                    <span>
+                      {isGeneratingRecap
+                        ? lang === 'th'
+                          ? 'กำลังสร้างสคริปต์ด้วย Gemini...'
+                          : 'Generating script...'
+                        : lang === 'th'
+                        ? 'สร้างสคริปต์สอนสรุป 2 นาทีด้วย AI'
+                        : 'Generate 2-Min Lecture Script'}
+                    </span>
                   </button>
+
+                  {recapError && (
+                    <div role="alert" className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs">
+                      {recapError}
+                    </div>
+                  )}
 
                   {/* Output script */}
                   {generatedTalkingPoints && (

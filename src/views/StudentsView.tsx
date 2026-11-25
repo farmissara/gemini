@@ -31,7 +31,6 @@ import {
   Award, 
   Phone, 
   Mail, 
-  ExternalLink,
   CheckCircle, 
   XCircle, 
   FileText, 
@@ -80,7 +79,6 @@ import {
 import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
-import { PagedList } from '../components/PagedList';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { 
   ALL_GRADE_LEVELS, 
@@ -408,6 +406,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [roomPresetError, setRoomPresetError] = useState<string | null>(null);
   const [isSavingRoomOptions, setIsSavingRoomOptions] = useState(false);
   const [accountLinks, setAccountLinks] = useState<StudentAccountLink[]>([]);
+  const [approvalsShowAll, setApprovalsShowAll] = useState(false);
   const [parentAccounts, setParentAccounts] = useState<StaffParentAccountLink[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
@@ -2163,27 +2162,40 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       )}
 
-      {activeTab === 'approvals' && canManageApprovals && (
+      {activeTab === 'approvals' && canManageApprovals && (() => {
+        const pendingOnly = accountLinks.filter((a) => a.status === 'pending');
+        const visibleAccountLinks = approvalsShowAll || pendingOnly.length === 0 ? accountLinks : pendingOnly;
+        return (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
           <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span>อนุมัติการสมัครเข้าโรงเรียนของนักเรียน &amp; ผูกระเบียน DMC</span>
+                  <span>กล่องคำขอสมัครเข้าโรงเรียนรออนุมัติ ({pendingOnly.length} รายการ)</span>
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  นักเรียนที่สมัครสมาชิกด้วยตนเองจากหน้าลงทะเบียนจะมีสถานะ <strong className="text-[var(--color-text-title)]">รออนุมัติ (pending)</strong> ผู้ดูแลโรงเรียนสามารถกดอนุมัติเปิดใช้งานและจับคู่กับระเบียนนักเรียนได้ทันที (เข้าถึงได้ทั้งจากหน้านี้และเมนู ตั้งค่าระบบ → อนุมัติ &amp; ผูกบัญชีนักเรียน)
+                  ตรวจสอบนักเรียนที่สมัครสมาชิกด้วยตนเองแล้วอนุมัติผูกระเบียน DMC ได้ทันที หากต้องการสร้างรหัสผ่านเริ่มต้นยกห้องหรือดูบัญชีทั้งหมดให้กด{' '}
+                  <strong className="text-[var(--color-text-title)]">จัดการในศูนย์ตั้งค่า</strong>
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                {accountLinks.length > 0 && pendingOnly.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setApprovalsShowAll((prev) => !prev)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer shrink-0"
+                  >
+                    <span>{approvalsShowAll ? `ดูเฉพาะรออนุมัติ (${pendingOnly.length})` : `ดูทุกสถานะ (${accountLinks.length})`}</span>
+                  </button>
+                )}
                 {onOpenStudentAccountsSettings && (
                   <button
                     type="button"
                     onClick={onOpenStudentAccountsSettings}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-primary-light)] hover:opacity-90 text-xs font-bold text-[var(--color-primary-text)] cursor-pointer shrink-0"
                   >
-                    <span>จัดการในศูนย์ตั้งค่า →</span>
+                    <span>ออกรหัส &amp; จัดการบัญชีทั้งหมด →</span>
                   </button>
                 )}
                 <button
@@ -2211,7 +2223,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
             {accountsLoading ? (
               <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">กำลังโหลดรายการสมัครสมาชิกของนักเรียน...</p>
-            ) : accountLinks.length === 0 ? (
+            ) : visibleAccountLinks.length === 0 ? (
               <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">ยังไม่มีคำขอสมัครสมาชิกนักเรียนในโรงเรียนนี้</p>
             ) : (
               <div className="overflow-x-auto border border-[var(--color-border)] rounded-xl">
@@ -2225,7 +2237,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
-                    {accountLinks.map((acc) => {
+                    {visibleAccountLinks.map((acc) => {
                       const linkedStudent = students.find((s) => s.id === acc.student_id);
                       const draftStudentId = linkDrafts[acc.id] ?? acc.student_id ?? '';
                       const isBusy = processingAccountId === acc.id;
@@ -2388,7 +2400,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {activeTab === 'gradebook' && (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">

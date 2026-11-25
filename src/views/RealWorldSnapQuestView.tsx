@@ -1,27 +1,20 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Camera, 
   Sparkles, 
   CheckCircle2, 
   Upload, 
-  Leaf, 
-  Calculator, 
-  Compass, 
-  BookOpen, 
-  Globe, 
-  Award, 
   Plus, 
   X, 
-  ChevronRight, 
-  ArrowRight,
-  Eye,
   RotateCw,
-  Coins
+  AlertTriangle
 } from 'lucide-react';
 import { PagedList } from '../components/PagedList';
 import { RealWorldSnapQuest, AppLanguage, UserRole, AuthUser, PortfolioItem } from '../types';
 import { INITIAL_REAL_WORLD_QUESTS } from '../data/innovativeFeaturesData';
 import { getModuleTone } from '../lib/moduleTheme';
+import { compressImageFileToDataUrl } from '../lib/imageCompression';
+import { postLearningAi } from '../lib/learningAiClient';
 
 interface RealWorldSnapQuestViewProps {
   lang?: AppLanguage;
@@ -43,10 +36,12 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
   const [activeQuestForUpload, setActiveQuestForUpload] = useState<RealWorldSnapQuest | null>(null);
 
-  // Simulated Camera / Upload State
-  const [selectedSamplePhoto, setSelectedSamplePhoto] = useState<string>('');
+  // Real Camera / Upload State
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadedPhotoDataUrl, setUploadedPhotoDataUrl] = useState<string>('');
   const [studentNote, setStudentNote] = useState<string>('');
   const [isAiAnalyzing, setIsAiAnalyzing] = useState<boolean>(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   // Teacher custom quest creation modal
   const [showTeacherAddQuest, setShowTeacherAddQuest] = useState<boolean>(false);
@@ -60,67 +55,93 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
     return true;
   });
 
-  // Sample photos for instant testing
-  const samplePhotos = [
-    {
-      label: lang === 'th' ? 'ใบกล้วย (เส้นใบขนาน)' : 'Banana Leaf (Parallel Veins)',
-      url: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=500&auto=format&fit=crop&q=80',
-      detected: 'ใบกล้วย (Banana Leaf) - เส้นใบเรียงขนานกันอย่างชัดเจน',
-      confidence: 96.8,
-      feedback: 'ตัวอย่าง: เส้นใบขนานของพืชใบเลี้ยงเดี่ยว (Monocotyledon) สอดคล้องกับบทเรียน',
-    },
-    {
-      label: lang === 'th' ? 'ใบเสร็จสินค้า (คำนวณ VAT 7%)' : 'Store Receipt (VAT 7%)',
-      url: 'https://images.unsplash.com/photo-1554415707-9e4966668836?w=500&auto=format&fit=crop&q=80',
-      detected: 'ใบเสร็จชำระเงิน - ยอดรวม 214 บาท (ราคาสินค้า 200 + VAT 7% 14 บาท)',
-      confidence: 98.2,
-      feedback: 'ตัวอย่าง: สินค้า 200 บาท และ VAT 7% เท่ากับ 14 บาท',
-    },
-    {
-      label: lang === 'th' ? 'กรรไกรตัดเล็บ (คานงัดอันดับ 3)' : 'Nail Clipper (Class 3 Lever)',
-      url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
-      detected: 'กรรไกรตัดเล็บ - กลไกคานงัดผสม (Compound Lever Mechanism)',
-      confidence: 94.5,
-      feedback: 'ตัวอย่าง: กรรไกรตัดเล็บใช้กลไกคานผสม',
-    },
-    {
-      label: lang === 'th' ? 'ฉลากขนมภาษาอังกฤษ' : 'English Food Label',
-      url: 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=500&auto=format&fit=crop&q=80',
-      detected: 'ฉลากโภชนาการ Nutrition Facts & Ingredients',
-      confidence: 97.1,
-      feedback: 'ตัวอย่าง: ฉลากมีคำศัพท์ Sodium, Carbohydrates และ Dietary Fiber',
-    },
-  ];
-
   const handleStartUpload = (quest: RealWorldSnapQuest) => {
     setActiveQuestForUpload(quest);
-    setSelectedSamplePhoto(samplePhotos[0]?.url || '');
+    setUploadedPhotoDataUrl('');
     setStudentNote('');
+    setVerifyError(null);
   };
 
-  const handleSimulateAiVerification = () => {
-    if (!activeQuestForUpload) return;
-    setIsAiAnalyzing(true);
+  const handlePhotoFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
 
-    setTimeout(() => {
-      setIsAiAnalyzing(false);
-      const matchedSample = samplePhotos.find(s => s.url === selectedSamplePhoto) || samplePhotos[0];
+    if (!file.type.startsWith('image/')) {
+      setVerifyError(lang === 'th' ? 'กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG / PNG / WebP)' : 'Please choose an image file.');
+      return;
+    }
+
+    setVerifyError(null);
+    try {
+      const compressed = await compressImageFileToDataUrl(file, {
+        maxDimension: 960,
+        quality: 0.78,
+        maxDataUrlLength: 450_000,
+        mimeType: 'image/jpeg',
+      });
+      if (!compressed.startsWith('data:image/')) {
+        throw new Error('Invalid image payload');
+      }
+      setUploadedPhotoDataUrl(compressed);
+    } catch {
+      setVerifyError(lang === 'th' ? 'ไม่สามารถอ่านหรือย่อขนาดภาพได้ กรุณาลองใหม่อีกครั้ง' : 'Could not process the selected image.');
+    }
+  };
+
+  const handleVerifyWithGemini = async () => {
+    if (!activeQuestForUpload || isAiAnalyzing) return;
+    if (!uploadedPhotoDataUrl) {
+      setVerifyError(lang === 'th' ? 'กรุณาถ่ายภาพหรือเลือกไฟล์ภาพก่อนส่งตรวจ' : 'Please capture or upload a photo first.');
+      return;
+    }
+
+    setIsAiAnalyzing(true);
+    setVerifyError(null);
+
+    try {
+      const data = await postLearningAi<{
+        verification: {
+          identifiedObject: string;
+          confidencePercent: number;
+          feedbackTh: string;
+          isPass: boolean;
+        };
+      }>('/api/learning-ai/snap-quest-verify', {
+        questTitle: activeQuestForUpload.titleTh,
+        subject: activeQuestForUpload.subject,
+        scenario: activeQuestForUpload.scenarioTh,
+        instruction: activeQuestForUpload.instructionTh,
+        studentNote: studentNote.trim() || undefined,
+        imageDataUrl: uploadedPhotoDataUrl,
+        lang,
+      });
 
       const updatedQuest: RealWorldSnapQuest = {
         ...activeQuestForUpload,
         status: 'submitted',
-        submittedPhotoUrl: selectedSamplePhoto,
+        submittedPhotoUrl: uploadedPhotoDataUrl,
         aiVerificationResult: {
-          identifiedObject: matchedSample.detected,
-          confidencePercent: matchedSample.confidence,
-          feedbackTh: matchedSample.feedback,
-          isPass: true,
-        }
+          identifiedObject: data.verification.identifiedObject,
+          confidencePercent: Math.round(Number(data.verification.confidencePercent) || 0),
+          feedbackTh: data.verification.feedbackTh,
+          isPass: Boolean(data.verification.isPass),
+        },
       };
 
       setQuests(prev => prev.map(q => q.id === activeQuestForUpload.id ? updatedQuest : q));
       setActiveQuestForUpload(null);
-    }, 1500);
+    } catch (error) {
+      setVerifyError(
+        error instanceof Error
+          ? error.message
+          : lang === 'th'
+          ? 'ไม่สามารถส่งภาพตรวจผ่าน AI ได้ในขณะนี้'
+          : 'Failed to verify photo with AI.'
+      );
+    } finally {
+      setIsAiAnalyzing(false);
+    }
   };
 
   const handleCreateQuestByTeacher = (e: React.FormEvent) => {
@@ -169,15 +190,15 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
             <div className="space-y-1 min-w-0">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • โหมดตัวอย่าง' : 'Real-World Quest Demo'}</span>
+                <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • ตรวจภาพด้วย Gemini Vision' : 'Real-World Vision Quest'}</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--color-text-title)]">
                 {lang === 'th' ? 'ภารกิจแปลงบทเรียนสู่ชีวิตจริง' : 'Real-World Missions'}
               </h1>
               <p className="text-[var(--color-text-body)] text-xs sm:text-sm leading-relaxed">
-                {lang === 'th' 
-                  ? 'ลองเชื่อมบทเรียนกับสิ่งรอบตัวด้วยภาพตัวอย่าง ผลที่แสดงเป็นข้อมูลจำลอง ยังไม่มี AI ตรวจภาพจริงและไม่มีการยืนยันคะแนน'
-                  : 'Try sample images to connect lessons to daily life. Results are simulated; no real AI verification or rewards are issued.'}
+                {lang === 'th'
+                  ? 'ถ่ายภาพสิ่งของรอบตัวที่เชื่อมโยงกับบทเรียน แล้วให้ Gemini Vision ช่วยประเมินความสอดคล้องเบื้องต้นก่อนส่งครูยืนยันผล'
+                  : 'Capture real-world examples around you and let Gemini Vision provide initial academic feedback before teacher review.'}
               </p>
             </div>
           </div>
@@ -226,7 +247,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
         </div>
 
         <span className="text-xs text-[var(--color-text-muted)] font-medium">
-          {quests.filter(q => q.status === 'verified').length} {lang === 'th' ? 'ภารกิจยืนยันโดยครู' : 'teacher-verified quests'} • {quests.filter(q => q.status === 'submitted').length} {lang === 'th' ? 'ผลตัวอย่าง' : 'demo results'}
+          {quests.filter(q => q.status === 'verified').length} {lang === 'th' ? 'ภารกิจยืนยันโดยครู' : 'teacher-verified quests'} • {quests.filter(q => q.status === 'submitted').length} {lang === 'th' ? 'รอครูยืนยันผล' : 'submitted for review'}
         </span>
       </div>
 
@@ -271,12 +292,21 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
 
                 {/* If verified, show result summary */}
                 {quest.aiVerificationResult && (
-                  <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-xs text-emerald-950 dark:text-emerald-100 space-y-1">
-                    <p className="font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-                      <span>{quest.aiVerificationResult.identifiedObject}</span>
+                  <div className={`p-3 rounded-xl border text-xs space-y-1 ${
+                    quest.aiVerificationResult.isPass
+                      ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100'
+                      : 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100'
+                  }`}>
+                    <p className="font-bold flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>{quest.aiVerificationResult.identifiedObject}</span>
+                      </span>
+                      <span className="text-[10px] font-mono opacity-80">
+                        {quest.aiVerificationResult.confidencePercent}%
+                      </span>
                     </p>
-                    <p className="text-[11px] text-emerald-900 dark:text-emerald-200">
+                    <p className="text-[11px] opacity-90">
                       {quest.aiVerificationResult.feedbackTh}
                     </p>
                   </div>
@@ -289,7 +319,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                   {isVerified
                     ? (lang === 'th' ? 'ครูยืนยันแล้ว' : 'Teacher verified')
                     : hasDemoResult
-                    ? (lang === 'th' ? 'ผลจำลอง • รอยืนยันจากครู' : 'Demo result • awaiting teacher')
+                    ? (lang === 'th' ? 'AI ตรวจแล้ว • รอยืนยันจากครู' : 'AI checked • awaiting teacher')
                     : (lang === 'th' ? 'รอส่งรูปถ่าย' : 'Ready for photo upload')}
                 </span>
 
@@ -303,8 +333,8 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                           id: `port-quest-${quest.id}-${Date.now()}`,
                           schoolId,
                           ownerId: currentUser?.studentRecordId || currentUser?.id || 'stu-quest',
-                          ownerRole: currentRole === 'teacher' || currentRole === 'admin' ? 'teacher' : 'student',
-                          ownerName: currentUser?.fullNameTh || 'ผู้เรียน EduVerse',
+                          ownerRole: currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin' ? 'teacher' : 'student',
+                          ownerName: currentUser?.fullNameTh || 'ผู้เรียน BaanPakKru',
                           title: `ภารกิจสำรวจจริง: ${quest.titleTh}`,
                           category: 'activity',
                           year: String(new Date().getFullYear() + 543),
@@ -333,7 +363,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                     }`}
                   >
                     <Camera className="w-4 h-4" />
-                    <span>{hasDemoResult ? (lang === 'th' ? 'ลองตัวอย่างอีกครั้ง' : 'Try demo again') : (lang === 'th' ? 'ดูตัวอย่าง' : 'View demo')}</span>
+                    <span>{hasDemoResult ? (lang === 'th' ? 'ส่งภาพใหม่' : 'Retake / Re-upload') : (lang === 'th' ? 'ถ่ายภาพส่งตรวจ' : 'Capture / Upload')}</span>
                   </button>
                 </div>
               </div>
@@ -342,7 +372,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
         }} />
       </div>
 
-      {/* Simulated Camera & AI Upload Modal */}
+      {/* Real Camera & Gemini Vision Upload Modal */}
       {activeQuestForUpload && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative space-y-4">
@@ -350,7 +380,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               <div>
                 <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
                   <Camera className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                  <span>{lang === 'th' ? 'ทดลองผลตรวจจากภาพตัวอย่าง' : 'Sample image demo'}</span>
+                  <span>{lang === 'th' ? 'ถ่ายภาพ / อัปโหลดส่งตรวจด้วย AI' : 'Capture / Upload for Gemini Check'}</span>
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)] truncate max-w-xs">
                   {activeQuestForUpload.titleTh}
@@ -365,55 +395,67 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               </button>
             </div>
 
-            {/* Photo Viewport Simulation */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => void handlePhotoFileSelected(e)}
+              className="hidden"
+            />
+
+            {/* Photo Viewport */}
             <div className="w-full h-56 rounded-2xl bg-slate-900 border border-slate-700 relative overflow-hidden flex items-center justify-center">
-              {selectedSamplePhoto ? (
+              {uploadedPhotoDataUrl ? (
                 <img
-                  src={selectedSamplePhoto}
-                  alt="Snapshot"
+                  src={uploadedPhotoDataUrl}
+                  alt="Uploaded snap quest"
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="text-center text-slate-300 text-xs">
-                  <Camera className="w-8 h-8 mx-auto mb-1 opacity-70" />
-                  <p>{lang === 'th' ? 'เลือกภาพตัวอย่างด้านล่างเพื่อจำลองถ่ายภาพ' : 'Select sample below'}</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-center text-slate-300 hover:text-white text-xs space-y-2 p-6 cursor-pointer"
+                >
+                  <Camera className="w-8 h-8 mx-auto opacity-80" />
+                  <p className="font-semibold">
+                    {lang === 'th' ? 'แตะเพื่อเปิดกล้องหรือเลือกภาพถ่ายจากเครื่อง' : 'Tap to capture or choose an image'}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {activeQuestForUpload.instructionTh}
+                  </p>
+                </button>
               )}
 
               {isAiAnalyzing && (
                 <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-2 animate-fade-in">
                   <RotateCw className="w-8 h-8 text-emerald-400 animate-spin" />
                   <p className="text-xs font-bold text-emerald-300">
-                    {lang === 'th' ? 'กำลังจำลองผลตรวจจากภาพตัวอย่าง...' : 'Simulating a sample result...'}
+                    {lang === 'th' ? 'Gemini Vision กำลังวิเคราะห์ภาพถ่ายของคุณ...' : 'Gemini Vision is analyzing your photo...'}
                   </p>
                 </div>
               )}
-              <span className="absolute left-2 top-2 rounded-md bg-amber-400 px-2 py-1 text-[10px] font-bold text-slate-950">
-                {lang === 'th' ? 'ภาพตัวอย่าง • ไม่ได้ส่งภาพจริง' : 'SAMPLE • no real upload'}
-              </span>
             </div>
 
-            {/* Quick Sample Selector */}
-            <div className="space-y-1.5 text-xs">
-              <label className="font-bold text-[var(--color-text-title)] block">
-                {lang === 'th' ? 'เลือกภาพจำลองการถ่ายส่งตรวจ:' : 'Select sample photograph:'}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {samplePhotos.map((sample, sIdx) => (
-                  <button
-                    key={sIdx}
-                    type="button"
-                    onClick={() => setSelectedSamplePhoto(sample.url)}
-                    className={`p-2 rounded-xl border text-left truncate text-xs transition cursor-pointer ${
-                      selectedSamplePhoto === sample.url
-                        ? 'border-emerald-600 bg-emerald-100 dark:bg-emerald-950 text-emerald-950 dark:text-emerald-100 font-bold'
-                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                    }`}
-                  >
-                    {sample.label}
-                  </button>
-                ))}
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isAiAnalyzing}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-emerald-500 text-xs font-bold text-[var(--color-text-title)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>
+                  {uploadedPhotoDataUrl
+                    ? lang === 'th'
+                      ? 'เปลี่ยน / ถ่ายภาพใหม่'
+                      : 'Choose Another Photo'
+                    : lang === 'th'
+                    ? 'ถ่ายภาพ / เลือกไฟล์ภาพ'
+                    : 'Capture / Upload Image'}
+                </span>
+              </button>
             </div>
 
             {/* Note Input */}
@@ -430,23 +472,31 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               />
             </div>
 
+            {verifyError && (
+              <div role="alert" className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-300 shrink-0 mt-0.5" />
+                <span>{verifyError}</span>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
                 type="button"
+                disabled={isAiAnalyzing}
                 onClick={() => setActiveQuestForUpload(null)}
-                className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-bold text-xs cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-bold text-xs cursor-pointer disabled:opacity-50"
               >
                 {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
               </button>
               <button
                 type="button"
-                disabled={isAiAnalyzing}
-                onClick={handleSimulateAiVerification}
-                className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
+                disabled={isAiAnalyzing || !uploadedPhotoDataUrl}
+                onClick={() => void handleVerifyWithGemini()}
+                className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-yellow-300" />
-                <span>{lang === 'th' ? 'แสดงผลตัวอย่าง' : 'Show demo result'}</span>
+                <span>{lang === 'th' ? 'ส่งตรวจด้วย Gemini AI' : 'Verify with Gemini AI'}</span>
               </button>
             </div>
           </div>

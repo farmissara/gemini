@@ -1164,6 +1164,9 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
           <SubjectLabSimulationView
             currentUserRole={currentUser?.role}
             currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+            schoolId={currentUser?.schoolId}
+            userId={currentUser?.id}
+            studentId={currentUser?.studentRecordId}
             lang={lang}
             onEarnRewards={onEarnRewards}
             onBackToGames={handleBackFromGame}

@@ -51,6 +51,7 @@ interface BehaviorSdqViewProps {
   onAddSdqAssessment: (sdq: SdqAssessment) => void;
   lang: AppLanguage;
   currentRole: UserRole;
+  currentUserName?: string;
   academicYear: string;
   currentSemester: string;
 }
@@ -64,6 +65,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   onAddSdqAssessment,
   lang,
   currentRole,
+  currentUserName,
   academicYear,
   currentSemester
 }) => {
@@ -150,7 +152,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       points: recordType === 'merit' ? Math.abs(recordPoints) : -Math.abs(recordPoints),
       category: recordCategory,
       notes: recordNotes || (recordType === 'merit' ? 'บันทึกคะแนนความประพฤติเชิงบวก' : 'ตัดคะแนนความประพฤติ'),
-      recordedBy: currentRole === 'teacher' ? 'อ.ดร.ประเสริฐ ถาวร' : 'ฝ่ายกิจการนักเรียน',
+      recordedBy: currentUserName?.trim() || (currentRole === 'teacher' ? 'ครูผู้สอน / ครูที่ปรึกษา' : 'ฝ่ายกิจการนักเรียน'),
       lineNotified: notifyParentLine
     };
 
@@ -187,7 +189,9 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       studentName: `${student.firstNameTh} ${student.lastNameTh}`,
       studentRoom: student.room,
       assessorType: 'teacher',
-      assessorName: 'อ.ดร.ประเสริฐ ถาวร (ครูที่ปรึกษา)',
+      assessorName: currentUserName?.trim()
+        ? `${currentUserName.trim()} (${currentRole === 'teacher' ? 'ครูที่ปรึกษา' : 'ฝ่ายกิจการนักเรียน'})`
+        : 'ครูที่ปรึกษา / ฝ่ายกิจการนักเรียน',
       academicYear,
       semester: currentSemester,
       emotionalScore: sdqEmotional,

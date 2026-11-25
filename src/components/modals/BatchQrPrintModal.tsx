@@ -40,7 +40,7 @@ export const BatchQrPrintModal: React.FC<BatchQrPrintModalProps> = ({
   const [pdfNotice, setPdfNotice] = useState<string | null>(null);
 
   const schoolCode = school?.code || 'EDU';
-  const schoolNameTh = school?.nameTh || 'สถานศึกษา EduVerse';
+  const schoolNameTh = school?.nameTh || 'สถานศึกษา BaanPakKru';
 
   const gradeLevels = useMemo(
     () => Array.from(new Set(students.map((s) => s.gradeLevel).filter(Boolean))),
@@ -91,7 +91,7 @@ export const BatchQrPrintModal: React.FC<BatchQrPrintModalProps> = ({
 
   const handleDownloadPdf = () => {
     if (printableStudents.length === 0) return;
-    const { fileName } = downloadBatchStudentQrCodesPdf({
+    const { fileName, fileCount } = downloadBatchStudentQrCodesPdf({
       students: printableStudents,
       school,
       layout: layoutDensity,
@@ -99,10 +99,14 @@ export const BatchQrPrintModal: React.FC<BatchQrPrintModalProps> = ({
     });
     setPdfNotice(
       lang === 'th'
-        ? `ดาวน์โหลดไฟล์ PDF รวม ${printableStudents.length} คนสำเร็จ (${fileName})`
+        ? fileCount > 1
+          ? `แบ่งดาวน์โหลด PDF อัตโนมัติ ${fileCount} ไฟล์สำหรับนักเรียน ${printableStudents.length} คนสำเร็จ (ลดการใช้หน่วยความจำ)`
+          : `ดาวน์โหลดไฟล์ PDF รวม ${printableStudents.length} คนสำเร็จ (${fileName})`
+        : fileCount > 1
+        ? `Downloaded ${fileCount} split PDF files for ${printableStudents.length} students.`
         : `Downloaded combined PDF for ${printableStudents.length} students (${fileName})`
     );
-    setTimeout(() => setPdfNotice(null), 4500);
+    setTimeout(() => setPdfNotice(null), 5000);
   };
 
   const handleBrowserPrint = () => {

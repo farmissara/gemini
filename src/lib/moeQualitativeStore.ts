@@ -9,6 +9,16 @@ import {
   evaluateObecAttributeSummary,
   evaluateObecReadingSummary,
 } from '../data/moeCurriculumStandards';
+import { getSupabaseClient } from './supabase';
+
+const isMissingTableError = (error: { code?: string; message?: string } | null | undefined): boolean => {
+  if (!error) return false;
+  if (error.code === '42P01' || error.code === 'PGRST205') return true;
+  const msg = (error.message || '').toLowerCase();
+  return msg.includes('does not exist') || msg.includes('could not find the table');
+};
+
+export const MOE_QUALITATIVE_UPDATED_EVENT = 'baanpakkru:moe-qualitative-updated';
 
 export interface StudentQualitativeAssessment {
   studentId: string;
@@ -78,6 +88,88 @@ export function saveQualitativeAssessments(
   } catch {
     // Ignore storage quota issues
   }
+
+  if (!schoolId || schoolId === 'default-school') return;
+  const client = getSupabaseClient();
+  if (!client) return;
+  const rows = Object.values(records).map((rec) => ({
+    school_id: schoolId,
+    record_kind: 'student_qualitative',
+    record_id: `${academicYear || '2569'}_${semester || '1'}_${rec.studentId}`,
+    academic_year: academicYear || '2569',
+    semester: semester || '1',
+    student_id: rec.studentId,
+    payload: rec,
+    updated_at: new Date().toISOString(),
+  }));
+  if (rows.length === 0) return;
+  void client
+    .from('school_moe_qualitative')
+    .upsert(rows, { onConflict: 'school_id,record_kind,record_id' })
+    .then(({ error }) => {
+      if (error && !isMissingTableError(error)) {
+        console.warn('[MoeQualitative] Failed to sync qualitative records to Supabase:', error.message);
+      }
+    });
+}
+
+export async function hydrateMoeQualitativeFromSupabase(
+  schoolId: string,
+  academicYear: string,
+  semester: string
+): Promise<void> {
+  if (!schoolId || schoolId === 'default-school') return;
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  const { data, error } = await client
+    .from('school_moe_qualitative')
+    .select('record_kind, record_id, academic_year, semester, payload')
+    .eq('school_id', schoolId);
+
+  if (error) {
+    if (!isMissingTableError(error)) {
+      console.warn('[MoeQualitative] Failed to load qualitative records from Supabase:', error.message);
+    }
+    return;
+  }
+  if (!data || data.length === 0 || typeof window === 'undefined') return;
+
+  const qualByPeriod = new Map<string, Record<string, StudentQualitativeAssessment>>();
+  for (const row of data) {
+    if (row.record_kind === 'pp5_course_config' && row.payload) {
+      const courseId = String(row.record_id || '').replace(/^pp5_/, '');
+      if (courseId) {
+        try {
+          window.localStorage.setItem(pp5ConfigKey(courseId), JSON.stringify(row.payload));
+        } catch {
+          // ignore quota error
+        }
+      }
+    } else if (row.record_kind === 'student_qualitative' && row.payload) {
+      const rec = row.payload as StudentQualitativeAssessment;
+      const key = qualStorageKey(
+        schoolId,
+        String(row.academic_year || academicYear || '2569'),
+        String(row.semester || semester || '1')
+      );
+      const bucket = qualByPeriod.get(key) || {};
+      bucket[rec.studentId] = rec;
+      qualByPeriod.set(key, bucket);
+    }
+  }
+
+  for (const [storageKey, bucket] of qualByPeriod.entries()) {
+    try {
+      const currentRaw = window.localStorage.getItem(storageKey);
+      const current = currentRaw ? (JSON.parse(currentRaw) as Record<string, StudentQualitativeAssessment>) : {};
+      window.localStorage.setItem(storageKey, JSON.stringify({ ...current, ...bucket }));
+    } catch {
+      // ignore quota error
+    }
+  }
+
+  window.dispatchEvent(new CustomEvent(MOE_QUALITATIVE_UPDATED_EVENT, { detail: { schoolId } }));
 }
 
 export function getStudentQualitativeRecord(
@@ -137,13 +229,33 @@ export function loadPp5CourseSettings(courseId: string, academicYear: string): P
   }
 }
 
-export function savePp5CourseSettings(courseId: string, settings: Pp5CourseSettings): void {
+export function savePp5CourseSettings(courseId: string, settings: Pp5CourseSettings, schoolId?: string): void {
   if (typeof window === 'undefined' || !courseId) return;
   try {
     window.localStorage.setItem(pp5ConfigKey(courseId), JSON.stringify(settings));
   } catch {
     // Ignore storage quota issues
   }
+  if (!schoolId || schoolId === 'default-school') return;
+  const client = getSupabaseClient();
+  if (!client) return;
+  void client
+    .from('school_moe_qualitative')
+    .upsert(
+      {
+        school_id: schoolId,
+        record_kind: 'pp5_course_config',
+        record_id: `pp5_${courseId}`,
+        payload: settings,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'school_id,record_kind,record_id' }
+    )
+    .then(({ error }) => {
+      if (error && !isMissingTableError(error)) {
+        console.warn('[MoeQualitative] Failed to sync Pp5 course config:', error.message);
+      }
+    });
 }
 
 export interface DetailedStudentCourseAttendance {

@@ -45,6 +45,7 @@ interface InfirmaryHealthViewProps {
   lang: AppLanguage;
   currentRole: UserRole;
   currentUserId: string;
+  currentUserName?: string;
 }
 
 export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
@@ -55,6 +56,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   lang,
   currentRole,
   currentUserId,
+  currentUserName,
 }) => {
   const isAdmin = currentRole === 'admin' || currentRole === 'super_admin';
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
@@ -81,7 +83,9 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   const [medication, setMedication] = useState(medicationPresets[0] || 'Paracetamol 500mg 1 เม็ด');
   const [bedNumber, setBedNumber] = useState(bedOptions[0] || 'เตียง 1');
   const [visitStatus, setVisitStatus] = useState<InfirmaryStatus>('resting');
-  const [nurseName, setNurseName] = useState('พว.สุดารัตน์ เจริญสุข (พยาบาลวิชาชีพ)');
+  const [nurseName, setNurseName] = useState(
+    currentUserName?.trim() || (currentRole === 'teacher' ? 'ครูเวรห้องพยาบาล' : 'เจ้าหน้าที่ห้องพยาบาล')
+  );
   const [notifyParent, setNotifyParent] = useState(true);
   const [infirmaryTab, setInfirmaryTab] = useState<'visits' | 'beds' | 'allergies'>('visits');
 

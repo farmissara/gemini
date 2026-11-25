@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Flame, 
   Sparkles, 
@@ -27,6 +27,8 @@ import {
   SeasonPassTier, 
   DailyMicroQuest, 
   AppLanguage, 
+  AuthUser,
+  PlayerScore,
   UserRole 
 } from '../types';
 import { 
@@ -36,26 +38,133 @@ import {
 } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
+import { getLocalDateString } from '../lib/date';
+import {
+  CAMPUS_DATA_UPDATED_EVENT,
+  loadStudyStreakPassState,
+  saveStudyStreakPassState,
+  type StudyStreakPassPersistence,
+} from '../lib/campusDataStore';
 
 interface StudyStreakQuestPassViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  schoolId?: string;
+  currentUser?: AuthUser | null;
+  playerScores?: PlayerScore[];
+  onEarnRewards?: (userId: string, exp: number, gems: number, isWin: boolean) => void;
 }
 
 export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> = ({
   lang = 'th',
   currentRole = 'student',
-  currentUserName = 'ด.ช. ภูมิใจ รักเรียน'
+  currentUserName = 'นักเรียน',
+  schoolId = 'default-school',
+  currentUser,
+  playerScores = [],
+  onEarnRewards,
 }) => {
-  // State
-  const [streakCount, setStreakCount] = useState<number>(7);
-  const [hasCompletedDaily, setHasCompletedDaily] = useState<boolean>(false);
-  const [tokens, setTokens] = useState<number>(420);
-  const [currentXp, setCurrentXp] = useState<number>(580);
-  const [perks, setPerks] = useState<ClassroomPerk[]>(INITIAL_CLASSROOM_PERKS);
-  const [tiers, setTiers] = useState<SeasonPassTier[]>(INITIAL_SEASON_PASS_TIERS);
-  const [dailyQuests, setDailyQuests] = useState<DailyMicroQuest[]>(INITIAL_DAILY_MICRO_QUESTS);
+  const userId = currentUser?.id || 'guest';
+  const studentId = currentUser?.studentRecordId;
+  const todayDateStr = getLocalDateString();
+  const arcadeProfile = useMemo(
+    () => playerScores.find((p) => p.userId === currentUser?.id),
+    [playerScores, currentUser?.id]
+  );
+
+  const initialPersisted = useMemo(
+    () => (currentUser?.id ? loadStudyStreakPassState(schoolId, currentUser.id) : null),
+    [schoolId, currentUser?.id]
+  );
+
+  const [streakCount, setStreakCount] = useState<number>(
+    () => initialPersisted?.streakCount ?? arcadeProfile?.dailyStreak ?? 0
+  );
+  const [hasCompletedDaily, setHasCompletedDaily] = useState<boolean>(
+    () => initialPersisted?.lastQuestDate === todayDateStr
+  );
+  const [tokens, setTokens] = useState<number>(
+    () => initialPersisted?.bonusTokens ?? arcadeProfile?.gems ?? 0
+  );
+  const [currentXp, setCurrentXp] = useState<number>(
+    () => Math.max(initialPersisted?.bonusXp ?? 0, arcadeProfile?.exp ?? 0)
+  );
+  const [perks, setPerks] = useState<ClassroomPerk[]>(() => {
+    const redeemedMap = initialPersisted?.redeemedPerkCounts || {};
+    return INITIAL_CLASSROOM_PERKS.map((p) => {
+      const used = redeemedMap[p.id] || 0;
+      return {
+        ...p,
+        stock: Math.max(0, p.stock - used),
+        redeemedCount: p.redeemedCount + used,
+      };
+    });
+  });
+  const [tiers, setTiers] = useState<SeasonPassTier[]>(() => {
+    const claimedSet = new Set(initialPersisted?.claimedTierLevels || []);
+    return INITIAL_SEASON_PASS_TIERS.map((t) => ({
+      ...t,
+      isClaimed: claimedSet.has(t.level),
+    }));
+  });
+  const [dailyQuests] = useState<DailyMicroQuest[]>(INITIAL_DAILY_MICRO_QUESTS);
+
+  const persistPassState = (overrides: Partial<StudyStreakPassPersistence>, nextPerks?: ClassroomPerk[], nextTiers?: SeasonPassTier[]) => {
+    if (!currentUser?.id) return;
+    const activePerks = nextPerks || perks;
+    const activeTiers = nextTiers || tiers;
+    const redeemedPerkCounts: Record<string, number> = {};
+    for (const p of activePerks) {
+      const base = INITIAL_CLASSROOM_PERKS.find((item) => item.id === p.id);
+      const delta = base ? Math.max(0, p.redeemedCount - base.redeemedCount) : p.redeemedCount;
+      if (delta > 0) redeemedPerkCounts[p.id] = delta;
+    }
+    const claimedTierLevels = activeTiers.filter((t) => t.isClaimed).map((t) => t.level);
+
+    saveStudyStreakPassState(
+      schoolId,
+      userId,
+      {
+        streakCount: overrides.streakCount ?? streakCount,
+        lastQuestDate: overrides.lastQuestDate ?? (hasCompletedDaily ? todayDateStr : ''),
+        bonusTokens: overrides.bonusTokens ?? tokens,
+        bonusXp: overrides.bonusXp ?? currentXp,
+        claimedTierLevels: overrides.claimedTierLevels ?? claimedTierLevels,
+        redeemedPerkCounts: overrides.redeemedPerkCounts ?? redeemedPerkCounts,
+      },
+      studentId
+    );
+  };
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const applyState = (saved: StudyStreakPassPersistence | null) => {
+      if (!saved) return;
+      setStreakCount(saved.streakCount);
+      setHasCompletedDaily(saved.lastQuestDate === todayDateStr);
+      setTokens(saved.bonusTokens);
+      setCurrentXp((prev) => Math.max(prev, saved.bonusXp, arcadeProfile?.exp ?? 0));
+      const claimedSet = new Set(saved.claimedTierLevels || []);
+      setTiers(INITIAL_SEASON_PASS_TIERS.map((t) => ({ ...t, isClaimed: claimedSet.has(t.level) })));
+      const redeemedMap = saved.redeemedPerkCounts || {};
+      setPerks(
+        INITIAL_CLASSROOM_PERKS.map((p) => {
+          const used = redeemedMap[p.id] || 0;
+          return { ...p, stock: Math.max(0, p.stock - used), redeemedCount: p.redeemedCount + used };
+        })
+      );
+    };
+    applyState(loadStudyStreakPassState(schoolId, currentUser.id));
+    const onUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ schoolId?: string }>).detail;
+      if (!detail?.schoolId || detail.schoolId === schoolId) {
+        applyState(loadStudyStreakPassState(schoolId, currentUser.id));
+      }
+    };
+    window.addEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+  }, [schoolId, currentUser?.id, todayDateStr, arcadeProfile?.exp]);
 
   // Active micro-quest
   const [activeTab, setActiveTab] = useState<'quest_pass' | 'perks_store'>('quest_pass');
@@ -85,11 +194,23 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
         isCorrect: true,
         feedback: lang === 'th' ? `ถูกต้องยอดเยี่ยม! ${quest.explanationTh}` : `Correct! ${quest.explanationTh}`
       });
-      setTokens(prev => prev + quest.rewardTokens);
-      setCurrentXp(prev => prev + quest.rewardXp);
+      const nextTokens = tokens + quest.rewardTokens;
+      const nextXp = currentXp + quest.rewardXp;
+      const nextStreak = hasCompletedDaily ? streakCount : streakCount + 1;
+      setTokens(nextTokens);
+      setCurrentXp(nextXp);
       if (!hasCompletedDaily) {
         setHasCompletedDaily(true);
-        setStreakCount(prev => prev + 1);
+        setStreakCount(nextStreak);
+      }
+      persistPassState({
+        streakCount: nextStreak,
+        lastQuestDate: todayDateStr,
+        bonusTokens: nextTokens,
+        bonusXp: nextXp,
+      });
+      if (onEarnRewards && currentUser?.id) {
+        onEarnRewards(currentUser.id, quest.rewardXp, Math.max(2, Math.round(quest.rewardTokens / 5)), true);
       }
     } else {
       setQuestResult({
@@ -125,11 +246,14 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       return;
     }
 
-    setTokens(prev => prev - perk.costTokens);
-    setPerks(prev => prev.map(p => p.id === perk.id ? { ...p, stock: p.stock - 1, redeemedCount: p.redeemedCount + 1 } : p));
+    const nextTokens = tokens - perk.costTokens;
+    const nextPerks = perks.map(p => p.id === perk.id ? { ...p, stock: p.stock - 1, redeemedCount: p.redeemedCount + 1 } : p);
+    setTokens(nextTokens);
+    setPerks(nextPerks);
+    persistPassState({ bonusTokens: nextTokens }, nextPerks, tiers);
     setRedeemedPerkToast(
       lang === 'th' 
-        ? `แลกรับ "${perk.titleTh}" สำเร็จแล้ว! แสดงการ์ดนี้ให้คุณครูประจำวิชาเพื่อใช้สิทธิ์` 
+        ? `${currentUserName} แลกรับ "${perk.titleTh}" สำเร็จแล้ว! แสดงการ์ดนี้ให้คุณครูประจำวิชาเพื่อใช้สิทธิ์` 
         : `Redeemed "${perk.titleEn}" successfully!`
     );
     setTimeout(() => setRedeemedPerkToast(null), 4000);
@@ -137,8 +261,14 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
 
   // Claim Season Pass Tier Reward
   const handleClaimTier = (level: number) => {
-    setTiers(prev => prev.map(t => t.level === level ? { ...t, isClaimed: true } : t));
-    setTokens(prev => prev + 50);
+    const nextTiers = tiers.map(t => t.level === level ? { ...t, isClaimed: true } : t);
+    const nextTokens = tokens + 50;
+    setTiers(nextTiers);
+    setTokens(nextTokens);
+    persistPassState({ bonusTokens: nextTokens }, perks, nextTiers);
+    if (onEarnRewards && currentUser?.id) {
+      onEarnRewards(currentUser.id, 30, 10, true);
+    }
   };
 
   // Teacher adds new classroom perk

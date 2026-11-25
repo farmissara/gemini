@@ -31,6 +31,7 @@ import {
   createDefaultStudentQualitative,
   getStudentQualitativeRecord,
   loadQualitativeAssessments,
+  MOE_QUALITATIVE_UPDATED_EVENT,
   saveQualitativeAssessments,
   StudentQualitativeAssessment,
   summarizeStudentQualitative,
@@ -103,6 +104,14 @@ export const GradeLevelQualitativeSummaryView: React.FC<GradeLevelQualitativeSum
 
   useEffect(() => {
     setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
+    const onUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ schoolId?: string }>).detail;
+      if (!detail?.schoolId || detail.schoolId === schoolId) {
+        setQualitativeMap(loadQualitativeAssessments(schoolId, academicYear, semester));
+      }
+    };
+    window.addEventListener(MOE_QUALITATIVE_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(MOE_QUALITATIVE_UPDATED_EVENT, onUpdated);
   }, [schoolId, academicYear, semester]);
 
   const gradeLevelOptions = useMemo(() => {

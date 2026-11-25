@@ -64,8 +64,8 @@ export default defineConfig(() => {
             /^\/assets\//,
             /\.(?:js|mjs|css|map|png|jpg|jpeg|svg|ico|webp|woff2?)$/i,
           ],
-          maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          globPatterns: ['**/*.{js,css,html,ico,svg,woff,woff2}', 'pwa-*.png', 'apple-touch-icon.png', 'favicon.png'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

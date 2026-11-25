@@ -42,10 +42,18 @@ import {
 } from 'lucide-react';
 import { getModuleTone } from '../lib/moduleTheme';
 import { triggerHaptic } from '../lib/arcadeStore';
+import {
+  CAMPUS_DATA_UPDATED_EVENT,
+  loadCompletedLabQuests,
+  saveCompletedLabQuests,
+} from '../lib/campusDataStore';
 
 interface SubjectLabSimulationViewProps {
   currentUserRole?: UserRole;
   currentUserName?: string;
+  schoolId?: string;
+  userId?: string;
+  studentId?: string;
   lang: AppLanguage;
   onEarnRewards?: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onBackToGames?: () => void;
@@ -212,6 +220,9 @@ const SUBJECT_CONFIGS: Record<LabSubjectCategory, SubjectThemeConfig> = {
 export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> = ({
   currentUserRole = 'student',
   currentUserName = 'นักเรียน',
+  schoolId = 'default-school',
+  userId,
+  studentId,
   lang,
   onEarnRewards,
   onBackToGames,
@@ -231,14 +242,21 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
   const [reactionState, setReactionState] = useState<'idle' | 'pouring' | 'reacting' | 'success' | 'exploded'>('idle');
   const [reactionMessage, setReactionMessage] = useState<string | null>(null);
   const [bubbles, setBubbles] = useState<{ id: number; left: number; delay: number }[]>([]);
-  const [completedQuestIds, setCompletedQuestIds] = useState<string[]>(() => {
-    try {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('eduverse_completed_lab_quests') : null;
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [completedQuestIds, setCompletedQuestIds] = useState<string[]>(() =>
+    loadCompletedLabQuests(schoolId, userId)
+  );
+
+  useEffect(() => {
+    setCompletedQuestIds(loadCompletedLabQuests(schoolId, userId));
+    const onUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ schoolId?: string }>).detail;
+      if (!detail?.schoolId || detail.schoolId === schoolId) {
+        setCompletedQuestIds(loadCompletedLabQuests(schoolId, userId));
+      }
+    };
+    window.addEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+  }, [schoolId, userId]);
   
   // Smooth Zoom state: min 0.7x to max 1.4x
   const [labZoom, setLabZoom] = useState<number>(1.0);
@@ -353,11 +371,9 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
         if (!completedQuestIds.includes(activeQuest.id)) {
           const nextCompleted = [...completedQuestIds, activeQuest.id];
           setCompletedQuestIds(nextCompleted);
-          try {
-            localStorage.setItem('eduverse_completed_lab_quests', JSON.stringify(nextCompleted));
-          } catch {}
+          saveCompletedLabQuests(schoolId, userId, nextCompleted, studentId);
           if (onEarnRewards) {
-            onEarnRewards('temp', activeQuest.expReward, activeQuest.gemReward, true);
+            onEarnRewards(userId || 'temp', activeQuest.expReward, activeQuest.gemReward, true);
           }
         }
       } else {

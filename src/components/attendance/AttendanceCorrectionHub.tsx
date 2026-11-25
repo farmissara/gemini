@@ -235,7 +235,9 @@ export const AttendanceCorrectionHub: React.FC<AttendanceCorrectionHubProps> = (
       schoolId,
       targetStudentIds: [student.id],
       targetRoles: ['student', 'parent', 'teacher', 'admin'],
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('[AttendanceCorrectionHub] Failed to send homeroom notification:', err);
+    });
 
     setNotice({
       type: 'ok',

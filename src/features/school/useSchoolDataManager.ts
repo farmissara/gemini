@@ -56,7 +56,7 @@ import {
   updateRewardRedemptionStatus,
   upsertArcadePlayerProfile,
 } from '../../lib/arcadeStore';
-import { INITIAL_ROLE_PERMISSIONS, INITIAL_SYSTEM_CONFIG } from '../../data/mockData';
+import { INITIAL_ROLE_PERMISSIONS, INITIAL_SYSTEM_CONFIG } from '../../data/defaultSchoolConfig';
 import {
   fetchMyOperationalRole,
   fetchMyRolePermissionConfig,
@@ -100,8 +100,13 @@ import {
   updateCourseEnrollmentInDb,
   updateLeaveRequestStatusInDb,
   uploadSchoolAttachment,
+  getSupabaseClient,
 } from '../../lib/supabase';
-import { cleanupStudentCampusData } from '../../lib/campusDataStore';
+import {
+  cleanupStudentCampusData,
+  hydrateCampusDataFromSupabase,
+} from '../../lib/campusDataStore';
+import { hydrateMoeQualitativeFromSupabase } from '../../lib/moeQualitativeStore';
 import { clearSchoolSnapshotsForUser } from '../../lib/offlineSchoolCache';
 import { hydrateSchoolRegistryFromSupabase } from '../../lib/studentRegistryStore';
 import {
@@ -1006,7 +1011,9 @@ export function useSchoolDataManager({
         setRewardItems(catalog);
         setRewardRedemptions(redemptions);
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.warn('[Arcade] Could not load school arcade state:', error);
+      });
     return () => {
       active = false;
     };
@@ -1031,22 +1038,24 @@ export function useSchoolDataManager({
           lineMessagingConfigured: flags.lineEnabled !== false,
         }));
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.warn('[FeatureFlags] Could not load school feature flags:', error);
+      });
     return () => {
       active = false;
     };
   }, [activeSchool.id, activeSchool.schoolTier, isDemoMode]);
 
-  // Hydrate unified student OBEC/MOE registration records
+  // Hydrate unified student OBEC/MOE registration, campus records & qualitative evaluations
   useEffect(() => {
     if (isDemoMode || !isDataReady || !activeSchool.id || loadedSchoolId !== activeSchool.id) {
       return;
     }
-    void hydrateSchoolRegistryFromSupabase(
-      activeSchool.id,
-      systemConfig.academicYear || '2569',
-      systemConfig.currentSemester || '1'
-    );
+    const year = systemConfig.academicYear || '2569';
+    const sem = systemConfig.currentSemester || '1';
+    void hydrateSchoolRegistryFromSupabase(activeSchool.id, year, sem);
+    void hydrateCampusDataFromSupabase(activeSchool.id);
+    void hydrateMoeQualitativeFromSupabase(activeSchool.id, year, sem);
   }, [
     isDemoMode,
     isDataReady,
@@ -1298,7 +1307,10 @@ export function useSchoolDataManager({
     if (payload.newTimetableSlots.length > 0) {
       setTimetableSlots((prev) => [...payload.newTimetableSlots, ...prev]);
       if (!isDemoMode) {
-        await saveTimetableSlotsToDb(activeSchool.id, payload.newTimetableSlots).catch(() => {});
+        await saveTimetableSlotsToDb(activeSchool.id, payload.newTimetableSlots).catch((err) => {
+          console.warn('[Rollover] Failed to persist rolled-over timetable slots:', err);
+          setDataSyncError('บันทึกตารางสอนภาคเรียนใหม่ไม่สำเร็จ กรุณาลองบันทึกอีกครั้ง');
+        });
       }
     }
     if (payload.promotedStudents && payload.promotedStudents.length > 0) {
@@ -2841,11 +2853,58 @@ export function useSchoolDataManager({
     });
   };
 
-  const handleBroadcastLine = (announcementId: string) => {
-    setAnnouncements((prev) =>
-      prev.map((a) => (a.id === announcementId ? { ...a, lineBroadcastSent: true } : a))
-    );
-    setDataSyncError(null);
+  const handleBroadcastLine = async (
+    announcementId: string
+  ): Promise<{ ok: boolean; message: string }> => {
+    const targetAnnouncement = announcements.find((a) => a.id === announcementId);
+    if (!targetAnnouncement) {
+      return { ok: false, message: 'ไม่พบประกาศที่ต้องการส่งแจ้งเตือน' };
+    }
+    if (isDemoMode) {
+      setAnnouncements((prev) =>
+        prev.map((a) => (a.id === announcementId ? { ...a, lineBroadcastSent: true } : a))
+      );
+      return { ok: true, message: 'จำลองการส่งแจ้งเตือน LINE OA ในโหมดทดลองใช้แล้ว' };
+    }
+    try {
+      const client = getSupabaseClient();
+      const { data: sessionData } = client ? await client.auth.getSession() : { data: { session: null } };
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        return { ok: false, message: 'กรุณาเข้าสู่ระบบใหม่ก่อนส่งแจ้งเตือน LINE OA' };
+      }
+
+      const response = await fetch('/api/line/broadcast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          announcementId: targetAnnouncement.id,
+          title: targetAnnouncement.title,
+          content: targetAnnouncement.content,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+
+      if (!response.ok || !payload?.ok) {
+        const errMsg =
+          payload?.message || `ไม่สามารถส่งแจ้งเตือน LINE OA ได้ (HTTP ${response.status})`;
+        setDataSyncError(errMsg);
+        return { ok: false, message: errMsg };
+      }
+
+      setAnnouncements((prev) =>
+        prev.map((a) => (a.id === announcementId ? { ...a, lineBroadcastSent: true } : a))
+      );
+      setDataSyncError(null);
+      return { ok: true, message: payload.message || 'ส่งข้อความผ่าน LINE OA เรียบร้อยแล้ว' };
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ LINE OA ได้';
+      setDataSyncError(errMsg);
+      return { ok: false, message: errMsg };
+    }
   };
 
   // LMS & Homework
@@ -3026,7 +3085,9 @@ export function useSchoolDataManager({
         equippedTitle:
           payload.title !== undefined ? payload.title : existing.equippedTitle,
       };
-      upsertArcadePlayerProfile(activeSchool.id, updated).catch(() => {});
+      upsertArcadePlayerProfile(activeSchool.id, updated).catch((err) => {
+        console.warn('[Arcade] Failed to persist equipped cosmetic:', err);
+      });
       return prev.map((p) => (p.userId === currentUser.id ? updated : p));
     });
   };
@@ -3108,7 +3169,9 @@ export function useSchoolDataManager({
             .then((authoritativeProfile) => setPlayerScores((prev) => authoritativeProfile
               ? [authoritativeProfile, ...prev.filter((profile) => profile.userId !== resolvedUserId)]
               : prev.filter((profile) => profile.userId !== resolvedUserId)))
-            .catch(() => {});
+            .catch((reloadErr) => {
+              console.warn('[Arcade] Failed to reload authoritative profile:', reloadErr);
+            });
         });
     }
   };
@@ -3209,7 +3272,9 @@ export function useSchoolDataManager({
     setPlayerScores((prev) =>
       prev.map((p) => (p.userId === currentUser.id ? updatedProfile : p))
     );
-    upsertArcadePlayerProfile(activeSchool.id, updatedProfile).catch(() => {});
+    upsertArcadePlayerProfile(activeSchool.id, updatedProfile).catch((err) => {
+      console.warn('[Arcade] Failed to sync profile after redeem:', err);
+    });
 
     if (!isCosmetic) {
       setRewardItems((prev) =>
@@ -3236,7 +3301,9 @@ export function useSchoolDataManager({
         requestedAt: new Date().toISOString(),
       };
       setRewardRedemptions((prev) => [request, ...prev]);
-      createRewardRedemptionRequest(activeSchool.id, request).catch(() => {});
+      createRewardRedemptionRequest(activeSchool.id, request).catch((err) => {
+        console.warn('[Arcade] Failed to persist reward redemption request:', err);
+      });
     }
   };
 
@@ -3274,7 +3341,9 @@ export function useSchoolDataManager({
     if (!activeSchool.id) return;
     const scopedItem: RewardItem = { ...item, schoolId: activeSchool.id };
     setRewardItems((prev) => [scopedItem, ...prev]);
-    saveSchoolCustomReward(activeSchool.id, scopedItem).catch(() => {});
+    saveSchoolCustomReward(activeSchool.id, scopedItem).catch((err) => {
+      console.warn('[Arcade] Failed to save custom reward:', err);
+    });
     triggerHaptic('success');
   };
 

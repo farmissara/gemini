@@ -12,6 +12,8 @@ import { createStudentCredentialsRouter } from './src/server/studentCredentialsR
 import { createSchoolAiRouter, finishSchoolAiRequest, getSchoolAiContext, prepareSchoolAiRequest, reserveSchoolAiRequest } from './src/server/schoolAiRoutes.ts';
 import { createProfileAvatarRouter } from './src/server/profileAvatarRoutes.ts';
 import { createSelfieCleanupRouter, startSelfieCleanupScheduler } from './src/server/selfieCleanupRoutes.ts';
+import { createLineMessagingRouter } from './src/server/lineMessagingRoutes.ts';
+import { createLearningAiRouter } from './src/server/learningAiRoutes.ts';
 
 const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
@@ -115,12 +117,15 @@ function consumeMemoryAiCall(userId: string, now: number): AiRateLimitResult {
   return { available: true, allowed: true, retryAfterSeconds: 0 };
 }
 
+let warnedMissingRedisRateLimiter = false;
+
 async function consumeAiCall(userId: string): Promise<AiRateLimitResult> {
   const redisUrl = getServerEnv('REDIS_REST_URL');
   const redisToken = getServerEnv('REDIS_REST_TOKEN');
   if (!redisUrl || !redisToken) {
-    if (isProductionRuntime()) {
-      return { available: false, allowed: false, retryAfterSeconds: 0 };
+    if (isProductionRuntime() && !warnedMissingRedisRateLimiter) {
+      warnedMissingRedisRateLimiter = true;
+      console.warn('[Career Quest AI] REDIS_REST_URL/REDIS_REST_TOKEN not set; using in-memory burst rate limit alongside Supabase school quota.');
     }
     return consumeMemoryAiCall(userId, Date.now());
   }
@@ -264,6 +269,12 @@ async function createApp() {
   const app = express();
   app.use('/api/backup', backupRawParser());
   app.use('/api/profile-avatar', createProfileAvatarRouter(getServerEnv));
+  app.use(
+    '/api/learning-ai',
+    express.json({ limit: '1500kb' }),
+    requireActiveSupabaseUser,
+    createLearningAiRouter(getServerEnv)
+  );
   app.use(express.json({ limit: '64kb' }));
 
   app.use('/api/backup', createBackupRouter(getServerEnv));
@@ -271,6 +282,7 @@ async function createApp() {
   app.use('/api/student-credentials', createStudentCredentialsRouter(getServerEnv));
   app.use('/api/school-ai', createSchoolAiRouter(getServerEnv));
   app.use('/api/attendance/cleanup-selfies', createSelfieCleanupRouter(getServerEnv));
+  app.use('/api/line', createLineMessagingRouter(getServerEnv));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({

@@ -617,7 +617,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     setInviteNeedsBackendSql(null);
     try {
       if (schoolId && schoolId !== 'default-school') {
-        await saveTeachersToDb(schoolId, [inviteModalTeacher]).catch(() => {});
+        await saveTeachersToDb(schoolId, [inviteModalTeacher]).catch((err) => {
+          console.warn('[TeachersView] Pre-invite teacher save failed:', err);
+        });
       }
       const result = await inviteTeacherOrParentAccount({
         schoolId,

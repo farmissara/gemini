@@ -145,6 +145,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
+  isDemoMode = false,
 }) => {
   const effectiveRole: UserRole = currentUser?.role || currentRole || 'student';
   const isSchoolAdmin = effectiveRole === 'admin' || effectiveRole === 'super_admin';
@@ -854,6 +855,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       }
     }
 
+    if (isSelfCheckin && !isDemoMode) {
+      setIsSimulatedPhoto(false);
+      setCapturedPhotoUrl('');
+      setIsCapturing(false);
+      setSelfieActionError('ยังไม่มีภาพจากกล้องจริง กรุณาเปิดกล้องและอนุญาตสิทธิ์กล้องก่อนถ่ายภาพเช็คอิน');
+      return;
+    }
+
     setIsSimulatedPhoto(true);
     if (currentUser?.role !== 'student') {
       try {
@@ -1043,7 +1052,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       return;
     }
     if (
-      currentUser?.role === 'student' &&
+      ((currentUser?.role === 'student') || (isSelfCheckin && !isDemoMode)) &&
       (isSimulatedPhoto || !capturedPhotoUrl?.startsWith('data:image/jpeg;base64,'))
     ) {
       setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็คอิน');
@@ -1265,14 +1274,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         body: `ลาคาบที่ ${leavePeriodNum} (${newLeave.courseCode || 'วิชาเรียน'}) ${newLeave.substituteTeacherName ? `มอบหมายสอนแทน: ${newLeave.substituteTeacherName}` : ''} | CC: ${newLeave.ccEmailsOrRoles || 'วิชาการ'}`,
         category: 'announcement',
         priority: 'urgent',
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[MobileAttendance] Failed to send hourly leave notification:', err);
+      });
     } else if (resolvedLeaveUserRole === 'student' && dualApprovers) {
       sendEduVerseNotification({
         title: `📩 คำขอใบลานักเรียนใหม่: ${newLeave.userName}`,
         body: `ส่งอนุมัติทั้งครูประจำชั้น (${dualApprovers.homeroomTeacherName}) และครูประจำวิชา (${dualApprovers.subjectTeacherNames.slice(0, 3).join(', ')})`,
         category: 'announcement',
         priority: 'urgent',
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[MobileAttendance] Failed to send student leave notification:', err);
+      });
     }
 
     setLeaveSuccessNotice(

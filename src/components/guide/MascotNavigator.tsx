@@ -19,7 +19,26 @@ import {
 } from 'lucide-react';
 import { AppLanguage, UserRole } from '../../types';
 import { MascotMood } from '../../data/interactiveGuideTopics';
-import { MODULE_GUIDED_TOURS } from '../../data/moduleGuidedTours';
+
+const GUIDED_TOUR_MODULE_IDS = new Set([
+  'dashboard',
+  'system_settings',
+  'students',
+  'teachers',
+  'courses',
+  'timetable',
+  'attendance',
+  'mobile_checkin',
+  'gradebook',
+  'homework',
+  'lms_classroom',
+  'portfolio',
+  'behavior_sdq',
+  'infirmary',
+  'billing',
+  'announcements',
+  'parent_portal',
+]);
 
 export type MascotBuddyMode = 'duo' | 'chaco' | 'mee';
 
@@ -403,7 +422,7 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
   const [isOpen, setIsOpen] = useState(false);
   const [showBubble, setShowBubble] = useState(true);
 
-  const hasTourForPage = Boolean(MODULE_GUIDED_TOURS[currentTab]);
+  const hasTourForPage = GUIDED_TOUR_MODULE_IDS.has(currentTab);
   const shortcuts = useMemo(() => ROLE_SHORTCUTS[currentRole] || ROLE_SHORTCUTS.teacher, [currentRole]);
 
   // While the detailed step-by-step tour card is open at bottom-right, avoid double floating UI

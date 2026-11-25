@@ -76,7 +76,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const actionSequenceRef = useRef(0);
 
   const effectiveSchoolId = schoolId || currentUser.schoolId;
-  const canSimulateNotifications = ['admin', 'super_admin', 'teacher'].includes(currentUser.role);
+  const canSimulateNotifications = !import.meta.env.PROD && ['admin', 'super_admin', 'teacher'].includes(currentUser.role);
 
   const loadScopedNotifications = useCallback(() => {
     return getScopedNotificationsForUser({

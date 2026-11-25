@@ -104,7 +104,9 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         const found = rows.find((r) => r.studentId === student.id || r.userId === student.id) || null;
         setSharedCareer(found);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[StudentDetailModal] Could not load CareerQuest snapshot:', err);
+      });
     return () => {
       active = false;
     };

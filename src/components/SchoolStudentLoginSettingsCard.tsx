@@ -159,10 +159,6 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
-  const handleOpenTestLink = () => {
-    window.open(schoolLoginUrl, '_blank');
-  };
-
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -555,14 +551,15 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                       <span>{copiedLink ? 'คัดลอกลิงก์แล้ว!' : 'คัดลอกลิงก์'}</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleOpenTestLink}
+                    <a
+                      href={schoolLoginUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>ทดสอบเปิดลิงก์</span>
-                    </button>
+                    </a>
                   </div>
 
                   <button

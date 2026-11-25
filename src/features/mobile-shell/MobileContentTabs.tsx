@@ -127,7 +127,9 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   useEffect(() => {
     getWebAuthnSupportInfo()
       .then(setWebAuthnInfo)
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[WebAuthn] Failed to check support info:', err);
+      });
   }, []);
 
   const handleEnrollPasskey = async () => {
@@ -556,7 +558,7 @@ interface MobileAnnouncementsTabProps {
   selectedAnnouncement: Announcement | null;
   setSelectedAnnouncement: (ann: Announcement | null) => void;
   onAddAnnouncement?: (announcement: Announcement) => void;
-  onBroadcastLine?: (announcementId: string) => void;
+  onBroadcastLine?: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onBackHome: () => void;
 }
 
@@ -655,10 +657,14 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
             {canCreate && onBroadcastLine && (
               <button
                 type="button"
-                onClick={() => {
-                  onBroadcastLine(selectedAnnouncement.id);
-                  setToast('ส่งแจ้งเตือน LINE เรียบร้อยแล้ว');
-                  window.setTimeout(() => setToast(null), 2400);
+                onClick={async () => {
+                  const res = await onBroadcastLine(selectedAnnouncement.id);
+                  if (res && typeof res === 'object' && 'message' in res) {
+                    setToast(res.message);
+                  } else {
+                    setToast('ส่งแจ้งเตือน LINE เรียบร้อยแล้ว');
+                  }
+                  window.setTimeout(() => setToast(null), 3200);
                 }}
                 className="w-full min-h-[40px] mt-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 text-xs font-bold cursor-pointer"
               >

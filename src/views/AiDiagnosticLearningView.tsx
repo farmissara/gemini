@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   BrainCircuit, 
   Sparkles, 
   CheckCircle2, 
   AlertTriangle, 
   ArrowRight, 
-  RefreshCw, 
-  HelpCircle, 
-  BookOpen, 
+  Loader2,
   ChevronRight, 
   Award,
   Zap,
@@ -20,7 +18,13 @@ import {
   CompetencyDimension, 
   StudentWeaknessDiagnostic, 
   AppLanguage, 
-  UserRole 
+  UserRole,
+  AuthUser,
+  Student,
+  Course,
+  GradeRecord,
+  HomeworkSubmission,
+  AttendanceRecord
 } from '../types';
 import { 
   INITIAL_COMPETENCY_DIMENSIONS, 
@@ -28,26 +32,280 @@ import {
 } from '../data/innovativeFeaturesData';
 import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
+import { postLearningAi } from '../lib/learningAiClient';
+import { resolveOwnStudent } from '../lib/attendanceScope';
 
 interface AiDiagnosticLearningViewProps {
   lang?: AppLanguage;
   currentRole?: UserRole;
   currentUserName?: string;
+  currentUser?: AuthUser | null;
+  students?: Student[];
+  courses?: Course[];
+  grades?: GradeRecord[];
+  homeworkSubmissions?: HomeworkSubmission[];
+  attendance?: AttendanceRecord[];
   initialFocusTopic?: AdaptivePracticeTopic | null;
   onPracticeInSocraticTutor?: (topic: AdaptivePracticeTopic) => void;
+}
+
+function deriveLiveDimensions(
+  scopedGrades: GradeRecord[],
+  coursesById: Map<string, Course>,
+  scopedAttendance: AttendanceRecord[],
+  scopedHomework: HomeworkSubmission[]
+): CompetencyDimension[] {
+  if (scopedGrades.length === 0 && scopedAttendance.length === 0 && scopedHomework.length === 0) {
+    return INITIAL_COMPETENCY_DIMENSIONS;
+  }
+
+  const avgByKeywords = (keywords: string[], fallback: number): number => {
+    const matches = scopedGrades.filter((g) => {
+      const c = coursesById.get(g.courseId);
+      const text = `${c?.department || ''} ${c?.titleTh || ''} ${c?.titleEn || ''} ${c?.code || ''}`.toLowerCase();
+      return keywords.some((kw) => text.includes(kw));
+    });
+    if (matches.length === 0) return fallback;
+    return Math.round(matches.reduce((s, g) => s + (Number(g.totalScore) || 0), 0) / matches.length);
+  };
+
+  const overallAvg =
+    scopedGrades.length > 0
+      ? Math.round(scopedGrades.reduce((s, g) => s + (Number(g.totalScore) || 0), 0) / scopedGrades.length)
+      : 75;
+
+  const attendancePct =
+    scopedAttendance.length > 0
+      ? Math.round(
+          (scopedAttendance.filter((a) => a.status === 'present' || a.status === 'late').length /
+            scopedAttendance.length) *
+            100
+        )
+      : 88;
+
+  const hwSubmitted =
+    scopedHomework.length > 0
+      ? Math.round(
+          (scopedHomework.filter((h) => h.status !== 'pending').length / scopedHomework.length) * 100
+        )
+      : 82;
+
+  const toStatus = (score: number): CompetencyDimension['status'] =>
+    score >= 85 ? 'mastered' : score >= 70 ? 'proficient' : score >= 55 ? 'developing' : 'needs_support';
+
+  const specs: Array<{ id: string; nameTh: string; nameEn: string; benchmark: number; score: number; color: string }> = [
+    {
+      id: 'dim-1',
+      nameTh: 'การคำนวณและคณิตศาสตร์',
+      nameEn: 'Math & Quantitative Logic',
+      benchmark: 75,
+      score: avgByKeywords(['คณิต', 'math', 'คำนวณ', 'algebra', 'geometry'], overallAvg),
+      color: '#3b82f6',
+    },
+    {
+      id: 'dim-2',
+      nameTh: 'ความเข้าใจด้านภาษาไทย',
+      nameEn: 'Thai Literacy & Communication',
+      benchmark: 75,
+      score: avgByKeywords(['ไทย', 'thai', 'ภาษาไทย'], overallAvg),
+      color: '#ec4899',
+    },
+    {
+      id: 'dim-3',
+      nameTh: 'ทักษะภาษาต่างประเทศ',
+      nameEn: 'Foreign Languages',
+      benchmark: 72,
+      score: avgByKeywords(['อังกฤษ', 'english', 'ภาษาต่างประเทศ', 'จีน', 'ญี่ปุ่น'], overallAvg),
+      color: '#f59e0b',
+    },
+    {
+      id: 'dim-4',
+      nameTh: 'กระบวนการทางวิทยาศาสตร์',
+      nameEn: 'Scientific Inquiry & Lab',
+      benchmark: 75,
+      score: avgByKeywords(['วิทย', 'science', 'ฟิสิกส์', 'เคมี', 'ชีว'], overallAvg),
+      color: '#10b981',
+    },
+    {
+      id: 'dim-5',
+      nameTh: 'ดิจิทัลและวิทยาการคำนวณ',
+      nameEn: 'Computing & Digital Skills',
+      benchmark: 75,
+      score: avgByKeywords(['คอม', 'เทคโนโลยี', 'คำนวณ', 'computer', 'coding', 'การงาน'], overallAvg),
+      color: '#8b5cf6',
+    },
+    {
+      id: 'dim-6',
+      nameTh: 'สังคมศึกษาและพลเมือง',
+      nameEn: 'Social Studies & Civics',
+      benchmark: 75,
+      score: avgByKeywords(['สังคม', 'ประวัติ', 'social', 'history'], overallAvg),
+      color: '#06b6d4',
+    },
+    {
+      id: 'dim-7',
+      nameTh: 'ความรับผิดชอบและส่งงาน',
+      nameEn: 'Task Consistency & Homework',
+      benchmark: 80,
+      score: hwSubmitted,
+      color: '#6366f1',
+    },
+    {
+      id: 'dim-8',
+      nameTh: 'วินัยและการมาเรียนสม่ำเสมอ',
+      nameEn: 'Attendance & Self-Regulation',
+      benchmark: 85,
+      score: attendancePct,
+      color: '#14b8a6',
+    },
+  ];
+
+  return specs.map((s) => {
+    const clampedScore = Math.max(0, Math.min(100, s.score));
+    return {
+      ...s,
+      score: clampedScore,
+      status: toStatus(clampedScore),
+    };
+  });
 }
 
 export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> = ({
   lang = 'th',
   currentRole = 'teacher',
   currentUserName = 'อาจารย์ผู้สอน',
+  currentUser = null,
+  students = [],
+  courses = [],
+  grades = [],
+  homeworkSubmissions = [],
+  attendance = [],
   initialFocusTopic = null,
   onPracticeInSocraticTutor,
 }) => {
-  const [dimensions, setDimensions] = useState<CompetencyDimension[]>(INITIAL_COMPETENCY_DIMENSIONS);
-  const [diagnostics, setDiagnostics] = useState<StudentWeaknessDiagnostic[]>(INITIAL_WEAKNESS_DIAGNOSTICS);
-  const [selectedDiagnostic, setSelectedDiagnostic] = useState<StudentWeaknessDiagnostic | null>(null);
-  
+  const isStaff = currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
+  const ownStudent = useMemo(
+    () => (currentUser && students.length > 0 ? resolveOwnStudent(currentUser, students) : undefined),
+    [currentUser, students]
+  );
+
+  const visibleStudents = useMemo(() => {
+    if (isStaff) return students;
+    if (ownStudent) return [ownStudent];
+    return students.filter((s) => s.id === currentUser?.studentRecordId);
+  }, [currentUser?.studentRecordId, isStaff, ownStudent, students]);
+
+  const coursesById = useMemo(() => new Map(courses.map((c) => [c.id, c])), [courses]);
+
+  // Filter student
+  const [selectedStudentFilter, setSelectedStudentFilter] = useState<string>(() =>
+    !isStaff && ownStudent ? ownStudent.id : 'all'
+  );
+  const [activePanel, setActivePanel] = useState<'competencies' | 'diagnostics'>(
+    initialFocusTopic ? 'diagnostics' : 'competencies'
+  );
+
+  const selectedStudentObj = useMemo(() => {
+    if (selectedStudentFilter !== 'all') {
+      return visibleStudents.find((s) => s.id === selectedStudentFilter || `${s.firstNameTh} ${s.lastNameTh}` === selectedStudentFilter);
+    }
+    return !isStaff ? visibleStudents[0] : visibleStudents[0];
+  }, [isStaff, selectedStudentFilter, visibleStudents]);
+
+  const scopedGrades = useMemo(() => {
+    const allowedIds = new Set(visibleStudents.map((s) => s.id));
+    if (selectedStudentFilter !== 'all' && selectedStudentObj) {
+      return grades.filter((g) => g.studentId === selectedStudentObj.id);
+    }
+    if (!isStaff) {
+      return grades.filter((g) => allowedIds.has(g.studentId));
+    }
+    return grades;
+  }, [grades, isStaff, selectedStudentFilter, selectedStudentObj, visibleStudents]);
+
+  const scopedAttendance = useMemo(() => {
+    const allowedIds = new Set(visibleStudents.map((s) => s.id));
+    if (selectedStudentFilter !== 'all' && selectedStudentObj) {
+      return attendance.filter((a) => a.studentId === selectedStudentObj.id);
+    }
+    if (!isStaff) {
+      return attendance.filter((a) => allowedIds.has(a.studentId));
+    }
+    return attendance;
+  }, [attendance, isStaff, selectedStudentFilter, selectedStudentObj, visibleStudents]);
+
+  const scopedHomework = useMemo(() => {
+    const allowedIds = new Set(visibleStudents.map((s) => s.id));
+    if (selectedStudentFilter !== 'all' && selectedStudentObj) {
+      return homeworkSubmissions.filter((h) => h.studentId === selectedStudentObj.id);
+    }
+    if (!isStaff) {
+      return homeworkSubmissions.filter((h) => allowedIds.has(h.studentId));
+    }
+    return homeworkSubmissions;
+  }, [homeworkSubmissions, isStaff, selectedStudentFilter, selectedStudentObj, visibleStudents]);
+
+  const computedDimensions = useMemo(
+    () => deriveLiveDimensions(scopedGrades, coursesById, scopedAttendance, scopedHomework),
+    [coursesById, scopedAttendance, scopedGrades, scopedHomework]
+  );
+
+  const [dimensions, setDimensions] = useState<CompetencyDimension[]>(computedDimensions);
+  useEffect(() => {
+    setDimensions(computedDimensions);
+  }, [computedDimensions]);
+
+  const derivedInitialDiagnostics = useMemo<StudentWeaknessDiagnostic[]>(() => {
+    if (scopedGrades.length === 0) {
+      return INITIAL_WEAKNESS_DIAGNOSTICS;
+    }
+    const lowGrades = [...scopedGrades]
+      .filter((g) => Number(g.totalScore) < 75)
+      .sort((a, b) => Number(a.totalScore) - Number(b.totalScore))
+      .slice(0, 6);
+
+    if (lowGrades.length === 0) {
+      return INITIAL_WEAKNESS_DIAGNOSTICS;
+    }
+
+    const studentsById = new Map(visibleStudents.map((s) => [s.id, s]));
+    return lowGrades.map((g, idx) => {
+      const st = studentsById.get(g.studentId);
+      const course = coursesById.get(g.courseId);
+      const studentLabel = st ? `${st.firstNameTh} ${st.lastNameTh}` : currentUserName;
+      const subjectLabel = course?.titleTh || course?.titleEn || g.courseId;
+      const templateQuest =
+        INITIAL_WEAKNESS_DIAGNOSTICS[idx % INITIAL_WEAKNESS_DIAGNOSTICS.length].microQuests;
+
+      return {
+        id: `live-diag-${g.id}`,
+        studentId: g.studentId,
+        studentName: studentLabel,
+        subject: subjectLabel,
+        topicTh: `ซ่อมเสริมผลสัมฤทธิ์วิชา ${subjectLabel} (${g.totalScore}/100)`,
+        accuracyRate: Math.round(Number(g.totalScore) || 0),
+        rootCauseTh: `คะแนนรวมปัจจุบันอยู่ที่ ${g.totalScore}/100 (เกรด ${g.letterGrade || '-'}) ควรวิเคราะห์หัวข้อย่อยที่ทำคะแนนตกหล่นด้วย AI`,
+        recommendedActionTh: 'กดปุ่ม "วิเคราะห์ด้วย Gemini AI" ด้านบนเพื่อสร้างแบบฝึกหัดซ่อมเสริมตรงจุด หรือส่งไปติวกับพี่รหัส AI',
+        microQuests: templateQuest,
+        isResolved: false,
+      };
+    });
+  }, [coursesById, currentUserName, scopedGrades, visibleStudents]);
+
+  const [diagnostics, setDiagnostics] = useState<StudentWeaknessDiagnostic[]>(derivedInitialDiagnostics);
+  const [aiGeneratedFlag, setAiGeneratedFlag] = useState(false);
+
+  useEffect(() => {
+    if (!aiGeneratedFlag) {
+      setDiagnostics(derivedInitialDiagnostics);
+    }
+  }, [aiGeneratedFlag, derivedInitialDiagnostics]);
+
+  // Gemini diagnostic plan generation state
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSummaryTh, setAiSummaryTh] = useState<string | null>(null);
+
   // Micro-quest modal state
   const [activeQuestDiag, setActiveQuestDiag] = useState<StudentWeaknessDiagnostic | null>(null);
   const [questStep, setQuestStep] = useState(0);
@@ -55,23 +313,136 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
   const [showQuestResult, setShowQuestResult] = useState(false);
   const [questFeedback, setQuestFeedback] = useState<string | null>(null);
 
-  // Filter student
-  const [selectedStudentFilter, setSelectedStudentFilter] = useState<'all' | string>('all');
-  const [activePanel, setActivePanel] = useState<'competencies' | 'diagnostics'>(
-    initialFocusTopic ? 'diagnostics' : 'competencies'
-  );
-
   useEffect(() => {
     if (initialFocusTopic) {
       setActivePanel('diagnostics');
     }
   }, [initialFocusTopic]);
 
-  const studentNames = Array.from(new Set(diagnostics.map(d => d.studentName)));
+  const studentFilterOptions = useMemo(() => {
+    if (visibleStudents.length > 0) {
+      return visibleStudents.map((s) => ({
+        value: s.id,
+        label: `${s.firstNameTh} ${s.lastNameTh} (${s.room || s.gradeLevel})`,
+      }));
+    }
+    return Array.from(new Set(diagnostics.map((d) => d.studentName))).map((name) => ({
+      value: name,
+      label: name,
+    }));
+  }, [diagnostics, visibleStudents]);
 
-  const filteredDiagnostics = selectedStudentFilter === 'all' 
-    ? diagnostics 
-    : diagnostics.filter(d => d.studentName === selectedStudentFilter);
+  const filteredDiagnostics =
+    selectedStudentFilter === 'all'
+      ? diagnostics
+      : diagnostics.filter(
+          (d) =>
+            d.studentId === selectedStudentFilter ||
+            d.studentName === selectedStudentFilter ||
+            (selectedStudentObj && d.studentId === selectedStudentObj.id)
+        );
+
+  const handleGenerateAiDiagnostics = async () => {
+    if (isGeneratingAi) return;
+    setIsGeneratingAi(true);
+    setAiError(null);
+
+    const targetStudent = selectedStudentObj;
+    const studentGrades = targetStudent
+      ? grades.filter((g) => g.studentId === targetStudent.id)
+      : scopedGrades;
+    const weakCourses = [...studentGrades]
+      .sort((a, b) => Number(a.totalScore) - Number(b.totalScore))
+      .slice(0, 6)
+      .map((g) => {
+        const c = coursesById.get(g.courseId);
+        return {
+          code: c?.code,
+          title: c?.titleTh || c?.titleEn || g.courseId,
+          score: Number(g.totalScore) || 0,
+          letter: g.letterGrade,
+        };
+      });
+
+    const avgScoreVal =
+      studentGrades.length > 0
+        ? studentGrades.reduce((s, g) => s + (Number(g.totalScore) || 0), 0) / studentGrades.length
+        : avgScore;
+
+    const attDim = dimensions.find((d) => d.id === 'dim-8')?.score ?? 90;
+
+    try {
+      const result = await postLearningAi<{
+        plan: {
+          summaryTh: string;
+          diagnostics: Array<{
+            subject: string;
+            topicTh: string;
+            accuracyRate: number;
+            rootCauseTh: string;
+            recommendedActionTh: string;
+            microQuests: Array<{
+              id: string;
+              questionTh: string;
+              options: string[];
+              correctIndex: number;
+              explanationTh: string;
+            }>;
+          }>;
+        };
+      }>('/api/learning-ai/diagnostic-plan', {
+        studentName: targetStudent
+          ? `${targetStudent.firstNameTh} ${targetStudent.lastNameTh}`
+          : currentUserName,
+        gradeLevel: targetStudent?.gradeLevel || currentUser?.gradeLevel,
+        averageScore: Math.round(avgScoreVal * 10) / 10,
+        attendanceRate: attDim,
+        weakCourses,
+        lang,
+      });
+
+      const targetName = targetStudent
+        ? `${targetStudent.firstNameTh} ${targetStudent.lastNameTh}`
+        : currentUserName;
+      const targetId = targetStudent?.id || currentUser?.studentRecordId || 'stu-ai';
+
+      const mapped: StudentWeaknessDiagnostic[] = (result.plan.diagnostics || []).map((item, idx) => ({
+        id: `ai-diag-${Date.now()}-${idx}`,
+        studentId: targetId,
+        studentName: targetName,
+        subject: item.subject,
+        topicTh: item.topicTh,
+        accuracyRate: Math.max(0, Math.min(100, Math.round(Number(item.accuracyRate) || 60))),
+        rootCauseTh: item.rootCauseTh,
+        recommendedActionTh: item.recommendedActionTh,
+        microQuests: (item.microQuests || []).map((q, qIdx) => ({
+          id: q.id || `q-${idx}-${qIdx}`,
+          questionTh: q.questionTh,
+          options: Array.isArray(q.options) && q.options.length > 0 ? q.options : ['ก', 'ข', 'ค', 'ง'],
+          correctIndex: Math.max(0, Math.min((q.options?.length || 1) - 1, Number(q.correctIndex) || 0)),
+          explanationTh: q.explanationTh || '',
+        })),
+        isResolved: false,
+      }));
+
+      setAiSummaryTh(result.plan.summaryTh || null);
+      if (mapped.length > 0) {
+        setAiGeneratedFlag(true);
+        setDiagnostics(mapped);
+        setActivePanel('diagnostics');
+      }
+    } catch (error) {
+      setAiError(
+        error instanceof Error
+          ? error.message
+          : lang === 'th'
+          ? 'ไม่สามารถวิเคราะห์จุดอ่อนด้วย AI ได้'
+          : 'Failed to generate AI diagnostic plan.'
+      );
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
 
   // SVG Radar Chart Math
   const radarRadius = 130;
@@ -228,14 +599,55 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
         </div>
       )}
 
-      <div className="flex gap-2">
-        <button type="button" onClick={() => setActivePanel('competencies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${activePanel === 'competencies' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
-          {lang === 'th' ? 'สมรรถนะ 8 มิติ' : 'Competency Radar'}
-        </button>
-        <button type="button" onClick={() => setActivePanel('diagnostics')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${activePanel === 'diagnostics' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
-          {lang === 'th' ? `จุดอ่อน (${filteredDiagnostics.length})` : `Diagnostics (${filteredDiagnostics.length})`}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setActivePanel('competencies')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${activePanel === 'competencies' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
+            {lang === 'th' ? 'สมรรถนะ 8 มิติ' : 'Competency Radar'}
+          </button>
+          <button type="button" onClick={() => setActivePanel('diagnostics')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${activePanel === 'diagnostics' ? 'bg-indigo-700 border-indigo-700 text-white' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'}`}>
+            {lang === 'th' ? `จุดอ่อน (${filteredDiagnostics.length})` : `Diagnostics (${filteredDiagnostics.length})`}
+          </button>
+        </div>
+
+        <button
+          type="button"
+          disabled={isGeneratingAi}
+          onClick={() => void handleGenerateAiDiagnostics()}
+          className="px-3.5 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+        >
+          {isGeneratingAi ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Sparkles className="w-4 h-4 text-yellow-300" />
+          )}
+          <span>
+            {isGeneratingAi
+              ? lang === 'th'
+                ? 'Gemini กำลังวิเคราะห์ข้อมูลจริง...'
+                : 'Analyzing records...'
+              : lang === 'th'
+              ? 'วิเคราะห์จุดอ่อน & สร้างเควสต์ซ่อมเสริมด้วย AI'
+              : 'Analyze & Generate Remedial Quests (Gemini)'}
+          </span>
         </button>
       </div>
+
+      {aiError && (
+        <div role="alert" className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 p-3 text-xs text-rose-900 dark:text-rose-100 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-300 shrink-0 mt-0.5" />
+          <span>{aiError}</span>
+        </div>
+      )}
+
+      {aiSummaryTh && (
+        <div className="rounded-xl border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 p-3.5 text-xs text-indigo-950 dark:text-indigo-100">
+          <p className="font-bold flex items-center gap-1.5 text-indigo-800 dark:text-indigo-300 mb-1">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'สรุปผลการวิเคราะห์เฉพาะบุคคลโดย Gemini AI' : 'Gemini AI Personal Diagnostic Summary'}</span>
+          </p>
+          <p>{aiSummaryTh}</p>
+        </div>
+      )}
 
       {/* Main panel: competency radar or paged diagnostic records */}
       <div className="grid grid-cols-1 gap-6">
@@ -424,12 +836,18 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                 </span>
                 <select
                   value={selectedStudentFilter}
-                  onChange={(e) => setSelectedStudentFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedStudentFilter(e.target.value);
+                    setAiGeneratedFlag(false);
+                    setAiSummaryTh(null);
+                  }}
                   className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="all">{lang === 'th' ? 'ทุกคน (ทั้งหมด)' : 'All Students'}</option>
-                  {studentNames.map(name => (
-                    <option key={name} value={name}>{name}</option>
+                  {isStaff && (
+                    <option value="all">{lang === 'th' ? 'ทุกคน (ทั้งหมด)' : 'All Students'}</option>
+                  )}
+                  {studentFilterOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               </div>
@@ -498,28 +916,47 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                   </div>
 
                   {/* Action Button */}
-                  <div className="mt-4 flex items-center justify-between">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[11px] text-[var(--color-text-muted)] font-medium">
-                      {lang === 'th' ? `แบบทดสอบ 3 มิติ: ${diag.microQuests.length} ข้อ` : `${diag.microQuests.length} Micro-quest questions`}
+                      {lang === 'th' ? `แบบทดสอบซ่อมเสริม: ${diag.microQuests.length} ข้อ` : `${diag.microQuests.length} Micro-quest questions`}
                     </span>
 
-                    <button
-                      type="button"
-                      onClick={() => handleStartQuest(diag)}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        diag.isResolved
-                          ? 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] hover:opacity-90'
-                          : 'bg-indigo-700 hover:bg-indigo-800 text-white shadow-xs'
-                      }`}
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                      <span>
-                        {diag.isResolved 
-                          ? (lang === 'th' ? 'ทำซ่อมเสริมอีกครั้ง' : 'Retry Quest')
-                          : (lang === 'th' ? 'เริ่มทำเควสต์ซ่อมเสริม' : 'Start Micro-Quest')}
-                      </span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {onPracticeInSocraticTutor && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onPracticeInSocraticTutor({
+                              subject: diag.subject,
+                              subjectName: diag.subject,
+                              topicTh: diag.topicTh,
+                              score: diag.accuracyRate,
+                              studentName: diag.studentName,
+                            })
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition cursor-pointer"
+                        >
+                          {lang === 'th' ? 'ติวต่อกับพี่รหัส AI' : 'Tutor Chat'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleStartQuest(diag)}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          diag.isResolved
+                            ? 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] hover:opacity-90'
+                            : 'bg-indigo-700 hover:bg-indigo-800 text-white shadow-xs'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                        <span>
+                          {diag.isResolved 
+                            ? (lang === 'th' ? 'ทำซ่อมเสริมอีกครั้ง' : 'Retry Quest')
+                            : (lang === 'th' ? 'เริ่มทำเควสต์ซ่อมเสริม' : 'Start Micro-Quest')}
+                        </span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )} />

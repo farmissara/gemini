@@ -47,7 +47,12 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { PagedList } from '../components/PagedList';
-import { getConsentForms, getConsentResponses, upsertConsentResponse } from '../lib/campusDataStore';
+import {
+  CAMPUS_DATA_UPDATED_EVENT,
+  getConsentForms,
+  getConsentResponses,
+  upsertConsentResponse,
+} from '../lib/campusDataStore';
 import { calculateStudentAcademicSummary, getRawScoreFeedback } from '../lib/moeGrading';
 import { getStoredGradeAlerts } from '../lib/gradeNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
@@ -108,8 +113,22 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const [slipError, setSlipError] = useState<string | null>(null);
   const [slipToast, setSlipToast] = useState<string | null>(null);
   const [childCareerSnapshot, setChildCareerSnapshot] = useState<StudentCareerQuestState | null>(null);
-  const [consentForms] = useState<ConsentForm[]>(() => getConsentForms(schoolId));
+  const [consentForms, setConsentForms] = useState<ConsentForm[]>(() => getConsentForms(schoolId));
   const [consentResponses, setConsentResponses] = useState<ConsentResponse[]>(() => getConsentResponses(schoolId));
+
+  React.useEffect(() => {
+    setConsentForms(getConsentForms(schoolId));
+    setConsentResponses(getConsentResponses(schoolId));
+    const onUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ schoolId?: string }>).detail;
+      if (!detail?.schoolId || detail.schoolId === schoolId) {
+        setConsentForms(getConsentForms(schoolId));
+        setConsentResponses(getConsentResponses(schoolId));
+      }
+    };
+    window.addEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+  }, [schoolId]);
 
   // Date selection for child's selfie album
   const todayStr = getLocalDateString();
@@ -228,7 +247,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         const found = rows.find((r) => r.studentId === selectedStudentId || r.userId === selectedStudentId) || null;
         setChildCareerSnapshot(found);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[ParentPortal] Could not load child CareerQuest snapshot:', err);
+      });
     return () => {
       active = false;
     };

@@ -36,6 +36,22 @@ function getSupabaseServerClients(env: EnvReader, token: string): {
   return { userClient, serviceClient };
 }
 
+async function findAuthUserIdByEmail(
+  serviceClient: SupabaseClient,
+  email: string
+): Promise<string | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await serviceClient.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(error.message);
+    const users = data?.users || [];
+    const matched = users.find((u) => (u.email || '').trim().toLowerCase() === normalized);
+    if (matched) return matched.id;
+    if (users.length < 1000) return null;
+  }
+}
+
 export function createProfileAvatarRouter(getEnv: EnvReader) {
   const router = Router();
   router.use(express.json({ limit: '512kb' }));
@@ -135,29 +151,32 @@ export function createProfileAvatarRouter(getEnv: EnvReader) {
         // 2. Sync linked student row if applicable
         const studentRowId = isSelfStudent ? targetId : String(profile.student_id || '');
         if (studentRowId && profile.role === 'student') {
-          await serviceClient
+          const { error: stuSyncErr } = await serviceClient
             .from('students')
             .update({ avatar_url: avatarUrl })
             .eq('school_id', schoolId)
             .eq('id', studentRowId);
+          if (stuSyncErr) throw new Error(stuSyncErr.message);
         }
 
         // 3. Sync linked teacher row if applicable
         if (profile.role === 'teacher' || isAdmin) {
           if (isSelfTeacher && targetId && targetId !== profile.id) {
-            await serviceClient
+            const { error: tSyncErr } = await serviceClient
               .from('teachers')
               .update({ avatar_url: avatarUrl })
               .eq('school_id', schoolId)
               .eq('id', targetId);
+            if (tSyncErr) throw new Error(tSyncErr.message);
           } else {
             const userEmail = (authData.user.email || '').trim().toLowerCase();
             if (userEmail) {
-              await serviceClient
+              const { error: tMailSyncErr } = await serviceClient
                 .from('teachers')
                 .update({ avatar_url: avatarUrl })
                 .eq('school_id', schoolId)
                 .ilike('email', userEmail);
+              if (tMailSyncErr) throw new Error(tMailSyncErr.message);
             }
           }
         }
@@ -181,11 +200,12 @@ export function createProfileAvatarRouter(getEnv: EnvReader) {
           .eq('id', targetId);
         if (stuErr) throw new Error(stuErr.message);
 
-        await serviceClient
+        const { error: linkErr } = await serviceClient
           .from('user_profiles')
           .update({ avatar_url: avatarUrl })
           .eq('school_id', schoolId)
           .eq('student_id', targetId);
+        if (linkErr) throw new Error(linkErr.message);
 
         return res.json({ ok: true, avatarUrl, scope: 'student' });
       }
@@ -206,16 +226,14 @@ export function createProfileAvatarRouter(getEnv: EnvReader) {
         if (tchErr) throw new Error(tchErr.message);
 
         if (teacherRow?.email) {
-          const { data: authUsersData } = await serviceClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
-          const matchedAuthUser = authUsersData?.users?.find(
-            (u) => (u.email || '').trim().toLowerCase() === teacherRow.email.trim().toLowerCase()
-          );
-          if (matchedAuthUser) {
-            await serviceClient
+          const matchedAuthUserId = await findAuthUserIdByEmail(serviceClient, teacherRow.email);
+          if (matchedAuthUserId) {
+            const { error: pErr } = await serviceClient
               .from('user_profiles')
               .update({ avatar_url: avatarUrl })
-              .eq('id', matchedAuthUser.id)
+              .eq('id', matchedAuthUserId)
               .eq('school_id', schoolId);
+            if (pErr) throw new Error(pErr.message);
           }
         }
 

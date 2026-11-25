@@ -295,8 +295,12 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
     })
       .then((compressed) => {
         setSlipDataUrl(compressed);
+        setOrderNotice(null);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[Packages] Failed to compress payment slip:', err);
+        setOrderNotice('ไม่สามารถอ่านหรือย่อขนาดไฟล์ภาพสลิปได้ กรุณาเลือกไฟล์ JPG/PNG ใหม่อีกครั้ง');
+      });
   };
 
   const handleSubmitPurchaseOrder = async (e: React.FormEvent) => {

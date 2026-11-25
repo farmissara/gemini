@@ -510,6 +510,9 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
               lang={lang}
               currentRole={currentRole}
               currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+              schoolId={activeSchool.id}
+              currentUser={currentUser}
+              onEarnRewards={onEarnRewards}
               onExit={onExitGame}
             />
           </div>
@@ -520,6 +523,9 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
             <SubjectLabSimulationView
               currentUserRole={currentRole}
               currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || 'นักเรียน'}
+              schoolId={activeSchool.id}
+              userId={currentUser?.id}
+              studentId={currentUser?.studentRecordId}
               lang={lang}
               onEarnRewards={onEarnRewards}
               onBackToGames={onExitGame}

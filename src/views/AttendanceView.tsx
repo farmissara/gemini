@@ -1477,7 +1477,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                                         schoolId: activeSchoolId,
                                         targetStudentIds: [stu.id],
                                         targetRoles: ['student', 'parent', 'teacher', 'admin'],
-                                      }).catch(() => {});
+                                      }).catch((err) => {
+                                        console.warn('[AttendanceView] Failed to send checkout notification:', err);
+                                      });
                                       emitAppToast({
                                         tone: 'success',
                                         message: `ยืนยันออกโรงเรียนให้ ${stu.firstNameTh} ${stu.lastNameTh} และส่งแจ้งเตือนแล้ว`,

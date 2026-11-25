@@ -9,13 +9,20 @@ import {
   X,
 } from 'lucide-react';
 import { AppLanguage, UserRole } from '../../types';
-import {
-  GUIDED_PLAYBOOKS,
-  MODULE_GUIDED_TOURS,
+import type {
+  GuidedPlaybook,
+  ModuleTourDefinition,
   ModuleTourStep,
-  resolveTourStepsForPage,
 } from '../../data/moduleGuidedTours';
 import { FloatingMascotNavigator, MascotAvatar, MascotBuddyMode } from './MascotNavigator';
+
+let toursModulePromise: Promise<typeof import('../../data/moduleGuidedTours')> | null = null;
+function loadToursModule() {
+  if (!toursModulePromise) {
+    toursModulePromise = import('../../data/moduleGuidedTours');
+  }
+  return toursModulePromise;
+}
 
 const MASCOT_BUDDY_STORAGE_KEY = 'baanpakkru_mascot_buddy';
 
@@ -87,9 +94,11 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
   children,
 }) => {
   const [activeTourModuleId, setActiveTourModuleId] = useState<string | null>(null);
+  const [activeTourDefinition, setActiveTourDefinition] = useState<ModuleTourDefinition | null>(null);
   const [activeTourSteps, setActiveTourSteps] = useState<ModuleTourStep[]>([]);
   const [activeTourStepIndex, setActiveTourStepIndex] = useState(0);
   const [activePlaybookId, setActivePlaybookId] = useState<string | null>(null);
+  const [activePlaybook, setActivePlaybook] = useState<GuidedPlaybook | null>(null);
   const [activePlaybookStepIndex, setActivePlaybookStepIndex] = useState(0);
   const [spotlightRect, setSpotlightRect] = useState<SpotlightRect | null>(null);
   const [activeBuddy, setActiveBuddy] = useState<MascotBuddyMode>(() => {
@@ -118,21 +127,26 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
 
   const clearTourState = useCallback(() => {
     setActiveTourModuleId(null);
+    setActiveTourDefinition(null);
     setActiveTourSteps([]);
     setActiveTourStepIndex(0);
     setActivePlaybookId(null);
+    setActivePlaybook(null);
     setActivePlaybookStepIndex(0);
     setSpotlightRect(null);
     pendingTourRef.current = null;
   }, []);
 
   // Try launching any pending cross-module tour once target tab mounts
-  const attemptPendingLaunch = useCallback(() => {
+  const attemptPendingLaunch = useCallback(async () => {
     const pending = pendingTourRef.current;
     if (!pending) return false;
     if (currentTab !== pending.moduleId) return false;
 
-    const { steps } = resolveTourStepsForPage(pending.moduleId, currentRole, lang, {
+    const toursMod = await loadToursModule();
+    if (!pendingTourRef.current || pendingTourRef.current.moduleId !== currentTab) return false;
+
+    const { steps } = toursMod.resolveTourStepsForPage(pending.moduleId, currentRole, lang, {
       allowUnmountedSettingsTabSteps: true,
     });
     if (steps.length === 0) return false;
@@ -144,9 +158,15 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
     }
 
     setActiveTourModuleId(pending.moduleId);
+    setActiveTourDefinition(toursMod.MODULE_GUIDED_TOURS[pending.moduleId] || null);
     setActiveTourSteps(steps);
     setActiveTourStepIndex(initialIdx);
     setActivePlaybookId(pending.playbookId ?? null);
+    setActivePlaybook(
+      pending.playbookId
+        ? toursMod.GUIDED_PLAYBOOKS.find((p) => p.id === pending.playbookId) || null
+        : null
+    );
     setActivePlaybookStepIndex(pending.playbookStepIndex ?? 0);
     pendingTourRef.current = null;
     return true;
@@ -165,7 +185,7 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
       const delays = [0, 80, 220, 480, 850];
       const timers = delays.map((ms) =>
         window.setTimeout(() => {
-          attemptPendingLaunch();
+          void attemptPendingLaunch();
         }, ms)
       );
       return () => timers.forEach((id) => window.clearTimeout(id));
@@ -185,9 +205,6 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
   }, [clearTourState, isGuideEnabled]);
 
   const currentStep = activeTourSteps[activeTourStepIndex] || null;
-  const activePlaybook = activePlaybookId
-    ? GUIDED_PLAYBOOKS.find((p) => p.id === activePlaybookId) || null
-    : null;
   const hasNextPlaybookStage = Boolean(
     activePlaybook && activePlaybookStepIndex + 1 < activePlaybook.steps.length
   );
@@ -273,15 +290,19 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
       if (!isGuideEnabled) {
         onSetGuideEnabled(true);
       }
-      const { steps } = resolveTourStepsForPage(moduleId, currentRole, lang, {
-        allowUnmountedSettingsTabSteps: true,
+      void loadToursModule().then((toursMod) => {
+        const { steps } = toursMod.resolveTourStepsForPage(moduleId, currentRole, lang, {
+          allowUnmountedSettingsTabSteps: true,
+        });
+        if (steps.length === 0) return;
+        setActivePlaybookId(null);
+        setActivePlaybook(null);
+        setActivePlaybookStepIndex(0);
+        setActiveTourModuleId(moduleId);
+        setActiveTourDefinition(toursMod.MODULE_GUIDED_TOURS[moduleId] || null);
+        setActiveTourSteps(steps);
+        setActiveTourStepIndex(0);
       });
-      if (steps.length === 0) return false;
-      setActivePlaybookId(null);
-      setActivePlaybookStepIndex(0);
-      setActiveTourModuleId(moduleId);
-      setActiveTourSteps(steps);
-      setActiveTourStepIndex(0);
       return true;
     },
     [currentRole, isGuideEnabled, lang, onSetGuideEnabled]
@@ -298,11 +319,12 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
         if (req.settingsTab) {
           onNavigateToTourTargetRef.current?.({ moduleId: req.moduleId, settingsTab: req.settingsTab });
         }
-        const launched = attemptPendingLaunch();
-        if (!launched) {
-          const delays = [80, 250, 600];
-          delays.forEach((ms) => window.setTimeout(() => attemptPendingLaunch(), ms));
-        }
+        void attemptPendingLaunch().then((launched) => {
+          if (!launched) {
+            const delays = [80, 250, 600];
+            delays.forEach((ms) => window.setTimeout(() => void attemptPendingLaunch(), ms));
+          }
+        });
         return;
       }
 
@@ -328,15 +350,17 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
 
   const startPlaybook = useCallback(
     (playbookId: string, stepIndex = 0) => {
-      const playbook = GUIDED_PLAYBOOKS.find((p) => p.id === playbookId);
-      if (!playbook || playbook.steps.length === 0) return;
-      const safeIdx = Math.max(0, Math.min(stepIndex, playbook.steps.length - 1));
-      const stage = playbook.steps[safeIdx];
-      launchTarget({
-        moduleId: stage.moduleId,
-        settingsTab: stage.settingsTab,
-        playbookId,
-        playbookStepIndex: safeIdx,
+      void loadToursModule().then((toursMod) => {
+        const playbook = toursMod.GUIDED_PLAYBOOKS.find((p) => p.id === playbookId);
+        if (!playbook || playbook.steps.length === 0) return;
+        const safeIdx = Math.max(0, Math.min(stepIndex, playbook.steps.length - 1));
+        const stage = playbook.steps[safeIdx];
+        launchTarget({
+          moduleId: stage.moduleId,
+          settingsTab: stage.settingsTab,
+          playbookId,
+          playbookStepIndex: safeIdx,
+        });
       });
     },
     [launchTarget]
@@ -462,7 +486,7 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
       ? currentStep.actionHintTh
       : currentStep.actionHintEn
     : undefined;
-  const activeDefinition = activeTourModuleId ? MODULE_GUIDED_TOURS[activeTourModuleId] : null;
+  const activeDefinition = activeTourDefinition;
   const progressPct =
     activeTourSteps.length > 0
       ? Math.round(((activeTourStepIndex + 1) / activeTourSteps.length) * 100)

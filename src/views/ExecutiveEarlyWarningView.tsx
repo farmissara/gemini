@@ -46,7 +46,12 @@ import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
 import { calculateGrade } from '../lib/schoolSettings';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
-import { addSchoolIntervention, getSchoolInterventions, updateSchoolInterventionStatus } from '../lib/campusDataStore';
+import {
+  addSchoolIntervention,
+  CAMPUS_DATA_UPDATED_EVENT,
+  getSchoolInterventions,
+  updateSchoolInterventionStatus,
+} from '../lib/campusDataStore';
 
 export interface EnrichedStudentRiskProfile {
   studentId: string;
@@ -152,6 +157,18 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
   const [savedInterventions, setSavedInterventions] = useState<RiskInterventionRecord[]>(() =>
     getSchoolInterventions(schoolId)
   );
+
+  React.useEffect(() => {
+    setSavedInterventions(getSchoolInterventions(schoolId));
+    const onUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ schoolId?: string }>).detail;
+      if (!detail?.schoolId || detail.schoolId === schoolId) {
+        setSavedInterventions(getSchoolInterventions(schoolId));
+      }
+    };
+    window.addEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(CAMPUS_DATA_UPDATED_EVENT, onUpdated);
+  }, [schoolId]);
 
   // Course map for quick name resolution
   const courseMap = useMemo(() => {

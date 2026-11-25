@@ -864,6 +864,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     ? onUpdateSchoolCoordinates
                     : undefined
                 }
+                isDemoMode={isDemoMode}
               />
             </div>
           )}

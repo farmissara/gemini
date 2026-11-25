@@ -600,6 +600,8 @@ function renderMoePageCanvas({
   );
 
   const jpegUrl = canvas.toDataURL('image/jpeg', 0.94);
+  canvas.width = 0;
+  canvas.height = 0;
   return {
     bytes: dataUrlToBytes(jpegUrl),
     width,
@@ -1386,10 +1388,17 @@ export interface BatchQrPdfPayload {
 export function downloadBatchStudentQrCodesPdf(payload: BatchQrPdfPayload): {
   fileName: string;
   pageCount: number;
+  fileCount: number;
 } {
   const { students, school, layout = 'standard_3x4' } = payload;
   if (students.length === 0) {
     throw new Error('ไม่มีนักเรียนที่เลือกสำหรับสร้าง PDF');
+  }
+
+  const MAX_STUDENTS_PER_PDF = 120;
+  const studentChunks: Student[][] = [];
+  for (let i = 0; i < students.length; i += MAX_STUDENTS_PER_PDF) {
+    studentChunks.push(students.slice(i, i + MAX_STUDENTS_PER_PDF));
   }
 
   const pageWidth = 1240;
@@ -1408,7 +1417,7 @@ export function downloadBatchStudentQrCodesPdf(payload: BatchQrPdfPayload): {
   const fontFamily = `'Sarabun', 'Noto Sans Thai', 'Plus Jakarta Sans', sans-serif`;
 
   const schoolCode = school?.code || 'EDU';
-  const schoolName = school?.nameTh || school?.nameEn || 'สถานศึกษา EduVerse';
+  const schoolName = school?.nameTh || school?.nameEn || 'สถานศึกษา BaanPakKru';
   const accentColor = school?.primaryColor || '#1d4ed8';
   const issuedDateTh = new Date().toLocaleDateString('th-TH', {
     year: 'numeric',
@@ -1416,192 +1425,206 @@ export function downloadBatchStudentQrCodesPdf(payload: BatchQrPdfPayload): {
     day: 'numeric',
   });
 
-  const totalPages = Math.ceil(students.length / perPage);
-  const pages: Array<{ bytes: Uint8Array; width: number; height: number }> = [];
+  let grandTotalPages = 0;
+  let lastFileName = `BaanPakKru_Student_QR_Codes_${students.length}.pdf`;
 
-  for (let pageIdx = 0; pageIdx < totalPages; pageIdx += 1) {
-    const chunk = students.slice(pageIdx * perPage, (pageIdx + 1) * perPage);
-    const canvas = document.createElement('canvas');
-    canvas.width = pageWidth;
-    canvas.height = pageHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('ไม่สามารถสร้าง Canvas สำหรับ PDF ได้');
-    }
+  studentChunks.forEach((partStudents, partIdx) => {
+    const totalPages = Math.ceil(partStudents.length / perPage);
+    grandTotalPages += totalPages;
+    const pages: Array<{ bytes: Uint8Array; width: number; height: number }> = [];
 
-    // White A4 background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, pageWidth, pageHeight);
-
-    // Header band
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(margin, margin, gridWidth, 68);
-    ctx.fillStyle = accentColor;
-    ctx.fillRect(margin, margin + 64, gridWidth, 4);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    ctx.font = `700 22px ${fontFamily}`;
-    drawTruncatedText(
-      ctx,
-      `${schoolName} • ชุดบัตรสแกน QR Code นักเรียน`,
-      margin + 20,
-      margin + 32,
-      gridWidth - 260,
-      'left'
-    );
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = `500 13px ${fontFamily}`;
-    ctx.fillText(
-      `จำนวน ${students.length} คน • ใช้สแกนเช็คชื่อหน้าประตูและห้องเรียน (EDUVERSE:STU)`,
-      margin + 20,
-      margin + 54
-    );
-
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `700 14px ${fontFamily}`;
-    ctx.fillText(
-      `หน้า ${pageIdx + 1} / ${totalPages}`,
-      margin + gridWidth - 18,
-      margin + 42
-    );
-
-    // Draw cards on grid
-    chunk.forEach((student, idx) => {
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      const x = margin + col * (cardW + gap);
-      const y = margin + headerHeight + row * (cardH + gap);
-
-      // Card outline + dashed cut guideline
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x, y, cardW, cardH);
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(x, y, cardW, cardH);
-      ctx.restore();
-
-      // Top bar inside card
-      ctx.fillStyle = accentColor;
-      ctx.fillRect(x, y, cardW, 7);
-
-      // School label + badge
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#475569';
-      ctx.font = `700 ${layout === 'compact_4x5' ? 11 : 13}px ${fontFamily}`;
-      drawTruncatedText(ctx, schoolName, x + 12, y + 26, cardW - 86, 'left');
-
-      ctx.fillStyle = '#eff6ff';
-      ctx.fillRect(x + cardW - 68, y + 13, 56, 18);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#1d4ed8';
-      ctx.font = `700 10px ${fontFamily}`;
-      ctx.fillText('QR PASS', x + cardW - 40, y + 26);
-
-      // Render crisp QR Code matrix
-      const qrValue = `EDUVERSE:STU:${student.studentIdNumber}:${schoolCode}`;
-      const matrix = generateQrMatrix(qrValue);
-      const n = matrix.length;
-      const maxQrBox = Math.min(
-        cardW - 36,
-        cardH - (layout === 'compact_4x5' ? 105 : 132)
-      );
-      const quietModules = 2;
-      const totalModules = n + quietModules * 2;
-      const cellPx = Math.max(2, Math.floor(maxQrBox / totalModules));
-      const qrDrawSize = cellPx * totalModules;
-      const qrX = x + (cardW - qrDrawSize) / 2;
-      const qrY = y + 36;
-
-      // White quiet zone + light frame
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(qrX - 4, qrY - 4, qrDrawSize + 8, qrDrawSize + 8);
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(qrX - 4, qrY - 4, qrDrawSize + 8, qrDrawSize + 8);
-
-      ctx.fillStyle = '#0f172a';
-      for (let r = 0; r < n; r += 1) {
-        for (let c = 0; c < n; c += 1) {
-          if (matrix[r][c]) {
-            ctx.fillRect(
-              qrX + (c + quietModules) * cellPx,
-              qrY + (r + quietModules) * cellPx,
-              cellPx,
-              cellPx
-            );
-          }
-        }
+    for (let pageIdx = 0; pageIdx < totalPages; pageIdx += 1) {
+      const chunk = partStudents.slice(pageIdx * perPage, (pageIdx + 1) * perPage);
+      const canvas = document.createElement('canvas');
+      canvas.width = pageWidth;
+      canvas.height = pageHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('ไม่สามารถสร้าง Canvas สำหรับ PDF ได้');
       }
 
-      // Student Name & ID Info
-      const textTopY = qrY + qrDrawSize + (layout === 'compact_4x5' ? 20 : 26);
-      ctx.textAlign = 'center';
+      // White A4 background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageWidth, pageHeight);
+
+      // Header band
       ctx.fillStyle = '#0f172a';
-      ctx.font = `700 ${layout === 'compact_4x5' ? 14 : 17}px ${fontFamily}`;
+      ctx.fillRect(margin, margin, gridWidth, 68);
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(margin, margin + 64, gridWidth, 4);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.font = `700 22px ${fontFamily}`;
       drawTruncatedText(
         ctx,
-        `${student.firstNameTh} ${student.lastNameTh}`.trim(),
-        x + cardW / 2,
-        textTopY,
-        cardW - 20,
-        'center'
+        `${schoolName} • ชุดบัตรสแกน QR Code นักเรียน`,
+        margin + 20,
+        margin + 32,
+        gridWidth - 260,
+        'left'
+      );
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = `500 13px ${fontFamily}`;
+      ctx.fillText(
+        studentChunks.length > 1
+          ? `ชุดที่ ${partIdx + 1}/${studentChunks.length} (${partStudents.length} คน) • ใช้สแกนเช็คชื่อหน้าประตูและห้องเรียน`
+          : `จำนวน ${partStudents.length} คน • ใช้สแกนเช็คชื่อหน้าประตูและห้องเรียน`,
+        margin + 20,
+        margin + 54
       );
 
-      if (layout === 'standard_3x4') {
-        ctx.fillStyle = '#64748b';
-        ctx.font = `500 12px ${fontFamily}`;
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `700 14px ${fontFamily}`;
+      ctx.fillText(
+        `หน้า ${pageIdx + 1} / ${totalPages}`,
+        margin + gridWidth - 18,
+        margin + 42
+      );
+
+      // Draw cards on grid
+      chunk.forEach((student, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const x = margin + col * (cardW + gap);
+        const y = margin + headerHeight + row * (cardH + gap);
+
+        // Card outline + dashed cut guideline
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, cardW, cardH);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(x, y, cardW, cardH);
+        ctx.restore();
+
+        // Top bar inside card
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(x, y, cardW, 7);
+
+        // School label + badge
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#475569';
+        ctx.font = `700 ${layout === 'compact_4x5' ? 11 : 13}px ${fontFamily}`;
+        drawTruncatedText(ctx, schoolName, x + 12, y + 26, cardW - 86, 'left');
+
+        ctx.fillStyle = '#eff6ff';
+        ctx.fillRect(x + cardW - 68, y + 13, 56, 18);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1d4ed8';
+        ctx.font = `700 10px ${fontFamily}`;
+        ctx.fillText('QR PASS', x + cardW - 40, y + 26);
+
+        // Render crisp QR Code matrix (keep prefix for backward scanner compatibility)
+        const qrValue = `EDUVERSE:STU:${student.studentIdNumber}:${schoolCode}`;
+        const matrix = generateQrMatrix(qrValue);
+        const n = matrix.length;
+        const maxQrBox = Math.min(
+          cardW - 36,
+          cardH - (layout === 'compact_4x5' ? 105 : 132)
+        );
+        const quietModules = 2;
+        const totalModules = n + quietModules * 2;
+        const cellPx = Math.max(2, Math.floor(maxQrBox / totalModules));
+        const qrDrawSize = cellPx * totalModules;
+        const qrX = x + (cardW - qrDrawSize) / 2;
+        const qrY = y + 36;
+
+        // White quiet zone + light frame
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(qrX - 4, qrY - 4, qrDrawSize + 8, qrDrawSize + 8);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(qrX - 4, qrY - 4, qrDrawSize + 8, qrDrawSize + 8);
+
+        ctx.fillStyle = '#0f172a';
+        for (let r = 0; r < n; r += 1) {
+          for (let c = 0; c < n; c += 1) {
+            if (matrix[r][c]) {
+              ctx.fillRect(
+                qrX + (c + quietModules) * cellPx,
+                qrY + (r + quietModules) * cellPx,
+                cellPx,
+                cellPx
+              );
+            }
+          }
+        }
+
+        // Student Name & ID Info
+        const textTopY = qrY + qrDrawSize + (layout === 'compact_4x5' ? 20 : 26);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = `700 ${layout === 'compact_4x5' ? 14 : 17}px ${fontFamily}`;
         drawTruncatedText(
           ctx,
-          `${student.firstNameEn} ${student.lastNameEn}`.trim(),
+          `${student.firstNameTh} ${student.lastNameTh}`.trim(),
           x + cardW / 2,
-          textTopY + 18,
+          textTopY,
           cardW - 20,
           'center'
         );
-      }
 
-      const idPillY = textTopY + (layout === 'compact_4x5' ? 10 : 28);
-      const idLabel = `${student.studentIdNumber} • ${student.room}`;
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(x + 16, idPillY, cardW - 32, 24);
-      ctx.fillStyle = '#1e3a8a';
-      ctx.font = `700 ${layout === 'compact_4x5' ? 12 : 13}px monospace`;
-      drawTruncatedText(ctx, idLabel, x + cardW / 2, idPillY + 16, cardW - 40, 'center');
-    });
+        if (layout === 'standard_3x4') {
+          ctx.fillStyle = '#64748b';
+          ctx.font = `500 12px ${fontFamily}`;
+          drawTruncatedText(
+            ctx,
+            `${student.firstNameEn} ${student.lastNameEn}`.trim(),
+            x + cardW / 2,
+            textTopY + 18,
+            cardW - 20,
+            'center'
+          );
+        }
 
-    // Footer
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#64748b';
-    ctx.font = `500 12px ${fontFamily}`;
-    ctx.fillText(
-      `EduVerse Student QR Passes • ออกเอกสารเมื่อ ${issuedDateTh} • หน้า ${pageIdx + 1}/${totalPages}`,
-      pageWidth / 2,
-      pageHeight - 26
-    );
+        const idPillY = textTopY + (layout === 'compact_4x5' ? 10 : 28);
+        const idLabel = `${student.studentIdNumber} • ${student.room}`;
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fillRect(x + 16, idPillY, cardW - 32, 24);
+        ctx.fillStyle = '#1e3a8a';
+        ctx.font = `700 ${layout === 'compact_4x5' ? 12 : 13}px monospace`;
+        drawTruncatedText(ctx, idLabel, x + cardW / 2, idPillY + 16, cardW - 40, 'center');
+      });
 
-    const jpegUrl = canvas.toDataURL('image/jpeg', 0.94);
-    pages.push({
-      bytes: dataUrlToBytes(jpegUrl),
-      width: pageWidth,
-      height: pageHeight,
-    });
-  }
+      // Footer
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#64748b';
+      ctx.font = `500 12px ${fontFamily}`;
+      ctx.fillText(
+        `BaanPakKru Student QR Passes • ออกเอกสารเมื่อ ${issuedDateTh} • หน้า ${pageIdx + 1}/${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 26
+      );
 
-  const blob = buildPdfFromJpegPages(pages);
-  const fileName = `EduVerse_Student_QR_Codes_${students.length}.pdf`;
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+      const jpegUrl = canvas.toDataURL('image/jpeg', 0.94);
+      canvas.width = 0;
+      canvas.height = 0;
+      pages.push({
+        bytes: dataUrlToBytes(jpegUrl),
+        width: pageWidth,
+        height: pageHeight,
+      });
+    }
 
-  return { fileName, pageCount: totalPages };
+    const blob = buildPdfFromJpegPages(pages);
+    const fileName =
+      studentChunks.length > 1
+        ? `BaanPakKru_Student_QR_Codes_Part${partIdx + 1}_of_${studentChunks.length}.pdf`
+        : `BaanPakKru_Student_QR_Codes_${students.length}.pdf`;
+    lastFileName = fileName;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  });
+
+  return { fileName: lastFileName, pageCount: grandTotalPages, fileCount: studentChunks.length };
 }
 

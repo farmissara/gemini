@@ -31,8 +31,10 @@ interface AnnouncementsViewProps {
   announcements: Announcement[];
   systemConfig: SystemConfig;
   onAddAnnouncement: (announcement: Announcement) => void;
-  onBroadcastLine: (announcementId: string) => void;
+  onBroadcastLine: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onConsentPublished?: (title: string) => void;
+  currentUserName?: string;
+  currentUserRoleLabel?: string;
 }
 
 export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
@@ -42,6 +44,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   onAddAnnouncement,
   onBroadcastLine,
   onConsentPublished,
+  currentUserName,
+  currentUserRoleLabel,
 }) => {
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const categoryOptions = presets.announcementCategories;
@@ -64,8 +68,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     category: 'academic' as Announcement['category'],
     targetAudience: 'all' as Announcement['targetAudience'],
     pinned: false,
-    author: 'Principal Office',
-    authorRole: 'Administrator',
+    author: currentUserName?.trim() || 'ฝ่ายประชาสัมพันธ์โรงเรียน',
+    authorRole: currentUserRoleLabel?.trim() || 'ผู้ดูแลระบบ',
   });
 
   const isLineEnabled = systemConfig.lineMessagingConfigured !== false;
@@ -103,13 +107,21 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     });
   };
 
-  const handleManualLineBroadcast = (id: string, title: string) => {
+  const handleManualLineBroadcast = async (id: string, title: string) => {
     if (!isLineEnabled) return;
-    onBroadcastLine(id);
-    emitAppToast({
-      tone: 'info',
-      message: `ระบบบันทึกการส่งแจ้งเตือนสำหรับ "${title}" (ตั้งค่า LINE OA ได้ที่หน้าตั้งค่าระบบ)`,
-    });
+    const result = await onBroadcastLine(id);
+    if (result && typeof result === 'object' && 'ok' in result) {
+      emitAppToast({
+        tone: result.ok ? 'success' : 'error',
+        title: result.ok ? `ส่ง LINE OA: ${title}` : 'ไม่สามารถส่งแจ้งเตือน LINE OA ได้',
+        message: result.message,
+      });
+    } else {
+      emitAppToast({
+        tone: 'info',
+        message: `ระบบบันทึกการส่งแจ้งเตือนสำหรับ "${title}" (ตั้งค่า LINE OA ได้ที่หน้าตั้งค่าระบบ)`,
+      });
+    }
   };
 
   const filteredAnnouncements = announcements.filter((a) => {

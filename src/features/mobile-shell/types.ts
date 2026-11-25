@@ -203,7 +203,7 @@ export interface MobileAppShellProps {
   onOpenSchoolSwitcher?: () => void;
   onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
   onAddAnnouncement?: (announcement: Announcement) => void;
-  onBroadcastLine?: (announcementId: string) => void;
+  onBroadcastLine?: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onAddHomeworkAssignment?: (assignment: Assignment) => Promise<void>;
   onAddHomeworkSubmission?: (sub: HomeworkSubmission) => Promise<void>;
   onGradeHomeworkSubmission?: (id: string, score: number, feedback: string) => Promise<void>;
