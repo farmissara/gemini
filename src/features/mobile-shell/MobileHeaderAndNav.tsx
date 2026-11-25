@@ -81,7 +81,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md transition-colors">
-      <div className="px-4 h-14 flex items-center justify-between gap-3">
+      <div className="px-3.5 h-12 sm:h-14 flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <BaanPakKruLogo size={24} />
           {onOpenSchoolSwitcher && currentRole === 'super_admin' ? (
@@ -242,13 +242,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onResetCheckinToSelfie,
 }) => {
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-1 safe-area-bottom">
+    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-0.5 safe-area-bottom">
       <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
         {/* SLOT 1: HOME */}
         <button
           type="button"
           onClick={() => setActiveTab('home')}
-          className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+          className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
             activeTab === 'home'
               ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
@@ -285,7 +285,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               setActiveTab('home');
             }
           }}
-          className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+          className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
             (canSelfCheckin
               ? activeTab === 'checkin' || activeTab === 'leave' || activeTab === 'attendance_history'
               : canViewTimetable
@@ -324,7 +324,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('admin_quick')}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'admin_quick'
                 ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
@@ -340,7 +340,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('super_schools')}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'super_schools'
                 ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
@@ -358,7 +358,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               else if (canOpenAnnouncements) setActiveTab('announcements');
               else setActiveTab('executive');
             }}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               (isModuleEnabled('gradebook')
                 ? activeTab === 'gradebook'
                 : canViewTimetable
@@ -393,7 +393,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               else if (canViewTimetable) setActiveTab('timetable');
               else setActiveTab('profile');
             }}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               (canOpenAnnouncements
                 ? activeTab === 'announcements'
                 : canViewTimetable
@@ -435,7 +435,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 setActiveTab('profile');
               }
             }}
-            className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               (canPlayGames
                 ? activeTab === 'games'
                 : canAccessHomework
@@ -474,7 +474,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
-          className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+          className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
             activeTab === 'profile'
               ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'

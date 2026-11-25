@@ -587,7 +587,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
   return (
     <div
-      className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-16 select-none`}
+      className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-14 sm:pb-16 select-none`}
     >
       {/* 1. CLEAN SINGLE-ROW APPLE/LINEAR MOBILE HEADER */}
       <MobileHeader
@@ -606,10 +606,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         onLogout={onLogout}
       />
 
-      {/* 2. MAIN ACTIVE VIEW CONTAINER (Generous spacing, 1 task per screen) */}
+      {/* 2. MAIN ACTIVE VIEW CONTAINER (Compact mobile padding) */}
       <main
         className={`flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto overflow-y-auto ${
-          activeTab === 'checkin' || activeTab === 'leave' ? 'px-3 py-3 sm:p-6' : 'p-5 sm:p-6'
+          activeTab === 'checkin' || activeTab === 'leave' ? 'px-3 py-2.5 sm:p-5' : 'px-3.5 py-2.5 sm:p-5'
         }`}
       >
         <ViewErrorBoundary
@@ -623,7 +623,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         >
           {/* TAB A: ROLE-FIRST HOME */}
           {activeTab === 'home' && (
-            <div className="flex flex-col gap-5 py-1 animate-in fade-in duration-150">
+            <div className="flex flex-col gap-3 animate-in fade-in duration-150">
               {currentRole === 'super_admin' ? (
                 <MobileSuperAdminHub
                   schools={schools}
