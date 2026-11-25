@@ -511,114 +511,80 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   );
 };
 
-interface MobileHomeworkTabProps {
-  lang: AppLanguage;
-  scopedAssignments: Assignment[];
-  scopedCourses: Course[];
-  myCompletedSubmissions: Set<string>;
-  currentPersonId: string | undefined;
-  onBackHome: () => void;
-}
-
-export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
-  lang,
-  scopedAssignments,
-  scopedCourses,
-  myCompletedSubmissions,
-  currentPersonId,
-  onBackHome,
-}) => {
-  return (
-    <div className="space-y-4 animate-in fade-in duration-200">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>กลับหน้าหลัก</span>
-        </button>
-        <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">รายการการบ้านและงานค้าง</h2>
-      </div>
-
-      <PagedList
-        items={scopedAssignments}
-        pageSize={2}
-        previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
-        nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
-        paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าการบ้าน' : 'Homework pages'}
-        emptyState={
-          <div className="text-center py-12 text-[var(--color-text-muted)] text-xs">ไม่มีการบ้านในระบบ</div>
-        }
-        renderItem={(asg) => {
-          const isDone =
-            myCompletedSubmissions.has(asg.id) ||
-            Boolean(currentPersonId && asg.submittedStudentIds?.includes(currentPersonId));
-          return (
-            <div
-              key={asg.id}
-              className={`p-3.5 rounded-2xl border ${
-                isDone
-                  ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)]'
-              } shadow-xs space-y-2 text-xs`}
-            >
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="font-semibold text-[var(--color-text-muted)]">
-                  {scopedCourses.find((c) => c.id === asg.courseId)?.code ||
-                    scopedCourses.find((c) => c.id === asg.courseId)?.titleTh ||
-                    'วิชาเรียน'}
-                </span>
-                <span
-                  className={`font-bold ${
-                    isDone ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
-                  }`}
-                >
-                  {isDone ? 'ส่งแล้ว' : 'รอส่ง'}
-                </span>
-              </div>
-
-              <h4 className="font-bold text-sm text-[var(--color-text-title)]">
-                {lang === 'th' ? asg.titleTh || asg.titleEn : asg.titleEn || asg.titleTh}
-              </h4>
-
-              <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                <span>กำหนดส่ง: {asg.dueDate}</span>
-                <span className="font-semibold text-[var(--color-text-title)]">{asg.points} คะแนน</span>
-              </div>
-            </div>
-          );
-        }}
-      />
-    </div>
-  );
-};
-
 interface MobileAnnouncementsTabProps {
   lang: AppLanguage;
+  currentRole: UserRole;
+  currentUser: AuthUser | null;
   scopedAnnouncements: Announcement[];
   selectedAnnouncement: Announcement | null;
   setSelectedAnnouncement: (ann: Announcement | null) => void;
+  onAddAnnouncement?: (announcement: Announcement) => void;
+  onBroadcastLine?: (announcementId: string) => void;
   onBackHome: () => void;
 }
 
 export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
   lang,
+  currentRole,
+  currentUser,
   scopedAnnouncements,
   selectedAnnouncement,
   setSelectedAnnouncement,
+  onAddAnnouncement,
+  onBroadcastLine,
   onBackHome,
 }) => {
+  const canCreate = ['teacher', 'admin', 'super_admin'].includes(currentRole) && Boolean(onAddAnnouncement);
+  const [showForm, setShowForm] = useState(false);
+  const [audienceFilter, setAudienceFilter] = useState<string>('all');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState<Announcement['category']>('academic');
+  const [targetAudience, setTargetAudience] = useState<Announcement['targetAudience']>('all');
+  const [pinned, setPinned] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const visibleAnnouncements = scopedAnnouncements.filter((a) =>
+    audienceFilter === 'all' ? true : a.targetAudience === audienceFilter || a.targetAudience === 'all'
+  );
+
+  const handlePublish = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onAddAnnouncement || !title.trim() || !content.trim()) return;
+    const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const newAnn: Announcement = {
+      id: `ann-${Date.now()}`,
+      title: title.trim(),
+      content: content.trim(),
+      category,
+      targetAudience,
+      publishedAt: `${dateStr} ${nowTime}`,
+      author: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
+      authorRole: currentRole === 'teacher' ? 'ครูผู้สอน' : 'ผู้ดูแลระบบ',
+      pinned,
+      lineBroadcastSent: false,
+      resendEmailSent: false,
+    };
+    onAddAnnouncement(newAnn);
+    setTitle('');
+    setContent('');
+    setPinned(false);
+    setShowForm(false);
+    setToast(lang === 'th' ? 'เผยแพร่ประกาศเรียบร้อยแล้ว' : 'Announcement published');
+    window.setTimeout(() => setToast(null), 2600);
+  };
+
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200 pb-4">
       {selectedAnnouncement ? (
         <>
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setSelectedAnnouncement(null)}
-              className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              className="min-h-[40px] flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>กลับสู่รายการ</span>
@@ -627,11 +593,11 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
               {selectedAnnouncement.publishedAt}
             </span>
           </div>
-          <article className="p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]">
+          <article className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2">
             <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
               {selectedAnnouncement.title}
             </h2>
-            <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+            <p className="text-[11px] text-[var(--color-text-muted)]">
               {selectedAnnouncement.author} ({selectedAnnouncement.authorRole})
             </p>
             <PagedList
@@ -643,31 +609,142 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
               renderItem={(pageText, pageIndex) => (
                 <p
                   key={pageIndex}
-                  className="mt-3 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-text-body)]"
+                  className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-text-body)]"
                 >
                   {pageText}
                 </p>
               )}
             />
+            {canCreate && onBroadcastLine && (
+              <button
+                type="button"
+                onClick={() => {
+                  onBroadcastLine(selectedAnnouncement.id);
+                  setToast('ส่งแจ้งเตือน LINE เรียบร้อยแล้ว');
+                  window.setTimeout(() => setToast(null), 2400);
+                }}
+                className="w-full min-h-[40px] mt-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 text-xs font-bold cursor-pointer"
+              >
+                {selectedAnnouncement.lineBroadcastSent ? 'ส่ง LINE ซ้ำอีกครั้ง' : 'ส่งแจ้งเตือนเข้า LINE'}
+              </button>
+            )}
           </article>
         </>
       ) : (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onBackHome}
-              className="flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              className="min-h-[40px] flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>กลับหน้าหลัก</span>
             </button>
-            <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">ประกาศและข่าวสารโรงเรียน</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">ประกาศโรงเรียน</h2>
+              {canCreate && (
+                <button
+                  type="button"
+                  onClick={() => setShowForm((v) => !v)}
+                  className="min-h-[36px] px-3 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold cursor-pointer"
+                >
+                  {showForm ? 'ปิด' : '+ สร้างประกาศ'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {toast && (
+            <div role="status" className="p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100 text-xs font-semibold">
+              {toast}
+            </div>
+          )}
+
+          {showForm && canCreate && (
+            <form onSubmit={handlePublish} className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5 text-xs">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="หัวข้อประกาศ..."
+                className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-semibold"
+              />
+              <textarea
+                rows={3}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="รายละเอียดประกาศ..."
+                className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as Announcement['category'])}
+                  className="min-h-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                >
+                  <option value="academic">วิชาการ</option>
+                  <option value="general">ทั่วไป</option>
+                  <option value="event">กิจกรรม</option>
+                  <option value="urgent">ด่วน</option>
+                </select>
+                <select
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value as Announcement['targetAudience'])}
+                  className="min-h-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                >
+                  <option value="all">ทุกคนในโรงเรียน</option>
+                  <option value="students">นักเรียน</option>
+                  <option value="parents">ผู้ปกครอง</option>
+                  <option value="teachers">ครูและบุคลากร</option>
+                </select>
+              </div>
+              <label className="flex items-center justify-between py-1 cursor-pointer">
+                <span className="font-semibold text-[var(--color-text-title)]">ปักหมุดไว้ด้านบน</span>
+                <input
+                  type="checkbox"
+                  checked={pinned}
+                  onChange={(e) => setPinned(e.target.checked)}
+                  className="w-4 h-4 accent-[var(--color-primary)]"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={!title.trim() || !content.trim()}
+                className="w-full min-h-[44px] rounded-xl bg-[var(--color-primary)] text-white font-bold disabled:opacity-50 cursor-pointer"
+              >
+                เผยแพร่ประกาศ
+              </button>
+            </form>
+          )}
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {(
+              [
+                { id: 'all', label: 'ทั้งหมด' },
+                { id: 'students', label: 'นักเรียน' },
+                { id: 'parents', label: 'ผู้ปกครอง' },
+                { id: 'teachers', label: 'ครู' },
+              ] as const
+            ).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setAudienceFilter(f.id)}
+                className={`min-h-[36px] px-3 rounded-xl text-xs font-semibold shrink-0 cursor-pointer ${
+                  audienceFilter === f.id
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
 
           <PagedList
-            items={scopedAnnouncements}
-            pageSize={2}
+            items={visibleAnnouncements}
+            pageSize={4}
             previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
             nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
             paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}

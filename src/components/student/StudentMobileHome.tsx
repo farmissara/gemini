@@ -9,9 +9,11 @@ import {
   ChevronRight,
   Clock,
   Compass,
+  CreditCard,
   FileText,
   Gamepad2,
   GraduationCap,
+  Library,
   LogIn,
   LogOut,
   Megaphone,
@@ -71,6 +73,9 @@ interface StudentMobileHomeProps {
   canOpenPortfolio?: boolean;
   canOpenLeave?: boolean;
   canOpenAnnouncements?: boolean;
+  canViewDigitalId?: boolean;
+  canOpenLms?: boolean;
+  lessonsCount?: number;
   getSlotTodayCheckStatus: (
     slot: TimetableSlot,
     dateValue: string
@@ -89,6 +94,9 @@ interface StudentMobileHomeProps {
   onOpenAnnouncements: (announcement?: Announcement) => void;
   onOpenGames: () => void;
   onOpenCareerQuest?: () => void;
+  onOpenAttendanceHistory?: () => void;
+  onOpenDigitalId?: () => void;
+  onOpenLms?: () => void;
 }
 
 const getBarTone = (percent: number): string => {
@@ -128,6 +136,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   canOpenPortfolio = true,
   canOpenLeave = true,
   canOpenAnnouncements = true,
+  canViewDigitalId = false,
+  canOpenLms = false,
+  lessonsCount = 0,
   getSlotTodayCheckStatus,
   onOpenCheckin,
   onTriggerPeriodCheckin,
@@ -139,6 +150,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   onOpenAnnouncements,
   onOpenGames,
   onOpenCareerQuest,
+  onOpenAttendanceHistory,
+  onOpenDigitalId,
+  onOpenLms,
 }) => {
   const currentHour = Math.floor(bangkokClock.minutes / 60);
   const greetingText =
@@ -423,7 +437,12 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         className="flex flex-col gap-3"
       >
         {/* Attendance Visual Progress Card */}
-        <article className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 space-y-3">
+        <button
+          type="button"
+          onClick={() => onOpenAttendanceHistory?.()}
+          disabled={!onOpenAttendanceHistory}
+          className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:border-[var(--color-primary)] p-4 sm:p-5 text-left space-y-3 transition hover:shadow-md active:scale-[0.99] cursor-pointer disabled:cursor-default"
+        >
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-medium text-[var(--color-text-muted)]">
@@ -438,8 +457,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 </span>
               </div>
             </div>
-            <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums">
-              {lang === 'th' ? `เกณฑ์ขั้นต่ำ 80%` : `80% target`}
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] tabular-nums">
+              <span>{lang === 'th' ? 'ดูประวัติ' : 'History'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </span>
           </div>
 
@@ -486,7 +506,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               {lang === 'th' ? `ลา/ขาด ${attendanceAbsent}` : `Absent ${attendanceAbsent}`}
             </span>
           </div>
-        </article>
+        </button>
 
         {/* Grades & Subject Progress Card */}
         {canViewGrades && (
@@ -944,6 +964,50 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               </div>
             </button>
           ) : null}
+
+          {/* Tile 7: LMS Classroom */}
+          {canOpenLms && onOpenLms && (
+            <button
+              type="button"
+              onClick={onOpenLms}
+              className="min-h-[96px] p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-sky-400 dark:hover:border-sky-500 text-left flex flex-col justify-between gap-2 transition active:scale-[0.98] cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                <Library className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[15px] font-bold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Lessons'}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
+                  {lessonsCount > 0
+                    ? `${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`
+                    : `${scopedCourses.length} ${lang === 'th' ? 'รายวิชา' : 'courses'}`}
+                </p>
+              </div>
+            </button>
+          )}
+
+          {/* Tile 8: Digital Student ID Card */}
+          {canViewDigitalId && onOpenDigitalId && (
+            <button
+              type="button"
+              onClick={onOpenDigitalId}
+              className="min-h-[96px] p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-cyan-400 dark:hover:border-cyan-500 text-left flex flex-col justify-between gap-2 transition active:scale-[0.98] cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[15px] font-bold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'บัตรนักเรียน' : 'Digital ID'}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                  {lang === 'th' ? 'QR · บาร์โค้ดสแกน' : 'QR & Barcode'}
+                </p>
+              </div>
+            </button>
+          )}
         </div>
 
         {onOpenCareerQuest && (
@@ -973,8 +1037,8 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         )}
       </section>
 
-      {/* 5. LATEST SCHOOL ANNOUNCEMENT HIGHLIGHT (Single Clean Editorial Card) */}
-      {canOpenAnnouncements && latestAnnouncement && (
+      {/* 5. LATEST SCHOOL ANNOUNCEMENT HIGHLIGHT */}
+      {canOpenAnnouncements && (
         <section aria-label={lang === 'th' ? 'ประกาศล่าสุด' : 'Latest announcement'} className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-[13px] font-bold text-[var(--color-text-title)]">
@@ -989,25 +1053,39 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onOpenAnnouncements(latestAnnouncement)}
-            className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:border-[var(--color-primary)] p-4 sm:p-5 text-left space-y-1.5 transition hover:shadow-md active:scale-[0.99] cursor-pointer"
-          >
-            <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)] tabular-nums">
-              <span className="font-semibold text-[var(--color-primary-text)] flex items-center gap-1.5">
-                <BellRing className="w-3.5 h-3.5" />
-                <span>{latestAnnouncement.category}</span>
+          {latestAnnouncement ? (
+            <button
+              type="button"
+              onClick={() => onOpenAnnouncements(latestAnnouncement)}
+              className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:border-[var(--color-primary)] p-4 sm:p-5 text-left space-y-1.5 transition hover:shadow-md active:scale-[0.99] cursor-pointer"
+            >
+              <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-text-muted)] tabular-nums">
+                <span className="font-semibold text-[var(--color-primary-text)] flex items-center gap-1.5">
+                  <BellRing className="w-3.5 h-3.5" />
+                  <span>{latestAnnouncement.category}</span>
+                </span>
+                <span>{latestAnnouncement.publishedAt}</span>
+              </div>
+              <h3 className="text-sm font-bold text-[var(--color-text-title)] line-clamp-1">
+                {latestAnnouncement.title}
+              </h3>
+              <p className="text-xs text-[var(--color-text-body)] line-clamp-2 leading-relaxed">
+                {latestAnnouncement.content}
+              </p>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpenAnnouncements()}
+              className="w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] px-4 py-3 text-left flex items-center justify-between gap-2 transition cursor-pointer"
+            >
+              <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-2">
+                <Megaphone className="w-4 h-4 shrink-0" />
+                <span>{lang === 'th' ? 'ยังไม่มีประกาศใหม่ · แตะเพื่อดูประกาศทั้งหมด' : 'No recent announcements · View archive'}</span>
               </span>
-              <span>{latestAnnouncement.publishedAt}</span>
-            </div>
-            <h3 className="text-sm font-bold text-[var(--color-text-title)] line-clamp-1">
-              {latestAnnouncement.title}
-            </h3>
-            <p className="text-xs text-[var(--color-text-body)] line-clamp-2 leading-relaxed">
-              {latestAnnouncement.content}
-            </p>
-          </button>
+              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+            </button>
+          )}
         </section>
       )}
     </div>

@@ -8,8 +8,14 @@ export { MobileTimetableTab } from './MobileTimetableTab';
 export { MobileGamesHubTab, MobileFullscreenGameOverlay } from './MobileGamesHubAndTakeover';
 export {
   MobileProfileTab,
-  MobileHomeworkTab,
   MobileAnnouncementsTab,
   MobilePortfolioTab,
   MobileCareerQuestTab,
 } from './MobileContentTabs';
+export { MobileHomeworkTab } from './MobileHomeworkTab';
+export {
+  MobileAttendanceHistoryTab,
+  MobileBehaviorSdqTab,
+  MobileInfirmaryTab,
+  MobileLmsTab,
+} from './MobileCareAndLmsTabs';

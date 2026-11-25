@@ -2,6 +2,7 @@ import React from 'react';
 import {
   ArrowLeftRight,
   BarChart3,
+  BookOpen,
   Calendar,
   CalendarDays,
   ChevronRight,
@@ -10,6 +11,9 @@ import {
   Compass,
   FileText,
   Gamepad2,
+  GraduationCap,
+  HeartHandshake,
+  HeartPulse,
   LogIn,
   LogOut,
   Megaphone,
@@ -50,6 +54,10 @@ interface MobileTeacherParentHomeProps {
   canPlayGames: boolean;
   canOpenAnnouncements: boolean;
   canViewDigitalId: boolean;
+  canAccessHomework?: boolean;
+  canOpenLms?: boolean;
+  canOpenBehaviorSdq?: boolean;
+  canOpenInfirmary?: boolean;
   isModuleEnabled: (tab: NavTab) => boolean;
   todayCheckin: AttendanceRecord | undefined;
   todayBangkokStr: string;
@@ -60,6 +68,8 @@ interface MobileTeacherParentHomeProps {
   scopedCoursesCount: number;
   scopedAnnouncementsCount: number;
   pendingLeavesCount: number;
+  scopedAssignmentsCount?: number;
+  lessonsCount?: number;
   execMetrics: ExecMetrics;
   getSlotTodayCheckStatus: (
     slot: TimetableSlot,
@@ -95,6 +105,10 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   canPlayGames,
   canOpenAnnouncements,
   canViewDigitalId,
+  canAccessHomework = false,
+  canOpenLms = false,
+  canOpenBehaviorSdq = false,
+  canOpenInfirmary = false,
   isModuleEnabled,
   todayCheckin,
   todayBangkokStr,
@@ -105,6 +119,8 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   scopedCoursesCount,
   scopedAnnouncementsCount,
   pendingLeavesCount,
+  scopedAssignmentsCount = 0,
+  lessonsCount = 0,
   execMetrics,
   getSlotTodayCheckStatus,
   openPeriodCheckinFromSlot,
@@ -455,15 +471,88 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
           </button>
         )}
 
+        {currentRole === 'teacher' && canAccessHomework && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('homework')}
+            className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+          >
+            <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+              <BookOpen className="w-4 h-4 text-blue-600" />
+              <span>{lang === 'th' ? 'การบ้าน & ตรวจงานนักเรียน' : 'Homework & Grading'}</span>
+            </span>
+            <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+              {scopedAssignmentsCount} {lang === 'th' ? 'งาน' : 'tasks'}
+              <ChevronRight className="w-4 h-4" />
+            </span>
+          </button>
+        )}
+
+        {currentRole === 'teacher' && canOpenLms && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('lms')}
+            className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+          >
+            <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+              <GraduationCap className="w-4 h-4 text-sky-600" />
+              <span>{lang === 'th' ? 'ห้องเรียน & บทเรียน LMS' : 'LMS Classroom'}</span>
+            </span>
+            <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+              {lessonsCount} {lang === 'th' ? 'บทเรียน' : 'lessons'}
+              <ChevronRight className="w-4 h-4" />
+            </span>
+          </button>
+        )}
+
+        {currentRole === 'teacher' && canOpenBehaviorSdq && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('behavior_sdq')}
+            className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+          >
+            <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+              <HeartHandshake className="w-4 h-4 text-rose-600" />
+              <span>{lang === 'th' ? 'พฤติกรรม & คัดกรอง SDQ' : 'Behavior & SDQ'}</span>
+            </span>
+            <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+              {execMetrics.riskCount > 0 ? `เสี่ยง ${execMetrics.riskCount}` : lang === 'th' ? 'บันทึก' : 'Log'}
+              <ChevronRight className="w-4 h-4" />
+            </span>
+          </button>
+        )}
+
+        {currentRole === 'teacher' && canOpenInfirmary && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('infirmary')}
+            className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+          >
+            <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
+              <HeartPulse className="w-4 h-4 text-teal-600" />
+              <span>{lang === 'th' ? 'ห้องพยาบาล & ประวัติแพ้ยา' : 'Infirmary & Allergies'}</span>
+            </span>
+            <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-2 shrink-0">
+              {execMetrics.todayInfirmary > 0 ? `${execMetrics.todayInfirmary} วันนี้` : ''}
+              <ChevronRight className="w-4 h-4" />
+            </span>
+          </button>
+        )}
+
         {currentRole === 'parent' && (
-          <div className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('attendance_history')}
+            className="w-full min-h-[56px] px-5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+          >
             <span className="text-sm font-semibold text-[var(--color-text-title)]">
-              {lang === 'th' ? 'เช็คอินวันนี้' : 'Today'}
+              {lang === 'th' ? 'ประวัติมาเรียนบุตรหลาน' : 'Child Attendance Logs'}
             </span>
-            <span className="text-xs font-semibold tabular-nums text-[var(--color-text-muted)]">
-              {todayCheckin ? `${todayCheckin.time} น.` : lang === 'th' ? 'ยังไม่เช็คอิน' : 'Pending'}
+            <span className="text-xs font-semibold tabular-nums text-[var(--color-text-muted)] flex items-center gap-2 shrink-0">
+              {todayCheckin ? `วันนี้ ${todayCheckin.time} น.` : lang === 'th' ? 'ดูย้อนหลัง' : 'History'}
+              <ChevronRight className="w-4 h-4" />
             </span>
-          </div>
+          </button>
         )}
 
         {canOpenLeave && (

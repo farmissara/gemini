@@ -249,11 +249,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           type="button"
           onClick={() => setActiveTab('home')}
           className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-            activeTab === 'home' ||
-            activeTab === 'portfolio' ||
-            activeTab === 'student_grades' ||
-            (canSelfCheckin && activeTab === 'timetable') ||
-            (canPlayGames && activeTab === 'homework')
+            activeTab === 'home'
               ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
@@ -290,7 +286,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             }
           }}
           className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-            activeTab === 'checkin' || activeTab === 'leave' || (!canSelfCheckin && activeTab === 'timetable')
+            (canSelfCheckin
+              ? activeTab === 'checkin' || activeTab === 'leave' || activeTab === 'attendance_history'
+              : canViewTimetable
+                ? activeTab === 'timetable'
+                : activeTab === 'announcements')
               ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
@@ -326,7 +326,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => setActiveTab('admin_quick')}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
               activeTab === 'admin_quick'
-                ? 'text-[var(--color-primary-text)] font-bold'
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -342,7 +342,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => setActiveTab('super_schools')}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               activeTab === 'super_schools'
-                ? 'text-[var(--color-primary-text)] font-bold'
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -359,8 +359,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               else setActiveTab('executive');
             }}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'gradebook'
-                ? 'text-[var(--color-primary-text)] font-bold'
+              (isModuleEnabled('gradebook')
+                ? activeTab === 'gradebook'
+                : canViewTimetable
+                  ? activeTab === 'timetable'
+                  : canOpenAnnouncements
+                    ? activeTab === 'announcements'
+                    : activeTab === 'executive')
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -388,8 +394,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               else setActiveTab('profile');
             }}
             className={`min-h-[48px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'announcements'
-                ? 'text-[var(--color-primary-text)] font-bold'
+              (canOpenAnnouncements
+                ? activeTab === 'announcements'
+                : canViewTimetable
+                  ? activeTab === 'timetable'
+                  : false)
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
@@ -430,7 +440,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 ? activeTab === 'games'
                 : canAccessHomework
                   ? activeTab === 'homework'
-                  : activeTab === 'student_grades')
+                  : canViewGradesStudent
+                    ? activeTab === 'student_grades'
+                    : canOpenPortfolio
+                      ? activeTab === 'portfolio'
+                      : false)
                 ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}

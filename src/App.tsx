@@ -398,6 +398,7 @@ export const App: React.FC = () => {
               students={scope.viewStudents}
               teachers={scope.viewTeachers}
               courses={scope.viewCourses}
+              lessons={scope.viewLessons}
               grades={scope.viewGrades}
               invoices={scope.viewInvoices}
               infirmaryVisits={scope.viewInfirmaryVisits}
@@ -416,6 +417,7 @@ export const App: React.FC = () => {
               timetableSlots={scope.viewTimetableSlots}
               schoolPeriods={data.schoolPeriods}
               gradingSystem={data.systemConfig.gradingSystem}
+              systemConfig={data.systemConfig}
               schoolPermissions={scope.schoolPermissions}
               featureFlags={scope.activeFeatureFlags}
               canSwitchAdminTeacherMode={scope.canSwitchAdminTeacherMode}
@@ -441,6 +443,16 @@ export const App: React.FC = () => {
               onOpenSchoolSwitcher={data.currentRole === 'super_admin' ? () => setShowSchoolSwitcher(true) : undefined}
               onUpdateSchool={data.currentRole === 'teacher' ? undefined : data.handleUpdateSchool}
               onAddAnnouncement={data.handleAddAnnouncement}
+              onBroadcastLine={data.handleBroadcastLine}
+              onAddHomeworkAssignment={data.handleAddHomeworkAssignment}
+              onAddHomeworkSubmission={data.handleAddHomeworkSubmission}
+              onGradeHomeworkSubmission={data.handleGradeHomeworkSubmission}
+              onAddBehaviorRecord={data.handleAddBehaviorRecord}
+              onAddSdqAssessment={data.handleAddSdqAssessment}
+              onAddInfirmaryVisit={data.handleAddInfirmaryVisit}
+              onCompleteLesson={data.handleCompleteLesson}
+              onSaveLesson={data.handleSaveSchoolLesson}
+              onSubmitAssignment={data.handleSubmitAssignment}
               onApproveInvoiceSlip={data.handleApproveInvoiceSlip}
               onRejectInvoiceSlip={data.handleRejectInvoiceSlip}
               onViewSchool={data.handleViewSchool}

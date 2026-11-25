@@ -40,6 +40,8 @@ import type { NavTab } from './Sidebar';
 import {
   MOBILE_TONE_TARGET,
   MobileAnnouncementsTab,
+  MobileAttendanceHistoryTab,
+  MobileBehaviorSdqTab,
   MobileBottomNav,
   MobileCareerQuestTab,
   MobileExecutiveTab,
@@ -47,6 +49,8 @@ import {
   MobileGamesHubTab,
   MobileHeader,
   MobileHomeworkTab,
+  MobileInfirmaryTab,
+  MobileLmsTab,
   MobilePortfolioTab,
   MobileProfileTab,
   MobileStudentGradesTab,
@@ -78,9 +82,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   students,
   teachers = [],
   courses,
+  lessons = [],
   grades = [],
   invoices = [],
   infirmaryVisits = [],
+  behaviorRecords = [],
   sdqAssessments = [],
   attendance,
   periodAttendance,
@@ -106,6 +112,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   timetableSlots = [],
   schoolPeriods = DEFAULT_SCHOOL_PERIODS,
   gradingSystem = activeSchool.gradingSystem || 'thai',
+  systemConfig,
   schoolPermissions,
   featureFlags,
   onUpdateGrade,
@@ -116,6 +123,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onOpenSchoolSwitcher,
   onUpdateSchool,
   onAddAnnouncement,
+  onBroadcastLine,
+  onAddHomeworkAssignment,
+  onAddHomeworkSubmission,
+  onGradeHomeworkSubmission,
+  onAddBehaviorRecord,
+  onAddSdqAssessment,
+  onAddInfirmaryVisit,
+  onCompleteLesson,
+  onSaveLesson,
+  onSubmitAssignment,
   onApproveInvoiceSlip,
   onRejectInvoiceSlip,
   onViewSchool,
@@ -312,6 +329,21 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const canOpenAnnouncements = isModuleEnabled('announcements');
   const canOpenLeave = isModuleEnabled('mobile_checkin') || isModuleEnabled('attendance');
   const canViewDigitalId = isModuleEnabled('student_id_cards');
+  const canOpenLms = isModuleEnabled('courses');
+  const canOpenBehaviorSdq =
+    isModuleEnabled('behavior_sdq') &&
+    (currentRole === 'admin' ||
+      currentRole === 'super_admin' ||
+      (currentRole === 'teacher' && schoolPermissions?.teacher_sdq_screening !== false));
+  const canOpenInfirmary =
+    isModuleEnabled('infirmary') &&
+    (currentRole === 'admin' ||
+      currentRole === 'super_admin' ||
+      (currentRole === 'teacher' && schoolPermissions?.teacher_infirmary_access !== false));
+  const canBroadcastLine =
+    currentRole === 'admin' ||
+    currentRole === 'super_admin' ||
+    (currentRole === 'teacher' && schoolPermissions?.teacher_line_broadcast !== false);
 
   const myLeaves = isRestrictedViewer
     ? filterLeaveRequestsForUser(leaveRequests, currentUser, students)
@@ -321,6 +353,21 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const scopedCourses = useMemo(
     () => (isRestrictedViewer ? filterCoursesForPersonalRole(courses, currentUser, students) : courses),
     [courses, currentUser, isRestrictedViewer, students]
+  );
+  const scopedLessons = useMemo(() => {
+    if (!isRestrictedViewer) return lessons;
+    const courseIds = new Set(scopedCourses.map((c) => c.id));
+    return lessons.filter((l) => courseIds.has(l.courseId));
+  }, [isRestrictedViewer, lessons, scopedCourses]);
+  const linkedStudentIds = useMemo(() => new Set(linkedStudents.map((s) => s.id)), [linkedStudents]);
+  const scopedPeriodAttendance = useMemo(
+    () =>
+      isRestrictedViewer
+        ? periodAttendance.filter(
+            (rec) => linkedStudentIds.has(rec.studentId) || (currentUser?.id && rec.studentId === currentUser.id)
+          )
+        : periodAttendance,
+    [isRestrictedViewer, periodAttendance, linkedStudentIds, currentUser?.id]
   );
   const scopedTimetableSlots = useMemo(
     () =>
@@ -445,6 +492,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     const blockedTab =
       (activeTab === 'checkin' && !canSelfCheckin) ||
       (activeTab === 'leave' && !canOpenLeave) ||
+      (activeTab === 'attendance_history' && !canOpenLeave && !canSelfCheckin) ||
       (activeTab === 'gradebook' && !isModuleEnabled('gradebook')) ||
       (activeTab === 'student_grades' && !canViewGradesStudent) ||
       (activeTab === 'portfolio' && !canOpenPortfolio) ||
@@ -452,7 +500,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       (activeTab === 'timetable' && !canViewTimetable) ||
       (activeTab === 'games' && !canPlayGames) ||
       (activeTab === 'homework' && !canAccessHomework) ||
-      (activeTab === 'announcements' && !canOpenAnnouncements);
+      (activeTab === 'announcements' && !canOpenAnnouncements) ||
+      (activeTab === 'behavior_sdq' && !canOpenBehaviorSdq) ||
+      (activeTab === 'infirmary' && !canOpenInfirmary) ||
+      (activeTab === 'lms' && !canOpenLms);
     if (blockedTab) {
       setActiveTab('home');
     }
@@ -467,6 +518,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     canPlayGames,
     canAccessHomework,
     canOpenAnnouncements,
+    canOpenBehaviorSdq,
+    canOpenInfirmary,
+    canOpenLms,
     featureFlags,
     currentRole,
   ]);
@@ -633,6 +687,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   canOpenPortfolio={canOpenPortfolio}
                   canOpenLeave={canOpenLeave}
                   canOpenAnnouncements={canOpenAnnouncements}
+                  canViewDigitalId={canViewDigitalId}
+                  canOpenLms={canOpenLms}
+                  lessonsCount={scopedLessons.length}
                   getSlotTodayCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
                   onOpenCheckin={() => {
                     setMobileAttendanceInitialSubTab('selfie_mobile');
@@ -656,6 +713,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     setActiveGameView('hub');
                   }}
                   onOpenCareerQuest={canOpenCareerQuest ? () => setActiveTab('career_quest') : undefined}
+                  onOpenAttendanceHistory={() => setActiveTab('attendance_history')}
+                  onOpenDigitalId={
+                    canViewDigitalId
+                      ? () => {
+                          setProfilePage(0);
+                          setActiveTab('profile');
+                        }
+                      : undefined
+                  }
+                  onOpenLms={canOpenLms ? () => setActiveTab('lms') : undefined}
                 />
               ) : (
                 <MobileTeacherParentHome
@@ -675,6 +742,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   canPlayGames={canPlayGames}
                   canOpenAnnouncements={canOpenAnnouncements}
                   canViewDigitalId={canViewDigitalId}
+                  canAccessHomework={canAccessHomework}
+                  canOpenLms={canOpenLms}
+                  canOpenBehaviorSdq={canOpenBehaviorSdq}
+                  canOpenInfirmary={canOpenInfirmary}
                   isModuleEnabled={isModuleEnabled}
                   todayCheckin={todayCheckin}
                   todayBangkokStr={todayBangkokStr}
@@ -685,6 +756,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   scopedCoursesCount={scopedCourses.length}
                   scopedAnnouncementsCount={scopedAnnouncements.length}
                   pendingLeavesCount={pendingLeavesCount}
+                  scopedAssignmentsCount={scopedAssignments.length}
+                  lessonsCount={scopedLessons.length}
                   execMetrics={execMetrics}
                   getSlotTodayCheckStatus={getSlotTodayCheckStatus}
                   openPeriodCheckinFromSlot={openPeriodCheckinFromSlot}
@@ -821,6 +894,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <MobileTeacherGradebookTab
               activeSchool={activeSchool}
               lang={lang}
+              currentRole={currentRole}
+              currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn}
+              systemConfig={systemConfig}
               courses={courses}
               students={students}
               grades={grades}
@@ -987,11 +1063,21 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           {/* TAB F: HOMEWORK */}
           {activeTab === 'homework' && (
             <MobileHomeworkTab
+              activeSchool={activeSchool}
+              currentRole={currentRole}
               lang={lang}
               scopedAssignments={scopedAssignments}
               scopedCourses={scopedCourses}
+              homeworkSubmissions={homeworkSubmissions}
+              ownStudent={ownStudent}
               myCompletedSubmissions={myCompletedSubmissions}
               currentPersonId={currentPersonId}
+              canManageHomework={canAccessHomework}
+              canStudentSubmit={canAccessHomework}
+              onAddHomeworkAssignment={onAddHomeworkAssignment}
+              onAddHomeworkSubmission={onAddHomeworkSubmission}
+              onGradeHomeworkSubmission={onGradeHomeworkSubmission}
+              onSubmitAssignment={onSubmitAssignment}
               onBackHome={() => setActiveTab('home')}
             />
           )}
@@ -1000,9 +1086,68 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           {activeTab === 'announcements' && (
             <MobileAnnouncementsTab
               lang={lang}
+              currentRole={currentRole}
+              currentUser={currentUser}
               scopedAnnouncements={scopedAnnouncements}
               selectedAnnouncement={selectedAnnouncement}
               setSelectedAnnouncement={setSelectedAnnouncement}
+              onAddAnnouncement={onAddAnnouncement}
+              onBroadcastLine={canBroadcastLine ? onBroadcastLine : undefined}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
+
+          {/* TAB H: STUDENT / PARENT ATTENDANCE HISTORY */}
+          {activeTab === 'attendance_history' && (
+            <MobileAttendanceHistoryTab
+              lang={lang}
+              scopedAttendance={scopedAttendance}
+              scopedPeriodAttendance={scopedPeriodAttendance}
+              courses={scopedCourses}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
+
+          {/* TAB I: BEHAVIOR & SDQ */}
+          {activeTab === 'behavior_sdq' && canOpenBehaviorSdq && (
+            <MobileBehaviorSdqTab
+              activeSchool={activeSchool}
+              currentUser={currentUser}
+              lang={lang}
+              students={students}
+              behaviorRecords={behaviorRecords}
+              sdqAssessments={sdqAssessments}
+              onAddBehaviorRecord={onAddBehaviorRecord}
+              onAddSdqAssessment={onAddSdqAssessment}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
+
+          {/* TAB J: INFIRMARY */}
+          {activeTab === 'infirmary' && canOpenInfirmary && (
+            <MobileInfirmaryTab
+              activeSchool={activeSchool}
+              currentUser={currentUser}
+              lang={lang}
+              students={students}
+              visits={infirmaryVisits}
+              onAddInfirmaryVisit={onAddInfirmaryVisit}
+              onBackHome={() => setActiveTab('home')}
+            />
+          )}
+
+          {/* TAB K: LMS CLASSROOM */}
+          {activeTab === 'lms' && canOpenLms && (
+            <MobileLmsTab
+              activeSchool={activeSchool}
+              currentRole={currentRole}
+              lang={lang}
+              scopedCourses={scopedCourses}
+              lessons={scopedLessons}
+              ownStudent={ownStudent}
+              currentPersonId={currentPersonId}
+              onCompleteLesson={onCompleteLesson}
+              onSaveLesson={onSaveLesson}
               onBackHome={() => setActiveTab('home')}
             />
           )}

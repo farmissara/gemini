@@ -583,8 +583,8 @@ SET search_path = public, auth, pg_temp
 AS $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM public.user_profiles
-        WHERE id = auth.uid() AND role = 'super_admin' AND status = 'active'
+        SELECT 1 FROM public.user_profiles caller
+        WHERE caller.id = auth.uid() AND caller.role = 'super_admin' AND caller.status = 'active'
     ) THEN
         RAISE EXCEPTION 'Active Super Admin access is required.';
     END IF;
@@ -620,8 +620,8 @@ SET search_path = public, auth, pg_temp
 AS $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM public.user_profiles
-        WHERE id = auth.uid() AND role = 'super_admin' AND status = 'active'
+        SELECT 1 FROM public.user_profiles caller
+        WHERE caller.id = auth.uid() AND caller.role = 'super_admin' AND caller.status = 'active'
     ) THEN
         RAISE EXCEPTION 'Active Super Admin access is required.';
     END IF;

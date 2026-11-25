@@ -15,6 +15,7 @@ import type {
   InfirmaryVisit,
   LeaveRequest,
   LeaveStatus,
+  Lesson,
   PeriodAttendanceRecord,
   PlayerScore,
   PortfolioItem,
@@ -26,6 +27,7 @@ import type {
   SchoolPeriodTime,
   SdqAssessment,
   Student,
+  SystemConfig,
   Teacher,
   ThemePalette,
   TimetableSlot,
@@ -43,6 +45,7 @@ export type MobileTab =
   | 'executive'
   | 'checkin'
   | 'leave'
+  | 'attendance_history'
   | 'gradebook'
   | 'student_grades'
   | 'portfolio'
@@ -51,7 +54,10 @@ export type MobileTab =
   | 'games'
   | 'profile'
   | 'homework'
-  | 'announcements';
+  | 'announcements'
+  | 'behavior_sdq'
+  | 'infirmary'
+  | 'lms';
 
 export type ActiveGameView =
   | 'hub'
@@ -69,6 +75,7 @@ export const MOBILE_TONE_TARGET: Record<MobileTab, NavTab> = {
   executive: 'executive_monitor',
   checkin: 'mobile_checkin',
   leave: 'attendance',
+  attendance_history: 'mobile_checkin',
   gradebook: 'gradebook',
   student_grades: 'gradebook',
   portfolio: 'portfolio',
@@ -78,6 +85,9 @@ export const MOBILE_TONE_TARGET: Record<MobileTab, NavTab> = {
   profile: 'system_settings',
   homework: 'homework',
   announcements: 'announcements',
+  behavior_sdq: 'behavior_sdq',
+  infirmary: 'infirmary',
+  lms: 'courses',
 };
 
 export const splitAnnouncementIntoPages = (content: string, pageLength = 420) => {
@@ -127,6 +137,7 @@ export interface MobileAppShellProps {
   students: Student[];
   teachers?: Teacher[];
   courses: Course[];
+  lessons?: Lesson[];
   grades?: GradeRecord[];
   invoices?: TuitionInvoice[];
   infirmaryVisits?: InfirmaryVisit[];
@@ -179,6 +190,7 @@ export interface MobileAppShellProps {
   timetableSlots?: TimetableSlot[];
   schoolPeriods?: SchoolPeriodTime[];
   gradingSystem?: GradingSystem;
+  systemConfig?: SystemConfig;
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
   featureFlags?: SchoolFeatureFlags;
   onUpdateGrade?: (gradeId: string, updates: Partial<GradeRecord>) => void;
@@ -191,6 +203,16 @@ export interface MobileAppShellProps {
   onOpenSchoolSwitcher?: () => void;
   onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
   onAddAnnouncement?: (announcement: Announcement) => void;
+  onBroadcastLine?: (announcementId: string) => void;
+  onAddHomeworkAssignment?: (assignment: Assignment) => Promise<void>;
+  onAddHomeworkSubmission?: (sub: HomeworkSubmission) => Promise<void>;
+  onGradeHomeworkSubmission?: (id: string, score: number, feedback: string) => Promise<void>;
+  onAddBehaviorRecord?: (record: BehaviorRecord) => void;
+  onAddSdqAssessment?: (sdq: SdqAssessment) => void;
+  onAddInfirmaryVisit?: (visit: InfirmaryVisit) => void;
+  onCompleteLesson?: (lessonId: string) => Promise<void>;
+  onSaveLesson?: (lesson: Lesson) => Promise<void>;
+  onSubmitAssignment?: (assignmentId: string) => Promise<void>;
   onApproveInvoiceSlip?: (invoiceId: string) => void;
   onRejectInvoiceSlip?: (invoiceId: string, reason: string) => void;
   onViewSchool?: (school: School) => void;
