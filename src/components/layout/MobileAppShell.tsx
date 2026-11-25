@@ -592,6 +592,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* 1. CLEAN SINGLE-ROW APPLE/LINEAR MOBILE HEADER */}
       <MobileHeader
         activeSchool={activeSchool}
+        currentUser={currentUser}
         currentRole={currentRole}
         lang={lang}
         setLang={setLang}
@@ -608,8 +609,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
       {/* 2. MAIN ACTIVE VIEW CONTAINER (Compact mobile padding) */}
       <main
-        className={`flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto overflow-y-auto ${
-          activeTab === 'checkin' || activeTab === 'leave' ? 'px-3 py-2.5 sm:p-5' : 'px-3.5 py-2.5 sm:p-5'
+        className={`flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto ${
+          activeTab === 'checkin' || activeTab === 'leave'
+            ? 'px-2.5 py-1.5 sm:p-5 overflow-hidden sm:overflow-y-auto flex flex-col'
+            : 'px-3.5 py-2.5 sm:p-5 overflow-y-auto'
         }`}
       >
         <ViewErrorBoundary
@@ -825,7 +828,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
           {/* TAB B: CHECK-IN */}
           {activeTab === 'checkin' && (
-            <div className="min-h-full animate-in fade-in duration-200">
+            <div className="h-full min-h-0 flex-1 flex flex-col overflow-hidden animate-in fade-in duration-200">
               <MobileAttendanceView
                 embeddedMobile
                 initialSubTab={mobileAttendanceInitialSubTab}
@@ -867,7 +870,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
           {/* TAB C: LEAVE REQUESTS */}
           {activeTab === 'leave' && (
-            <div className="min-h-full animate-in fade-in duration-200">
+            <div className="h-full min-h-0 flex-1 flex flex-col overflow-hidden animate-in fade-in duration-200">
               <MobileAttendanceView
                 embeddedMobile
                 initialSubTab="leave_request"

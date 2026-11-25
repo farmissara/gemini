@@ -388,10 +388,10 @@ export function getScopedNotificationsForUser({
     })
     .filter((item) => !dismissedSet.has(item.id));
 
-  // Merge official Thai public holidays & school holidays (today + next 3 days)
+  // Merge official Thai public holidays & school holidays (today + next 7 days)
   const todayStr = getBangkokDateInputValue();
   const todayHoliday = getHolidayForDate(todayStr, effectiveSchoolId);
-  const upcomingHolidays = getUpcomingHolidays(todayStr, 3, effectiveSchoolId).filter((h) => h.date !== todayStr);
+  const upcomingHolidays = getUpcomingHolidays(todayStr, 7, effectiveSchoolId).filter((h) => h.date !== todayStr);
   const holidayList = [
     ...(todayHoliday ? [{ holiday: todayHoliday, isToday: true }] : []),
     ...upcomingHolidays.map((h) => ({ holiday: h, isToday: false })),

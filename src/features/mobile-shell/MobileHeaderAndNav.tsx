@@ -15,18 +15,18 @@ import {
   Laptop,
   LogOut,
   Moon,
-  MoreHorizontal,
   ShieldCheck,
   Sun,
   User,
 } from 'lucide-react';
-import type { AppLanguage, School, ThemePalette, TuitionInvoice, UserRole } from '../../types';
+import type { AppLanguage, AuthUser, School, ThemePalette, TuitionInvoice, UserRole } from '../../types';
 import { BaanPakKruLogo } from '../../components/common/BaanPakKruLogo';
 import type { NavTab } from '../../components/layout/Sidebar';
 import type { ActiveGameView, MobileTab } from './types';
 
 interface MobileHeaderProps {
   activeSchool: School;
+  currentUser?: AuthUser | null;
   currentRole: UserRole;
   lang: AppLanguage;
   setLang: (lang: AppLanguage) => void;
@@ -43,6 +43,7 @@ interface MobileHeaderProps {
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
   activeSchool,
+  currentUser,
   currentRole,
   lang,
   setLang,
@@ -58,6 +59,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 }) => {
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const headerMenuRef = useRef<HTMLDivElement>(null);
+
+  const profileDisplayName =
+    (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) ||
+    currentUser?.fullNameTh ||
+    currentUser?.fullNameEn ||
+    currentUser?.email ||
+    '';
+  const profileInitials = profileDisplayName.trim().slice(0, 2).toUpperCase();
 
   useEffect(() => {
     if (!isHeaderMenuOpen) return;
@@ -119,10 +128,22 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               type="button"
               onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
               aria-expanded={isHeaderMenuOpen}
-              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-              aria-label={lang === 'th' ? 'เมนูเพิ่มเติม' : 'Menu'}
+              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+              aria-label={lang === 'th' ? 'เมนูโปรไฟล์และการตั้งค่า' : 'Profile & Settings'}
+              title={profileDisplayName || (lang === 'th' ? 'เมนูโปรไฟล์' : 'Profile')}
             >
-              <MoreHorizontal className="w-5 h-5" />
+              {currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={profileDisplayName || 'Profile'}
+                  referrerPolicy="no-referrer"
+                  className="w-7 h-7 rounded-full object-cover border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                />
+              ) : (
+                <span className="w-7 h-7 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold flex items-center justify-center">
+                  {profileInitials || <User className="w-3.5 h-3.5" />}
+                </span>
+              )}
             </button>
             {isHeaderMenuOpen && (
               <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">

@@ -497,33 +497,8 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
       {/* 3. TAB PANEL: TODAY */}
       {effectiveTab === 'today' && (
         <div role="tabpanel" className="flex flex-col gap-2.5 animate-in fade-in duration-150">
-          {/* Active/Next Class or Holiday Card */}
-          {todayHoliday ? (
-            <button
-              type="button"
-              onClick={() => onOpenTimetable('calendar')}
-              className="w-full rounded-2xl border border-rose-200 dark:border-rose-800/70 bg-rose-50/70 dark:bg-rose-950/35 p-3.5 text-left flex items-center justify-between gap-3 cursor-pointer"
-            >
-              <div className="min-w-0 space-y-0.5">
-                <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">
-                  {todayHoliday.type === 'school'
-                    ? lang === 'th'
-                      ? 'วันหยุดพิเศษโรงเรียน'
-                      : 'School Holiday'
-                    : lang === 'th'
-                      ? 'วันหยุดราชการวันนี้'
-                      : 'Public Holiday'}
-                </p>
-                <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                  {todayHoliday.nameTh}
-                </p>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'งดการเรียนปกติ · แตะดูปฏิทิน' : 'No classes · View calendar'}
-                </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-rose-500 shrink-0" />
-            </button>
-          ) : featuredSlot && featuredActivity ? (
+          {/* Active/Next Class Card */}
+          {featuredSlot && featuredActivity ? (
             <section
               aria-label={lang === 'th' ? 'คาบเรียนปัจจุบัน' : 'Current class'}
               className={`rounded-2xl border p-3.5 space-y-2.5 shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition ${

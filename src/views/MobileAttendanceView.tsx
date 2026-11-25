@@ -2247,34 +2247,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   return (
     <div
-      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'min-h-full flex flex-col gap-2 overflow-x-hidden w-full max-w-full pb-24' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}
+      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-hidden w-full max-w-full pb-0' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}
     >
-      {/* Top Header */}
-      {embeddedMobile ? (
-        <div className="shrink-0 flex items-center justify-between px-1 py-0.5 text-[var(--color-text-title)]">
-          <h1 className="type-section-title truncate">
-            {lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Attendance'}
-          </h1>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="type-meta tabular-nums">
-              {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
-            </span>
-            <button
-              type="button"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="btn-icon-tool min-h-[40px] min-w-[40px]"
-              title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-              aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-[var(--tone)]" />
-              ) : (
-                <VolumeX className="w-4 h-4 text-[var(--color-text-muted)]" />
-              )}
-            </button>
-          </div>
-        </div>
-      ) : (
+      {/* Top Header (Desktop Only — Mobile merges tabs & actions into 1 compact top bar) */}
+      {!embeddedMobile && (
         <div className="space-y-0 border-b border-[var(--color-border)]">
           <div className="pb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -2425,17 +2401,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       )}
 
-      {/* Mobile Sub-Navigation & Biometric Action (Embedded Mobile Only) */}
+      {/* Mobile Sub-Navigation & Compact Action Buttons (Embedded Mobile Only) */}
       {embeddedMobile && (
-        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
+        <div className="shrink-0 flex items-center justify-between gap-1.5">
           <nav
             data-guide-id="mobile-checkin-tabs"
             aria-label="Attendance sub-navigation"
-            className="seg-tab-group overflow-x-auto no-scrollbar max-w-full"
+            className="flex-1 min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
           >
             {[
               { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
-              { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
+              { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC', labelEn: 'NFC', staffOnly: false },
               {
                 id: 'leave_request',
                 icon: FileText,
@@ -2444,43 +2420,64 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
                 staffOnly: false,
               },
-              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
+              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงแทน', labelEn: 'Proxy', staffOnly: true },
               { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
               {
                 id: 'corrections',
                 icon: FileEdit,
-                labelTh: 'แก้เวลา/ยืนยัน',
+                labelTh: 'แก้เวลา',
                 labelEn: 'Adjust',
                 badge: pendingCorrectionCount,
                 staffOnly: false,
               },
             ]
               .filter((tab) => isStaffUser || !tab.staffOnly)
-              .map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  data-active={subTab === tab.id}
-                  onClick={() => {
-                    setSubTab(tab.id as AttendanceSubTab);
-                    if (tab.id === 'leave_request') setLeaveFormStep(1);
-                  }}
-                  className="seg-tab-btn"
-                >
-                  <tab.icon className="w-3.5 h-3.5 shrink-0" />
-                  <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
-                  {tab.badge ? (
-                    <span
-                      className={`font-bold tabular-nums ${
-                        subTab === tab.id ? 'text-white/90' : 'text-amber-600 dark:text-amber-300'
-                      }`}
-                    >
-                      ({tab.badge})
-                    </span>
-                  ) : null}
-                </button>
-              ))}
+              .map((tab) => {
+                const isActive = subTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    data-active={isActive}
+                    onClick={() => {
+                      setSubTab(tab.id as AttendanceSubTab);
+                      if (tab.id === 'leave_request') setLeaveFormStep(1);
+                    }}
+                    className={`inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
+                      isActive
+                        ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
+                    }`}
+                  >
+                    <tab.icon className="w-3 h-3 shrink-0" />
+                    <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+                    {tab.badge ? (
+                      <span
+                        className={`text-[10px] font-bold tabular-nums ${
+                          isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
+                        }`}
+                      >
+                        ({tab.badge})
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
           </nav>
+
+          <button
+            type="button"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
+            title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+            aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+          >
+            {soundEnabled ? (
+              <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
+            ) : (
+              <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+            )}
+          </button>
 
           {isStaffUser && userPasskey?.protectQuickAttendance && (
             <button
@@ -2493,7 +2490,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 }
               }}
               disabled={biometricBusy}
-              className={`min-h-[38px] px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shrink-0 ${
+              className={`h-8 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition active:scale-95 shrink-0 shadow-2xs ${
                 isQuickAttendanceLocked
                   ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
                   : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400'
@@ -2509,9 +2506,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               }
             >
               {isQuickAttendanceLocked ? (
-                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <Lock className="w-3 h-3 shrink-0" />
               ) : (
-                <Fingerprint className="w-3.5 h-3.5 shrink-0" />
+                <Fingerprint className="w-3 h-3 shrink-0" />
               )}
               <span className="tabular-nums">
                 {isQuickAttendanceLocked
@@ -2574,30 +2571,28 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         )}
 
-      {/* Compact Single-Line Context Bar for Mobile Selfie (replaces tall 2-row box) */}
+      {/* Compact Single-Line Context Bar for Mobile Selfie (clearly clickable bordered buttons) */}
       {embeddedMobile && subTab === 'selfie_mobile' && (
-        <div className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1 flex items-center justify-between gap-1.5">
+        <div className="shrink-0 flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setShowIdentitySheet(true)}
-            className="min-h-[40px] flex-1 min-w-0 px-2 rounded-lg flex items-center gap-1.5 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+            className="h-8 flex-1 min-w-0 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center gap-1 text-left cursor-pointer transition active:scale-[0.98] shadow-2xs"
           >
-            <User className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-            <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+            <User className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
+            <span className="text-[11px] font-semibold text-[var(--color-text-title)] truncate">
               {activePersonName}
             </span>
-            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ml-auto" />
+            <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] shrink-0 ml-auto" />
           </button>
-
-          <span className="h-5 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
 
           <button
             type="button"
             onClick={() => setShowGeofenceSheet(true)}
-            className="min-h-[40px] flex-1 min-w-0 px-2 rounded-lg flex items-center gap-1.5 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+            className="h-8 flex-1 min-w-0 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center gap-1 text-left cursor-pointer transition active:scale-[0.98] shadow-2xs"
           >
             <MapPin
-              className={`w-3.5 h-3.5 shrink-0 ${
+              className={`w-3 h-3 shrink-0 ${
                 !hasSchoolGpsConfigured || isGpsLoading
                   ? 'text-amber-600 dark:text-amber-400'
                   : isInGeofence
@@ -2606,7 +2601,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               }`}
             />
             <span
-              className={`text-xs font-semibold tabular-nums truncate ${
+              className={`text-[11px] font-semibold tabular-nums truncate ${
                 !hasSchoolGpsConfigured || isGpsLoading
                   ? 'text-amber-700 dark:text-amber-300'
                   : isInGeofence
@@ -2616,22 +2611,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             >
               {gpsStatusShortLabel}
             </span>
-            <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ml-auto" />
+            <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] shrink-0 ml-auto" />
           </button>
 
           {isStaffUser && (
-            <>
-              <span className="h-5 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={() => setShowQuickRosterSheet(true)}
-                className="min-h-[40px] px-2.5 rounded-lg flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] cursor-pointer transition shrink-0"
-                title={lang === 'th' ? 'เปิดรายชื่อนักเรียน' : 'Open Student Roster'}
-              >
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setShowQuickRosterSheet(true)}
+              className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] flex items-center gap-1 text-[11px] font-semibold text-[var(--color-primary-text)] cursor-pointer transition active:scale-[0.98] shrink-0 shadow-2xs"
+              title={lang === 'th' ? 'เปิดรายชื่อนักเรียน' : 'Open Student Roster'}
+            >
+              <Users className="w-3 h-3 shrink-0" />
+              <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
+            </button>
           )}
         </div>
       )}
@@ -2915,22 +2907,24 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
       {/* TAB 5: HOMEROOM CONFIRMATION & HIERARCHICAL TIME CORRECTIONS */}
       {subTab === 'corrections' && (
-        <AttendanceCorrectionHub
-          schoolId={activeSchoolId}
-          currentUser={currentUser}
-          currentRole={effectiveRole}
-          students={students}
-          teachers={teachers}
-          courses={courses}
-          attendance={attendance}
-          periodAttendance={periodAttendance}
-          onRecordAttendance={onRecordAttendance}
-          onRecordPeriodAttendance={onRecordPeriodAttendance}
-          prefillSeed={correctionPrefill}
-          onClearPrefill={() => setCorrectionPrefill(null)}
-          showHomeroomMissingConfirm={isStaffUser}
-          embeddedMobile={embeddedMobile}
-        />
+        <div className={embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}>
+          <AttendanceCorrectionHub
+            schoolId={activeSchoolId}
+            currentUser={currentUser}
+            currentRole={effectiveRole}
+            students={students}
+            teachers={teachers}
+            courses={courses}
+            attendance={attendance}
+            periodAttendance={periodAttendance}
+            onRecordAttendance={onRecordAttendance}
+            onRecordPeriodAttendance={onRecordPeriodAttendance}
+            prefillSeed={correctionPrefill}
+            onClearPrefill={() => setCorrectionPrefill(null)}
+            showHomeroomMissingConfirm={isStaffUser}
+            embeddedMobile={embeddedMobile}
+          />
+        </div>
       )}
 
       {/* MODALS, SHEETS & FLOATING ACTION TOOLBAR */}

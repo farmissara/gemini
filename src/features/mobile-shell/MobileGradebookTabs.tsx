@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   GraduationCap,
+  MoreVertical,
   Search,
   Sliders,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
 import { loadQualitativeAssessments, summarizeStudentQualitative } from '../../lib/moeQualitativeStore';
 import { LearningIndicatorAssessmentPanel } from '../../components/LearningIndicatorAssessmentPanel';
 import { PagedList } from '../../components/PagedList';
+import { MobileBottomSheet } from '../../components/layout/MobileRoleWorkspace';
 
 interface CourseScoreWeights {
   midterm: number;
@@ -80,8 +82,8 @@ export const MobileTeacherGradebookTab: React.FC<MobileTeacherGradebookTabProps>
   const [mobileGradeSearch, setMobileGradeSearch] = useState('');
   const [mobileGradeRoom, setMobileGradeRoom] = useState('all');
   const [mobileGradeToast, setMobileGradeToast] = useState<string | null>(null);
-  const [gradebookSection, setGradebookSection] = useState<'scores' | 'indicators'>('scores');
-  const [showWeightPanel, setShowWeightPanel] = useState(false);
+  const [gradebookSection, setGradebookSection] = useState<'scores' | 'indicators' | 'weights'>('scores');
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
 
   const weightStorageKey = `eduverse_obec_weights_v1_${activeSchool.id || 'default'}`;
   const [courseWeightsMap, setCourseWeightsMap] = useState<Record<string, CourseScoreWeights>>(() => {
@@ -227,53 +229,73 @@ export const MobileTeacherGradebookTab: React.FC<MobileTeacherGradebookTabProps>
     [baseStudents, mobileGradeRoom, mobileGradeSearch]
   );
 
+  const editingStudent = useMemo(
+    () => (editingStudentId ? filteredStudents.find((s) => s.id === editingStudentId) || baseStudents.find((s) => s.id === editingStudentId) || null : null),
+    [editingStudentId, filteredStudents, baseStudents]
+  );
+
+  const editingGrade = useMemo(
+    () =>
+      editingStudent && selectedCourse
+        ? grades.find((g) => g.courseId === selectedCourse.id && g.studentId === editingStudent.id)
+        : undefined,
+    [editingStudent, selectedCourse, grades]
+  );
+
   return (
-    <div className="space-y-4 pb-6 animate-in fade-in duration-150">
+    <div className="space-y-3 pb-6 animate-in fade-in duration-150">
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={onBackHome}
-          className="min-h-[44px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+          className="min-h-[36px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
         </button>
         <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-          {lang === 'th' ? 'สมุดบันทึกคะแนน ปพ.5' : 'Gradebook (PP.5)'}
+          {lang === 'th' ? 'สมุดคะแนน ปพ.5' : 'Gradebook (PP.5)'}
         </h2>
       </div>
 
-      {/* Mode Switcher */}
-      <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-        <button
-          type="button"
-          onClick={() => setGradebookSection('scores')}
-          className={`min-h-[40px] px-3 rounded-xl text-xs font-bold whitespace-nowrap truncate transition cursor-pointer ${
-            gradebookSection === 'scores'
-              ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs'
-              : 'text-[var(--color-text-muted)]'
-          }`}
-        >
-          {lang === 'th' ? 'กรอกคะแนนรายช่อง' : 'Component Scores'}
-        </button>
-        <button
-          type="button"
-          onClick={() => setGradebookSection('indicators')}
-          className={`min-h-[40px] px-3 rounded-xl text-xs font-bold whitespace-nowrap truncate transition cursor-pointer ${
-            gradebookSection === 'indicators'
-              ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs'
-              : 'text-[var(--color-text-muted)]'
-          }`}
-        >
-          {lang === 'th' ? 'ตัวชี้วัด & ปพ.5' : 'Indicators & PP.5'}
-        </button>
+      {/* 3-Tab Switcher */}
+      <div
+        role="tablist"
+        aria-label={lang === 'th' ? 'หมวดสมุดคะแนน' : 'Gradebook tabs'}
+        className="grid grid-cols-3 gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+      >
+        {(
+          [
+            { id: 'scores', labelTh: 'กรอกคะแนน', labelEn: 'Scores' },
+            { id: 'indicators', labelTh: 'ตัวชี้วัด ปพ.5', labelEn: 'Indicators' },
+            { id: 'weights', labelTh: 'สัดส่วนคะแนน', labelEn: 'Weights' },
+          ] as const
+        ).map((tab) => {
+          const active = gradebookSection === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setGradebookSection(tab.id)}
+              className={`min-h-[36px] px-2 rounded-lg text-xs font-semibold whitespace-nowrap truncate transition cursor-pointer ${
+                active
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs border border-[var(--color-border)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-transparent'
+              }`}
+            >
+              {lang === 'th' ? tab.labelTh : tab.labelEn}
+            </button>
+          );
+        })}
       </div>
 
       {!canEditGradesMobile && (
-        <div className="p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-xs text-amber-900 dark:text-amber-200">
+        <div className="p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-xs text-amber-900 dark:text-amber-200">
           {lang === 'th'
-            ? 'สิทธิ์การแก้ไขคะแนนถูกจำกัดโดยผู้บริหารโรงเรียน (แสดงผลแบบอ่านอย่างเดียว)'
-            : 'Grade editing is restricted by school policy (read-only mode).'}
+            ? 'สิทธิ์การแก้ไขคะแนนถูกจำกัดโดยผู้บริหาร (แสดงผลอย่างเดียว)'
+            : 'Grade editing is restricted (read-only mode).'}
         </div>
       )}
 
@@ -287,145 +309,129 @@ export const MobileTeacherGradebookTab: React.FC<MobileTeacherGradebookTabProps>
         </div>
       )}
 
-      <div className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5">
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'เลือกรายวิชา' : 'Select Course'}
-          </label>
-          <select
-            value={mobileGradeCourseId}
-            onChange={(e) => setMobileGradeCourseId(e.target.value)}
-            className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
-          >
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} · {lang === 'th' ? c.titleTh : c.titleEn}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Compact Course & Filter Strip */}
+      <div className="p-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2">
+        <select
+          aria-label={lang === 'th' ? 'เลือกรายวิชา' : 'Select Course'}
+          value={mobileGradeCourseId}
+          onChange={(e) => setMobileGradeCourseId(e.target.value)}
+          className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-text-title)] focus:outline-hidden focus:ring-1 focus:ring-[var(--color-primary)]"
+        >
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.code} · {lang === 'th' ? c.titleTh : c.titleEn}
+            </option>
+          ))}
+        </select>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={mobileGradeSearch}
-              onChange={(e) => setMobileGradeSearch(e.target.value)}
-              placeholder={lang === 'th' ? 'ค้นหาชื่อ / รหัสนักเรียน' : 'Search student...'}
-              className="w-full min-h-[44px] pl-8 pr-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden"
-            />
-          </div>
-          <select
-            value={mobileGradeRoom}
-            onChange={(e) => setMobileGradeRoom(e.target.value)}
-            className="w-full min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] focus:outline-hidden"
-          >
-            <option value="all">{lang === 'th' ? 'ทุกห้องเรียน' : 'All Rooms'}</option>
-            {[...new Set(students.map((s) => `${s.gradeLevel} ${s.room}`.trim()).filter(Boolean))].map(
-              (roomLabel) => (
-                <option key={roomLabel} value={roomLabel}>
-                  {roomLabel}
-                </option>
-              )
-            )}
-          </select>
-        </div>
-
-        {/* Weight Config Toggle for Component Scores */}
-        {gradebookSection === 'scores' && selectedCourse && (
-          <div className="pt-1 border-t border-[var(--color-border)] space-y-2.5">
-            <button
-              type="button"
-              onClick={() => setShowWeightPanel((v) => !v)}
-              className="w-full min-h-[38px] flex items-center justify-between gap-2 text-xs font-semibold text-[var(--color-primary-text)] cursor-pointer"
+        {gradebookSection !== 'weights' && (
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={mobileGradeSearch}
+                onChange={(e) => setMobileGradeSearch(e.target.value)}
+                placeholder={lang === 'th' ? 'ค้นหาชื่อ / รหัส' : 'Search...'}
+                className="w-full h-9 pl-8 pr-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] placeholder-[var(--color-text-muted)] focus:outline-hidden"
+              />
+            </div>
+            <select
+              aria-label={lang === 'th' ? 'เลือกห้องเรียน' : 'Select Room'}
+              value={mobileGradeRoom}
+              onChange={(e) => setMobileGradeRoom(e.target.value)}
+              className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] focus:outline-hidden"
             >
-              <span className="flex items-center gap-1.5 min-w-0 truncate">
-                <Sliders className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate tabular-nums">
-                  {lang === 'th'
-                    ? `สัดส่วนคะแนน (${courseWeights.midterm}/${courseWeights.final}/${courseWeights.assignment}/${courseWeights.quiz})`
-                    : `Score Weights (${courseWeights.midterm}/${courseWeights.final}/${courseWeights.assignment}/${courseWeights.quiz})`}
-                </span>
-              </span>
-              {showWeightPanel ? (
-                <ChevronUp className="w-4 h-4 shrink-0" />
-              ) : (
-                <ChevronDown className="w-4 h-4 shrink-0" />
+              <option value="all">{lang === 'th' ? 'ทุกห้องเรียน' : 'All Rooms'}</option>
+              {[...new Set(students.map((s) => `${s.gradeLevel} ${s.room}`.trim()).filter(Boolean))].map(
+                (roomLabel) => (
+                  <option key={roomLabel} value={roomLabel}>
+                    {roomLabel}
+                  </option>
+                )
               )}
-            </button>
-
-            {showWeightPanel && (
-              <div className="space-y-2.5 pt-1">
-                <div className="grid grid-cols-2 gap-1.5">
-                  {OBEC_WEIGHT_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      disabled={!canEditGradesMobile}
-                      onClick={() => saveCourseWeights(selectedCourse.id, preset.weights)}
-                      className="min-h-[38px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-[11px] font-semibold text-[var(--color-text-title)] text-left truncate disabled:opacity-60 cursor-pointer"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-4 gap-1.5">
-                  {(
-                    [
-                      { key: 'midterm', label: 'กลางภาค' },
-                      { key: 'final', label: 'ปลายภาค' },
-                      { key: 'assignment', label: 'ชิ้นงาน' },
-                      { key: 'quiz', label: 'ทดสอบ' },
-                    ] as const
-                  ).map((item) => (
-                    <label
-                      key={item.key}
-                      className="p-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-center block"
-                    >
-                      <span className="block text-[10px] text-[var(--color-text-muted)]">{item.label}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        disabled={!canEditGradesMobile}
-                        value={courseWeights[item.key]}
-                        onChange={(e) => {
-                          const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
-                          saveCourseWeights(selectedCourse.id, {
-                            ...courseWeights,
-                            [item.key]: v,
-                          });
-                        }}
-                        className="w-full min-h-[32px] text-center text-xs font-mono font-bold tabular-nums text-[var(--color-text-title)] bg-transparent focus:outline-hidden"
-                      />
-                    </label>
-                  ))}
-                </div>
-                <p
-                  className={`text-[11px] tabular-nums font-medium ${
-                    weightSum === 100
-                      ? 'text-emerald-700 dark:text-emerald-400'
-                      : 'text-amber-700 dark:text-amber-400'
-                  }`}
-                >
-                  {lang === 'th'
-                    ? `ผลรวมคะแนนเต็ม: ${weightSum}/100 ${weightSum !== 100 ? '(แนะนำให้ปรับรวมเท่ากับ 100)' : ''}`
-                    : `Total weight: ${weightSum}/100`}
-                </p>
-              </div>
-            )}
+            </select>
           </div>
         )}
       </div>
 
       {!selectedCourse ? (
-        <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+        <div className="p-8 text-center rounded-xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
           {lang === 'th' ? 'ยังไม่มีรายวิชาในโรงเรียน' : 'No courses available'}
         </div>
+      ) : gradebookSection === 'weights' ? (
+        <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+              <span>{lang === 'th' ? 'กำหนดสัดส่วนคะแนนเต็ม' : 'Score Weights'}</span>
+            </span>
+            <span
+              className={`text-xs font-bold tabular-nums ${
+                weightSum === 100
+                  ? 'text-emerald-700 dark:text-emerald-400'
+                  : 'text-amber-700 dark:text-amber-400'
+              }`}
+            >
+              {weightSum}/100
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            {OBEC_WEIGHT_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                disabled={!canEditGradesMobile}
+                onClick={() => saveCourseWeights(selectedCourse.id, preset.weights)}
+                className="h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-[11px] font-semibold text-[var(--color-text-title)] text-left truncate disabled:opacity-60 cursor-pointer transition"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-4 gap-1.5">
+            {(
+              [
+                { key: 'midterm', label: 'กลางภาค' },
+                { key: 'final', label: 'ปลายภาค' },
+                { key: 'assignment', label: 'ชิ้นงาน' },
+                { key: 'quiz', label: 'ทดสอบ' },
+              ] as const
+            ).map((item) => (
+              <label
+                key={item.key}
+                className="p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-center block"
+              >
+                <span className="block text-[10px] text-[var(--color-text-muted)]">{item.label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  disabled={!canEditGradesMobile}
+                  value={courseWeights[item.key]}
+                  onChange={(e) => {
+                    const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+                    saveCourseWeights(selectedCourse.id, {
+                      ...courseWeights,
+                      [item.key]: v,
+                    });
+                  }}
+                  className="w-full min-h-[32px] text-center text-sm font-mono font-bold tabular-nums text-[var(--color-text-title)] bg-transparent focus:outline-hidden"
+                />
+              </label>
+            ))}
+          </div>
+
+          {weightSum !== 100 && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">
+              {lang === 'th' ? 'แนะนำให้ปรับผลรวมคะแนนเต็มเท่ากับ 100' : 'Recommended total weight is 100'}
+            </p>
+          )}
+        </div>
       ) : gradebookSection === 'indicators' ? (
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 overflow-x-auto">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 overflow-x-auto">
           <LearningIndicatorAssessmentPanel
             course={selectedCourse}
             students={filteredStudents.length > 0 ? filteredStudents : baseStudents}
@@ -442,108 +448,158 @@ export const MobileTeacherGradebookTab: React.FC<MobileTeacherGradebookTabProps>
       ) : (
         <PagedList
           items={filteredStudents}
-          pageSize={5}
+          pageSize={8}
           previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
           nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
           paginationLabel={lang === 'th' ? 'หน้าคะแนนนักเรียน' : 'Gradebook pages'}
           emptyState={
-            <div className="p-8 text-center rounded-2xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
+            <div className="p-8 text-center rounded-xl border border-dashed border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
               {lang === 'th' ? 'ไม่พบนักเรียนที่ตรงกับตัวกรอง' : 'No matching students'}
             </div>
           }
           renderItem={(stu) => {
             const grade = grades.find((g) => g.courseId === selectedCourse.id && g.studentId === stu.id);
-            const midterm = grade?.midtermScore ?? 0;
-            const finalScore = grade?.finalScore ?? 0;
-            const assignment = grade?.assignmentScore ?? 0;
-            const quiz = grade?.quizScore ?? 0;
             const total = grade?.totalScore ?? 0;
             const letter = grade?.letterGrade ?? '-';
             return (
               <div
                 key={stu.id}
-                className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5"
+                className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                      {stu.firstNameTh} {stu.lastNameTh}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                      {stu.studentIdNumber} · {stu.gradeLevel} {stu.room}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0 tabular-nums">
-                    <span className="text-base font-extrabold font-mono text-[var(--color-primary-text)]">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-bold text-[var(--color-text-title)] truncate">
+                    {stu.firstNameTh} {stu.lastNameTh}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
+                    {stu.studentIdNumber} · {stu.gradeLevel} {stu.room}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right tabular-nums">
+                    <span className="text-sm font-extrabold font-mono text-[var(--color-primary-text)]">
                       {total}
                     </span>
-                    <span className="text-xs font-bold text-[var(--color-text-muted)] ml-1.5">
+                    <span className="text-[11px] font-bold text-[var(--color-text-muted)] ml-1">
                       ({letter})
                     </span>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-4 gap-1.5">
-                  {(
-                    [
-                      {
-                        field: 'midtermScore',
-                        label: `กลาง/${courseWeights.midterm}`,
-                        max: courseWeights.midterm,
-                        value: midterm,
-                      },
-                      {
-                        field: 'finalScore',
-                        label: `ปลาย/${courseWeights.final}`,
-                        max: courseWeights.final,
-                        value: finalScore,
-                      },
-                      {
-                        field: 'assignmentScore',
-                        label: `งาน/${courseWeights.assignment}`,
-                        max: courseWeights.assignment,
-                        value: assignment,
-                      },
-                      {
-                        field: 'quizScore',
-                        label: `สอบ/${courseWeights.quiz}`,
-                        max: courseWeights.quiz,
-                        value: quiz,
-                      },
-                    ] as const
-                  ).map((cell) => (
-                    <label
-                      key={cell.field}
-                      className="p-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-center block"
-                    >
-                      <span className="block text-[10px] text-[var(--color-text-muted)] font-medium">
-                        {cell.label}
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={cell.max}
-                        disabled={!canEditGradesMobile}
-                        value={cell.value}
-                        onChange={(e) =>
-                          updateStudentCourseScore(
-                            selectedCourse,
-                            stu,
-                            grade,
-                            cell.field,
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-full min-h-[36px] text-center text-sm font-mono font-bold tabular-nums text-[var(--color-text-title)] bg-transparent disabled:opacity-60 focus:outline-hidden"
-                      />
-                    </label>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setEditingStudentId(stu.id)}
+                    className="h-9 w-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer transition active:scale-95 shrink-0"
+                    aria-label={lang === 'th' ? `กรอกคะแนน ${stu.firstNameTh}` : `Edit score for ${stu.firstNameEn}`}
+                    title={lang === 'th' ? 'กรอกคะแนน' : 'Edit Score'}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             );
           }}
         />
       )}
+
+      {/* Score Entry Bottom Sheet triggered from 3-dot button */}
+      <MobileBottomSheet
+        isOpen={Boolean(editingStudent && selectedCourse)}
+        onClose={() => setEditingStudentId(null)}
+        title={
+          editingStudent
+            ? `${editingStudent.firstNameTh} ${editingStudent.lastNameTh}`
+            : ''
+        }
+        subtitle={
+          editingStudent && selectedCourse
+            ? `${editingStudent.studentIdNumber} · ${editingStudent.gradeLevel} ${editingStudent.room} · ${selectedCourse.code}`
+            : undefined
+        }
+      >
+        {editingStudent && selectedCourse && (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'คะแนนรวม / เกรด' : 'Total / Grade'}
+              </span>
+              <div className="tabular-nums">
+                <span className="text-lg font-extrabold font-mono text-[var(--color-primary-text)]">
+                  {editingGrade?.totalScore ?? 0}
+                </span>
+                <span className="text-sm font-bold text-[var(--color-text-title)] ml-1.5">
+                  ({editingGrade?.letterGrade ?? '-'})
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {(
+                [
+                  {
+                    field: 'midtermScore',
+                    label: lang === 'th' ? 'กลางภาค' : 'Midterm',
+                    max: courseWeights.midterm,
+                    value: editingGrade?.midtermScore ?? 0,
+                  },
+                  {
+                    field: 'finalScore',
+                    label: lang === 'th' ? 'ปลายภาค' : 'Final',
+                    max: courseWeights.final,
+                    value: editingGrade?.finalScore ?? 0,
+                  },
+                  {
+                    field: 'assignmentScore',
+                    label: lang === 'th' ? 'ชิ้นงาน' : 'Assignments',
+                    max: courseWeights.assignment,
+                    value: editingGrade?.assignmentScore ?? 0,
+                  },
+                  {
+                    field: 'quizScore',
+                    label: lang === 'th' ? 'ทดสอบย่อย' : 'Quiz',
+                    max: courseWeights.quiz,
+                    value: editingGrade?.quizScore ?? 0,
+                  },
+                ] as const
+              ).map((cell) => (
+                <label
+                  key={cell.field}
+                  className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] block"
+                >
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="font-semibold text-[var(--color-text-title)]">{cell.label}</span>
+                    <span className="text-[var(--color-text-muted)] tabular-nums">/{cell.max}</span>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={cell.max}
+                    disabled={!canEditGradesMobile}
+                    value={cell.value}
+                    onChange={(e) =>
+                      updateStudentCourseScore(
+                        selectedCourse,
+                        editingStudent,
+                        editingGrade,
+                        cell.field,
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full h-10 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-center text-base font-mono font-bold tabular-nums text-[var(--color-text-title)] disabled:opacity-60 focus:outline-hidden focus:ring-2 focus:ring-[var(--color-primary)]"
+                  />
+                </label>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setEditingStudentId(null)}
+              className="w-full h-10 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer transition"
+            >
+              {lang === 'th' ? 'เสร็จสิ้น' : 'Done'}
+            </button>
+          </div>
+        )}
+      </MobileBottomSheet>
     </div>
   );
 };

@@ -233,6 +233,187 @@ export const PeriodTimeMissionsCard: React.FC<PeriodTimeMissionsCardProps> = ({
     );
   }
 
+  if (compact) {
+    const compactVisible = expanded ? enrichedMissions : prioritizedMissions.slice(0, 3);
+    return (
+      <section
+        aria-label={
+          lang === 'th'
+            ? 'ภารกิจเช็คชื่อเข้า-ออกตามเวลา'
+            : 'Timed Period Check-in Missions'
+        }
+        className={`rounded-xl border bg-[var(--color-card)] overflow-hidden ${
+          activeMissions.length > 0
+            ? 'border-rose-400 dark:border-rose-700'
+            : 'border-[var(--color-border)]'
+        }`}
+      >
+        <div
+          className={`px-3 py-2 border-b flex items-center justify-between gap-2 ${
+            activeMissions.length > 0
+              ? 'border-rose-200 dark:border-rose-900 bg-rose-50/70 dark:bg-rose-950/35'
+              : 'border-[var(--color-border)] bg-[var(--color-card-subtle)]'
+          }`}
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            {activeMissions.length > 0 ? (
+              <Flame className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            ) : (
+              <Target className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+            )}
+            <h3 className="text-xs font-bold text-[var(--color-text-title)] truncate">
+              {lang === 'th' ? 'ภารกิจเช็คชื่อตามเวลา' : 'Period Missions'}
+            </h3>
+            <span className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums shrink-0">
+              {fullDoneCount}/{totalCount}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onOpenSchedule && (
+              <button
+                type="button"
+                onClick={onOpenSchedule}
+                className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-[10px] font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] cursor-pointer whitespace-nowrap"
+              >
+                {lang === 'th' ? 'ตาราง' : 'Schedule'}
+              </button>
+            )}
+            {totalCount > 3 && (
+              <button
+                type="button"
+                onClick={() => setExpanded((prev) => !prev)}
+                className="inline-flex items-center gap-0.5 px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-[10px] font-semibold text-[var(--color-text-title)] cursor-pointer"
+              >
+                <span>{expanded ? (lang === 'th' ? 'ย่อ' : 'Less') : `${totalCount}`}</span>
+                {expanded ? (
+                  <ChevronUp className="w-3 h-3" />
+                ) : (
+                  <ChevronDown className="w-3 h-3" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="divide-y divide-[var(--color-border)]">
+          {compactVisible.map(
+            ({
+              slot,
+              activity,
+              checkStatus,
+              completed,
+              partialCheckedIn,
+              nextCheckType,
+            }) => {
+              const isActiveNow = activity.isActive;
+              const shortStatus = completed
+                ? lang === 'th'
+                  ? 'ครบ'
+                  : 'Done'
+                : isActiveNow
+                  ? lang === 'th'
+                    ? `ถึงคาบ${activity.remainingMinutes !== null ? ` · ${activity.remainingMinutes}น.` : ''}`
+                    : 'Now'
+                  : partialCheckedIn
+                    ? lang === 'th'
+                      ? 'รอออก'
+                      : 'Out?'
+                    : activity.missionPhase === 'ended'
+                      ? lang === 'th'
+                        ? 'จบ'
+                        : 'Ended'
+                      : '';
+
+              return (
+                <div
+                  key={slot.id}
+                  className={`px-3 py-2 flex items-center justify-between gap-2 transition ${
+                    isActiveNow
+                      ? 'bg-rose-50/60 dark:bg-rose-950/25'
+                      : completed
+                        ? 'bg-emerald-50/30 dark:bg-emerald-950/15'
+                        : 'bg-[var(--color-card)]'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-[11px] tabular-nums">
+                      <span className="font-bold text-[var(--color-primary-text)] shrink-0">
+                        {lang === 'th' ? `คาบ ${slot.periodNumber}` : `P${slot.periodNumber}`}
+                      </span>
+                      <span className="text-[var(--color-text-muted)] shrink-0">
+                        {activity.startTime || '--:--'}–{activity.endTime || '--:--'}
+                      </span>
+                      {shortStatus && (
+                        <span
+                          className={`font-semibold truncate ${
+                            isActiveNow
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : completed
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : partialCheckedIn
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-[var(--color-text-muted)]'
+                          }`}
+                        >
+                          · {shortStatus}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                      {slot.courseCode} · {slot.courseTitleTh || slot.courseTitleEn}
+                      {slot.classRoom ? ` (${slot.classRoom})` : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onTriggerCheckin(slot, targetDateStr, nextCheckType)}
+                      className={`h-8 px-2.5 rounded-lg text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition shadow-2xs active:scale-95 ${
+                        isActiveNow
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-700'
+                          : completed
+                            ? 'border border-emerald-400 dark:border-emerald-700 bg-[var(--color-card-subtle)] text-emerald-700 dark:text-emerald-300'
+                            : partialCheckedIn
+                              ? 'bg-slate-800 hover:bg-slate-900 dark:bg-rose-700 text-white border border-slate-900'
+                              : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white border border-[var(--color-primary)]'
+                      }`}
+                    >
+                      {nextCheckType === 'check_out' ? (
+                        <LogOut className="w-3 h-3 shrink-0" />
+                      ) : (
+                        <LogIn className="w-3 h-3 shrink-0" />
+                      )}
+                      <span>
+                        {completed
+                          ? 'อัปเดต'
+                          : nextCheckType === 'check_out'
+                            ? 'ออก'
+                            : 'เข้า'}
+                      </span>
+                    </button>
+
+                    {!checkStatus.hasCheckOut && !partialCheckedIn && (
+                      <button
+                        type="button"
+                        onClick={() => onTriggerCheckin(slot, targetDateStr, 'check_out')}
+                        className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[11px] font-semibold text-[var(--color-text-body)] inline-flex items-center justify-center cursor-pointer transition active:scale-95"
+                        title="เช็คเอาท์ออกคาบเรียน"
+                      >
+                        ออก
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+          )}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-label={

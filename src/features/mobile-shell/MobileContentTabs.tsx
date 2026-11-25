@@ -173,37 +173,64 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
     }
   };
 
-  return (
-    <div className="space-y-4 animate-in fade-in duration-200 pb-4">
-      {/* Clean Top Segmented Toggle */}
-      {canViewDigitalId && (
-        <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-          <button
-            type="button"
-            onClick={() => setProfilePage(0)}
-            className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
-              profilePage === 0
-                ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {lang === 'th' ? 'บัตรดิจิทัล' : 'Digital ID'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setProfilePage(1)}
-            className={`min-h-[40px] rounded-xl text-xs font-bold transition cursor-pointer ${
-              profilePage === 1
-                ? 'bg-[var(--color-card)] text-[var(--color-text-title)] shadow-xs'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-            }`}
-          >
-            {lang === 'th' ? 'ตั้งค่าบัญชี' : 'Account Settings'}
-          </button>
-        </div>
-      )}
+  const [accountTab, setAccountTab] = useState<'account' | 'security'>('account');
+  const effectiveProfileSection: 'id' | 'account' | 'security' =
+    canViewDigitalId && profilePage === 0 ? 'id' : accountTab;
 
-      {canViewDigitalId && profilePage === 0 && (
+  const accountTabs: Array<{ id: 'id' | 'account' | 'security'; label: string }> = [
+    ...(canViewDigitalId
+      ? [{ id: 'id' as const, label: lang === 'th' ? 'บัตรดิจิทัล' : 'Digital ID' }]
+      : []),
+    { id: 'account' as const, label: lang === 'th' ? 'บัญชี & ตั้งค่า' : 'Account' },
+    { id: 'security' as const, label: lang === 'th' ? 'ความปลอดภัย' : 'Security' },
+  ];
+
+  const userDisplayName =
+    (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) ||
+    currentUser?.fullNameTh ||
+    currentUser?.fullNameEn ||
+    currentUser?.email ||
+    (lang === 'th' ? 'ผู้ใช้งาน' : 'User');
+
+  return (
+    <div className="space-y-3 animate-in fade-in duration-200 pb-4">
+      {/* Clean Tab Bar */}
+      <div
+        role="tablist"
+        aria-label={lang === 'th' ? 'หมวดหน้าบัญชี' : 'Account sections'}
+        className={`grid gap-1 p-1 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] ${
+          accountTabs.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
+        }`}
+      >
+        {accountTabs.map((t) => {
+          const isSelected = effectiveProfileSection === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              onClick={() => {
+                if (t.id === 'id') {
+                  setProfilePage(0);
+                } else {
+                  setAccountTab(t.id);
+                  setProfilePage(1);
+                }
+              }}
+              className={`min-h-[36px] px-2 rounded-lg text-xs font-semibold whitespace-nowrap truncate transition cursor-pointer ${
+                isSelected
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs border border-[var(--color-border)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-transparent'
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {effectiveProfileSection === 'id' && canViewDigitalId && (
         <DigitalIdCardView
           students={
             currentRole === 'student'
@@ -228,56 +255,54 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
         />
       )}
 
-      {/* Quick Profile Actions & Settings */}
-      {(profilePage === 1 || !canViewDigitalId) && (
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-3">
-          <h3 className="text-xs font-semibold text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'บัญชีและการตั้งค่า' : 'Account & Preferences'}
-          </h3>
-
-          <div className="space-y-2 text-xs">
-            {currentRole === 'student' && canOpenPortfolio && (
-              <button
-                type="button"
-                onClick={onOpenPortfolio}
-                className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span className="font-bold">
-                    {lang === 'th'
-                      ? `แฟ้มผลงานของฉัน (${myOwnPortfolioCount})`
-                      : `My Portfolio (${myOwnPortfolioCount})`}
-                  </span>
+      {/* TAB: ACCOUNT & PREFERENCES (Grouped Clean Rows) */}
+      {effectiveProfileSection === 'account' && (
+        <div className="space-y-3 text-xs">
+          {/* Compact Profile Identity Strip */}
+          <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={userDisplayName}
+                  referrerPolicy="no-referrer"
+                  className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center font-bold text-xs shrink-0">
+                  {userDisplayName.trim().slice(0, 2).toUpperCase() || <User className="w-4 h-4" />}
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-              </button>
-            )}
-
-            {/* Full Profile & Portfolio Modal trigger */}
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[var(--color-text-title)] truncate">{userDisplayName}</p>
+                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                  {currentUser?.email || activeSchool.nameTh}
+                </p>
+              </div>
+            </div>
             <button
               type="button"
               onClick={onOpenProfileModal}
-              className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer"
+              className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold text-[11px] shrink-0 cursor-pointer transition"
             >
-              <div className="flex items-center gap-2.5">
-                <User className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span className="font-bold">แก้ไขข้อมูลส่วนตัว &amp; พอร์ตฟอลิโอ</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
+              {lang === 'th' ? 'แก้ไข' : 'Edit'}
             </button>
+          </div>
 
-            {/* Theme Palette Switcher */}
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
-              <span className="font-bold text-[var(--color-text-title)]">โหมดสีถนอมสายตา</span>
-              <div className="flex items-center gap-1">
+          {/* Grouped Settings List */}
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+            <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+              <span className="font-semibold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'โหมดสี' : 'Theme'}
+              </span>
+              <div className="inline-flex items-center gap-1 p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setThemePalette('light_warm')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${
+                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
                     isLight
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
+                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                   }`}
                 >
                   {lang === 'th' ? 'สว่าง' : 'Light'}
@@ -285,226 +310,238 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setThemePalette('sapphire')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${
+                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
                     !isLight
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
+                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                   }`}
                 >
-                  {lang === 'th' ? 'มืดคราม' : 'Dark'}
+                  {lang === 'th' ? 'มืด' : 'Dark'}
                 </button>
               </div>
             </div>
 
-            {/* Language Switcher */}
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
-              <span className="font-bold text-[var(--color-text-title)]">ภาษาของระบบ</span>
-              <div className="flex items-center gap-1">
+            <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+              <span className="font-semibold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'ภาษา' : 'Language'}
+              </span>
+              <div className="inline-flex items-center gap-1 p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                 <button
                   type="button"
                   onClick={() => setLang('th')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${
+                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
                     lang === 'th'
-                      ? 'bg-[var(--color-primary)] text-white font-black'
-                      : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
+                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                   }`}
                 >
-                  ไทย (TH)
+                  ไทย
                 </button>
                 <button
                   type="button"
                   onClick={() => setLang('en')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${
+                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
                     lang === 'en'
-                      ? 'bg-[var(--color-primary)] text-white font-black'
-                      : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)]'
+                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                   }`}
                 >
-                  English (EN)
+                  EN
                 </button>
               </div>
             </div>
 
-            {/* Onboarding Tutor & Thai Systems Guide */}
+            {currentRole === 'student' && canOpenPortfolio && (
+              <button
+                type="button"
+                onClick={onOpenPortfolio}
+                className="w-full px-3 py-2.5 hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer transition"
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    {lang === 'th'
+                      ? `แฟ้มผลงาน (${myOwnPortfolioCount})`
+                      : `Portfolio (${myOwnPortfolioCount})`}
+                  </span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
+              </button>
+            )}
+
             {onOpenOnboardingTutor && currentRole !== 'student' && (
               <button
                 type="button"
                 onClick={onOpenOnboardingTutor}
-                className="w-full p-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 font-bold flex items-center justify-between text-left cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
+                className="w-full px-3 py-2.5 hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer transition"
               >
-                <div className="flex items-center gap-2.5">
+                <span className="flex items-center gap-2 font-semibold">
                   <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <div>
-                    <div className="text-xs font-bold">ติวเตอร์ระบบ & คู่มือการศึกษาไทย</div>
-                    <div className="text-[10px] text-amber-700/80 dark:text-amber-300/80 font-normal">
-                      DMC, MIS, CCT, OBEC Care, O-NET, HRMS, DPA, ปพ.3
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-amber-600" />
+                  <span>{lang === 'th' ? 'คู่มือและติวเตอร์ระบบ' : 'System Guide'}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
               </button>
             )}
 
-            {/* Mobile App Install Button */}
-            <PWAInstallButton lang={lang} variant="sidebar" />
-
-            {/* Biometric Security & Passkey Card (WebAuthn FaceID / TouchID) */}
-            <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Fingerprint className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                  <span className="font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'สแกน FaceID / TouchID' : 'Biometric Security'}
-                  </span>
-                </div>
-                {passkey && (
-                  <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
-                    {lang === 'th' ? 'เปิดใช้งาน' : 'Active'}
-                  </span>
-                )}
-              </div>
-
-              {bioMsg && (
-                <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{bioMsg}</p>
-              )}
-              {bioErr && (
-                <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">{bioErr}</p>
-              )}
-
-              {!passkey ? (
-                <div className="space-y-2">
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {webAuthnInfo
-                      ? lang === 'th'
-                        ? webAuthnInfo.reasonTh
-                        : webAuthnInfo.reasonEn
-                      : lang === 'th'
-                        ? 'ใช้สแกนใบหน้าหรือลายนิ้วมือเพื่อยืนยันตัวตนและล็อกเช็คชื่อด่วน'
-                        : 'Use FaceID/TouchID for fast login and quick attendance lock'}
-                  </p>
-                  <button
-                    type="button"
-                    disabled={bioBusy || webAuthnInfo?.supported === false}
-                    onClick={handleEnrollPasskey}
-                    className="w-full min-h-[44px] px-3 rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <KeyRound className="w-4 h-4" />
-                    <span>
-                      {bioBusy
-                        ? lang === 'th'
-                          ? 'กำลังลงทะเบียน...'
-                          : 'Enrolling...'
-                        : lang === 'th'
-                          ? 'ผูก FaceID / TouchID'
-                          : 'Enroll FaceID / TouchID'}
-                    </span>
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-[11px] text-[var(--color-text-muted)]">{passkey.deviceLabel}</p>
-
-                  {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
-                    <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
-                      <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
-                        {lang === 'th' ? 'ล็อกเมนูเช็คชื่อด่วน' : 'Lock Quick Attendance'}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={passkey.protectQuickAttendance}
-                        onChange={(e) => {
-                          if (!currentUser) return;
-                          const updated = updatePasskeyPreferences(currentUser.id, {
-                            protectQuickAttendance: e.target.checked,
-                          });
-                          setPasskey(updated);
-                        }}
-                        className="w-4 h-4 accent-[var(--color-primary)]"
-                      />
-                    </label>
-                  )}
-
-                  <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
-                    <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ยืนยันตัวตนหน้าเข้าสู่ระบบ' : 'Enable Sign-In Biometrics'}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={passkey.biometricLoginEnabled}
-                      onChange={(e) => {
-                        if (!currentUser) return;
-                        const updated = updatePasskeyPreferences(currentUser.id, {
-                          biometricLoginEnabled: e.target.checked,
-                        });
-                        setPasskey(updated);
-                      }}
-                      className="w-4 h-4 accent-[var(--color-primary)]"
-                    />
-                  </label>
-
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <button
-                      type="button"
-                      disabled={bioBusy}
-                      onClick={handleTestPasskey}
-                      className="flex-1 min-h-[40px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Fingerprint className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                      <span>{bioBusy ? '...' : lang === 'th' ? 'ทดสอบสแกน' : 'Test'}</span>
-                    </button>
-
-                    {onBiometricLock && (
-                      <button
-                        type="button"
-                        onClick={onBiometricLock}
-                        className="flex-1 min-h-[40px] px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>{lang === 'th' ? 'ล็อกหน้าจอด่วน' : 'Lock Screen'}</span>
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!currentUser) return;
-                        removeEnrolledPasskey(currentUser.id);
-                        setPasskey(null);
-                        setBioMsg(lang === 'th' ? 'ลบ Passkey แล้ว' : 'Passkey removed');
-                      }}
-                      className="min-h-[40px] px-3 rounded-xl border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 font-bold text-xs flex items-center justify-center cursor-pointer"
-                      title={lang === 'th' ? 'ลบ Passkey ออกจากเครื่องนี้' : 'Remove Passkey'}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Switch to Full Desktop View */}
             <button
               type="button"
               onClick={onSwitchToDesktopMode}
-              className="w-full p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold flex items-center justify-between text-left cursor-pointer hover:opacity-90"
+              className="w-full px-3 py-2.5 hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer transition"
             >
-              <div className="flex items-center gap-2.5">
-                <Laptop className="w-4 h-4" />
-                <span>{lang === 'th' ? 'สลับเป็นมุมมองคอมพิวเตอร์' : 'Switch to Desktop View'}</span>
-              </div>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            {/* Logout Button */}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="w-full p-3 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold flex items-center justify-center gap-2 transition hover:bg-rose-100 dark:hover:bg-rose-900 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>ออกจากระบบ</span>
+              <span className="flex items-center gap-2 font-semibold">
+                <Laptop className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span>{lang === 'th' ? 'สลับมุมมองคอมพิวเตอร์' : 'Desktop View'}</span>
+              </span>
+              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
             </button>
           </div>
+
+          <PWAInstallButton lang={lang} variant="sidebar" />
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full h-10 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-200 font-semibold flex items-center justify-center gap-2 transition hover:bg-rose-100 dark:hover:bg-rose-900 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* TAB: SECURITY & BIOMETRICS */}
+      {effectiveProfileSection === 'security' && (
+        <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Fingerprint className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="font-bold text-[var(--color-text-title)] truncate">
+                {lang === 'th' ? 'สแกน FaceID / TouchID' : 'Biometric Security'}
+              </span>
+            </div>
+            {passkey && (
+              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 shrink-0">
+                {lang === 'th' ? 'เปิดใช้งาน' : 'Active'}
+              </span>
+            )}
+          </div>
+
+          {bioMsg && (
+            <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{bioMsg}</p>
+          )}
+          {bioErr && (
+            <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">{bioErr}</p>
+          )}
+
+          {!passkey ? (
+            <div className="space-y-2.5">
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                {webAuthnInfo
+                  ? lang === 'th'
+                    ? webAuthnInfo.reasonTh
+                    : webAuthnInfo.reasonEn
+                  : lang === 'th'
+                    ? 'ใช้สแกนใบหน้าหรือลายนิ้วมือเพื่อยืนยันตัวตนและล็อกเช็คชื่อด่วน'
+                    : 'Use FaceID/TouchID for fast login and quick attendance lock'}
+              </p>
+              <button
+                type="button"
+                disabled={bioBusy || webAuthnInfo?.supported === false}
+                onClick={handleEnrollPasskey}
+                className="w-full h-10 px-3 rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>
+                  {bioBusy
+                    ? lang === 'th'
+                      ? 'กำลังลงทะเบียน...'
+                      : 'Enrolling...'
+                    : lang === 'th'
+                      ? 'ผูก FaceID / TouchID'
+                      : 'Enroll FaceID / TouchID'}
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <p className="text-[11px] text-[var(--color-text-muted)]">{passkey.deviceLabel}</p>
+
+              {['admin', 'super_admin', 'teacher'].includes(currentRole) && (
+                <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+                  <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ล็อกเมนูเช็คชื่อด่วน' : 'Lock Quick Attendance'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={passkey.protectQuickAttendance}
+                    onChange={(e) => {
+                      if (!currentUser) return;
+                      const updated = updatePasskeyPreferences(currentUser.id, {
+                        protectQuickAttendance: e.target.checked,
+                      });
+                      setPasskey(updated);
+                    }}
+                    className="w-4 h-4 accent-[var(--color-primary)]"
+                  />
+                </label>
+              )}
+
+              <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+                <span className="text-[11px] font-semibold text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'ยืนยันตัวตนหน้าเข้าสู่ระบบ' : 'Enable Sign-In Biometrics'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={passkey.biometricLoginEnabled}
+                  onChange={(e) => {
+                    if (!currentUser) return;
+                    const updated = updatePasskeyPreferences(currentUser.id, {
+                      biometricLoginEnabled: e.target.checked,
+                    });
+                    setPasskey(updated);
+                  }}
+                  className="w-4 h-4 accent-[var(--color-primary)]"
+                />
+              </label>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={bioBusy}
+                  onClick={handleTestPasskey}
+                  className="flex-1 h-9 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Fingerprint className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{bioBusy ? '...' : lang === 'th' ? 'ทดสอบสแกน' : 'Test'}</span>
+                </button>
+
+                {onBiometricLock && (
+                  <button
+                    type="button"
+                    onClick={onBiometricLock}
+                    className="flex-1 h-9 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ล็อกหน้าจอด่วน' : 'Lock Screen'}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!currentUser) return;
+                    removeEnrolledPasskey(currentUser.id);
+                    setPasskey(null);
+                    setBioMsg(lang === 'th' ? 'ลบ Passkey แล้ว' : 'Passkey removed');
+                  }}
+                  className="h-9 px-3 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 font-bold text-xs flex items-center justify-center cursor-pointer"
+                  title={lang === 'th' ? 'ลบ Passkey ออกจากเครื่องนี้' : 'Remove Passkey'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
