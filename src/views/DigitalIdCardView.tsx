@@ -14,6 +14,8 @@ import {
   Columns2,
   Layers,
   Scissors,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import {
   Student,
@@ -70,7 +72,7 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   onUpdateTeacher,
   onUpdateOwnAvatar,
 }) => {
-  const effectiveRole: UserRole = currentUser?.role || currentRole;
+  const effectiveRole: UserRole = currentRole || currentUser?.role || 'student';
   const isStudentViewer = effectiveRole === 'student';
   const isParentViewer = effectiveRole === 'parent';
   const isTeacherViewer = effectiveRole === 'teacher';
@@ -136,14 +138,27 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
     return [];
   }, [isTeacherViewer, isAdminViewer, teachers, ownTeacherProfile]);
 
+  const canBatchPrint =
+    isAdminViewer ||
+    (isTeacherViewer && Boolean(currentUser?.isSchoolAdmin)) ||
+    (isParentViewer && visibleStudents.length > 1);
+
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(visibleStudents[0]?.id || '');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(visibleTeachers[0]?.id || '');
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
-  const [displayMode, setDisplayMode] = useState<'flip' | 'side_by_side'>('flip');
+  const [displayMode, setDisplayMode] = useState<'flip' | 'side_by_side'>('side_by_side');
   const [cardType, setCardType] = useState<'student' | 'staff'>(isTeacherViewer ? 'staff' : 'student');
   const [searchTerm, setSearchTerm] = useState('');
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [selectedBatchStudentIds, setSelectedBatchStudentIds] = useState<Set<string>>(
+    () => new Set(visibleStudents.map((s) => s.id)),
+  );
+  const [selectedBatchTeacherIds, setSelectedBatchTeacherIds] = useState<Set<string>>(
+    () => new Set(visibleTeachers.map((t) => t.id)),
+  );
+  const [batchStudentSelectionTouched, setBatchStudentSelectionTouched] = useState(false);
+  const [batchTeacherSelectionTouched, setBatchTeacherSelectionTouched] = useState(false);
 
   useEffect(() => {
     if (isTeacherViewer) {
@@ -174,6 +189,36 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
       setIsFlipped(false);
     }
   }, [visibleTeachers, selectedTeacherId]);
+
+  useEffect(() => {
+    if (!batchStudentSelectionTouched) {
+      setSelectedBatchStudentIds(new Set(visibleStudents.map((s) => s.id)));
+      return;
+    }
+    const valid = new Set(visibleStudents.map((s) => s.id));
+    setSelectedBatchStudentIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (valid.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [visibleStudents, batchStudentSelectionTouched]);
+
+  useEffect(() => {
+    if (!batchTeacherSelectionTouched) {
+      setSelectedBatchTeacherIds(new Set(visibleTeachers.map((t) => t.id)));
+      return;
+    }
+    const valid = new Set(visibleTeachers.map((t) => t.id));
+    setSelectedBatchTeacherIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (valid.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [visibleTeachers, batchTeacherSelectionTouched]);
 
   const activeCardType: 'student' | 'staff' = isTeacherViewer
     ? 'staff'
@@ -335,27 +380,52 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPrintModal(true)}
+                disabled={
+                  activeCardType === 'staff'
+                    ? selectedBatchTeacherIds.size === 0
+                    : selectedBatchStudentIds.size === 0
+                }
                 className="btn-action-primary px-3 py-1.5"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>
                   {activeCardType === 'staff'
-                    ? (lang === 'th' ? 'พิมพ์บัตรครูทั้งชุด (A4)' : 'Batch Print Staff')
-                    : (lang === 'th' ? 'พิมพ์บัตรนักเรียนทั้งชุด (A4)' : 'Batch Print Students')}
+                    ? (lang === 'th'
+                        ? `พิมพ์บัตรที่เลือกทั้งหมด (${selectedBatchTeacherIds.size} ใบ)`
+                        : `Print All Selected (${selectedBatchTeacherIds.size})`)
+                    : (lang === 'th'
+                        ? `พิมพ์บัตรที่เลือกทั้งหมด (${selectedBatchStudentIds.size} ใบ)`
+                        : `Print All Selected (${selectedBatchStudentIds.size})`)}
                 </span>
               </button>
             </>
           )}
 
           {!isAdminViewer && activePerson && (
-            <button
-              type="button"
-              onClick={handlePrintSingleCard}
-              className="btn-action-primary px-3 py-1.5"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'พิมพ์บัตรหน้า-หลัง (A4)' : 'Print Front & Back'}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handlePrintSingleCard}
+                className="btn-action-primary px-3 py-1.5"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'พิมพ์บัตรหน้า-หลัง (A4)' : 'Print Front & Back'}</span>
+              </button>
+              {canBatchPrint && (
+                <button
+                  type="button"
+                  onClick={() => setShowPrintModal(true)}
+                  className="btn-tool-neutral px-3 py-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>
+                    {lang === 'th'
+                      ? `พิมพ์บัตรที่เลือกทั้งหมด (${isParentViewer ? selectedBatchStudentIds.size : students.length} ใบ)`
+                      : `Print All Selected (${isParentViewer ? selectedBatchStudentIds.size : students.length})`}
+                  </span>
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -397,6 +467,62 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
               </div>
             )}
 
+            {canBatchPrint && (isAdminViewer || isParentViewer) && (
+              <div className="shrink-0 flex items-center justify-between gap-2 pb-2 mb-1 border-b border-[var(--color-border)] text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeCardType === 'staff') {
+                      setBatchTeacherSelectionTouched(true);
+                      setSelectedBatchTeacherIds((prev) => {
+                        const next = new Set(prev);
+                        filteredTeachers.forEach((t) => next.add(t.id));
+                        return next;
+                      });
+                    } else {
+                      setBatchStudentSelectionTouched(true);
+                      setSelectedBatchStudentIds((prev) => {
+                        const next = new Set(prev);
+                        filteredStudents.forEach((s) => next.add(s.id));
+                        return next;
+                      });
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>
+                    {lang === 'th'
+                      ? `เลือกทั้งหมด (${activeCardType === 'staff' ? filteredTeachers.length : filteredStudents.length})`
+                      : `Select All (${activeCardType === 'staff' ? filteredTeachers.length : filteredStudents.length})`}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeCardType === 'staff') {
+                      setBatchTeacherSelectionTouched(true);
+                      setSelectedBatchTeacherIds((prev) => {
+                        const next = new Set(prev);
+                        filteredTeachers.forEach((t) => next.delete(t.id));
+                        return next;
+                      });
+                    } else {
+                      setBatchStudentSelectionTouched(true);
+                      setSelectedBatchStudentIds((prev) => {
+                        const next = new Set(prev);
+                        filteredStudents.forEach((s) => next.delete(s.id));
+                        return next;
+                      });
+                    }
+                  }}
+                  className="text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
+                >
+                  {lang === 'th' ? 'ล้างที่เลือก' : 'Clear'}
+                </button>
+              </div>
+            )}
+
             <div className="flex-1 min-h-0 overflow-y-auto pr-1 mt-1">
               {activeCardType === 'staff' ? (
                 <PagedList
@@ -409,40 +535,67 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   }
                   renderItem={(t) => {
                     const isSelected = t.id === selectedTeacher?.id;
+                    const isBatchChecked = selectedBatchTeacherIds.has(t.id);
                     return (
-                      <button
+                      <div
                         key={t.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedTeacherId(t.id);
-                          setIsFlipped(false);
-                        }}
-                        className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition cursor-pointer ${
+                        className={`w-full flex items-center gap-2 p-2 rounded-xl transition border ${
                           isSelected
-                            ? 'bg-[var(--color-primary-light)] border border-[var(--color-primary)] text-[var(--color-text-title)] shadow-xs'
-                            : 'hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border border-transparent'
+                            ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-text-title)] shadow-xs'
+                            : 'hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-transparent'
                         }`}
                       >
-                        {t.avatarUrl ? (
-                          <img
-                            src={t.avatarUrl}
-                            alt={t.fullNameTh}
-                            className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] shrink-0">
-                            <GraduationCap className="w-4 h-4" />
-                          </div>
+                        {canBatchPrint && isAdminViewer && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBatchTeacherSelectionTouched(true);
+                              setSelectedBatchTeacherIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(t.id)) next.delete(t.id);
+                                else next.add(t.id);
+                                return next;
+                              });
+                            }}
+                            aria-label={`เลือกพิมพ์บัตร ${t.fullNameTh}`}
+                            className="p-0.5 rounded text-[var(--color-primary)] hover:bg-[var(--color-card)] cursor-pointer shrink-0"
+                          >
+                            {isBatchChecked ? (
+                              <CheckSquare className="w-4 h-4 text-[var(--color-primary)]" />
+                            ) : (
+                              <Square className="w-4 h-4 text-[var(--color-text-muted)]" />
+                            )}
+                          </button>
                         )}
-                        <div className="truncate">
-                          <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                            {lang === 'th' ? t.fullNameTh : t.fullNameEn || t.fullNameTh}
-                          </p>
-                          <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate tabular-nums">
-                            {t.teacherIdNumber} · {t.department || t.positionTitle || '-'}
-                          </p>
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTeacherId(t.id);
+                            setIsFlipped(false);
+                          }}
+                          className="flex-1 min-w-0 flex items-center gap-2.5 text-left cursor-pointer"
+                        >
+                          {t.avatarUrl ? (
+                            <img
+                              src={t.avatarUrl}
+                              alt={t.fullNameTh}
+                              className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] shrink-0">
+                              <GraduationCap className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="truncate">
+                            <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                              {lang === 'th' ? t.fullNameTh : t.fullNameEn || t.fullNameTh}
+                            </p>
+                            <p className="text-[10px] text-[var(--color-text-muted)] font-mono truncate tabular-nums">
+                              {t.teacherIdNumber} · {t.department || t.positionTitle || '-'}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
                     );
                   }}
                 />
@@ -457,40 +610,67 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   }
                   renderItem={(stu) => {
                     const isSelected = stu.id === selectedStudent?.id;
+                    const isBatchChecked = selectedBatchStudentIds.has(stu.id);
                     return (
-                      <button
+                      <div
                         key={stu.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedStudentId(stu.id);
-                          setIsFlipped(false);
-                        }}
-                        className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition cursor-pointer ${
+                        className={`w-full flex items-center gap-2 p-2 rounded-xl transition border ${
                           isSelected
-                            ? 'bg-[var(--color-primary-light)] border border-[var(--color-primary)] text-[var(--color-text-title)] shadow-xs'
-                            : 'hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border border-transparent'
+                            ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] text-[var(--color-text-title)] shadow-xs'
+                            : 'hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] border-transparent'
                         }`}
                       >
-                        {stu.avatarUrl ? (
-                          <img
-                            src={stu.avatarUrl}
-                            alt={stu.firstNameTh}
-                            className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] shrink-0">
-                            <User className="w-4 h-4" />
-                          </div>
+                        {canBatchPrint && (isAdminViewer || isParentViewer) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBatchStudentSelectionTouched(true);
+                              setSelectedBatchStudentIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(stu.id)) next.delete(stu.id);
+                                else next.add(stu.id);
+                                return next;
+                              });
+                            }}
+                            aria-label={`เลือกพิมพ์บัตร ${stu.firstNameTh} ${stu.lastNameTh}`}
+                            className="p-0.5 rounded text-[var(--color-primary)] hover:bg-[var(--color-card)] cursor-pointer shrink-0"
+                          >
+                            {isBatchChecked ? (
+                              <CheckSquare className="w-4 h-4 text-[var(--color-primary)]" />
+                            ) : (
+                              <Square className="w-4 h-4 text-[var(--color-text-muted)]" />
+                            )}
+                          </button>
                         )}
-                        <div className="truncate">
-                          <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                            {lang === 'th' ? `${stu.firstNameTh} ${stu.lastNameTh}` : `${stu.firstNameEn} ${stu.lastNameEn}`}
-                          </p>
-                          <p className="text-[10px] text-[var(--color-text-muted)] font-mono tabular-nums">
-                            {stu.studentIdNumber} · {stu.room}
-                          </p>
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStudentId(stu.id);
+                            setIsFlipped(false);
+                          }}
+                          className="flex-1 min-w-0 flex items-center gap-2.5 text-left cursor-pointer"
+                        >
+                          {stu.avatarUrl ? (
+                            <img
+                              src={stu.avatarUrl}
+                              alt={stu.firstNameTh}
+                              className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] shrink-0">
+                              <User className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="truncate">
+                            <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                              {lang === 'th' ? `${stu.firstNameTh} ${stu.lastNameTh}` : `${stu.firstNameEn} ${stu.lastNameEn}`}
+                            </p>
+                            <p className="text-[10px] text-[var(--color-text-muted)] font-mono tabular-nums">
+                              {stu.studentIdNumber} · {stu.room}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
                     );
                   }}
                 />
@@ -540,21 +720,21 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                 <div className="seg-tab-group">
                   <button
                     type="button"
+                    data-active={displayMode === 'side_by_side'}
+                    onClick={() => setDisplayMode('side_by_side')}
+                    className="seg-tab-btn !min-h-[28px] !px-2.5 !py-1 !text-[11px]"
+                  >
+                    <Columns2 className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'แสดงคู่หน้า-หลัง' : 'Front & Back Grid'}</span>
+                  </button>
+                  <button
+                    type="button"
                     data-active={displayMode === 'flip'}
                     onClick={() => setDisplayMode('flip')}
                     className="seg-tab-btn !min-h-[28px] !px-2.5 !py-1 !text-[11px]"
                   >
                     <Layers className="w-3.5 h-3.5" />
                     <span>{lang === 'th' ? 'พลิกหน้า-หลัง (3D)' : '3D Flip'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-active={displayMode === 'side_by_side'}
-                    onClick={() => setDisplayMode('side_by_side')}
-                    className="seg-tab-btn !min-h-[28px] !px-2.5 !py-1 !text-[11px]"
-                  >
-                    <Columns2 className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'แสดงคู่หน้า-หลัง' : 'Side by Side'}</span>
                   </button>
                 </div>
 
@@ -642,9 +822,9 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                 </div>
               </div>
 
-              {/* Card Display: Either 3D Flip (non-overlapping CSS) OR Side-by-Side */}
+              {/* Card Display: Non-mirroring Flip OR Side-by-Side */}
               {displayMode === 'flip' ? (
-                <div className="id-card-scene w-full max-w-[460px] h-[288px] sm:h-[296px]">
+                <div className="id-card-scene w-full max-w-[460px] h-[300px] sm:h-[306px]">
                   <div
                     className={`id-card-flipper cursor-pointer ${isFlipped ? 'is-flipped' : ''}`}
                     onClick={() => setIsFlipped((prev) => !prev)}
@@ -681,12 +861,16 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="w-full max-w-4xl grid grid-cols-1 xl:grid-cols-2 gap-4 items-center">
-                  <div className="space-y-1.5">
+                <div
+                  className={`w-full max-w-4xl grid grid-cols-1 ${
+                    showSelectorSidebar ? 'xl:grid-cols-2' : 'md:grid-cols-2'
+                  } gap-4 items-start`}
+                >
+                  <div className="flex flex-col gap-1.5">
                     <p className="text-[11px] font-semibold text-[var(--color-text-muted)] text-center">
                       {lang === 'th' ? 'ด้านหน้าบัตร (Front)' : 'Front Side'}
                     </p>
-                    <div className="w-full max-w-[440px] mx-auto h-[284px] sm:h-[290px]">
+                    <div className="w-full max-w-[440px] mx-auto h-[296px] sm:h-[302px]">
                       <IdCardFrontContent
                         personType={activeCardType}
                         student={selectedStudent}
@@ -701,11 +885,11 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="flex flex-col gap-1.5">
                     <p className="text-[11px] font-semibold text-[var(--color-text-muted)] text-center">
                       {lang === 'th' ? 'ด้านหลังบัตร (Back)' : 'Back Side'}
                     </p>
-                    <div className="w-full max-w-[440px] mx-auto h-[284px] sm:h-[290px]">
+                    <div className="w-full max-w-[440px] mx-auto h-[296px] sm:h-[302px]">
                       <IdCardBackContent
                         mode={backMode}
                         personType={activeCardType}
@@ -795,15 +979,21 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
         </div>
       )}
 
-      {/* Batch ID Card Print Modal (Admin Only — supports BOTH Students & Staff) */}
-      {isAdminViewer && (
+      {/* Batch ID Card Print Modal (Admin, Dual-Role School Admin & Multi-Child Parent) */}
+      {canBatchPrint && (
         <BatchIdCardPrintModal
           isOpen={showPrintModal}
           onClose={() => setShowPrintModal(false)}
-          students={visibleStudents}
-          teachers={visibleTeachers}
+          students={isAdminViewer || isParentViewer ? visibleStudents : students}
+          teachers={isAdminViewer ? visibleTeachers : isParentViewer ? [] : teachers}
           initialPersonType={activeCardType}
           initialBackMode={backMode}
+          initialSelectedStudentIds={
+            isAdminViewer || isParentViewer ? Array.from(selectedBatchStudentIds) : undefined
+          }
+          initialSelectedTeacherIds={
+            isAdminViewer ? Array.from(selectedBatchTeacherIds) : undefined
+          }
           timetableSlots={timetableSlots}
           courses={courses}
           schoolPeriods={schoolPeriods}

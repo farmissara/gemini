@@ -90,22 +90,29 @@ export const IdCardFrontContent: React.FC<IdCardFrontContentProps> = React.memo(
               </div>
             )}
             <div className="min-w-0">
-              <h4 className="text-[11px] font-bold tracking-tight text-white truncate">
+              <h4 className="text-[10.5px] sm:text-[11px] font-bold tracking-tight text-white truncate">
                 {school.nameTh}
               </h4>
-              <p className="text-[9px] text-cyan-200 font-mono tracking-wider uppercase truncate">
+              <p className="text-[8.5px] sm:text-[9px] text-cyan-200 font-mono tracking-wider uppercase truncate">
                 {school.nameEn || school.code}
               </p>
             </div>
           </div>
           <span
-            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border uppercase tracking-wider shrink-0 whitespace-nowrap ${
+            className={`text-[8.5px] sm:text-[9px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md border uppercase tracking-wider shrink-0 whitespace-nowrap ${
               isStaff
                 ? 'bg-emerald-800/90 text-amber-200 border-amber-300/60'
                 : 'bg-cyan-900/90 text-cyan-100 border-cyan-300/60'
             }`}
           >
-            {isStaff ? 'TEACHER / STAFF ID' : 'STUDENT ID'}
+            {isStaff ? (
+              <>
+                <span className="sm:hidden">STAFF ID</span>
+                <span className="hidden sm:inline">TEACHER / STAFF ID</span>
+              </>
+            ) : (
+              'STUDENT ID'
+            )}
           </span>
         </div>
 
@@ -151,7 +158,7 @@ export const IdCardFrontContent: React.FC<IdCardFrontContentProps> = React.memo(
           {isStaff && teacher ? (
             <div className="space-y-1 text-xs min-w-0 flex-1 overflow-hidden">
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-white truncate leading-snug">
+                <h3 className="text-[13px] sm:text-sm font-bold text-white truncate leading-snug">
                   {lang === 'th' ? teacher.fullNameTh : teacher.fullNameEn || teacher.fullNameTh}
                 </h3>
                 <p className="text-[10px] text-amber-200 font-medium truncate">
@@ -159,20 +166,22 @@ export const IdCardFrontContent: React.FC<IdCardFrontContentProps> = React.memo(
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-slate-200 pt-0.5">
-                <div className="min-w-0 truncate">
-                  <span className="text-slate-300">รหัสครู: </span>
-                  <strong className="font-mono text-amber-200 tabular-nums">{teacher.teacherIdNumber || '-'}</strong>
+              <div className="space-y-0.5 text-[10px] text-slate-200 pt-0.5 leading-snug">
+                <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                  <div className="min-w-0">
+                    <span className="text-slate-300">รหัสครู: </span>
+                    <strong className="font-mono text-amber-200 tabular-nums">{teacher.teacherIdNumber || '-'}</strong>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-slate-300">ตำแหน่ง: </span>
+                    <strong className="text-white">{teacher.positionTitle || teacher.academicStanding || 'ครูผู้สอน'}</strong>
+                  </div>
                 </div>
-                <div className="min-w-0 truncate">
-                  <span className="text-slate-300">ตำแหน่ง: </span>
-                  <strong className="text-white">{teacher.positionTitle || teacher.academicStanding || 'ครูผู้สอน'}</strong>
-                </div>
-                <div className="col-span-2 min-w-0 truncate">
+                <div className="min-w-0 line-clamp-2">
                   <span className="text-slate-300">กลุ่มสาระ/ฝ่าย: </span>
                   <strong className="text-white">{teacher.department || '-'}</strong>
                 </div>
-                <div className="col-span-2 min-w-0 truncate">
+                <div className="min-w-0 truncate">
                   <span className="text-slate-300">ที่ปรึกษา: </span>
                   <strong className="text-emerald-200">
                     {teacher.homeroomClasses?.length ? teacher.homeroomClasses.join(', ') : '-'}
@@ -183,7 +192,7 @@ export const IdCardFrontContent: React.FC<IdCardFrontContentProps> = React.memo(
           ) : student ? (
             <div className="space-y-1 text-xs min-w-0 flex-1 overflow-hidden">
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-white truncate leading-snug">
+                <h3 className="text-[13px] sm:text-sm font-bold text-white truncate leading-snug">
                   {lang === 'th'
                     ? `${student.firstNameTh || ''} ${student.lastNameTh || ''}`.trim() || school.nameTh
                     : `${student.firstNameEn || ''} ${student.lastNameEn || ''}`.trim() || school.nameEn}
@@ -193,22 +202,24 @@ export const IdCardFrontContent: React.FC<IdCardFrontContentProps> = React.memo(
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-slate-200 pt-0.5">
-                <div className="min-w-0 truncate">
-                  <span className="text-slate-300">รหัส: </span>
-                  <strong className="font-mono text-cyan-200 tabular-nums">{student.studentIdNumber || '-'}</strong>
+              <div className="space-y-0.5 text-[10px] text-slate-200 pt-0.5 leading-snug">
+                <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                  <div className="min-w-0">
+                    <span className="text-slate-300">รหัส: </span>
+                    <strong className="font-mono text-cyan-200 tabular-nums">{student.studentIdNumber || '-'}</strong>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-slate-300">หมู่เลือด: </span>
+                    <strong className="font-mono text-rose-200">{student.bloodType || '-'}</strong>
+                  </div>
                 </div>
                 <div className="min-w-0 truncate">
-                  <span className="text-slate-300">หมู่เลือด: </span>
-                  <strong className="font-mono text-rose-200">{student.bloodType || '-'}</strong>
-                </div>
-                <div className="col-span-2 min-w-0 truncate">
                   <span className="text-slate-300">ชั้นเรียน: </span>
                   <strong className="text-white">
                     {[student.gradeLevel, student.room].filter(Boolean).join(' ') || '-'}
                   </strong>
                 </div>
-                <div className="col-span-2 min-w-0 truncate">
+                <div className="min-w-0 truncate">
                   <span className="text-slate-300">เลขบัตร ปชช.: </span>
                   <strong className="font-mono text-slate-100 tabular-nums">
                     {formatMaskedNationalId(student.nationalId)}
@@ -332,12 +343,12 @@ export const IdCardFrontContent: React.FC<IdCardFrontContentProps> = React.memo(
               {teacher.positionTitle || teacher.academicStanding || 'ครูผู้สอน'}
             </p>
             <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 pt-0.5 text-[8px] leading-tight">
-              <div className="min-w-0 truncate font-mono text-slate-900">
-                <span className="text-slate-500">รหัส: </span>
+              <div className="col-span-2 min-w-0 truncate font-mono text-slate-900">
+                <span className="text-slate-500 font-sans">รหัสครู: </span>
                 <strong className="tabular-nums">{teacher.teacherIdNumber || '-'}</strong>
               </div>
-              <div className="min-w-0 truncate text-slate-800">
-                <span className="text-slate-500">กลุ่มสาระ: </span>
+              <div className="col-span-2 min-w-0 truncate text-slate-800">
+                <span className="text-slate-500">กลุ่มสาระ/ฝ่าย: </span>
                 <strong>{teacher.department || '-'}</strong>
               </div>
               <div className="col-span-2 min-w-0 truncate text-slate-700">

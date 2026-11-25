@@ -43,6 +43,8 @@ interface BatchIdCardPrintModalProps {
   teachers?: Teacher[];
   initialPersonType?: 'student' | 'staff';
   initialBackMode?: IdCardBackMode;
+  initialSelectedStudentIds?: string[];
+  initialSelectedTeacherIds?: string[];
   timetableSlots?: TimetableSlot[];
   courses?: Course[];
   schoolPeriods?: SchoolPeriodTime[];
@@ -83,6 +85,8 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   teachers = [],
   initialPersonType = 'student',
   initialBackMode,
+  initialSelectedStudentIds,
+  initialSelectedTeacherIds,
   timetableSlots = [],
   courses = [],
   schoolPeriods = [],
@@ -153,9 +157,24 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
     if (isOpen) {
       setPersonType(initialPersonType);
       setBackMode(initialBackMode || getSavedIdCardBackMode(school.id, initialPersonType));
+      if (initialSelectedStudentIds) {
+        setStudentSelectionTouched(true);
+        setSelectedStudentIds(new Set(initialSelectedStudentIds));
+      }
+      if (initialSelectedTeacherIds) {
+        setTeacherSelectionTouched(true);
+        setSelectedTeacherIds(new Set(initialSelectedTeacherIds));
+      }
       setPreviewPageIndex(0);
     }
-  }, [isOpen, initialPersonType, initialBackMode, school.id]);
+  }, [
+    isOpen,
+    initialPersonType,
+    initialBackMode,
+    initialSelectedStudentIds,
+    initialSelectedTeacherIds,
+    school.id,
+  ]);
 
   const handleChangeBackMode = (nextMode: IdCardBackMode) => {
     setBackMode(nextMode);
@@ -417,32 +436,34 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="seg-tab-group">
-              <button
-                type="button"
-                data-active={personType === 'student'}
-                onClick={() => {
-                  setPersonType('student');
-                  setSearchQuery('');
-                  setPreviewPageIndex(0);
-                }}
-                className="seg-tab-btn"
-              >
-                นักเรียน ({students.length})
-              </button>
-              <button
-                type="button"
-                data-active={personType === 'staff'}
-                onClick={() => {
-                  setPersonType('staff');
-                  setSearchQuery('');
-                  setPreviewPageIndex(0);
-                }}
-                className="seg-tab-btn"
-              >
-                ครู/บุคลากร ({teachers.length})
-              </button>
-            </div>
+            {teachers.length > 0 && (
+              <div className="seg-tab-group">
+                <button
+                  type="button"
+                  data-active={personType === 'student'}
+                  onClick={() => {
+                    setPersonType('student');
+                    setSearchQuery('');
+                    setPreviewPageIndex(0);
+                  }}
+                  className="seg-tab-btn"
+                >
+                  นักเรียน ({students.length})
+                </button>
+                <button
+                  type="button"
+                  data-active={personType === 'staff'}
+                  onClick={() => {
+                    setPersonType('staff');
+                    setSearchQuery('');
+                    setPreviewPageIndex(0);
+                  }}
+                  className="seg-tab-btn"
+                >
+                  ครู/บุคลากร ({teachers.length})
+                </button>
+              </div>
+            )}
 
             <button
               type="button"
@@ -453,8 +474,8 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               <Printer className="w-4 h-4" />
               <span>
                 {lang === 'th'
-                  ? `สั่งพิมพ์ทั้งหมด (${activePrintCount} ใบ)`
-                  : `Print All (${activePrintCount})`}
+                  ? `พิมพ์บัตรที่เลือกทั้งหมด (${activePrintCount} ใบ)`
+                  : `Print All Selected (${activePrintCount})`}
               </span>
             </button>
             <button
@@ -995,7 +1016,7 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
                                   issueTermLabel={issueTermLabel}
                                   expiryTermLabel={expiryTermLabel}
                                 />
-                                <div className="hidden md:flex print:flex h-full min-h-[120px] flex-col items-center justify-center">
+                                <div className="hidden md:flex print:flex h-full min-h-[120px] print:h-[53.98mm] print:min-h-[53.98mm] flex-col items-center justify-center">
                                   <div className="flex-1 border-l border-dashed border-slate-400" />
                                   <Scissors className="w-3 h-3 text-slate-400 my-0.5 rotate-90" />
                                   <div className="flex-1 border-l border-dashed border-slate-400" />
@@ -1096,8 +1117,8 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
               <Printer className="w-3.5 h-3.5" />
               <span>
                 {lang === 'th'
-                  ? `พิมพ์ทั้งหมด (${activePrintCount} ใบ)`
-                  : `Print All (${activePrintCount})`}
+                  ? `พิมพ์บัตรที่เลือกทั้งหมด (${activePrintCount} ใบ)`
+                  : `Print All Selected (${activePrintCount})`}
               </span>
             </button>
             <button
