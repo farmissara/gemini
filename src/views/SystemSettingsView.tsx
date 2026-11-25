@@ -134,6 +134,7 @@ interface SystemSettingsViewProps {
   initialTab?: SystemSettingsTab;
   onTabChange?: (tab: SystemSettingsTab) => void;
   onNavigateModule?: (tab: NavTab) => void;
+  onOpenBackupCenter?: () => void;
   canSwitchAdminTeacherMode?: boolean;
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
 }
@@ -165,6 +166,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   initialTab,
   onTabChange,
   onNavigateModule,
+  onOpenBackupCenter,
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
 }) => {
@@ -2723,12 +2725,24 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-[var(--color-text-body)]">Cloud Backup Storage Bucket</label>
-                <input
-                  type="text"
-                  value={generalConfig.backupBucket}
-                  onChange={(e) => setGeneralConfig(prev => ({ ...prev, backupBucket: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono text-[11px]"
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={generalConfig.backupBucket}
+                    onChange={(e) => setGeneralConfig(prev => ({ ...prev, backupBucket: e.target.value }))}
+                    className="flex-1 min-w-[200px] px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono text-[11px]"
+                  />
+                  {onOpenBackupCenter && (
+                    <button
+                      type="button"
+                      onClick={onOpenBackupCenter}
+                      className="px-3 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                    >
+                      <Database className="w-3.5 h-3.5" />
+                      <span>สำรองข้อมูล Google Drive / อัตโนมัติเที่ยงคืน</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

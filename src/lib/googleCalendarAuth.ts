@@ -10,9 +10,12 @@ import {
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-export const GOOGLE_CALENDAR_SCOPES = [
+export const GOOGLE_WORKSPACE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/drive.file',
 ] as const;
+
+export const GOOGLE_CALENDAR_SCOPES = GOOGLE_WORKSPACE_SCOPES;
 
 export interface GoogleCalendarAuthUser {
   uid: string;
@@ -25,7 +28,7 @@ const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebas
 const auth: Auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
-GOOGLE_CALENDAR_SCOPES.forEach((scope) => {
+GOOGLE_WORKSPACE_SCOPES.forEach((scope) => {
   provider.addScope(scope);
 });
 // Always let each teacher or student pick or switch to their own personal Google Account.

@@ -1,6 +1,7 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { getBangkokClockParts } from '../lib/selfieCleanupLogic.ts';
 
 type EnvReader = (name: string) => string;
 type Access = {
@@ -50,6 +51,15 @@ const OMITTED_TABLES: Record<string, string> = {
 const STORAGE_BUCKETS = ['school-logos', 'school-attachments', 'attendance-selfies'] as const;
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
 const PAGE_SIZE = 500;
+const DEFAULT_BACKUP_BUCKET = 'system-backups';
+const DEFAULT_RETENTION_DAYS = 14;
+const SNAPSHOT_CHECK_INTERVAL_MS = 60 * 1000;
+const SNAPSHOT_PATH_REGEX = /^daily-midnight\/(\d{4}-\d{2}-\d{2})\/(school-[a-zA-Z0-9_-]+|system-all)\.json$/;
+
+let lastServerSnapshotDate: string | null = null;
+let lastServerSnapshotAt: string | null = null;
+let lastServerSnapshotError: string | null = null;
+let lastServerSnapshotFiles = 0;
 
 function getClients(env: EnvReader, token: string) {
   const url = env('SUPABASE_URL') || env('VITE_SUPABASE_URL');
@@ -222,42 +232,42 @@ function safeAccount(user: User, role?: string) {
   };
 }
 
-async function buildBackup(access: Access, scope: { type: 'system' | 'school'; schoolId: string | null }, url: string) {
+async function buildBackupWithAdmin(admin: SupabaseClient, scope: { type: 'system' | 'school'; schoolId: string | null }, url: string) {
   const tables: Record<string, unknown[]> = {};
   const counts: Record<string, number> = {};
   const profileIds = scope.type === 'school' && scope.schoolId
-    ? await getSchoolProfileIds(access.admin, scope.schoolId)
+    ? await getSchoolProfileIds(admin, scope.schoolId)
     : [];
   for (const table of RESTORE_ORDER) {
     if (table === 'super_admin_settings' && scope.type !== 'system') continue;
     if (REFERENCE_TABLES.includes(table as (typeof REFERENCE_TABLES)[number]) && scope.type !== 'system') continue;
     let rows: unknown[];
     if (table === 'schools') {
-      rows = await selectAll(access.admin, table, (query) => scope.schoolId ? query.eq('id', scope.schoolId) : query);
+      rows = await selectAll(admin, table, (query) => scope.schoolId ? query.eq('id', scope.schoolId) : query);
     } else if (table === 'user_profiles') {
-      rows = await selectAll(access.admin, table, (query) => scope.schoolId ? query.eq('school_id', scope.schoolId) : query);
+      rows = await selectAll(admin, table, (query) => scope.schoolId ? query.eq('school_id', scope.schoolId) : query);
     } else if (table === 'parent_notification_preferences') {
       rows = profileIds.length
-        ? await selectAll(access.admin, table, (query) => query.in('profile_id', profileIds))
-        : scope.type === 'system' ? await selectAll(access.admin, table, (query) => query) : [];
+        ? await selectAll(admin, table, (query) => query.in('profile_id', profileIds))
+        : scope.type === 'system' ? await selectAll(admin, table, (query) => query) : [];
     } else if ((DIRECT_SCHOOL_TABLES as readonly string[]).includes(table)) {
-      rows = await selectAll(access.admin, table, (query) => scope.schoolId ? query.eq('school_id', scope.schoolId) : query);
+      rows = await selectAll(admin, table, (query) => scope.schoolId ? query.eq('school_id', scope.schoolId) : query);
     } else if ((REFERENCE_TABLES as readonly string[]).includes(table)) {
-      rows = await selectAll(access.admin, table, (query) => query);
+      rows = await selectAll(admin, table, (query) => query);
     } else if ((SYSTEM_ONLY_TABLES as readonly string[]).includes(table)) {
-      rows = await selectAll(access.admin, table, (query) => query);
+      rows = await selectAll(admin, table, (query) => query);
     } else continue;
     tables[table] = rows;
     counts[table] = rows.length;
   }
   const ids = new Set((tables.user_profiles || []).map((row: any) => String(row.id)));
-  const authUsers = await listAuthUsers(access.admin);
+  const authUsers = await listAuthUsers(admin);
   const accounts = authUsers.filter((user) => scope.type === 'system' || ids.has(user.id)).map((user) => {
     const profile = (tables.user_profiles || []).find((row: any) => row.id === user.id) as any;
     return safeAccount(user, profile?.role);
   });
   const projectRef = new URL(url).hostname.split('.')[0];
-  const storageFiles = await listStorageFiles(access.admin, scope);
+  const storageFiles = await listStorageFiles(admin, scope);
   const tableChecksums = Object.fromEntries(Object.entries(tables).map(([table, rows]) => [
     table, createHash('sha256').update(JSON.stringify(rows)).digest('hex'),
   ]));
@@ -405,8 +415,300 @@ async function validateRestore(backup: any, access: Access, res: Response) {
   return { type: scope.type as 'school' | 'system', schoolId: allowedSchoolId };
 }
 
+function getBackupBucketName(env: EnvReader): string {
+  const raw = env('BACKUP_STORAGE_BUCKET').trim();
+  return /^[a-z0-9][a-z0-9_-]{1,62}$/.test(raw) ? raw : DEFAULT_BACKUP_BUCKET;
+}
+
+function getRetentionDays(env: EnvReader): number {
+  const parsed = Number(env('BACKUP_RETENTION_DAYS'));
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 365) return DEFAULT_RETENTION_DAYS;
+  return Math.floor(parsed);
+}
+
+function getServiceAdmin(env: EnvReader): { url: string; admin: SupabaseClient } | null {
+  const url = env('SUPABASE_URL') || env('VITE_SUPABASE_URL');
+  const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !serviceKey) return null;
+  const admin = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return { url, admin };
+}
+
+async function ensurePrivateBackupBucket(admin: SupabaseClient, bucketName: string): Promise<void> {
+  const { data: buckets, error } = await admin.storage.listBuckets();
+  if (error) throw new Error(`ตรวจสอบ Backup bucket ไม่สำเร็จ: ${error.message}`);
+  if ((buckets || []).some((b) => b.name === bucketName)) return;
+  const { error: createError } = await admin.storage.createBucket(bucketName, {
+    public: false,
+    fileSizeLimit: MAX_BACKUP_BYTES,
+    allowedMimeTypes: ['application/json'],
+  });
+  if (createError && !/already exists/i.test(createError.message)) {
+    throw new Error(`สร้าง Backup bucket ไม่สำเร็จ: ${createError.message}`);
+  }
+}
+
+async function pruneOldSnapshots(admin: SupabaseClient, bucketName: string, retentionDays: number): Promise<void> {
+  const { data: dateFolders, error } = await admin.storage.from(bucketName).list('daily-midnight', {
+    limit: 100,
+    sortBy: { column: 'name', order: 'asc' },
+  });
+  if (error || !dateFolders?.length) return;
+  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  for (const folder of dateFolders) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(folder.name) || folder.name >= cutoffDate) continue;
+    const prefix = `daily-midnight/${folder.name}`;
+    const { data: files } = await admin.storage.from(bucketName).list(prefix, { limit: 500 });
+    const paths = (files || []).filter((f) => f.id).map((f) => `${prefix}/${f.name}`);
+    if (paths.length > 0) {
+      await admin.storage.from(bucketName).remove(paths);
+    }
+  }
+}
+
+export async function runServerMidnightSnapshots(
+  env: EnvReader,
+  options?: { onlySchoolId?: string | null; includeSystem?: boolean }
+): Promise<{
+  dateStr: string;
+  bucket: string;
+  saved: Array<{ path: string; scope: string; schoolId?: string; size: number }>;
+  errors: Array<{ target: string; error: string }>;
+}> {
+  const service = getServiceAdmin(env);
+  if (!service) {
+    throw new Error('Server Supabase service role key is not configured.');
+  }
+  const bucketName = getBackupBucketName(env);
+  await ensurePrivateBackupBucket(service.admin, bucketName);
+
+  const { dateStr } = getBangkokClockParts();
+  const saved: Array<{ path: string; scope: string; schoolId?: string; size: number }> = [];
+  const errors: Array<{ target: string; error: string }> = [];
+
+  let schoolQuery = service.admin.from('schools').select('id, code, name_th, name_en, status').order('name_th');
+  if (options?.onlySchoolId) {
+    schoolQuery = schoolQuery.eq('id', options.onlySchoolId);
+  } else {
+    schoolQuery = schoolQuery.eq('status', 'active');
+  }
+  const { data: schools, error: schoolError } = await schoolQuery;
+  if (schoolError) throw new Error(`โหลดรายชื่อโรงเรียนไม่สำเร็จ: ${schoolError.message}`);
+
+  for (const school of schools || []) {
+    const cleanId = String(school.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    if (!cleanId) continue;
+    const targetPath = `daily-midnight/${dateStr}/school-${cleanId}.json`;
+    try {
+      const backup = await buildBackupWithAdmin(service.admin, { type: 'school', schoolId: String(school.id) }, service.url);
+      const serialized = JSON.stringify(backup);
+      const bytes = Buffer.from(serialized, 'utf8');
+      if (bytes.byteLength > MAX_BACKUP_BYTES) {
+        throw new Error('ขนาดข้อมูลโรงเรียนเกิน 50 MB');
+      }
+      const { error: uploadError } = await service.admin.storage.from(bucketName).upload(targetPath, bytes, {
+        contentType: 'application/json',
+        upsert: true,
+      });
+      if (uploadError) throw new Error(uploadError.message);
+      saved.push({ path: targetPath, scope: 'school', schoolId: String(school.id), size: bytes.byteLength });
+    } catch (err) {
+      errors.push({ target: String(school.name_th || school.name_en || school.id), error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  if (!options?.onlySchoolId && options?.includeSystem !== false) {
+    const systemPath = `daily-midnight/${dateStr}/system-all.json`;
+    try {
+      const systemBackup = await buildBackupWithAdmin(service.admin, { type: 'system', schoolId: null }, service.url);
+      const serialized = JSON.stringify(systemBackup);
+      const bytes = Buffer.from(serialized, 'utf8');
+      if (bytes.byteLength <= MAX_BACKUP_BYTES) {
+        const { error: uploadError } = await service.admin.storage.from(bucketName).upload(systemPath, bytes, {
+          contentType: 'application/json',
+          upsert: true,
+        });
+        if (uploadError) throw new Error(uploadError.message);
+        saved.push({ path: systemPath, scope: 'system', size: bytes.byteLength });
+      }
+    } catch (err) {
+      errors.push({ target: 'system-all', error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  await pruneOldSnapshots(service.admin, bucketName, getRetentionDays(env));
+  lastServerSnapshotDate = dateStr;
+  lastServerSnapshotAt = new Date().toISOString();
+  lastServerSnapshotFiles = saved.length;
+  lastServerSnapshotError = errors.length > 0 ? errors.map((e) => `${e.target}: ${e.error}`).join('; ') : null;
+
+  return { dateStr, bucket: bucketName, saved, errors };
+}
+
+export function startAutoBackupScheduler(getEnv: EnvReader): () => void {
+  let isRunning = false;
+
+  const checkMidnight = () => {
+    if (isRunning) return;
+    if (!getServiceAdmin(getEnv)) return;
+    const { dateStr, minutes } = getBangkokClockParts();
+    // Run daily between 00:00 and 00:10 Asia/Bangkok if today's snapshot hasn't run yet
+    if (minutes > 10 || lastServerSnapshotDate === dateStr) return;
+
+    isRunning = true;
+    void runServerMidnightSnapshots(getEnv)
+      .then((result) => {
+        console.log(`[Auto Backup] Midnight snapshot (${result.dateStr}) saved ${result.saved.length} file(s) to bucket "${result.bucket}".`);
+      })
+      .catch((err) => {
+        lastServerSnapshotError = err instanceof Error ? err.message : String(err);
+        console.error('[Auto Backup] Midnight snapshot failed:', lastServerSnapshotError);
+      })
+      .finally(() => {
+        isRunning = false;
+      });
+  };
+
+  const timer = setInterval(checkMidnight, SNAPSHOT_CHECK_INTERVAL_MS);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+
+function timingSafeBearerMatch(headerValue: string, expectedSecret: string): boolean {
+  const match = headerValue.match(/^Bearer\s+(.+)$/i);
+  if (!match || !expectedSecret) return false;
+  const actual = Buffer.from(match[1], 'utf8');
+  const expected = Buffer.from(expectedSecret, 'utf8');
+  if (actual.byteLength !== expected.byteLength) return false;
+  return timingSafeEqual(actual, expected);
+}
+
 export function createBackupRouter(getEnv: EnvReader) {
   const router = Router();
+  router.get('/status', async (req: Request, res: Response) => {
+    const access = await resolveAccess(req, res, getEnv);
+    if (!access) return;
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      ok: true,
+      supabaseServiceRoleConfigured: true,
+      backupBucket: getBackupBucketName(getEnv),
+      retentionDays: getRetentionDays(getEnv),
+      cronSecretConfigured: Boolean(getEnv('BACKUP_CRON_SECRET')),
+      midnightTimeBangkok: '00:00',
+      lastServerSnapshotDate,
+      lastServerSnapshotAt,
+      lastServerSnapshotFiles,
+      lastServerSnapshotError,
+    });
+  });
+
+  router.get('/snapshots', async (req: Request, res: Response) => {
+    const access = await resolveAccess(req, res, getEnv);
+    if (!access) return;
+    const bucketName = getBackupBucketName(getEnv);
+    try {
+      await ensurePrivateBackupBucket(access.admin, bucketName);
+      const { data: dateFolders, error } = await access.admin.storage.from(bucketName).list('daily-midnight', {
+        limit: 60,
+        sortBy: { column: 'name', order: 'desc' },
+      });
+      if (error) throw new Error(error.message);
+      const items: Array<{ path: string; date: string; name: string; scope: 'school' | 'system'; schoolId?: string; size: number; createdAt: string }> = [];
+      const expectedSchoolFile = access.schoolId ? `school-${access.schoolId.replace(/[^a-zA-Z0-9_-]/g, '_')}.json` : '';
+
+      for (const folder of dateFolders || []) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(folder.name)) continue;
+        const prefix = `daily-midnight/${folder.name}`;
+        const { data: files } = await access.admin.storage.from(bucketName).list(prefix, { limit: 200, sortBy: { column: 'name', order: 'asc' } });
+        for (const file of files || []) {
+          if (!file.id) continue;
+          if (access.role !== 'super_admin' && file.name !== expectedSchoolFile) continue;
+          const isSystem = file.name === 'system-all.json';
+          const schoolMatch = file.name.match(/^school-([a-zA-Z0-9_-]+)\.json$/);
+          items.push({
+            path: `${prefix}/${file.name}`,
+            date: folder.name,
+            name: file.name,
+            scope: isSystem ? 'system' : 'school',
+            schoolId: schoolMatch?.[1],
+            size: Number((file.metadata as { size?: number } | null)?.size || 0),
+            createdAt: file.created_at || file.updated_at || `${folder.name}T00:00:00.000Z`,
+          });
+        }
+      }
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ bucket: bucketName, snapshots: items });
+    } catch (error) {
+      res.status(502).json({ error: 'SNAPSHOT_LIST_FAILED', message: error instanceof Error ? error.message : 'โหลดรายการ Snapshot ไม่สำเร็จ' });
+    }
+  });
+
+  router.get('/snapshots/download', async (req: Request, res: Response) => {
+    const access = await resolveAccess(req, res, getEnv);
+    if (!access) return;
+    const rawPath = typeof req.query.path === 'string' ? req.query.path.trim() : '';
+    const match = rawPath.match(SNAPSHOT_PATH_REGEX);
+    if (!match) {
+      res.status(400).json({ error: 'INVALID_SNAPSHOT_PATH', message: 'เส้นทางไฟล์ Snapshot ไม่ถูกต้อง' });
+      return;
+    }
+    const filename = `${match[2]}.json`;
+    if (access.role !== 'super_admin') {
+      const expected = `school-${String(access.schoolId || '').replace(/[^a-zA-Z0-9_-]/g, '_')}.json`;
+      if (filename !== expected) {
+        res.status(403).json({ error: 'SCOPE_FORBIDDEN', message: 'Admin โรงเรียนเข้าถึง Snapshot ได้เฉพาะโรงเรียนของตนเอง' });
+        return;
+      }
+    }
+    const bucketName = getBackupBucketName(getEnv);
+    try {
+      const { data: blob, error } = await access.admin.storage.from(bucketName).download(rawPath);
+      if (error || !blob) throw new Error(error?.message || 'ไม่พบไฟล์ Snapshot');
+      const text = await blob.text();
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="baanpakkru-${match[1]}-${filename}"`);
+      res.setHeader('Cache-Control', 'no-store');
+      res.send(text);
+    } catch (error) {
+      res.status(404).json({ error: 'SNAPSHOT_NOT_FOUND', message: error instanceof Error ? error.message : 'ดาวน์โหลด Snapshot ไม่สำเร็จ' });
+    }
+  });
+
+  router.post('/snapshots/run-now', async (req: Request, res: Response) => {
+    const access = await resolveAccess(req, res, getEnv);
+    if (!access) return;
+    try {
+      const result = await runServerMidnightSnapshots(getEnv, {
+        onlySchoolId: access.role === 'super_admin' ? null : access.schoolId,
+        includeSystem: access.role === 'super_admin',
+      });
+      res.json({ ok: true, ...result });
+    } catch (error) {
+      res.status(502).json({ error: 'SNAPSHOT_RUN_FAILED', message: error instanceof Error ? error.message : 'สร้าง Snapshot ไม่สำเร็จ' });
+    }
+  });
+
+  router.post('/cron', async (req: Request, res: Response) => {
+    const secret = getEnv('BACKUP_CRON_SECRET');
+    if (!secret) {
+      res.status(503).json({ error: 'CRON_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า BACKUP_CRON_SECRET' });
+      return;
+    }
+    if (!timingSafeBearerMatch(req.get('authorization') || '', secret)) {
+      res.status(401).json({ error: 'UNAUTHORIZED', message: 'Cron secret ไม่ถูกต้อง' });
+      return;
+    }
+    try {
+      const result = await runServerMidnightSnapshots(getEnv);
+      res.json({ ok: true, ...result });
+    } catch (error) {
+      res.status(502).json({ error: 'CRON_BACKUP_FAILED', message: error instanceof Error ? error.message : 'สำรองข้อมูลอัตโนมัติไม่สำเร็จ' });
+    }
+  });
+
   router.get('/', async (req: Request, res: Response) => {
     const access = await resolveAccess(req, res, getEnv);
     if (!access) return;
@@ -414,7 +716,7 @@ export function createBackupRouter(getEnv: EnvReader) {
     if (!scope) return;
     const url = getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL');
     try {
-      const backup = await buildBackup(access, scope, url);
+      const backup = await buildBackupWithAdmin(access.admin, scope, url);
       const serialized = JSON.stringify(backup);
       if (Buffer.byteLength(serialized, 'utf8') > MAX_BACKUP_BYTES) {
         res.status(413).json({ error: 'BACKUP_TOO_LARGE', message: 'ไฟล์สำรองรวมข้อมูล Storage เกิน 50 MB กรุณาสำรองโรงเรียนแยกเป็นรายโรงเรียน' });

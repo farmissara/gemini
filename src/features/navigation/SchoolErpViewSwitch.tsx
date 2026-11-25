@@ -490,6 +490,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   featureFlags={activeFeatureFlags}
                   onUpdateFeatureFlags={(flags) => props.onUpdateSchoolFeatureFlags(activeSchool.id, flags)}
                   onCleanupDueSelfies={props.onCleanupDueSelfies}
+                  onOpenBackupCenter={props.onOpenBackupCenter}
                   initialTab={systemSettingsInitialTab}
                   onTabChange={setSystemSettingsInitialTab}
                 />
