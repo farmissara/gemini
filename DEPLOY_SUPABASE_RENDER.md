@@ -188,9 +188,9 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 ### สำรองข้อมูลอัตโนมัติไป Google Drive
 
-Snapshot อัตโนมัติถูกส่งตรงจากเซิร์ฟเวอร์ไปยังโฟลเดอร์ `BaanPakKru-Backups` ของบัญชี Google เฉพาะ ไม่ใช้ Supabase Storage เก็บไฟล์ Snapshot โดยค่าเริ่มต้นเก็บย้อนหลัง 14 วัน (`BACKUP_RETENTION_DAYS`) แล้วลบไฟล์ที่เก่ากว่าระยะเวลานี้ ไฟล์ยังอ่านข้อมูลจาก Supabase และรวมไฟล์ Storage ของโรงเรียนตามเดิม
+Snapshot อัตโนมัติถูกส่งตรงจากเซิร์ฟเวอร์ไปยังโฟลเดอร์ `BaanPakKru-Backups` ใน Google Drive ของ `baanpakkru@gmail.com` ไม่ใช้ Supabase Storage เก็บไฟล์ Snapshot โดยค่าเริ่มต้นเก็บย้อนหลัง 14 วัน (`BACKUP_RETENTION_DAYS`) แล้วลบไฟล์ที่เก่ากว่าระยะเวลานี้ ไฟล์ยังอ่านข้อมูลจาก Supabase และรวมไฟล์ Storage ของโรงเรียนตามเดิม
 
-ตั้งค่า OAuth Web Client ใน Google Cloud Console และเปิด Google Drive API จากนั้นใช้ OAuth Playground กับ OAuth Client ของแอป เพื่อขอ refresh token สำหรับ scope `https://www.googleapis.com/auth/drive.file` (ต้องใช้ offline access) ตั้งค่า OAuth consent screen เป็น Production เพื่อไม่ให้ refresh token หมดอายุหลังช่วงทดสอบ แล้วเพิ่มค่าต่อไปนี้ใน **Render → Environment** เป็น Secret:
+ตั้งค่า OAuth Web Client ใน Google Cloud Console และเปิด Google Drive API จากนั้นลงชื่อเข้า OAuth Playground ด้วย `baanpakkru@gmail.com` และใช้ OAuth Client ของแอปเพื่อขอ refresh token สำหรับ scope `https://www.googleapis.com/auth/drive.file` (ต้องใช้ offline access) ตั้งค่า OAuth consent screen เป็น Production เพื่อไม่ให้ refresh token หมดอายุหลังช่วงทดสอบ แล้วเพิ่มค่าต่อไปนี้ใน **Render → Environment** เป็น Secret:
 
 - `GOOGLE_DRIVE_CLIENT_ID`
 - `GOOGLE_DRIVE_CLIENT_SECRET`
