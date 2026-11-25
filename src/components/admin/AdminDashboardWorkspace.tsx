@@ -65,6 +65,7 @@ interface AdminDashboardWorkspaceProps {
   lateCount: number;
   onTimePercent: number;
   uncheckedTodayCount: number;
+  uncheckedPeriodsTodayCount?: number;
   selfieCount: number;
   pendingLeaveCount: number;
   ungradedHomeworkCount: number;
@@ -129,6 +130,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   lateCount,
   onTimePercent,
   uncheckedTodayCount,
+  uncheckedPeriodsTodayCount = 0,
   pendingLeaveCount,
   ungradedHomeworkCount,
   pendingSlipCount,
@@ -178,7 +180,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     }
   };
 
-  // Urgent Action Queue (Primary above-the-fold operational list)
+  // Urgent Action Queue: ONLY true pending operational items (no generic timetable fallback)
   const urgentRows = useMemo(() => {
     const rows: Array<{
       id: string;
@@ -190,17 +192,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
       onClick: () => void;
     }> = [];
 
-    if (!simplifiedView && showOnboardingCard) {
-      rows.push({
-        id: 'onboarding',
-        groupLabel: lang === 'th' ? 'ตั้งค่า' : 'Setup',
-        groupColorClass: 'text-blue-700 dark:text-blue-300',
-        label: lang === 'th' ? 'เช็กลิสต์ตั้งค่าโรงเรียนเริ่มต้น' : 'School Setup Checklist',
-        value: `${completedOnboardingCount}/3`,
-        urgent: completedOnboardingCount < 3,
-        onClick: () => onOpenDrawer('onboarding'),
-      });
-    }
     if (pendingLeaveCount > 0 && isModuleEnabled('attendance')) {
       rows.push({
         id: 'leaves',
@@ -212,12 +203,23 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         onClick: () => onNavigate('mobile_checkin'),
       });
     }
+    if (uncheckedPeriodsTodayCount > 0 && !todayHoliday && !isTodayWeekend && isModuleEnabled('timetable')) {
+      rows.push({
+        id: 'unchecked-periods',
+        groupLabel: lang === 'th' ? 'รายคาบ' : 'Periods',
+        groupColorClass: 'text-amber-700 dark:text-amber-300',
+        label: lang === 'th' ? 'คาบเรียนวันนี้ยังไม่เช็กชื่อ' : 'Unchecked Periods Today',
+        value: `${uncheckedPeriodsTodayCount} ${lang === 'th' ? 'คาบ' : 'periods'}`,
+        urgent: true,
+        onClick: () => onSelectSubTab('realtime_daily'),
+      });
+    }
     if (!simplifiedView && pendingSlipCount > 0 && canViewFinancials) {
       rows.push({
         id: 'slips',
         groupLabel: lang === 'th' ? 'การเงิน' : 'Finance',
         groupColorClass: 'text-amber-700 dark:text-amber-300',
-        label: lang === 'th' ? 'สลิปค่าเทอมรอตรวจสอบ' : 'Payment Slips to Verify',
+        label: lang === 'th' ? 'สลิปค่าเทอมรอตรวจ' : 'Payment Slips to Verify',
         value: `${pendingSlipCount} ${lang === 'th' ? 'รายการ' : 'slips'}`,
         urgent: true,
         onClick: () => onNavigate('billing'),
@@ -254,7 +256,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     if (ungradedHomeworkCount > 0 && isModuleEnabled('homework')) {
       rows.push({
         id: 'homework',
-        groupLabel: lang === 'th' ? 'กิจการ' : 'Care',
+        groupLabel: lang === 'th' ? 'การบ้าน' : 'Homework',
         groupColorClass: 'text-emerald-700 dark:text-emerald-300',
         label: lang === 'th' ? 'การบ้านรอตรวจ' : 'Homework to Grade',
         value: `${ungradedHomeworkCount} ${lang === 'th' ? 'ชิ้น' : 'items'}`,
@@ -265,35 +267,24 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     if (uncheckedTodayCount > 0 && !todayHoliday && !isTodayWeekend && isModuleEnabled('attendance')) {
       rows.push({
         id: 'unchecked',
-        groupLabel: lang === 'th' ? 'เช็คชื่อ' : 'Attendance',
+        groupLabel: lang === 'th' ? 'ประตู' : 'Gate',
         groupColorClass: 'text-emerald-700 dark:text-emerald-300',
-        label: lang === 'th' ? 'นักเรียนยังไม่เช็คชื่อวันนี้' : 'Unchecked Students Today',
+        label: lang === 'th' ? 'นักเรียนยังไม่สแกนเข้าวันนี้' : 'Unchecked Students Today',
         value: `${uncheckedTodayCount} ${lang === 'th' ? 'คน' : 'students'}`,
         onClick: () => onNavigate('attendance'),
       });
     }
-    if (isModuleEnabled('timetable') && !rows.some((row) => row.id === 'timetable')) {
-      rows.push({
-        id: 'timetable',
-        groupLabel: lang === 'th' ? 'วิชาการ' : 'Academics',
-        groupColorClass: 'text-blue-700 dark:text-blue-300',
-        label: lang === 'th' ? 'ตารางสอนวันนี้' : 'Today’s Timetable',
-        value: `${todayScheduledSlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`,
-        onClick: () => onNavigate('timetable'),
-      });
-    }
-    const rowOrder = ['timetable', 'unchecked', 'staff-leave', 'leaves', 'homework', 'slips', 'central-exam', 'onboarding'];
+    const rowOrder = ['leaves', 'unchecked-periods', 'slips', 'staff-leave', 'homework', 'unchecked', 'central-exam'];
     rows.sort((a, b) => rowOrder.indexOf(a.id) - rowOrder.indexOf(b.id));
     return rows.slice(0, 6);
   }, [
     simplifiedView,
-    showOnboardingCard,
-    completedOnboardingCount,
-    onOpenDrawer,
     pendingLeaveCount,
+    uncheckedPeriodsTodayCount,
     isModuleEnabled,
     lang,
     onNavigate,
+    onSelectSubTab,
     pendingSlipCount,
     canViewFinancials,
     teacherLeavesTodayCount,
@@ -304,7 +295,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     uncheckedTodayCount,
     todayHoliday,
     isTodayWeekend,
-    todayScheduledSlots.length,
   ]);
 
   // Keep the most frequent operational shortcuts first; setup records remain in the sidebar.
@@ -820,84 +810,69 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         </section>
       </div>
 
-      {/* 4. COMPACT 6-CELL DEPARTMENT SHORTCUTS (Replaces duplicate 22-item directory) */}
-      <section aria-label={lang === 'th' ? 'ทางลัดงานประจำฝ่าย' : 'Department Shortcuts'} className="no-print saas-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
-          <h3 className="text-[13px] font-bold text-[var(--color-text-title)]">
-            {lang === 'th' ? 'งานประจำ: ทำตามลำดับ' : 'Daily Work, In Order'}
-          </h3>
-          <div className="flex items-center gap-3 text-xs">
-            {!simplifiedView && showOnboardingCard && (
-              <button
-                type="button"
-                onClick={() => onOpenDrawer('onboarding')}
-                title={lang === 'th' ? 'ทำครั้งแรกหรือเมื่อมีการเปลี่ยนแปลงข้อมูลโรงเรียน' : 'Use during initial setup or when school records change'}
-                className="font-semibold text-amber-700 dark:text-amber-300 hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
-              >
-                <ListChecks className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? `ตั้งค่าเริ่มต้น · ${completedOnboardingCount}/3` : `Initial setup · ${completedOnboardingCount}/3`}</span>
-              </button>
-            )}
-            {!simplifiedView && (
-              <button
-                type="button"
-                onClick={() => openControlTab('control_overview', 'system_settings')}
-                title={hasGpsConfigured
-                  ? (lang === 'th' ? `ตั้งค่าระบบตามความจำเป็น · GPS ${activeGatesCount || 1} จุด · ตัดสาย ${lateCutoffTime} · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `System settings as needed · GPS ready · Late ${lateCutoffTime}`)
-                  : (lang === 'th' ? `ตั้งค่าระบบตามความจำเป็น · ยังไม่ปักพิกัด · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `System settings as needed · No GPS · ${enabledPoliciesCount}/${totalPoliciesCount} rules`)}
-                className="font-semibold text-[var(--color-text-muted)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'ตั้งค่าระบบ · เป็นครั้งคราว' : 'System settings · As needed'}</span>
-              </button>
-            )}
-            {!simplifiedView && currentUser?.role === 'admin' && (
-              <button
-                type="button"
-                onClick={() => onNavigate('admin_superadmin_desk')}
-                className="font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap"
-              >
-                {lang === 'th' ? 'ประสานงาน Super Admin →' : 'Super Admin Desk →'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
-          {quickDepartments.map((item, idx) => {
+      {/* 4. COMPACT 1-ROW ROUTINE SHORTCUT STRIP */}
+      <nav
+        aria-label={lang === 'th' ? 'ทางลัดงานประจำ' : 'Daily Shortcuts'}
+        className="no-print flex flex-wrap items-center justify-between gap-2 pt-0.5"
+      >
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          <span className="text-xs font-semibold text-[var(--color-text-muted)] mr-1 shrink-0">
+            {lang === 'th' ? 'งานประจำ:' : 'Shortcuts:'}
+          </span>
+          {quickDepartments.map((item) => {
             const Icon = item.icon;
-            const topRowDivider = idx >= 3 ? 'lg:border-t lg:border-[var(--color-border)]' : '';
-            const smRowDivider = idx >= 2 ? 'sm:border-t sm:border-[var(--color-border)] lg:border-t-0' : '';
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={item.onClick}
-                className={`px-4 py-3.5 text-left hover:bg-[var(--color-card-subtle)] transition cursor-pointer flex items-center justify-between gap-3 group ${smRowDivider} ${topRowDivider}`}
+                title={item.meta}
+                className={`btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap shrink-0 ${
+                  item.urgent ? 'border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200' : ''
+                }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] flex items-center justify-center shrink-0 text-[var(--color-text-body)] group-hover:text-[var(--color-primary-text)] transition-colors">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-[var(--color-text-title)] truncate">
-                      {item.label}
-                    </p>
-                    <p
-                      className={`text-[11px] truncate tabular-nums ${
-                        item.urgent ? 'font-semibold text-amber-700 dark:text-amber-300' : 'text-[var(--color-text-muted)]'
-                      }`}
-                    >
-                      {item.meta}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] group-hover:translate-x-0.5 transition-transform shrink-0" />
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{item.label}</span>
               </button>
             );
           })}
         </div>
-      </section>
+
+        {!simplifiedView && (
+          <div className="flex flex-wrap items-center gap-3 text-xs shrink-0">
+            {showOnboardingCard && (
+              <button
+                type="button"
+                onClick={() => onOpenDrawer('onboarding')}
+                className="font-semibold text-amber-700 dark:text-amber-300 hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+              >
+                <ListChecks className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? `ตั้งค่าเริ่มต้น ${completedOnboardingCount}/3` : `Setup ${completedOnboardingCount}/3`}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => openControlTab('control_overview', 'system_settings')}
+              title={hasGpsConfigured
+                ? (lang === 'th' ? `GPS ${activeGatesCount || 1} จุด · ตัดสาย ${lateCutoffTime} · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `GPS ready · Late ${lateCutoffTime}`)
+                : (lang === 'th' ? `ยังไม่ปักพิกัด · สิทธิ์ ${enabledPoliciesCount}/${totalPoliciesCount}` : `No GPS · ${enabledPoliciesCount}/${totalPoliciesCount} rules`)}
+              className="font-semibold text-[var(--color-text-muted)] hover:underline inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'ตั้งค่าระบบ' : 'Settings'}</span>
+            </button>
+            {currentUser?.role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => onNavigate('admin_superadmin_desk')}
+                className="font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap"
+              >
+                {lang === 'th' ? 'Super Admin →' : 'Super Admin →'}
+              </button>
+            )}
+          </div>
+        )}
+      </nav>
     </div>
   );
 };

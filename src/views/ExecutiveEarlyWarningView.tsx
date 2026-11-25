@@ -598,24 +598,17 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 1. TOP HEADER & THRESHOLD CONFIGURATION BAR               */}
-      {/* ======================================================== */}
-      <div className="shrink-0 app-page-header px-3 py-2 flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+      {/* 1. COMPACT UNBOXED TITLE + THRESHOLD BAR */}
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="min-w-0 flex items-center gap-2">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-sm sm:text-base font-bold tracking-tight text-[var(--color-text-title)] truncate">
-              {lang === 'th' ? 'ศูนย์เฝ้าระวังนักเรียนกลุ่มเสี่ยง (มส./ร./0)' : 'Executive Early Warning Radar'}
-            </h1>
-          </div>
+          <ShieldAlert className="w-4 h-4 tone-text shrink-0" />
+          <h2 className="text-sm sm:text-base font-bold tracking-tight text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? 'ศูนย์เฝ้าระวังกลุ่มเสี่ยง (มส./ร./0)' : 'Executive Early Warning Radar'}
+          </h2>
         </div>
 
-        {/* Quick Metrics & Persona Switcher */}
-        <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
-          {/* View Mode Toggle */}
+        {/* Persona Switcher & Absence Threshold Inline */}
+        <div className="flex flex-wrap items-center gap-1.5 ml-auto">
           <div className="seg-tab-group">
             <button
               type="button"
@@ -637,10 +630,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
             </button>
           </div>
 
-          {/* Threshold Adjuster */}
-          <div className="bg-[var(--color-card-subtle)] border border-[var(--color-border)] px-2.5 py-1 rounded-xl flex items-center gap-1.5 text-xs">
-            <SlidersHorizontal className="w-3.5 h-3.5 tone-text" />
-            <span className="text-[var(--color-text-muted)] font-medium">{lang === 'th' ? 'เกณฑ์ขาดเรียน:' : 'Absence:'}</span>
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] px-2 py-0.5 rounded-lg flex items-center gap-1.5 text-xs">
+            <SlidersHorizontal className="w-3.5 h-3.5 tone-text shrink-0" />
+            <span className="text-[var(--color-text-muted)] font-medium hidden sm:inline">{lang === 'th' ? 'เกณฑ์ขาด:' : 'Absence:'}</span>
             <div className="seg-tab-group">
               {[15, 20, 25].map((pct) => (
                 <button
@@ -651,7 +643,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                   className="seg-tab-btn px-2 py-0.5 text-[11px] font-bold"
                   title={pct === 20 ? 'เกณฑ์ สพฐ. มาตรฐาน (เวลาเรียนต่ำกว่า 80%)' : undefined}
                 >
-                  &gt;{pct}% {pct === 20 && '(มส.)'}
+                  &gt;{pct}%{pct === 20 ? ' (มส.)' : ''}
                 </button>
               ))}
             </div>
@@ -659,11 +651,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 2. 5-CARD EXECUTIVE KPI RADAR STRIP (Hairline Grid)      */}
-      {/* ======================================================== */}
+      {/* 2. 4-CARD EXECUTIVE KPI RADAR STRIP (Hairline Grid) */}
       <div className="saas-kpi-strip shrink-0 overflow-hidden">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-[var(--color-border)]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
           {/* 1. Critical High Risk */}
           <div className="saas-kpi-cell flex flex-col justify-between gap-2">
             <div className="flex items-center justify-between gap-2">
@@ -677,8 +667,8 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 {highRiskCount}{' '}
                 <span className="text-xs font-normal text-[var(--color-text-muted)]">/ {totalStudents}</span>
               </h3>
-              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
-                {lang === 'th' ? 'เสี่ยงหมดสิทธิ์สอบและตกค้าง' : 'At-risk of retention'}
+              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate tabular-nums">
+                {lang === 'th' ? `เสี่ยงหมดสิทธิ์สอบ · ติดตามแล้ว ${totalInterventionsTaken} ครั้ง` : `Retention risk · ${totalInterventionsTaken} follow-ups`}
               </p>
             </div>
           </div>
@@ -696,8 +686,8 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 {attendanceDangerCount}{' '}
                 <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'คน' : 'stu'}</span>
               </h3>
-              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
-                {lang === 'th' ? `ต่ำกว่าเกณฑ์ ${100 - absenceThresholdPct}% จากที่บันทึก` : `Below ${100 - absenceThresholdPct}%`}
+              <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate tabular-nums">
+                {lang === 'th' ? `เวลาเรียนต่ำกว่าเกณฑ์ ${100 - absenceThresholdPct}%` : `Below ${100 - absenceThresholdPct}% attendance`}
               </p>
             </div>
           </div>
@@ -736,25 +726,6 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
               </h3>
               <p className="text-[10px] text-[var(--color-text-muted)] font-medium truncate">
                 {lang === 'th' ? 'ตัดคะแนน ≥ 10 หรือ SDQ เสี่ยง' : 'Demerits >= 10 or SDQ stress'}
-              </p>
-            </div>
-          </div>
-
-          {/* 5. Follow-up Records */}
-          <div className="saas-kpi-cell flex flex-col justify-between gap-2 col-span-2 sm:col-span-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">
-                {lang === 'th' ? 'บันทึกการติดตาม' : 'Follow-up Records'}
-              </span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            </div>
-            <div>
-              <h3 className="text-2xl font-extrabold tabular-nums text-emerald-700 dark:text-emerald-300">
-                {totalInterventionsTaken}{' '}
-                <span className="text-xs font-normal text-[var(--color-text-muted)]">{lang === 'th' ? 'ครั้ง' : 'actions'}</span>
-              </h3>
-              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium truncate">
-                {lang === 'th' ? 'บันทึกในหน้าจอนี้เท่านั้น' : 'Session-only records'}
               </p>
             </div>
           </div>

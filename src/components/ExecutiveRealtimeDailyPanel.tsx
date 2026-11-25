@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
-  ArrowUpRight,
   BookOpen,
   Calendar,
   Camera,
@@ -18,10 +17,8 @@ import {
   List,
   LogIn,
   MapPin,
-  MessageSquare,
   Phone,
   QrCode,
-  Receipt,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -60,7 +57,7 @@ import { getSlotTeachers } from '../lib/timetableTeachers';
 type DailyRadarMode = 'auto_full' | 'morning_gate' | 'classrooms';
 type FaceWallFilter = 'all' | 'window_08_09' | 'present' | 'late' | 'with_photo' | 'teachers';
 type FollowupTab = 'absent_unchecked' | 'approved_leave' | 'late_arrivals';
-type ClassroomStatusFilter = 'all' | 'ready' | 'unopened' | 'current_period';
+type ClassroomStatusFilter = 'attention' | 'unopened' | 'ready' | 'all';
 type ClassroomViewStyle = 'grid' | 'table';
 
 interface ExecutiveRealtimeDailyPanelProps {
@@ -159,11 +156,11 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
   const [followupTab, setFollowupTab] = useState<FollowupTab>('absent_unchecked');
   const [roomFilter, setRoomFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [faceVisibleLimit, setFaceVisibleLimit] = useState<number>(18);
+  const [faceVisibleLimit, setFaceVisibleLimit] = useState<number>(8);
 
   const [selectedPeriodFilter, setSelectedPeriodFilter] = useState<string>('auto');
-  const [classroomStatusFilter, setClassroomStatusFilter] = useState<ClassroomStatusFilter>('all');
-  const [classroomViewStyle, setClassroomViewStyle] = useState<ClassroomViewStyle>('grid');
+  const [classroomStatusFilter, setClassroomStatusFilter] = useState<ClassroomStatusFilter>('attention');
+  const [classroomViewStyle, setClassroomViewStyle] = useState<ClassroomViewStyle>('table');
 
   const [internalPhotoRecord, setInternalPhotoRecord] = useState<AttendanceRecord | null>(null);
   const [selectedClassroomDrawerId, setSelectedClassroomDrawerId] = useState<string | null>(null);
@@ -494,18 +491,21 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
 
   const filteredClassrooms = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return classroomReadinessList.filter((item) => {
-      if (selectedPeriodFilter === 'auto') {
-        if (classroomStatusFilter === 'current_period' && currentLivePeriodNumber !== null) {
-          if (item.slot.periodNumber !== currentLivePeriodNumber) return false;
-        }
-      } else if (selectedPeriodFilter !== 'all') {
+    const list = classroomReadinessList.filter((item) => {
+      if (selectedPeriodFilter !== 'auto' && selectedPeriodFilter !== 'all') {
         if (String(item.slot.periodNumber) !== selectedPeriodFilter) return false;
       }
 
-      if (classroomStatusFilter === 'ready' && !item.isClassroomReady) return false;
-      if (classroomStatusFilter === 'unopened' && item.isClassroomReady) return false;
-      if (classroomStatusFilter === 'current_period' && item.activityStatus !== 'active') return false;
+      if (classroomStatusFilter === 'attention') {
+        const isNeedsAttention =
+          item.activityStatus === 'active' ||
+          (!item.isClassroomReady && item.activityStatus !== 'upcoming');
+        if (!isNeedsAttention) return false;
+      } else if (classroomStatusFilter === 'ready' && !item.isClassroomReady) {
+        return false;
+      } else if (classroomStatusFilter === 'unopened' && item.isClassroomReady) {
+        return false;
+      }
 
       if (q) {
         const hay = `${item.slot.classRoom} ${item.slot.room} ${item.slot.courseCode} ${item.slot.courseTitleTh} ${getSlotTeachers(item.slot).join(' ')}`.toLowerCase();
@@ -513,12 +513,30 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
       }
       return true;
     });
-  }, [classroomReadinessList, classroomStatusFilter, currentLivePeriodNumber, searchQuery, selectedPeriodFilter]);
+
+    if (classroomStatusFilter === 'attention') {
+      return list.slice().sort((a, b) => {
+        const weight = (x: typeof a) =>
+          x.activityStatus === 'active' && !x.isClassroomReady
+            ? 0
+            : x.activityStatus === 'active'
+              ? 1
+              : !x.isClassroomReady
+                ? 2
+                : 3;
+        return weight(a) - weight(b) || a.slot.periodNumber - b.slot.periodNumber;
+      });
+    }
+    return list;
+  }, [classroomReadinessList, classroomStatusFilter, searchQuery, selectedPeriodFilter]);
 
   const readinessOverviewStats = useMemo(() => {
     const totalSlots = classroomReadinessList.length;
     const readySlots = classroomReadinessList.filter((r) => r.isClassroomReady).length;
     const unopenedSlots = totalSlots - readySlots;
+    const attentionSlots = classroomReadinessList.filter(
+      (r) => r.activityStatus === 'active' || (!r.isClassroomReady && r.activityStatus !== 'upcoming')
+    ).length;
     const activeNowSlots = classroomReadinessList.filter((r) => r.activityStatus === 'active').length;
     const teacherLeaveSlots = classroomReadinessList.filter((r) => r.hasTeacherLeave).length;
     const avgClassAttendancePct =
@@ -533,6 +551,7 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
       totalSlots,
       readySlots,
       unopenedSlots,
+      attentionSlots,
       activeNowSlots,
       teacherLeaveSlots,
       avgClassAttendancePct,
@@ -1090,9 +1109,10 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
           <div className="seg-tab-group inline-flex">
             {(
               [
-                { id: 'all', label: `ทุกสถานะ (${classroomReadinessList.length})` },
-                { id: 'ready', label: `เปิดเช็กแล้ว (${readinessOverviewStats.readySlots})` },
+                { id: 'attention', label: `กำลังสอน/ยังไม่เช็ก (${readinessOverviewStats.attentionSlots})` },
                 { id: 'unopened', label: `ยังไม่เช็ก (${readinessOverviewStats.unopenedSlots})` },
+                { id: 'ready', label: `เปิดเช็กแล้ว (${readinessOverviewStats.readySlots})` },
+                { id: 'all', label: `ทุกคาบ (${classroomReadinessList.length})` },
               ] as const
             ).map((f) => (
               <button
@@ -1187,18 +1207,32 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
             </p>
           </div>
         ) : filteredClassrooms.length === 0 ? (
-          <div className="py-10 text-center space-y-2 border border-dashed border-[var(--color-border)] rounded-xl">
-            <BookOpen className="w-8 h-8 text-[var(--color-text-muted)] mx-auto" />
+          <div className="py-8 text-center space-y-2 border border-dashed border-[var(--color-border)] rounded-xl">
+            <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400 mx-auto" />
             <p className={`text-sm font-semibold ${titleCls}`}>
               {classroomReadinessList.length === 0
                 ? 'ยังไม่มีตารางคาบสอนที่กำหนดไว้สำหรับวันนี้'
-                : 'ไม่พบห้องเรียนตามตัวกรองที่เลือก'}
+                : classroomStatusFilter === 'attention'
+                  ? 'ไม่มีคาบที่กำลังสอนหรือค้างเช็กชื่อในขณะนี้'
+                  : 'ไม่พบห้องเรียนตามตัวกรองที่เลือก'}
             </p>
             <p className={`type-meta ${mutedCls}`}>
               {classroomReadinessList.length === 0
                 ? 'สามารถเพิ่มหรือนำเข้าตารางสอนได้ในเมนู ตารางเรียน/ตารางสอน'
-                : 'ลองเลือก "ทุกคาบวันนี้" หรือล้างตัวกรองสถานะ'}
+                : 'ดูรายการทั้งหมดในวันนี้ได้โดยกดปุ่มด้านล่าง'}
             </p>
+            {classroomReadinessList.length > 0 && classroomStatusFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClassroomStatusFilter('all');
+                  setSelectedPeriodFilter('all');
+                }}
+                className="btn-tool-neutral px-3 py-1.5 text-xs mx-auto"
+              >
+                <span>แสดงทุกคาบวันนี้ ({classroomReadinessList.length})</span>
+              </button>
+            )}
           </div>
         ) : classroomViewStyle === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -1434,119 +1468,29 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
   );
 
   return (
-    <div className="space-y-4">
-      {/* 1. LIVE DAILY COMMAND CONTROL BAR */}
-      <section className={`${surfaceCard} p-4 space-y-3`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <div className={`flex flex-wrap items-center gap-2 text-xs ${mutedCls}`}>
-              <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-300">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                <span>เรียลไทม์ประจำวัน</span>
-              </span>
-              <span aria-hidden="true">·</span>
-              <span className="tabular-nums font-mono">{bangkokClock.timeLabel} น.</span>
-              <span aria-hidden="true">·</span>
-              <span>
-                {isMorningPhaseNow
-                  ? `ช่วงเช้า 08:00–09:00 (ตัดสาย ${lateCutoffTime} น.)`
-                  : currentLivePeriodNumber !== null
-                    ? `ช่วงเวลาสอนปกติ · กำลังเรียนคาบ ${currentLivePeriodNumber}`
-                    : 'ติดตามความพร้อมห้องเรียนและสรุประหว่างวัน'}
-              </span>
-            </div>
-            <h2 className={`text-base sm:text-lg font-bold tracking-tight ${titleCls}`}>
-              {lang === 'th'
-                ? `ศูนย์ติดตามสถานการณ์โรงเรียนประจำวัน — ${school?.nameTh || systemConfig.schoolNameTh}`
-                : `Live School Operations Command — ${school?.nameEn || systemConfig.schoolNameEn}`}
+    <div className="space-y-3">
+      {/* 1. COMPACT UNBOXED TITLE + FILTERS BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+            <h2 className={`text-sm sm:text-base font-bold tracking-tight truncate ${titleCls}`}>
+              {lang === 'th' ? 'เรียลไทม์ประจำวัน' : 'Live Daily Radar'}
             </h2>
+            <span className={`text-xs tabular-nums font-mono whitespace-nowrap ${mutedCls}`}>
+              {bangkokClock.timeLabel} น.
+              {currentLivePeriodNumber !== null && isTodaySelected ? ` · คาบ ${currentLivePeriodNumber}` : ''}
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="saas-control-group type-meta">
-              <button
-                type="button"
-                onClick={() => setSelectedDate(todayStr)}
-                className={`px-2.5 py-1 rounded-md font-semibold cursor-pointer ${
-                  selectedDate === todayStr
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                วันนี้
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(yesterdayStr)}
-                className={`px-2.5 py-1 rounded-md font-semibold cursor-pointer ${
-                  selectedDate === yesterdayStr
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                }`}
-              >
-                เมื่อวาน
-              </button>
-              <input
-                type="date"
-                aria-label="เลือกวันที่ติดตาม"
-                value={selectedDate}
-                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void handleCopyExecutiveBrief()}
-              className="btn-tool-neutral px-3 py-1.5 text-xs whitespace-nowrap"
-            >
-              {copiedSummary ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-              )}
-              <span>{copiedSummary ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportRealtimeCsv}
-              className="btn-tool-neutral px-3 py-1.5 text-xs whitespace-nowrap"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-              <span>ส่งออก CSV</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setNow(new Date())}
-              className="btn-icon-tool"
-              title="รีเฟรชเวลาปัจจุบัน"
-              aria-label="รีเฟรชเวลา"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Phase Lens Switcher + Room & Search Filters */}
-        <div className="pt-2.5 border-t border-[var(--color-border)] flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
-          <div className="seg-tab-group inline-flex flex-wrap gap-0.5">
+          <div className="seg-tab-group inline-flex flex-wrap">
             <button
               type="button"
               data-active={radarMode === 'auto_full'}
               onClick={() => setRadarMode('auto_full')}
               className="seg-tab-btn text-xs whitespace-nowrap shrink-0"
             >
-              อัตโนมัติตามเวลาจริง ({isMorningPhaseNow ? 'ประตู 08:00 นำ' : 'ห้องเรียน 09:00+ นำ'})
-            </button>
-            <button
-              type="button"
-              data-active={radarMode === 'morning_gate'}
-              onClick={() => setRadarMode('morning_gate')}
-              className="seg-tab-btn text-xs whitespace-nowrap shrink-0"
-            >
-              08:00–09:00 เช็คอินใบหน้า &amp; ขาด/ลา/สาย
+              อัตโนมัติ
             </button>
             <button
               type="button"
@@ -1554,42 +1498,114 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
               onClick={() => setRadarMode('classrooms')}
               className="seg-tab-btn text-xs whitespace-nowrap shrink-0"
             >
-              ความพร้อมห้องเรียน &amp; ครูรายคาบ ({readinessOverviewStats.totalSlots})
+              ความพร้อมรายคาบ ({readinessOverviewStats.attentionSlots})
+            </button>
+            <button
+              type="button"
+              data-active={radarMode === 'morning_gate'}
+              onClick={() => setRadarMode('morning_gate')}
+              className="seg-tab-btn text-xs whitespace-nowrap shrink-0"
+            >
+              ประตูเช้า &amp; ขาด/ลา
             </button>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              aria-label="กรองตามห้องเรียน"
-              value={roomFilter}
-              onChange={(e) => setRoomFilter(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-medium text-[var(--color-text-title)]"
-            >
-              <option value="all">ทุกห้องเรียน ({activeStudents.length} คน)</option>
-              {distinctRooms.map((rm) => (
-                <option key={rm} value={rm}>
-                  {rm}
-                </option>
-              ))}
-            </select>
-
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหาชื่อ นักเรียน ครู วิชา..."
-                className="pl-8 pr-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)] w-48 sm:w-56 focus:outline-hidden"
-              />
-            </div>
-          </div>
         </div>
-      </section>
 
-      {/* 2. 6-CELL REAL-TIME KPI STRIP (Single-Elevation Hairline Grid) */}
+        <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+          <div className="saas-control-group type-meta h-8">
+            <button
+              type="button"
+              onClick={() => setSelectedDate(todayStr)}
+              className={`px-2 py-0.5 rounded-md font-semibold cursor-pointer ${
+                selectedDate === todayStr
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              }`}
+            >
+              วันนี้
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(yesterdayStr)}
+              className={`px-2 py-0.5 rounded-md font-semibold cursor-pointer ${
+                selectedDate === yesterdayStr
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+              }`}
+            >
+              เมื่อวาน
+            </button>
+            <input
+              type="date"
+              aria-label="เลือกวันที่ติดตาม"
+              value={selectedDate}
+              onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+              className="px-1.5 py-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+            />
+          </div>
+
+          <select
+            aria-label="กรองตามห้องเรียน"
+            value={roomFilter}
+            onChange={(e) => setRoomFilter(e.target.value)}
+            className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-medium text-[var(--color-text-title)]"
+          >
+            <option value="all">ทุกห้อง ({activeStudents.length})</option>
+            {distinctRooms.map((rm) => (
+              <option key={rm} value={rm}>
+                {rm}
+              </option>
+            ))}
+          </select>
+
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ค้นหาชื่อ/ห้อง/วิชา..."
+              className="h-8 pl-8 pr-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)] w-40 sm:w-44 focus:outline-hidden"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleCopyExecutiveBrief()}
+            className="btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap"
+          >
+            {copiedSummary ? (
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+            )}
+            <span className="hidden sm:inline">{copiedSummary ? 'คัดลอกแล้ว' : 'ส่ง LINE'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportRealtimeCsv}
+            className="btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+            <span>CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setNow(new Date())}
+            className="btn-icon-tool h-8 w-8"
+            title="รีเฟรชเวลาปัจจุบัน"
+            aria-label="รีเฟรชเวลา"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. 4-CELL REAL-TIME KPI STRIP (Core Daily Metrics) */}
       <section className="saas-kpi-strip overflow-hidden">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 divide-y md:divide-y-0 md:divide-x divide-[var(--color-border)]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
           <div className="saas-kpi-cell space-y-1">
             <div className="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
               <span>มาเรียนหน้าประตู</span>
@@ -1599,22 +1615,23 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
               {studentGateOverview.attendanceRate}%
             </div>
             <div className="type-meta tabular-nums truncate">
-              มา {studentGateOverview.attendedCount}/{studentGateOverview.scopedTotal} · ตรงเวลา{' '}
-              {studentGateOverview.presentList.length}
+              มา {studentGateOverview.attendedCount}/{studentGateOverview.scopedTotal} · สาย{' '}
+              {studentGateOverview.lateList.length} · ขาด {studentGateOverview.absentUncheckedList.length}
             </div>
           </div>
 
           <div className="saas-kpi-cell space-y-1">
-            <div className="flex items-center justify-between text-xs text-rose-700 dark:text-rose-300 font-semibold">
-              <span>ขาด · ลา · มาสาย</span>
-              <UserX className="w-3.5 h-3.5 shrink-0" />
+            <div className="flex items-center justify-between text-xs text-indigo-700 dark:text-indigo-300 font-semibold">
+              <span>ความพร้อมห้องเรียน</span>
+              <DoorOpen className="w-3.5 h-3.5 shrink-0" />
             </div>
-            <div className="type-kpi-sm tabular-nums text-rose-700 dark:text-rose-300">
-              {studentGateOverview.absentUncheckedList.length}
-              <span className="text-xs font-normal text-[var(--color-text-muted)] ml-1">ยังไม่สแกน</span>
+            <div className="type-kpi-sm tabular-nums text-[var(--color-text-title)]">
+              {readinessOverviewStats.readySlots}/{readinessOverviewStats.totalSlots}
             </div>
             <div className="type-meta tabular-nums truncate">
-              ลา {studentGateOverview.approvedLeaveList.length} · สาย {studentGateOverview.lateList.length}
+              {readinessOverviewStats.attentionSlots > 0
+                ? `กำลังสอน/ค้างเช็ก ${readinessOverviewStats.attentionSlots} คาบ`
+                : 'เปิดเช็กชื่อครบทุกคาบ'}
             </div>
           </div>
 
@@ -1632,45 +1649,17 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
           </div>
 
           <div className="saas-kpi-cell space-y-1">
-            <div className="flex items-center justify-between text-xs text-indigo-700 dark:text-indigo-300 font-semibold">
-              <span>ความพร้อมห้องเรียน</span>
-              <DoorOpen className="w-3.5 h-3.5 shrink-0" />
-            </div>
-            <div className="type-kpi-sm tabular-nums text-[var(--color-text-title)]">
-              {readinessOverviewStats.readySlots}/{readinessOverviewStats.totalSlots}
-            </div>
-            <div className="type-meta tabular-nums truncate">
-              {readinessOverviewStats.unopenedSlots > 0
-                ? `รอเช็กชื่อ ${readinessOverviewStats.unopenedSlots} คาบ`
-                : 'เปิดเช็กชื่อครบทุกคาบ'}
-            </div>
-          </div>
-
-          <div className="saas-kpi-cell space-y-1">
-            <div className="flex items-center justify-between text-xs text-rose-600 dark:text-rose-400 font-semibold">
-              <span>ห้องพยาบาลตอนนี้</span>
-              <HeartPulse className="w-3.5 h-3.5 shrink-0" />
-            </div>
-            <div className="type-kpi-sm tabular-nums text-[var(--color-text-title)]">
-              {operationalSignals.restingNow}
-              <span className="text-xs font-normal text-[var(--color-text-muted)] ml-1">คนกำลังพัก</span>
-            </div>
-            <div className="type-meta tabular-nums truncate">
-              ใช้บริการวันนี้ {operationalSignals.todayInfirmaryCount} ครั้ง
-            </div>
-          </div>
-
-          <div className="saas-kpi-cell space-y-1">
             <div className="flex items-center justify-between text-xs text-amber-700 dark:text-amber-300 font-semibold">
-              <span>คิวอนุมัติด่วน</span>
-              <Activity className="w-3.5 h-3.5 shrink-0" />
+              <span>คิวด่วน &amp; ห้องพยาบาล</span>
+              <HeartPulse className="w-3.5 h-3.5 shrink-0" />
             </div>
             <div className="type-kpi-sm tabular-nums text-[var(--color-text-title)]">
               {teacherPresenceSummary.pendingLeaveCount + operationalSignals.pendingSlips}
             </div>
             <div className="type-meta tabular-nums truncate">
               ใบลา {teacherPresenceSummary.pendingLeaveCount}
-              {canViewFinancials ? ` · สลิป ${operationalSignals.pendingSlips}` : ''}
+              {canViewFinancials ? ` · สลิป ${operationalSignals.pendingSlips}` : ''} · พยาบาลพัก{' '}
+              {operationalSignals.restingNow}
             </div>
           </div>
         </div>
@@ -1689,119 +1678,50 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
         </>
       )}
 
-      {/* 4. OPERATIONAL FOOTER: INFIRMARY ACTIVE PATIENTS + QUICK ACTION LINKS */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className={`${surfaceCard} overflow-hidden`}>
-          <div className="saas-card-header">
-            <div className="flex items-center gap-2">
-              <HeartPulse className="w-4 h-4 text-rose-500 shrink-0" />
-              <h3 className={`type-section-title ${titleCls}`}>
-                ผู้ป่วยกำลังพักในห้องพยาบาลตอนนี้ ({operationalSignals.restingNow})
-              </h3>
-            </div>
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate('infirmary')}
-                className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-              >
-                เปิดห้องพยาบาล →
-              </button>
-            )}
+      {/* 4. OPERATIONAL FOOTER: INFIRMARY ACTIVE PATIENTS */}
+      <section className={`${surfaceCard} overflow-hidden`}>
+        <div className="saas-card-header">
+          <div className="flex items-center gap-2">
+            <HeartPulse className="w-4 h-4 text-rose-500 shrink-0" />
+            <h3 className={`type-section-title ${titleCls}`}>
+              ผู้ป่วยกำลังพักในห้องพยาบาลตอนนี้ ({operationalSignals.restingNow})
+            </h3>
           </div>
-          <div className="saas-card-body">
-            {operationalSignals.restingList.length === 0 ? (
-              <p className={`text-xs py-4 text-center ${mutedCls}`}>
-                ขณะนี้ไม่มีนักเรียนพักรักษาตัวในห้องพยาบาล
-              </p>
-            ) : (
-              <div className="divide-y divide-[var(--color-border)]">
-                {operationalSignals.restingList.map((visit) => (
-                  <div key={visit.id} className="py-2 flex items-center justify-between gap-2 text-xs">
-                    <div className="min-w-0">
-                      <div className={`font-bold truncate ${titleCls}`}>
-                        {visit.studentName} ({visit.gradeRoom})
-                      </div>
-                      <div className={`text-[11px] truncate ${mutedCls}`}>
-                        {visit.symptoms} · อุณหภูมิ {visit.temperature}°C
-                      </div>
-                    </div>
-                    <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 tabular-nums shrink-0">
-                      {visit.bedNumber ? `เตียง ${visit.bedNumber} · ` : ''}
-                      {visit.visitTime}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate('infirmary')}
+              className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+            >
+              เปิดห้องพยาบาล →
+            </button>
+          )}
         </div>
-
-        <div className={`${surfaceCard} overflow-hidden`}>
-          <div className="saas-card-header">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-              <h3 className={`type-section-title ${titleCls}`}>ทางลัดสั่งการด่วนสำหรับผู้บริหาร</h3>
+        <div className="saas-card-body">
+          {operationalSignals.restingList.length === 0 ? (
+            <p className={`text-xs py-2 text-center ${mutedCls}`}>
+              ขณะนี้ไม่มีนักเรียนพักรักษาตัวในห้องพยาบาล
+            </p>
+          ) : (
+            <div className="divide-y divide-[var(--color-border)]">
+              {operationalSignals.restingList.map((visit) => (
+                <div key={visit.id} className="py-2 flex items-center justify-between gap-2 text-xs">
+                  <div className="min-w-0">
+                    <div className={`font-bold truncate ${titleCls}`}>
+                      {visit.studentName} ({visit.gradeRoom})
+                    </div>
+                    <div className={`text-[11px] truncate ${mutedCls}`}>
+                      {visit.symptoms} · อุณหภูมิ {visit.temperature}°C
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 tabular-nums shrink-0">
+                    {visit.bedNumber ? `เตียง ${visit.bedNumber} · ` : ''}
+                    {visit.visitTime}
+                  </span>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="saas-card-body grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {onNavigate && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('mobile_checkin')}
-                  className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
-                >
-                  <div className="min-w-0">
-                    <div className={`text-xs font-bold ${titleCls}`}>อนุมัติใบลาออนไลน์</div>
-                    <div className={`text-[11px] tabular-nums ${mutedCls}`}>
-                      รอพิจารณา {teacherPresenceSummary.pendingLeaveCount} รายการ
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('attendance')}
-                  className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
-                >
-                  <div className="min-w-0">
-                    <div className={`text-xs font-bold ${titleCls}`}>เครื่องสแกน / บันทึกเข้าเรียน</div>
-                    <div className={`text-[11px] tabular-nums ${mutedCls}`}>
-                      บันทึกย้อนหลังและ QR ประตู
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                </button>
-                {canViewFinancials && (
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('billing')}
-                    className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
-                  >
-                    <div className="min-w-0">
-                      <div className={`text-xs font-bold ${titleCls}`}>ตรวจสอบสลิปค่าเทอม</div>
-                      <div className={`text-[11px] tabular-nums ${mutedCls}`}>
-                        รอตรวจ {operationalSignals.pendingSlips} รายการ
-                      </div>
-                    </div>
-                    <Receipt className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onNavigate('executive_warning')}
-                  className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
-                >
-                  <div className="min-w-0">
-                    <div className={`text-xs font-bold ${titleCls}`}>ติดตามกลุ่มเสี่ยง (EWS)</div>
-                    <div className={`text-[11px] ${mutedCls}`}>คัดกรองเวลาเรียน &amp; GPA</div>
-                  </div>
-                  <MessageSquare className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-                </button>
-              </>
-            )}
-          </div>
+          )}
         </div>
       </section>
 

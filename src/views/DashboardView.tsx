@@ -264,6 +264,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'check_in' | 'check_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dashboardTab, setDashboardTab] = useState<DashboardSubTab>(() => resolveAllowedSubTab(initialSubTab));
+  const [lastExecReportTab, setLastExecReportTab] = useState<'executive_monitor' | 'obec_learning_areas' | 'pp6_quality_overview'>(() =>
+    initialSubTab === 'obec_learning_areas' || initialSubTab === 'pp6_quality_overview'
+      ? initialSubTab
+      : 'executive_monitor'
+  );
   const [teacherDeskTab, setTeacherDeskTab] = useState<'actions' | 'checkins'>('actions');
   const [innovationPage, setInnovationPage] = useState(0);
   const [attendanceStep, setAttendanceStep] = useState<'summary' | 'analytics' | 'records' | 'live_feed'>('summary');
@@ -276,9 +281,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   useEffect(() => {
     if (initialSubTab) {
-      setDashboardTab(resolveAllowedSubTab(initialSubTab));
+      const resolved = resolveAllowedSubTab(initialSubTab);
+      setDashboardTab(resolved);
+      if (resolved === 'executive_monitor' || resolved === 'obec_learning_areas' || resolved === 'pp6_quality_overview') {
+        setLastExecReportTab(resolved);
+      }
     }
   }, [initialSubTab, canViewExecutiveMonitor, canViewEarlyWarning]);
+
+  useEffect(() => {
+    if (dashboardTab === 'executive_monitor' || dashboardTab === 'obec_learning_areas' || dashboardTab === 'pp6_quality_overview') {
+      setLastExecReportTab(dashboardTab);
+    }
+  }, [dashboardTab]);
 
   useEffect(() => {
     if (isAdminSimplified) {
@@ -376,6 +391,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return ids;
   }, [attendance, todayStr]);
   const uncheckedTodayCount = Math.max(0, scopedStudents.filter((s) => s.status === 'active').length - checkedInStudentIdsToday.size);
+  const uncheckedPeriodsTodayCount = useMemo(() => {
+    if (todayHoliday || isTodayWeekend || todayScheduledSlots.length === 0) return 0;
+    const todayPeriodRecords = periodAttendance.filter(
+      (rec) => rec.date === todayStr && (rec.recordType || 'check_in') === 'check_in'
+    );
+    return todayScheduledSlots.filter((slot) => {
+      const resolvedCourseId = slot.courseId || slot.courseCode;
+      const hasLogs = todayPeriodRecords.some(
+        (rec) =>
+          rec.periodNumber === slot.periodNumber &&
+          (rec.courseId === resolvedCourseId ||
+            Boolean(slot.courseCode && rec.courseCode?.trim().toLowerCase() === slot.courseCode.trim().toLowerCase()))
+      );
+      return !hasLogs;
+    }).length;
+  }, [isTodayWeekend, periodAttendance, todayHoliday, todayScheduledSlots, todayStr]);
   const teacherLeavesTodayCount = useMemo(
     () =>
       leaveRequests.filter(
@@ -977,7 +1008,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     dashboardTab !== 'obec_learning_areas' &&
                     dashboardTab !== 'pp6_quality_overview'
                   ) {
-                    setDashboardTab('executive_monitor');
+                    setDashboardTab(lastExecReportTab);
                   }
                 }}
                 className="seg-tab-btn whitespace-nowrap shrink-0"
@@ -1010,6 +1041,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {canViewExecutiveMonitor && (() => {
+              const isExecReportTab =
+                dashboardTab === 'executive_monitor' ||
+                dashboardTab === 'obec_learning_areas' ||
+                dashboardTab === 'pp6_quality_overview';
+              return (
+                <select
+                  aria-label={lang === 'th' ? 'เลือกประเภทรายงานผู้บริหาร' : 'Select executive report type'}
+                  value={isExecReportTab ? dashboardTab : ''}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (
+                      next === 'executive_monitor' ||
+                      next === 'obec_learning_areas' ||
+                      next === 'pp6_quality_overview'
+                    ) {
+                      setDashboardTab(next);
+                    }
+                  }}
+                  className={`h-9 px-2.5 rounded-lg border text-xs font-semibold cursor-pointer focus:outline-hidden transition ${
+                    isExecReportTab
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:border-[var(--color-primary)]'
+                  }`}
+                >
+                  {!isExecReportTab && (
+                    <option value="" disabled>
+                      {lang === 'th' ? 'เลือกรายงานผู้บริหาร...' : 'Executive Reports...'}
+                    </option>
+                  )}
+                  <option value="executive_monitor">
+                    {lang === 'th' ? 'รายงาน: จอมอนิเตอร์ (MIS)' : 'Report: Executive MIS'}
+                  </option>
+                  <option value="obec_learning_areas">
+                    {lang === 'th' ? 'รายงาน: 8 กลุ่มสาระฯ สพฐ.' : 'Report: OBEC 8 Areas'}
+                  </option>
+                  <option value="pp6_quality_overview">
+                    {lang === 'th' ? 'รายงาน: คุณภาพ ปพ.6' : 'Report: OBEC Pp.6'}
+                  </option>
+                </select>
+              );
+            })()}
             {isStaffUser && (
               <button
                 type="button"
@@ -1136,6 +1209,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               lateCount={lateCount}
               onTimePercent={onTimePercent}
               uncheckedTodayCount={uncheckedTodayCount}
+              uncheckedPeriodsTodayCount={uncheckedPeriodsTodayCount}
               selfieCount={selfieCount}
               pendingLeaveCount={pendingLeaveCount}
               ungradedHomeworkCount={ungradedHomeworkCount}
@@ -2104,43 +2178,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
 
-        {/* EXECUTIVE ANALYTICS SUB-LENS SWITCHER (MIS / OBEC 8 Areas / Pp.6) */}
-        {canViewExecutiveMonitor &&
-          (dashboardTab === 'executive_monitor' ||
-            dashboardTab === 'obec_learning_areas' ||
-            dashboardTab === 'pp6_quality_overview') && (
-            <div className="no-print saas-card px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'มุมมองรายงานผู้บริหาร & สพฐ.' : 'Executive & OBEC Analytics'}
-              </span>
-              <div className="seg-tab-group inline-flex flex-wrap gap-0.5">
-                <button
-                  type="button"
-                  data-active={dashboardTab === 'executive_monitor'}
-                  onClick={() => setDashboardTab('executive_monitor')}
-                  className="seg-tab-btn whitespace-nowrap shrink-0"
-                >
-                  {lang === 'th' ? 'จอมอนิเตอร์ผู้บริหาร (MIS)' : 'Executive Monitor'}
-                </button>
-                <button
-                  type="button"
-                  data-active={dashboardTab === 'obec_learning_areas'}
-                  onClick={() => setDashboardTab('obec_learning_areas')}
-                  className="seg-tab-btn whitespace-nowrap shrink-0"
-                >
-                  {lang === 'th' ? '8 กลุ่มสาระฯ สพฐ.' : 'OBEC 8 Areas'}
-                </button>
-                <button
-                  type="button"
-                  data-active={dashboardTab === 'pp6_quality_overview'}
-                  onClick={() => setDashboardTab('pp6_quality_overview')}
-                  className="seg-tab-btn whitespace-nowrap shrink-0"
-                >
-                  {lang === 'th' ? 'ภาพรวมคุณภาพ ปพ.6' : 'OBEC Pp.6 Overview'}
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Executive reports (MIS / OBEC 8 Areas / Pp.6) are switched from the unified top bar */}
 
         {/* UNIFIED LENS: REAL-TIME DAILY OPERATIONS RADAR (08:00-09:00 Check-ins & Period Readiness) */}
         {dashboardTab === 'realtime_daily' && isStaffUser && (
@@ -2211,7 +2249,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onOpenGradebookCourse={onOpenGradebookCourse}
               onLoadAttendanceRange={onLoadAttendanceRange}
               onNavigate={(tab) => {
-                if (tab === 'executive_warning' && canViewEarlyWarning) {
+                if (tab === 'realtime_daily' && isStaffUser) {
+                  setDashboardTab('realtime_daily');
+                } else if (tab === 'executive_warning' && canViewEarlyWarning) {
                   setDashboardTab('early_warning');
                 } else {
                   onNavigate(tab);
@@ -2412,57 +2452,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="saas-card-body space-y-5">
           {/* Summary Metric Counters (Single-elevation hairline divided grid) */}
           {attendanceStep === 'summary' && (
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
             <div className="p-3 text-center">
               <p className="type-meta flex items-center justify-center gap-1">
                 <ClipboardList className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'ทั้งหมด' : 'Total Logs'}</span>
+                <span>{lang === 'th' ? 'บันทึกทั้งหมด' : 'Total Logs'}</span>
               </p>
-              <p className="type-kpi-sm mt-1">{totalForDate}</p>
-              <p className="type-meta mt-0.5">{lang === 'th' ? 'รายการ' : 'records'}</p>
+              <p className="type-kpi-sm mt-1 tabular-nums">{totalForDate}</p>
+              <p className="type-meta mt-0.5 tabular-nums">
+                {!isRestrictedPersonalRole
+                  ? (lang === 'th' ? `นร. ${studentCheckIns} · ครู ${teacherCheckIns}` : `S: ${studentCheckIns} · T: ${teacherCheckIns}`)
+                  : (lang === 'th' ? 'รายการวันนี้' : 'records')}
+              </p>
             </div>
             <div className="p-3 text-center">
               <p className="type-meta text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1">
                 <LogIn className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'เข้าเรียน' : 'Check-ins'}</span>
+                <span>{lang === 'th' ? 'เข้าเรียน (ตรงเวลา)' : 'Check-ins'}</span>
               </p>
-              <p className="type-kpi-sm text-emerald-700 dark:text-emerald-300 mt-1">{checkInsCount}</p>
-              <p className="type-meta text-emerald-700 dark:text-emerald-400 mt-0.5">{lang === 'th' ? `ตรงเวลา ${presentCount}` : `On-time: ${presentCount}`}</p>
+              <p className="type-kpi-sm text-emerald-700 dark:text-emerald-300 mt-1 tabular-nums">{checkInsCount}</p>
+              <p className="type-meta text-emerald-700 dark:text-emerald-400 mt-0.5 tabular-nums">{lang === 'th' ? `ตรงเวลา ${presentCount} คน` : `On-time: ${presentCount}`}</p>
             </div>
             <div className="p-3 text-center">
               <p className="type-meta text-amber-700 dark:text-amber-300 flex items-center justify-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'มาสาย' : 'Late'}</span>
+                <span>{lang === 'th' ? 'มาสาย / ออกแล้ว' : 'Late / Out'}</span>
               </p>
-              <p className="type-kpi-sm text-amber-700 dark:text-amber-300 mt-1">{lateCount}</p>
-              <p className="type-meta text-amber-700 dark:text-amber-400 mt-0.5">{latePercent}%</p>
-            </div>
-            <div className="p-3 text-center">
-              <p className="type-meta text-purple-700 dark:text-purple-300 flex items-center justify-center gap-1">
-                <LogOut className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ออกโรงเรียน' : 'Check-outs'}</span>
-              </p>
-              <p className="type-kpi-sm text-purple-700 dark:text-purple-300 mt-1">{checkOutsCount}</p>
-              <p className="type-meta text-purple-700 dark:text-purple-400 mt-0.5">{lang === 'th' ? 'ช่วงเย็น' : 'Departures'}</p>
+              <p className="type-kpi-sm text-amber-700 dark:text-amber-300 mt-1 tabular-nums">{lateCount}</p>
+              <p className="type-meta text-[var(--color-text-muted)] mt-0.5 tabular-nums">{lang === 'th' ? `สาย ${latePercent}% · ออก ${checkOutsCount}` : `${latePercent}% late · ${checkOutsCount} out`}</p>
             </div>
             <div className="p-3 text-center">
               <p className="type-meta text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1">
                 <Camera className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ภาพถ่ายเซลฟี่' : 'Selfie'}</span>
+                <span>{lang === 'th' ? 'ภาพถ่ายเซลฟี่' : 'Selfie Verified'}</span>
               </p>
-              <p className="type-kpi-sm text-blue-700 dark:text-blue-300 mt-1">{selfieCount}</p>
-              <p className="type-meta text-blue-700 dark:text-blue-400 mt-0.5">{lang === 'th' ? 'ยืนยันตัวตน' : 'Verified'}</p>
+              <p className="type-kpi-sm text-blue-700 dark:text-blue-300 mt-1 tabular-nums">{selfieCount}</p>
+              <p className="type-meta text-blue-700 dark:text-blue-400 mt-0.5">{lang === 'th' ? 'ยืนยันตัวตนแล้ว' : 'Verified'}</p>
             </div>
-            {!isRestrictedPersonalRole && (
-              <div className="p-3 text-center">
-                <p className="type-meta flex items-center justify-center gap-1">
-                  <Users className="w-3.5 h-3.5 shrink-0" />
-                  <span>{lang === 'th' ? 'นร. / ครู' : 'Student / Staff'}</span>
-                </p>
-                <p className="type-kpi-sm mt-1">{studentCheckIns}/{teacherCheckIns}</p>
-                <p className="type-meta mt-0.5">{lang === 'th' ? `นร. ${studentCheckIns} · ครู ${teacherCheckIns}` : `S: ${studentCheckIns} · T: ${teacherCheckIns}`}</p>
-              </div>
-            )}
           </div>
           )}
 

@@ -419,61 +419,21 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header & Action Controls */}
-      <div className="saas-card saas-card-body flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-[var(--color-primary-text)] shrink-0" />
-            <h2 className="text-base font-bold text-[var(--color-text-title)] truncate">
-              {lang === 'th'
-                ? 'แดชบอร์ดผู้บริหาร · ภาพรวมคุณภาพผู้เรียน ปพ.6 ตามตัวชี้วัด สพฐ.'
-                : 'Executive OBEC Pp.6 Student Quality Dashboard'}
+    <div className="space-y-3">
+      {/* Compact Single Unboxed Title + Filter & Export Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+            <h2 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
+              {lang === 'th' ? 'คุณภาพผู้เรียน ปพ.6' : 'OBEC Pp.6 Quality'}
             </h2>
           </div>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            {school?.nameTh || systemConfig.schoolNameTh} · {formatSemesterLabel(semester)} ปีการศึกษา {academicYear} · เปรียบเทียบผลสัมฤทธิ์ เวลาเรียน และคุณภาพ 4 ด้านตาม ปพ.6
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {onOpenPp5Summary && (
-            <button
-              type="button"
-              onClick={onOpenPp5Summary}
-              className="btn-tool-neutral px-3 py-1.5 text-xs whitespace-nowrap"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>สรุป ปพ.5 วิชาพื้นฐานรายห้อง</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="btn-tool-neutral px-3 py-1.5 text-xs whitespace-nowrap"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>ส่งออก CSV</span>
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="btn-action-primary px-3 py-1.5 text-xs whitespace-nowrap"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>พิมพ์รายงานผู้บริหาร (A4)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="saas-card saas-card-body flex flex-wrap items-center justify-between gap-2.5 print:hidden">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-[var(--color-text-muted)]">ช่วงชั้น:</span>
           <div className="seg-tab-group inline-flex flex-wrap">
             {([
               { id: 'all', label: 'ทั้งโรงเรียน' },
-              { id: 'primary', label: 'ประถมศึกษา' },
+              { id: 'primary', label: 'ประถม' },
               { id: 'lower_secondary', label: 'ม.ต้น' },
               { id: 'upper_secondary', label: 'ม.ปลาย' },
             ] as const).map((opt) => (
@@ -500,7 +460,7 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
               setSelectedGroupKey(null);
             }}
             aria-label="กรองระดับชั้น"
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)]"
+            className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs font-semibold text-[var(--color-text-title)]"
           >
             <option value="all">ทุกระดับชั้น</option>
             {gradeLevelOptions.map((lv) => (
@@ -511,50 +471,56 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="seg-tab-group inline-flex">
-            <button
-              type="button"
-              data-active={groupByMode === 'gradeLevel'}
-              onClick={() => {
-                setGroupByMode('gradeLevel');
-                setSelectedGroupKey(null);
-              }}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
-            >
-              เทียบรายระดับชั้น
-            </button>
-            <button
-              type="button"
-              data-active={groupByMode === 'room'}
-              onClick={() => {
-                setGroupByMode('room');
-                setSelectedGroupKey(null);
-              }}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
-            >
-              เทียบรายห้องเรียน
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-auto">
+          <select
+            aria-label="มุมมองเปรียบเทียบ"
+            value={groupByMode}
+            onChange={(e) => {
+              setGroupByMode(e.target.value as 'gradeLevel' | 'room');
+              setSelectedGroupKey(null);
+            }}
+            className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs font-semibold text-[var(--color-text-title)]"
+          >
+            <option value="gradeLevel">เทียบรายระดับชั้น</option>
+            <option value="room">เทียบรายห้องเรียน</option>
+          </select>
 
-          <div className="seg-tab-group inline-flex">
+          <select
+            aria-label="กราฟตัวชี้วัด"
+            value={chartView}
+            onChange={(e) => setChartView(e.target.value as 'gpa_attendance' | 'obec_pillars')}
+            className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs font-semibold text-[var(--color-text-title)]"
+          >
+            <option value="gpa_attendance">ผลการเรียน vs เวลาเรียน</option>
+            <option value="obec_pillars">4 ตัวชี้วัดคุณภาพ ปพ.6</option>
+          </select>
+
+          {onOpenPp5Summary && (
             <button
               type="button"
-              data-active={chartView === 'gpa_attendance'}
-              onClick={() => setChartView('gpa_attendance')}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
+              onClick={onOpenPp5Summary}
+              className="btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap"
             >
-              ผลการเรียน vs เวลาเรียน
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>สรุป ปพ.5</span>
             </button>
-            <button
-              type="button"
-              data-active={chartView === 'obec_pillars'}
-              onClick={() => setChartView('obec_pillars')}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
-            >
-              4 ตัวชี้วัดคุณภาพ ปพ.6
-            </button>
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>ส่งออก CSV</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="btn-action-primary h-8 px-2.5 text-xs whitespace-nowrap"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>พิมพ์ (A4)</span>
+          </button>
         </div>
       </div>
 

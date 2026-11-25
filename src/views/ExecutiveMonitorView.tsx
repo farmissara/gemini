@@ -62,9 +62,8 @@ import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
 import AttendancePhoto from '../components/AttendancePhoto';
-import { ExecutiveRealtimeDailyPanel } from '../components/ExecutiveRealtimeDailyPanel';
 
-type MonitorLens = 'overview' | 'realtime' | 'rooms' | 'academics' | 'tv';
+type MonitorLens = 'overview' | 'rooms' | 'academics' | 'tv';
 type TimeframeScope = 'today' | '7d' | '30d' | 'term';
 type RoomSortKey = 'room' | 'attendance_asc' | 'gpa_asc' | 'homework_desc';
 type RoomStatusFilter = 'all' | 'watch' | 'normal';
@@ -1076,96 +1075,31 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           : 'print-area'
       }`}
     >
-      {/* Top Executive Command Header */}
-      <div
-        className={`rounded-xl px-3.5 py-2.5 sm:px-4 space-y-2.5 ${
-          isTvMode ? 'bg-slate-900 border border-slate-800 text-slate-100' : 'app-page-header'
-        }`}
-      >
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {!isTvMode && (
-              <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
-                <Monitor className="w-4 h-4" />
-              </div>
-            )}
+      {/* Compact Single-Row Toolbar (Unboxed) or TV Wallboard Top Bar */}
+      {isTvMode ? (
+        <div className="rounded-xl px-3.5 py-2.5 sm:px-4 space-y-2.5 bg-slate-900 border border-slate-800 text-slate-100">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
             <div className="min-w-0">
-              <h1 className={`text-base sm:text-lg font-bold tracking-tight truncate ${titleText}`}>
-                {isTvMode
-                  ? 'ศูนย์แสดงผลรายงานภาพรวมโรงเรียนแบบเรียลไทม์'
-                  : 'แดชบอร์ดติดตามรายงานผู้บริหาร'}
-              </h1>
+              <h2 className={`text-base sm:text-lg font-bold tracking-tight truncate ${titleText}`}>
+                ศูนย์แสดงผลรายงานภาพรวมโรงเรียนแบบเรียลไทม์
+              </h2>
               <p className={`text-xs truncate tabular-nums ${mutedText}`}>
                 {activeSchool.nameTh} · ปีการศึกษา {activeSchool.academicYear || '2569'}/{activeSchool.currentSemester || '1'}
               </p>
             </div>
-          </div>
-
-          {/* Right: Live Clock + Export & TV Actions */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <div className={`text-right tabular-nums leading-tight pr-2.5 border-r ${isTvMode ? 'border-slate-800' : 'border-[var(--color-border)]'}`}>
-              <div className={`text-xs sm:text-sm font-bold flex items-center gap-1.5 justify-end ${titleText}`}>
-                <Clock className="w-3.5 h-3.5 text-[var(--tone)] shrink-0" />
-                <span>{formattedClock}</span>
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <div className="text-right tabular-nums leading-tight pr-2.5 border-r border-slate-800">
+                <div className={`text-xs sm:text-sm font-bold flex items-center gap-1.5 justify-end ${titleText}`}>
+                  <Clock className="w-3.5 h-3.5 text-[var(--tone)] shrink-0" />
+                  <span>{formattedClock}</span>
+                </div>
+                <div className={`text-[11px] ${mutedText}`}>{formattedThaiDate}</div>
               </div>
-              <div className={`text-[11px] ${mutedText}`}>{formattedThaiDate}</div>
-            </div>
-
-            {!isTvMode ? (
-              <div className="flex items-center gap-1.5 print:hidden">
-                <details className="relative">
-                  <summary className="btn-tool-neutral list-none h-9 px-3 cursor-pointer whitespace-nowrap">
-                    <Download className="w-3.5 h-3.5 text-[var(--tone)]" />
-                    <span>{copiedBrief ? 'คัดลอกสรุปแล้ว' : 'ส่งออก / พิมพ์'}</span>
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </summary>
-                  <div className="absolute right-0 top-full z-30 mt-1.5 min-w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        void handleCopyExecutiveBrief();
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                    >
-                      {copiedBrief ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                      )}
-                      <span>{copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        handleExportCsv();
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                      <span>ส่งออก CSV</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        window.print();
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                      <span>พิมพ์รายงาน A4</span>
-                    </button>
-                  </div>
-                </details>
-              </div>
-            ) : (
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setAutoRotate((v) => !v)}
-                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-100 cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-100 cursor-pointer whitespace-nowrap"
                 >
                   {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                   <span>{autoRotate ? 'หยุดหมุน' : 'เล่นสไลด์'}</span>
@@ -1173,66 +1107,58 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                 <button
                   type="button"
                   onClick={() => void toggleFullscreen()}
-                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-semibold text-white cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-xs font-semibold text-white cursor-pointer whitespace-nowrap"
                 >
                   {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                   <span>{isFullscreen ? 'ย่อหน้าจอ' : 'เต็มจอ TV'}</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setLens('overview')}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-100 cursor-pointer whitespace-nowrap"
+                >
+                  <span>ออกจากโหมด TV</span>
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
-
-        {/* Second Toolbar Row: Monitor Lenses + Scope Filters + Auto-Refresh */}
-        <div className={`pt-2 border-t flex flex-col lg:flex-row lg:items-center justify-between gap-2 print:hidden ${isTvMode ? 'border-slate-800' : 'border-[var(--color-border)]'}`}>
-          {/* Lens Switcher */}
-          <div
-            className={
-              isTvMode
-                ? 'inline-flex p-0.5 rounded-lg border bg-slate-950 border-slate-800 overflow-x-auto max-w-full'
-                : 'seg-tab-group inline-flex overflow-x-auto max-w-full'
-            }
-          >
-            {[
-              { id: 'overview' as const, label: 'ภาพรวม', icon: ActivityIcon },
-              { id: 'realtime' as const, label: 'เรียลไทม์วันนี้', icon: Activity },
-              { id: 'rooms' as const, label: `รายห้อง (${roomMatrix.length})`, icon: FileSpreadsheet },
-              { id: 'academics' as const, label: 'คาบสอน & รายวิชา', icon: BookOpen },
-              { id: 'tv' as const, label: 'โหมด TV', icon: Monitor },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const active = lens === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  data-active={!isTvMode ? active : undefined}
-                  onClick={() => setLens(tab.id)}
-                  className={
-                    isTvMode
-                      ? `px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
-                          active ? 'bg-sky-600 text-white' : 'text-slate-300 hover:text-white'
-                        }`
-                      : 'seg-tab-btn inline-flex items-center gap-1.5 whitespace-nowrap shrink-0'
-                  }
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+          {/* Left: 4 MIS Lenses Only (No duplicate realtime tab) */}
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+            <div className="seg-tab-group inline-flex overflow-x-auto max-w-full">
+              {[
+                { id: 'overview' as const, label: 'ภาพรวม', icon: ActivityIcon },
+                { id: 'rooms' as const, label: `รายห้อง (${roomMatrix.length})`, icon: FileSpreadsheet },
+                { id: 'academics' as const, label: 'คาบสอน & รายวิชา', icon: BookOpen },
+                { id: 'tv' as const, label: 'โหมด TV', icon: Monitor },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const active = lens === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    data-active={active}
+                    onClick={() => setLens(tab.id)}
+                    className="seg-tab-btn inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="hidden 2xl:inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+              <Clock className="w-3 h-3 shrink-0" />
+              <span>{formattedClock}</span>
+            </span>
           </div>
 
-          {/* Scope Filters & Live Refresh Control */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs min-w-0">
-            {/* Timeframe */}
-            <div
-              className={`inline-flex h-8 items-center p-0.5 rounded-lg border ${
-                isTvMode
-                  ? 'bg-slate-950 border-slate-800'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)]'
-              }`}
-            >
+          {/* Right: Compact Inline Filters + Export */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs min-w-0 ml-auto">
+            <div className="inline-flex h-8 items-center p-0.5 rounded-lg border bg-[var(--color-card)] border-[var(--color-border)]">
               {(
                 [
                   { id: 'today', label: 'วันนี้' },
@@ -1245,7 +1171,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                   key={tf.id}
                   type="button"
                   onClick={() => setTimeframe(tf.id)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer whitespace-nowrap ${
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer whitespace-nowrap ${
                     timeframe === tf.id
                       ? 'bg-[var(--color-primary)] text-white'
                       : `${mutedText} hover:opacity-100`
@@ -1256,16 +1182,11 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               ))}
             </div>
 
-            {/* Grade Level Scope */}
             <select
               aria-label="กรองตามระดับชั้น"
               value={selectedGradeLevel}
               onChange={(e) => setSelectedGradeLevel(e.target.value)}
-              className={`h-8 px-2.5 rounded-lg border text-xs font-medium ${
-                isTvMode
-                  ? 'bg-slate-950 border-slate-700 text-slate-100'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)]'
-              }`}
+              className="h-8 px-2 rounded-lg border text-xs font-medium bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)]"
             >
               <option value="all">ทุกระดับชั้น ({students.length})</option>
               {gradeLevelOptions.map((g) => (
@@ -1275,42 +1196,79 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               ))}
             </select>
 
-            {/* Auto-Refresh Monitor Timer */}
-            <div className="flex items-center gap-1.5">
-              <select
-                aria-label="รอบอัปเดตรายงานอัตโนมัติ"
-                value={autoRefreshSec}
-                onChange={(e) => setAutoRefreshSec(Number(e.target.value) as 0 | 30 | 60 | 300)}
-                className={`h-8 px-2 rounded-lg border text-[11px] font-medium tabular-nums ${
-                  isTvMode
-                    ? 'bg-slate-950 border-slate-700 text-slate-200'
-                    : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)]'
-                }`}
-              >
-                <option value={0}>รีเฟรช: ปิด</option>
-                <option value={30}>ทุก 30 วิ</option>
-                <option value={60}>ทุก 1 นาที</option>
-                <option value={300}>ทุก 5 นาที</option>
-              </select>
-              <button
-                type="button"
-                onClick={handleManualRefresh}
-                className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-[11px] font-semibold cursor-pointer transition whitespace-nowrap ${
-                  isTvMode
-                    ? 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700'
-                    : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
-                }`}
-                title="อัปเดตตัวเลขรายงานล่าสุด"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span className="tabular-nums">{lastRefreshedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-              </button>
-            </div>
+            <select
+              aria-label="รอบอัปเดตรายงานอัตโนมัติ"
+              value={autoRefreshSec}
+              onChange={(e) => setAutoRefreshSec(Number(e.target.value) as 0 | 30 | 60 | 300)}
+              className="h-8 px-2 rounded-lg border text-[11px] font-medium tabular-nums bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-body)]"
+            >
+              <option value={0}>รีเฟรช: ปิด</option>
+              <option value={30}>ทุก 30 วิ</option>
+              <option value={60}>ทุก 1 นาที</option>
+              <option value={300}>ทุก 5 นาที</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              className="inline-flex items-center gap-1 h-8 px-2 rounded-lg border text-[11px] font-semibold cursor-pointer transition whitespace-nowrap bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]"
+              title="อัปเดตตัวเลขรายงานล่าสุด"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span className="tabular-nums">{lastRefreshedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
+            </button>
+
+            <details className="relative">
+              <summary className="btn-tool-neutral list-none h-8 px-2.5 cursor-pointer whitespace-nowrap text-xs">
+                <Download className="w-3.5 h-3.5 text-[var(--tone)]" />
+                <span>{copiedBrief ? 'คัดลอกแล้ว' : 'ส่งออก'}</span>
+                <ChevronDown className="w-3 h-3" />
+              </summary>
+              <div className="absolute right-0 top-full z-30 mt-1.5 min-w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    void handleCopyExecutiveBrief();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                >
+                  {copiedBrief ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  )}
+                  <span>{copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    handleExportCsv();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
+                  <span>ส่งออก CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    window.print();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+                  <span>พิมพ์รายงาน A4</span>
+                </button>
+              </div>
+            </details>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Unified Top 6-KPI Strip (Single-Elevation Hairline Grid, clickable drill-downs, tabular-nums) */}
+      {/* Unified Top 4-KPI Strip (Core Daily Executive Metrics, tabular-nums) */}
       <div
         className={
           isTvMode
@@ -1319,71 +1277,48 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
         }
       >
         <div
-          className={`grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 divide-y sm:divide-y-0 sm:divide-x ${
+          className={`grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x ${
             isTvMode ? 'divide-slate-800' : 'divide-[var(--color-border)]'
           }`}
         >
           {[
             {
-              label: `เช็กชื่อ (${timeframe === 'today' ? 'วันนี้' : timeframeLabel})`,
+              label: `เช็กชื่อมาเรียน (${timeframe === 'today' ? 'วันนี้' : timeframeLabel})`,
               value: `${metrics.studentCheckinRate}%`,
               sub: `ตรงเวลา ${metrics.presentStudents} · สาย ${metrics.lateStudents} · ขาด ${metrics.absentOrLeaveStudents}`,
               icon: UserCheck,
               accent: isTvMode ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400',
-              onClick: () => setLens('realtime'),
+              onClick: () => onNavigate('realtime_daily'),
             },
             {
-              label: 'เช็กชื่อรายคาบวันนี้',
+              label: 'เช็กชื่อรายคาบ & ครูเข้าสอน',
               value: metrics.scheduledTodayCount > 0 ? `${metrics.periodComplianceRate}%` : `${metrics.periodLogsCount}`,
               sub:
                 metrics.scheduledTodayCount > 0
-                  ? `บันทึกแล้ว ${metrics.submittedTodayPeriodsCount}/${metrics.scheduledTodayCount} คาบ`
-                  : 'รายการเช็กชื่อรายคาบในระบบ',
+                  ? `บันทึก ${metrics.submittedTodayPeriodsCount}/${metrics.scheduledTodayCount} คาบ · ครูมา ${metrics.teacherAttCount}/${metrics.totalTeachers}`
+                  : `บันทึกแล้ว ${metrics.periodLogsCount} ครั้ง · ครูมา ${metrics.teacherAttCount}/${metrics.totalTeachers}`,
               icon: Calendar,
               accent: isTvMode ? 'text-sky-400' : 'text-blue-600 dark:text-blue-400',
               onClick: () => setLens('academics'),
             },
             {
-              label: 'GPAX เฉลี่ย & ห้องเฝ้าระวัง',
+              label: 'GPAX เฉลี่ย & ส่งงาน',
               value: metrics.avgGpa.toFixed(2),
-              sub: `เฝ้าระวัง ${metrics.watchRoomsCount} ห้อง · ${metrics.coursesCount} วิชา`,
+              sub: `เฝ้าระวัง ${metrics.watchRoomsCount} ห้อง · ส่งงาน ${metrics.hwCompletionRate}% (รอตรวจ ${metrics.hwUngraded})`,
               icon: Award,
               accent: isTvMode ? 'text-amber-400' : 'text-amber-600 dark:text-amber-400',
               onClick: () => setLens('rooms'),
             },
             {
-              label: 'ภาระงาน & รอตรวจ',
-              value: `${metrics.hwCompletionRate}%`,
-              sub: `ส่งแล้ว ${metrics.hwCompleted}/${metrics.hwTotal} · รอตรวจ ${metrics.hwUngraded}`,
-              icon: BookOpen,
-              accent: isTvMode ? 'text-violet-400' : 'text-violet-600 dark:text-violet-400',
-              onClick: () => onNavigate('homework'),
-            },
-            {
-              label: 'คิวอนุมัติ & ดูแลนักเรียน',
+              label: canViewFinancials ? 'คิวอนุมัติ & ค่าเทอม' : 'คิวอนุมัติ & ดูแลผู้เรียน',
               value: `${metrics.pendingLeaves + metrics.pendingSlips}`,
-              sub: `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · SDQ เสี่ยง ${metrics.sdqRisk + metrics.sdqProblem}`,
+              sub: canViewFinancials
+                ? `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · ค่าเทอม ${metrics.collectionRate}%`
+                : `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · SDQ เสี่ยง ${metrics.sdqRisk + metrics.sdqProblem}`,
               icon: HeartPulse,
               accent: isTvMode ? 'text-rose-400' : 'text-rose-600 dark:text-rose-400',
               onClick: () => onNavigate('executive_warning'),
             },
-            canViewFinancials
-              ? {
-                  label: 'จัดเก็บค่าเทอม',
-                  value: `${metrics.collectionRate}%`,
-                  sub: `รับแล้ว ฿${metrics.totalPaid.toLocaleString()} · ค้าง ฿${(metrics.pendingAmount + metrics.overdueAmount).toLocaleString()}`,
-                  icon: Receipt,
-                  accent: isTvMode ? 'text-teal-400' : 'text-teal-600 dark:text-teal-400',
-                  onClick: () => onNavigate('billing'),
-                }
-              : {
-                  label: 'บุคลากร & LINE ผู้ปกครอง',
-                  value: `${metrics.teacherAttCount}/${metrics.totalTeachers}`,
-                  sub: `ครูลงเวลา · LINE ${metrics.lineLinkedStudents}/${metrics.totalStudents}`,
-                  icon: Users,
-                  accent: isTvMode ? 'text-teal-400' : 'text-teal-600 dark:text-teal-400',
-                  onClick: () => onNavigate('teachers'),
-                },
           ].map((kpi) => {
             const Icon = kpi.icon;
             return (
@@ -1408,29 +1343,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
           })}
         </div>
       </div>
-
-      {/* ===================================================================== */}
-      {/* LENS 0: REAL-TIME DAILY OPERATIONS (FACE CHECK-INS & CLASS READINESS) */}
-      {/* ===================================================================== */}
-      {lens === 'realtime' && !isTvMode && (
-        <ExecutiveRealtimeDailyPanel
-          school={activeSchool}
-          systemConfig={resolvedSystemConfig}
-          students={students}
-          teachers={teachers}
-          courses={courses}
-          attendance={attendance}
-          periodAttendance={periodAttendance}
-          timetableSlots={timetableSlots}
-          schoolPeriods={schoolPeriods}
-          leaveRequests={leaveRequests}
-          infirmaryVisits={infirmaryVisits}
-          invoices={canViewFinancials ? invoices : []}
-          canViewFinancials={canViewFinancials}
-          lang={lang}
-          onNavigate={onNavigate}
-        />
-      )}
 
       {/* ===================================================================== */}
       {/* LENS 1: EXECUTIVE LIVE COMMAND & EXCEPTION RADAR                      */}

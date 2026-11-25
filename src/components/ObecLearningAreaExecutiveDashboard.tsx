@@ -577,30 +577,24 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
       : levelScope;
 
   return (
-    <div className="space-y-4">
-      {/* Executive Control Bar */}
-      <div className="saas-card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 print:hidden">
-        <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            <span>{schoolNameTh}</span>
-            <span aria-hidden="true">·</span>
-            <span>{formatSemesterLabel(systemConfig.currentSemester)}</span>
-            <span aria-hidden="true">·</span>
-            <span>ปีการศึกษา {systemConfig.academicYear || '2569'}</span>
-          </div>
-          <h2 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] text-balance">
-            {lang === 'th'
-              ? 'แดชบอร์ดผู้บริหาร: ประเมินสถิติเวลาเรียนและเกรดเฉลี่ย 8 กลุ่มสาระการเรียนรู้ (สพฐ.)'
-              : 'Executive OBEC Dashboard: Attendance & GPA by Learning Area'}
+    <div className="space-y-3">
+      {/* Compact Unboxed Title + Inline Filters & Export */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 print:hidden">
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 min-w-0">
+          <h2 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
+            {lang === 'th' ? 'ผลสัมฤทธิ์ & เวลาเรียน 8 กลุ่มสาระฯ (สพฐ.)' : 'OBEC 8 Learning Areas'}
           </h2>
+          <span className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
+            {schoolNameTh} · {formatSemesterLabel(systemConfig.currentSemester)}/{systemConfig.academicYear || '2569'}
+          </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           <select
             aria-label="เลือกระดับชั้นที่ประเมิน"
             value={levelScope}
             onChange={(e) => setLevelScope(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-title)]"
+            className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-medium text-[var(--color-text-title)]"
           >
             <option value="all">ทุกระดับชั้น ({students.length} คน)</option>
             <option value="primary">ระดับประถมศึกษา (ป.1–ป.6)</option>
@@ -616,31 +610,31 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
           <button
             type="button"
             onClick={() => setIncludeActivities((prev) => !prev)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`h-8 px-2.5 rounded-lg border text-xs font-medium transition cursor-pointer whitespace-nowrap shrink-0 ${
               includeActivities
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
             }`}
           >
-            {includeActivities ? 'รวมกิจกรรมพัฒนาผู้เรียน' : 'เฉพาะ 8 กลุ่มสาระฯ'}
+            {includeActivities ? 'รวมกิจกรรมพัฒนาฯ' : 'เฉพาะ 8 กลุ่มสาระฯ'}
           </button>
 
           <button
             type="button"
             onClick={handleExportCsv}
-            className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)] inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+            className="btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>ส่งออก CSV (SAR)</span>
+            <span>ส่งออก CSV</span>
           </button>
 
           <button
             type="button"
             onClick={handlePrint}
-            className="btn-action-primary px-3 py-1.5 text-xs whitespace-nowrap shrink-0"
+            className="btn-action-primary h-8 px-2.5 text-xs whitespace-nowrap shrink-0"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>พิมพ์รายงานผู้บริหาร</span>
+            <span>พิมพ์รายงาน</span>
           </button>
         </div>
       </div>
