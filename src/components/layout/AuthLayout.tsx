@@ -218,7 +218,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         setPortalSchool({
           ...info,
           studentLoginIdentifierType: localCfg.studentLoginIdentifierType || info.studentLoginIdentifierType,
+          studentDefaultPasswordType: localCfg.studentDefaultPasswordType || info.studentDefaultPasswordType,
           studentDefaultPasswordNote: localCfg.studentDefaultPasswordNote || info.studentDefaultPasswordNote,
+          studentIdMinLength: localCfg.studentIdMinLength ?? info.studentIdMinLength,
+          studentIdMaxLength: localCfg.studentIdMaxLength ?? info.studentIdMaxLength,
+          studentIdDigitsOnly: localCfg.studentIdDigitsOnly ?? info.studentIdDigitsOnly,
+          studentIdExample: localCfg.studentIdExample || info.studentIdExample,
+          studentShortIdPasswordPrefix: localCfg.studentShortIdPasswordPrefix ?? info.studentShortIdPasswordPrefix,
         });
       } else {
         setPortalSchool(info);
@@ -277,8 +283,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 primaryColor: match.primaryColor,
                 studentLoginIdentifierType: match.studentLoginIdentifierType || 'both',
                 customLoginSlug: match.customLoginSlug,
-                studentDefaultPasswordType: match.studentDefaultPasswordType || 'birthdate',
+                studentDefaultPasswordType: match.studentDefaultPasswordType || 'student_id',
                 studentDefaultPasswordNote: match.studentDefaultPasswordNote,
+                studentIdMinLength: match.studentIdMinLength,
+                studentIdMaxLength: match.studentIdMaxLength,
+                studentIdDigitsOnly: match.studentIdDigitsOnly,
+                studentIdExample: match.studentIdExample,
+                studentShortIdPasswordPrefix: match.studentShortIdPasswordPrefix,
               },
               studentMode
             );
@@ -340,8 +351,13 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             primaryColor: match.primaryColor,
             studentLoginIdentifierType: match.studentLoginIdentifierType || 'both',
             customLoginSlug: match.customLoginSlug,
-            studentDefaultPasswordType: match.studentDefaultPasswordType || 'birthdate',
+            studentDefaultPasswordType: match.studentDefaultPasswordType || 'student_id',
             studentDefaultPasswordNote: match.studentDefaultPasswordNote,
+            studentIdMinLength: match.studentIdMinLength,
+            studentIdMaxLength: match.studentIdMaxLength,
+            studentIdDigitsOnly: match.studentIdDigitsOnly,
+            studentIdExample: match.studentIdExample,
+            studentShortIdPasswordPrefix: match.studentShortIdPasswordPrefix,
           };
         }
       }
@@ -1484,15 +1500,30 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                     allowStudentIdInput
                                       ? identifierMode === 'student_id_only'
                                         ? lang === 'th'
-                                          ? 'เช่น ED-6901 หรือ 10001'
-                                          : 'e.g. ED-6901'
+                                          ? `เช่น ${portalSchool?.studentIdExample || '1001'}`
+                                          : `e.g. ${portalSchool?.studentIdExample || '1001'}`
                                         : lang === 'th'
-                                          ? 'รหัสนักเรียน (เช่น ED-6901) หรือ อีเมล'
-                                          : 'Student ID or email@school.ac.th'
+                                          ? `รหัสนักเรียน (เช่น ${portalSchool?.studentIdExample || '1001'}) หรือ อีเมล`
+                                          : `Student ID (e.g. ${portalSchool?.studentIdExample || '1001'}) or email`
                                       : 'yourname@school.ac.th'
                                   }
                                   className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] font-medium"
                                 />
+                                {allowStudentIdInput && portalSchool && (
+                                  <span className="mt-1 block text-[11px] font-normal text-[var(--color-text-muted)]">
+                                    {lang === 'th'
+                                      ? `รูปแบบรหัสนักเรียนของโรงเรียน: ความยาว ${
+                                          (portalSchool.studentIdMinLength ?? 4) === (portalSchool.studentIdMaxLength ?? 12)
+                                            ? `${portalSchool.studentIdMinLength ?? 4} ตัว`
+                                            : `${portalSchool.studentIdMinLength ?? 4}–${portalSchool.studentIdMaxLength ?? 12} ตัว`
+                                        }${portalSchool.studentIdDigitsOnly ? ' (ตัวเลข 0–9 เท่านั้น)' : ''}`
+                                      : `School Student ID rule: ${
+                                          (portalSchool.studentIdMinLength ?? 4) === (portalSchool.studentIdMaxLength ?? 12)
+                                            ? `${portalSchool.studentIdMinLength ?? 4} chars`
+                                            : `${portalSchool.studentIdMinLength ?? 4}–${portalSchool.studentIdMaxLength ?? 12} chars`
+                                        }${portalSchool.studentIdDigitsOnly ? ' (digits 0–9 only)' : ''}`}
+                                  </span>
+                                )}
                               </label>
 
                               <label className="block text-[13px] font-semibold text-[var(--color-text-title)]">

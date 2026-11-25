@@ -57,6 +57,12 @@ import {
   Printer,
 } from 'lucide-react';
 import { loadStaffInviteRpcSql } from '../lib/supabase';
+import { findHomeroomTeachersForRoom } from '../lib/timetableRoomMatch';
+import {
+  formatStudentIdPolicySummary,
+  normalizeSchoolStudentIdPolicy,
+  validateStudentIdAgainstPolicy,
+} from '../lib/studentIdPolicy';
 import {
   approveStudentAccountInSupabase,
   deleteStudentAccountRegistrationInSupabase,
@@ -383,12 +389,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [selectedQrStudentIds, setSelectedQrStudentIds] = useState<string[]>([]);
   const [showBatchQrModal, setShowBatchQrModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [studentFormError, setStudentFormError] = useState<string | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [studentFormStep, setStudentFormStep] = useState<1 | 2>(1);
 
   const canManageApprovals = ['admin', 'super_admin'].includes(currentRole);
   const canManageStudentRecords = canManageApprovals;
   const schoolId = activeSchool?.id || students[0]?.schoolId || 'sch-bkk-01';
+  const studentIdPolicy = useMemo(() => normalizeSchoolStudentIdPolicy(activeSchool), [activeSchool]);
   const { presets, updatePresets } = useSchoolCustomPresets(schoolId);
   const roomOptions = activeSchool?.roomOptions?.length ? activeSchool.roomOptions : presets.roomOptions;
   const [showRoomPresetModal, setShowRoomPresetModal] = useState(false);
@@ -1013,7 +1021,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   const handleSaveStudent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstNameTh.trim()) return;
+    setStudentFormError(null);
+    if (!formData.firstNameTh.trim()) {
+      setStudentFormError('กรุณากรอกชื่อนักเรียน');
+      return;
+    }
+    const idCheck = validateStudentIdAgainstPolicy(formData.studentIdNumber, studentIdPolicy);
+    if (!idCheck.valid) {
+      setStudentFormStep(1);
+      setStudentFormError(idCheck.reasonTh || 'รหัสนักเรียนไม่ตรงตามเงื่อนไขของโรงเรียน');
+      return;
+    }
 
     const primaryGuardian = guardiansList.find(g => g.isPrimary) || guardiansList[0];
     const finalGuardianName = primaryGuardian?.name?.trim() || formData.guardianName.trim() || 'Parent / Guardian';
@@ -1182,6 +1200,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           gender: 'other' as const,
         };
       });
+    }
+
+    const invalidIdRow = parsedRows.find(
+      (row) => !validateStudentIdAgainstPolicy(row.studentIdNumber, studentIdPolicy).valid
+    );
+    if (invalidIdRow) {
+      const idCheck = validateStudentIdAgainstPolicy(invalidIdRow.studentIdNumber, studentIdPolicy);
+      setBulkAddError(
+        `รหัสนักเรียน "${invalidIdRow.studentIdNumber}" ไม่ตรงตามเงื่อนไขโรงเรียน: ${idCheck.reasonTh}`
+      );
+      return;
     }
 
     const newStudents: Student[] = parsedRows.map((row, index) => ({
@@ -1546,6 +1575,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 <span>ตัวกรอง{extraRosterFilterCount > 0 ? ` (${extraRosterFilterCount})` : ''}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreRosterFilters ? 'rotate-180' : ''}`} />
               </button>
+
+              {roomFilter !== 'all' && teachers.length > 0 && (() => {
+                const candidateRoom =
+                  !roomFilter.includes('/') && gradeFilter !== 'all' && !gradeFilter.startsWith('cat_')
+                    ? `${gradeFilter}/${roomFilter}`
+                    : roomFilter;
+                const matched = findHomeroomTeachersForRoom(teachers, roomFilter);
+                const resolved = matched.length > 0 ? matched : findHomeroomTeachersForRoom(teachers, candidateRoom);
+                return (
+                  <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">
+                    <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      ครูประจำชั้น {roomFilter}:{' '}
+                      {resolved.length > 0 ? resolved.map((t) => t.fullNameTh).join(', ') : 'ยังไม่ระบุ'}
+                    </span>
+                  </span>
+                );
+              })()}
 
               <div className="ml-auto flex items-center gap-2.5 text-xs text-[var(--color-text-muted)] tabular-nums">
                 <span>
@@ -2520,9 +2567,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               {bulkMode === 'table' ? (
                 <div className="space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="text-[var(--color-text-muted)]">
-                      กรอกเฉพาะแถวที่ต้องการ (แถวว่างจะถูกข้ามอัตโนมัติ · ตรวจรหัส/ชื่อซ้ำให้ทันที)
-                    </span>
+                    <div className="space-y-0.5">
+                      <span className="text-[var(--color-text-muted)] block">
+                        กรอกเฉพาะแถวที่ต้องการ (แถวว่างจะถูกข้ามอัตโนมัติ · ตรวจรหัส/ชื่อซ้ำให้ทันที)
+                      </span>
+                      <span className="text-[11px] font-medium text-[var(--color-primary-text)] block">
+                        เงื่อนไขรหัสนักเรียนของโรงเรียน: {formatStudentIdPolicySummary(studentIdPolicy, lang)}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
@@ -2863,6 +2915,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveStudent} className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto text-xs">
+              {studentFormError && (
+                <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
+                  {studentFormError}
+                </p>
+              )}
               {/* Interactive Tabs */}
               <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
                 <button
@@ -2978,10 +3035,19 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <input
                         type="text"
                         required
+                        minLength={studentIdPolicy.minLength}
+                        maxLength={studentIdPolicy.maxLength}
                         value={formData.studentIdNumber}
-                        onChange={(e) => setFormData({ ...formData, studentIdNumber: e.target.value })}
+                        onChange={(e) => {
+                          setStudentFormError(null);
+                          setFormData({ ...formData, studentIdNumber: e.target.value });
+                        }}
+                        placeholder={`เช่น ${studentIdPolicy.example}`}
                         className="w-full px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-primary-text)] font-mono font-bold"
                       />
+                      <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+                        {formatStudentIdPolicySummary(studentIdPolicy, lang)}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-[var(--color-text-title)] font-bold mb-1">เลขประจำตัวประชาชน 13 หลัก</label>

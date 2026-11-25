@@ -68,6 +68,11 @@ export interface School {
   studentDefaultPasswordType?: 'student_id' | 'birthdate' | 'custom' | 'pin';
   studentDefaultPasswordNote?: string;
   customSchoolLoginUrl?: string;
+  studentIdMinLength?: number;
+  studentIdMaxLength?: number;
+  studentIdDigitsOnly?: boolean;
+  studentIdExample?: string;
+  studentShortIdPasswordPrefix?: string;
   schoolTier?: SchoolTier;
   aiStudentEnabled?: boolean;
 }

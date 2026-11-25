@@ -254,7 +254,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
             className="min-h-[36px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-primary-text)] inline-flex items-center gap-1.5 cursor-pointer hover:bg-[var(--color-card-subtle)]"
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'เชื่อมต่อ Calendar' : 'Sync .ics'}</span>
+            <span>{lang === 'th' ? 'ปฏิทิน & ภาพหน้าจอ' : 'Calendar & Wallpaper'}</span>
           </button>
         </div>
       </div>

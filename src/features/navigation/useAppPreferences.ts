@@ -80,6 +80,18 @@ export function useAppPreferences() {
     });
   };
 
+  const [isMascotHidden, setIsMascotHidden] = useState<boolean>(
+    () => safeGetStorageItem(STORAGE_KEYS.mascotHidden) === '1',
+  );
+
+  const handleToggleMascotHidden = (next?: boolean) => {
+    setIsMascotHidden((prev) => {
+      const resolved = typeof next === 'boolean' ? next : !prev;
+      safeSetStorageItem(STORAGE_KEYS.mascotHidden, resolved ? '1' : '0');
+      return resolved;
+    });
+  };
+
   // Screen size detection and user view preference ('auto' | 'mobile' | 'desktop')
   const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => isMobileViewport());
   const [isPortraitScreen, setIsPortraitScreen] = useState<boolean>(() => (
@@ -138,6 +150,8 @@ export function useAppPreferences() {
     setAdminSimplifiedView,
     isGuideTourEnabled,
     handleToggleGuideTour,
+    isMascotHidden,
+    handleToggleMascotHidden,
     isMobileScreen,
     isPortraitScreen,
     deviceViewPreference,

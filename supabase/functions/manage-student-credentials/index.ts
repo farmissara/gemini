@@ -11,6 +11,7 @@ const BULK_CREATE_CONCURRENCY = 5;
 interface StudentRecord {
   id: string;
   student_id_number: string;
+  date_of_birth?: string | null;
   first_name_th: string | null;
   last_name_th: string | null;
   first_name_en: string | null;
@@ -31,13 +32,36 @@ function respond(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-function getStudentInitialPassword(studentIdNumber: string): string {
-  return (studentIdNumber || '').trim();
+function formatThaiBirthdatePassword(dateOfBirth?: string | null): string {
+  const match = (dateOfBirth || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return '';
+  const yearNum = Number(match[1]);
+  if (!Number.isFinite(yearNum) || yearNum < 1900) return '';
+  const beYear = yearNum < 2400 ? yearNum + 543 : yearNum;
+  return `${match[3]}${match[2]}${beYear}`;
 }
 
-function formatStudentPasswordPolicyError(initialPassword: string, rawMessage: string): string {
+function getStudentInitialPassword(
+  studentIdNumber: string,
+  options?: { defaultPasswordType?: string | null; shortIdPasswordPrefix?: string | null; dateOfBirth?: string | null }
+): string {
+  const rawId = (studentIdNumber || '').trim();
+  if (!rawId) return '';
+  if (options?.defaultPasswordType === 'birthdate') {
+    const dobPassword = formatThaiBirthdatePassword(options.dateOfBirth);
+    if (dobPassword.length >= 6) return dobPassword;
+  }
+  const prefix = (options?.shortIdPasswordPrefix || '').trim();
+  if (rawId.length < 6 && prefix) {
+    return `${prefix}${rawId}`;
+  }
+  return rawId;
+}
+
+function formatStudentPasswordPolicyError(initialPassword: string, rawMessage: string, studentIdNumber?: string): string {
   if (/at least \d+ characters|weak_password|password.*short|minimum length/i.test(rawMessage)) {
-    return `รหัสนักเรียน "${initialPassword}" มีความยาว ${initialPassword.length} ตัวอักษร ซึ่งสั้นกว่าเกณฑ์ขั้นต่ำของระบบยืนยันตัวตน (6 ตัวอักษร) กรุณาปรับรหัสนักเรียนให้ยาวอย่างน้อย 6 ตัวอักษร หรือปรับ Password minimum length ใน Supabase Auth`;
+    const displayId = (studentIdNumber || initialPassword).trim();
+    return `รหัสนักเรียน "${displayId}" (${displayId.length} ตัวอักษร) ใช้เป็นชื่อผู้ใช้ได้ตามปกติ แต่ระบบยืนยันตัวตน (Supabase Auth) กำหนดความยาวรหัสผ่านขั้นต่ำไว้ที่ 6 ตัวอักษร รหัสผ่านเริ่มต้น "${initialPassword}" จึงไม่ผ่านเกณฑ์ — กรุณาตั้ง "คำนำหน้ารหัสผ่านเริ่มต้น" ในแท็บตั้งค่าล็อกอินนักเรียน (เช่น 00 จะได้รหัส 00${displayId}) หรือใช้วันเดือนปีเกิดเป็นรหัสเริ่มต้น หรือปรับ Minimum password length ใน Supabase Auth`;
   }
   return rawMessage;
 }
@@ -52,9 +76,15 @@ async function getSyntheticStudentEmail(schoolId: string, studentId: string): Pr
 async function createStudentAccount(
   serviceClient: ReturnType<typeof createClient>,
   schoolId: string,
-  student: StudentRecord
+  student: StudentRecord,
+  passwordConfig?: { defaultPasswordType?: string | null; shortIdPasswordPrefix?: string | null }
 ): Promise<{ credential?: StudentCredential; reason?: string }> {
-  const temporaryPassword = getStudentInitialPassword(student.student_id_number);
+  const cleanStudentId = (student.student_id_number || '').trim();
+  const temporaryPassword = getStudentInitialPassword(cleanStudentId, {
+    defaultPasswordType: passwordConfig?.defaultPasswordType,
+    shortIdPasswordPrefix: passwordConfig?.shortIdPasswordPrefix,
+    dateOfBirth: student.date_of_birth,
+  });
   if (!temporaryPassword) {
     return { reason: 'ไม่มีรหัสนักเรียนในทะเบียน' };
   }
@@ -69,7 +99,8 @@ async function createStudentAccount(
   if (createUserError || !createdAuthUser.user) {
     const detail = formatStudentPasswordPolicyError(
       temporaryPassword,
-      createUserError?.message || 'Missing user response.'
+      createUserError?.message || 'Missing user response.',
+      cleanStudentId
     );
     console.error(`Could not create student auth user ${student.id}:`, detail);
     return { reason: detail };
@@ -98,7 +129,7 @@ async function createStudentAccount(
 
   return {
     credential: {
-      studentIdNumber: temporaryPassword,
+      studentIdNumber: cleanStudentId,
       temporaryPassword,
       expiresAt,
     },
@@ -178,23 +209,51 @@ Deno.serve(async (request) => {
     return respond(403, { error: 'Only an active school administrator can manage student credentials.' });
   }
 
-  const { data: school, error: schoolError } = await serviceClient
+  let school: {
+    id: string;
+    student_login_identifier_type?: string | null;
+    student_default_password_type?: string | null;
+    student_short_id_password_prefix?: string | null;
+  } | null = null;
+
+  const schoolPrimary = await serviceClient
     .from('schools')
-    .select('id, student_login_identifier_type')
+    .select('id, student_login_identifier_type, student_default_password_type, student_short_id_password_prefix')
     .eq('id', schoolId)
     .eq('status', 'active')
     .maybeSingle();
-  if (schoolError) {
-    console.error('Could not verify student credential school:', schoolError.message);
+
+  if (schoolPrimary.error && /student_short_id_password_prefix|student_default_password_type|schema cache|42703/i.test(schoolPrimary.error.message)) {
+    const schoolFallback = await serviceClient
+      .from('schools')
+      .select('id, student_login_identifier_type')
+      .eq('id', schoolId)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (schoolFallback.error) {
+      console.error('Could not verify student credential school:', schoolFallback.error.message);
+      return respond(500, { error: 'Could not verify the school.' });
+    }
+    school = schoolFallback.data;
+  } else if (schoolPrimary.error) {
+    console.error('Could not verify student credential school:', schoolPrimary.error.message);
     return respond(500, { error: 'Could not verify the school.' });
+  } else {
+    school = schoolPrimary.data;
   }
+
   if (!school) return respond(404, { error: 'The school is not active.' });
   if (school.student_login_identifier_type === 'email_only') {
     return respond(409, { error: 'This school is configured for email-only student sign-in. Change the login setting before creating student-ID accounts.' });
   }
 
+  const schoolPasswordConfig = {
+    defaultPasswordType: school.student_default_password_type || 'student_id',
+    shortIdPasswordPrefix: school.student_short_id_password_prefix || '',
+  };
+
   if (operation === 'create_all_missing') {
-    const studentColumns = 'id, student_id_number, first_name_th, last_name_th, first_name_en, last_name_en, avatar_url';
+    const studentColumns = 'id, student_id_number, date_of_birth, first_name_th, last_name_th, first_name_en, last_name_en, avatar_url';
     const students: StudentRecord[] = [];
     for (let offset = 0; ; offset += 500) {
       const { data, error } = await serviceClient
@@ -285,7 +344,7 @@ Deno.serve(async (request) => {
       const batch = eligibleStudents.slice(offset, offset + BULK_CREATE_CONCURRENCY);
       const results = await Promise.all(batch.map(async (student) => {
         try {
-          const result = await createStudentAccount(serviceClient, schoolId, student);
+          const result = await createStudentAccount(serviceClient, schoolId, student, schoolPasswordConfig);
           return result.credential
             ? { credential: result.credential }
             : {
@@ -314,7 +373,7 @@ Deno.serve(async (request) => {
 
   const { data: student, error: studentError } = await serviceClient
     .from('students')
-    .select('id, school_id, student_id_number, first_name_th, last_name_th, first_name_en, last_name_en, avatar_url')
+    .select('id, school_id, student_id_number, date_of_birth, first_name_th, last_name_th, first_name_en, last_name_en, avatar_url')
     .eq('id', studentId)
     .eq('school_id', schoolId)
     .maybeSingle();
@@ -357,7 +416,7 @@ Deno.serve(async (request) => {
     if (!getStudentInitialPassword(student.student_id_number)) {
       return respond(400, { error: 'นักเรียนคนนี้ยังไม่มีรหัสนักเรียนในทะเบียน จึงไม่สามารถสร้างบัญชีได้' });
     }
-    const result = await createStudentAccount(serviceClient, schoolId, student as StudentRecord);
+    const result = await createStudentAccount(serviceClient, schoolId, student as StudentRecord, schoolPasswordConfig);
     if (!result.credential) return respond(500, { error: result.reason || 'Could not finish creating the student account.' });
     return respond(200, result.credential);
   }
@@ -376,7 +435,11 @@ Deno.serve(async (request) => {
   if (!profile) return respond(404, { error: 'The student does not have a linked login account.' });
   if (profile.status !== 'active') return respond(409, { error: 'Approve the student account before resetting its password.' });
 
-  const temporaryPassword = getStudentInitialPassword(student.student_id_number);
+  const cleanStudentId = (student.student_id_number || '').trim();
+  const temporaryPassword = getStudentInitialPassword(cleanStudentId, {
+    ...schoolPasswordConfig,
+    dateOfBirth: (student as StudentRecord).date_of_birth,
+  });
   if (!temporaryPassword) {
     return respond(400, { error: 'นักเรียนคนนี้ยังไม่มีรหัสนักเรียนในทะเบียน จึงไม่สามารถรีเซ็ตรหัสผ่านได้' });
   }
@@ -410,13 +473,13 @@ Deno.serve(async (request) => {
       .eq('id', profile.id)
       .eq('school_id', schoolId);
     if (rollbackError) console.error('Could not restore student profile after failed password reset:', rollbackError.message);
-    const detail = formatStudentPasswordPolicyError(temporaryPassword, passwordUpdateError.message);
+    const detail = formatStudentPasswordPolicyError(temporaryPassword, passwordUpdateError.message, cleanStudentId);
     console.error('Could not reset student password:', detail);
     return respond(500, { error: detail });
   }
 
   return respond(200, {
-    studentIdNumber: temporaryPassword,
+    studentIdNumber: cleanStudentId,
     temporaryPassword,
     expiresAt,
   });

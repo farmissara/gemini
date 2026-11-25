@@ -5,6 +5,7 @@ import {
   BookOpen,
   Calendar,
   Compass,
+  EyeOff,
   FileCheck2,
   GraduationCap,
   LayoutDashboard,
@@ -381,6 +382,7 @@ interface FloatingMascotNavigatorProps {
   onEndTour: () => void;
   onNavigateModule: (moduleId: string) => void;
   onOpenFullGuide?: () => void;
+  onHideMascot?: () => void;
 }
 
 export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = ({
@@ -396,6 +398,7 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
   onEndTour,
   onNavigateModule,
   onOpenFullGuide,
+  onHideMascot,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showBubble, setShowBubble] = useState(true);
@@ -550,7 +553,7 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
               </div>
             </div>
 
-            {/* Footer Guide Toggle */}
+            {/* Footer Guide Toggle & Hide Mascot */}
             <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
               <button
                 type="button"
@@ -568,10 +571,25 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
                     : `Guide: ${isGuideEnabled ? 'ON' : 'OFF'}`}
                 </span>
               </button>
-              <span className="inline-flex items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                <span>⌘K</span>
-              </span>
+              <div className="flex items-center gap-2">
+                {onHideMascot && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onHideMascot();
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition"
+                  >
+                    <EyeOff className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ซ่อนการ์ตูน' : 'Hide mascot'}</span>
+                  </button>
+                )}
+                <span className="inline-flex items-center gap-1 text-[10px] text-[var(--color-text-muted)]">
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>⌘K</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -603,21 +621,38 @@ export const FloatingMascotNavigator: React.FC<FloatingMascotNavigatorProps> = (
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          aria-expanded={isOpen}
-          aria-label={lang === 'th' ? 'เปิดชาโคและหมี ตัวการ์ตูนนำทาง' : 'Open Chaco and Mee navigation guide'}
-          className="group relative h-14 px-3 rounded-full border-2 border-[var(--color-primary)] bg-amber-50 dark:bg-slate-100 shadow-xl hover:scale-105 active:scale-95 transition flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/30"
-        >
-          <MascotAvatar mood={isOpen ? 'pointing' : 'happy'} size={42} character={activeBuddy} />
-          {hasTourForPage && !isOpen && (
-            <span
-              className="absolute -top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[var(--color-card)]"
-              aria-hidden="true"
-            />
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            aria-expanded={isOpen}
+            aria-label={lang === 'th' ? 'เปิดชาโคและหมี ตัวการ์ตูนนำทาง' : 'Open Chaco and Mee navigation guide'}
+            className="group relative h-14 px-3 rounded-full border-2 border-[var(--color-primary)] bg-amber-50 dark:bg-slate-100 shadow-xl hover:scale-105 active:scale-95 transition flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/30"
+          >
+            <MascotAvatar mood={isOpen ? 'pointing' : 'happy'} size={42} character={activeBuddy} />
+            {hasTourForPage && !isOpen && !onHideMascot && (
+              <span
+                className="absolute -top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[var(--color-card)]"
+                aria-hidden="true"
+              />
+            )}
+          </button>
+          {onHideMascot && !isOpen && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+                onHideMascot();
+              }}
+              title={lang === 'th' ? 'ปิด/ซ่อนการ์ตูนนำทาง (เปิดคืนได้ที่เมนูมุมขวาบน)' : 'Hide mascot guide'}
+              aria-label={lang === 'th' ? 'ปิดหรือซ่อนการ์ตูนนำทาง' : 'Hide mascot guide'}
+              className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-rose-600 hover:border-rose-400 shadow-md flex items-center justify-center transition cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           )}
-        </button>
+        </div>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   focusMode: 'baanpakkru_focus_mode',
   adminSimplifiedView: 'baanpakkru_admin_simplified_view',
   guideTourEnabled: 'eduverse_guide_tour_enabled',
+  mascotHidden: 'eduverse_mascot_hidden',
   firedScheduleAlertsPrefix: 'eduverse_fired_schedule_alerts_v1_',
   pendingAvatarsPrefix: 'eduverse_pending_avatars_v1_',
   schoolCustomSettingsPrefix: 'eduverse_school_custom_settings_',

@@ -207,8 +207,12 @@ export async function saveTimetableSlotsToDb(schoolId: string, slots: TimetableS
   }));
 
   if (rows.length > 0) {
-    const { error } = await client.from('timetable_slots').upsert(rows);
-    if (error) throw new Error(`Could not save timetable slots to Supabase: ${error.message}`);
+    const UPSERT_BATCH_SIZE = 500;
+    for (let offset = 0; offset < rows.length; offset += UPSERT_BATCH_SIZE) {
+      const batch = rows.slice(offset, offset + UPSERT_BATCH_SIZE);
+      const { error } = await client.from('timetable_slots').upsert(batch);
+      if (error) throw new Error(`Could not save timetable slots to Supabase: ${error.message}`);
+    }
   }
   if (typeof window !== 'undefined') {
     try {

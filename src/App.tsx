@@ -486,7 +486,8 @@ export const App: React.FC = () => {
       lang={prefs.lang}
       isGuideEnabled={prefs.isGuideTourEnabled}
       onSetGuideEnabled={(next) => prefs.handleToggleGuideTour(next)}
-      hideFloatingMascot={nav.useImmersiveGameLayout}
+      hideFloatingMascot={nav.useImmersiveGameLayout || prefs.isMascotHidden}
+      onHideMascot={() => prefs.handleToggleMascotHidden(true)}
       onOpenFullGuide={
         data.currentRole !== 'super_admin' || data.isSuperAdminSchoolView
           ? () => {
@@ -571,6 +572,8 @@ export const App: React.FC = () => {
             onOpenImportExport={(['super_admin', 'admin', 'teacher'].includes(data.currentRole) && (data.currentRole !== 'super_admin' || data.isSuperAdminSchoolView)) ? () => setShowImportExportModal(true) : undefined}
             onOpenOnboardingTutor={() => setShowOnboardingTutorModal(true)}
             onSwitchToMobileMode={() => prefs.setDeviceViewPreference('mobile')}
+            isMascotHidden={prefs.isMascotHidden}
+            onToggleMascotHidden={() => prefs.handleToggleMascotHidden()}
             coordinationUnreadCount={scope.coordinationUnreadCount}
             onOpenCoordinationDesk={['admin', 'super_admin'].includes(data.currentRole) ? () => nav.navigateToAppTab('admin_superadmin_desk') : undefined}
             onOpenExamPaymentSettings={data.currentRole === 'super_admin' ? nav.handleOpenExamPaymentSettings : undefined}

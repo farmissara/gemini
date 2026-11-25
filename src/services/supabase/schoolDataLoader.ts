@@ -50,7 +50,7 @@ export interface SchoolData {
 
 const ATTENDANCE_SELECT =
   'id, school_id, student_id, user_name, record_type, date, time, status, checkin_method, photo_url, remarks, line_notification_sent';
-const ATTENDANCE_PAGE_SIZE = 1000;
+const SUPABASE_PAGE_SIZE = 1000;
 const RECENT_ATTENDANCE_DAYS = 30;
 
 function getRecentAttendanceRange(): { start: string; end: string } {
@@ -58,6 +58,23 @@ function getRecentAttendanceRange(): { start: string; end: string } {
   const startDate = new Date(endDate);
   startDate.setDate(startDate.getDate() - (RECENT_ATTENDANCE_DAYS - 1));
   return { start: getLocalDateString(startDate), end: getLocalDateString(endDate) };
+}
+
+async function fetchRemainingPages<T>(
+  initialRows: T[],
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  errorContext: string,
+): Promise<T[]> {
+  const rows = [...initialRows];
+  if (rows.length < SUPABASE_PAGE_SIZE) return rows;
+  for (let offset = SUPABASE_PAGE_SIZE; ; offset += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await fetchPage(offset, offset + SUPABASE_PAGE_SIZE - 1);
+    if (error) throw new Error(`${errorContext}: ${error.message}`);
+    const page = (data || []) as T[];
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+  }
+  return rows;
 }
 
 export async function loadAttendanceRangeFromSupabase(
@@ -69,14 +86,15 @@ export async function loadAttendanceRangeFromSupabase(
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase ยังเชื่อมต่อไม่ได้');
   const rows: AttendanceDbRow[] = [];
-  for (let offset = 0; ; offset += ATTENDANCE_PAGE_SIZE) {
+  for (let offset = 0; ; offset += SUPABASE_PAGE_SIZE) {
     let query = client
       .from('attendance')
       .select(ATTENDANCE_SELECT)
       .eq('school_id', schoolId)
       .order('date', { ascending: false })
       .order('time', { ascending: false })
-      .range(offset, offset + ATTENDANCE_PAGE_SIZE - 1);
+      .order('id', { ascending: true })
+      .range(offset, offset + SUPABASE_PAGE_SIZE - 1);
     if (startDate) query = query.gte('date', startDate);
     if (endDate) query = query.lte('date', endDate);
     if (studentId) query = query.eq('student_id', studentId);
@@ -84,7 +102,7 @@ export async function loadAttendanceRangeFromSupabase(
     if (error) throw new Error(`Could not load attendance history: ${error.message}`);
     const page = (data || []) as AttendanceDbRow[];
     rows.push(...page);
-    if (page.length < ATTENDANCE_PAGE_SIZE) break;
+    if (page.length < SUPABASE_PAGE_SIZE) break;
   }
   return rows.map(mapAttendanceDbRow);
 }
@@ -118,20 +136,39 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     throw new Error('Supabase ยังเชื่อมต่อไม่ได้ จึงกำลังลองเปิดข้อมูลสำรองในเครื่อง');
   }
 
+  const STUDENTS_SELECT =
+    'id, school_id, student_id_number, national_id, first_name_en, last_name_en, first_name_th, last_name_th, gender, date_of_birth, grade_level, room, status, avatar_url, gpa, guardian_name, guardian_relation, guardian_phone, guardian_email, line_user_id, line_linked, line_notify_enabled, enrolled_date';
+  const COURSES_SELECT =
+    'id, school_id, code, title_en, title_th, category, course_type, learning_area, credits, weekly_hours, total_hours, min_attendance_hours, teacher_name, teacher_email, department, schedule, room, academic_year, semester, enrolled_student_ids, description, cover_image';
+  const GRADES_SELECT =
+    'id, school_id, student_id, course_id, academic_year, semester, midterm_score, final_score, assignment_score, quiz_score, total_score, letter_grade, grade_point';
+  const INVOICES_SELECT =
+    'id, school_id, invoice_number, student_id, semester, academic_year, issue_date, due_date, total_amount, status, items, payment_method, paid_at, receipt_number, slip_image_url, slip_submitted_at, slip_status, slip_reject_reason, slip_amount, slip_reference_note';
+  const ANNOUNCEMENTS_SELECT =
+    'id, school_id, title, content, category, target_audience, published_at, author, author_role, pinned, line_broadcast_sent, resend_email_sent';
+  const TEACHERS_SELECT =
+    'id, school_id, teacher_id_number, full_name_th, full_name_en, gender, email, phone, avatar_url, academic_degree, major, minor, academic_standing, position_title, reports_to_teacher_id, department, teacher_license_no, teaching_subjects, homeroom_classes, teaching_grades, is_school_admin, line_user_id, line_linked, other_skills, certifications, teaching_experience_years, pa_score, self_development_plan, pa_portfolio';
+
   const attendanceLoadedRange = getRecentAttendanceRange();
   const schoolDataQueries = [
     client
       .from('students')
-      .select('id, school_id, student_id_number, national_id, first_name_en, last_name_en, first_name_th, last_name_th, gender, date_of_birth, grade_level, room, status, avatar_url, gpa, guardian_name, guardian_relation, guardian_phone, guardian_email, line_user_id, line_linked, line_notify_enabled, enrolled_date')
-      .eq('school_id', schoolId),
+      .select(STUDENTS_SELECT)
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('courses')
-      .select('id, school_id, code, title_en, title_th, category, course_type, learning_area, credits, weekly_hours, total_hours, min_attendance_hours, teacher_name, teacher_email, department, schedule, room, academic_year, semester, enrolled_student_ids, description, cover_image')
-      .eq('school_id', schoolId),
+      .select(COURSES_SELECT)
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('grades')
-      .select('id, school_id, student_id, course_id, academic_year, semester, midterm_score, final_score, assignment_score, quiz_score, total_score, letter_grade, grade_point')
-      .eq('school_id', schoolId),
+      .select(GRADES_SELECT)
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('attendance')
       .select(ATTENDANCE_SELECT)
@@ -140,15 +177,20 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
       .lte('date', attendanceLoadedRange.end)
       .order('date', { ascending: false })
       .order('time', { ascending: false })
-      .range(0, ATTENDANCE_PAGE_SIZE - 1),
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('invoices')
-      .select('id, school_id, invoice_number, student_id, semester, academic_year, issue_date, due_date, total_amount, status, items, payment_method, paid_at, receipt_number, slip_image_url, slip_submitted_at, slip_status, slip_reject_reason, slip_amount, slip_reference_note')
-      .eq('school_id', schoolId),
+      .select(INVOICES_SELECT)
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('announcements')
-      .select('id, school_id, title, content, category, target_audience, published_at, author, author_role, pinned, line_broadcast_sent, resend_email_sent')
-      .eq('school_id', schoolId),
+      .select(ANNOUNCEMENTS_SELECT)
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
   ] as const;
   const results = await Promise.all(schoolDataQueries);
   const failedQuery = results.find((result) => result.error);
@@ -175,36 +217,112 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);
   }
 
-  const initialAttendanceResult = results[3];
-  const attendanceRows = [...(initialAttendanceResult.data || [])] as AttendanceDbRow[];
-  if (attendanceRows.length === ATTENDANCE_PAGE_SIZE) {
-    for (let offset = ATTENDANCE_PAGE_SIZE; ; offset += ATTENDANCE_PAGE_SIZE) {
-      const { data, error } = await client
-        .from('attendance')
-        .select(ATTENDANCE_SELECT)
-        .eq('school_id', schoolId)
-        .gte('date', attendanceLoadedRange.start)
-        .lte('date', attendanceLoadedRange.end)
-        .order('date', { ascending: false })
-        .order('time', { ascending: false })
-        .range(offset, offset + ATTENDANCE_PAGE_SIZE - 1);
-      if (error) throw new Error(`Could not load recent attendance: ${error.message}`);
-      const page = (data || []) as AttendanceDbRow[];
-      attendanceRows.push(...page);
-      if (page.length < ATTENDANCE_PAGE_SIZE) break;
-    }
-  }
+  const [studentResult, courseResult, gradeResult, initialAttendanceResult, invoiceResult, announcementResult] = results;
+  const [
+    studentRows,
+    courseRows,
+    gradeRows,
+    attendanceRows,
+    invoiceRows,
+    announcementRows,
+  ] = await Promise.all([
+    fetchRemainingPages(
+      studentResult.data || [],
+      (from, to) =>
+        client
+          .from('students')
+          .select(STUDENTS_SELECT)
+          .eq('school_id', schoolId)
+          .order('id', { ascending: true })
+          .range(from, to),
+      'Could not load students',
+    ),
+    fetchRemainingPages(
+      courseResult.data || [],
+      (from, to) =>
+        client
+          .from('courses')
+          .select(COURSES_SELECT)
+          .eq('school_id', schoolId)
+          .order('id', { ascending: true })
+          .range(from, to),
+      'Could not load courses',
+    ),
+    fetchRemainingPages(
+      gradeResult.data || [],
+      (from, to) =>
+        client
+          .from('grades')
+          .select(GRADES_SELECT)
+          .eq('school_id', schoolId)
+          .order('id', { ascending: true })
+          .range(from, to),
+      'Could not load grades',
+    ),
+    fetchRemainingPages(
+      (initialAttendanceResult.data || []) as AttendanceDbRow[],
+      (from, to) =>
+        client
+          .from('attendance')
+          .select(ATTENDANCE_SELECT)
+          .eq('school_id', schoolId)
+          .gte('date', attendanceLoadedRange.start)
+          .lte('date', attendanceLoadedRange.end)
+          .order('date', { ascending: false })
+          .order('time', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to),
+      'Could not load recent attendance',
+    ),
+    fetchRemainingPages(
+      invoiceResult.data || [],
+      (from, to) =>
+        client
+          .from('invoices')
+          .select(INVOICES_SELECT)
+          .eq('school_id', schoolId)
+          .order('id', { ascending: true })
+          .range(from, to),
+      'Could not load invoices',
+    ),
+    fetchRemainingPages(
+      announcementResult.data || [],
+      (from, to) =>
+        client
+          .from('announcements')
+          .select(ANNOUNCEMENTS_SELECT)
+          .eq('school_id', schoolId)
+          .order('id', { ascending: true })
+          .range(from, to),
+      'Could not load announcements',
+    ),
+  ]);
 
   const teacherResult = await client
     .from('teachers')
-    .select('id, school_id, teacher_id_number, full_name_th, full_name_en, gender, email, phone, avatar_url, academic_degree, major, minor, academic_standing, position_title, reports_to_teacher_id, department, teacher_license_no, teaching_subjects, homeroom_classes, teaching_grades, is_school_admin, line_user_id, line_linked, other_skills, certifications, teaching_experience_years, pa_score, self_development_plan, pa_portfolio')
-    .eq('school_id', schoolId);
+    .select(TEACHERS_SELECT)
+    .eq('school_id', schoolId)
+    .order('id', { ascending: true })
+    .range(0, SUPABASE_PAGE_SIZE - 1);
   if (teacherResult.error) {
     if (!isMissingTableError(teacherResult.error)) {
       throw new Error(`Could not load teachers: ${teacherResult.error.message}`);
     }
     console.warn('Teachers table is not installed yet; loading the rest of the school data.');
   }
+  const teacherRows = teacherResult.error
+    ? []
+    : await fetchRemainingPages(
+        teacherResult.data || [],
+        (from, to) =>
+          client
+            .from('teachers')
+            .select(TEACHERS_SELECT)
+            .eq('school_id', schoolId)
+            .order('id', { ascending: true })
+            .range(from, to),
+        'Could not load teachers',
+      );
   const schoolPeriodsResult = await client
     .from('school_period_times')
     .select('period_number, start_time, end_time, is_break')
@@ -265,7 +383,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     })),
     schoolId,
   );
-  const teachers: Teacher[] = (teacherResult.data || []).map((row) => ({
+  const teachers: Teacher[] = teacherRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     teacherIdNumber: row.teacher_id_number || '',
@@ -297,8 +415,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     paPortfolio: Array.isArray(row.pa_portfolio) ? row.pa_portfolio : [],
   }));
 
-  const [studentResult, courseResult, gradeResult, , invoiceResult, announcementResult] = results;
-  const students: Student[] = (studentResult.data || []).map((row) => ({
+  const students: Student[] = studentRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     studentIdNumber: row.student_id_number,
@@ -323,7 +440,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     lineNotifyEnabled: Boolean(row.line_notify_enabled),
     enrolledDate: row.enrolled_date || '',
   }));
-  const courses: Course[] = (courseResult.data || []).map((row) => ({
+  const courses: Course[] = courseRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     code: row.code,
@@ -354,7 +471,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     description: row.description || '',
     coverImage: row.cover_image || undefined,
   }));
-  const grades: GradeRecord[] = (gradeResult.data || []).map((row) => ({
+  const grades: GradeRecord[] = gradeRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     studentId: row.student_id,
@@ -370,7 +487,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     gradePoint: Number(row.grade_point || 0),
   }));
   const attendance: AttendanceRecord[] = attendanceRows.map(mapAttendanceDbRow);
-  const invoices: TuitionInvoice[] = (invoiceResult.data || []).map((row) => ({
+  const invoices: TuitionInvoice[] = invoiceRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     invoiceNumber: row.invoice_number,
@@ -392,7 +509,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     slipAmount: row.slip_amount == null ? undefined : Number(row.slip_amount),
     slipReferenceNote: row.slip_reference_note || undefined,
   }));
-  const announcements: Announcement[] = (announcementResult.data || []).map((row) => ({
+  const announcements: Announcement[] = announcementRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     title: row.title,
@@ -407,21 +524,38 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     resendEmailSent: Boolean(row.resend_email_sent),
   }));
 
+  const TIMETABLE_SELECT =
+    'id, school_id, academic_year, semester, day_of_week, period_number, start_time, end_time, course_id, course_code, course_title_th, course_title_en, teacher_name, room, classroom, color_tag, credits, total_semester_hours';
+  const LEAVE_REQUESTS_SELECT =
+    'id, school_id, user_id, user_name, user_role, grade_level_or_department, leave_scope, period_number, course_id, course_code, course_title, substitute_teacher_id, substitute_teacher_name, cc_emails_or_roles, leave_type, start_date, end_date, reason, attachment_url, status, approved_by, approval_remarks, created_at, updated_at';
+  const PERIOD_ATTENDANCE_SELECT =
+    'id, school_id, course_id, course_code, period_number, time_slot, date, student_id, status, record_type, recorded_by, check_method, notes';
+  const ASSIGNMENTS_SELECT =
+    'id, school_id, course_id, course_code, title_th, title_en, description, due_date, points, status';
+  const SUBMISSIONS_SELECT =
+    'id, school_id, assignment_id, assignment_title, course_code, course_title_th, student_id, student_name, student_room, due_date, submitted_at, status, file_attachment, text_submission, score, max_score, teacher_feedback, graded_at, graded_by';
+
   const [timetableResult, leaveResult, periodAttResult] = await Promise.all([
     client
       .from('timetable_slots')
-      .select('id, school_id, academic_year, semester, day_of_week, period_number, start_time, end_time, course_id, course_code, course_title_th, course_title_en, teacher_name, room, classroom, color_tag, credits, total_semester_hours')
-      .eq('school_id', schoolId),
+      .select(TIMETABLE_SELECT)
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('leave_requests')
-      .select('id, school_id, user_id, user_name, user_role, grade_level_or_department, leave_scope, period_number, course_id, course_code, course_title, substitute_teacher_id, substitute_teacher_name, cc_emails_or_roles, leave_type, start_date, end_date, reason, attachment_url, status, approved_by, approval_remarks, created_at, updated_at')
+      .select(LEAVE_REQUESTS_SELECT)
       .eq('school_id', schoolId)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('period_attendance')
-      .select('id, school_id, course_id, course_code, period_number, time_slot, date, student_id, status, record_type, recorded_by, check_method, notes')
+      .select(PERIOD_ATTENDANCE_SELECT)
       .eq('school_id', schoolId)
-      .order('date', { ascending: false }),
+      .order('date', { ascending: false })
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
   ]);
   if (timetableResult.error) {
     if (!isMissingTableError(timetableResult.error)) {
@@ -438,14 +572,18 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
   const [assignmentResult, submissionResult] = await Promise.all([
     client
       .from('school_assignments')
-      .select('id, school_id, course_id, course_code, title_th, title_en, description, due_date, points, status')
+      .select(ASSIGNMENTS_SELECT)
       .eq('school_id', schoolId)
-      .order('due_date'),
+      .order('due_date')
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
     client
       .from('homework_submissions')
-      .select('id, school_id, assignment_id, assignment_title, course_code, course_title_th, student_id, student_name, student_room, due_date, submitted_at, status, file_attachment, text_submission, score, max_score, teacher_feedback, graded_at, graded_by')
+      .select(SUBMISSIONS_SELECT)
       .eq('school_id', schoolId)
-      .order('submitted_at', { ascending: false }),
+      .order('submitted_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(0, SUPABASE_PAGE_SIZE - 1),
   ]);
   if (assignmentResult.error && !isMissingTableError(assignmentResult.error)) {
     throw new Error(`Could not load assignments: ${assignmentResult.error.message}`);
@@ -456,7 +594,80 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
   if (assignmentResult.error || submissionResult.error) {
     console.warn('Homework tables are not installed yet; assignments and submissions are unavailable until the migration is applied.');
   }
-  const timetableSlots: TimetableSlot[] = (timetableResult.data || []).map((row) => {
+
+  const [timetableRows, leaveRows, periodAttRows, assignmentRows, submissionRows] = await Promise.all([
+    timetableResult.error
+      ? []
+      : fetchRemainingPages(
+          timetableResult.data || [],
+          (from, to) =>
+            client
+              .from('timetable_slots')
+              .select(TIMETABLE_SELECT)
+              .eq('school_id', schoolId)
+              .order('id', { ascending: true })
+              .range(from, to),
+          'Could not load timetable slots',
+        ),
+    leaveResult.error
+      ? []
+      : fetchRemainingPages(
+          leaveResult.data || [],
+          (from, to) =>
+            client
+              .from('leave_requests')
+              .select(LEAVE_REQUESTS_SELECT)
+              .eq('school_id', schoolId)
+              .order('created_at', { ascending: false })
+              .order('id', { ascending: true })
+              .range(from, to),
+          'Could not load leave requests',
+        ),
+    periodAttResult.error
+      ? []
+      : fetchRemainingPages(
+          periodAttResult.data || [],
+          (from, to) =>
+            client
+              .from('period_attendance')
+              .select(PERIOD_ATTENDANCE_SELECT)
+              .eq('school_id', schoolId)
+              .order('date', { ascending: false })
+              .order('id', { ascending: true })
+              .range(from, to),
+          'Could not load period attendance',
+        ),
+    assignmentResult.error
+      ? []
+      : fetchRemainingPages(
+          assignmentResult.data || [],
+          (from, to) =>
+            client
+              .from('school_assignments')
+              .select(ASSIGNMENTS_SELECT)
+              .eq('school_id', schoolId)
+              .order('due_date')
+              .order('id', { ascending: true })
+              .range(from, to),
+          'Could not load assignments',
+        ),
+    submissionResult.error
+      ? []
+      : fetchRemainingPages(
+          submissionResult.data || [],
+          (from, to) =>
+            client
+              .from('homework_submissions')
+              .select(SUBMISSIONS_SELECT)
+              .eq('school_id', schoolId)
+              .order('submitted_at', { ascending: false })
+              .order('id', { ascending: true })
+              .range(from, to),
+          'Could not load homework submissions',
+        ),
+  ]);
+
+  const timetableSlots: TimetableSlot[] = timetableRows.map((row) => {
     const parsedTeachers = parseSlotTeachersFromRaw(row.teacher_name || '');
     return {
       id: row.id,
@@ -480,7 +691,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
       totalSemesterHours: Number(row.total_semester_hours || 60),
     };
   });
-  const leaveRequests: LeaveRequest[] = (leaveResult.data || []).map((row) => ({
+  const leaveRequests: LeaveRequest[] = leaveRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     userId: row.user_id,
@@ -506,7 +717,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || undefined,
   }));
-  const periodAttendance: PeriodAttendanceRecord[] = (periodAttResult.data || []).map((row) => ({
+  const periodAttendance: PeriodAttendanceRecord[] = periodAttRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     courseId: row.course_id,
@@ -525,7 +736,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
         : 'teacher_proxy',
     remarks: row.notes || undefined,
   }));
-  const homeworkSubmissions: HomeworkSubmission[] = (submissionResult.data || []).map((row) => {
+  const homeworkSubmissions: HomeworkSubmission[] = submissionRows.map((row) => {
     const rawAttachment: unknown = row.file_attachment;
     let fileAttachment: HomeworkSubmission['fileAttachment'];
     if (rawAttachment && typeof rawAttachment === 'object' && !Array.isArray(rawAttachment)) {
@@ -571,7 +782,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     studentIds.add(submission.studentId);
     submittedStudentIdsByAssignment.set(submission.assignmentId, studentIds);
   });
-  const assignments: Assignment[] = (assignmentResult.data || []).map((row) => ({
+  const assignments: Assignment[] = assignmentRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
     courseId: row.course_id,

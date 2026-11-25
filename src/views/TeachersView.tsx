@@ -39,6 +39,7 @@ import {
   Check,
   Link2,
   AlertTriangle,
+  Users,
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
@@ -49,6 +50,7 @@ import { getTeacherDuplicateReasons } from '../lib/duplicateRecords';
 import { DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { getModuleTone } from '../lib/moduleTheme';
+import { dedupeTimetableRooms, isSameTimetableRoom } from '../lib/timetableRoomMatch';
 import { loadStaffInviteRpcSql, saveTeachersToDb } from '../lib/supabase';
 import {
   approveStaffParentAccountInSupabase,
@@ -113,6 +115,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [positionFilter, setPositionFilter] = useState('all');
+  const [homeroomFilter, setHomeroomFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPositionConfigPanel, setShowPositionConfigPanel] = useState(false);
   const [showPositionConfigModal, setShowPositionConfigModal] = useState(false);
@@ -234,6 +237,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       setPositionFilter(newTitle);
     }
   };
+  const homeroomClassOptions = dedupeTimetableRooms([
+    teachers.flatMap((t) => t.homeroomClasses || []),
+  ]).sort((a, b) => a.localeCompare(b, 'th'));
+
   const filteredTeachers = teachers.filter((t) => {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
@@ -245,12 +252,23 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       (t.major || '').toLowerCase().includes(q) ||
       (t.minor && t.minor.toLowerCase().includes(q)) ||
       (t.department || '').toLowerCase().includes(q) ||
+      (t.homeroomClasses || []).some((cls) => (cls || '').toLowerCase().includes(q)) ||
+      (t.teachingGrades || []).some((g) => (g || '').toLowerCase().includes(q)) ||
       (t.teachingSubjects || []).some((s) => (s || '').toLowerCase().includes(q)) ||
       (t.otherSkills && t.otherSkills.some((s) => (s || '').toLowerCase().includes(q)));
 
     const matchesDept = departmentFilter === 'all' || t.department === departmentFilter;
     const matchesPosition = positionFilter === 'all' || (t.positionTitle || '') === positionFilter;
-    return matchesSearch && matchesDept && matchesPosition;
+    const teacherHomerooms = (t.homeroomClasses || []).filter((cls) => Boolean(cls?.trim()));
+    const matchesHomeroom =
+      homeroomFilter === 'all'
+        ? true
+        : homeroomFilter === '__homeroom_only__'
+          ? teacherHomerooms.length > 0
+          : homeroomFilter === '__unassigned__'
+            ? teacherHomerooms.length === 0
+            : teacherHomerooms.some((cls) => isSameTimetableRoom(cls, homeroomFilter));
+    return matchesSearch && matchesDept && matchesPosition && matchesHomeroom;
   });
 
   const handleOpenAdd = () => {
@@ -909,10 +927,26 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส ตำแหน่ง หรือวิชาที่สอน...' : 'Search by name, ID, position, or subject...'}
+              placeholder={lang === 'th' ? 'ค้นหาชื่อ รหัส ตำแหน่ง ห้องประจำชั้น หรือวิชาที่สอน...' : 'Search by name, ID, position, homeroom, or subject...'}
               className="h-9 w-full pl-8 pr-3 text-xs rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
             />
           </div>
+
+          <select
+            aria-label={lang === 'th' ? 'กรองตามห้องประจำชั้น' : 'Filter by homeroom class'}
+            value={homeroomFilter}
+            onChange={(e) => setHomeroomFilter(e.target.value)}
+            className="h-9 w-full sm:w-44 px-2.5 text-xs font-medium rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:border-[var(--tone)]"
+          >
+            <option value="all">{lang === 'th' ? 'ทุกห้องประจำชั้น' : 'All Homeroom Classes'}</option>
+            <option value="__homeroom_only__">{lang === 'th' ? 'เฉพาะครูประจำชั้น' : 'Homeroom Teachers Only'}</option>
+            <option value="__unassigned__">{lang === 'th' ? 'ยังไม่ระบุห้องประจำชั้น' : 'No Homeroom Assigned'}</option>
+            {homeroomClassOptions.map((room) => (
+              <option key={room} value={room}>
+                {lang === 'th' ? `ประจำชั้น ${room}` : `Homeroom ${room}`}
+              </option>
+            ))}
+          </select>
 
           <select
             aria-label={lang === 'th' ? 'กรองตามตำแหน่งบุคลากร' : 'Filter by staff position'}
@@ -940,13 +974,14 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
             ))}
           </select>
 
-          {(searchTerm.trim() !== '' || positionFilter !== 'all' || departmentFilter !== 'all') && (
+          {(searchTerm.trim() !== '' || positionFilter !== 'all' || departmentFilter !== 'all' || homeroomFilter !== 'all') && (
             <button
               type="button"
               onClick={() => {
                 setSearchTerm('');
                 setPositionFilter('all');
                 setDepartmentFilter('all');
+                setHomeroomFilter('all');
               }}
               className="h-9 px-2.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer whitespace-nowrap"
             >
@@ -1089,6 +1124,27 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     </div>
                   )}
 
+                  <div className="flex items-start gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    {(teacher.homeroomClasses || []).filter((c) => Boolean(c?.trim())).length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-1 min-w-0">
+                        <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">ประจำชั้น:</span>
+                        {(teacher.homeroomClasses || [])
+                          .filter((c) => Boolean(c?.trim()))
+                          .map((room, idx) => (
+                            <span
+                              key={`${room}-${idx}`}
+                              className="inline-flex items-center rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-200"
+                            >
+                              {room}
+                            </span>
+                          ))}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-[var(--color-text-muted)]">ประจำชั้น: ยังไม่ได้ระบุ</span>
+                    )}
+                  </div>
+
                   {(teacher.major.trim() || teacher.minor?.trim() || typeof teacher.teachingExperienceYears === 'number') && (
                     <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
                       {teacher.major.trim() && (
@@ -1152,6 +1208,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               <thead className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-b border-[var(--color-border)] font-bold uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3">ครูผู้สอน</th>
+                  <th className="px-4 py-3">ครูประจำชั้น / ที่ปรึกษา</th>
                   <th className="px-4 py-3">กลุ่มสาระ</th>
                   <th className="px-4 py-3">วิชาเอก / โท</th>
                   <th className="px-4 py-3">ตำแหน่ง</th>
@@ -1161,7 +1218,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                <PaginatedTableRows items={filteredTeachers} colSpan={7} renderRow={(teacher) => (
+                <PaginatedTableRows items={filteredTeachers} colSpan={8} renderRow={(teacher) => (
                   <tr key={teacher.id} className="hover:bg-[var(--color-card-subtle)] transition">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -1175,6 +1232,24 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                           <p className="text-[11px] text-[var(--color-text-muted)] font-mono">{teacher.teacherIdNumber}</p>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {(teacher.homeroomClasses || []).filter((c) => Boolean(c?.trim())).length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(teacher.homeroomClasses || [])
+                            .filter((c) => Boolean(c?.trim()))
+                            .map((room, idx) => (
+                              <span
+                                key={`${room}-${idx}`}
+                                className="inline-flex items-center rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-200"
+                              >
+                                {room}
+                              </span>
+                            ))}
+                        </div>
+                      ) : (
+                        <span className="text-[var(--color-text-muted)]">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-text-body)]">
                       {teacher.department.replace('กลุ่มสาระการเรียนรู้', '')}
@@ -1448,20 +1523,75 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </div>
 
                   {/* Teaching Subjects & Homerooms */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <h4 className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                       <BookOpen className="w-4 h-4 text-[var(--color-primary-text)]" />
                       <span>ภาระงานสอนและห้องที่ปรึกษา (Teaching Load)</span>
                     </h4>
-                    <div className="flex flex-wrap gap-2">
-                      <PagedList items={selectedTeacherForDetail.teachingSubjects} pageSize={4} renderItem={(sub, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1.5 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-semibold"
-                        >
-                          📖 {sub}
+                    <div className="p-3 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                          <span>ห้องประจำชั้น / ห้องที่ปรึกษา</span>
                         </span>
-                      )} />
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleOpenEdit(selectedTeacherForDetail);
+                              setTeacherFormStep(2);
+                            }}
+                            className="text-[11px] font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                          >
+                            แก้ไขห้องประจำชั้น
+                          </button>
+                        )}
+                      </div>
+                      {(selectedTeacherForDetail.homeroomClasses || []).filter((c) => Boolean(c?.trim())).length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {(selectedTeacherForDetail.homeroomClasses || [])
+                            .filter((c) => Boolean(c?.trim()))
+                            .map((room, idx) => (
+                              <span
+                                key={`${room}-${idx}`}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold text-xs"
+                              >
+                                {room}
+                              </span>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="text-[var(--color-text-muted)]">ยังไม่ได้กำหนดห้องประจำชั้น</p>
+                      )}
+                      {(selectedTeacherForDetail.teachingGrades || []).filter((g) => Boolean(g?.trim())).length > 0 && (
+                        <div className="pt-2 border-t border-[var(--color-border)] flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">ระดับชั้นที่สอน:</span>
+                          {(selectedTeacherForDetail.teachingGrades || [])
+                            .filter((g) => Boolean(g?.trim()))
+                            .map((grade, idx) => (
+                              <span
+                                key={`${grade}-${idx}`}
+                                className="px-2 py-0.5 rounded-md bg-[var(--color-card)] border border-[var(--color-border)] text-[11px] font-semibold text-[var(--color-text-title)]"
+                              >
+                                {grade}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTeacherForDetail.teachingSubjects.length > 0 ? (
+                        <PagedList items={selectedTeacherForDetail.teachingSubjects} pageSize={4} renderItem={(sub, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1.5 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-semibold"
+                          >
+                            📖 {sub}
+                          </span>
+                        )} />
+                      ) : (
+                        <p className="text-[var(--color-text-muted)]">ยังไม่ได้ระบุรายวิชาที่สอน</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2103,17 +2233,37 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   <div className="flex gap-2">
                     <input
                       type="text"
+                      list="teacher-homeroom-room-suggestions"
                       value={homeroomInput}
                       onChange={(e) => setHomeroomInput(e.target.value)}
-                      placeholder="พิมพ์ชื่อห้องแล้วกดเพิ่ม"
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        const value = homeroomInput.trim();
+                        if (!value) return;
+                        const existing = formData.homeroomClasses || [];
+                        if (!existing.some((cls) => isSameTimetableRoom(cls, value))) {
+                          setFormData({ ...formData, homeroomClasses: [...existing, value] });
+                        }
+                        setHomeroomInput('');
+                      }}
+                      placeholder="เช่น ป.1/1 แล้วกดเพิ่ม"
                       className="min-w-0 flex-1 px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                     />
+                    <datalist id="teacher-homeroom-room-suggestions">
+                      {dedupeTimetableRooms([presets.roomOptions, homeroomClassOptions]).map((room) => (
+                        <option key={room} value={room} />
+                      ))}
+                    </datalist>
                     <button
                       type="button"
                       onClick={() => {
                         const value = homeroomInput.trim();
                         if (!value) return;
-                        setFormData({ ...formData, homeroomClasses: [...(formData.homeroomClasses || []), value] });
+                        const existing = formData.homeroomClasses || [];
+                        if (!existing.some((cls) => isSameTimetableRoom(cls, value))) {
+                          setFormData({ ...formData, homeroomClasses: [...existing, value] });
+                        }
                         setHomeroomInput('');
                       }}
                       className="px-3 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] font-semibold cursor-pointer"
@@ -2123,12 +2273,12 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(formData.homeroomClasses || []).map((room, idx) => (
-                      <span key={`${room}-${idx}`} className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1">
+                      <span key={`${room}-${idx}`} className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-1 text-emerald-900 dark:text-emerald-200 font-semibold">
                         {room}
                         <button type="button" aria-label={`ลบ ${room}`} onClick={() => setFormData({
                           ...formData,
                           homeroomClasses: (formData.homeroomClasses || []).filter((_, i) => i !== idx),
-                        })} className="font-bold text-rose-700 cursor-pointer">×</button>
+                        })} className="font-bold text-rose-700 dark:text-rose-300 cursor-pointer">×</button>
                       </span>
                     ))}
                   </div>

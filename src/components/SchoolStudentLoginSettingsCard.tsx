@@ -23,6 +23,7 @@ import {
 import { School, AppLanguage } from '../types';
 import { QrCodeMatrix } from './QrCodeMatrix';
 import { getSupabaseClient } from '../lib/supabase';
+import { normalizeSchoolStudentIdPolicy } from '../lib/studentIdPolicy';
 
 interface SchoolStudentLoginSettingsCardProps {
   activeSchool: School;
@@ -50,6 +51,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
   lang,
   onUpdateSchool,
 }) => {
+  const initialPolicy = useMemo(() => normalizeSchoolStudentIdPolicy(activeSchool), [activeSchool]);
   // Login identifier preference
   const [identifierType, setIdentifierType] = useState<'student_id_only' | 'email_only' | 'both'>(
     activeSchool.studentLoginIdentifierType || 'both'
@@ -61,8 +63,13 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
     activeSchool.studentDefaultPasswordType || 'student_id'
   );
   const [passwordNote, setPasswordNote] = useState<string>(
-    activeSchool.studentDefaultPasswordNote || 'ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น (เมื่อเข้าครั้งแรก ระบบจะบังคับเปลี่ยนรหัสผ่านใหม่)'
+    activeSchool.studentDefaultPasswordNote || 'ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น (เมื่อเข้าครั้งแรก ระบบจะให้ตั้งรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร)'
   );
+  const [studentIdMinLength, setStudentIdMinLength] = useState<number>(initialPolicy.minLength);
+  const [studentIdMaxLength, setStudentIdMaxLength] = useState<number>(initialPolicy.maxLength);
+  const [studentIdDigitsOnly, setStudentIdDigitsOnly] = useState<boolean>(initialPolicy.digitsOnly);
+  const [studentIdExample, setStudentIdExample] = useState<string>(initialPolicy.example);
+  const [shortIdPasswordPrefix, setShortIdPasswordPrefix] = useState<string>(initialPolicy.shortIdPasswordPrefix);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -74,7 +81,22 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
 
   useEffect(() => {
     setCustomSlug(getSchoolShortCode(activeSchool));
-  }, [activeSchool.id, activeSchool.code, activeSchool.customLoginSlug]);
+    const nextPolicy = normalizeSchoolStudentIdPolicy(activeSchool);
+    setStudentIdMinLength(nextPolicy.minLength);
+    setStudentIdMaxLength(nextPolicy.maxLength);
+    setStudentIdDigitsOnly(nextPolicy.digitsOnly);
+    setStudentIdExample(nextPolicy.example);
+    setShortIdPasswordPrefix(nextPolicy.shortIdPasswordPrefix);
+  }, [
+    activeSchool.id,
+    activeSchool.code,
+    activeSchool.customLoginSlug,
+    activeSchool.studentIdMinLength,
+    activeSchool.studentIdMaxLength,
+    activeSchool.studentIdDigitsOnly,
+    activeSchool.studentIdExample,
+    activeSchool.studentShortIdPasswordPrefix,
+  ]);
 
   useEffect(() => {
     let current = true;
@@ -161,6 +183,11 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
       return;
     }
 
+    if (studentIdMinLength < 1 || studentIdMinLength > 20 || studentIdMaxLength < studentIdMinLength || studentIdMaxLength > 30) {
+      setSaveError('ความยาวรหัสนักเรียนขั้นต่ำต้องอยู่ระหว่าง 1–20 ตัว และไม่มากกว่าความยาวสูงสุด (ไม่เกิน 30 ตัว)');
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -170,6 +197,11 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
       studentDefaultPasswordType: defaultPasswordType,
       studentDefaultPasswordNote: passwordNote.trim(),
       customSchoolLoginUrl: schoolLoginUrl,
+      studentIdMinLength: Math.max(1, Math.min(20, Math.round(studentIdMinLength))),
+      studentIdMaxLength: Math.max(Math.round(studentIdMinLength), Math.min(30, Math.round(studentIdMaxLength))),
+      studentIdDigitsOnly,
+      studentIdExample: studentIdExample.trim() || undefined,
+      studentShortIdPasswordPrefix: shortIdPasswordPrefix.trim() || '',
     };
 
     try {
@@ -288,7 +320,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                     </span>
                   </div>
                   <p className="text-[11px] text-[var(--color-text-body)] leading-relaxed">
-                    นักเรียนใช้รหัสประจำตัวนักเรียน (เช่น <code className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 font-mono font-bold text-blue-600">ED-6901</code> หรือ <code className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 font-mono font-bold text-blue-600">10001</code>) คู่กับรหัสผ่าน โดยไม่ต้องมีอีเมล สะดวกสำหรับนักเรียนประถมและมัธยม
+                    นักเรียนใช้รหัสประจำตัวนักเรียนของโรงเรียน (เช่น <code className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 font-mono font-bold text-blue-600">{studentIdExample || '1001'}</code>) คู่กับรหัสผ่าน โดยไม่ต้องมีอีเมล สะดวกสำหรับนักเรียนประถมและมัธยม
                   </p>
                 </div>
               </label>
@@ -350,6 +382,93 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                     บังคับให้นักเรียนใช้อีเมลในการเข้าสู่ระบบเท่านั้น เหมาะสำหรับโรงเรียนที่มี Google Workspace for Education หรือ Microsoft 365 ให้นักเรียนทุกคน
                   </p>
                 </div>
+              </label>
+            </div>
+
+            {/* Per-School Student ID Format Rules */}
+            <div className="pt-3 border-t border-[var(--color-border)] space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-bold text-[var(--color-text-title)]">
+                    เงื่อนไขความยาวและรูปแบบรหัสนักเรียนของโรงเรียน (Student ID Rules)
+                  </h4>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    ตั้งค่าให้ตรงกับรหัสนักเรียนจริงของโรงเรียน เช่น 4 หลัก (1001), 5 หลัก (69001) หรือรหัสที่มีตัวอักษร
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: '4 หลัก (1001)', min: 4, max: 4, digits: true, example: '1001' },
+                    { label: '5 หลัก (69001)', min: 5, max: 5, digits: true, example: '69001' },
+                    { label: '4–12 ตัวอิสระ', min: 4, max: 12, digits: false, example: '1001' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        setStudentIdMinLength(preset.min);
+                        setStudentIdMaxLength(preset.max);
+                        setStudentIdDigitsOnly(preset.digits);
+                        setStudentIdExample(preset.example);
+                      }}
+                      className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[11px] font-semibold text-[var(--color-text-body)] cursor-pointer transition"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="space-y-1 text-xs font-bold text-[var(--color-text-title)]">
+                  <span>ความยาวขั้นต่ำ (ตัว)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={studentIdMinLength}
+                    onChange={(e) => {
+                      const nextMin = Math.max(1, Math.min(20, Number(e.target.value) || 1));
+                      setStudentIdMinLength(nextMin);
+                      if (studentIdMaxLength < nextMin) setStudentIdMaxLength(nextMin);
+                    }}
+                    className="w-full px-3 py-2 text-xs font-mono rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
+                  />
+                </label>
+
+                <label className="space-y-1 text-xs font-bold text-[var(--color-text-title)]">
+                  <span>ความยาวสูงสุด (ตัว)</span>
+                  <input
+                    type="number"
+                    min={studentIdMinLength}
+                    max={30}
+                    value={studentIdMaxLength}
+                    onChange={(e) => setStudentIdMaxLength(Math.max(studentIdMinLength, Math.min(30, Number(e.target.value) || studentIdMinLength)))}
+                    className="w-full px-3 py-2 text-xs font-mono rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
+                  />
+                </label>
+
+                <label className="space-y-1 text-xs font-bold text-[var(--color-text-title)]">
+                  <span>ตัวอย่างที่แสดงหน้าล็อกอิน</span>
+                  <input
+                    type="text"
+                    maxLength={24}
+                    value={studentIdExample}
+                    onChange={(e) => setStudentIdExample(e.target.value)}
+                    placeholder="เช่น 1001"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
+                  />
+                </label>
+              </div>
+
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-text-body)] cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={studentIdDigitsOnly}
+                  onChange={(e) => setStudentIdDigitsOnly(e.target.checked)}
+                  className="rounded border-[var(--color-border)] text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+                <span>อนุญาตเฉพาะตัวเลข 0–9 เท่านั้น (ไม่อนุญาตตัวอักษรภาษาอังกฤษหรือขีด)</span>
               </label>
             </div>
           </div>
@@ -472,32 +591,64 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                   <span>รูปแบบรหัสผ่านเริ่มต้น</span>
                   <select
                     value={defaultPasswordType}
-                    onChange={(e) => setDefaultPasswordType(e.target.value as any)}
+                    onChange={(e) => {
+                      const next = e.target.value as 'student_id' | 'birthdate' | 'custom' | 'pin';
+                      setDefaultPasswordType(next);
+                      if (next === 'birthdate') {
+                        setPasswordNote('ใช้วันเดือนปีเกิด พ.ศ. 8 หลัก (เช่น 12042551) เป็นรหัสผ่านเริ่มต้น');
+                      } else if (next === 'student_id') {
+                        setPasswordNote(
+                          shortIdPasswordPrefix.trim()
+                            ? `รหัสผ่านเริ่มต้นคือ "${shortIdPasswordPrefix.trim()}" + รหัสนักเรียน (เช่น ${shortIdPasswordPrefix.trim()}${studentIdExample || '1001'})`
+                            : 'ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น (เมื่อเข้าครั้งแรก ระบบจะให้ตั้งรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร)'
+                        );
+                      }
+                    }}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
                   >
-                    <option value="student_id">ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น (แนะนำ · บังคับเปลี่ยนครั้งแรก)</option>
-                    <option value="birthdate">วันเดือนปีเกิด (ววดดปปปป เช่น 12042551)</option>
+                    <option value="student_id">ใช้รหัสนักเรียนเป็นรหัสผ่านเริ่มต้น (แนะนำ · ตั้งรหัสใหม่เมื่อเข้าครั้งแรก)</option>
+                    <option value="birthdate">วันเดือนปีเกิด พ.ศ. 8 หลัก (ววดดปปปป เช่น 12042551)</option>
                     <option value="custom">รหัสผ่านที่โรงเรียนกำหนดเอง (Default Password)</option>
                     <option value="pin">เลขประจำตัวประชาชน 4 ตัวท้าย</option>
                   </select>
                 </label>
 
                 <label className="space-y-1 text-xs font-bold text-[var(--color-text-title)]">
-                  <span>ข้อความแนะนำนักเรียนในหน้าเข้าสู่ระบบ</span>
+                  <span>คำนำหน้ารหัสผ่านเริ่มต้น (เมื่อรหัสสั้นกว่า 6 ตัว)</span>
                   <input
                     type="text"
-                    value={passwordNote}
-                    onChange={(e) => setPasswordNote(e.target.value)}
-                    placeholder="เช่น ใช้วันเดือนปีเกิด หรือ รหัสนักเรียน"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
+                    maxLength={12}
+                    value={shortIdPasswordPrefix}
+                    onChange={(e) => {
+                      const prefix = e.target.value.replace(/\s+/g, '');
+                      setShortIdPasswordPrefix(prefix);
+                    }}
+                    placeholder="เว้นว่าง หรือใส่เช่น 00 / std"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
                   />
                 </label>
               </div>
 
+              <label className="block space-y-1 text-xs font-bold text-[var(--color-text-title)]">
+                <span>ข้อความแนะนำนักเรียนในหน้าเข้าสู่ระบบ</span>
+                <input
+                  type="text"
+                  value={passwordNote}
+                  onChange={(e) => setPasswordNote(e.target.value)}
+                  placeholder="เช่น ใช้รหัสนักเรียน 4 หลัก หรือ วันเดือนปีเกิด 8 หลัก"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] outline-none"
+                />
+              </label>
+
               <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-900 dark:text-blue-200 leading-relaxed flex items-start gap-2">
                 <Info className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
-                <div>
-                  ข้อความแนะนำนี้จะปรากฏใต้ช่องกรอกรหัสผ่านในหน้าล็อกอินนักเรียน เพื่อช่วยให้นักเรียนสามารถเข้าสู่ระบบได้ด้วยตนเองโดยไม่ต้องรบกวนครูประจำชั้น
+                <div className="space-y-1">
+                  <p>
+                    <strong>รหัสนักเรียนใช้เป็นชื่อผู้ใช้ได้ทุกความยาว (เช่น 4 หลัก)</strong> ส่วนรหัสผ่านเริ่มต้น: หากระบบ Auth ตั้งขั้นต่ำไว้ที่ 6 ตัวอักษร โรงเรียนที่ใช้รหัส 4 หลักสามารถใส่คำนำหน้า (เช่น <code className="px-1 rounded bg-white/70 dark:bg-slate-800 font-mono">00</code> เพื่อให้รหัสผ่านแรกเข้าเป็น <code className="px-1 rounded bg-white/70 dark:bg-slate-800 font-mono">00{studentIdExample || '1001'}</code>) หรือใช้วันเดือนปีเกิด 8 หลักได้ทันที และเมื่อนักเรียนเข้าสู่ระบบครั้งแรก ระบบจะให้ตั้งรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร
+                  </p>
+                  <p className="opacity-90">
+                    ข้อความแนะนำนี้จะปรากฏใต้ช่องกรอกรหัสผ่านในหน้าล็อกอินนักเรียน เพื่อช่วยให้นักเรียนเข้าสู่ระบบด้วยตนเองได้ถูกต้อง
+                  </p>
                 </div>
               </div>
             </div>
@@ -571,7 +722,9 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                       : 'รหัสนักเรียน หรือ อีเมล (Student ID or Email)'}
                   </div>
                   <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-[11px] text-slate-400">
-                    {identifierType === 'email_only' ? 'student@school.ac.th' : 'เช่น ED-6901, 10001'}
+                    {identifierType === 'email_only'
+                      ? 'student@school.ac.th'
+                      : `เช่น ${studentIdExample || '1001'} (${studentIdMinLength === studentIdMaxLength ? `${studentIdMinLength} ตัว` : `${studentIdMinLength}–${studentIdMaxLength} ตัว`})`}
                   </div>
                 </div>
 

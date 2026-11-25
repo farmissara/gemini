@@ -50,6 +50,11 @@ import {
 } from '../lib/timetableTeachers';
 import { emitAppToast } from '../components/common/ToastProvider';
 import {
+  dedupeTimetableRooms,
+  isSameTimetableRoom,
+  normalizeTimetableRoomKey,
+} from '../lib/timetableRoomMatch';
+import {
   buildCourseTeacherOptions,
   courseMatchesTeacherFilter,
   resolveMatchedTeacherForUser,
@@ -302,14 +307,28 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   // Classroom selection (strictly scoped for student/parent)
   const uniqueClassRooms = isPersonalViewer
-    ? Array.from(new Set(slots.map((s) => s.classRoom).filter(Boolean)))
-    : Array.from(
-        new Set([
-          ...slots.map((s) => s.classRoom).filter(Boolean),
-          ...students.map((st) => st.room).filter(Boolean),
-          ...roomOptions,
-        ])
-      );
+    ? dedupeTimetableRooms([slots.map((s) => s.classRoom)])
+    : dedupeTimetableRooms([
+        slots.map((s) => s.classRoom),
+        students.map((st) => st.room),
+        roomOptions,
+      ]);
+  const slotCountByRoomKey = new Map<string, number>();
+  slots.forEach((slot) => {
+    const key = normalizeTimetableRoomKey(slot.classRoom);
+    if (!key) return;
+    slotCountByRoomKey.set(key, (slotCountByRoomKey.get(key) || 0) + 1);
+  });
+  const studentCountByRoomKey = new Map<string, number>();
+  students.forEach((student) => {
+    const key = normalizeTimetableRoomKey(student.room);
+    if (!key) return;
+    studentCountByRoomKey.set(key, (studentCountByRoomKey.get(key) || 0) + 1);
+  });
+  const firstScheduledClassRoom =
+    uniqueClassRooms.find((room) => (slotCountByRoomKey.get(normalizeTimetableRoomKey(room)) || 0) > 0) ||
+    uniqueClassRooms[0] ||
+    '';
   const gradeRooms = new Map<string, Set<string>>();
   students.forEach((student) => {
     const gradeLevel = student.gradeLevel.trim();
@@ -334,12 +353,54 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       .flatMap((slot) => getSlotTeachers(slot))
       .map((name) => [normalizeTeacherName(name), name] as const)
   ).values()).sort((a, b) => a.localeCompare(b, 'th'));
-  const [selectedClassRoom, setSelectedClassRoom] = useState<string>(uniqueClassRooms[0] || '');
+  const [selectedClassRoom, setSelectedClassRoom] = useState<string>(firstScheduledClassRoom);
   const [myCoursesOnly, setMyCoursesOnly] = useState(false);
   const autoScopedTimetableRef = useRef<string | null>(null);
+  const hasManualRoomSelectionRef = useRef(false);
+  useEffect(() => {
+    hasManualRoomSelectionRef.current = false;
+  }, [schoolId, selectedAcademicPeriodKey]);
+
+  useEffect(() => {
+    if (myCoursesOnly) return;
+    if (selectedClassRoom === ALL_CLASSROOMS) return;
+
+    const matchingExistingRoom = uniqueClassRooms.find((room) =>
+      isSameTimetableRoom(room, selectedClassRoom)
+    );
+    if (!matchingExistingRoom) {
+      if (firstScheduledClassRoom) {
+        setSelectedClassRoom(firstScheduledClassRoom);
+      } else if (uniqueClassRooms.length === 0 && !isPersonalViewer) {
+        setSelectedClassRoom(ALL_CLASSROOMS);
+      }
+      return;
+    }
+
+    if (matchingExistingRoom !== selectedClassRoom) {
+      setSelectedClassRoom(matchingExistingRoom);
+      return;
+    }
+
+    if (!hasManualRoomSelectionRef.current) {
+      const currentRoomHasSlots =
+        (slotCountByRoomKey.get(normalizeTimetableRoomKey(matchingExistingRoom)) || 0) > 0;
+      if (!currentRoomHasSlots && firstScheduledClassRoom && firstScheduledClassRoom !== matchingExistingRoom) {
+        setSelectedClassRoom(firstScheduledClassRoom);
+      }
+    }
+  }, [
+    myCoursesOnly,
+    selectedClassRoom,
+    uniqueClassRooms,
+    firstScheduledClassRoom,
+    isPersonalViewer,
+    slots.length,
+  ]);
+
   const handleViewModeChange = (mode: TimetableViewMode) => {
     if (mode === 'hours_criteria' && selectedClassRoom === ALL_CLASSROOMS && !myCoursesOnly) {
-      setSelectedClassRoom(uniqueClassRooms[0] || '');
+      setSelectedClassRoom(firstScheduledClassRoom);
     }
     setViewMode(mode);
   };
@@ -384,12 +445,18 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       (slot.academicYear || academicYear) === period.academicYear &&
       (slot.semester || currentSemester) === period.semester
     ));
-    const nextRooms = Array.from(new Set([
-      ...periodSlots.map((slot) => slot.classRoom).filter(Boolean),
-      ...students.map((student) => student.room).filter(Boolean),
-      ...roomOptions,
-    ]));
-    setSelectedClassRoom(nextRooms[0] || ALL_CLASSROOMS);
+    const nextRooms = isPersonalViewer
+      ? dedupeTimetableRooms([periodSlots.map((slot) => slot.classRoom)])
+      : dedupeTimetableRooms([
+          periodSlots.map((slot) => slot.classRoom),
+          students.map((student) => student.room),
+          roomOptions,
+        ]);
+    const nextFirstWithSlots = nextRooms.find((room) =>
+      periodSlots.some((slot) => isSameTimetableRoom(slot.classRoom, room))
+    );
+    hasManualRoomSelectionRef.current = false;
+    setSelectedClassRoom(nextFirstWithSlots || nextRooms[0] || ALL_CLASSROOMS);
   };
   const [showPeriodSettings, setShowPeriodSettings] = useState(false);
   const [periodDraft, setPeriodDraft] = useState<SchoolPeriodTime[]>(schoolPeriods);
@@ -651,7 +718,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       const roomsInGrade = gradeRooms.get(filters.gradeLevel);
       if (!roomsInGrade?.has(normalizeTeacherName(slot.classRoom))) return false;
     }
-    if (filters.classRoom && slot.classRoom !== filters.classRoom) return false;
+    if (filters.classRoom && !isSameTimetableRoom(slot.classRoom, filters.classRoom)) return false;
     if (filters.teacherName && !slotHasTeacher(slot, filters.teacherName)) {
       return false;
     }
@@ -661,7 +728,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
     ? filterSlotsByScheduleSettings(activeScheduleFilters)
     : selectedClassRoom === ALL_CLASSROOMS
       ? slots
-      : slots.filter((s) => s.classRoom === selectedClassRoom);
+      : slots.filter((s) => isSameTimetableRoom(s.classRoom, selectedClassRoom));
   const activeSlots = myCoursesOnly
     ? baseActiveSlots.filter((slot) =>
         slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacher, courses)
@@ -1502,7 +1569,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   // Compute academic hours breakdown per course in this classroom
   const baseClassroomSlots = selectedClassRoom === ALL_CLASSROOMS
     ? slots
-    : slots.filter((s) => s.classRoom === selectedClassRoom);
+    : slots.filter((s) => isSameTimetableRoom(s.classRoom, selectedClassRoom));
   const classroomSlots = myCoursesOnly
     ? baseClassroomSlots.filter((slot) =>
         slotMatchesLoggedInTeacher(slot, currentUser, matchedTeacher, courses)
@@ -1635,6 +1702,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             id="timetable-room-select"
             value={selectedClassRoom}
             onChange={(e) => {
+              hasManualRoomSelectionRef.current = true;
               setSelectedClassRoom(e.target.value);
               setActiveScheduleFilters(null);
             }}
@@ -1645,11 +1713,20 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 {isPersonalViewer ? 'ทุกห้องเรียนของฉัน' : `ทุกห้อง (${uniqueClassRooms.length})`}
               </option>
             )}
-            {uniqueClassRooms.map((room) => (
-              <option key={room} value={room}>
-                {isPersonalViewer ? room : `${room} (${students.filter((student) => student.room === room).length} คน)`}
-              </option>
-            ))}
+            {uniqueClassRooms.map((room) => {
+              const roomKey = normalizeTimetableRoomKey(room);
+              const slotCount = slotCountByRoomKey.get(roomKey) || 0;
+              const studentCount = studentCountByRoomKey.get(roomKey) || 0;
+              return (
+                <option key={room} value={room}>
+                  {isPersonalViewer
+                    ? `${room} (${slotCount} คาบ)`
+                    : slotCount > 0
+                      ? `${room} (${slotCount} คาบ · ${studentCount} คน)`
+                      : `${room} (${studentCount} คน)`}
+                </option>
+              );
+            })}
           </select>
           {isAdmin && isViewingCurrentTerm && (
             showAddRoomInput ? (
@@ -1667,7 +1744,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                   onClick={() => {
                     const room = newCustomRoomName.trim();
                     if (!room) return;
-                    if (roomOptions.some((existing) => existing.toLocaleLowerCase() === room.toLocaleLowerCase())) {
+                    if (roomOptions.some((existing) => isSameTimetableRoom(existing, room))) {
                       setRoomOptionsError('มีชื่อห้องนี้อยู่แล้ว');
                       return;
                     }
@@ -1678,6 +1755,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                         const nextOptions = [...roomOptions, room];
                         await onUpdateRoomOptions?.(nextOptions);
                         updatePresets({ roomOptions: nextOptions });
+                        hasManualRoomSelectionRef.current = true;
                         setSelectedClassRoom(room);
                         setActiveScheduleFilters(null);
                         setNewCustomRoomName('');
@@ -2113,6 +2191,33 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           onDeleteSlot={onDeleteSlot}
           getSlotCheckStatusForDate={getSlotCheckStatusForDate}
           triggerSlotCheckin={triggerSlotCheckin}
+          unfilteredRoomSlotCount={baseActiveSlots.length}
+          roomsWithSlotsInTerm={uniqueClassRooms
+            .map((room) => ({
+              room,
+              count: slotCountByRoomKey.get(normalizeTimetableRoomKey(room)) || 0,
+            }))
+            .filter((item) => item.count > 0)}
+          otherTermSlotSummaries={academicPeriodOptions
+            .filter((period) => period.key !== selectedAcademicPeriod.key)
+            .map((period) => ({
+              key: period.key,
+              academicYear: period.academicYear,
+              semester: period.semester,
+              count: allTimetableSlots.filter((slot) => (
+                (slot.academicYear || academicYear) === period.academicYear &&
+                (slot.semester || currentSemester) === period.semester
+              )).length,
+            }))
+            .filter((item) => item.count > 0)}
+          onSelectClassRoom={(room) => {
+            hasManualRoomSelectionRef.current = true;
+            setSelectedClassRoom(room);
+            setActiveScheduleFilters(null);
+          }}
+          onSelectAcademicPeriod={handleAcademicPeriodChange}
+          onClearTeacherScope={() => setTimetableTeacherScope(false)}
+          onClearScheduleFilters={() => setActiveScheduleFilters(null)}
         />
       )}
 

@@ -89,6 +89,11 @@ export interface SchoolLoginPortalInfo {
   customLoginSlug?: string;
   studentDefaultPasswordType: 'student_id' | 'birthdate' | 'custom' | 'pin';
   studentDefaultPasswordNote?: string;
+  studentIdMinLength?: number;
+  studentIdMaxLength?: number;
+  studentIdDigitsOnly?: boolean;
+  studentIdExample?: string;
+  studentShortIdPasswordPrefix?: string;
 }
 
 interface SchoolRow {
@@ -119,6 +124,11 @@ interface SchoolRow {
   custom_login_slug?: string | null;
   student_default_password_type?: School['studentDefaultPasswordType'] | null;
   student_default_password_note?: string | null;
+  student_id_min_length?: number | null;
+  student_id_max_length?: number | null;
+  student_id_digits_only?: boolean | null;
+  student_id_example?: string | null;
+  student_short_id_password_prefix?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   geofence_radius_meters?: number | null;
@@ -172,6 +182,17 @@ function mapSchool(row: SchoolRow): School {
     customLoginSlug: row.custom_login_slug || undefined,
     studentDefaultPasswordType: row.student_default_password_type || 'student_id',
     studentDefaultPasswordNote: row.student_default_password_note || undefined,
+    studentIdMinLength:
+      row.student_id_min_length !== null && row.student_id_min_length !== undefined
+        ? Number(row.student_id_min_length)
+        : undefined,
+    studentIdMaxLength:
+      row.student_id_max_length !== null && row.student_id_max_length !== undefined
+        ? Number(row.student_id_max_length)
+        : undefined,
+    studentIdDigitsOnly: row.student_id_digits_only ?? undefined,
+    studentIdExample: row.student_id_example || undefined,
+    studentShortIdPasswordPrefix: row.student_short_id_password_prefix || undefined,
     latitude:
       row.latitude !== null && row.latitude !== undefined && Number.isFinite(Number(row.latitude))
         ? Number(row.latitude)
@@ -468,6 +489,23 @@ export async function fetchSchoolLoginPortalInfo(params: {
         typeof row.student_default_password_note === 'string' && row.student_default_password_note
           ? row.student_default_password_note
           : undefined,
+      studentIdMinLength:
+        typeof row.student_id_min_length === 'number'
+          ? row.student_id_min_length
+          : 4,
+      studentIdMaxLength:
+        typeof row.student_id_max_length === 'number'
+          ? row.student_id_max_length
+          : 12,
+      studentIdDigitsOnly: Boolean(row.student_id_digits_only),
+      studentIdExample:
+        typeof row.student_id_example === 'string' && row.student_id_example.trim()
+          ? row.student_id_example.trim()
+          : undefined,
+      studentShortIdPasswordPrefix:
+        typeof row.student_short_id_password_prefix === 'string' && row.student_short_id_password_prefix.trim()
+          ? row.student_short_id_password_prefix.trim()
+          : undefined,
     };
   }
 
@@ -517,19 +555,33 @@ export async function updateSchoolSettingsInSupabase(
     error &&
     (error.code === 'PGRST204' ||
       error.code === '42703' ||
-      /student_login_identifier_type|custom_login_slug|student_default_password|schema cache|could not find the '.*' column/i.test(error.message))
+      /student_login_identifier_type|custom_login_slug|student_default_password|student_id_min_length|student_id_max_length|student_id_digits_only|student_id_example|student_short_id_password_prefix|schema cache|could not find the '.*' column/i.test(error.message))
   ) {
     if (
       updates.customLoginSlug !== undefined &&
-      /custom_login_slug|schema cache|could not find the '.*' column/i.test(error.message)
+      /custom_login_slug|schema cache|could not find the '.*' column/i.test(error.message) &&
+      !/student_id_min_length|student_id_max_length|student_id_digits_only|student_id_example|student_short_id_password_prefix/i.test(error.message)
     ) {
       throw new Error('การตั้งรหัสโรงเรียนแบบสั้นต้องใช้ migration 20261119_short_school_login_codes.sql ก่อน');
     }
-    const corePayload = { ...payload };
-    delete (corePayload as Record<string, unknown>).student_login_identifier_type;
-    delete (corePayload as Record<string, unknown>).custom_login_slug;
-    delete (corePayload as Record<string, unknown>).student_default_password_type;
-    delete (corePayload as Record<string, unknown>).student_default_password_note;
+    const corePayload = { ...payload } as Record<string, unknown>;
+    if (/student_id_min_length|student_id_max_length|student_id_digits_only|student_id_example|student_short_id_password_prefix/i.test(error.message)) {
+      delete corePayload.student_id_min_length;
+      delete corePayload.student_id_max_length;
+      delete corePayload.student_id_digits_only;
+      delete corePayload.student_id_example;
+      delete corePayload.student_short_id_password_prefix;
+    } else {
+      delete corePayload.student_login_identifier_type;
+      delete corePayload.custom_login_slug;
+      delete corePayload.student_default_password_type;
+      delete corePayload.student_default_password_note;
+      delete corePayload.student_id_min_length;
+      delete corePayload.student_id_max_length;
+      delete corePayload.student_id_digits_only;
+      delete corePayload.student_id_example;
+      delete corePayload.student_short_id_password_prefix;
+    }
     if (Object.keys(corePayload).length === 0) return;
     const retry = await client
       .from('schools')

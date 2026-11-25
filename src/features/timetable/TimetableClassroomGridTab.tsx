@@ -42,6 +42,7 @@ import { BangkokClockSnapshot, getTimetableSlotActivityStatus } from '../../lib/
 import { getThaiHolidayCategoryLabel, ThaiHoliday } from '../../lib/thaiHolidays';
 import { enterLandscapeGameMode, exitLandscapeGameMode } from '../../lib/screenOrientation';
 import { printTimetableLandscape, setTimetableLandscapePageRule } from '../../lib/timetablePrint';
+import { findHomeroomTeachersForRoom } from '../../lib/timetableRoomMatch';
 import {
   ALL_CLASSROOMS,
   DAYS,
@@ -111,6 +112,13 @@ interface TimetableClassroomGridTabProps {
     hasCheckOut: boolean;
   };
   triggerSlotCheckin: (slot: TimetableSlot, dateStr: string, checkType: 'check_in' | 'check_out') => void;
+  unfilteredRoomSlotCount?: number;
+  roomsWithSlotsInTerm?: Array<{ room: string; count: number }>;
+  otherTermSlotSummaries?: Array<{ key: string; academicYear: string; semester: string; count: number }>;
+  onSelectClassRoom?: (room: string) => void;
+  onSelectAcademicPeriod?: (periodKey: string) => void;
+  onClearTeacherScope?: () => void;
+  onClearScheduleFilters?: () => void;
 }
 
 export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps> = ({
@@ -168,6 +176,13 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
   onDeleteSlot,
   getSlotCheckStatusForDate,
   triggerSlotCheckin,
+  unfilteredRoomSlotCount = 0,
+  roomsWithSlotsInTerm = [],
+  otherTermSlotSummaries = [],
+  onSelectClassRoom,
+  onSelectAcademicPeriod,
+  onClearTeacherScope,
+  onClearScheduleFilters,
 }) => {
   const [isLandscapeExpanded, setIsLandscapeExpanded] = useState(false);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -205,6 +220,11 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
       ? `ตารางรวมทุกห้อง (${uniqueClassRooms.length})`
       : selectedClassRoom;
 
+  const homeroomTeachersForSelectedRoom =
+    selectedClassRoom && selectedClassRoom !== ALL_CLASSROOMS && !activeScheduleFilters
+      ? findHomeroomTeachersForRoom(teachers, selectedClassRoom)
+      : [];
+
   const computedTableMinWidth = Math.max(920, 120 + orderedSchoolPeriods.length * 112);
 
   return (
@@ -225,6 +245,9 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
           </h2>
           <p className="text-[11px] text-slate-700">
             {formatSemesterLabel(viewSemester)} ปีการศึกษา {viewAcademicYear}
+            {homeroomTeachersForSelectedRoom.length > 0
+              ? ` · ครูประจำชั้น: ${homeroomTeachersForSelectedRoom.map((t) => t.fullNameTh).join(', ')}`
+              : ''}
             {myCoursesOnly ? ' · เฉพาะรายวิชาที่รับผิดชอบสอน' : ''}
           </p>
         </div>
@@ -244,6 +267,18 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
                 <span className="ml-1 text-[11px] font-semibold tone-text">· เฉพาะวิชาที่สอน</span>
               )}
             </span>
+            {selectedClassRoom && selectedClassRoom !== ALL_CLASSROOMS && !activeScheduleFilters && (
+              homeroomTeachersForSelectedRoom.length > 0 ? (
+                <span className="print:hidden inline-flex items-center gap-1 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">
+                  <UserCheck className="h-3 w-3 shrink-0" />
+                  <span>ครูประจำชั้น: {homeroomTeachersForSelectedRoom.map((t) => t.fullNameTh).join(', ')}</span>
+                </span>
+              ) : isAdmin ? (
+                <span className="print:hidden text-[11px] text-[var(--color-text-muted)]">
+                  · ยังไม่ระบุครูประจำชั้น
+                </span>
+              ) : null
+            )}
           </div>
         </div>
         <div className="print:hidden flex flex-wrap items-center justify-end gap-1.5">
@@ -396,7 +431,7 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
                 className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
                 <Calendar className="h-3.5 w-3.5 tone-text" />
-                <span>เชื่อมต่อ Google Calendar (.ics)</span>
+                <span>Google Calendar &amp; ภาพหน้าจอมือถือ</span>
               </button>
               <button
                 type="button"
@@ -486,6 +521,91 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto print:overflow-visible">
+        {activeSlots.length === 0 && (
+          <div className="mx-3 mt-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 px-3.5 py-2.5 text-xs text-amber-950 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2 print:hidden">
+            <div className="min-w-0 space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>
+                  {myCoursesOnly && unfilteredRoomSlotCount > 0
+                    ? `ตัวกรอง "เฉพาะวิชาที่ฉันสอน" กำลังซ่อนตารางอยู่ (พบ ${unfilteredRoomSlotCount} คาบในมุมมองนี้)`
+                    : slots.length > 0
+                      ? `ไม่พบคาบเรียนสำหรับ "${scheduleTargetTitle}" ใน${formatSemesterLabel(viewSemester)} ปีการศึกษา ${viewAcademicYear} (แต่มีข้อมูลในห้องอื่น ${slots.length} คาบ)`
+                      : otherTermSlotSummaries.length > 0
+                        ? `ยังไม่มีตารางสอนใน${formatSemesterLabel(viewSemester)} ปีการศึกษา ${viewAcademicYear} แต่พบข้อมูลตารางสอนในภาคเรียนอื่น`
+                        : `ยังไม่มีข้อมูลตารางสอนใน${formatSemesterLabel(viewSemester)} ปีการศึกษา ${viewAcademicYear}`}
+                </span>
+              </div>
+              {(roomsWithSlotsInTerm.length > 0 || otherTermSlotSummaries.length > 0) && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {roomsWithSlotsInTerm.length > 0 && onSelectClassRoom && (
+                    <>
+                      <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                        ห้องที่มีตารางในเทอมนี้:
+                      </span>
+                      {(!isPersonalViewer || uniqueClassRooms.length > 1) && selectedClassRoom !== ALL_CLASSROOMS && (
+                        <button
+                          type="button"
+                          onClick={() => onSelectClassRoom(ALL_CLASSROOMS)}
+                          className="rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer"
+                        >
+                          ทุกห้อง ({slots.length} คาบ)
+                        </button>
+                      )}
+                      {roomsWithSlotsInTerm.slice(0, 8).map((item) => (
+                        <button
+                          key={item.room}
+                          type="button"
+                          onClick={() => onSelectClassRoom(item.room)}
+                          className="rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer"
+                        >
+                          {item.room} ({item.count} คาบ)
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {slots.length === 0 && otherTermSlotSummaries.length > 0 && onSelectAcademicPeriod && (
+                    <>
+                      <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                        เปิดดูเทอมที่มีข้อมูล:
+                      </span>
+                      {otherTermSlotSummaries.map((period) => (
+                        <button
+                          key={period.key}
+                          type="button"
+                          onClick={() => onSelectAcademicPeriod(period.key)}
+                          className="rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer"
+                        >
+                          {formatSemesterLabel(period.semester)} · {period.academicYear} ({period.count} คาบ)
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              {myCoursesOnly && onClearTeacherScope && (
+                <button
+                  type="button"
+                  onClick={onClearTeacherScope}
+                  className="rounded-lg bg-amber-600 hover:bg-amber-700 px-2.5 py-1 text-[11px] font-bold text-white cursor-pointer"
+                >
+                  {isAdmin ? 'แสดงทั้งโรงเรียน' : 'แสดงทุกวิชาที่เข้าถึงได้'}
+                </button>
+              )}
+              {activeScheduleFilters && onClearScheduleFilters && (
+                <button
+                  type="button"
+                  onClick={onClearScheduleFilters}
+                  className="rounded-lg border border-amber-400 bg-white dark:bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-amber-900 dark:text-amber-200 hover:bg-amber-100 cursor-pointer"
+                >
+                  ล้างตัวกรอง
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto print:overflow-visible">
           <table
             style={{ minWidth: `${computedTableMinWidth}px` }}

@@ -96,5 +96,20 @@ export function getSchoolSettingsUpdate(updates: Partial<School>) {
     ...(updates.studentDefaultPasswordNote !== undefined
       ? { student_default_password_note: updates.studentDefaultPasswordNote || null }
       : {}),
+    ...(updates.studentIdMinLength !== undefined
+      ? { student_id_min_length: updates.studentIdMinLength }
+      : {}),
+    ...(updates.studentIdMaxLength !== undefined
+      ? { student_id_max_length: updates.studentIdMaxLength }
+      : {}),
+    ...(updates.studentIdDigitsOnly !== undefined
+      ? { student_id_digits_only: updates.studentIdDigitsOnly }
+      : {}),
+    ...(updates.studentIdExample !== undefined
+      ? { student_id_example: updates.studentIdExample || null }
+      : {}),
+    ...(updates.studentShortIdPasswordPrefix !== undefined
+      ? { student_short_id_password_prefix: updates.studentShortIdPasswordPrefix || null }
+      : {}),
   };
 }

@@ -11,19 +11,31 @@ import {
 } from './studentCredentialsRoutes';
 
 describe('student credentials route helpers', () => {
-  it('uses trimmed student ID number as the initial student password', () => {
+  it('uses trimmed student ID number and supports short-ID prefix and birthdate initial passwords', () => {
     assert.equal(getStudentInitialPassword(' ED-69001 '), 'ED-69001');
     assert.equal(getStudentInitialPassword('68010025'), '68010025');
+    assert.equal(getStudentInitialPassword('1001'), '1001');
+    assert.equal(
+      getStudentInitialPassword('1001', { defaultPasswordType: 'student_id', shortIdPasswordPrefix: '00' }),
+      '001001'
+    );
+    assert.equal(
+      getStudentInitialPassword('1001', { defaultPasswordType: 'birthdate', dateOfBirth: '2008-04-12' }),
+      '12042551'
+    );
     assert.equal(getStudentInitialPassword('   '), '');
   });
 
-  it('formats short-password Auth errors into a clear Thai explanation', () => {
+  it('formats short-password Auth errors accurately without blaming student ID length', () => {
     const formatted = formatStudentPasswordPolicyError(
       '1001',
-      'Password should be at least 6 characters.'
+      'Password should be at least 6 characters.',
+      '1001'
     );
     assert.ok(formatted.includes('"1001"'));
     assert.ok(formatted.includes('6 ตัวอักษร'));
+    assert.ok(formatted.includes('คำนำหน้ารหัสผ่านเริ่มต้น'));
+    assert.ok(!formatted.includes('ปรับรหัสนักเรียนให้ยาวอย่างน้อย 6'));
     assert.equal(
       formatStudentPasswordPolicyError('100001', 'Network timeout'),
       'Network timeout'

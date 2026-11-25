@@ -223,6 +223,10 @@ export interface BuildTimetableIcsOptions {
   includeTimetable?: boolean;
   includeAssignments?: boolean;
   includeHolidays?: boolean;
+  /** Minutes before class to trigger calendar notification (0 = no reminder). Defaults to 15. */
+  reminderMinutes?: number;
+  /** Exclude recurring class sessions that fall on Thai/school holidays. Defaults to true. */
+  excludeHolidays?: boolean;
 }
 
 function parseAssignmentDueWindow(dueDateRaw: string): {
@@ -267,6 +271,8 @@ export function buildTimetableIcs(
     includeTimetable = true,
     includeAssignments = assignments.length > 0,
     includeHolidays = true,
+    reminderMinutes = 15,
+    excludeHolidays = true,
   } = options;
 
   const startDate = parseDateInput(startDateValue);
@@ -277,6 +283,11 @@ export function buildTimetableIcs(
   const endUntil = formatIcsUtc(endDate, 23 * 60 + 59, 59);
   const events: string[][] = [];
   const invalidSlots: TimetableSlot[] = [];
+  const holidaysInTerm = getHolidaysInRange(startDateValue, endDateValue, schoolId);
+  const cleanReminderMinutes =
+    Number.isFinite(reminderMinutes) && reminderMinutes > 0
+      ? Math.min(180, Math.round(reminderMinutes))
+      : 0;
 
   if (includeTimetable) {
     slots.forEach((slot) => {
@@ -299,6 +310,8 @@ export function buildTimetableIcs(
 
       const termKey = `${slot.academicYear || ''}-${slot.semester || ''}`;
       const { teacherName, coTeacherName } = parseSlotTeachersFromRaw(slot.teacherName, slot.coTeacherName);
+      const summaryText = `${slot.courseCode} - ${slot.courseTitleTh || slot.courseTitleEn}`;
+      const locationText = slot.room || slot.classRoom || '';
       const description = [
         `ห้องเรียน: ${slot.classRoom || 'ไม่ระบุ'}`,
         `ครูผู้สอนหลัก: ${teacherName || 'ไม่ระบุ'}`,
@@ -307,18 +320,43 @@ export function buildTimetableIcs(
         `ภาคเรียน: ${termKey}`,
       ].join('\n');
       const uid = `${encodeURIComponent(schoolId)}-${encodeURIComponent(slot.id)}-${encodeURIComponent(termKey)}@baanpakkru`;
-      events.push([
+
+      const exdates = excludeHolidays
+        ? holidaysInTerm
+            .filter((holiday) => holiday.isSchoolDayOff !== false)
+            .map((holiday) => parseDateInput(holiday.date))
+            .filter(
+              (holidayDate) =>
+                holidayDate >= firstOccurrence &&
+                holidayDate <= endDate &&
+                holidayDate.getUTCDay() === targetDay
+            )
+            .map((holidayDate) => formatIcsUtc(holidayDate, startMinutes))
+        : [];
+
+      const eventLines = [
         'BEGIN:VEVENT',
         `UID:${uid}`,
         `DTSTAMP:${dtstamp}`,
         `DTSTART:${formatIcsUtc(firstOccurrence, startMinutes)}`,
         `DTEND:${formatIcsUtc(firstOccurrence, endMinutes)}`,
         `RRULE:FREQ=WEEKLY;BYDAY=${ICAL_DAYS[slot.dayOfWeek]};UNTIL=${endUntil}`,
-        `SUMMARY:${escapeIcsText(`${slot.courseCode} - ${slot.courseTitleTh || slot.courseTitleEn}`)}`,
+        ...(exdates.length > 0 ? [`EXDATE:${exdates.join(',')}`] : []),
+        `SUMMARY:${escapeIcsText(summaryText)}`,
         `DESCRIPTION:${escapeIcsText(description)}`,
-        `LOCATION:${escapeIcsText(slot.room || slot.classRoom || '')}`,
+        `LOCATION:${escapeIcsText(locationText)}`,
+        ...(cleanReminderMinutes > 0
+          ? [
+              'BEGIN:VALARM',
+              'ACTION:DISPLAY',
+              `TRIGGER:-PT${cleanReminderMinutes}M`,
+              `DESCRIPTION:${escapeIcsText(`เตรียมตัวเข้าเรียนใน ${cleanReminderMinutes} นาที: ${summaryText}${locationText ? ` (${locationText})` : ''}`)}`,
+              'END:VALARM',
+            ]
+          : []),
         'END:VEVENT',
-      ]);
+      ];
+      events.push(eventLines);
     });
   }
 

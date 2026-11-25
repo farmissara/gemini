@@ -63,6 +63,11 @@ import { SchoolStudentLoginSettingsCard } from '../components/SchoolStudentLogin
 import { SchoolPermissionSettingsView } from './SchoolPermissionSettingsView';
 import { SchoolPackagesAndAiPanel } from '../components/admin/SchoolPackagesAndAiPanel';
 import { AcademicTermRolloverPanel } from '../components/admin/AcademicTermRolloverPanel';
+import {
+  formatStudentIdPolicySummary,
+  normalizeSchoolStudentIdPolicy,
+  validateStudentIdAgainstPolicy,
+} from '../lib/studentIdPolicy';
 import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { appendAuditLog, getAuditLogs } from '../lib/auditLog';
@@ -2562,19 +2567,70 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         )}
 
       {activeTab === 'student_accounts' &&
-        ['admin', 'super_admin'].includes(currentRole) && (
+        ['admin', 'super_admin'].includes(currentRole) && (() => {
+          const studentIdPolicy = normalizeSchoolStudentIdPolicy(activeSchool);
+          const studentsViolatingSchoolRule = activeStudentsWithoutAccounts.filter(
+            (student) => !validateStudentIdAgainstPolicy(student.studentIdNumber || '', studentIdPolicy).valid
+          );
+          const studentsWithShortIdsWithoutPrefix =
+            studentIdPolicy.defaultPasswordType === 'student_id' && !studentIdPolicy.shortIdPasswordPrefix
+              ? activeStudentsWithoutAccounts.filter((student) => {
+                  const idLen = (student.studentIdNumber || '').trim().length;
+                  return idLen > 0 && idLen < 6;
+                })
+              : [];
+
+          const initialPasswordDesc =
+            studentIdPolicy.defaultPasswordType === 'birthdate'
+              ? 'วันเดือนปีเกิด พ.ศ. 8 หลัก (ววดดปปปป)'
+              : studentIdPolicy.shortIdPasswordPrefix
+                ? `"${studentIdPolicy.shortIdPasswordPrefix}" + รหัสนักเรียน (เช่น ${studentIdPolicy.shortIdPasswordPrefix}${studentIdPolicy.example})`
+                : 'รหัสนักเรียนตามทะเบียน';
+
+          return (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div data-guide-id="settings-student-accounts" className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">บัญชีเข้าสู่ระบบสำหรับนักเรียน (รหัสเริ่มต้น = รหัสนักเรียน)</h3>
-                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว หรือรีเซ็ตรหัสผ่านบัญชีเดิม โดยรหัสผ่านเริ่มต้นจะเป็น <strong className="text-[var(--color-text-title)]">รหัสนักเรียน</strong> ของนักเรียนคนนั้น และระบบจะบังคับให้นักเรียนเปลี่ยนเป็นรหัสผ่านส่วนตัวทันทีเมื่อเข้าสู่ระบบครั้งแรก
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-text-title)]">
+                    บัญชีเข้าสู่ระบบสำหรับนักเรียน (รหัสผ่านเริ่มต้น: {initialPasswordDesc})
+                  </h3>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                    สร้างบัญชีจากรายชื่อนักเรียนที่นำเข้าแล้ว หรือรีเซ็ตรหัสผ่านบัญชีเดิม โดยระบบกำหนดรหัสผ่านเริ่มต้นเป็น{' '}
+                    <strong className="text-[var(--color-text-title)]">{initialPasswordDesc}</strong>{' '}
+                    และเมื่อนักเรียนเข้าสู่ระบบครั้งแรก ระบบจะให้ตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษร
+                  </p>
+                  <p className="mt-1.5 text-[11px] font-medium text-[var(--color-primary-text)]">
+                    เงื่อนไขรหัสนักเรียนของโรงเรียนนี้: {formatStudentIdPolicySummary(studentIdPolicy, lang)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('student_login_config')}
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-1.5 text-xs font-bold text-[var(--color-text-title)] hover:bg-[var(--color-primary-light)] transition cursor-pointer shrink-0"
+                >
+                  ตั้งค่าเงื่อนไขรหัสนักเรียน
+                </button>
               </div>
 
-              {activeStudentsWithoutAccounts.some((student) => (student.studentIdNumber || '').trim().length > 0 && (student.studentIdNumber || '').trim().length < 6) && (
-                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                  หมายเหตุ: มีนักเรียนบางคนที่มีรหัสนักเรียนสั้นกว่า 6 ตัวอักษร ซึ่งอาจติดเกณฑ์ความยาวรหัสผ่านขั้นต่ำของ Supabase Auth (6 ตัวอักษร) หากสร้างไม่สำเร็จกรุณาปรับรหัสนักเรียนให้ครบ 6 ตัวขึ้นไป หรือปรับ Password minimum length ใน Supabase
+              {studentsViolatingSchoolRule.length > 0 && (
+                <p className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
+                  พบนักเรียน {studentsViolatingSchoolRule.length} คน ที่รหัสนักเรียนยังไม่ตรงตามเงื่อนไขโรงเรียน ({formatStudentIdPolicySummary(studentIdPolicy, lang)}) เช่น "{studentsViolatingSchoolRule[0]?.studentIdNumber || '(ว่าง)'}" — สามารถแก้ไขในทะเบียนนักเรียน หรือปรับเงื่อนไขโรงเรียนในปุ่ม "ตั้งค่าเงื่อนไขรหัสนักเรียน" ได้ทันที
+                </p>
+              )}
+
+              {studentsWithShortIdsWithoutPrefix.length > 0 && (
+                <p className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                  คำแนะนำสำหรับรหัสนักเรียน {studentsWithShortIdsWithoutPrefix.length} คน ที่สั้นกว่า 6 ตัว (เช่น "{studentsWithShortIdsWithoutPrefix[0]?.studentIdNumber}"):
+                  รหัสเหล่านี้ใช้เป็น <strong>ชื่อผู้ใช้ล็อกอินได้ตามปกติ</strong> แต่หากระบบยืนยันตัวตนยังตั้งความยาวรหัสผ่านขั้นต่ำไว้ที่ 6 ตัวอักษร แนะนำให้ตั้ง{' '}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('student_login_config')}
+                    className="underline font-bold cursor-pointer"
+                  >
+                    คำนำหน้ารหัสผ่านเริ่มต้น (เช่น 00) หรือเปลี่ยนเป็นวันเดือนปีเกิด
+                  </button>{' '}
+                  หรือปรับ Minimum password length ใน Supabase Auth ให้เหลือ 4 ตัว
                 </p>
               )}
 
@@ -2612,7 +2668,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   disabled={studentAccountsLoading || studentAccountSaving || !credentialStudentId}
                   className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {studentAccountSaving ? 'กำลังดำเนินการ...' : 'สร้างบัญชี (รหัสเริ่มต้น = รหัสนักเรียน)'}
+                  {studentAccountSaving ? 'กำลังดำเนินการ...' : 'สร้างบัญชีนักเรียน'}
                 </button>
                 <button
                   type="button"
@@ -2628,7 +2684,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-bold">บัญชีที่สร้างสำเร็จ — รหัสผ่านเริ่มต้นคือรหัสนักเรียน</p>
+                      <p className="text-sm font-bold">บัญชีที่สร้างสำเร็จ (รหัสผ่านเริ่มต้น: {initialPasswordDesc})</p>
                       <p className="mt-1 text-xs">
                         สร้าง {bulkCredentialResult.created.length} · ข้าม {bulkCredentialResult.skipped.length} · ล้มเหลว {bulkCredentialResult.failed.length}
                       </p>
@@ -2657,7 +2713,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   {bulkCredentialResult.created.length > 0 && (
                     <>
                       <p className="text-[11px] leading-relaxed">
-                        นักเรียนสามารถใช้ <strong>รหัสนักเรียน</strong> เป็นทั้งชื่อผู้ใช้และรหัสผ่านเริ่มต้นเพื่อเข้าสู่ระบบครั้งแรกได้ทันที โดยระบบจะบังคับให้ตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษรทันทีหลังเข้าสู่ระบบ
+                        นักเรียนเข้าสู่ระบบด้วย <strong>รหัสนักเรียน (ชื่อผู้ใช้)</strong> คู่กับ <strong>รหัสผ่านเริ่มต้น</strong> ด้านล่าง เมื่อเข้าสู่ระบบครั้งแรก ระบบจะบังคับให้ตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษรทันที
                       </p>
                       <div className="max-h-80 overflow-auto rounded-lg border border-amber-300 dark:border-amber-800">
             <table className="table-comfortable w-full min-w-[620px] text-left text-xs">
@@ -2930,7 +2986,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
       {/* TAB 8: Student Login Configuration & Dedicated School Login Link (Requirement 1) */}
       {activeTab === 'student_login_config' &&

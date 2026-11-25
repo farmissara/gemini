@@ -23,6 +23,8 @@ import {
   CreditCard,
   BookOpen,
   Focus,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
@@ -74,6 +76,8 @@ interface NavbarProps {
   featureFlags?: SchoolFeatureFlags;
   canSwitchAdminTeacherMode?: boolean;
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
+  isMascotHidden?: boolean;
+  onToggleMascotHidden?: () => void;
 }
 
 const buildInitialsAvatar = (name?: string) => {
@@ -148,6 +152,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   featureFlags,
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
+  isMascotHidden = false,
+  onToggleMascotHidden,
 }) => {
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -226,6 +232,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     Boolean(onOpenLoginGuide) ||
     (canAccessSchoolOperations && Boolean(onOpenCoordinationDesk)) ||
     Boolean(onOpenExamPaymentSettings) ||
+    Boolean(onToggleMascotHidden) ||
     !focusMode;
 
   return (
@@ -679,6 +686,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <BookOpen className="h-4 w-4 text-[var(--color-text-muted)]" />
                       <span>{lang === 'th' ? 'คู่มือการเข้าสู่ระบบ' : 'Login Guide'}</span>
+                    </button>
+                  )}
+
+                  {onToggleMascotHidden && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        onToggleMascotHidden();
+                      }}
+                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
+                    >
+                      <span className="flex items-center gap-3 min-w-0">
+                        {isMascotHidden ? (
+                          <Eye className="h-4 w-4 shrink-0 text-[var(--color-primary-text)]" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
+                        )}
+                        <span className="truncate">
+                          {isMascotHidden
+                            ? lang === 'th'
+                              ? 'แสดงการ์ตูนนำทาง (ชาโค & หมี)'
+                              : 'Show Mascot Guide'
+                            : lang === 'th'
+                              ? 'ซ่อนการ์ตูนนำทาง (ชาโค & หมี)'
+                              : 'Hide Mascot Guide'}
+                        </span>
+                      </span>
                     </button>
                   )}
 

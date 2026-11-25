@@ -66,6 +66,11 @@ export const StaffOrganizationView: React.FC<StaffOrganizationViewProps> = ({
               {teacher.positionTitle || 'ไม่ระบุตำแหน่ง'}
               {teacher.department ? ` · ${teacher.department}` : ''}
             </p>
+            {(teacher.homeroomClasses || []).filter((c) => Boolean(c?.trim())).length > 0 && (
+              <p className="mt-1 truncate text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                ครูประจำชั้น: {(teacher.homeroomClasses || []).filter((c) => Boolean(c?.trim())).join(', ')}
+              </p>
+            )}
             {missingManager && (
               <p className="mt-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
                 ไม่พบหัวหน้างานที่เชื่อมโยงไว้

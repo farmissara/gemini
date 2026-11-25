@@ -70,6 +70,7 @@ interface GuideTourProviderProps {
   onNavigateToTourTarget?: (target: TourNavigationTarget) => void;
   onOpenFullGuide?: () => void;
   hideFloatingMascot?: boolean;
+  onHideMascot?: () => void;
   children: React.ReactNode;
 }
 
@@ -82,6 +83,7 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
   onNavigateToTourTarget,
   onOpenFullGuide,
   hideFloatingMascot = false,
+  onHideMascot,
   children,
 }) => {
   const [activeTourModuleId, setActiveTourModuleId] = useState<string | null>(null);
@@ -734,6 +736,7 @@ export const GuideTourProvider: React.FC<GuideTourProviderProps> = ({
             onNavigateToTourTargetRef.current?.({ moduleId });
           }}
           onOpenFullGuide={onOpenFullGuide}
+          onHideMascot={onHideMascot}
         />
       )}
     </GuideTourContext.Provider>

@@ -1,5 +1,6 @@
 import { Announcement, Assignment, AuthUser, Course, Student, TimetableSlot, UserRole } from '../types';
 import { resolveLinkedStudentsForUser } from './attendanceScope';
+import { extractShortThaiGradePrefix, normalizeTimetableRoomKey } from './timetableRoomMatch';
 
 function isPersonalRole(currentUser: AuthUser | null | undefined): boolean {
   return currentUser?.role === 'student' || currentUser?.role === 'parent';
@@ -23,12 +24,7 @@ function getPersonalStudentIds(
 }
 
 function normalizeClassRoomLabel(value: string): string {
-  return value
-    .normalize('NFC')
-    .trim()
-    .replace(/^(?:ห้องเรียน|ห้อง|room|class)\s*/i, '')
-    .replace(/\s+/g, ' ')
-    .toLocaleLowerCase();
+  return normalizeTimetableRoomKey(value);
 }
 
 function addNormalizedRoomLabels(
@@ -38,17 +34,25 @@ function addNormalizedRoomLabels(
 ): void {
   const cleanRoom = (roomValue || '').trim();
   const cleanGrade = (gradeValue || '').trim();
+  const shortGrade = extractShortThaiGradePrefix(cleanGrade);
   if (!cleanRoom && !cleanGrade) return;
 
-  const hasGradePrefixInRoom = /^(?:อ\.|ป\.|ม\.|k|p|m|g)\s*\d/i.test(cleanRoom) || cleanRoom.includes('/');
+  const hasGradePrefixInRoom = /^(?:อ\.?|ป\.?|ม\.?|k|p|m|g)\s*\d/i.test(cleanRoom) || cleanRoom.includes('/');
 
-  if (cleanGrade && cleanRoom && !hasGradePrefixInRoom) {
-    target.add(`${cleanGrade}/${cleanRoom}`);
-    target.add(`${cleanGrade} ${cleanRoom}`);
-    target.add(`${cleanGrade} ห้อง ${cleanRoom}`);
-    const compactGrade = cleanGrade.replace(/\s+/g, '');
-    target.add(`${compactGrade}/${cleanRoom}`);
-    const numericGrade = cleanGrade.replace(/[^\d]/g, '');
+  if ((cleanGrade || shortGrade) && cleanRoom && !hasGradePrefixInRoom) {
+    if (cleanGrade) {
+      target.add(`${cleanGrade}/${cleanRoom}`);
+      target.add(`${cleanGrade} ${cleanRoom}`);
+      target.add(`${cleanGrade} ห้อง ${cleanRoom}`);
+      const compactGrade = cleanGrade.replace(/\s+/g, '');
+      target.add(`${compactGrade}/${cleanRoom}`);
+    }
+    if (shortGrade) {
+      target.add(`${shortGrade}/${cleanRoom}`);
+      target.add(`${shortGrade} ${cleanRoom}`);
+      target.add(`${shortGrade} ห้อง ${cleanRoom}`);
+    }
+    const numericGrade = (shortGrade || cleanGrade).replace(/[^\d]/g, '');
     if (numericGrade) {
       target.add(`${numericGrade}/${cleanRoom}`);
     }
@@ -61,7 +65,15 @@ function addNormalizedRoomLabels(
       target.add(`${cleanGrade}/${cleanRoom}`);
       target.add(`${cleanGrade} ${cleanRoom}`);
     }
+    if (shortGrade && !normalizeTimetableRoomKey(cleanRoom).includes(normalizeTimetableRoomKey(shortGrade))) {
+      target.add(`${shortGrade}/${cleanRoom}`);
+      target.add(`${shortGrade} ${cleanRoom}`);
+    }
+    return;
   }
+
+  if (cleanGrade) target.add(cleanGrade);
+  if (shortGrade) target.add(shortGrade);
 }
 
 function classRoomMatchesStudent(slotClassRoom: string, roomLabels: Set<string>): boolean {
