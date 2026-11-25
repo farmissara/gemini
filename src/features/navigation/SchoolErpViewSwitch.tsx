@@ -925,6 +925,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                     setCurrentTab('system_settings');
                   }}
                   onLoadAttendanceRange={props.onLoadAttendanceRange}
+                  lineEnabled={activeFeatureFlags?.lineEnabled !== false && systemConfig.lineMessagingConfigured !== false}
                 />
               )}
 

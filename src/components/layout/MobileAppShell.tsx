@@ -340,10 +340,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     (currentRole === 'admin' ||
       currentRole === 'super_admin' ||
       (currentRole === 'teacher' && schoolPermissions?.teacher_infirmary_access !== false));
+  const isLineEnabled = featureFlags?.lineEnabled !== false && systemConfig?.lineMessagingConfigured !== false;
   const canBroadcastLine =
-    currentRole === 'admin' ||
-    currentRole === 'super_admin' ||
-    (currentRole === 'teacher' && schoolPermissions?.teacher_line_broadcast !== false);
+    isLineEnabled &&
+    (currentRole === 'admin' ||
+      currentRole === 'super_admin' ||
+      (currentRole === 'teacher' && schoolPermissions?.teacher_line_broadcast !== false));
 
   const myLeaves = isRestrictedViewer
     ? filterLeaveRequestsForUser(leaveRequests, currentUser, students)

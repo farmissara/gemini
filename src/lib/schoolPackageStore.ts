@@ -175,6 +175,10 @@ export async function loadSchoolFeatureFlagsFromDb(
           : typeof rawFlags.allowStudentsAi === 'boolean'
             ? rawFlags.allowStudentsAi
             : basePreset.allowStudentsAi,
+      lineEnabled:
+        typeof rawFlags.lineEnabled === 'boolean'
+          ? rawFlags.lineEnabled
+          : basePreset.lineEnabled,
     };
 
     saveSchoolFeatureFlags(schoolId, merged);
@@ -192,6 +196,7 @@ export async function saveSchoolFeatureFlagsToDb(
   const normalized: SchoolFeatureFlags = {
     ...flags,
     tier: normalizedTier,
+    lineEnabled: flags.lineEnabled !== false,
   };
   saveSchoolFeatureFlags(schoolId, normalized);
 

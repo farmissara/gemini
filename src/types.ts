@@ -1452,6 +1452,7 @@ export type SchoolFeatureFlagKey =
 export interface SchoolFeatureFlags extends Record<SchoolFeatureFlagKey, boolean> {
   tier: SchoolTier;
   allowStudentsAi: boolean;
+  lineEnabled?: boolean;
 }
 
 export interface PackageLevelConfig {

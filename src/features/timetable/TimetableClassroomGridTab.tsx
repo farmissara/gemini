@@ -728,26 +728,52 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
                                 >
                                   <div className="min-w-0">
                                     <div className="flex items-start justify-between gap-1">
-                                      <span className="shrink-0 font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
-                                        {slot.courseCode}
-                                      </span>
-                                      <span title="ชั้น/ห้องเรียน" className="max-w-[55%] truncate rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold text-slate-800 dark:bg-slate-900/70 dark:text-white">
-                                        {slot.classRoom}
-                                      </span>
-                                      {hasConflict && !isPersonalViewer && (
-                                        <button
-                                          type="button"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            setSelectedConflictSlotId(slot.id);
-                                          }}
-                                          aria-label={`ดูข้อขัดแย้งของคาบ ${slot.courseTitleTh}`}
-                                          title="ดูรายละเอียดข้อขัดแย้ง"
-                                          className="shrink-0 rounded p-0.5 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
-                                        >
-                                          <AlertTriangle className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
+                                      <div className="flex items-center gap-1 min-w-0">
+                                        <span className="shrink-0 font-mono text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-white">
+                                          {slot.courseCode}
+                                        </span>
+                                        <span title="ชั้น/ห้องเรียน" className="truncate rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold text-slate-800 dark:bg-slate-900/70 dark:text-white">
+                                          {slot.classRoom}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-0.5 shrink-0">
+                                        {hasConflict && !isPersonalViewer && (
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              setSelectedConflictSlotId(slot.id);
+                                            }}
+                                            aria-label={`ดูข้อขัดแย้งของคาบ ${slot.courseTitleTh}`}
+                                            title="ดูรายละเอียดข้อขัดแย้ง"
+                                            className="relative z-10 shrink-0 rounded p-0.5 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900 cursor-pointer"
+                                          >
+                                            <AlertTriangle className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                        {isViewingCurrentTerm && canManageTimetable && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setPendingSlotConfirm({
+                                                title: 'ยืนยันการลบคาบเรียน',
+                                                description: `ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) ออกจากตารางสอนหรือไม่?`,
+                                                confirmLabel: 'ลบคาบเรียน',
+                                                tone: 'danger',
+                                                onConfirm: async () => {
+                                                  await onDeleteSlot(slot.id);
+                                                },
+                                              });
+                                            }}
+                                            aria-label={`ลบคาบ ${slot.courseTitleTh}`}
+                                            className="p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition shadow-sm cursor-pointer shrink-0"
+                                            title="ลบคาบนี้"
+                                          >
+                                            <Trash2 className="w-2.5 h-2.5" />
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                     {slotActivity.isActive && (
                                       <div className="mt-1 inline-flex items-center gap-1 rounded bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">
@@ -841,27 +867,7 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
                                     </div>
                                   )}
 
-                                  {isViewingCurrentTerm && canManageTimetable && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPendingSlotConfirm({
-                                          title: 'ยืนยันการลบคาบเรียน',
-                                          description: `ต้องการลบคาบเรียน ${slot.courseCode} (${slot.courseTitleTh}) ออกจากตารางสอนหรือไม่?`,
-                                          confirmLabel: 'ลบคาบเรียน',
-                                          tone: 'danger',
-                                          onConfirm: async () => {
-                                            await onDeleteSlot(slot.id);
-                                          },
-                                        });
-                                      }}
-                                      className="absolute top-1 right-1 p-1 rounded-md bg-rose-700 hover:bg-rose-800 text-white opacity-0 group-hover:opacity-100 transition shadow-sm cursor-pointer"
-                                      title="ลบคาบนี้"
-                                    >
-                                      <Trash2 className="w-2.5 h-2.5" />
-                                    </button>
-                                  )}
+                                  {/* Delete button moved into top-right header action group beside conflict button */}
                                 </div>
                               );
                             })}

@@ -146,6 +146,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   onSwitchOperationalRole,
   campusGates = [],
   schoolPermissions,
+  featureFlags,
   onOpenSystemSettingsTab,
   displayRecords,
   fallbackAvatarSvg,
@@ -158,6 +159,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   simplifiedView = false,
   onToggleSimplifiedView,
 }) => {
+  const isLineEnabled = featureFlags?.lineEnabled !== false && systemConfig.lineMessagingConfigured !== false;
   const totalPendingActions = pendingLeaveCount + ungradedHomeworkCount + pendingSlipCount;
   const activeGatesCount = campusGates.filter((gate) => gate.isActive !== false).length;
   const hasGpsConfigured = Boolean(school?.latitude && school?.longitude) || activeGatesCount > 0;
@@ -615,16 +617,24 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="type-meta font-medium">
-                  {lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition'}
+                  {isLineEnabled
+                    ? (lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition')
+                    : (lang === 'th' ? 'การเงิน & แจ้งเตือนในแอป' : 'Tuition & In-App Alerts')}
                 </span>
                 <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
               </div>
               <div className="flex items-baseline gap-2.5 min-w-0">
-                <span className="type-kpi tabular-nums">{linePercent}%</span>
+                <span className="type-kpi tabular-nums">
+                  {isLineEnabled ? `${linePercent}%` : (canViewFinancials ? `${collectionRate}%` : `${announcementsCount}`)}
+                </span>
                 <span className="type-meta tabular-nums truncate">
-                  {canViewFinancials
-                    ? (lang === 'th' ? `${lineConnectedCount}/${totalStudents} บ้าน · เก็บค่าเทอม ${collectionRate}%` : `${lineConnectedCount} LINE · ${collectionRate}% paid`)
-                    : (lang === 'th' ? `${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} families`)}
+                  {isLineEnabled
+                    ? canViewFinancials
+                      ? (lang === 'th' ? `${lineConnectedCount}/${totalStudents} บ้าน · เก็บค่าเทอม ${collectionRate}%` : `${lineConnectedCount} LINE · ${collectionRate}% paid`)
+                      : (lang === 'th' ? `${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} families`)
+                    : canViewFinancials
+                      ? (lang === 'th' ? `เก็บค่าเทอม ${collectionRate}% · ปิด LINE OA` : `${collectionRate}% paid · LINE OA off`)
+                      : (lang === 'th' ? 'ปิด LINE OA · ใช้แจ้งเตือนในแอป' : 'LINE OA off · In-app alerts')}
                 </span>
               </div>
             </button>

@@ -692,6 +692,29 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     }
   };
 
+  const isLineEnabled = localFlags.lineEnabled !== false;
+
+  const handleToggleLineMaster = (nextEnabled?: boolean) => {
+    const resolvedNext = typeof nextEnabled === 'boolean' ? nextEnabled : !isLineEnabled;
+    const nextFlags: SchoolFeatureFlags = {
+      ...localFlags,
+      lineEnabled: resolvedNext,
+    };
+    setLocalFlags(nextFlags);
+    saveSchoolFeatureFlags(activeSchool.id, nextFlags);
+    onUpdateFeatureFlags?.(nextFlags);
+    onUpdateConfig({
+      ...systemConfig,
+      lineMessagingConfigured: resolvedNext,
+    });
+    setQuickSwitchMessage(
+      resolvedNext
+        ? 'เปิดใช้งานระบบแจ้งเตือนผ่าน LINE OA ทั้งโรงเรียนแล้ว'
+        : 'ปิดใช้งานระบบแจ้งเตือนผ่าน LINE OA แล้ว (ใช้แจ้งเตือนในแอป / Web Push แทน)'
+    );
+    window.setTimeout(() => setQuickSwitchMessage(null), 3000);
+  };
+
   const handleToggleEvent = (field: keyof LineNotificationSettings) => {
     setLineSettings(prev => ({
       ...prev,
@@ -721,7 +744,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       backupBucket: generalConfig.backupBucket,
       lineChannelId: lineSettings.channelId,
       lineOaAddFriendUrl: lineSettings.addFriendUrl,
-      lineMessagingConfigured: true,
+      lineMessagingConfigured: isLineEnabled,
       lineNotificationSettings: lineSettings,
     };
 
@@ -948,8 +971,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </h1>
             <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
               {lang === 'th'
-                ? `LINE ผู้ปกครอง ${connectedCount}/${students.length} (${connectedPct}%) · ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น.`
-                : `LINE ${connectedCount}/${students.length} (${connectedPct}%) · Late ${lineSettings.lateCutoffTime} · Absent ${lineSettings.absenceCutoffTime}`}
+                ? `${isLineEnabled ? `LINE ผู้ปกครอง ${connectedCount}/${students.length} (${connectedPct}%)` : 'ปิดใช้งาน LINE ชั่วคราว'} · ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น.`
+                : `${isLineEnabled ? `LINE ${connectedCount}/${students.length} (${connectedPct}%)` : 'LINE Disabled'} · Late ${lineSettings.lateCutoffTime} · Absent ${lineSettings.absenceCutoffTime}`}
             </p>
           </div>
         </div>
@@ -1130,9 +1153,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             id: 'line_events',
             category: 'การแจ้งเตือน & เวลาเรียน',
             title: 'LINE OA & เวลาตัดสาย / ขาดเรียน',
-            statusLabel: `เชื่อมต่อ ${connectedPct}%`,
-            ready: connectedCount > 0 || Boolean(lineSettings.notifyAttendanceCheckIn),
-            detail: `ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น. · ผู้ปกครองเชื่อม LINE ${connectedCount}/${students.length} คน`,
+            statusLabel: !isLineEnabled ? 'ปิดใช้งาน LINE' : `เชื่อมต่อ ${connectedPct}%`,
+            ready: isLineEnabled && (connectedCount > 0 || Boolean(lineSettings.notifyAttendanceCheckIn)),
+            detail: !isLineEnabled
+              ? `ปิดการส่งแจ้งเตือนผ่าน LINE OA อยู่ (ใช้แจ้งเตือนในแอป & Web Push) · ตัดสาย ${lineSettings.lateCutoffTime} น.`
+              : `ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น. · ผู้ปกครองเชื่อม LINE ${connectedCount}/${students.length} คน`,
             icon: BellRing,
             actionLabel: 'ตั้งค่า LINE & เวลา',
           },
@@ -1202,6 +1227,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             desc: 'ควบคุมการเข้าถึง AI Diagnostic, Socratic Tutor และ Career Quest AI',
             enabled: localFlags.allowStudentsAi !== false,
             onToggle: handleQuickStudentAiToggle,
+          },
+          {
+            id: 'line_oa_master',
+            label: 'เปิดใช้งานระบบแจ้งเตือนผ่าน LINE OA',
+            desc: 'เปิดหรือปิดฟังก์ชันแจ้งเตือนและผูกบัญชี LINE OA ทั้งโรงเรียน (หากปิดจะใช้ระบบแจ้งเตือนในแอป / Web Push แทน)',
+            enabled: isLineEnabled,
+            onToggle: () => handleToggleLineMaster(),
           },
         ];
 
@@ -1468,6 +1500,74 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {/* TAB 1: LINE Notification Events & Rules */}
       {activeTab === 'line_events' && (
         <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Master LINE On/Off Switch Card */}
+          <div className={`rounded-2xl p-5 border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition ${
+            isLineEnabled
+              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800'
+              : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
+          }`}>
+            <div className="flex items-start gap-3 min-w-0">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                isLineEnabled
+                  ? 'bg-emerald-700 text-white border-emerald-700'
+                  : 'bg-[var(--color-card)] text-[var(--color-text-muted)] border-[var(--color-border)]'
+              }`}>
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
+                    เปิด-ปิดระบบแจ้งเตือนผ่าน LINE OA (ทั้งโรงเรียน)
+                  </h3>
+                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                    isLineEnabled
+                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                      : 'bg-[var(--color-card)] text-[var(--color-text-muted)] border-[var(--color-border)]'
+                  }`}>
+                    {isLineEnabled ? 'เปิดใช้งานอยู่ (ON)' : 'ปิดใช้งานอยู่ (OFF)'}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
+                  {isLineEnabled
+                    ? 'เปิดให้ส่งประกาศ แจ้งเตือน และปุ่มผูกบัญชี LINE OA ของผู้ปกครองและนักเรียน (สามารถปิดได้ทันทีหากโรงเรียนใช้แจ้งเตือนในแอป / Web Push เป็นหลัก)'
+                    : 'ปิดการใช้งาน LINE ทั้งระบบแล้ว — ปุ่มส่ง LINE, บรอดแคสต์ LINE และปุ่มเชื่อม LINE OA จะถูกซ่อนไว้ โดยระบบแจ้งเตือนในแอปและ Web Push ยังทำงานปกติ'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+              <span className="text-xs font-bold text-[var(--color-text-title)]">
+                {isLineEnabled ? 'เปิด' : 'ปิด'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isLineEnabled}
+                aria-label="เปิดหรือปิดระบบแจ้งเตือนผ่าน LINE OA ทั้งโรงเรียน"
+                onClick={() => handleToggleLineMaster()}
+                className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 ${
+                  isLineEnabled ? 'bg-emerald-700' : 'bg-slate-400 dark:bg-slate-600'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition duration-200 ${
+                    isLineEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {quickSwitchMessage && (
+            <div role="status" className="px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-xs font-semibold text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{quickSwitchMessage}</span>
+              </span>
+              <button type="button" onClick={() => setQuickSwitchMessage(null)} className="text-xs font-bold px-1.5 py-0.5 cursor-pointer">✕</button>
+            </div>
+          )}
+
           {/* Rules & Cutoff Timers Card */}
           <div className="bg-[var(--color-card)] rounded-2xl p-5 border border-[var(--color-border)] shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-[var(--color-text-title)]">
@@ -1524,7 +1624,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           </div>
 
           {/* Event Categories Accordion / Cards */}
-          <div className="space-y-4">
+          <div className={`space-y-4 transition-opacity ${isLineEnabled ? '' : 'opacity-60'}`}>
             {eventCategories.slice(eventCategoryPage, eventCategoryPage + 1).map((cat) => {
               const Icon = cat.icon;
               return (
@@ -2009,7 +2109,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left: API Keys Form */}
             <div className="lg:col-span-8 bg-[var(--color-card)] rounded-2xl p-6 border border-[var(--color-border)] shadow-xs space-y-5">
-              <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-[var(--color-border)] pb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center font-bold text-xs">
                     API
@@ -2019,9 +2119,31 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     <p className="text-[11px] text-[var(--color-text-muted)]">ข้อมูลจาก https://developers.line.biz ในส่วน Messaging API Channel</p>
                   </div>
                 </div>
-                <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">
-                  ✓ Configured
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${
+                    isLineEnabled
+                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border-[var(--color-border)]'
+                  }`}>
+                    {isLineEnabled ? '✓ เปิดใช้งาน LINE' : 'ปิดใช้งาน LINE อยู่'}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isLineEnabled}
+                    aria-label="เปิดหรือปิดใช้งาน LINE OA"
+                    onClick={() => handleToggleLineMaster()}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                      isLineEnabled ? 'bg-emerald-700' : 'bg-slate-400 dark:bg-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ${
+                        isLineEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4">

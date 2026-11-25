@@ -481,7 +481,8 @@ export function cachePackageCatalog(catalog: PackageLevelConfig[]): void {
 export function buildFlagsFromLevel(
   tier: SchoolTier,
   catalog: PackageLevelConfig[] = getStoredPackageCatalog(),
-  allowStudentsAi?: boolean
+  allowStudentsAi?: boolean,
+  lineEnabled: boolean = true
 ): SchoolFeatureFlags {
   const levelId = normalizeSchoolTier(tier);
   const pkg = catalog.find((item) => item.id === levelId) || DEFAULT_PACKAGE_CATALOG.find((item) => item.id === levelId)!;
@@ -490,17 +491,18 @@ export function buildFlagsFromLevel(
     ...pkg.features,
     tier: levelId,
     allowStudentsAi: allowStudentsAi !== undefined ? allowStudentsAi : anyAiEnabled,
+    lineEnabled,
   };
 }
 
 export const TIER_PRESETS: Record<SchoolTier, SchoolFeatureFlags> = {
-  level_1: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false },
-  level_2: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false },
-  level_3: { ...LEVEL_3_FEATURES, tier: 'level_3', allowStudentsAi: false },
-  level_4: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true },
-  small: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false },
-  standard: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false },
-  enterprise: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true },
+  level_1: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true },
+  level_2: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true },
+  level_3: { ...LEVEL_3_FEATURES, tier: 'level_3', allowStudentsAi: false, lineEnabled: true },
+  level_4: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true },
+  small: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true },
+  standard: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true },
+  enterprise: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true },
 };
 
 export const getSchoolFeatureFlags = (
@@ -524,6 +526,10 @@ export const getSchoolFeatureFlags = (
         typeof parsed.allowStudentsAi === 'boolean'
           ? parsed.allowStudentsAi
           : tierPreset.allowStudentsAi,
+      lineEnabled:
+        typeof parsed.lineEnabled === 'boolean'
+          ? parsed.lineEnabled
+          : tierPreset.lineEnabled,
     };
   } catch {
     return baseDefault;
@@ -536,6 +542,7 @@ export const saveSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFla
     const normalized: SchoolFeatureFlags = {
       ...flags,
       tier: normalizeSchoolTier(flags.tier),
+      lineEnabled: flags.lineEnabled !== false,
     };
     window.localStorage.setItem(`${FEATURE_FLAGS_PREFIX}${schoolId}`, JSON.stringify(normalized));
   } catch {

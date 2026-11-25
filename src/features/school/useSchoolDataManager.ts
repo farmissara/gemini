@@ -147,6 +147,7 @@ import {
   loadSchoolFeatureFlagsFromDb,
   saveSchoolFeatureFlagsToDb,
 } from '../../lib/schoolPackageStore';
+import { getSchoolFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { useSchoolPermissions } from '../../lib/schoolPermissions';
 import { loadSchoolLessons, saveSchoolLessonCompletionToDb, saveSchoolLessonToDb } from '../../lib/lmsPersistence';
 import { teacherMatchesCourse } from '../../lib/courseTeacherFilter';
@@ -604,6 +605,7 @@ export function useSchoolDataManager({
     if (school) {
       setActiveSchool(school);
       setLoadedSchoolId(null);
+      const localFlags = getSchoolFeatureFlags(school.id, school.schoolTier || 'enterprise');
       setSystemConfig((prev) => ({
         ...prev,
         schoolNameEn: school.nameEn,
@@ -613,6 +615,7 @@ export function useSchoolDataManager({
         semesterOptions: school.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
         gradingSystem: school.gradingSystem || 'thai',
         staffPositionOptions: school.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
+        lineMessagingConfigured: localFlags.lineEnabled !== false,
       }));
     }
     setStudents([]);
@@ -1017,6 +1020,10 @@ export function useSchoolDataManager({
       .then((flags) => {
         if (!active) return;
         setFeatureFlagsBySchool((prev) => ({ ...prev, [activeSchool.id]: flags }));
+        setSystemConfig((prev) => ({
+          ...prev,
+          lineMessagingConfigured: flags.lineEnabled !== false,
+        }));
       })
       .catch(() => {});
     return () => {
@@ -1308,6 +1315,12 @@ export function useSchoolDataManager({
         ? { ...prev, schoolTier: flags.tier, aiStudentEnabled: flags.allowStudentsAi }
         : prev
     );
+    if (schoolId === activeSchool.id) {
+      setSystemConfig((prev) => ({
+        ...prev,
+        lineMessagingConfigured: flags.lineEnabled !== false,
+      }));
+    }
     if (!isDemoMode) {
       void saveSchoolFeatureFlagsToDb(schoolId, flags);
     }
@@ -1317,7 +1330,7 @@ export function useSchoolDataManager({
         actorRole: currentUser.role,
         actionType: 'feature_flags_update',
         targetLabel: flags.tier,
-        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier}) · สิทธิ์ AI นักเรียน: ${flags.allowStudentsAi ? 'เปิด' : 'ปิด'}`,
+        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier}) · สิทธิ์ AI นักเรียน: ${flags.allowStudentsAi ? 'เปิด' : 'ปิด'} · แจ้งเตือน LINE: ${flags.lineEnabled === false ? 'ปิด' : 'เปิด'}`,
       });
     }
   };

@@ -431,16 +431,18 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               </div>
             </div>
 
-            <a
-              href={systemConfig.lineOaAddFriendUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors shrink-0"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>เปิดแชท LINE OA โรงเรียน</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
+            {systemConfig.lineMessagingConfigured !== false && Boolean(systemConfig.lineOaAddFriendUrl) && (
+              <a
+                href={systemConfig.lineOaAddFriendUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors shrink-0"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>เปิดแชท LINE OA โรงเรียน</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
           </div>
 
           {/* Grid: Digital Student ID & Tuition / Academic Overview */}

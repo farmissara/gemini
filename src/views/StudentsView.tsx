@@ -285,6 +285,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   gradebookJumpTarget,
   moeJumpTarget,
 }) => {
+  const isLineEnabled = systemConfig?.lineMessagingConfigured !== false;
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [roomFilter, setRoomFilter] = useState('all');
@@ -1887,7 +1888,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           </div>
                           <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5 flex-wrap tabular-nums mt-0.5">
                             <span>{student.guardianPhone || '—'}</span>
-                            {canManageStudentRecords ? (
+                            {isLineEnabled && (canManageStudentRecords ? (
                               <>
                                 <span aria-hidden="true">·</span>
                                 <button
@@ -1910,7 +1911,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                                   <span className="text-emerald-700 dark:text-emerald-400 font-medium">LINE เชื่อมแล้ว</span>
                                 </>
                               )
-                            )}
+                            ))}
                           </div>
                         </td>
 
@@ -2033,13 +2034,28 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               </div>
             </div>
             <div className="saas-kpi-cell">
-              <div className="text-xs font-medium text-[var(--color-text-muted)]">เชื่อมต่อ LINE OA</div>
-              <div className="mt-1 text-2xl font-bold text-[var(--color-text-title)] tabular-nums">
-                {lineLinkedCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
+              <div className="text-xs font-medium text-[var(--color-text-muted)]">
+                {isLineEnabled ? 'เชื่อมต่อ LINE OA' : 'แจ้งเตือน LINE OA'}
               </div>
-              <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                {students.length > 0 ? Math.round((lineLinkedCount / students.length) * 100) : 0}% ของนักเรียนทั้งหมด
-              </div>
+              {isLineEnabled ? (
+                <>
+                  <div className="mt-1 text-2xl font-bold text-[var(--color-text-title)] tabular-nums">
+                    {lineLinkedCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                    {students.length > 0 ? Math.round((lineLinkedCount / students.length) * 100) : 0}% ของนักเรียนทั้งหมด
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mt-1 text-xl font-bold text-[var(--color-text-muted)]">
+                    ปิดใช้งาน
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+                    ใช้แจ้งเตือนในแอป / Web Push
+                  </div>
+                </>
+              )}
             </div>
             <div className="saas-kpi-cell">
               <div className="text-xs font-medium text-[var(--color-text-muted)]">สำเร็จการศึกษาแล้ว</div>

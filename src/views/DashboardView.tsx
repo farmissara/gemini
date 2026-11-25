@@ -254,6 +254,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return candidate;
   };
 
+  const isLineEnabled = featureFlags?.lineEnabled !== false && systemConfig.lineMessagingConfigured !== false;
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
   useEffect(() => {
@@ -1422,14 +1423,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="type-meta">
-                          {lang === 'th' ? 'LINE ผู้ปกครอง' : 'Guardian LINE'}
+                          {isLineEnabled
+                            ? (lang === 'th' ? 'LINE ผู้ปกครอง' : 'Guardian LINE')
+                            : (lang === 'th' ? 'การแจ้งเตือนผู้ปกครอง' : 'Parent Alerts')}
                         </span>
                         <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
-                        <span className="type-kpi tabular-nums">{linePercent}%</span>
+                        <span className="type-kpi tabular-nums">
+                          {isLineEnabled ? `${linePercent}%` : (lang === 'th' ? 'ในแอป' : 'In-App')}
+                        </span>
                         <span className="type-meta tabular-nums">
-                          {lineConnectedCount}/{totalStudents} {lang === 'th' ? 'ครอบครัว' : 'families'}
+                          {isLineEnabled
+                            ? `${lineConnectedCount}/${totalStudents} ${lang === 'th' ? 'ครอบครัว' : 'families'}`
+                            : (lang === 'th' ? 'ปิด LINE OA ชั่วคราว' : 'LINE OA off')}
                         </span>
                       </div>
                     </button>
@@ -2040,7 +2047,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="btn-tool-neutral px-2.5 py-1 whitespace-nowrap"
                   >
                     <Receipt className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? `ค่าเทอม & LINE (${linePercent}%)` : `Tuition & LINE (${linePercent}%)`}</span>
+                    <span>
+                      {isLineEnabled
+                        ? (lang === 'th' ? `ค่าเทอม & LINE (${linePercent}%)` : `Tuition & LINE (${linePercent}%)`)
+                        : (lang === 'th' ? `ค่าเทอม (${collectionRate}%)` : `Tuition (${collectionRate}%)`)}
+                    </span>
                   </button>
                 )}
               </div>
@@ -3304,18 +3315,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="type-card-title flex items-center gap-1.5">
-                        <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <MessageSquare className={`w-4 h-4 ${isLineEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--color-text-muted)]'}`} />
                         <span>{lang === 'th' ? 'การเชื่อมต่อ LINE ผู้ปกครอง' : 'Guardian LINE Sync'}</span>
                       </span>
-                      <span className="type-kpi-sm text-emerald-700 dark:text-emerald-300">{linePercent}%</span>
+                      {isLineEnabled ? (
+                        <span className="type-kpi-sm text-emerald-700 dark:text-emerald-300">{linePercent}%</span>
+                      ) : (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {lang === 'th' ? 'ปิดใช้งาน' : 'Disabled'}
+                        </span>
+                      )}
                     </div>
-                    <div className="w-full h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
-                      <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${linePercent}%` }} />
-                    </div>
-                    <div className="flex items-center justify-between type-meta tabular-nums">
-                      <span>{lang === 'th' ? `เชื่อมต่อแล้ว ${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} connected`}</span>
-                      <span>{lang === 'th' ? `ยังไม่ผูก ${Math.max(0, totalStudents - lineConnectedCount)}` : `${Math.max(0, totalStudents - lineConnectedCount)} pending`}</span>
-                    </div>
+                    {isLineEnabled ? (
+                      <>
+                        <div className="w-full h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
+                          <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${linePercent}%` }} />
+                        </div>
+                        <div className="flex items-center justify-between type-meta tabular-nums">
+                          <span>{lang === 'th' ? `เชื่อมต่อแล้ว ${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} connected`}</span>
+                          <span>{lang === 'th' ? `ยังไม่ผูก ${Math.max(0, totalStudents - lineConnectedCount)}` : `${Math.max(0, totalStudents - lineConnectedCount)} pending`}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="type-meta">
+                        {lang === 'th'
+                          ? 'ปิดใช้งาน LINE OA ทั้งโรงเรียนอยู่ (เปิด/ปิดได้ในหน้าตั้งค่าระบบ)'
+                          : 'LINE OA is disabled school-wide (toggle in System Settings).'}
+                      </p>
+                    )}
                   </div>
 
                   {canViewFinancials && (

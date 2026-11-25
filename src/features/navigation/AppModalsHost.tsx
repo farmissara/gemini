@@ -253,6 +253,7 @@ export const AppModalsHost: React.FC<AppModalsHostProps> = (props) => {
             }
             onToggleLineSync={currentRole === 'teacher' ? () => undefined : props.onToggleLineSync}
             gradingSystem={systemConfig.gradingSystem}
+            lineEnabled={systemConfig.lineMessagingConfigured !== false}
             onUpdateStudent={currentRole === 'teacher' ? undefined : (updated) => {
               props.onUpdateStudent(updated);
               setSelectedStudentForProfile(updated);

@@ -99,6 +99,7 @@ interface AttendanceViewProps {
   onRecordPeriodAttendance?: (records: PeriodAttendanceRecord[]) => void;
   onOpenGpsSettings?: () => void;
   onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
+  lineEnabled?: boolean;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -124,6 +125,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onRecordPeriodAttendance,
   onOpenGpsSettings,
   onLoadAttendanceRange,
+  lineEnabled = true,
 }) => {
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
   const isAdminUser = currentRole === 'admin' || currentRole === 'super_admin';
@@ -281,7 +283,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         status: resolved,
         checkinMethod: 'teacher_proxy',
         remarks: `เช็คชื่อโฮมรูมห้อง ${stu.room} (${loggedInProfile.userName})`,
-        lineNotificationSent: stu.lineLinked && stu.lineNotifyEnabled,
+        lineNotificationSent: lineEnabled && stu.lineLinked && stu.lineNotifyEnabled,
         recordedBy: loggedInProfile.userName,
         recordedByRole: currentUser?.role || currentRole,
       };

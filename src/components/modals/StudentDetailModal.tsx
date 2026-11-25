@@ -54,6 +54,7 @@ interface StudentDetailModalProps {
   onToggleLineSync: (studentId: string) => void;
   onUpdateStudent?: (student: Student) => void;
   gradingSystem?: GradingSystem;
+  lineEnabled?: boolean;
 }
 
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
@@ -69,6 +70,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onToggleLineSync,
   onUpdateStudent,
   gradingSystem = 'thai',
+  lineEnabled = true,
 }) => {
   useEffect(() => {
     if (onLoadAttendanceHistory) void onLoadAttendanceHistory(null, null, student.id);
@@ -475,23 +477,27 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                     : `คำนวณแบบถ่วงน้ำหนักหน่วยกิต (${academicSummary.gradedCredits} หน่วยกิตที่ตัดสินแล้ว) ไม่นับกิจกรรมพัฒนาผู้เรียน และ ร/มส.`}
                 </p>
               </div>
-              <div className="border-t sm:border-t-0 sm:border-l border-[var(--color-border)] pt-2 sm:pt-0 sm:pl-3">
-                <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">LINE OA Sync</span>
-                <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
-                  <MessageSquare className="w-3 h-3 fill-current" />
-                  {student.lineLinked ? 'Active' : 'Unlinked'}
-                </span>
-              </div>
+              {lineEnabled && (
+                <div className="border-t sm:border-t-0 sm:border-l border-[var(--color-border)] pt-2 sm:pt-0 sm:pl-3">
+                  <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">LINE OA Sync</span>
+                  <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3 fill-current" />
+                    {student.lineLinked ? 'Active' : 'Unlinked'}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onToggleLineSync(student.id)}
-                className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] font-semibold cursor-pointer"
-              >
-                {student.lineLinked ? 'Disconnect LINE' : 'Link LINE OA'}
-              </button>
+              {lineEnabled && (
+                <button
+                  type="button"
+                  onClick={() => onToggleLineSync(student.id)}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] font-semibold cursor-pointer"
+                >
+                  {student.lineLinked ? 'Disconnect LINE' : 'Link LINE OA'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setShowQrModal(true)}

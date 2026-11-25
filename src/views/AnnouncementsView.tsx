@@ -68,6 +68,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     authorRole: 'Administrator',
   });
 
+  const isLineEnabled = systemConfig.lineMessagingConfigured !== false;
+
   const duplicateAnnReasons = showComposeModal && formData.title.trim()
     ? getAnnouncementDuplicateReasons({ title: formData.title, targetAudience: formData.targetAudience }, announcements)
     : [];
@@ -102,6 +104,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   };
 
   const handleManualLineBroadcast = (id: string, title: string) => {
+    if (!isLineEnabled) return;
     onBroadcastLine(id);
     emitAppToast({
       tone: 'info',
@@ -254,7 +257,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {ann.lineBroadcastSent ? (
+                {isLineEnabled && (ann.lineBroadcastSent ? (
                   <span className="inline-flex items-center gap-1 text-[11px] text-emerald-900 dark:text-emerald-200 font-semibold bg-emerald-100 dark:bg-emerald-950 px-2.5 py-1 rounded border border-emerald-300 dark:border-emerald-700">
                     <MessageSquare className="w-3 h-3 fill-current" />
                     LINE OA Broadcast Active
@@ -267,7 +270,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                     <Send className="w-3 h-3" />
                     Send LINE Push
                   </button>
-                )}
+                ))}
 
                 {ann.resendEmailSent && (
                   <span className="inline-flex items-center gap-1 text-[11px] text-sky-900 dark:text-sky-200 font-semibold bg-sky-100 dark:bg-sky-950 px-2 py-1 rounded border border-sky-300 dark:border-sky-700">
@@ -289,7 +292,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
                 <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
-                Publish School Announcement &amp; LINE Push
+                {isLineEnabled ? 'Publish School Announcement & LINE Push' : 'เผยแพร่ประกาศโรงเรียน'}
               </h3>
               <button
                 onClick={() => setShowComposeModal(false)}
