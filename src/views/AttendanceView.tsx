@@ -35,6 +35,8 @@ import {
   MapPin,
   Eye,
   Calendar,
+  FileEdit,
+  LogOut,
   Upload
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
@@ -61,6 +63,12 @@ import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/co
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import {
+  AttendanceCorrectionHub,
+  type CorrectionPrefillSeed,
+} from '../components/attendance/AttendanceCorrectionHub';
+import { loadAttendanceCorrections } from '../lib/attendanceCorrections';
+import { sendEduVerseNotification } from '../lib/pushNotifications';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -88,6 +96,7 @@ interface AttendanceViewProps {
   schoolPeriods?: SchoolPeriodTime[];
   timetableSlots?: TimetableSlot[];
   periodAttendance?: PeriodAttendanceRecord[];
+  onRecordPeriodAttendance?: (records: PeriodAttendanceRecord[]) => void;
   onOpenGpsSettings?: () => void;
   onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
 }
@@ -112,6 +121,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   schoolPeriods = [],
   timetableSlots = [],
   periodAttendance = [],
+  onRecordPeriodAttendance,
   onOpenGpsSettings,
   onLoadAttendanceRange,
 }) => {
@@ -130,7 +140,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   );
 
   const loggedInProfile = resolveCurrentUserAttendanceProfile(currentUser, teachers, students);
-  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'export_reports' | 'period_qr' | 'school_gps'>('gate_scanner');
+  const [activeTab, setActiveTab] = useState<'gate_scanner' | 'leave_approval' | 'time_corrections' | 'export_reports' | 'period_qr' | 'school_gps'>('gate_scanner');
+  const [correctionPrefill, setCorrectionPrefill] = useState<CorrectionPrefillSeed | null>(null);
   const [showRapidScannerModal, setShowRapidScannerModal] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [importSuccessNotice, setImportSuccessNotice] = useState<string | null>(null);
@@ -748,6 +759,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   });
 
   const pendingLeaveCount = scopedLeaveRequests.filter((r) => r.status === 'pending').length;
+  const activeSchoolId = activeSchool?.id || currentUser?.schoolId || 'sch-1';
+  const pendingCorrectionCount = loadAttendanceCorrections(activeSchoolId).filter(
+    (r) => r.stage === 'pending_homeroom' || r.stage === 'pending_admin'
+  ).length;
 
   return (
     <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-4`}>
@@ -786,6 +801,21 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               {pendingLeaveCount > 0 && (
                 <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">
                   ({pendingLeaveCount})
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              data-active={activeTab === 'time_corrections'}
+              onClick={() => setActiveTab('time_corrections')}
+              className="seg-tab-btn"
+              title="ครูประจำชั้นยืนยันเข้า-ออก และอนุมัติคำขอแก้ไขปรับปรุงเวลาตามลำดับชั้น"
+            >
+              <FileEdit className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'แก้ไขเวลา / ยืนยัน' : 'Time Corrections'}</span>
+              {pendingCorrectionCount > 0 && (
+                <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">
+                  ({pendingCorrectionCount})
                 </span>
               )}
             </button>
@@ -1414,25 +1444,67 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                                 </div>
                               </div>
 
-                              <div className="flex flex-wrap items-center gap-1 shrink-0">
-                                {statusOptions.map((opt) => {
-                                  const selected = currentStatus === opt.value;
-                                  return (
-                                    <button
-                                      key={opt.value}
-                                      type="button"
-                                      onClick={() => setRollCallOverrides((prev) => ({ ...prev, [stu.id]: opt.value }))}
-                                      className={`px-2 py-1 rounded-md border text-[11px] font-bold transition cursor-pointer ${
-                                        selected
-                                          ? opt.activeCls
-                                          : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                                      }`}
-                                    >
-                                      {opt.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                                <div className="flex flex-wrap items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onRecordAttendance(
+                                        stu.id,
+                                        'present',
+                                        `ครูประจำชั้นยืนยันออกโรงเรียน (กรณีลืมสแกนออก) โดย ${loggedInProfile.userName}`,
+                                        'teacher_proxy',
+                                        {
+                                          recordType: 'check_out',
+                                          userType: 'student',
+                                          userName: `${stu.firstNameTh} ${stu.lastNameTh}`,
+                                          userRole: `นักเรียน (${stu.gradeLevel})`,
+                                          userAvatar: stu.avatarUrl,
+                                          userDepartmentOrRoom: stu.room,
+                                          date: rollCallDate,
+                                          recordedBy: loggedInProfile.userName,
+                                          recordedByRole: currentRole,
+                                          confirmedByHomeroom: true,
+                                          confirmedByTeacherName: loggedInProfile.userName,
+                                        }
+                                      );
+                                      sendEduVerseNotification({
+                                        title: `ยืนยันออกโรงเรียน: ${stu.firstNameTh} ${stu.lastNameTh}`,
+                                        body: `${loggedInProfile.userName} ยืนยันออกโรงเรียนวันที่ ${rollCallDate} เรียบร้อยแล้ว`,
+                                        category: 'attendance',
+                                        priority: 'normal',
+                                        schoolId: activeSchoolId,
+                                        targetStudentIds: [stu.id],
+                                        targetRoles: ['student', 'parent', 'teacher', 'admin'],
+                                      }).catch(() => {});
+                                      emitAppToast({
+                                        tone: 'success',
+                                        message: `ยืนยันออกโรงเรียนให้ ${stu.firstNameTh} ${stu.lastNameTh} และส่งแจ้งเตือนแล้ว`,
+                                      });
+                                    }}
+                                    className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-primary-text)] text-[11px] font-bold hover:bg-[var(--color-primary-light)] transition cursor-pointer inline-flex items-center gap-1"
+                                    title="กรณีนักเรียนลืมสแกนออกโรงเรียน ให้ครูกดยืนยันออกทันที"
+                                  >
+                                    <LogOut className="w-3 h-3" />
+                                    <span>ยืนยันออก</span>
+                                  </button>
+                                  {statusOptions.map((opt) => {
+                                    const selected = currentStatus === opt.value;
+                                    return (
+                                      <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setRollCallOverrides((prev) => ({ ...prev, [stu.id]: opt.value }))}
+                                        className={`px-2 py-1 rounded-md border text-[11px] font-bold transition cursor-pointer ${
+                                          selected
+                                            ? opt.activeCls
+                                            : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
+                                        }`}
+                                      >
+                                        {opt.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                             </div>
                           );
                         })}
@@ -1531,7 +1603,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                             </div>
                           </div>
 
-                          <div className="text-right shrink-0">
+                          <div className="text-right shrink-0 flex items-center gap-2">
                             <span className={`inline-flex items-center gap-1 type-label ${
                               log.status === 'present'
                                 ? 'text-emerald-700 dark:text-emerald-300'
@@ -1548,6 +1620,23 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                               )}
                               <span>{log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}</span>
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCorrectionPrefill({
+                                  targetScope: log.recordType === 'check_out' ? 'gate_checkout' : 'gate_checkin',
+                                  issueType: log.status === 'late' ? 'late_arrival' : 'time_mismatch',
+                                  date: log.date,
+                                  originalTime: (log.time || '').slice(0, 5),
+                                  requesterId: log.studentId,
+                                });
+                                setActiveTab('time_corrections');
+                              }}
+                              className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[10px] font-bold text-[var(--color-primary-text)] cursor-pointer"
+                              title="ส่งคำขอแก้ไขปรับปรุงเวลาสำหรับรายการนี้"
+                            >
+                              ขอแก้เวลา
+                            </button>
                           </div>
                         </div>
                       );
@@ -1727,6 +1816,29 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2B: HOMEROOM CONFIRMATION & HIERARCHICAL TIME CORRECTIONS */}
+      {/* ========================================================================= */}
+      {activeTab === 'time_corrections' && (
+        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
+          <AttendanceCorrectionHub
+            schoolId={activeSchoolId}
+            currentUser={currentUser || null}
+            currentRole={currentRole}
+            students={students}
+            teachers={teachers}
+            courses={courses}
+            attendance={attendance}
+            periodAttendance={periodAttendance}
+            onRecordAttendance={onRecordAttendance}
+            onRecordPeriodAttendance={onRecordPeriodAttendance}
+            prefillSeed={correctionPrefill}
+            onClearPrefill={() => setCorrectionPrefill(null)}
+            showHomeroomMissingConfirm={!isRestrictedViewer}
+          />
         </div>
       )}
 
@@ -2004,6 +2116,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         isOpen={showRapidScannerModal}
         onClose={() => setShowRapidScannerModal(false)}
         students={students}
+        teachers={teachers}
         schoolId={activeSchool?.id || currentUser?.schoolId || 'school-1'}
         currentUser={currentUser}
         onRecordAttendance={onRecordAttendance}

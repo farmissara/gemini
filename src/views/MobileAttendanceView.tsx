@@ -4,6 +4,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
+  FileEdit,
   FileText,
   Fingerprint,
   Lock,
@@ -83,9 +84,21 @@ import {
   composeLiveVideoSnapshot,
   composeSimulatedStudioSnapshot,
   type PlacedSticker,
+  type SelfieCameraEffectId,
   type SelfieFilterId,
   type SelfieFrameId,
 } from '../lib/selfieStickerStudio';
+import {
+  evaluatePeriodTimingStatus,
+  loadAttendanceCorrections,
+  loadPeriodFlexConfig,
+  savePeriodFlexConfig,
+  type PeriodFlexConfig,
+} from '../lib/attendanceCorrections';
+import {
+  AttendanceCorrectionHub,
+  type CorrectionPrefillSeed,
+} from '../components/attendance/AttendanceCorrectionHub';
 import {
   AttendanceModalsAndSheets,
   LeaveRequestTab,
@@ -305,6 +318,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [isFlashActive, setIsFlashActive] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selfieFilterId, setSelfieFilterId] = useState<SelfieFilterId>('normal');
+  const [selfieEffectId, setSelfieEffectId] = useState<SelfieCameraEffectId>('sparkles');
   const [selfieFrameId, setSelfieFrameId] = useState<SelfieFrameId>('mascot_duo');
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([
     { uid: 'init-1', stickerId: 'sparkle_heart', xPct: 77, yPct: 26, rotation: 10 },
@@ -407,6 +421,49 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [roomGpsNotice, setRoomGpsNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [periodRosterFilter, setPeriodRosterFilter] = useState<PeriodRosterFilter>('all');
   const [periodRosterSearch, setPeriodRosterSearch] = useState('');
+  const [periodFlexConfig, setPeriodFlexConfig] = useState<PeriodFlexConfig>(() =>
+    loadPeriodFlexConfig(activeSchoolId, selectedCourse.id)
+  );
+  const [periodCustomTimes, setPeriodCustomTimes] = useState<
+    Record<string, { checkIn?: string; checkOut?: string; reason?: string }>
+  >({});
+  const [correctionPrefill, setCorrectionPrefill] = useState<CorrectionPrefillSeed | null>(null);
+
+  const pendingCorrectionCount = useMemo(() => {
+    const all = loadAttendanceCorrections(activeSchoolId);
+    if (isStaffUser) {
+      return all.filter((r) => r.stage === 'pending_homeroom' || r.stage === 'pending_admin').length;
+    }
+    const myIds = new Set(
+      [currentUser?.id, currentUser?.studentRecordId, ownStudent?.id].filter(Boolean) as string[]
+    );
+    return all.filter(
+      (r) => myIds.has(r.requesterId) && (r.stage === 'pending_homeroom' || r.stage === 'pending_admin')
+    ).length;
+  }, [activeSchoolId, isStaffUser, currentUser?.id, currentUser?.studentRecordId, ownStudent?.id, subTab]);
+
+  useEffect(() => {
+    setPeriodFlexConfig(loadPeriodFlexConfig(activeSchoolId, selectedCourse.id));
+    setPeriodCustomTimes({});
+  }, [activeSchoolId, selectedCourse.id]);
+
+  const handleUpdatePeriodFlexConfig = (next: PeriodFlexConfig) => {
+    const saved = savePeriodFlexConfig(activeSchoolId, selectedCourse.id, {
+      ...next,
+      updatedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
+    });
+    setPeriodFlexConfig(saved);
+  };
+
+  const handleSetStudentPeriodCustomTime = (
+    studentId: string,
+    patch: { checkIn?: string; checkOut?: string; reason?: string }
+  ) => {
+    setPeriodCustomTimes((prev) => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], ...patch },
+    }));
+  };
 
   useEffect(() => {
     const found = findClassroomGpsConfig(activeSchoolId, {
@@ -771,6 +828,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     const studioOptions = {
       frameId: selfieFrameId,
       filterId: selfieFilterId,
+      effectId: selfieEffectId,
       stickers: placedStickers,
       personName: activePersonName || 'ผู้ใช้งาน',
       gateName: selectedGate?.nameTh || 'จุดเช็คชื่อโรงเรียน',
@@ -1342,6 +1400,26 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         p.date === periodDate &&
         p.periodNumber === selectedPeriod
     );
+    const customTime = periodCustomTimes[student.id];
+    const nowHm = new Date().toLocaleTimeString('th-TH', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const actualCheckIn =
+      customTime?.checkIn ||
+      existing?.actualCheckInTime ||
+      (periodCheckType === 'check_in' ? nowHm : undefined);
+    const actualCheckOut =
+      customTime?.checkOut ||
+      existing?.actualCheckOutTime ||
+      (periodCheckType === 'check_out' ? nowHm : undefined);
+    const flexReason =
+      customTime?.reason ||
+      existing?.flexReason ||
+      (customTime?.checkIn || customTime?.checkOut
+        ? `ครูปรับเวลาเข้า-ออกคาบ (${actualCheckIn || '-'} / ${actualCheckOut || '-'})`
+        : undefined);
     const record: PeriodAttendanceRecord = {
       id: existing?.id || `patt-proxy-${Date.now()}-${student.id}`,
       schoolId: selectedCourse.schoolId || activeSchoolId,
@@ -1353,13 +1431,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       studentId: student.id,
       status,
       recordType: periodCheckType,
+      actualCheckInTime: actualCheckIn,
+      actualCheckOutTime: actualCheckOut,
+      graceMinutes: periodFlexConfig.graceMinutes,
+      flexReason,
       verifiedByTeacherId: currentUser?.id || 'usr-teacher',
       verifiedByTeacherName:
         currentUser?.fullNameTh || currentUser?.fullNameEn || selectedCourse.teacherName || 'ครูผู้สอน',
       checkMethod: 'teacher_proxy',
-      remarks: isNoPhoneProxy
-        ? `ครูกดรับเช็คชื่อแทน (นักเรียนไม่มีมือถือ) คาบที่ ${selectedPeriod}`
-        : `ครูบันทึกเช็คชื่อคาบที่ ${selectedPeriod} (${selectedCourse.code})`,
+      remarks: flexReason
+        ? `${flexReason} · คาบที่ ${selectedPeriod}`
+        : isNoPhoneProxy
+          ? `ครูกดรับเช็คชื่อแทน (นักเรียนไม่มีมือถือ) คาบที่ ${selectedPeriod}`
+          : `ครูบันทึกเช็คชื่อคาบที่ ${selectedPeriod} (${selectedCourse.code})`,
     };
     onRecordPeriodAttendance([record]);
     setPeriodStatuses((prev) => ({ ...prev, [student.id]: status }));
@@ -1367,7 +1451,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setPeriodSavedNotification(
       isNoPhoneProxy
         ? `ครูกดรับเช็คชื่อแทน ${student.firstNameTh} ${student.lastNameTh} (ไม่มีมือถือ) คาบที่ ${selectedPeriod} เรียบร้อยแล้ว`
-        : `บันทึกสถานะ ${student.firstNameTh} ${student.lastNameTh} คาบที่ ${selectedPeriod} แล้ว`
+        : `บันทึกสถานะและเวลา ${student.firstNameTh} ${student.lastNameTh} คาบที่ ${selectedPeriod} แล้ว`
     );
     setTimeout(() => setPeriodSavedNotification(null), 4000);
   };
@@ -1571,6 +1655,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
 
     const currentPeriodInfo = periodsList.find((p) => p.period === resolvedPeriodNum);
+    const courseFlexConfig = loadPeriodFlexConfig(activeSchoolId, targetCourse.id);
+    const bkkClock = getBangkokClockSnapshot();
+    const actualHm = bkkClock.timeLabel;
+    const timingEval = evaluatePeriodTimingStatus({
+      timeSlot: currentPeriodInfo?.time || '08:30 - 09:20',
+      checkType: resolvedCheckType,
+      actualMinutes: bkkClock.minutes,
+      graceMinutes: courseFlexConfig.graceMinutes,
+      allowFlexibleCheckout: courseFlexConfig.allowFlexibleCheckout,
+    });
     const actionLabel =
       resolvedCheckType === 'check_in' ? 'เช็คชื่อเข้าเรียน (Check-in)' : 'เช็คชื่อออกคาบเรียน (Check-out)';
 
@@ -1583,12 +1677,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       timeSlot: currentPeriodInfo?.time || '08:30 - 09:20',
       date: resolvedDate,
       studentId: targetStudent.id,
-      status: 'present',
+      status: timingEval.status,
       recordType: resolvedCheckType,
+      actualCheckInTime: resolvedCheckType === 'check_in' ? actualHm : undefined,
+      actualCheckOutTime: resolvedCheckType === 'check_out' ? actualHm : undefined,
+      graceMinutes: courseFlexConfig.graceMinutes,
+      flexReason: timingEval.timingTagTh,
       verifiedByTeacherId: 'qr-self-checkin',
       verifiedByTeacherName: targetCourse.teacherName || 'ระบบ Barcode/QR รายคาบ',
       checkMethod: 'qr_code',
-      remarks: `นักเรียนสแกน Barcode/QR ${actionLabel} (${resolvedCode}) · พิกัดห้อง ${effectiveRoomGps.roomLabel} (ห่าง ${roomGpsCheck.distanceMeters ?? 0} ม.)`,
+      remarks: `นักเรียนสแกน Barcode/QR ${actionLabel} (${actualHm} น. · ${timingEval.timingTagTh}) · พิกัดห้อง ${effectiveRoomGps.roomLabel} (ห่าง ${roomGpsCheck.distanceMeters ?? 0} ม.)`,
     };
 
     onRecordPeriodAttendance([record]);
@@ -1598,7 +1696,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setPeriodCheckType(resolvedCheckType);
     playChime();
     setStudentPeriodCheckinMsg(
-      `${resolvedCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน (Check-in)' : '🔴 เช็คชื่อออก (Check-out)'} วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} ห้อง ${effectiveRoomGps.roomLabel} (ระยะ ${roomGpsCheck.distanceMeters ?? 0} ม.) สำเร็จแล้ว!`
+      `${resolvedCheckType === 'check_in' ? '🟢 เช็คชื่อเข้าเรียน' : '🔴 เช็คชื่อออกคาบ'} (${timingEval.timingTagTh}) วิชา ${targetCourse.code} คาบที่ ${resolvedPeriodNum} เวลา ${actualHm} น. สำเร็จ!`
     );
     setTimeout(() => setStudentPeriodCheckinMsg(null), 5000);
   };
@@ -1613,6 +1711,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           p.date === periodDate &&
           p.periodNumber === selectedPeriod
       );
+      const customTime = periodCustomTimes[stuId];
       const status = periodStatuses[stuId] || existing?.status || 'present';
       return {
         id: existing?.id || `patt-${Date.now()}-${stuId}`,
@@ -1624,11 +1723,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         date: periodDate,
         studentId: stuId,
         status,
+        actualCheckInTime: customTime?.checkIn || existing?.actualCheckInTime,
+        actualCheckOutTime: customTime?.checkOut || existing?.actualCheckOutTime,
+        graceMinutes: periodFlexConfig.graceMinutes,
+        flexReason: customTime?.reason || existing?.flexReason,
         verifiedByTeacherId: currentUser?.id || 'usr-teacher',
         verifiedByTeacherName:
           currentUser?.fullNameTh || currentUser?.fullNameEn || selectedCourse.teacherName || 'อาจารย์',
         checkMethod: existing?.checkMethod || 'teacher_proxy',
-        remarks: `เช็คชื่อรายคาบ ${selectedCourse.code || 'GEN-101'} คาบที่ ${selectedPeriod}`,
+        remarks:
+          customTime?.reason ||
+          existing?.remarks ||
+          `เช็คชื่อรายคาบ ${selectedCourse.code || 'GEN-101'} คาบที่ ${selectedPeriod}`,
       };
     });
 
@@ -2274,6 +2380,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               },
               { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
               { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
+              {
+                id: 'corrections',
+                icon: FileEdit,
+                labelTh: 'แก้เวลา/ยืนยัน',
+                labelEn: 'Adjust',
+                badge: pendingCorrectionCount,
+                staffOnly: false,
+              },
             ]
               .filter((tab) => isStaffUser || !tab.staffOnly)
               .map((tab) => {
@@ -2332,6 +2446,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               },
               { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
               { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
+              {
+                id: 'corrections',
+                icon: FileEdit,
+                labelTh: 'แก้เวลา/ยืนยัน',
+                labelEn: 'Adjust',
+                badge: pendingCorrectionCount,
+                staffOnly: false,
+              },
             ]
               .filter((tab) => isStaffUser || !tab.staffOnly)
               .map((tab) => (
@@ -2572,6 +2694,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           setShowGpsAdminModal={setShowGpsAdminModal}
           selfieFilterId={selfieFilterId}
           setSelfieFilterId={setSelfieFilterId}
+          selfieEffectId={selfieEffectId}
+          setSelfieEffectId={setSelfieEffectId}
           selfieFrameId={selfieFrameId}
           setSelfieFrameId={setSelfieFrameId}
           placedStickers={placedStickers}
@@ -2770,6 +2894,42 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           setPeriodRosterSearch={setPeriodRosterSearch}
           periodStatuses={periodStatuses}
           handleTeacherProxyPeriodCheckin={handleTeacherProxyPeriodCheckin}
+          periodFlexConfig={periodFlexConfig}
+          onUpdatePeriodFlexConfig={handleUpdatePeriodFlexConfig}
+          periodCustomTimes={periodCustomTimes}
+          onSetStudentPeriodCustomTime={handleSetStudentPeriodCustomTime}
+          onOpenPeriodCorrection={({ targetScope, issueType, originalTime }) => {
+            setCorrectionPrefill({
+              targetScope,
+              issueType,
+              courseId: selectedCourse.id,
+              periodNumber: selectedPeriod,
+              date: periodDate,
+              originalTime,
+              requesterId: selectedStudent?.id || ownStudent?.id,
+            });
+            setSubTab('corrections');
+          }}
+        />
+      )}
+
+      {/* TAB 5: HOMEROOM CONFIRMATION & HIERARCHICAL TIME CORRECTIONS */}
+      {subTab === 'corrections' && (
+        <AttendanceCorrectionHub
+          schoolId={activeSchoolId}
+          currentUser={currentUser}
+          currentRole={effectiveRole}
+          students={students}
+          teachers={teachers}
+          courses={courses}
+          attendance={attendance}
+          periodAttendance={periodAttendance}
+          onRecordAttendance={onRecordAttendance}
+          onRecordPeriodAttendance={onRecordPeriodAttendance}
+          prefillSeed={correctionPrefill}
+          onClearPrefill={() => setCorrectionPrefill(null)}
+          showHomeroomMissingConfirm={isStaffUser}
+          embeddedMobile={embeddedMobile}
         />
       )}
 

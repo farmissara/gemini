@@ -2090,14 +2090,20 @@ export function useSchoolDataManager({
       userAvatar?: string;
       userDepartmentOrRoom?: string;
       date?: string;
+      time?: string;
       recordId?: string;
       photoStoragePath?: string;
       recordedBy?: string;
       recordedByRole?: string;
+      confirmedByHomeroom?: boolean;
+      confirmedByTeacherName?: string;
+      correctionRequestId?: string;
     }
   ) => {
     const todayStr = extra?.date || getLocalDateString();
-    const nowTime = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const nowTime = extra?.time
+      ? (extra.time.length === 5 ? `${extra.time}:00` : extra.time)
+      : new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const attendanceRecordId = extra?.recordId || `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     skipNextOfflineRowSyncRef.current = !isDemoMode && ['super_admin', 'admin', 'teacher'].includes(currentUser?.role || '');
     setAttendance((prev) => {
@@ -2136,6 +2142,9 @@ export function useSchoolDataManager({
         lineNotificationSent: true,
         recordedBy: extra?.recordedBy,
         recordedByRole: extra?.recordedByRole,
+        confirmedByHomeroom: extra?.confirmedByHomeroom,
+        confirmedByTeacherName: extra?.confirmedByTeacherName,
+        correctionRequestId: extra?.correctionRequestId,
       };
 
       if (isCheckOut) {

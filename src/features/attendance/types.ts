@@ -23,7 +23,8 @@ export type AttendanceSubTab =
   | 'nfc_tap'
   | 'leave_request'
   | 'teacher_proxy'
-  | 'period_checkin';
+  | 'period_checkin'
+  | 'corrections';
 
 export type PeriodRosterFilter = 'all' | 'unchecked' | 'proxy' | 'mobile';
 
@@ -76,10 +77,14 @@ export interface MobileAttendanceViewProps {
       userAvatar?: string;
       userDepartmentOrRoom?: string;
       date?: string;
+      time?: string;
       recordId?: string;
       photoStoragePath?: string;
       recordedBy?: string;
       recordedByRole?: string;
+      confirmedByHomeroom?: boolean;
+      confirmedByTeacherName?: string;
+      correctionRequestId?: string;
     }
   ) => void;
   onRecordPeriodAttendance: (records: PeriodAttendanceRecord[]) => void;

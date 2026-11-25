@@ -40,12 +40,16 @@ import type {
 import type { CameraFacingMode } from '../../lib/cameraStream';
 import {
   clampStickerPosition,
+  getCameraEffectOption,
   getFilterOption,
+  getNextFilterId,
   getStickerOption,
+  SELFIE_CAMERA_EFFECTS,
   SELFIE_FILTERS,
   SELFIE_FRAMES,
   SELFIE_STICKERS,
   type PlacedSticker,
+  type SelfieCameraEffectId,
   type SelfieFilterId,
   type SelfieFrameId,
   type SelfieStickerId,
@@ -111,12 +115,89 @@ interface SelfieAttendanceTabProps {
   setSelfieFilterId: (id: SelfieFilterId) => void;
   selfieFrameId: SelfieFrameId;
   setSelfieFrameId: (id: SelfieFrameId) => void;
+  selfieEffectId: SelfieCameraEffectId;
+  setSelfieEffectId: (id: SelfieCameraEffectId) => void;
   placedStickers: PlacedSticker[];
   setPlacedStickers: React.Dispatch<React.SetStateAction<PlacedSticker[]>>;
   selfieTimerSeconds: 0 | 3;
   setSelfieTimerSeconds: (secs: 0 | 3) => void;
   selfieCountdown: number | null;
 }
+
+const CameraEffectsOverlay: React.FC<{ effectId: SelfieCameraEffectId }> = ({ effectId }) => {
+  if (effectId === 'none') return null;
+
+  if (effectId === 'sparkles') {
+    return (
+      <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden" aria-hidden="true">
+        <svg className="w-full h-full" viewBox="0 0 400 300" preserveAspectRatio="none">
+          <g className="booth-effect-sparkle" style={{ transformOrigin: '56px 54px' }}>
+            <path d="M56 36 L60 50 L74 54 L60 58 L56 72 L52 58 L38 54 L52 50 Z" fill="#fde047" />
+          </g>
+          <g className="booth-effect-sparkle" style={{ transformOrigin: '344px 60px', animationDelay: '0.6s' }}>
+            <path d="M344 40 L349 55 L364 60 L349 65 L344 80 L339 65 L324 60 L339 55 Z" fill="#fef08a" />
+          </g>
+          <g className="booth-effect-sparkle" style={{ transformOrigin: '72px 236px', animationDelay: '1.1s' }}>
+            <path d="M72 222 L75 233 L86 236 L75 239 L72 250 L69 239 L58 236 L69 233 Z" fill="#38bdf8" />
+          </g>
+          <g className="booth-effect-sparkle" style={{ transformOrigin: '334px 222px', animationDelay: '0.3s' }}>
+            <path d="M334 206 L338 218 L350 222 L338 226 L334 238 L330 226 L318 222 L330 218 Z" fill="#fde047" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
+
+  if (effectId === 'hearts_float') {
+    return (
+      <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden" aria-hidden="true">
+        <svg className="w-full h-full" viewBox="0 0 400 300" preserveAspectRatio="none">
+          <g className="booth-effect-heart" style={{ transformOrigin: '64px 80px' }}>
+            <path d="M64 90 C50 79 44 65 55 58 C61 54 64 60 64 60 C64 60 67 54 73 58 C84 65 78 79 64 90 Z" fill="#fb7185" stroke="#ffffff" strokeWidth="1.5" />
+          </g>
+          <g className="booth-effect-heart" style={{ transformOrigin: '336px 76px', animationDelay: '0.9s' }}>
+            <path d="M336 88 C320 75 314 60 326 52 C332 48 336 55 336 55 C336 55 340 48 346 52 C358 60 352 75 336 88 Z" fill="#f43f5e" stroke="#ffffff" strokeWidth="1.5" />
+          </g>
+          <g className="booth-effect-heart" style={{ transformOrigin: '78px 232px', animationDelay: '1.6s' }}>
+            <path d="M78 240 C66 231 61 219 70 213 C75 210 78 215 78 215 C78 215 81 210 86 213 C95 219 90 231 78 240 Z" fill="#f472b6" stroke="#ffffff" strokeWidth="1.4" />
+          </g>
+          <g className="booth-effect-heart" style={{ transformOrigin: '322px 232px', animationDelay: '0.4s' }}>
+            <path d="M322 242 C308 232 302 218 313 211 C319 208 322 214 322 214 C322 214 325 208 331 211 C342 218 336 232 322 242 Z" fill="#fb7185" stroke="#ffffff" strokeWidth="1.4" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
+
+  if (effectId === 'neon_pulse') {
+    return (
+      <div className="absolute inset-0 pointer-events-none z-20 p-2" aria-hidden="true">
+        <div className="w-full h-full rounded-2xl border-2 border-sky-400/80 shadow-[inset_0_0_24px_rgba(56,189,248,0.45)] booth-effect-neon flex items-center justify-center">
+          <div className="w-[calc(100%-10px)] h-[calc(100%-10px)] rounded-xl border border-pink-400/55" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden" aria-hidden="true">
+      <svg className="w-full h-full" viewBox="0 0 400 300" preserveAspectRatio="none">
+        <g className="booth-effect-star" style={{ transformOrigin: '52px 54px' }}>
+          <polygon points="52,38 56,49 68,49 58,56 62,67 52,60 42,67 46,56 36,49 48,49" fill="#e9d5ff" />
+        </g>
+        <g className="booth-effect-star" style={{ transformOrigin: '348px 54px', animationDelay: '0.7s' }}>
+          <polygon points="348,38 352,49 364,49 354,56 358,67 348,60 338,67 342,56 332,49 344,49" fill="#c084fc" />
+        </g>
+        <g className="booth-effect-star" style={{ transformOrigin: '60px 244px', animationDelay: '1.2s' }}>
+          <polygon points="60,228 64,239 76,239 66,246 70,257 60,250 50,257 54,246 44,239 56,239" fill="#fde047" />
+        </g>
+        <g className="booth-effect-star" style={{ transformOrigin: '340px 242px', animationDelay: '0.35s' }}>
+          <polygon points="340,226 344,237 356,237 346,244 350,255 340,248 330,255 334,244 324,237 336,237" fill="#a855f7" />
+        </g>
+      </svg>
+    </div>
+  );
+};
 
 const StickerArtwork: React.FC<{ stickerId: SelfieStickerId; compact?: boolean }> = ({
   stickerId,
@@ -288,13 +369,15 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
   setSelfieFilterId,
   selfieFrameId,
   setSelfieFrameId,
+  selfieEffectId,
+  setSelfieEffectId,
   placedStickers,
   setPlacedStickers,
   selfieTimerSeconds,
   setSelfieTimerSeconds,
   selfieCountdown,
 }) => {
-  const [boothTab, setBoothTab] = useState<'stickers' | 'frames' | 'filters'>('stickers');
+  const [boothTab, setBoothTab] = useState<'stickers' | 'effects' | 'frames' | 'filters'>('stickers');
   const [selectedStickerUid, setSelectedStickerUid] = useState<string | null>(
     placedStickers[0]?.uid ?? null
   );
@@ -302,6 +385,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
   const dragRef = useRef<{ uid: string; startX: number; startY: number; moved: boolean } | null>(null);
 
   const activeFilter = getFilterOption(selfieFilterId);
+  const activeEffect = getCameraEffectOption(selfieEffectId);
   const checkTypeLabel = checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน';
   const liveTimeText = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 
@@ -349,8 +433,10 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
   const handleShuffleBooth = () => {
     const framePool: SelfieFrameId[] = ['mascot_duo', 'pastel_cute', 'polaroid'];
     const nextFrame = framePool[Math.floor(Math.random() * framePool.length)];
-    const filterPool: SelfieFilterId[] = ['glow', 'warm_film', 'cool_mint', 'normal'];
+    const filterPool: SelfieFilterId[] = ['glow', 'warm_film', 'cool_mint', 'mono', 'normal'];
     const nextFilter = filterPool[Math.floor(Math.random() * filterPool.length)];
+    const effectPool: SelfieCameraEffectId[] = ['sparkles', 'hearts_float', 'neon_pulse', 'starlight'];
+    const nextEffect = effectPool[Math.floor(Math.random() * effectPool.length)];
     const shuffledStickers = [...SELFIE_STICKERS]
       .sort(() => Math.random() - 0.5)
       .slice(0, 2)
@@ -363,6 +449,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
       }));
     setSelfieFrameId(nextFrame);
     setSelfieFilterId(nextFilter);
+    setSelfieEffectId(nextEffect);
     setPlacedStickers(shuffledStickers);
     setSelectedStickerUid(shuffledStickers[0]?.uid ?? null);
   };
@@ -525,6 +612,9 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Animated Camera Effects SVG Overlay */}
+              {!capturedPhotoUrl && <CameraEffectsOverlay effectId={selfieEffectId} />}
 
               {/* Subtle Face Alignment Reticle when camera is active */}
               {!capturedPhotoUrl && isCameraActive && selfieCountdown === null && (
@@ -720,13 +810,14 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             </div>
           )}
 
-          {/* Interactive Photo-Booth Creative Tray (Stickers · Frames · Filters) */}
+          {/* Interactive Photo-Booth Creative Tray (Stickers · Effects · Frames · Filters) */}
           {!capturedPhotoUrl && (
             <div className="bg-[var(--color-card-subtle)] border-t border-[var(--color-border)] px-3 py-2.5 space-y-2 shrink-0">
-              <div className="flex items-center justify-between gap-1.5">
-                <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] overflow-x-auto no-scrollbar max-w-full">
                   {[
                     { id: 'stickers' as const, icon: Sticker, label: 'สติกเกอร์' },
+                    { id: 'effects' as const, icon: Sparkles, label: 'เอฟเฟกต์' },
                     { id: 'frames' as const, icon: Frame, label: 'กรอบรูป' },
                     { id: 'filters' as const, icon: Sliders, label: 'ฟิลเตอร์' },
                   ].map((tab) => {
@@ -736,7 +827,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                         key={tab.id}
                         type="button"
                         onClick={() => setBoothTab(tab.id)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] transition cursor-pointer ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] whitespace-nowrap shrink-0 transition cursor-pointer ${
                           active
                             ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 font-semibold shadow-2xs'
                             : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
@@ -769,7 +860,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     type="button"
                     onClick={handleShuffleBooth}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-[11px] font-semibold cursor-pointer transition shrink-0"
-                    title="สุ่มกรอบ ฟิลเตอร์ และสติกเกอร์"
+                    title="สุ่มกรอบ เอฟเฟกต์ ฟิลเตอร์ และสติกเกอร์"
                   >
                     <Shuffle className="w-3 h-3 text-[var(--color-primary-text)]" />
                     <span>สุ่มแต่งรูป</span>
@@ -802,6 +893,30 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     })}
                   </>
                 )}
+
+                {boothTab === 'effects' &&
+                  SELFIE_CAMERA_EFFECTS.map((eff) => {
+                    const active = selfieEffectId === eff.id;
+                    return (
+                      <button
+                        key={eff.id}
+                        type="button"
+                        onClick={() => setSelfieEffectId(eff.id)}
+                        className={`inline-flex items-center gap-2 min-h-[38px] px-3 py-1 rounded-lg border text-[11px] whitespace-nowrap shrink-0 transition cursor-pointer ${
+                          active
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/[0.08] text-[var(--color-text-title)] font-semibold'
+                            : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] font-medium'
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full border border-black/15 shrink-0"
+                          style={{ backgroundColor: eff.accentColor }}
+                        />
+                        <span>{eff.labelTh}</span>
+                        {active && <Check className="w-3 h-3 text-[var(--color-primary-text)]" />}
+                      </button>
+                    );
+                  })}
 
                 {boothTab === 'frames' &&
                   SELFIE_FRAMES.map((frm) => {
@@ -850,6 +965,11 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               {boothTab === 'stickers' && selectedStickerUid && (
                 <p className="text-[10px] text-[var(--color-text-muted)]">
                   ลากสติกเกอร์ด้วยนิ้ว หรือแตะบนภาพเพื่อย้ายตำแหน่ง · กด × ที่สติกเกอร์เพื่อลบ
+                </p>
+              )}
+              {boothTab === 'effects' && activeEffect.id !== 'none' && (
+                <p className="text-[10px] text-[var(--color-text-muted)]">
+                  กำลังเปิดเอฟเฟกต์กล้อง: {activeEffect.labelTh} (บันทึกติดไปในภาพถ่ายเช็คชื่อด้วย)
                 </p>
               )}
             </div>
@@ -963,6 +1083,21 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                   >
                     <SwitchCamera className={`w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
                     <span>สลับกล้อง</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelfieFilterId(getNextFilterId(selfieFilterId))}
+                    className={`h-10 px-2.5 rounded-lg border transition cursor-pointer inline-flex items-center gap-1.5 text-xs font-medium ${
+                      selfieFilterId !== 'normal'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/[0.08] text-[var(--color-primary-text)] font-semibold'
+                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-card)]'
+                    }`}
+                    title="แตะเพื่อสลับฟิลเตอร์กล้อง (ธรรมชาติ / หน้าใส / ฟิล์มซีเปีย / มิ้นท์ / ขาวดำ)"
+                    aria-label="สลับฟิลเตอร์กล้อง"
+                  >
+                    <span className={`w-3 h-3 rounded-full bg-gradient-to-tr ${activeFilter.swatchGradient} border border-black/20 shrink-0`} />
+                    <span>{activeFilter.labelTh}</span>
                   </button>
 
                   <button

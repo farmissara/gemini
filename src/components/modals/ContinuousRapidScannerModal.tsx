@@ -20,7 +20,7 @@ import {
   WifiOff,
   Megaphone
 } from 'lucide-react';
-import { Student, AttendanceRecord, AttendanceStatus, AttendanceCheckType, AppLanguage, AuthUser } from '../../types';
+import { Student, Teacher, AttendanceRecord, AttendanceStatus, AttendanceCheckType, AppLanguage, AuthUser } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import { sendEduVerseNotification } from '../../lib/pushNotifications';
 import { enqueueOfflineAction, isOnlineNow } from '../../lib/offlineSync';
@@ -35,6 +35,7 @@ interface ContinuousRapidScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
   students: Student[];
+  teachers?: Teacher[];
   schoolId?: string;
   currentUser?: AuthUser | null;
   onRecordAttendance: (
@@ -46,6 +47,8 @@ interface ContinuousRapidScannerModalProps {
       recordType?: AttendanceCheckType;
       photoUrl?: string;
       location?: AttendanceRecord['location'];
+      userType?: 'student' | 'teacher';
+      teacherId?: string;
       userName?: string;
       userRole?: string;
       userDepartmentOrRoom?: string;
@@ -61,6 +64,7 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   isOpen,
   onClose,
   students,
+  teachers = [],
   schoolId = 'school-1',
   currentUser,
   onRecordAttendance,
@@ -219,51 +223,166 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
 
   if (!isOpen) return null;
 
-  // Process a scanned student code or ID
+  // Process a scanned student or teacher/staff barcode/QR code
   const processScannedCode = (rawCode: string) => {
-    const cleaned = rawCode.trim().replace(/^EDUVERSE:STU:/i, '');
+    const trimmed = rawCode.trim();
+    const isExplicitStaff = /^EDUVERSE:STF:/i.test(trimmed);
+    const cleaned = trimmed.replace(/^EDUVERSE:(?:STU|STF):/i, '');
     const tokens = cleaned.split(':');
-    const targetStudentIdNumber = tokens[0] || cleaned;
+    const targetIdNumber = (tokens[0] || cleaned).trim();
 
-    const matched = students.find(
-      s => s.studentIdNumber.toLowerCase() === targetStudentIdNumber.toLowerCase() ||
-           s.id.toLowerCase() === targetStudentIdNumber.toLowerCase() ||
-           (s.nationalId && s.nationalId === targetStudentIdNumber)
-    );
+    const matchedTeacher =
+      teachers.find(
+        (t) =>
+          (t.teacherIdNumber || '').toLowerCase() === targetIdNumber.toLowerCase() ||
+          t.id.toLowerCase() === targetIdNumber.toLowerCase()
+      ) || null;
 
-    if (!matched) {
-      setFlashWarning(lang === 'th' ? `ไม่พบรหัสนักเรียน: ${targetStudentIdNumber}` : `Student not found: ${targetStudentIdNumber}`);
+    const matchedStudent = !isExplicitStaff
+      ? students.find(
+          (s) =>
+            (s.studentIdNumber || '').toLowerCase() === targetIdNumber.toLowerCase() ||
+            s.id.toLowerCase() === targetIdNumber.toLowerCase() ||
+            (s.nationalId && s.nationalId === targetIdNumber)
+        ) || null
+      : null;
+
+    const matched = matchedStudent;
+
+    if (!matched && !matchedTeacher) {
+      setFlashWarning(
+        lang === 'th' ? `ไม่พบรหัสนักเรียนหรือครู: ${targetIdNumber}` : `ID not found: ${targetIdNumber}`
+      );
       playBeep(false);
       triggerHaptic(false);
       setTimeout(() => setFlashWarning(null), 2500);
       return;
     }
 
+    const entityId = matched ? matched.id : matchedTeacher!.id;
+    const entityDisplayName = matched
+      ? `${matched.firstNameTh} ${matched.lastNameTh}`
+      : matchedTeacher!.fullNameTh;
+
     // Cooldown check: prevent duplicate re-scan within 6 seconds
     const nowMs = Date.now();
-    const lastScanMs = lastScannedTimeMapRef.current.get(matched.id) || 0;
+    const lastScanMs = lastScannedTimeMapRef.current.get(entityId) || 0;
     if (nowMs - lastScanMs < 6000) {
-      setFlashWarning(lang === 'th' ? `เพิ่งสแกนไปเมื่อสักครู่: ${matched.firstNameTh} (รอ 6 วินาที)` : `Recently scanned: ${matched.firstNameTh}`);
+      setFlashWarning(
+        lang === 'th'
+          ? `เพิ่งสแกนไปเมื่อสักครู่: ${entityDisplayName} (รอ 6 วินาที)`
+          : `Recently scanned: ${entityDisplayName}`
+      );
       playBeep(false);
       triggerHaptic(false);
       setTimeout(() => setFlashWarning(null), 2000);
       return;
     }
 
-    // Record attendance
-    lastScannedTimeMapRef.current.set(matched.id, nowMs);
+    lastScannedTimeMapRef.current.set(entityId, nowMs);
     const nowTimeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const status: AttendanceStatus = 'present';
 
+    if (matchedTeacher && !matched) {
+      const remarksText =
+        scanMode === 'check_in'
+          ? 'สแกนบัตรครู/บุคลากรเข้าปฏิบัติงาน (Rapid Scanner)'
+          : 'สแกนบัตรครู/บุคลากรออกงาน (Rapid Checkout)';
+      const staffExtra = {
+        recordType: scanMode,
+        photoUrl: matchedTeacher.avatarUrl,
+        userType: 'teacher' as const,
+        teacherId: matchedTeacher.id,
+        userName: matchedTeacher.fullNameTh,
+        userRole: matchedTeacher.positionTitle || matchedTeacher.academicStanding || 'ครู / บุคลากร',
+        userDepartmentOrRoom: matchedTeacher.department,
+        recordedBy: currentUser?.fullNameTh,
+        recordedByRole: currentUser?.role,
+      };
+      onRecordAttendance(matchedTeacher.id, status, remarksText, 'qr_scanner', staffExtra);
+      sendEduVerseNotification({
+        title:
+          scanMode === 'check_in'
+            ? `🔔 [บุคลากรเข้างาน] ${matchedTeacher.fullNameTh}`
+            : `🔔 [บุคลากรออกงาน] ${matchedTeacher.fullNameTh}`,
+        body: `สแกนบัตรบุคลากรเวลา ${nowTimeStr} (${matchedTeacher.department})`,
+        category: 'attendance',
+        priority: 'normal',
+        schoolId,
+        targetUserIds: [matchedTeacher.id],
+        targetRoles: ['teacher', 'admin', 'super_admin'],
+      });
+      setLastScannedStudent({
+        id: matchedTeacher.id,
+        studentIdNumber: matchedTeacher.teacherIdNumber,
+        firstNameTh: matchedTeacher.fullNameTh,
+        lastNameTh: '',
+        firstNameEn: matchedTeacher.fullNameEn,
+        lastNameEn: '',
+        gender: matchedTeacher.gender,
+        dateOfBirth: '',
+        gradeLevel: matchedTeacher.positionTitle || 'บุคลากร',
+        room: matchedTeacher.department,
+        status: 'active',
+        avatarUrl: matchedTeacher.avatarUrl,
+        gpa: 0,
+        guardianName: '',
+        guardianRelation: '',
+        guardianPhone: '',
+        guardianEmail: '',
+        lineLinked: false,
+        lineNotifyEnabled: false,
+        enrolledDate: '',
+      });
+      setFlashSuccess(true);
+      setFlashWarning(null);
+      playBeep(true);
+      triggerHaptic(true);
+      setTimeout(() => setFlashSuccess(false), 900);
+      setScannedSessionQueue((prev) => [
+        {
+          student: {
+            id: matchedTeacher.id,
+            studentIdNumber: matchedTeacher.teacherIdNumber,
+            firstNameTh: matchedTeacher.fullNameTh,
+            lastNameTh: '',
+            firstNameEn: matchedTeacher.fullNameEn,
+            lastNameEn: '',
+            gender: matchedTeacher.gender,
+            dateOfBirth: '',
+            gradeLevel: 'ครู/บุคลากร',
+            room: matchedTeacher.department,
+            status: 'active',
+            avatarUrl: matchedTeacher.avatarUrl,
+            gpa: 0,
+            guardianName: '',
+            guardianRelation: '',
+            guardianPhone: '',
+            guardianEmail: '',
+            lineLinked: false,
+            lineNotifyEnabled: false,
+            enrolledDate: '',
+          },
+          time: nowTimeStr,
+          status: 'present',
+          type: scanMode,
+        },
+        ...prev.slice(0, 24),
+      ]);
+      return;
+    }
+
+    const matchedStu = matched!;
     const remarksText = scanMode === 'check_in'
       ? 'สแกนบัตรต่อเนื่อง ประตูโรงเรียน (Rapid Scanner)'
       : 'สแกนบัตรเลิกเรียน (Rapid Checkout)';
     const extraPayload = {
       recordType: scanMode,
-      photoUrl: matched.avatarUrl,
-      userName: `${matched.firstNameTh} ${matched.lastNameTh}`,
-      userRole: `นักเรียน (${matched.gradeLevel})`,
-      userDepartmentOrRoom: matched.room,
+      photoUrl: matchedStu.avatarUrl,
+      userType: 'student' as const,
+      userName: `${matchedStu.firstNameTh} ${matchedStu.lastNameTh}`,
+      userRole: `นักเรียน (${matchedStu.gradeLevel})`,
+      userDepartmentOrRoom: matchedStu.room,
       recordedBy: currentUser?.fullNameTh,
       recordedByRole: currentUser?.role,
     };
@@ -272,22 +391,22 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
       enqueueOfflineAction({
         actionType: 'attendance',
         userId: currentUser?.id || '',
-        schoolId: matched.schoolId || schoolId,
-        description: `${scanMode === 'check_in' ? 'เช็คชื่อเข้าเรียน' : 'ปล่อยกลับบ้าน'} ${matched.firstNameTh} ${matched.lastNameTh} (${matched.studentIdNumber})`,
+        schoolId: matchedStu.schoolId || schoolId,
+        description: `${scanMode === 'check_in' ? 'เช็คชื่อเข้าเรียน' : 'ปล่อยกลับบ้าน'} ${matchedStu.firstNameTh} ${matchedStu.lastNameTh} (${matchedStu.studentIdNumber})`,
         payload: {
-          studentId: matched.id,
+          studentId: matchedStu.id,
           status,
           remarks: remarksText,
           method: 'qr_scanner',
           extra: extraPayload,
         },
       });
-      setOfflineSavedBanner(`ไม่มีอินเทอร์เน็ต · บันทึก ${matched.firstNameTh} ในคิวออฟไลน์แล้ว`);
+      setOfflineSavedBanner(`ไม่มีอินเทอร์เน็ต · บันทึก ${matchedStu.firstNameTh} ในคิวออฟไลน์แล้ว`);
       setTimeout(() => setOfflineSavedBanner(null), 3000);
     }
 
     onRecordAttendance(
-      matched.id,
+      matchedStu.id,
       status,
       remarksText,
       'qr_scanner',
@@ -297,15 +416,15 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
     // Send push notification to parents
     sendEduVerseNotification({
       title: scanMode === 'check_in' 
-        ? `🔔 [เข้าโรงเรียน] ${matched.firstNameTh} ${matched.lastNameTh}` 
-        : `🔔 [ออกจากโรงเรียน] ${matched.firstNameTh} ${matched.lastNameTh}`,
-      body: `สแกนบัตรผ่านประตูแล้ว เวลา ${nowTimeStr} (${matched.room}) สถานะ: เข้าเรียนตรงเวลา`,
+        ? `🔔 [เข้าโรงเรียน] ${matchedStu.firstNameTh} ${matchedStu.lastNameTh}` 
+        : `🔔 [ออกจากโรงเรียน] ${matchedStu.firstNameTh} ${matchedStu.lastNameTh}`,
+      body: `สแกนบัตรผ่านประตูแล้ว เวลา ${nowTimeStr} (${matchedStu.room}) สถานะ: เข้าเรียนตรงเวลา`,
       category: 'attendance',
       priority: 'urgent',
     });
 
     // Visual & Audio Feedback
-    setLastScannedStudent(matched);
+    setLastScannedStudent(matchedStu);
     setFlashSuccess(true);
     setFlashWarning(null);
     playBeep(true);
@@ -315,7 +434,7 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
     // Prepend to Session Queue
     setScannedSessionQueue(prev => [
       {
-        student: matched,
+        student: matchedStu,
         time: nowTimeStr,
         status: 'present',
         type: scanMode,

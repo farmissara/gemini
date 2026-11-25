@@ -345,6 +345,60 @@ export interface AttendanceRecord {
   lineNotificationSent: boolean;
   recordedBy?: string;
   recordedByRole?: string;
+  confirmedByHomeroom?: boolean;
+  confirmedByTeacherName?: string;
+  correctionRequestId?: string;
+}
+
+export type AttendanceCorrectionScope =
+  | 'gate_checkin'
+  | 'gate_checkout'
+  | 'period_checkin'
+  | 'period_checkout';
+
+export type AttendanceCorrectionIssueType =
+  | 'forgot_checkin'
+  | 'forgot_checkout'
+  | 'late_arrival'
+  | 'time_mismatch';
+
+export type AttendanceCorrectionStage =
+  | 'pending_homeroom'
+  | 'pending_admin'
+  | 'approved'
+  | 'rejected';
+
+export interface AttendanceCorrectionRequest {
+  id: string;
+  schoolId: string;
+  requesterId: string;
+  requesterName: string;
+  requesterRole: 'student' | 'teacher';
+  requesterCode?: string;
+  departmentOrRoom?: string;
+  targetScope: AttendanceCorrectionScope;
+  issueType: AttendanceCorrectionIssueType;
+  date: string;
+  originalTime?: string;
+  requestedTime: string;
+  requestedStatus: 'present' | 'late';
+  courseId?: string;
+  courseCode?: string;
+  periodNumber?: number;
+  reason: string;
+  stage: AttendanceCorrectionStage;
+  homeroomTeacherId?: string;
+  homeroomTeacherName?: string;
+  homeroomVerifiedBy?: string;
+  homeroomVerifiedAt?: string;
+  homeroomRemarks?: string;
+  adminApprovedBy?: string;
+  adminApprovedAt?: string;
+  adminRemarks?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectReason?: string;
+  createdAt: string;
 }
 
 export type LeaveType = 'sick' | 'personal' | 'official' | 'vacation';
@@ -859,6 +913,10 @@ export interface PeriodAttendanceRecord {
   studentId: string;
   status: 'present' | 'late' | 'absent' | 'excused';
   recordType?: 'check_in' | 'check_out'; // เช็คอินเข้าคาบ หรือ เช็คเอาท์เลิกคาบ
+  actualCheckInTime?: string;
+  actualCheckOutTime?: string;
+  graceMinutes?: number;
+  flexReason?: string;
   verifiedByTeacherId: string;
   verifiedByTeacherName: string;
   checkMethod: 'student_mobile' | 'teacher_proxy' | 'qr_code';

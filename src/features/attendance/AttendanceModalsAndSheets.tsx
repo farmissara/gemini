@@ -73,10 +73,14 @@ interface AttendanceModalsAndSheetsProps {
       userAvatar?: string;
       userDepartmentOrRoom?: string;
       date?: string;
+      time?: string;
       recordId?: string;
       photoStoragePath?: string;
       recordedBy?: string;
       recordedByRole?: string;
+      confirmedByHomeroom?: boolean;
+      confirmedByTeacherName?: string;
+      correctionRequestId?: string;
     }
   ) => void;
   // Success feedback modal
@@ -371,6 +375,8 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
         isOpen={showRapidScanner}
         onClose={() => setShowRapidScanner(false)}
         students={students}
+        teachers={teachers}
+        schoolId={activeSchoolId}
         currentUser={currentUser}
         onRecordAttendance={onRecordAttendance}
         lang={lang}

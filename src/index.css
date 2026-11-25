@@ -1909,13 +1909,84 @@ textarea::placeholder {
   background: color-mix(in srgb, var(--color-text-muted) 48%, transparent);
 }
 
+@keyframes boothFloatSparkle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(0.9) rotate(0deg);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) scale(1.14) rotate(12deg);
+    opacity: 1;
+  }
+}
+
+@keyframes boothDriftHeart {
+  0% {
+    transform: translate3d(0, 14px, 0) scale(0.82);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.92;
+  }
+  75% {
+    opacity: 0.86;
+  }
+  100% {
+    transform: translate3d(6px, -28px, 0) scale(1.06);
+    opacity: 0;
+  }
+}
+
+@keyframes boothPulseGlow {
+  0%, 100% {
+    transform: scale(0.98);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.95;
+  }
+}
+
+@keyframes boothTwinkleStar {
+  0%, 100% {
+    transform: scale(0.85) rotate(-6deg);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.18) rotate(8deg);
+    opacity: 1;
+  }
+}
+
+.booth-effect-sparkle {
+  animation: boothFloatSparkle 2.8s ease-in-out infinite;
+}
+
+.booth-effect-heart {
+  animation: boothDriftHeart 3.4s ease-in-out infinite;
+}
+
+.booth-effect-neon {
+  animation: boothPulseGlow 2.4s ease-in-out infinite;
+}
+
+.booth-effect-star {
+  animation: boothTwinkleStar 2.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .view-stage,
   .modal-enter,
   .toast-enter,
-  .skeleton-shimmer {
+  .skeleton-shimmer,
+  .booth-effect-sparkle,
+  .booth-effect-heart,
+  .booth-effect-neon,
+  .booth-effect-star {
     animation: none !important;
     transition: none !important;
   }
 }
+
 

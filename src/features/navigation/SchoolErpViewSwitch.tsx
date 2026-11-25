@@ -918,6 +918,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   schoolPeriods={schoolPeriods}
                   timetableSlots={viewTimetableSlots}
                   periodAttendance={viewPeriodAttendance}
+                  onRecordPeriodAttendance={props.onRecordPeriodAttendance}
                   onOpenGpsSettings={currentRole === 'teacher' ? undefined : () => {
                     setSystemSettingsInitialTab('school_gps');
                     setProgramMode('school_erp');

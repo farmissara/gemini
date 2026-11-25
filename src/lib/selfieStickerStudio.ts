@@ -2,6 +2,8 @@ export type SelfieFilterId = 'normal' | 'glow' | 'warm_film' | 'cool_mint' | 'mo
 
 export type SelfieFrameId = 'clean' | 'polaroid' | 'pastel_cute' | 'mascot_duo';
 
+export type SelfieCameraEffectId = 'none' | 'sparkles' | 'hearts_float' | 'neon_pulse' | 'starlight';
+
 export type SelfieStickerId =
   | 'early_bird'
   | 'full_energy'
@@ -180,6 +182,30 @@ export const SELFIE_STICKERS: SelfieStickerOption[] = [
     defaultPos: { xPct: 50, yPct: 45, rotation: -2 },
   },
 ];
+
+export interface SelfieCameraEffectOption {
+  id: SelfieCameraEffectId;
+  labelTh: string;
+  labelEn: string;
+  accentColor: string;
+}
+
+export const SELFIE_CAMERA_EFFECTS: SelfieCameraEffectOption[] = [
+  { id: 'none', labelTh: 'ปิดเอฟเฟกต์', labelEn: 'None', accentColor: '#64748b' },
+  { id: 'sparkles', labelTh: 'ประกายวิ้ง', labelEn: 'Sparkles', accentColor: '#f59e0b' },
+  { id: 'hearts_float', labelTh: 'หัวใจลอย', labelEn: 'Floating Hearts', accentColor: '#f43f5e' },
+  { id: 'neon_pulse', labelTh: 'ขอบเรืองแสง', labelEn: 'Studio Glow', accentColor: '#38bdf8' },
+  { id: 'starlight', labelTh: 'ดาวระยิบ', labelEn: 'Starlight', accentColor: '#a855f7' },
+];
+
+export function getCameraEffectOption(id: SelfieCameraEffectId): SelfieCameraEffectOption {
+  return SELFIE_CAMERA_EFFECTS.find((e) => e.id === id) || SELFIE_CAMERA_EFFECTS[0];
+}
+
+export function getNextFilterId(currentId: SelfieFilterId): SelfieFilterId {
+  const idx = SELFIE_FILTERS.findIndex((f) => f.id === currentId);
+  return SELFIE_FILTERS[(idx + 1) % SELFIE_FILTERS.length].id;
+}
 
 export function getFilterOption(id: SelfieFilterId): SelfieFilterOption {
   return SELFIE_FILTERS.find((f) => f.id === id) || SELFIE_FILTERS[0];
@@ -532,11 +558,117 @@ function drawStickerOnCanvas(
 export interface ComposeSelfieOptions {
   frameId: SelfieFrameId;
   filterId: SelfieFilterId;
+  effectId?: SelfieCameraEffectId;
   stickers: PlacedSticker[];
   personName: string;
   gateName: string;
   checkTypeLabel: string;
   timeText: string;
+}
+
+function drawFourPointStar(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  outerR: number,
+  fill: string
+) {
+  const innerR = outerR * 0.34;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (i * Math.PI) / 4 - Math.PI / 2;
+    const px = Math.cos(angle) * r;
+    const py = Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+export function drawCameraEffectOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  effectId: SelfieCameraEffectId | undefined,
+  stage: StageRect
+) {
+  if (!effectId || effectId === 'none') return;
+  const minDim = Math.min(stage.w, stage.h);
+  ctx.save();
+
+  if (effectId === 'sparkles') {
+    const spots = [
+      { x: 0.14, y: 0.18, r: 0.036, c: '#fde047' },
+      { x: 0.86, y: 0.2, r: 0.04, c: '#fef08a' },
+      { x: 0.18, y: 0.78, r: 0.032, c: '#38bdf8' },
+      { x: 0.84, y: 0.74, r: 0.036, c: '#fde047' },
+      { x: 0.5, y: 0.12, r: 0.028, c: '#ffffff' },
+    ];
+    for (const spot of spots) {
+      drawFourPointStar(
+        ctx,
+        stage.x + stage.w * spot.x,
+        stage.y + stage.h * spot.y,
+        minDim * spot.r,
+        spot.c
+      );
+    }
+  } else if (effectId === 'hearts_float') {
+    const hearts = [
+      { x: 0.16, y: 0.24, s: 0.042, c: '#fb7185' },
+      { x: 0.84, y: 0.22, s: 0.048, c: '#f43f5e' },
+      { x: 0.18, y: 0.76, s: 0.036, c: '#f472b6' },
+      { x: 0.82, y: 0.76, s: 0.04, c: '#fb7185' },
+    ];
+    for (const h of hearts) {
+      const cx = stage.x + stage.w * h.x;
+      const cy = stage.y + stage.h * h.y;
+      const s = minDim * h.s;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.fillStyle = h.c;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = Math.max(1.5, minDim * 0.004);
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.45);
+      ctx.bezierCurveTo(-s * 1.1, -s * 0.15, -s * 0.55, -s * 1.05, 0, -s * 0.35);
+      ctx.bezierCurveTo(s * 0.55, -s * 1.05, s * 1.1, -s * 0.15, 0, s * 0.45);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  } else if (effectId === 'neon_pulse') {
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+    ctx.lineWidth = Math.max(3, minDim * 0.012);
+    drawRoundedRect(ctx, stage.x + 8, stage.y + 8, stage.w - 16, stage.h - 16, 18);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(244, 114, 182, 0.55)';
+    ctx.lineWidth = Math.max(2, minDim * 0.006);
+    drawRoundedRect(ctx, stage.x + 16, stage.y + 16, stage.w - 32, stage.h - 32, 12);
+    ctx.stroke();
+  } else if (effectId === 'starlight') {
+    const stars = [
+      { x: 0.12, y: 0.16, r: 0.032, c: '#e9d5ff' },
+      { x: 0.88, y: 0.17, r: 0.036, c: '#c084fc' },
+      { x: 0.14, y: 0.82, r: 0.036, c: '#fde047' },
+      { x: 0.86, y: 0.81, r: 0.032, c: '#a855f7' },
+    ];
+    for (const st of stars) {
+      drawFourPointStar(
+        ctx,
+        stage.x + stage.w * st.x,
+        stage.y + stage.h * st.y,
+        minDim * st.r,
+        st.c
+      );
+    }
+  }
+
+  ctx.restore();
 }
 
 function drawFrameChromeBackground(
@@ -694,6 +826,7 @@ export function composeLiveVideoSnapshot(
   ctx.save();
   drawRoundedRect(ctx, stage.x, stage.y, stage.w, stage.h, Math.min(12, stage.border * 0.5));
   ctx.clip();
+  drawCameraEffectOnCanvas(ctx, options.effectId, stage);
   for (const sticker of options.stickers) {
     drawStickerOnCanvas(ctx, sticker, stage);
   }
@@ -754,6 +887,7 @@ export function composeSimulatedStudioSnapshot(
   ctx.textBaseline = 'middle';
   ctx.fillText(initials, stage.x + stage.w / 2, stage.y + stage.h * 0.48);
 
+  drawCameraEffectOnCanvas(ctx, options.effectId, stage);
   for (const sticker of options.stickers) {
     drawStickerOnCanvas(ctx, sticker, stage);
   }
