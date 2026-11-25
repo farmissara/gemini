@@ -1158,6 +1158,11 @@ type StudentCredentialManagerPayload =
       schoolId: string;
       studentIds?: string[];
       passwordConfig?: StudentCredentialPasswordConfig;
+    }
+  | {
+      operation: 'delete_account';
+      schoolId: string;
+      userId: string;
     };
 
 async function callExpressStudentCredentials(
@@ -1582,15 +1587,39 @@ export async function deleteStudentAccountRegistrationInSupabase(
   });
   if (!rpcError) return;
 
-  const { error } = await client
-    .from('user_profiles')
-    .delete()
-    .eq('id', userId)
-    .eq('school_id', schoolId)
-    .eq('role', 'student');
+  const isMissingRpc =
+    rpcError.code === 'PGRST202' ||
+    /could not find the function|function public\.delete_student_account_registration|schema cache/i.test(
+      rpcError.message
+    );
+  if (!isMissingRpc) {
+    throw new Error(`ไม่สามารถลบ/ยกเลิกคำขอสมัครนักเรียนได้: ${rpcError.message}`);
+  }
 
-  if (error) {
-    throw new Error(`ไม่สามารถลบ/ยกเลิกคำขอสมัครนักเรียนได้: ${error.message}`);
+  // Fallback to service-role endpoint (/api/student-credentials or Edge Function)
+  // because authenticated clients intentionally do not have direct DELETE privilege on user_profiles.
+  const { data: sessionData } = await client.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (accessToken) {
+    const expressAttempt = await callExpressStudentCredentials(accessToken, {
+      operation: 'delete_account',
+      schoolId,
+      userId,
+    });
+    if (expressAttempt.ok) return;
+    if (!expressAttempt.unreachable) {
+      throw new Error(`ไม่สามารถลบ/ยกเลิกคำขอสมัครนักเรียนได้: ${expressAttempt.message}`);
+    }
+  }
+
+  try {
+    await invokeStudentCredentialManager({ operation: 'delete_account', schoolId, userId });
+    return;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `ไม่สามารถลบ/ยกเลิกคำขอสมัครนักเรียนได้: ${message} (หรือรัน migration 20261128000001_delete_student_account_rpc.sql ใน Supabase)`
+    );
   }
 }
 

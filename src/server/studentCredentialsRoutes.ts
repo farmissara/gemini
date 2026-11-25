@@ -6,7 +6,7 @@ type EnvReader = (name: string) => string;
 
 const BULK_CREATE_CONCURRENCY = 5;
 
-export type StudentCredentialOperation = 'create' | 'reset' | 'create_all_missing';
+export type StudentCredentialOperation = 'create' | 'reset' | 'create_all_missing' | 'delete_account';
 
 interface StudentRecord {
   id: string;
@@ -85,6 +85,7 @@ export function validateStudentCredentialPayload(body: unknown):
       operation: StudentCredentialOperation;
       schoolId: string;
       studentId: string;
+      userId?: string;
       studentIds?: string[];
       passwordConfig?: StudentCredentialPasswordConfigInput;
     }
@@ -94,16 +95,23 @@ export function validateStudentCredentialPayload(body: unknown):
   }
   const record = body as Record<string, unknown>;
   const operation =
-    record.operation === 'create' || record.operation === 'reset' || record.operation === 'create_all_missing'
+    record.operation === 'create' ||
+    record.operation === 'reset' ||
+    record.operation === 'create_all_missing' ||
+    record.operation === 'delete_account'
       ? record.operation
       : null;
   const schoolId = typeof record.schoolId === 'string' ? record.schoolId.trim() : '';
   const studentId = typeof record.studentId === 'string' ? record.studentId.trim() : '';
+  const userId = typeof record.userId === 'string' ? record.userId.trim() : '';
 
   if (!operation || !schoolId || schoolId.length > 128) {
     return { ok: false, error: 'An operation and valid schoolId are required.' };
   }
-  if (operation !== 'create_all_missing' && (!studentId || studentId.length > 128)) {
+  if (operation === 'delete_account' && (!userId || userId.length > 128)) {
+    return { ok: false, error: 'A valid userId is required for delete_account operations.' };
+  }
+  if ((operation === 'create' || operation === 'reset') && (!studentId || studentId.length > 128)) {
     return { ok: false, error: 'A valid studentId is required for single-student operations.' };
   }
 
@@ -147,6 +155,7 @@ export function validateStudentCredentialPayload(body: unknown):
     operation,
     schoolId,
     studentId,
+    ...(userId ? { userId } : {}),
     ...(parsedStudentIds ? { studentIds: parsedStudentIds } : {}),
     ...(parsedPasswordConfig ? { passwordConfig: parsedPasswordConfig } : {}),
   };
@@ -375,7 +384,7 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
     if (parsed.ok === false) {
       return res.status(400).json({ error: 'INVALID_REQUEST', message: parsed.error });
     }
-    const { operation, schoolId, studentId, studentIds, passwordConfig } = parsed;
+    const { operation, schoolId, studentId, userId, studentIds, passwordConfig } = parsed;
 
     try {
       const { data: authData, error: authError } = await clients.userClient.auth.getUser(token);
@@ -472,6 +481,48 @@ export function createStudentCredentialsRouter(getEnv: EnvReader) {
       };
 
       const getAuthEmailIndex = createAuthEmailLookup(clients.serviceClient);
+
+      if (operation === 'delete_account') {
+        const { data: targetProfile, error: lookupError } = await clients.serviceClient
+          .from('user_profiles')
+          .select('id, school_id, role')
+          .eq('id', userId!)
+          .eq('school_id', schoolId)
+          .eq('role', 'student')
+          .maybeSingle();
+        if (lookupError) {
+          console.error('[Student Credentials] Could not look up student profile for deletion:', lookupError.message);
+          return res.status(500).json({ error: 'PROFILE_LOOKUP_FAILED', message: 'ไม่สามารถตรวจสอบบัญชีนักเรียนได้' });
+        }
+        if (!targetProfile) {
+          return res.status(404).json({ error: 'ACCOUNT_NOT_FOUND', message: 'ไม่พบบัญชีนักเรียนนี้ในโรงเรียน' });
+        }
+
+        const { error: deleteProfileError } = await clients.serviceClient
+          .from('user_profiles')
+          .delete()
+          .eq('id', userId!)
+          .eq('school_id', schoolId)
+          .eq('role', 'student');
+        if (deleteProfileError) {
+          console.error('[Student Credentials] Could not delete student profile:', deleteProfileError.message);
+          return res.status(500).json({
+            error: 'DELETE_PROFILE_FAILED',
+            message: `ไม่สามารถลบโปรไฟล์นักเรียนได้ (${deleteProfileError.message})`,
+          });
+        }
+
+        const { error: deleteAuthError } = await clients.serviceClient.auth.admin.deleteUser(userId!);
+        if (deleteAuthError && !/not found|user_not_found/i.test(deleteAuthError.message)) {
+          console.error('[Student Credentials] Could not delete backing auth user:', deleteAuthError.message);
+          return res.status(500).json({
+            error: 'DELETE_AUTH_USER_FAILED',
+            message: `ลบโปรไฟล์แล้ว แต่ไม่สามารถลบบัญชี Auth ได้ (${deleteAuthError.message})`,
+          });
+        }
+
+        return res.json({ deleted: true, userId });
+      }
 
       if (operation === 'create_all_missing') {
         const studentColumns =

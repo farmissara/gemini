@@ -259,6 +259,7 @@ Deno.serve(async (request) => {
     operation?: unknown;
     schoolId?: unknown;
     studentId?: unknown;
+    userId?: unknown;
     studentIds?: unknown;
     passwordConfig?: { defaultPasswordType?: unknown; shortIdPasswordPrefix?: unknown };
   };
@@ -269,11 +270,15 @@ Deno.serve(async (request) => {
   }
 
   const operation =
-    payload.operation === 'create' || payload.operation === 'reset' || payload.operation === 'create_all_missing'
+    payload.operation === 'create' ||
+    payload.operation === 'reset' ||
+    payload.operation === 'create_all_missing' ||
+    payload.operation === 'delete_account'
       ? payload.operation
       : null;
   const schoolId = typeof payload.schoolId === 'string' ? payload.schoolId.trim() : '';
   const studentId = typeof payload.studentId === 'string' ? payload.studentId.trim() : '';
+  const userId = typeof payload.userId === 'string' ? payload.userId.trim() : '';
   const studentIds = Array.isArray(payload.studentIds)
     ? Array.from(
         new Set(
@@ -297,8 +302,13 @@ Deno.serve(async (request) => {
       ? payload.passwordConfig.shortIdPasswordPrefix.replace(/\s+/g, '').slice(0, 12)
       : undefined;
 
-  if (!operation || !schoolId || (operation !== 'create_all_missing' && !studentId)) {
-    return respond(400, { error: 'An operation and school are required; single-student operations also require a student.' });
+  if (
+    !operation ||
+    !schoolId ||
+    (operation === 'delete_account' && !userId) ||
+    ((operation === 'create' || operation === 'reset') && !studentId)
+  ) {
+    return respond(400, { error: 'An operation and school are required; single-student operations also require a student or userId.' });
   }
 
   const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -377,6 +387,39 @@ Deno.serve(async (request) => {
   };
 
   const getAuthEmailIndex = createAuthEmailLookup(serviceClient);
+
+  if (operation === 'delete_account') {
+    const { data: targetProfile, error: lookupError } = await serviceClient
+      .from('user_profiles')
+      .select('id, school_id, role')
+      .eq('id', userId)
+      .eq('school_id', schoolId)
+      .eq('role', 'student')
+      .maybeSingle();
+    if (lookupError) {
+      return respond(500, { error: 'Could not look up the student account.' });
+    }
+    if (!targetProfile) {
+      return respond(404, { error: 'The student account was not found in this school.' });
+    }
+
+    const { error: deleteProfileError } = await serviceClient
+      .from('user_profiles')
+      .delete()
+      .eq('id', userId)
+      .eq('school_id', schoolId)
+      .eq('role', 'student');
+    if (deleteProfileError) {
+      return respond(500, { error: deleteProfileError.message });
+    }
+
+    const { error: deleteAuthError } = await serviceClient.auth.admin.deleteUser(userId);
+    if (deleteAuthError && !/not found|user_not_found/i.test(deleteAuthError.message)) {
+      return respond(500, { error: deleteAuthError.message });
+    }
+
+    return respond(200, { deleted: true, userId });
+  }
 
   if (operation === 'create_all_missing') {
     const studentColumns = 'id, student_id_number, date_of_birth, first_name_th, last_name_th, first_name_en, last_name_en, avatar_url';

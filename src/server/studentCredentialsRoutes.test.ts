@@ -75,6 +75,14 @@ describe('student credentials route helpers', () => {
         passwordConfig: { defaultPasswordType: 'student_id', shortIdPasswordPrefix: '00' },
       }
     );
+    assert.deepEqual(
+      validateStudentCredentialPayload({ operation: 'delete_account', schoolId: 's1', userId: ' usr-1 ' }),
+      { ok: true, operation: 'delete_account', schoolId: 's1', studentId: '', userId: 'usr-1' }
+    );
+    assert.equal(
+      validateStudentCredentialPayload({ operation: 'delete_account', schoolId: 's1' }).ok,
+      false
+    );
     assert.equal(
       validateStudentCredentialPayload({ operation: 'reset', schoolId: 's1' }).ok,
       false
