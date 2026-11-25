@@ -353,43 +353,32 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
       )}
 
       {/* 1. COMPACT MOBILE HEADER + PRIMARY CTA */}
-      <section className="space-y-2.5">
+      <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
+          <h1 className="text-base font-bold tracking-tight text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'งานวันนี้' : "Today's Tasks"}
           </h1>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-              <button
-                type="button"
-                onClick={() => onSwitchOperationalRole('teacher')}
-                className="min-h-[44px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-primary-text)] cursor-pointer whitespace-nowrap"
-              >
-                {lang === 'th' ? 'โหมดครู' : 'Teacher'}
-              </button>
-            )}
-            {onOpenQuickHub && (
-              <button
-                type="button"
-                onClick={onOpenQuickHub}
-                aria-label={lang === 'th' ? 'แก้ไขด่วน' : 'Quick Edit'}
-                className="min-h-[44px] min-w-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          {onOpenQuickHub && (
+            <button
+              type="button"
+              onClick={onOpenQuickHub}
+              aria-label={lang === 'th' ? 'แก้ไขด่วน' : 'Quick Edit'}
+              className="h-9 w-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer shadow-2xs transition active:scale-95 shrink-0"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {onOpenCheckin && (
           <button
             type="button"
             onClick={onOpenCheckin}
-            className="w-full min-h-[48px] px-4 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-[15px] font-semibold flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+            className="w-full min-h-[40px] h-10 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center justify-between cursor-pointer transition active:scale-[0.99] shadow-xs"
           >
             <span className="flex items-center gap-2">
-              <QrCode className="w-4 h-4 shrink-0" />
+              <QrCode className="w-3.5 h-3.5 shrink-0" />
               <span>{lang === 'th' ? 'เช็คชื่อเข้า-ออก' : 'Check-in'}</span>
             </span>
             <ArrowRight className="w-4 h-4 shrink-0" />

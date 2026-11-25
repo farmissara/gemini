@@ -1087,7 +1087,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               </div>
             ) : (
               <div className="flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1 min-w-0">
+                <div className="flex items-center gap-1 min-w-0 overflow-x-auto no-scrollbar">
                   <button
                     type="button"
                     disabled={isCameraSwitching}

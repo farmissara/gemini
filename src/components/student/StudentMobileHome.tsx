@@ -691,24 +691,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             ) : null}
           </div>
 
-          {/* Upcoming Holiday Compact Row */}
-          {!todayHoliday && upcomingHoliday && (
-            <button
-              type="button"
-              onClick={() => onOpenTimetable('calendar')}
-              className="w-full min-h-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-2 text-left flex items-center justify-between gap-2.5 hover:border-[var(--color-primary)] transition cursor-pointer"
-            >
-              <div className="min-w-0 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-rose-500 shrink-0" />
-                <p className="text-xs text-[var(--color-text-body)] truncate tabular-nums">
-                  {lang === 'th' ? 'วันหยุดถัดไป:' : 'Next holiday:'}{' '}
-                  <strong className="text-[var(--color-text-title)]">{upcomingHoliday.nameTh}</strong> (
-                  {upcomingHoliday.date})
-                </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-            </button>
-          )}
         </div>
       )}
 

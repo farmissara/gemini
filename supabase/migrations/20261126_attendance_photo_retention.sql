@@ -2,8 +2,9 @@
 -- Deploy the attendance-photo-retention Edge Function before adding them:
 --   attendance_photo_cleanup_url    = https://<project-ref>.supabase.co
 --   attendance_photo_cleanup_secret = the same random value as the function secret
--- The function removes Storage objects older than 24 hours and clears photo_url;
--- attendance rows remain intact.
+-- The function removes attendance-selfies Storage objects 1 hour (60 minutes by default,
+-- or per-school feature_flags.selfieRetentionAfterCheckoutMinutes) after check-out and
+-- cleans up previous-day photos, clearing photo_url while keeping attendance rows intact.
 
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
 CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
