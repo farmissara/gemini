@@ -993,6 +993,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
   const rawSettingsNavSections: Array<{
     groupLabel: string;
+    tone: string;
+    groupIcon: React.ComponentType<{ className?: string }>;
     items: Array<{
       id: SystemSettingsTab;
       label: string;
@@ -1002,6 +1004,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   }> = [
     {
       groupLabel: lang === 'th' ? 'ศูนย์ควบคุม' : 'Control',
+      tone: 'tone-3',
+      groupIcon: Shield,
       items: [
         { id: 'control_overview', label: lang === 'th' ? 'ภาพรวมระบบ' : 'Overview', icon: LayoutGrid },
         { id: 'school_permissions', label: lang === 'th' ? 'สิทธิ์บทบาท' : 'Permissions', icon: Shield, adminOnly: true },
@@ -1010,6 +1014,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     },
     {
       groupLabel: lang === 'th' ? 'สถานศึกษา & GPS' : 'Campus & GPS',
+      tone: 'tone-1',
+      groupIcon: Building2,
       items: [
         { id: 'school_general', label: lang === 'th' ? 'ข้อมูลโรงเรียน & สำรองข้อมูล' : 'General & Backup', icon: Building2 },
         { id: 'school_gps', label: lang === 'th' ? 'พิกัด GPS & ประตู' : 'Campus GPS & Gates', icon: MapPin },
@@ -1017,6 +1023,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     },
     {
       groupLabel: lang === 'th' ? 'LINE OA & เวลาเรียน' : 'LINE & Cutoff',
+      tone: 'tone-6',
+      groupIcon: BellRing,
       items: [
         { id: 'line_events', label: lang === 'th' ? 'เงื่อนไขแจ้งเตือน & ตัดสาย' : 'Events & Cutoff', icon: BellRing },
         { id: 'line_connection', label: lang === 'th' ? 'LINE API & Webhook' : 'LINE API & Webhook', icon: MessageSquare },
@@ -1026,6 +1034,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     },
     {
       groupLabel: lang === 'th' ? 'บัญชีนักเรียน' : 'Student Accounts',
+      tone: 'tone-7',
+      groupIcon: KeyRound,
       items: [
         { id: 'student_accounts', label: lang === 'th' ? 'อนุมัติ & ผูกบัญชี' : 'Approve & Link', icon: KeyRound, adminOnly: true },
         { id: 'student_login_config', label: lang === 'th' ? 'ลิงก์ล็อกอินนักเรียน' : 'Student Login Link', icon: GraduationCap, adminOnly: true },
@@ -1047,10 +1057,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {/* Slim Single-Row Header */}
       <div className="shrink-0 app-page-header px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
+          <div className="w-9 h-9 rounded-xl tone-chip shrink-0">
             <Settings className="w-4 h-4" />
           </div>
           <div className="min-w-0">
+            <div className="module-category-kicker">
+              07 · {lang === 'th' ? 'ตั้งค่าระบบ & ประสานงาน' : 'Settings & Governance'}
+            </div>
             <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
               {lang === 'th' ? 'ตั้งค่าระบบโรงเรียน' : 'School System Settings'}
             </h1>
@@ -1119,33 +1132,42 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           aria-label={lang === 'th' ? 'หมวดตั้งค่าระบบ' : 'Settings navigation'}
           className="hidden lg:block saas-card p-2.5 space-y-3 sticky top-3"
         >
-          {settingsNavSections.map((section, idx) => (
-            <div key={section.groupLabel} className={idx > 0 ? 'pt-2.5 border-t border-[var(--color-border)] space-y-1' : 'space-y-1'}>
-              <div className="px-2.5 py-1 text-[11px] font-bold text-[var(--color-text-muted)]">
-                {section.groupLabel}
+          {settingsNavSections.map((section, idx) => {
+            const GroupIcon = section.groupIcon;
+            return (
+              <div
+                key={section.groupLabel}
+                className={`${section.tone} ${idx > 0 ? 'pt-2.5 border-t border-[var(--color-border)] space-y-1' : 'space-y-1'}`}
+              >
+                <div className="px-2 py-1 flex items-center gap-1.5 text-[11px] font-bold text-[var(--tone)]">
+                  <span className="w-4 h-4 rounded flex items-center justify-center bg-[var(--tone-soft)] text-[var(--tone)] shrink-0">
+                    <GroupIcon className="w-2.5 h-2.5" />
+                  </span>
+                  <span className="truncate">{section.groupLabel}</span>
+                </div>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-active={isActive}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-left border transition cursor-pointer ${
+                        isActive
+                          ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold border-[color-mix(in_srgb,var(--tone)_24%,transparent)]'
+                          : 'border-transparent text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[var(--tone)]' : 'text-[var(--tone)]/80'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    data-active={isActive}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-left transition cursor-pointer ${
-                      isActive
-                        ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold'
-                        : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
-                    }`}
-                  >
-                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[var(--tone)]' : 'text-[var(--color-text-muted)]'}`} />
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </aside>
 
       {/* Tab Panels Container */}

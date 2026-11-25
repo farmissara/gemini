@@ -771,12 +771,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* Compact SaaS Top Header */}
       <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3 text-[var(--color-text-body)]">
         <div className="min-w-0 flex items-center gap-3">
-          <span className="tone-chip w-8 h-8 rounded-lg">
+          <span className="tone-chip w-9 h-9 rounded-xl">
             <QrCode className="w-4 h-4 shrink-0" />
           </span>
-          <h1 className="type-page-title truncate">
-            การเข้าเรียน &amp; สแกนประตู
-          </h1>
+          <div className="min-w-0">
+            <div className="module-category-kicker">04 · เช็กชื่อ กิจการ &amp; สุขภาพ</div>
+            <h1 className="type-page-title truncate">
+              การเข้าเรียน &amp; สแกนประตู
+            </h1>
+          </div>
         </div>
 
         {/* Subtabs Navigation */}

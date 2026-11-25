@@ -31,6 +31,7 @@ import type { DashboardSubTab } from '../../views/DashboardView';
 import type { SystemSettingsTab } from '../../views/SystemSettingsView';
 import type { SchoolPolicyId } from '../../lib/schoolPermissions';
 import type { ThaiHoliday } from '../../lib/thaiHolidays';
+import { getModuleTone } from '../../lib/moduleTheme';
 
 export interface AdminCategoryActionItem {
   id: string;
@@ -511,13 +512,14 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             onClick={() => {
               if (isModuleEnabled('attendance')) onNavigate('attendance');
             }}
-            className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
+            className="tone-2 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="type-meta font-medium">
-                {lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+                <QrCode className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}</span>
               </span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
             </div>
             <div className="flex items-baseline gap-2.5 min-w-0">
               <span className="type-kpi tabular-nums">{onTimePercent}%</span>
@@ -535,13 +537,14 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               else if (pendingSlipCount > 0 && canViewFinancials) onNavigate('billing');
               else if (isModuleEnabled('homework')) onNavigate('homework');
             }}
-            className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
+            className="tone-3 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="type-meta font-medium">
-                {lang === 'th' ? 'รอดำเนินการ & อนุมัติ' : 'Pending Actions'}
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'รอดำเนินการ & อนุมัติ' : 'Pending Actions'}</span>
               </span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
             </div>
             <div className="flex items-baseline gap-2.5 min-w-0">
               <span className={`type-kpi tabular-nums ${totalPendingActions > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
@@ -561,13 +564,14 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             onClick={() => {
               if (isModuleEnabled('students')) onNavigate('students');
             }}
-            className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
+            className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="type-meta font-medium">
-                {lang === 'th' ? 'ผู้เรียน & วิชาการ' : 'Students & Academics'}
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'ผู้เรียน & วิชาการ' : 'Students & Academics'}</span>
               </span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
             </div>
             <div className="flex items-baseline gap-2.5 min-w-0">
               <span className="type-kpi tabular-nums">{totalStudents}</span>
@@ -584,13 +588,14 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               onClick={() => {
                 if (isModuleEnabled('courses')) onNavigate('courses');
               }}
-              className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
+              className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="type-meta font-medium">
-                  {lang === 'th' ? 'รายวิชา & ตารางสอน' : 'Courses & Schedule'}
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+                  <Calendar className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'th' ? 'รายวิชา & ตารางสอน' : 'Courses & Schedule'}</span>
                 </span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
               </div>
               <div className="flex items-baseline gap-2.5 min-w-0">
                 <span className="type-kpi tabular-nums">{coursesCount}</span>
@@ -603,15 +608,18 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             <button
               type="button"
               onClick={() => onOpenDrawer('guardian_line')}
-              className="saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
+              className="tone-6 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="type-meta font-medium">
-                  {isLineEnabled
-                    ? (lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition')
-                    : (lang === 'th' ? 'การเงิน & แจ้งเตือนในแอป' : 'Tuition & In-App Alerts')}
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+                  <Receipt className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {isLineEnabled
+                      ? (lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition')
+                      : (lang === 'th' ? 'การเงิน & แจ้งเตือนในแอป' : 'Tuition & In-App Alerts')}
+                  </span>
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
               </div>
               <div className="flex items-baseline gap-2.5 min-w-0">
                 <span className="type-kpi tabular-nums">
@@ -638,18 +646,23 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         <section
           data-guide-id="dashboard-today-desk"
           aria-label={lang === 'th' ? 'งานด่วนที่ต้องติดตาม' : 'Priority Action Queue'}
-          className="saas-card flex flex-col justify-between min-w-0 print-avoid-break overflow-hidden"
+          className="tone-3 saas-card flex flex-col justify-between min-w-0 print-avoid-break overflow-hidden"
         >
           <div>
             <div className="saas-card-header">
-              <h2 className="type-section-title truncate">
-                {lang === 'th' ? 'คิวงานด่วนที่ต้องจัดการ' : 'Priority Action Queue'}
-              </h2>
+              <div className="ui-section-heading min-w-0">
+                <span className="ui-icon-tile w-7 h-7 rounded-lg" aria-hidden="true">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                </span>
+                <h2 className="type-section-title truncate">
+                  {lang === 'th' ? 'คิวงานด่วนที่ต้องจัดการ' : 'Priority Action Queue'}
+                </h2>
+              </div>
               {isModuleEnabled('attendance') && (
                 <button
                   type="button"
                   onClick={() => onNavigate('attendance')}
-                  className="no-print type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0"
+                  className="no-print type-meta font-semibold text-[var(--tone)] hover:underline cursor-pointer shrink-0"
                 >
                   {lang === 'th' ? 'เช็คชื่อ →' : 'Attendance →'}
                 </button>
@@ -708,13 +721,18 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         {/* RIGHT: Recent Check-ins */}
         <section
           aria-label={lang === 'th' ? 'เช็คชื่อล่าสุด' : 'Recent Check-ins'}
-          className="saas-card flex flex-col justify-between min-w-0 print-avoid-break overflow-hidden"
+          className="tone-4 saas-card flex flex-col justify-between min-w-0 print-avoid-break overflow-hidden"
         >
           <div>
             <div className="saas-card-header">
-              <h2 className="type-section-title truncate">
-                {lang === 'th' ? 'เช็คชื่อเข้า-ออกล่าสุด' : 'Recent Check-ins'}
-              </h2>
+              <div className="ui-section-heading min-w-0">
+                <span className="ui-icon-tile w-7 h-7 rounded-lg" aria-hidden="true">
+                  <QrCode className="w-3.5 h-3.5" />
+                </span>
+                <h2 className="type-section-title truncate">
+                  {lang === 'th' ? 'เช็คชื่อเข้า-ออกล่าสุด' : 'Recent Check-ins'}
+                </h2>
+              </div>
 
               <div className="no-print flex items-center gap-3 shrink-0">
                 <div className="saas-control-group type-meta">
@@ -821,17 +839,26 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
           </span>
           {quickDepartments.map((item) => {
             const Icon = item.icon;
+            const itemTone = getModuleTone(
+              (item.id === 'gps'
+                ? 'school_gps'
+                : item.id === 'line'
+                  ? 'admin_line_control'
+                  : item.id === 'permissions'
+                    ? 'school_permissions'
+                    : item.id) as NavTab
+            );
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={item.onClick}
                 title={item.meta}
-                className={`btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap shrink-0 ${
+                className={`${itemTone} btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap shrink-0 ${
                   item.urgent ? 'border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200' : ''
                 }`}
               >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <Icon className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
                 <span>{item.label}</span>
               </button>
             );

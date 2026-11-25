@@ -28,6 +28,7 @@ import type { AppLanguage, AppProgramMode, SchoolFeatureFlags, UserRole } from '
 import type { NavTab } from './Sidebar';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import type { SchoolPolicyId } from '../../lib/schoolPermissions';
+import { getModuleGroupMeta, getModuleTone } from '../../lib/moduleTheme';
 
 interface FocusToolbarProps {
   currentTab: NavTab;
@@ -349,12 +350,14 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
   }, [currentTab]);
 
   const canGoHome = programMode !== 'school_erp' || currentTab !== 'dashboard';
+  const activeTone = getModuleTone(currentTab);
+  const activeGroupMeta = getModuleGroupMeta(currentTab);
 
   return (
     <div
       role="region"
       aria-label={lang === 'th' ? 'แถบเครื่องมือโหมดโฟกัส' : 'Focus mode toolbar'}
-      className="no-print mb-3 sm:mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2.5"
+      className={`${activeTone} no-print mb-3 sm:mb-4 rounded-xl border border-[color-mix(in_srgb,var(--tone)_24%,var(--color-border))] bg-[var(--color-card)] px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2.5`}
     >
       {/* Left: Active task context & quick home escape */}
       <div className="flex items-center gap-2.5 min-w-0">
@@ -378,14 +381,16 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
         )}
 
         <div className="flex items-center gap-2 min-w-0">
-          {programMode === 'lms_classroom' ? (
-            <MonitorPlay className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-          ) : (
-            <Focus className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-          )}
-          <span className="text-xs font-medium text-[var(--color-text-muted)] whitespace-nowrap shrink-0 hidden sm:inline">
-            {lang === 'th' ? 'โหมดโฟกัส' : 'Focus'}
-            <span className="mx-1.5" aria-hidden="true">·</span>
+          <span className="w-6 h-6 rounded-md flex items-center justify-center bg-[var(--tone-soft)] text-[var(--tone)] shrink-0">
+            {programMode === 'lms_classroom' ? (
+              <MonitorPlay className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <Focus className="w-3.5 h-3.5 shrink-0" />
+            )}
+          </span>
+          <span className="text-[11px] font-bold text-[var(--tone)] whitespace-nowrap shrink-0 hidden sm:inline">
+            {activeGroupMeta.code} · {lang === 'th' ? activeGroupMeta.labelTh : activeGroupMeta.labelEn}
+            <span className="mx-1.5 text-[var(--color-text-muted)]" aria-hidden="true">/</span>
           </span>
           <span className="text-[13px] font-bold text-[var(--color-text-title)] truncate">
             {activeTitle}
@@ -400,6 +405,7 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
             {quickTools.map((tool) => {
               const Icon = tool.icon;
               const isCurrent = programMode === 'school_erp' && normalizedActiveToolId === tool.id;
+              const toolTone = getModuleTone(tool.id);
               return (
                 <button
                   key={tool.id}
@@ -411,9 +417,9 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
                     }
                     onNavigateTab(tool.id);
                   }}
-                  className="seg-tab-btn whitespace-nowrap shrink-0"
+                  className={`${toolTone} seg-tab-btn whitespace-nowrap shrink-0`}
                 >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <Icon className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
                   <span>{lang === 'th' ? tool.labelTh : tool.labelEn}</span>
                 </button>
               );

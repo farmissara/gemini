@@ -1322,14 +1322,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       )}
 
       {/* Clean Unified Workspace Header + Underline Tabs */}
-      <div className="shrink-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] print:hidden">
+      <div className="shrink-0 app-page-header overflow-hidden print:hidden">
         <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="tone-chip w-8 h-8 rounded-lg">
+            <span className="tone-chip w-9 h-9 rounded-xl">
               <Users className="w-4 h-4" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              <div className="module-category-kicker">01 · ทะเบียน &amp; ตารางเรียน</div>
+              <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
                 ทะเบียนนักเรียน (DMC / SIS)
               </h1>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--color-text-muted)] tabular-nums truncate">

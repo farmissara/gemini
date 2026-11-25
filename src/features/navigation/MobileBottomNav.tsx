@@ -4,6 +4,7 @@ import type { AppProgramMode, SchoolFeatureFlags, UserRole } from '../../types';
 import type { NavTab } from '../../components/layout/Sidebar';
 import type { SchoolPermissionsState } from '../../lib/schoolPermissions';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
+import { getModuleTone } from '../../lib/moduleTheme';
 
 interface MobileBottomNavProps {
   currentRole: UserRole;
@@ -86,9 +87,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onChangeProgramMode('school_erp');
           onNavigateTab('dashboard');
         }}
-        className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+        className={`${getModuleTone('dashboard')} min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
           programMode === 'school_erp' && currentTab === 'dashboard'
-            ? 'text-[var(--color-primary-text)] font-semibold'
+            ? 'text-[var(--tone)] bg-[var(--tone-soft)]/70 font-semibold'
             : 'text-[var(--color-text-muted)]'
         }`}
       >
@@ -102,9 +103,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onChangeProgramMode('school_erp');
           onNavigateTab(slot2Target);
         }}
-        className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+        className={`${getModuleTone(slot2Target)} min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
           programMode === 'school_erp' && currentTab === slot2Target
-            ? 'text-[var(--color-primary-text)] font-semibold'
+            ? 'text-[var(--tone)] bg-[var(--tone-soft)]/70 font-semibold'
             : 'text-[var(--color-text-muted)]'
         }`}
       >
@@ -118,9 +119,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onChangeProgramMode('school_erp');
           onNavigateTab(slot3Target);
         }}
-        className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+        className={`${getModuleTone(slot3Target)} min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
           programMode === 'school_erp' && currentTab === slot3Target
-            ? 'text-[var(--color-primary-text)] font-semibold'
+            ? 'text-[var(--tone)] bg-[var(--tone-soft)]/70 font-semibold'
             : 'text-[var(--color-text-muted)]'
         }`}
       >
@@ -131,7 +132,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <button
         type="button"
         onClick={onOpenProfileModal}
-        className="min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition text-[var(--color-text-muted)] cursor-pointer"
+        className="tone-7 min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition text-[var(--color-text-muted)] hover:text-[var(--tone)] cursor-pointer"
       >
         <User className="w-5 h-5" />
         <span>บัญชี</span>

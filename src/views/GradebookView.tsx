@@ -1515,14 +1515,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
           {!embeddedInStudentManagement && (
             <div className="flex items-center gap-3 min-w-0">
-              <span className="tone-chip w-8 h-8 rounded-lg shrink-0">
+              <span className="tone-chip w-9 h-9 rounded-xl shrink-0">
                 <Award className="w-4 h-4" />
               </span>
-              <h1 className="text-base md:text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
-                {isPersonalGradeViewer
-                  ? 'ผลการเรียน & ใบ ปพ.6'
-                  : 'บันทึกคะแนน & งานทะเบียน'}
-              </h1>
+              <div className="min-w-0">
+                <div className="module-category-kicker">02 · วัดผล สพฐ. &amp; การสอน</div>
+                <h1 className="text-base md:text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
+                  {isPersonalGradeViewer
+                    ? 'ผลการเรียน & ใบ ปพ.6'
+                    : 'บันทึกคะแนน & งานทะเบียน'}
+                </h1>
+              </div>
             </div>
           )}
 

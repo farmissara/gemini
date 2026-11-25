@@ -532,13 +532,16 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       )}
 
       {/* Super Admin Editorial Header */}
-      <div className="pb-4 border-b border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="app-page-header px-4 py-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-title)] shrink-0">
+          <div className="tone-chip w-10 h-10 rounded-xl shrink-0">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-title)] tracking-tight truncate">
+            <div className="module-category-kicker">
+              03 · {lang === 'th' ? 'ศูนย์ควบคุมแม่ข่าย (Master Console)' : 'Master Console'}
+            </div>
+            <h1 className="type-page-title truncate">
               ศูนย์ควบคุมระบบและสถานศึกษา
             </h1>
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] flex-wrap">
@@ -550,7 +553,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   navigator.clipboard?.writeText('baanpakkru@gmail.com');
                   setFeedbackToast(lang === 'th' ? 'คัดลอกอีเมล Master (baanpakkru@gmail.com) แล้ว' : 'Copied Master email');
                 }}
-                className="inline-flex items-center gap-1 text-[var(--color-text-body)] hover:text-[var(--color-primary-text)] font-mono hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1 text-[var(--color-text-body)] hover:text-[var(--tone)] font-mono hover:underline cursor-pointer"
                 title="คลิกเพื่อคัดลอกอีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
               >
                 <Mail className="w-3 h-3" />
@@ -563,7 +566,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {onOpenBackupCenter && (
             <button type="button" onClick={onOpenBackupCenter} className="btn-tool-neutral">
-              <DatabaseBackup className="w-3.5 h-3.5" />
+              <DatabaseBackup className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />
               <span>สำรอง/กู้คืน</span>
             </button>
           )}
@@ -591,9 +594,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('schools')}
-            className="saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
+            className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
           >
-            <span className="type-meta font-medium">สถานศึกษาในระบบ</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+              <Building2 className="w-3.5 h-3.5 shrink-0" />
+              <span>สถานศึกษาในระบบ</span>
+            </span>
             <div className="flex items-baseline gap-2">
               <span className="type-kpi tabular-nums">{schools.length}</span>
               <span className="type-meta">แห่ง</span>
@@ -603,9 +609,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('approvals')}
-            className="saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
+            className="tone-3 saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
           >
-            <span className="type-meta font-medium">คำขอรออนุมัติ</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+              <MailCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>คำขอรออนุมัติ</span>
+            </span>
             <div className="flex items-baseline gap-2">
               <span className={`type-kpi tabular-nums ${pendingRegistrations.length > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
                 {pendingRegistrations.length}
@@ -617,9 +626,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('packages')}
-            className="saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
+            className="tone-5 saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
           >
-            <span className="type-meta font-medium">ระดับแพ็กเกจมาตรฐาน</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+              <Package className="w-3.5 h-3.5 shrink-0" />
+              <span>ระดับแพ็กเกจมาตรฐาน</span>
+            </span>
             <div className="flex items-baseline gap-2">
               <span className="type-kpi tabular-nums">{packageCatalog.length}</span>
               <span className="type-meta">ระดับ</span>
@@ -629,9 +641,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           <button
             type="button"
             onClick={() => onOpenCoordinationDesk?.()}
-            className="saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
+            className="tone-4 saas-kpi-cell saas-kpi-cell-interactive p-4 sm:p-5 flex flex-col justify-between gap-2 text-left"
           >
-            <span className="type-meta font-medium">ข้อความรอตอบกลับ</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+              <Mail className="w-3.5 h-3.5 shrink-0" />
+              <span>ข้อความรอตอบกลับ</span>
+            </span>
             <div className="flex items-baseline gap-2">
               <span className={`type-kpi tabular-nums ${coordinationUnreadCount > 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
                 {coordinationUnreadCount}
@@ -648,9 +663,9 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           type="button"
           data-active={activeSubTab === 'approvals'}
           onClick={() => setActiveSubTab('approvals')}
-          className="seg-tab-btn"
+          className="tone-3 seg-tab-btn"
         >
-          <MailCheck className="w-3.5 h-3.5 shrink-0" />
+          <MailCheck className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
           <span>อนุมัติโรงเรียน</span>
           {pendingRegistrations.length > 0 && (
             <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 tabular-nums">
@@ -662,45 +677,45 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
           type="button"
           data-active={activeSubTab === 'packages'}
           onClick={() => setActiveSubTab('packages')}
-          className="seg-tab-btn"
+          className="tone-5 seg-tab-btn"
         >
-          <Package className="w-3.5 h-3.5 shrink-0" />
+          <Package className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
           <span>แพ็กเกจ &amp; โมดูล</span>
         </button>
         <button
           type="button"
           data-active={activeSubTab === 'schools'}
           onClick={() => setActiveSubTab('schools')}
-          className="seg-tab-btn"
+          className="tone-1 seg-tab-btn"
         >
-          <Building2 className="w-3.5 h-3.5 shrink-0" />
+          <Building2 className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
           <span>สถานศึกษา ({schools.length})</span>
         </button>
         <button
           type="button"
           data-active={activeSubTab === 'central_exams'}
           onClick={() => setActiveSubTab('central_exams')}
-          className="seg-tab-btn"
+          className="tone-2 seg-tab-btn"
         >
-          <BookOpen className="w-3.5 h-3.5 shrink-0" />
+          <BookOpen className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
           <span>คลังข้อสอบกลาง</span>
         </button>
         <button
           type="button"
           data-active={activeSubTab === 'exam_payment'}
           onClick={() => setActiveSubTab('exam_payment')}
-          className="seg-tab-btn"
+          className="tone-6 seg-tab-btn"
         >
-          <CreditCard className="w-3.5 h-3.5 shrink-0" />
+          <CreditCard className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
           <span>รับเงิน PromptPay</span>
         </button>
         <button
           type="button"
           data-active={activeSubTab === 'audit_logs'}
           onClick={() => setActiveSubTab('audit_logs')}
-          className="seg-tab-btn"
+          className="tone-7 seg-tab-btn"
         >
-          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
           <span>Audit Log</span>
         </button>
       </div>

@@ -543,15 +543,18 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       {/* Compact Single-Row Header */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 app-page-header">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-lg">
+          <span className="tone-chip w-9 h-9 rounded-xl">
             <BookOpen className="w-4 h-4" />
           </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
-            หลักสูตรและรายวิชา
-            <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
-              · {courses.length} วิชา
-            </span>
-          </h1>
+          <div className="min-w-0">
+            <div className="module-category-kicker">01 · ทะเบียน &amp; ตารางเรียน</div>
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              หลักสูตรและรายวิชา
+              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
+                · {courses.length} วิชา
+              </span>
+            </h1>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap self-start sm:self-auto">

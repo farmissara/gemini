@@ -674,15 +674,20 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* Compact Header and Controls */}
       <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-wrap min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-lg">
+          <span className="tone-chip w-9 h-9 rounded-xl">
             <GraduationCap className="w-4 h-4" />
           </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
-            {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
-            <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
-              · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
-            </span>
-          </h1>
+          <div className="min-w-0">
+            <div className="module-category-kicker">
+              01 · {lang === 'th' ? 'ทะเบียน & ตารางเรียน' : 'Directory & Schedule'}
+            </div>
+            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
+              {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
+              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
+                · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
+              </span>
+            </h1>
+          </div>
 
           <div data-guide-id="teachers-tabs" role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group ml-1">
             <button

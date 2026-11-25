@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
-import { getModuleTone, getCategoryTone } from '../../lib/moduleTheme';
+import { getModuleTone, getCategoryTone, getCategoryGroupMeta } from '../../lib/moduleTheme';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
 
 export type NavTab =
@@ -904,7 +904,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return hidden;
   }, [categories, currentRole, featureFlags, schoolPermissions, focusMode, supportsFocusMode, focusTabs, resolvedSidebarActiveTab]);
 
-  const renderItem = (item: NavItemDef, onClick?: () => void, tone = getModuleTone(item.id)) => {
+  const renderItem = (item: NavItemDef, onClick?: () => void) => {
+    const tone = getModuleTone(item.id);
     const Icon = item.icon;
     const isActive = resolvedSidebarActiveTab === item.id;
     const isNumericBadge = Boolean(item.badge && /^\d+$/.test(String(item.badge)));
@@ -918,27 +919,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setCurrentTab(item.id);
           onClick?.();
         }}
-        className={`${tone} group relative w-full flex min-h-9 items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${
+        className={`${tone} group relative w-full flex min-h-9 items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[13px] border transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
           isActive
-            ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
-            : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+            ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold border-[color-mix(in_srgb,var(--tone)_26%,transparent)]'
+            : 'border-transparent text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
         }`}
       >
         <span className="flex items-center gap-2.5 min-w-0">
-          <Icon
-            className={`w-4 h-4 shrink-0 transition-colors ${
+          <span
+            className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors ${
               isActive
-                ? 'text-[var(--color-primary-text)]'
-                : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-title)]'
+                ? 'bg-[var(--color-card)] text-[var(--tone)] shadow-2xs'
+                : 'bg-[var(--tone-soft)]/70 text-[var(--tone)] group-hover:bg-[var(--tone-soft)]'
             }`}
-          />
+          >
+            <Icon className="w-3.5 h-3.5 shrink-0" />
+          </span>
           <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
         </span>
         {item.badge && (
           <span
             className={`shrink-0 text-[11px] font-semibold tabular-nums ${
               isAiBadge
-                ? 'text-[var(--color-primary-text)]'
+                ? 'px-1.5 py-0.5 rounded bg-[var(--tone-soft)] text-[var(--tone)] text-[10px] font-bold'
                 : isNumericBadge
                   ? 'text-[var(--color-text-muted)]'
                   : 'text-rose-600 dark:text-rose-400'
@@ -1016,10 +1019,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setCurrentTab(item.id)}
                     title={`${lang === 'th' ? cat.shortLabelTh : cat.shortLabelEn} · ${lang === 'th' ? item.labelTh : item.labelEn}`}
                     aria-label={lang === 'th' ? item.labelTh : item.labelEn}
-                    className={`${getCategoryTone(cat.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
+                    className={`${getModuleTone(item.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                       isActive
-                        ? 'bg-[var(--tone-soft)] text-[var(--tone)] shadow-xs'
-                        : 'text-[var(--color-text-muted)] hover:bg-[var(--tone-soft)]/50 hover:text-[var(--tone)]'
+                        ? 'bg-[var(--tone-soft)] text-[var(--tone)] border border-[color-mix(in_srgb,var(--tone)_28%,transparent)] shadow-xs'
+                        : 'text-[var(--tone)]/80 hover:bg-[var(--tone-soft)]/70 hover:text-[var(--tone)]'
                     }`}
                   >
                     <Icon className="w-[18px] h-[18px]" />
@@ -1095,19 +1098,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 type="button"
                 data-nav-tab={dashboardItem.id}
                 onClick={() => setCurrentTab(dashboardItem.id)}
-                className={`w-full flex min-h-9 items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${
+                className={`${getModuleTone(dashboardItem.id)} w-full flex min-h-9 items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] border transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                   resolvedSidebarActiveTab === dashboardItem.id
-                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold'
-                    : 'text-[var(--color-text-body)] font-medium hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
+                    ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-semibold border-[color-mix(in_srgb,var(--tone)_26%,transparent)]'
+                    : 'border-transparent text-[var(--color-text-title)] font-semibold hover:bg-[var(--color-card-subtle)]'
                 }`}
               >
-                <LayoutDashboard
-                  className={`w-4 h-4 shrink-0 ${
+                <span
+                  className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors ${
                     resolvedSidebarActiveTab === dashboardItem.id
-                      ? 'text-[var(--color-primary-text)]'
-                      : 'text-[var(--color-text-muted)]'
+                      ? 'bg-[var(--color-card)] text-[var(--tone)] shadow-2xs'
+                      : 'bg-[var(--tone-soft)] text-[var(--tone)]'
                   }`}
-                />
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
+                </span>
                 <span className="truncate">{lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}</span>
               </button>
             </div>
@@ -1115,8 +1120,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Expand/Collapse All shown only when viewing All Menus */}
             {!isSimplifiedAdmin && (!focusMode || !supportsFocusMode) && visibleCategories.length > 2 && (
               <div className="pt-2.5 mt-1 border-t border-[var(--color-border)] flex items-center justify-between px-2">
-                <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'หมวดงาน' : 'Workspaces'}
+                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'กลุ่มงานระบบ' : 'Workspaces'}
                 </span>
                 <button
                   type="button"
@@ -1138,13 +1143,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {visibleCategories.map((cat) => {
                 const isCollapsed = isCategoryCollapsed(cat.id);
                 const catTone = getCategoryTone(cat.id);
+                const catMeta = getCategoryGroupMeta(cat.id);
+                const hasActiveChild = cat.items.some((i) => i.id === resolvedSidebarActiveTab);
                 const CategoryIcon = cat.icon;
                 const alertBadge = cat.items.find(
                   (i) => i.badge && !/^\d+$/.test(String(i.badge)) && i.badge !== 'AI'
                 )?.badge;
 
                 return (
-                  <div key={cat.id} className="space-y-0.5">
+                  <div key={cat.id} className={`${catTone} space-y-1`}>
                     <button
                       type="button"
                       aria-expanded={!isCollapsed}
@@ -1157,11 +1164,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         }));
                       }}
                       data-expanded={!isCollapsed}
-                      className="sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-left transition cursor-pointer hover:bg-[var(--color-card-subtle)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/30"
+                      className={`sidebar-category-trigger w-full flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/35 ${
+                        hasActiveChild || !isCollapsed
+                          ? 'bg-[var(--color-card-subtle)]/70 hover:bg-[var(--color-card-subtle)]'
+                          : 'hover:bg-[var(--color-card-subtle)]'
+                      }`}
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <CategoryIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
-                        <span className="truncate text-[11px] leading-5 font-semibold text-[var(--color-text-muted)]">
+                        <span
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 bg-[var(--tone-soft)] text-[var(--tone)] border border-[color-mix(in_srgb,var(--tone)_24%,transparent)]"
+                          aria-hidden="true"
+                        >
+                          <CategoryIcon className="h-3 w-3 shrink-0" />
+                        </span>
+                        <span
+                          className={`truncate text-[11.5px] leading-5 font-bold ${
+                            hasActiveChild
+                              ? 'text-[var(--tone)]'
+                              : 'text-[var(--color-text-title)]'
+                          }`}
+                        >
                           {lang === 'th' ? cat.labelTh : cat.labelEn}
                         </span>
                       </span>
@@ -1171,7 +1193,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {alertBadge}
                           </span>
                         )}
-                        <span className="text-[11px] font-medium tabular-nums opacity-75">
+                        <span
+                          className="text-[10px] font-bold tabular-nums text-[var(--tone)] opacity-85"
+                          title={lang === 'th' ? catMeta.meaningTh : catMeta.meaningEn}
+                        >
                           {cat.items.length}
                         </span>
                         {isCollapsed ? (
@@ -1185,9 +1210,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {!isCollapsed && (
                       <div
                         id={`sidebar-category-${cat.id}`}
-                        className="sidebar-category-items space-y-0.5"
+                        className="sidebar-category-items ml-2.5 pl-1.5 border-l border-[color-mix(in_srgb,var(--tone)_24%,var(--color-border))] space-y-0.5"
                       >
-                        {cat.items.map((item) => renderItem(item, undefined, catTone))}
+                        {cat.items.map((item) => renderItem(item, undefined))}
                       </div>
                     )}
                   </div>

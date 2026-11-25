@@ -32,6 +32,7 @@ import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import type { NavTab } from './Sidebar';
 import { isAllowedProgramModeForRole } from '../../lib/attendanceScope';
 import { isProgramModeEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
+import { getModuleGroupMeta, getModuleTone, MODULE_TONE_MAP } from '../../lib/moduleTheme';
 
 interface NavbarProps {
   currentTab?: string;
@@ -88,6 +89,7 @@ const buildInitialsAvatar = (name?: string) => {
 const WORKSPACE_MODES = [
   {
     id: 'school_erp',
+    tone: 'tone-1',
     th: 'บริหารโรงเรียน',
     en: 'School SIS',
     descTh: 'งานทะเบียน เช็คชื่อ ตารางสอน เกรด ปพ.',
@@ -96,6 +98,7 @@ const WORKSPACE_MODES = [
   },
   {
     id: 'lms_classroom',
+    tone: 'tone-2',
     th: 'ห้องเรียน LMS',
     en: 'Virtual LMS',
     descTh: 'บทเรียนวิดีโอ ชีทสรุป และส่งการบ้าน',
@@ -104,6 +107,7 @@ const WORKSPACE_MODES = [
   },
   {
     id: 'parent_portal',
+    tone: 'tone-6',
     th: 'ผู้ปกครอง',
     en: 'Parent Portal',
     descTh: 'ติดตามเวลาเรียน ผลการเรียน และค่าเทอม',
@@ -177,6 +181,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const activeWorkspaceMode =
     allowedWorkspaceModes.find((m) => m.id === programMode) || allowedWorkspaceModes[0];
   const ActiveWorkspaceIcon = activeWorkspaceMode?.icon || Building2;
+  const activeTabKey = currentTab && currentTab in MODULE_TONE_MAP ? (currentTab as NavTab) : null;
+  const activeGroupMeta = activeTabKey ? getModuleGroupMeta(activeTabKey) : null;
+  const activeModuleTone = activeTabKey ? getModuleTone(activeTabKey) : 'tone-1';
 
   useEffect(() => {
     if (!isWorkspaceMenuOpen && !isAccountMenuOpen) return;
@@ -284,7 +291,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Consolidated Workspace Mode Dropdown (Replaces multi-tab horizontal bar) */}
         {canAccessSchoolOperations && !focusMode && allowedWorkspaceModes.length > 1 && activeWorkspaceMode && (
-          <div ref={workspaceMenuRef} className="relative shrink-0 ml-0.5 sm:ml-1">
+          <div ref={workspaceMenuRef} className={`${activeWorkspaceMode.tone} relative shrink-0 ml-0.5 sm:ml-1`}>
             <button
               type="button"
               data-guide-id={`nav-program-${programMode}`}
@@ -295,9 +302,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setIsWorkspaceMenuOpen((prev) => !prev);
                 setIsAccountMenuOpen(false);
               }}
-              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-border)]/50 text-[13px] font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40"
+              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[var(--tone-soft)]/75 hover:bg-[var(--tone-soft)] border border-[color-mix(in_srgb,var(--tone)_22%,var(--color-border))] text-[13px] font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40"
             >
-              <ActiveWorkspaceIcon className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+              <ActiveWorkspaceIcon className="w-4 h-4 text-[var(--tone)] shrink-0" />
               <span className="hidden xs:inline sm:inline">
                 {lang === 'th' ? activeWorkspaceMode.th : activeWorkspaceMode.en}
               </span>
@@ -330,22 +337,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                         setProgramMode(mode.id);
                         setIsWorkspaceMenuOpen(false);
                       }}
-                      className={`w-full flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition cursor-pointer ${
+                      className={`${mode.tone} w-full flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition cursor-pointer ${
                         active
-                          ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                          ? 'bg-[var(--tone-soft)] text-[var(--tone)]'
                           : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
                       <span
                         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                          active ? 'bg-[var(--color-card)]/70' : 'bg-[var(--color-card-subtle)]'
+                          active ? 'bg-[var(--color-card)] text-[var(--tone)] shadow-2xs' : 'bg-[var(--tone-soft)]/70 text-[var(--tone)]'
                         }`}
                       >
-                        <Icon
-                          className={`w-4 h-4 shrink-0 ${
-                            active ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'
-                          }`}
-                        />
+                        <Icon className="w-4 h-4 shrink-0" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
@@ -363,6 +366,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Active Functional Work Group Context Cue */}
+        {!focusMode && programMode === 'school_erp' && activeGroupMeta && (
+          <div
+            title={lang === 'th' ? activeGroupMeta.meaningTh : activeGroupMeta.meaningEn}
+            className={`${activeModuleTone} hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--tone-soft)]/75 border border-[color-mix(in_srgb,var(--tone)_22%,transparent)] text-[11px] font-bold text-[var(--tone)] whitespace-nowrap shrink-0`}
+          >
+            <span className="font-mono opacity-80">{activeGroupMeta.code}</span>
+            <span>·</span>
+            <span>{lang === 'th' ? activeGroupMeta.labelTh : activeGroupMeta.labelEn}</span>
           </div>
         )}
       </div>

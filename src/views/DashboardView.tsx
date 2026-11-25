@@ -926,35 +926,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Clean Editorial Header: View Title + Context + Unified Sub-Lenses + Direct Print/Focus Actions */}
-      <div className="no-print shrink-0 pb-3.5 border-b border-[var(--color-border)] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text-title)] truncate">
-            {currentRole === 'teacher'
-              ? (lang === 'th' ? 'โต๊ะทำงานครูวันนี้' : "Teacher's Desk")
-              : (currentRole === 'admin' || currentRole === 'super_admin')
-                ? (lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview')
-                : currentRole === 'parent'
-                  ? (lang === 'th' ? 'ภาพรวมบุตรหลาน' : 'Parent Overview')
-                  : currentRole === 'student'
-                    ? (lang === 'th' ? 'ภาพรวมการเรียนของฉัน' : 'My Learning Overview')
-                    : (lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn)}
-          </h1>
-          {isStaffUser && (
-            <span className="text-xs text-[var(--color-text-muted)] truncate tabular-nums">
-              {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn} · {selectedDate}
-            </span>
-          )}
-          {dashboardTab !== 'overview' && dashboardTab !== 'realtime_daily' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
-            <button
-              type="button"
-              onClick={() => setDashboardTab('overview')}
-              className="type-meta font-semibold text-[var(--color-primary-text)] hover:underline cursor-pointer shrink-0 whitespace-nowrap"
-            >
-              ← {(currentRole === 'admin' || currentRole === 'super_admin')
-                ? (lang === 'th' ? 'กลับหน้าหลัก' : 'Back to Hub')
-                : (lang === 'th' ? 'กลับภาพรวมวันนี้' : 'Back to Today')}
-            </button>
-          )}
+      <div className="no-print shrink-0 app-page-header px-4 py-3 sm:px-5 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="tone-chip w-10 h-10 rounded-xl shrink-0" aria-hidden="true">
+            <LayoutGrid className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="module-category-kicker">
+              <span>01 · {lang === 'th' ? 'ภาพรวมและบริหารงาน' : 'Overview & Workspace'}</span>
+              {isStaffUser && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-[var(--color-text-muted)] font-semibold tabular-nums">
+                    {lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn} ({selectedDate})
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
+              <h1 className="type-page-title truncate">
+                {currentRole === 'teacher'
+                  ? (lang === 'th' ? 'โต๊ะทำงานครูวันนี้' : "Teacher's Desk")
+                  : (currentRole === 'admin' || currentRole === 'super_admin')
+                    ? (lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview')
+                    : currentRole === 'parent'
+                      ? (lang === 'th' ? 'ภาพรวมบุตรหลาน' : 'Parent Overview')
+                      : currentRole === 'student'
+                        ? (lang === 'th' ? 'ภาพรวมการเรียนของฉัน' : 'My Learning Overview')
+                        : (lang === 'th' ? systemConfig.schoolNameTh : systemConfig.schoolNameEn)}
+              </h1>
+              {dashboardTab !== 'overview' && dashboardTab !== 'realtime_daily' && dashboardTab !== 'insights' && dashboardTab !== 'executive_monitor' && dashboardTab !== 'obec_learning_areas' && dashboardTab !== 'pp6_quality_overview' && dashboardTab !== 'early_warning' && (
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('overview')}
+                  className="type-meta font-semibold text-[var(--tone)] hover:underline cursor-pointer shrink-0 whitespace-nowrap"
+                >
+                  ← {(currentRole === 'admin' || currentRole === 'super_admin')
+                    ? (lang === 'th' ? 'กลับหน้าหลัก' : 'Back to Hub')
+                    : (lang === 'th' ? 'กลับภาพรวมวันนี้' : 'Back to Today')}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 w-full xl:w-auto min-w-0 justify-between xl:justify-end">
@@ -963,11 +976,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               data-active={dashboardTab === 'overview'}
               onClick={() => setDashboardTab('overview')}
-              className="seg-tab-btn"
+              className="tone-1 seg-tab-btn"
             >
-              {(currentRole === 'admin' || currentRole === 'super_admin')
-                ? (lang === 'th' ? 'ภาพรวม' : 'Overview')
-                : (lang === 'th' ? 'วันนี้' : 'Today')}
+              <LayoutGrid className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+              <span>
+                {(currentRole === 'admin' || currentRole === 'super_admin')
+                  ? (lang === 'th' ? 'ภาพรวม' : 'Overview')
+                  : (lang === 'th' ? 'วันนี้' : 'Today')}
+              </span>
             </button>
 
             {isStaffUser && (
@@ -975,9 +991,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 data-active={dashboardTab === 'realtime_daily'}
                 onClick={() => setDashboardTab('realtime_daily')}
-                className="seg-tab-btn"
+                className="tone-4 seg-tab-btn"
               >
-                <Activity className="w-3.5 h-3.5 shrink-0" />
+                <Activity className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
                 <span>{lang === 'th' ? 'เรียลไทม์วันนี้' : 'Live Daily'}</span>
               </button>
             )}
@@ -987,11 +1003,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               data-guide-id={dashboardTab !== 'insights' ? 'dashboard-charts' : undefined}
               data-active={dashboardTab === 'insights'}
               onClick={() => setDashboardTab('insights')}
-              className="seg-tab-btn whitespace-nowrap shrink-0"
+              className="tone-8 seg-tab-btn whitespace-nowrap shrink-0"
             >
-              {currentRole === 'student'
-                ? (lang === 'th' ? 'พัฒนาการของฉัน' : 'My Progress')
-                : (lang === 'th' ? 'สถิติและแนวโน้ม' : 'Insights')}
+              <BarChart3 className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+              <span>
+                {currentRole === 'student'
+                  ? (lang === 'th' ? 'พัฒนาการของฉัน' : 'My Progress')
+                  : (lang === 'th' ? 'สถิติและแนวโน้ม' : 'Insights')}
+              </span>
             </button>
 
             {canViewExecutiveMonitor && (
@@ -1011,9 +1030,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     setDashboardTab(lastExecReportTab);
                   }
                 }}
-                className="seg-tab-btn whitespace-nowrap shrink-0"
+                className="tone-8 seg-tab-btn whitespace-nowrap shrink-0"
               >
-                {lang === 'th' ? 'รายงานผู้บริหาร' : 'Executive Reports'}
+                <Monitor className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <span>{lang === 'th' ? 'รายงานผู้บริหาร' : 'Executive Reports'}</span>
               </button>
             )}
 
@@ -1022,9 +1042,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 data-active={dashboardTab === 'early_warning'}
                 onClick={() => setDashboardTab('early_warning')}
-                className="seg-tab-btn whitespace-nowrap shrink-0"
+                className="tone-3 seg-tab-btn whitespace-nowrap shrink-0"
               >
-                {lang === 'th' ? 'ติดตามกลุ่มเสี่ยง' : 'At-Risk Students'}
+                <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <span>{lang === 'th' ? 'ติดตามกลุ่มเสี่ยง' : 'At-Risk Students'}</span>
               </button>
             )}
 
@@ -1033,9 +1054,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 data-active={dashboardTab === 'announcements'}
                 onClick={() => setDashboardTab('announcements')}
-                className="seg-tab-btn whitespace-nowrap shrink-0"
+                className="tone-6 seg-tab-btn whitespace-nowrap shrink-0"
               >
-                {lang === 'th' ? 'ประกาศ' : 'Announcements'}
+                <BellRing className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <span>{lang === 'th' ? 'ประกาศ' : 'Announcements'}</span>
               </button>
             )}
           </div>
