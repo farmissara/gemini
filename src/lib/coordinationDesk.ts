@@ -1,7 +1,10 @@
 import { AdminCoordinationAttachment, AdminCoordinationMessage } from '../types';
+import { compressImageFileToDataUrl } from './imageCompression';
 import { getSupabaseClient } from './supabase';
 
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024; // 4 MB per attachment
+const COORDINATION_SELECT =
+  'id, school_id, school_name, sender_role, sender_name, sender_email, channel_type, priority, subject, body, attachments, status, read_by_admin, read_by_super_admin, created_at';
 
 function mapCoordinationRow(row: any): AdminCoordinationMessage {
   return {
@@ -53,7 +56,7 @@ export async function fetchCoordinationMessages(schoolId?: string): Promise<Admi
 
   let query = client
     .from('admin_coordination_messages')
-    .select('*')
+    .select(COORDINATION_SELECT)
     .order('created_at', { ascending: false })
     .limit(200);
   if (schoolId) query = query.eq('school_id', schoolId);
@@ -96,7 +99,7 @@ export async function sendCoordinationMessage(
       read_by_super_admin: message.readBySuperAdmin,
       created_at: message.createdAt,
     })
-    .select('*')
+    .select(COORDINATION_SELECT)
     .single();
   if (error) {
     console.warn(`Could not send coordination message to Supabase: ${error.message}; saved locally.`);
@@ -138,12 +141,28 @@ export async function updateCoordinationMessageStatus(
   }
 }
 
-export function readFileAsCoordinationAttachment(file: File): Promise<AdminCoordinationAttachment> {
+export async function readFileAsCoordinationAttachment(file: File): Promise<AdminCoordinationAttachment> {
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(`ไฟล์ "${file.name}" มีขนาดเกิน 4 MB กรุณาย่อไฟล์ก่อนแนบ`);
+  }
+
+  if (file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
+    const compressedUrl = await compressImageFileToDataUrl(file, {
+      maxDimension: 1080,
+      quality: 0.75,
+      maxDataUrlLength: 180_000,
+    });
+    const approxBytes = Math.max(1, Math.round((compressedUrl.length * 3) / 4));
+    return {
+      id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: file.name,
+      size: Math.min(file.size, approxBytes),
+      mimeType: 'image/jpeg',
+      dataUrl: compressedUrl,
+    };
+  }
+
   return new Promise((resolve, reject) => {
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      reject(new Error(`ไฟล์ "${file.name}" มีขนาดเกิน 4 MB กรุณาย่อไฟล์ก่อนแนบ`));
-      return;
-    }
     const reader = new FileReader();
     reader.onload = () => {
       resolve({

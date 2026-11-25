@@ -8,6 +8,7 @@ import {
   normalizeSchoolTier,
   saveSchoolFeatureFlags,
 } from './schoolFeatureFlags';
+import { normalizeSelfieRetentionMinutes } from './selfieCleanupLogic';
 import type {
   PackageLevelConfig,
   PackageLevelId,
@@ -179,6 +180,14 @@ export async function loadSchoolFeatureFlagsFromDb(
         typeof rawFlags.lineEnabled === 'boolean'
           ? rawFlags.lineEnabled
           : basePreset.lineEnabled,
+      autoDeleteSelfiesAfterCheckout:
+        typeof rawFlags.autoDeleteSelfiesAfterCheckout === 'boolean'
+          ? rawFlags.autoDeleteSelfiesAfterCheckout
+          : basePreset.autoDeleteSelfiesAfterCheckout,
+      selfieRetentionAfterCheckoutMinutes:
+        rawFlags.selfieRetentionAfterCheckoutMinutes !== undefined
+          ? normalizeSelfieRetentionMinutes(rawFlags.selfieRetentionAfterCheckoutMinutes)
+          : basePreset.selfieRetentionAfterCheckoutMinutes,
     };
 
     saveSchoolFeatureFlags(schoolId, merged);
@@ -197,6 +206,10 @@ export async function saveSchoolFeatureFlagsToDb(
     ...flags,
     tier: normalizedTier,
     lineEnabled: flags.lineEnabled !== false,
+    autoDeleteSelfiesAfterCheckout: flags.autoDeleteSelfiesAfterCheckout !== false,
+    selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(
+      flags.selfieRetentionAfterCheckoutMinutes
+    ),
   };
   saveSchoolFeatureFlags(schoolId, normalized);
 

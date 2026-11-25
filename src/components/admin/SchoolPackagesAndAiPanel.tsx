@@ -49,6 +49,7 @@ import type {
 import { getSupabaseClient } from '../../lib/supabase';
 import { ConfirmActionModal } from '../modals/ConfirmActionModal';
 import { emitAppToast } from '../common/ToastProvider';
+import { compressImageFileToDataUrl } from '../../lib/imageCompression';
 
 interface SchoolPackagesAndAiPanelProps {
   activeSchool: School;
@@ -287,13 +288,15 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
   const handleSlipFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setSlipDataUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    void compressImageFileToDataUrl(file, {
+      maxDimension: 960,
+      quality: 0.75,
+      maxDataUrlLength: 140_000,
+    })
+      .then((compressed) => {
+        setSlipDataUrl(compressed);
+      })
+      .catch(() => {});
   };
 
   const handleSubmitPurchaseOrder = async (e: React.FormEvent) => {

@@ -42,6 +42,7 @@ import {
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import { compressImageFileToDataUrl } from '../lib/imageCompression';
 
 interface CentralExamPurchaseModalProps {
   pack: CentralExamPack;
@@ -186,14 +187,17 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
     }
 
     setSlipUploadError(null);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result;
-      if (typeof result === 'string') setSlipFilePreview(result);
-      else setSlipUploadError('อ่านไฟล์ภาพไม่สำเร็จ');
-    };
-    reader.onerror = () => setSlipUploadError('อ่านไฟล์ภาพไม่สำเร็จ');
-    reader.readAsDataURL(file);
+    void compressImageFileToDataUrl(file, {
+      maxDimension: 960,
+      quality: 0.75,
+      maxDataUrlLength: 140_000,
+    })
+      .then((compressed) => {
+        setSlipFilePreview(compressed);
+      })
+      .catch(() => {
+        setSlipUploadError('อ่านไฟล์ภาพไม่สำเร็จ');
+      });
   };
 
   const renderSlipUpload = () => (

@@ -143,7 +143,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
   const GRADES_SELECT =
     'id, school_id, student_id, course_id, academic_year, semester, midterm_score, final_score, assignment_score, quiz_score, total_score, letter_grade, grade_point';
   const INVOICES_SELECT =
-    'id, school_id, invoice_number, student_id, semester, academic_year, issue_date, due_date, total_amount, status, items, payment_method, paid_at, receipt_number, slip_image_url, slip_submitted_at, slip_status, slip_reject_reason, slip_amount, slip_reference_note';
+    'id, school_id, invoice_number, student_id, semester, academic_year, issue_date, due_date, total_amount, status, items, payment_method, paid_at, receipt_number, slip_submitted_at, slip_status, slip_reject_reason, slip_amount, slip_reference_note';
   const ANNOUNCEMENTS_SELECT =
     'id, school_id, title, content, category, target_audience, published_at, author, author_role, pinned, line_broadcast_sent, resend_email_sent';
   const TEACHERS_SELECT =
@@ -502,7 +502,7 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     paymentMethod: row.payment_method || undefined,
     paidAt: row.paid_at || undefined,
     receiptNumber: row.receipt_number || undefined,
-    slipImageUrl: row.slip_image_url || undefined,
+    slipImageUrl: (row as { slip_image_url?: string | null }).slip_image_url || undefined,
     slipSubmittedAt: row.slip_submitted_at || undefined,
     slipStatus: row.slip_status || undefined,
     slipRejectReason: row.slip_reject_reason || undefined,
@@ -842,4 +842,23 @@ export async function fetchSchoolCounts(
     };
   }
   return result;
+}
+
+export async function fetchInvoiceSlipImageFromSupabase(
+  schoolId: string,
+  invoiceId: string,
+): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client || !schoolId || !invoiceId) return null;
+
+  const { data, error } = await client
+    .from('invoices')
+    .select('slip_image_url')
+    .eq('school_id', schoolId)
+    .eq('id', invoiceId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const slipUrl = (data as { slip_image_url?: string | null }).slip_image_url;
+  return typeof slipUrl === 'string' && slipUrl.trim() ? slipUrl : null;
 }

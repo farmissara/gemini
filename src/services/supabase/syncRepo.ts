@@ -259,7 +259,9 @@ export async function syncDataToSupabase(payload: {
     }
 
     if (['super_admin', 'admin'].includes(payload.role) && payload.invoices.length > 0) {
-      const invRows = payload.invoices
+      const changedInvoices = payload.invoices.filter((i) => shouldSyncRow('invoices', i.id));
+      const invRowsWithSlip = changedInvoices
+        .filter((i) => i.slipImageUrl !== undefined)
         .map((i) => ({
           id: i.id,
           school_id: payload.school.id,
@@ -281,40 +283,65 @@ export async function syncDataToSupabase(payload: {
           slip_reject_reason: i.slipRejectReason || null,
           slip_amount: i.slipAmount ?? null,
           slip_reference_note: i.slipReferenceNote || null,
-        }))
-        .filter((row) => shouldSyncRow('invoices', row.id));
-      if (invRows.length > 0) {
-        const { error: invErr } = await client.from('invoices').upsert(invRows);
+        }));
+      const invRowsWithoutSlip = changedInvoices
+        .filter((i) => i.slipImageUrl === undefined)
+        .map((i) => ({
+          id: i.id,
+          school_id: payload.school.id,
+          invoice_number: i.invoiceNumber,
+          student_id: i.studentId,
+          semester: i.semester,
+          academic_year: i.academicYear,
+          issue_date: i.issueDate,
+          due_date: i.dueDate,
+          total_amount: i.totalAmount,
+          status: i.status,
+          items: i.items,
+          payment_method: i.paymentMethod || null,
+          paid_at: i.paidAt || null,
+          receipt_number: i.receiptNumber || null,
+          slip_submitted_at: i.slipSubmittedAt || null,
+          slip_status: i.slipStatus || 'none',
+          slip_reject_reason: i.slipRejectReason || null,
+          slip_amount: i.slipAmount ?? null,
+          slip_reference_note: i.slipReferenceNote || null,
+        }));
+
+      const upsertInvoiceBatch = async (rows: Record<string, unknown>[]) => {
+        if (rows.length === 0) return;
+        const { error: invErr } = await client.from('invoices').upsert(rows);
         if (
           invErr &&
           (invErr.code === 'PGRST204' ||
             invErr.code === '42703' ||
             /slip_image_url|slip_status|schema cache|could not find the '.*' column/i.test(invErr.message))
         ) {
-          const baseInvRows = payload.invoices
-            .map((i) => ({
-              id: i.id,
-              school_id: payload.school.id,
-              invoice_number: i.invoiceNumber,
-              student_id: i.studentId,
-              semester: i.semester,
-              academic_year: i.academicYear,
-              issue_date: i.issueDate,
-              due_date: i.dueDate,
-              total_amount: i.totalAmount,
-              status: i.status,
-              items: i.items,
-              payment_method: i.paymentMethod || null,
-              paid_at: i.paidAt || null,
-              receipt_number: i.receiptNumber || null,
-            }))
-            .filter((row) => shouldSyncRow('invoices', row.id));
+          const baseInvRows = changedInvoices.map((i) => ({
+            id: i.id,
+            school_id: payload.school.id,
+            invoice_number: i.invoiceNumber,
+            student_id: i.studentId,
+            semester: i.semester,
+            academic_year: i.academicYear,
+            issue_date: i.issueDate,
+            due_date: i.dueDate,
+            total_amount: i.totalAmount,
+            status: i.status,
+            items: i.items,
+            payment_method: i.paymentMethod || null,
+            paid_at: i.paidAt || null,
+            receipt_number: i.receiptNumber || null,
+          }));
           const retryInv = await client.from('invoices').upsert(baseInvRows);
           if (retryInv.error) throw new Error(`Invoices sync error: ${retryInv.error.message}`);
         } else if (invErr) {
           throw new Error(`Invoices sync error: ${invErr.message}`);
         }
-      }
+      };
+
+      await upsertInvoiceBatch(invRowsWithSlip);
+      await upsertInvoiceBatch(invRowsWithoutSlip);
     }
 
     if (payload.announcements.length > 0) {

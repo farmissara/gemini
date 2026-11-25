@@ -148,6 +148,12 @@ import {
   saveSchoolFeatureFlagsToDb,
 } from '../../lib/schoolPackageStore';
 import { getSchoolFeatureFlags } from '../../lib/schoolFeatureFlags';
+import {
+  getBangkokClockParts,
+  normalizeSelfieRetentionMinutes,
+  selectDueAttendanceSelfies,
+} from '../../lib/selfieCleanupLogic';
+import { cleanupDueAttendanceSelfiesOnServer } from '../../services/supabase/selfieCleanupClient';
 import { useSchoolPermissions } from '../../lib/schoolPermissions';
 import { loadSchoolLessons, saveSchoolLessonCompletionToDb, saveSchoolLessonToDb } from '../../lib/lmsPersistence';
 import { teacherMatchesCourse } from '../../lib/courseTeacherFilter';
@@ -1330,10 +1336,163 @@ export function useSchoolDataManager({
         actorRole: currentUser.role,
         actionType: 'feature_flags_update',
         targetLabel: flags.tier,
-        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier}) · สิทธิ์ AI นักเรียน: ${flags.allowStudentsAi ? 'เปิด' : 'ปิด'} · แจ้งเตือน LINE: ${flags.lineEnabled === false ? 'ปิด' : 'เปิด'}`,
+        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier}) · สิทธิ์ AI นักเรียน: ${flags.allowStudentsAi ? 'เปิด' : 'ปิด'} · แจ้งเตือน LINE: ${flags.lineEnabled === false ? 'ปิด' : 'เปิด'} · ลบรูปเซลฟี่อัตโนมัติ: ${flags.autoDeleteSelfiesAfterCheckout === false ? 'ปิด' : `เปิด (${normalizeSelfieRetentionMinutes(flags.selfieRetentionAfterCheckoutMinutes)} นาทีหลังเช็คเอาท์)`}`,
       });
     }
   };
+
+  const handleCleanupDueSelfies = useCallback(async (options?: {
+    silent?: boolean;
+    retentionMinutes?: number;
+  }) => {
+    const targetSchoolId = activeSchool.id;
+    if (!targetSchoolId) {
+      return {
+        deletedPhotosCount: 0,
+        clearedRecordsCount: 0,
+        matchedByCheckoutCount: 0,
+        matchedPreviousDaysCount: 0,
+      };
+    }
+
+    const schoolFlags = featureFlagsBySchool[targetSchoolId] || getSchoolFeatureFlags(targetSchoolId, activeSchool.schoolTier || 'enterprise');
+    const retentionMinutes =
+      options?.retentionMinutes !== undefined
+        ? normalizeSelfieRetentionMinutes(options.retentionMinutes)
+        : normalizeSelfieRetentionMinutes(schoolFlags.selfieRetentionAfterCheckoutMinutes);
+
+    let clearedIds: string[] = [];
+    let deletedPhotosCount = 0;
+    let clearedRecordsCount = 0;
+    let matchedByCheckoutCount = 0;
+    let matchedPreviousDaysCount = 0;
+
+    if (isDemoMode) {
+      const { dateStr: todayBangkok, minutes: nowMinutes } = getBangkokClockParts();
+      const selection = selectDueAttendanceSelfies(
+        attendance
+          .filter((a) => belongsToSchool(a, targetSchoolId, true))
+          .map((a) => ({
+            id: a.id,
+            schoolId: a.schoolId,
+            studentId: a.studentId,
+            date: a.date,
+            time: a.time,
+            recordType: a.recordType || 'check_in',
+            photoUrl: a.photoUrl ?? null,
+            photoStoragePath: a.photoStoragePath ?? null,
+          })),
+        {
+          todayBangkok,
+          nowMinutes,
+          retentionMinutes,
+          includePreviousDays: true,
+          schoolId: targetSchoolId,
+        }
+      );
+      clearedIds = selection.recordIdsToClear;
+      deletedPhotosCount = selection.storagePathsToDelete.length || selection.recordIdsToClear.length;
+      clearedRecordsCount = selection.recordIdsToClear.length;
+      matchedByCheckoutCount = selection.matchedByCheckoutCount;
+      matchedPreviousDaysCount = selection.matchedPreviousDaysCount;
+    } else {
+      const serverResult = await cleanupDueAttendanceSelfiesOnServer({
+        schoolId: targetSchoolId,
+        retentionMinutes,
+        includePreviousDays: true,
+      });
+      clearedIds = serverResult.deletedRecordIds;
+      deletedPhotosCount = serverResult.deletedPhotosCount;
+      clearedRecordsCount = serverResult.clearedRecordsCount;
+      matchedByCheckoutCount = serverResult.matchedByCheckoutCount;
+      matchedPreviousDaysCount = serverResult.matchedPreviousDaysCount;
+    }
+
+    if (clearedIds.length > 0) {
+      const clearedIdSet = new Set(clearedIds);
+      setAttendance((prev) =>
+        prev.map((record) =>
+          clearedIdSet.has(record.id)
+            ? { ...record, photoUrl: undefined, photoStoragePath: undefined }
+            : record
+        )
+      );
+
+      const previousSnapshot = lastSyncedRowsBySchoolRef.current.get(targetSchoolId);
+      if (previousSnapshot) {
+        lastSyncedRowsBySchoolRef.current.set(targetSchoolId, {
+          ...previousSnapshot,
+          attendance: previousSnapshot.attendance.map((record) =>
+            clearedIdSet.has(record.id)
+              ? { ...record, photoUrl: undefined, photoStoragePath: undefined }
+              : record
+          ),
+        });
+      }
+    }
+
+    if (!options?.silent && currentUser && clearedRecordsCount > 0) {
+      appendAuditLog(targetSchoolId, {
+        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
+        actorRole: currentUser.role,
+        actionType: 'selfie_photo_cleanup',
+        targetLabel: `${clearedRecordsCount} รายการ`,
+        details: `ลบรูปเซลฟี่ที่ครบกำหนดแล้ว ${deletedPhotosCount} ไฟล์ (${clearedRecordsCount} รายการ · หลังเช็คเอาท์ ${retentionMinutes} นาที) โดยคงประวัติเวลาเช็คชื่อไว้ครบถ้วน`,
+      });
+    }
+
+    return {
+      deletedPhotosCount,
+      clearedRecordsCount,
+      matchedByCheckoutCount,
+      matchedPreviousDaysCount,
+    };
+  }, [activeSchool.id, activeSchool.schoolTier, attendance, currentUser, featureFlagsBySchool, isDemoMode]);
+
+  useEffect(() => {
+    if (
+      isDemoMode ||
+      !isDataReady ||
+      !activeSchool.id ||
+      loadedSchoolId !== activeSchool.id ||
+      !currentUser ||
+      !['admin', 'super_admin'].includes(currentUser.role)
+    ) {
+      return;
+    }
+
+    const schoolFlags = featureFlagsBySchool[activeSchool.id] || getSchoolFeatureFlags(activeSchool.id, activeSchool.schoolTier || 'enterprise');
+    if (schoolFlags.autoDeleteSelfiesAfterCheckout === false) {
+      return;
+    }
+
+    const throttleKey = `eduverse_selfie_cleanup_last_${activeSchool.id}`;
+    const now = Date.now();
+    try {
+      const lastRun = Number(window.sessionStorage.getItem(throttleKey) || '0');
+      if (Number.isFinite(lastRun) && now - lastRun < 10 * 60 * 1000) {
+        return;
+      }
+      window.sessionStorage.setItem(throttleKey, String(now));
+    } catch {
+      // ignore sessionStorage errors
+    }
+
+    const timerId = window.setTimeout(() => {
+      void handleCleanupDueSelfies({ silent: true }).catch(() => {});
+    }, 3000);
+
+    return () => window.clearTimeout(timerId);
+  }, [
+    activeSchool.id,
+    activeSchool.schoolTier,
+    currentUser,
+    featureFlagsBySchool,
+    handleCleanupDueSelfies,
+    isDataReady,
+    isDemoMode,
+    loadedSchoolId,
+  ]);
 
   const handleLogout = async () => {
     try {
@@ -3879,6 +4038,7 @@ export function useSchoolDataManager({
     handleCopyCoursesToSchool,
     handleApplyAcademicRollover,
     handleUpdateSchoolFeatureFlags,
+    handleCleanupDueSelfies,
     handleSwitchOperationalRole,
     handleAddStudent,
     handleAddStudents,

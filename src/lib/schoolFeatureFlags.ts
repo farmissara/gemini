@@ -8,6 +8,7 @@ import type {
   SchoolTier,
   UserRole,
 } from '../types';
+import { DEFAULT_SELFIE_RETENTION_MINUTES, normalizeSelfieRetentionMinutes } from './selfieCleanupLogic';
 
 const FEATURE_FLAGS_PREFIX = 'eduverse_feature_flags_v1_';
 const PACKAGE_CATALOG_STORAGE_KEY = 'eduverse_package_catalog_v1';
@@ -482,7 +483,9 @@ export function buildFlagsFromLevel(
   tier: SchoolTier,
   catalog: PackageLevelConfig[] = getStoredPackageCatalog(),
   allowStudentsAi?: boolean,
-  lineEnabled: boolean = true
+  lineEnabled: boolean = true,
+  autoDeleteSelfiesAfterCheckout: boolean = true,
+  selfieRetentionAfterCheckoutMinutes: number = DEFAULT_SELFIE_RETENTION_MINUTES
 ): SchoolFeatureFlags {
   const levelId = normalizeSchoolTier(tier);
   const pkg = catalog.find((item) => item.id === levelId) || DEFAULT_PACKAGE_CATALOG.find((item) => item.id === levelId)!;
@@ -492,17 +495,19 @@ export function buildFlagsFromLevel(
     tier: levelId,
     allowStudentsAi: allowStudentsAi !== undefined ? allowStudentsAi : anyAiEnabled,
     lineEnabled,
+    autoDeleteSelfiesAfterCheckout,
+    selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(selfieRetentionAfterCheckoutMinutes),
   };
 }
 
 export const TIER_PRESETS: Record<SchoolTier, SchoolFeatureFlags> = {
-  level_1: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true },
-  level_2: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true },
-  level_3: { ...LEVEL_3_FEATURES, tier: 'level_3', allowStudentsAi: false, lineEnabled: true },
-  level_4: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true },
-  small: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true },
-  standard: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true },
-  enterprise: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true },
+  level_1: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  level_2: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  level_3: { ...LEVEL_3_FEATURES, tier: 'level_3', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  level_4: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  small: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  standard: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  enterprise: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
 };
 
 export const getSchoolFeatureFlags = (
@@ -530,6 +535,14 @@ export const getSchoolFeatureFlags = (
         typeof parsed.lineEnabled === 'boolean'
           ? parsed.lineEnabled
           : tierPreset.lineEnabled,
+      autoDeleteSelfiesAfterCheckout:
+        typeof parsed.autoDeleteSelfiesAfterCheckout === 'boolean'
+          ? parsed.autoDeleteSelfiesAfterCheckout
+          : tierPreset.autoDeleteSelfiesAfterCheckout,
+      selfieRetentionAfterCheckoutMinutes:
+        parsed.selfieRetentionAfterCheckoutMinutes !== undefined
+          ? normalizeSelfieRetentionMinutes(parsed.selfieRetentionAfterCheckoutMinutes)
+          : tierPreset.selfieRetentionAfterCheckoutMinutes,
     };
   } catch {
     return baseDefault;
@@ -543,6 +556,10 @@ export const saveSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFla
       ...flags,
       tier: normalizeSchoolTier(flags.tier),
       lineEnabled: flags.lineEnabled !== false,
+      autoDeleteSelfiesAfterCheckout: flags.autoDeleteSelfiesAfterCheckout !== false,
+      selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(
+        flags.selfieRetentionAfterCheckoutMinutes
+      ),
     };
     window.localStorage.setItem(`${FEATURE_FLAGS_PREFIX}${schoolId}`, JSON.stringify(normalized));
   } catch {

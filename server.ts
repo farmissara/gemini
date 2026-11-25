@@ -11,6 +11,7 @@ import { createStaffInviteEmailRouter } from './src/server/staffInviteEmailRoute
 import { createStudentCredentialsRouter } from './src/server/studentCredentialsRoutes.ts';
 import { createSchoolAiRouter, finishSchoolAiRequest, getSchoolAiContext, prepareSchoolAiRequest, reserveSchoolAiRequest } from './src/server/schoolAiRoutes.ts';
 import { createProfileAvatarRouter } from './src/server/profileAvatarRoutes.ts';
+import { createSelfieCleanupRouter, startSelfieCleanupScheduler } from './src/server/selfieCleanupRoutes.ts';
 
 const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
 
@@ -269,6 +270,7 @@ async function createApp() {
   app.use('/api/staff-invitations', createStaffInviteEmailRouter(getServerEnv));
   app.use('/api/student-credentials', createStudentCredentialsRouter(getServerEnv));
   app.use('/api/school-ai', createSchoolAiRouter(getServerEnv));
+  app.use('/api/attendance/cleanup-selfies', createSelfieCleanupRouter(getServerEnv));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({
@@ -825,6 +827,7 @@ async function createApp() {
 
   httpServer.listen(PORT, HOST, () => {
     console.log(`[BaanPakKru Server] Listening on http://${HOST}:${PORT}`);
+    startSelfieCleanupScheduler(getServerEnv);
   });
 }
 

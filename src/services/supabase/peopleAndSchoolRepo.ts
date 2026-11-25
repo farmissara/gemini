@@ -5,6 +5,7 @@ import type {
   UserRole,
 } from '../../types';
 import { saveCachedSchoolPeriods } from '../../lib/schoolCustomPresets';
+import { compressImageFileToBlob } from '../../lib/imageCompression';
 import { sanitizeSchoolCampusGates } from '../../lib/schoolGps';
 import { getSupabaseClient, isMissingTableError } from './client';
 import { mapTeacherToDb } from './mappers';
@@ -245,12 +246,18 @@ export async function uploadSchoolLogo(schoolId: string, file: File): Promise<st
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
 
+  const { blob: optimizedBlob, contentType } = await compressImageFileToBlob(file, {
+    maxDimension: 512,
+    quality: 0.82,
+    maxDataUrlLength: 140_000,
+  });
+
   const path = `${schoolId}/logo`;
   const { error: uploadError } = await client.storage
     .from('school-logos')
-    .upload(path, file, {
+    .upload(path, optimizedBlob, {
       cacheControl: '0',
-      contentType: file.type,
+      contentType,
       upsert: true,
     });
   if (uploadError) throw new Error(`ไม่สามารถอัปโหลดโลโก้โรงเรียนได้: ${uploadError.message}`);

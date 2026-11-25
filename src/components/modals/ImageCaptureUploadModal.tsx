@@ -17,6 +17,7 @@ import {
   formatCameraErrorTh,
   type CameraFacingMode,
 } from '../../lib/cameraStream';
+import { compressImageFileToDataUrl } from '../../lib/imageCompression';
 
 interface ImageCaptureUploadModalProps {
   isOpen: boolean;
@@ -224,24 +225,25 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     if (!videoRef.current) return;
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    const size = Math.min(video.videoWidth || 400, video.videoHeight || 400);
-    canvas.width = size;
-    canvas.height = size;
+    const sourceCropSize = Math.min(video.videoWidth || 320, video.videoHeight || 320);
+    const outputSize = Math.min(320, sourceCropSize);
+    canvas.width = outputSize;
+    canvas.height = outputSize;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     // Center crop square
-    const sx = ((video.videoWidth || size) - size) / 2;
-    const sy = ((video.videoHeight || size) - size) / 2;
+    const sx = ((video.videoWidth || sourceCropSize) - sourceCropSize) / 2;
+    const sy = ((video.videoHeight || sourceCropSize) - sourceCropSize) / 2;
 
     // Flip if front camera
     if (facingMode === 'user') {
-      ctx.translate(size, 0);
+      ctx.translate(outputSize, 0);
       ctx.scale(-1, 1);
     }
 
-    ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    ctx.drawImage(video, sx, sy, sourceCropSize, sourceCropSize, 0, 0, outputSize, outputSize);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
     setCapturedPhotoUrl(dataUrl);
     setPreviewUrl(dataUrl);
     stopCamera();
@@ -251,7 +253,7 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     setCapturedPhotoUrl(null);
   };
 
-  // File Upload Handler (Compressed Base64 conversion to keep storage & DB fast)
+  // File Upload Handler (Compressed Base64 conversion to keep storage & DB lightweight)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -262,38 +264,17 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     }
 
     setUploadError(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return;
-      const rawDataUrl = reader.result;
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const maxDim = 512;
-          const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
-          const targetW = Math.max(1, Math.round((img.width || maxDim) * scale));
-          const targetH = Math.max(1, Math.round((img.height || maxDim) * scale));
-          const canvas = document.createElement('canvas');
-          canvas.width = targetW;
-          canvas.height = targetH;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            setPreviewUrl(rawDataUrl);
-            return;
-          }
-          ctx.drawImage(img, 0, 0, targetW, targetH);
-          const compressed = canvas.toDataURL('image/jpeg', 0.84);
-          setPreviewUrl(compressed.length < rawDataUrl.length ? compressed : rawDataUrl);
-        } catch {
-          setPreviewUrl(rawDataUrl);
-        }
-      };
-      img.onerror = () => {
-        setPreviewUrl(rawDataUrl);
-      };
-      img.src = rawDataUrl;
-    };
-    reader.readAsDataURL(file);
+    void compressImageFileToDataUrl(file, {
+      maxDimension: 320,
+      quality: 0.78,
+      maxDataUrlLength: 60_000,
+    })
+      .then((compressed) => {
+        setPreviewUrl(compressed);
+      })
+      .catch(() => {
+        setUploadError('ไม่สามารถอ่านไฟล์รูปภาพได้');
+      });
   };
 
   const handleConfirm = () => {

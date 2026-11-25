@@ -122,10 +122,17 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
   }, [loadMessages]);
 
   useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadMessages();
+    };
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === 'visible') void loadMessages();
-    }, 15000);
-    return () => window.clearInterval(intervalId);
+    }, 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [loadMessages]);
 
   // Mark incoming messages in active scope as read when opened
@@ -266,7 +273,7 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
 
       const sourceW = video.videoWidth || 1280;
       const sourceH = video.videoHeight || 720;
-      const maxWidth = 1440;
+      const maxWidth = 1080;
       const scale = sourceW > maxWidth ? maxWidth / sourceW : 1;
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(sourceW * scale));
@@ -276,7 +283,7 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
         throw new Error('ไม่สามารถประมวลผลภาพหน้าจอได้');
       }
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       appendDataUrlAsAttachment(dataUrl, 'screen-capture');
     } catch (err: unknown) {
       const errName = err instanceof Error ? err.name : '';

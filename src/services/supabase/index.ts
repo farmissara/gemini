@@ -15,6 +15,7 @@ export {
   loadAttendanceRangeFromSupabase,
   loadSchoolData,
   fetchSchoolCounts,
+  fetchInvoiceSlipImageFromSupabase,
 } from './schoolDataLoader';
 export { syncDataToSupabase } from './syncRepo';
 export {

@@ -31,6 +31,7 @@ import {
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
+import { compressImageFileToDataUrl } from '../lib/imageCompression';
 
 interface CentralExamPaymentSettingsViewProps {
   adminEmail?: string;
@@ -89,15 +90,20 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
     }
     setUploadError(null);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setSettings((prev) => ({
-        ...prev,
-        qrImageUrl: dataUrl,
-      }));
-    };
-    reader.readAsDataURL(file);
+    void compressImageFileToDataUrl(file, {
+      maxDimension: 640,
+      quality: 0.8,
+      maxDataUrlLength: 120_000,
+    })
+      .then((dataUrl) => {
+        setSettings((prev) => ({
+          ...prev,
+          qrImageUrl: dataUrl,
+        }));
+      })
+      .catch(() => {
+        setUploadError('ไม่สามารถอ่านไฟล์รูปภาพได้');
+      });
   };
 
   const handleRemoveImage = () => {

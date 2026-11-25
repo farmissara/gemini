@@ -834,6 +834,7 @@ export const App: React.FC = () => {
                 onViewSchool={data.handleViewSchool}
                 onToggleSchoolStatus={data.handleToggleSchoolStatus}
                 onUpdateSchoolFeatureFlags={data.handleUpdateSchoolFeatureFlags}
+                onCleanupDueSelfies={data.handleCleanupDueSelfies}
                 onUpdateCampusGates={data.handleUpdateCampusGates}
                 onSaveCampusGates={data.handleSaveCampusGates}
                 onUpdateSchoolCoordinates={data.handleUpdateSchoolCoordinates}

@@ -30,6 +30,7 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { InvoiceSlipImage } from '../components/InvoiceSlipImage';
 
 interface BillingViewProps {
   schoolId?: string;
@@ -366,7 +367,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
               </div>
 
               {/* Payment / Slip Verification / Paid Status */}
-              {activeInvoice.slipImageUrl && (
+              {(activeInvoice.slipImageUrl || (activeInvoice.slipStatus && activeInvoice.slipStatus !== 'none')) && (
                 <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
@@ -383,8 +384,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       {activeInvoice.slipStatus === 'approved' ? 'อนุมัติแล้ว' : activeInvoice.slipStatus === 'rejected' ? 'ปฏิเสธแล้ว' : 'รอการตรวจสอบ'}
                     </span>
                   </div>
-                  <img
-                    src={activeInvoice.slipImageUrl}
+                  <InvoiceSlipImage
+                    schoolId={activeInvoice.schoolId || schoolId}
+                    invoiceId={activeInvoice.id}
+                    initialSrc={activeInvoice.slipImageUrl}
+                    slipStatus={activeInvoice.slipStatus}
                     alt="Transfer slip"
                     className="w-full max-h-48 object-contain rounded-lg border border-[var(--color-border)] bg-white"
                   />

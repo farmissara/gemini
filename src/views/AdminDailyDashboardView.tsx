@@ -53,6 +53,7 @@ import {
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
 import { MobileBottomSheet } from '../components/layout/MobileRoleWorkspace';
+import { InvoiceSlipImage } from '../components/InvoiceSlipImage';
 import type { NavTab } from '../components/layout/Sidebar';
 
 interface AdminDailyDashboardViewProps {
@@ -836,7 +837,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                             {inv.slipSubmittedAt ? ` · ${inv.slipSubmittedAt}` : ''}
                           </p>
                         </div>
-                        {inv.slipImageUrl && (
+                        {(inv.slipImageUrl || (inv.slipStatus && inv.slipStatus !== 'none')) && (
                           <button
                             type="button"
                             onClick={() => setPreviewSlipInvoice(inv)}
@@ -1403,12 +1404,14 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
       >
         {previewSlipInvoice && (
           <div className="space-y-4">
-            {previewSlipInvoice.slipImageUrl && (
+            {(previewSlipInvoice.slipImageUrl || (previewSlipInvoice.slipStatus && previewSlipInvoice.slipStatus !== 'none')) && (
               <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-                <img
-                  src={previewSlipInvoice.slipImageUrl}
+                <InvoiceSlipImage
+                  schoolId={previewSlipInvoice.schoolId || activeSchool.id}
+                  invoiceId={previewSlipInvoice.id}
+                  initialSrc={previewSlipInvoice.slipImageUrl}
+                  slipStatus={previewSlipInvoice.slipStatus}
                   alt={previewSlipInvoice.invoiceNumber}
-                  referrerPolicy="no-referrer"
                   className="w-full max-h-[55vh] object-contain"
                 />
               </div>

@@ -314,7 +314,7 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
       window.addEventListener('eduverse:holidays-updated', updateUnread);
       document.addEventListener('visibilitychange', onVisibilityChange);
       window.addEventListener('focus', onVisibilityChange);
-      const interval = window.setInterval(updateUnread, 60000);
+      const interval = window.setInterval(updateUnread, 180_000);
       return () => {
         active = false;
         window.clearInterval(interval);

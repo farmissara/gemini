@@ -198,6 +198,12 @@ export interface SchoolErpViewSwitchProps {
   onViewSchool: (school: School) => void;
   onToggleSchoolStatus: (schoolId: string, nextStatus: School['status']) => Promise<void>;
   onUpdateSchoolFeatureFlags: (schoolId: string, flags: SchoolFeatureFlags) => void;
+  onCleanupDueSelfies?: (options?: { silent?: boolean; retentionMinutes?: number }) => Promise<{
+    deletedPhotosCount: number;
+    clearedRecordsCount: number;
+    matchedByCheckoutCount: number;
+    matchedPreviousDaysCount: number;
+  }>;
   onUpdateCampusGates: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates: (lat: number, lng: number, radiusMeters: number) => void;
@@ -483,6 +489,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   onUpdateConfig={setSystemConfig}
                   featureFlags={activeFeatureFlags}
                   onUpdateFeatureFlags={(flags) => props.onUpdateSchoolFeatureFlags(activeSchool.id, flags)}
+                  onCleanupDueSelfies={props.onCleanupDueSelfies}
                   initialTab={systemSettingsInitialTab}
                   onTabChange={setSystemSettingsInitialTab}
                 />

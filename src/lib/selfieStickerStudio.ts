@@ -1,3 +1,5 @@
+import { computeScaledDimensions } from './imageCompression';
+
 export type SelfieFilterId = 'normal' | 'glow' | 'warm_film' | 'cool_mint' | 'mono';
 
 export type SelfieFrameId = 'clean' | 'polaroid' | 'pastel_cute' | 'mascot_duo';
@@ -794,8 +796,11 @@ export function composeLiveVideoSnapshot(
   isMirrored: boolean,
   options: ComposeSelfieOptions
 ): string | null {
-  const width = video.videoWidth || 720;
-  const height = video.videoHeight || 540;
+  const { width, height } = computeScaledDimensions(
+    video.videoWidth || 540,
+    video.videoHeight || 405,
+    540
+  );
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -833,15 +838,15 @@ export function composeLiveVideoSnapshot(
   ctx.restore();
 
   drawFrameOverlayOnCanvas(ctx, width, height, options, stage);
-  return canvas.toDataURL('image/jpeg', 0.88);
+  return canvas.toDataURL('image/jpeg', 0.72);
 }
 
 export function composeSimulatedStudioSnapshot(
   personName: string,
   options: ComposeSelfieOptions
 ): string | null {
-  const width = 720;
-  const height = 540;
+  const width = 540;
+  const height = 405;
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -894,5 +899,5 @@ export function composeSimulatedStudioSnapshot(
   ctx.restore();
 
   drawFrameOverlayOnCanvas(ctx, width, height, options, stage);
-  return canvas.toDataURL('image/jpeg', 0.88);
+  return canvas.toDataURL('image/jpeg', 0.72);
 }

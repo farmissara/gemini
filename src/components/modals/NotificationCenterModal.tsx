@@ -153,7 +153,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') void refresh();
     };
-    const interval = window.setInterval(() => void refresh(), 60000);
+    const interval = window.setInterval(() => void refresh(), 180_000);
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('focus', onVisibilityChange);
     return () => {

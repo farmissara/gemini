@@ -1453,6 +1453,8 @@ export interface SchoolFeatureFlags extends Record<SchoolFeatureFlagKey, boolean
   tier: SchoolTier;
   allowStudentsAi: boolean;
   lineEnabled?: boolean;
+  autoDeleteSelfiesAfterCheckout?: boolean;
+  selfieRetentionAfterCheckoutMinutes?: number;
 }
 
 export interface PackageLevelConfig {
@@ -1514,6 +1516,7 @@ export interface AuditLogEntry {
     | 'intervention_logged'
     | 'consent_created'
     | 'quiz_grade_sync'
+    | 'selfie_photo_cleanup'
     | 'system_setting';
   targetLabel: string;
   details: string;

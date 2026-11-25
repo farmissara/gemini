@@ -55,6 +55,7 @@ import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions'
 import { getSharedCareerSnapshotForStudent, loadSchoolSharedCareerQuests } from '../lib/careerQuestStore';
 import { POPULAR_CAREERS } from '../data/careerQuestData';
 import type { StudentCareerQuestState } from '../types';
+import { compressImageFileToDataUrl } from '../lib/imageCompression';
 
 interface ParentPortalViewProps {
   schoolId?: string;
@@ -1124,14 +1125,18 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    if (typeof reader.result === 'string') {
-                      setSlipFileDataUrl(reader.result);
+                  void compressImageFileToDataUrl(file, {
+                    maxDimension: 960,
+                    quality: 0.75,
+                    maxDataUrlLength: 140_000,
+                  })
+                    .then((compressed) => {
+                      setSlipFileDataUrl(compressed);
                       setSlipError(null);
-                    }
-                  };
-                  reader.readAsDataURL(file);
+                    })
+                    .catch(() => {
+                      setSlipError('ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาลองใหม่');
+                    });
                 }}
                 className="w-full text-[11px] text-slate-200 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-emerald-700 file:text-white file:font-semibold cursor-pointer"
               />

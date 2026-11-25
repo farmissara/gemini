@@ -264,6 +264,13 @@ const profilesStorageKey = (schoolId: string) => `eduverse_arcade_profiles_v1_${
 const redemptionsStorageKey = (schoolId: string) => `eduverse_arcade_redemptions_v1_${schoolId}`;
 const customRewardsStorageKey = (schoolId: string) => `eduverse_arcade_custom_rewards_v1_${schoolId}`;
 
+const ARCADE_PROFILE_SELECT =
+  'user_id, school_id, student_id, display_name, role, avatar_url, exp, gems, rank_title, battle_wins, win_streak, daily_streak, last_played_date, equipped_frame_id, equipped_title, unlocked_item_ids';
+const ARCADE_REDEMPTION_SELECT =
+  'id, school_id, user_id, student_name, grade_room, item_id, item_title_th, cost_gems, category, status, requested_at, reviewed_by, reviewed_at, teacher_note';
+const ARCADE_CUSTOM_REWARD_SELECT =
+  'id, school_id, title_th, title_en, cost_gems, category, stock, icon_name, description_th, requires_approval';
+
 function readLocalJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -318,7 +325,7 @@ export async function loadSchoolArcadeProfiles(schoolId: string): Promise<Player
   try {
     const { data, error } = await client
       .from('arcade_player_profiles')
-      .select('*')
+      .select(ARCADE_PROFILE_SELECT)
       .eq('school_id', schoolId)
       .order('exp', { ascending: false })
       .limit(100);
@@ -357,7 +364,7 @@ export async function loadAuthoritativeArcadeProfile(
 ): Promise<PlayerScore | null> {
   const client = getSupabaseClient();
   if (!client || !schoolId || !userId) return null;
-  const { data, error } = await client.from('arcade_player_profiles').select('*')
+  const { data, error } = await client.from('arcade_player_profiles').select(ARCADE_PROFILE_SELECT)
     .eq('school_id', schoolId).eq('user_id', userId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
@@ -480,7 +487,7 @@ export async function loadSchoolRewardRedemptions(
   try {
     const { data, error } = await client
       .from('arcade_reward_redemptions')
-      .select('*')
+      .select(ARCADE_REDEMPTION_SELECT)
       .eq('school_id', schoolId)
       .order('requested_at', { ascending: false })
       .limit(150);
@@ -612,7 +619,7 @@ export async function loadSchoolRewardsCatalog(schoolId: string): Promise<Reward
     try {
       const { data, error } = await client
         .from('arcade_custom_rewards')
-        .select('*')
+        .select(ARCADE_CUSTOM_REWARD_SELECT)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 

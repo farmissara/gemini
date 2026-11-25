@@ -77,6 +77,7 @@ import { uploadSchoolLogo } from '../lib/supabase';
 import { DEFAULT_SEMESTER_OPTIONS, DEFAULT_STAFF_POSITION_OPTIONS } from '../lib/schoolSettings';
 import { appendAuditLog, getAuditLogs } from '../lib/auditLog';
 import { getSchoolFeatureFlags, saveSchoolFeatureFlags } from '../lib/schoolFeatureFlags';
+import { normalizeSelfieRetentionMinutes } from '../lib/selfieCleanupLogic';
 import { getSchoolRolePolicies, saveSchoolRolePolicies, type SchoolPolicyId } from '../lib/schoolPermissions';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
@@ -124,6 +125,12 @@ interface SystemSettingsViewProps {
   onUpdateConfig: (updated: SystemConfig) => void;
   featureFlags?: SchoolFeatureFlags;
   onUpdateFeatureFlags?: (flags: SchoolFeatureFlags) => void;
+  onCleanupDueSelfies?: (options?: { silent?: boolean; retentionMinutes?: number }) => Promise<{
+    deletedPhotosCount: number;
+    clearedRecordsCount: number;
+    matchedByCheckoutCount: number;
+    matchedPreviousDaysCount: number;
+  }>;
   initialTab?: SystemSettingsTab;
   onTabChange?: (tab: SystemSettingsTab) => void;
   onNavigateModule?: (tab: NavTab) => void;
@@ -154,6 +161,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   onUpdateConfig,
   featureFlags: externalFeatureFlags,
   onUpdateFeatureFlags,
+  onCleanupDueSelfies,
   initialTab,
   onTabChange,
   onNavigateModule,
@@ -182,6 +190,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isCleaningSelfies, setIsCleaningSelfies] = useState(false);
+  const [selfieCleanupFeedback, setSelfieCleanupFeedback] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [previewSampleType, setPreviewSampleType] = useState<'checkin' | 'infirmary' | 'billing' | 'grades' | 'homework'>('checkin');
   const [simulatedSendState, setSimulatedSendState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [eventCategoryPage, setEventCategoryPage] = useState(0);
@@ -693,6 +706,12 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   };
 
   const isLineEnabled = localFlags.lineEnabled !== false;
+  const isAutoDeleteSelfiesEnabled = localFlags.autoDeleteSelfiesAfterCheckout !== false;
+  const selfieRetentionMinutes = normalizeSelfieRetentionMinutes(localFlags.selfieRetentionAfterCheckoutMinutes);
+  const storedSelfieCount = useMemo(
+    () => attendance.filter((record) => Boolean(record.photoUrl || record.photoStoragePath)).length,
+    [attendance]
+  );
 
   const handleToggleLineMaster = (nextEnabled?: boolean) => {
     const resolvedNext = typeof nextEnabled === 'boolean' ? nextEnabled : !isLineEnabled;
@@ -713,6 +732,70 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         : 'ปิดใช้งานระบบแจ้งเตือนผ่าน LINE OA แล้ว (ใช้แจ้งเตือนในแอป / Web Push แทน)'
     );
     window.setTimeout(() => setQuickSwitchMessage(null), 3000);
+  };
+
+  const handleToggleAutoDeleteSelfies = (nextEnabled?: boolean) => {
+    const resolvedNext = typeof nextEnabled === 'boolean' ? nextEnabled : !isAutoDeleteSelfiesEnabled;
+    const nextFlags: SchoolFeatureFlags = {
+      ...localFlags,
+      autoDeleteSelfiesAfterCheckout: resolvedNext,
+      selfieRetentionAfterCheckoutMinutes: selfieRetentionMinutes,
+    };
+    setLocalFlags(nextFlags);
+    saveSchoolFeatureFlags(activeSchool.id, nextFlags);
+    onUpdateFeatureFlags?.(nextFlags);
+    setQuickSwitchMessage(
+      resolvedNext
+        ? `เปิดระบบลบรูปเซลฟี่อัตโนมัติหลังเช็คเอาท์ ${selfieRetentionMinutes} นาทีแล้ว`
+        : 'ปิดระบบลบรูปเซลฟี่อัตโนมัติชั่วคราวแล้ว'
+    );
+    window.setTimeout(() => setQuickSwitchMessage(null), 3000);
+  };
+
+  const handleChangeSelfieRetentionMinutes = (minutes: number) => {
+    const normalized = normalizeSelfieRetentionMinutes(minutes);
+    const nextFlags: SchoolFeatureFlags = {
+      ...localFlags,
+      autoDeleteSelfiesAfterCheckout: isAutoDeleteSelfiesEnabled,
+      selfieRetentionAfterCheckoutMinutes: normalized,
+    };
+    setLocalFlags(nextFlags);
+    saveSchoolFeatureFlags(activeSchool.id, nextFlags);
+    onUpdateFeatureFlags?.(nextFlags);
+    setSelfieCleanupFeedback({
+      type: 'success',
+      text: `ตั้งเวลาเก็บภาพเซลฟี่หลังเช็คเอาท์เป็น ${normalized} นาทีแล้ว (ประวัติการมาเรียนอยู่ครบ)`,
+    });
+  };
+
+  const handleRunSelfieCleanupNow = async () => {
+    if (!onCleanupDueSelfies || isCleaningSelfies) return;
+    setIsCleaningSelfies(true);
+    setSelfieCleanupFeedback(null);
+    try {
+      const result = await onCleanupDueSelfies({
+        silent: false,
+        retentionMinutes: selfieRetentionMinutes,
+      });
+      if (result.clearedRecordsCount > 0 || result.deletedPhotosCount > 0) {
+        setSelfieCleanupFeedback({
+          type: 'success',
+          text: `ลบรูปที่ครบกำหนดแล้ว ${result.deletedPhotosCount} ไฟล์ (${result.clearedRecordsCount} รายการ: หลังเช็คเอาท์ ${result.matchedByCheckoutCount} · ค้างจากวันก่อน ${result.matchedPreviousDaysCount}) โดยบันทึกเวลาเช็คชื่ออยู่ครบถ้วน`,
+        });
+      } else {
+        setSelfieCleanupFeedback({
+          type: 'success',
+          text: `ยังไม่มีรูปที่ครบกำหนดลบในขณะนี้ (เก็บภาพไว้ ${selfieRetentionMinutes} นาทีหลังเช็คเอาท์ และลบของวันก่อนหน้าอัตโนมัติ)`,
+        });
+      }
+    } catch (error) {
+      setSelfieCleanupFeedback({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'ไม่สามารถลบรูปเซลฟี่ที่ครบกำหนดได้',
+      });
+    } finally {
+      setIsCleaningSelfies(false);
+    }
   };
 
   const handleToggleEvent = (field: keyof LineNotificationSettings) => {
@@ -1234,6 +1317,13 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             desc: 'เปิดหรือปิดฟังก์ชันแจ้งเตือนและผูกบัญชี LINE OA ทั้งโรงเรียน (หากปิดจะใช้ระบบแจ้งเตือนในแอป / Web Push แทน)',
             enabled: isLineEnabled,
             onToggle: () => handleToggleLineMaster(),
+          },
+          {
+            id: 'auto_delete_selfies',
+            label: `ลบรูปเซลฟี่เช็คชื่ออัตโนมัติ (หลังเช็คเอาท์ ${selfieRetentionMinutes} นาที)`,
+            desc: 'ลบรูปเซลฟี่ทั้งขาเข้าและขาออกเมื่อเลยเวลาเช็คเอาท์และเคลียร์รูปค้างวันก่อน เพื่อประหยัดพื้นที่ Storage โดยคงเวลาเข้า-ออกไว้ครบถ้วน',
+            enabled: isAutoDeleteSelfiesEnabled,
+            onToggle: () => handleToggleAutoDeleteSelfies(),
           },
         ];
 
@@ -2685,6 +2775,87 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 ✓ เข้ารหัส AES-256
               </span>
             </div>
+
+            {/* Automatic Attendance Selfie Storage Cleanup */}
+            {['admin', 'super_admin'].includes(currentRole) && (
+              <div className="p-4 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-3">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex items-start gap-3">
+                    <Trash2 className="w-5 h-5 text-sky-700 dark:text-sky-300 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-xs text-[var(--color-text-title)]">
+                        ลบรูปเซลฟี่เช็คชื่ออัตโนมัติ (ประหยัดพื้นที่ Storage)
+                      </div>
+                      <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 leading-relaxed">
+                        ลบรูปถ่ายเซลฟี่ทั้งขาเข้าและขาออกอัตโนมัติหลังเช็คเอาท์ตามเวลาที่กำหนด และเคลียร์รูปค้างจากวันก่อน (กรณีลืมเช็คเอาท์) โดยไม่ลบข้อมูลเวลา สถานะ หรือรายงานเช็คชื่อ
+                      </p>
+                      <div className="text-[11px] font-semibold text-[var(--color-text-body)] mt-1 tabular-nums">
+                        รูปเซลฟี่ที่ยังค้างอยู่ในช่วงข้อมูลที่โหลด: {storedSelfieCount.toLocaleString('th-TH')} รูป
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isAutoDeleteSelfiesEnabled}
+                    onClick={() => handleToggleAutoDeleteSelfies()}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                      isAutoDeleteSelfiesEnabled ? 'bg-[var(--color-primary)]' : 'bg-slate-400 dark:bg-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ${
+                        isAutoDeleteSelfiesEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[var(--color-border)]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label htmlFor="selfie-retention-select" className="text-[11px] font-semibold text-[var(--color-text-body)]">
+                      หน่วงเวลาลบหลังเช็คเอาท์:
+                    </label>
+                    <select
+                      id="selfie-retention-select"
+                      value={selfieRetentionMinutes}
+                      onChange={(e) => handleChangeSelfieRetentionMinutes(Number(e.target.value))}
+                      className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                    >
+                      <option value={30}>30 นาทีหลังเช็คเอาท์</option>
+                      <option value={60}>1 ชั่วโมงหลังเช็คเอาท์ (แนะนำ)</option>
+                      <option value={120}>2 ชั่วโมงหลังเช็คเอาท์</option>
+                      <option value={240}>4 ชั่วโมงหลังเช็คเอาท์</option>
+                    </select>
+                  </div>
+
+                  {onCleanupDueSelfies && (
+                    <button
+                      type="button"
+                      disabled={isCleaningSelfies}
+                      onClick={() => void handleRunSelfieCleanupNow()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isCleaningSelfies ? 'animate-spin' : ''}`} />
+                      <span>{isCleaningSelfies ? 'กำลังตรวจสอบและลบรูป...' : 'ลบรูปที่ครบกำหนดตอนนี้'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {selfieCleanupFeedback && (
+                  <div
+                    role={selfieCleanupFeedback.type === 'error' ? 'alert' : 'status'}
+                    className={`px-3 py-2 rounded-lg text-[11px] font-semibold border ${
+                      selfieCleanupFeedback.type === 'error'
+                        ? 'border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
+                        : 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200'
+                    }`}
+                  >
+                    {selfieCleanupFeedback.text}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {['admin', 'super_admin'].includes(currentRole) && (
@@ -3704,6 +3875,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                     <option value="invoice_slip_approved">อนุมัติสลิปการเงิน</option>
                     <option value="invoice_slip_rejected">ปฏิเสธสลิปการเงิน</option>
                     <option value="feature_flags_update">ตั้งค่าโมดูลโรงเรียน</option>
+                    <option value="selfie_photo_cleanup">ลบรูปเซลฟี่เช็คชื่อ</option>
                     <option value="quiz_grade_sync">ส่ง Quiz เข้าสมุดคะแนน</option>
                   </select>
                 </div>
