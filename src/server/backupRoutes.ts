@@ -51,15 +51,19 @@ const OMITTED_TABLES: Record<string, string> = {
 const STORAGE_BUCKETS = ['school-logos', 'school-attachments', 'attendance-selfies'] as const;
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
 const PAGE_SIZE = 500;
-const DEFAULT_BACKUP_BUCKET = 'system-backups';
 const DEFAULT_RETENTION_DAYS = 14;
 const SNAPSHOT_CHECK_INTERVAL_MS = 60 * 1000;
-const SNAPSHOT_PATH_REGEX = /^daily-midnight\/(\d{4}-\d{2}-\d{2})\/(school-[a-zA-Z0-9_-]+|system-all)\.json$/;
+const DRIVE_FILES_API = 'https://www.googleapis.com/drive/v3/files';
+const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files';
+const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 
 let lastServerSnapshotDate: string | null = null;
 let lastServerSnapshotAt: string | null = null;
 let lastServerSnapshotError: string | null = null;
 let lastServerSnapshotFiles = 0;
+let cachedDriveToken: { value: string; expiresAt: number } | null = null;
+let driveTokenRequest: Promise<string> | null = null;
+let cachedDriveFolderId: string | null = null;
 
 function getClients(env: EnvReader, token: string) {
   const url = env('SUPABASE_URL') || env('VITE_SUPABASE_URL');
@@ -415,11 +419,6 @@ async function validateRestore(backup: any, access: Access, res: Response) {
   return { type: scope.type as 'school' | 'system', schoolId: allowedSchoolId };
 }
 
-function getBackupBucketName(env: EnvReader): string {
-  const raw = env('BACKUP_STORAGE_BUCKET').trim();
-  return /^[a-z0-9][a-z0-9_-]{1,62}$/.test(raw) ? raw : DEFAULT_BACKUP_BUCKET;
-}
-
 function getRetentionDays(env: EnvReader): number {
   const parsed = Number(env('BACKUP_RETENTION_DAYS'));
   if (!Number.isFinite(parsed) || parsed < 1 || parsed > 365) return DEFAULT_RETENTION_DAYS;
@@ -436,34 +435,195 @@ function getServiceAdmin(env: EnvReader): { url: string; admin: SupabaseClient }
   return { url, admin };
 }
 
-async function ensurePrivateBackupBucket(admin: SupabaseClient, bucketName: string): Promise<void> {
-  const { data: buckets, error } = await admin.storage.listBuckets();
-  if (error) throw new Error(`ตรวจสอบ Backup bucket ไม่สำเร็จ: ${error.message}`);
-  if ((buckets || []).some((b) => b.name === bucketName)) return;
-  const { error: createError } = await admin.storage.createBucket(bucketName, {
-    public: false,
-    fileSizeLimit: MAX_BACKUP_BYTES,
-    allowedMimeTypes: ['application/json'],
-  });
-  if (createError && !/already exists/i.test(createError.message)) {
-    throw new Error(`สร้าง Backup bucket ไม่สำเร็จ: ${createError.message}`);
+type DriveBackupMetadata = {
+  id: string;
+  name: string;
+  size?: string;
+  createdTime?: string;
+  appProperties?: Record<string, string>;
+};
+
+function isGoogleDriveBackupConfigured(env: EnvReader): boolean {
+  return Boolean(env('GOOGLE_DRIVE_CLIENT_ID') && env('GOOGLE_DRIVE_CLIENT_SECRET') && env('GOOGLE_DRIVE_REFRESH_TOKEN'));
+}
+
+async function getGoogleDriveAccessToken(env: EnvReader): Promise<string> {
+  if (!isGoogleDriveBackupConfigured(env)) {
+    throw new Error('Google Drive backup is not configured. Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.');
+  }
+  if (cachedDriveToken && cachedDriveToken.expiresAt > Date.now() + 60_000) {
+    return cachedDriveToken.value;
+  }
+  if (driveTokenRequest) return driveTokenRequest;
+
+  driveTokenRequest = (async () => {
+    const body = new URLSearchParams({
+      client_id: env('GOOGLE_DRIVE_CLIENT_ID'),
+      client_secret: env('GOOGLE_DRIVE_CLIENT_SECRET'),
+      refresh_token: env('GOOGLE_DRIVE_REFRESH_TOKEN'),
+      grant_type: 'refresh_token',
+    });
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const payload = await response.json().catch(() => null) as {
+      access_token?: string;
+      expires_in?: number;
+      error_description?: string;
+      error?: string;
+    } | null;
+    if (!response.ok || !payload?.access_token) {
+      throw new Error(payload?.error_description || payload?.error || `Google OAuth token request failed (${response.status})`);
+    }
+    cachedDriveToken = {
+      value: payload.access_token,
+      expiresAt: Date.now() + Math.max(60, Number(payload.expires_in) || 3600) * 1000,
+    };
+    return payload.access_token;
+  })();
+
+  try {
+    return await driveTokenRequest;
+  } finally {
+    driveTokenRequest = null;
   }
 }
 
-async function pruneOldSnapshots(admin: SupabaseClient, bucketName: string, retentionDays: number): Promise<void> {
-  const { data: dateFolders, error } = await admin.storage.from(bucketName).list('daily-midnight', {
-    limit: 100,
-    sortBy: { column: 'name', order: 'asc' },
+async function googleDriveRequest(
+  env: EnvReader,
+  url: string,
+  init: RequestInit = {},
+): Promise<globalThis.Response> {
+  const token = await getGoogleDriveAccessToken(env);
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(url, { ...init, headers });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+    throw new Error(payload?.error?.message || `Google Drive API request failed (${response.status})`);
+  }
+  return response;
+}
+
+function escapeDriveQueryValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+async function getDriveBackupFolderId(env: EnvReader): Promise<string> {
+  if (cachedDriveFolderId) return cachedDriveFolderId;
+  const query = new URLSearchParams({
+    q: `mimeType = '${DRIVE_FOLDER_MIME}' and trashed = false and appProperties has { key='baanpakkruFolderRole' and value='backup_root' }`,
+    fields: 'files(id)',
+    pageSize: '1',
+    spaces: 'drive',
   });
-  if (error || !dateFolders?.length) return;
-  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  for (const folder of dateFolders) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(folder.name) || folder.name >= cutoffDate) continue;
-    const prefix = `daily-midnight/${folder.name}`;
-    const { data: files } = await admin.storage.from(bucketName).list(prefix, { limit: 500 });
-    const paths = (files || []).filter((f) => f.id).map((f) => `${prefix}/${f.name}`);
-    if (paths.length > 0) {
-      await admin.storage.from(bucketName).remove(paths);
+  const response = await googleDriveRequest(env, `${DRIVE_FILES_API}?${query}`);
+  const data = await response.json() as { files?: Array<{ id?: string }> };
+  const existing = data.files?.[0]?.id;
+  if (existing) {
+    cachedDriveFolderId = existing;
+    return existing;
+  }
+
+  const create = await googleDriveRequest(env, `${DRIVE_FILES_API}?fields=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'BaanPakKru-Backups',
+      mimeType: DRIVE_FOLDER_MIME,
+      appProperties: { baanpakkruFolderRole: 'backup_root' },
+    }),
+  });
+  const created = await create.json() as { id?: string };
+  if (!created.id) throw new Error('Google Drive backup folder creation returned no file ID');
+  cachedDriveFolderId = created.id;
+  return created.id;
+}
+
+async function listDriveBackupFiles(env: EnvReader): Promise<DriveBackupMetadata[]> {
+  const folderId = await getDriveBackupFolderId(env);
+  const files: DriveBackupMetadata[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false and appProperties has { key='baanpakkruBackup' and value='true' }`,
+      fields: 'nextPageToken,files(id,name,size,createdTime,appProperties)',
+      orderBy: 'createdTime desc',
+      pageSize: '100',
+      spaces: 'drive',
+    });
+    if (pageToken) params.set('pageToken', pageToken);
+    const response = await googleDriveRequest(env, `${DRIVE_FILES_API}?${params}`);
+    const data = await response.json() as { files?: DriveBackupMetadata[]; nextPageToken?: string };
+    files.push(...(data.files || []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return files;
+}
+
+async function uploadDriveBackup(
+  env: EnvReader,
+  options: {
+    name: string;
+    content: string;
+    appProperties: Record<string, string>;
+  },
+): Promise<DriveBackupMetadata> {
+  const folderId = await getDriveBackupFolderId(env);
+  const identityProperties = ['scopeType', 'snapshotDate', 'schoolId']
+    .filter((key) => options.appProperties[key])
+    .map((key) => `appProperties has { key='${key}' and value='${escapeDriveQueryValue(options.appProperties[key])}' }`);
+  const lookup = new URLSearchParams({
+    q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false and appProperties has { key='baanpakkruBackup' and value='true' } and ${identityProperties.join(' and ')}`,
+    fields: 'files(id)',
+    pageSize: '1',
+    spaces: 'drive',
+  });
+  const lookupResponse = await googleDriveRequest(env, `${DRIVE_FILES_API}?${lookup}`);
+  const lookupData = await lookupResponse.json() as { files?: Array<{ id?: string }> };
+  const existingId = lookupData.files?.[0]?.id;
+  const metadata = {
+    name: options.name,
+    mimeType: 'application/json',
+    ...(existingId ? {} : { parents: [folderId] }),
+    appProperties: { baanpakkruBackup: 'true', ...options.appProperties },
+  };
+  const boundary = `baanpakkru_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const body = [
+    `--${boundary}`,
+    'Content-Type: application/json; charset=UTF-8',
+    '',
+    JSON.stringify(metadata),
+    `--${boundary}`,
+    'Content-Type: application/json; charset=UTF-8',
+    '',
+    options.content,
+    `--${boundary}--`,
+  ].join('\r\n');
+  const params = new URLSearchParams({
+    uploadType: 'multipart',
+    fields: 'id,name,size,createdTime,appProperties',
+  });
+  const url = existingId
+    ? `${DRIVE_UPLOAD_API}/${encodeURIComponent(existingId)}?${params}`
+    : `${DRIVE_UPLOAD_API}?${params}`;
+  const response = await googleDriveRequest(env, url, {
+    method: existingId ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  return await response.json() as DriveBackupMetadata;
+}
+
+async function pruneOldDriveBackups(env: EnvReader, retentionDays: number): Promise<void> {
+  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  const files = await listDriveBackupFiles(env);
+  for (const file of files) {
+    const createdAt = Date.parse(file.createdTime || '');
+    if (Number.isFinite(createdAt) && createdAt < cutoff) {
+      await googleDriveRequest(env, `${DRIVE_FILES_API}/${encodeURIComponent(file.id)}`, { method: 'DELETE' });
     }
   }
 }
@@ -481,8 +641,9 @@ export async function runServerMidnightSnapshots(
   if (!service) {
     throw new Error('Server Supabase service role key is not configured.');
   }
-  const bucketName = getBackupBucketName(env);
-  await ensurePrivateBackupBucket(service.admin, bucketName);
+  if (!isGoogleDriveBackupConfigured(env)) {
+    throw new Error('Google Drive backup is not configured. Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.');
+  }
 
   const { dateStr } = getBangkokClockParts();
   const saved: Array<{ path: string; scope: string; schoolId?: string; size: number }> = [];
@@ -500,7 +661,6 @@ export async function runServerMidnightSnapshots(
   for (const school of schools || []) {
     const cleanId = String(school.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
     if (!cleanId) continue;
-    const targetPath = `daily-midnight/${dateStr}/school-${cleanId}.json`;
     try {
       const backup = await buildBackupWithAdmin(service.admin, { type: 'school', schoolId: String(school.id) }, service.url);
       const serialized = JSON.stringify(backup);
@@ -508,54 +668,62 @@ export async function runServerMidnightSnapshots(
       if (bytes.byteLength > MAX_BACKUP_BYTES) {
         throw new Error('ขนาดข้อมูลโรงเรียนเกิน 50 MB');
       }
-      const { error: uploadError } = await service.admin.storage.from(bucketName).upload(targetPath, bytes, {
-        contentType: 'application/json',
-        upsert: true,
+      const uploaded = await uploadDriveBackup(env, {
+        name: `baanpakkru-${dateStr}-school-${cleanId}.json`,
+        content: serialized,
+        appProperties: {
+          scopeType: 'school',
+          schoolId: String(school.id).slice(0, 110),
+          schoolName: String(school.name_th || school.name_en || school.code || school.id).slice(0, 110),
+          snapshotDate: dateStr,
+        },
       });
-      if (uploadError) throw new Error(uploadError.message);
-      saved.push({ path: targetPath, scope: 'school', schoolId: String(school.id), size: bytes.byteLength });
+      saved.push({
+        path: uploaded.id,
+        scope: 'school',
+        schoolId: String(school.id),
+        size: Number(uploaded.size || bytes.byteLength),
+      });
     } catch (err) {
       errors.push({ target: String(school.name_th || school.name_en || school.id), error: err instanceof Error ? err.message : String(err) });
     }
   }
 
   if (!options?.onlySchoolId && options?.includeSystem !== false) {
-    const systemPath = `daily-midnight/${dateStr}/system-all.json`;
     try {
       const systemBackup = await buildBackupWithAdmin(service.admin, { type: 'system', schoolId: null }, service.url);
       const serialized = JSON.stringify(systemBackup);
       const bytes = Buffer.from(serialized, 'utf8');
-      if (bytes.byteLength <= MAX_BACKUP_BYTES) {
-        const { error: uploadError } = await service.admin.storage.from(bucketName).upload(systemPath, bytes, {
-          contentType: 'application/json',
-          upsert: true,
-        });
-        if (uploadError) throw new Error(uploadError.message);
-        saved.push({ path: systemPath, scope: 'system', size: bytes.byteLength });
-      }
+      if (bytes.byteLength > MAX_BACKUP_BYTES) throw new Error('ขนาดข้อมูลทั้งระบบเกิน 50 MB');
+      const uploaded = await uploadDriveBackup(env, {
+        name: `baanpakkru-${dateStr}-system-all.json`,
+        content: serialized,
+        appProperties: { scopeType: 'system', schoolName: 'System (All Schools)', snapshotDate: dateStr },
+      });
+      saved.push({ path: uploaded.id, scope: 'system', size: Number(uploaded.size || bytes.byteLength) });
     } catch (err) {
       errors.push({ target: 'system-all', error: err instanceof Error ? err.message : String(err) });
     }
   }
 
-  await pruneOldSnapshots(service.admin, bucketName, getRetentionDays(env));
+  await pruneOldDriveBackups(env, getRetentionDays(env));
   lastServerSnapshotDate = dateStr;
   lastServerSnapshotAt = new Date().toISOString();
   lastServerSnapshotFiles = saved.length;
   lastServerSnapshotError = errors.length > 0 ? errors.map((e) => `${e.target}: ${e.error}`).join('; ') : null;
 
-  return { dateStr, bucket: bucketName, saved, errors };
+  return { dateStr, bucket: 'Google Drive', saved, errors };
 }
 
 export function startAutoBackupScheduler(getEnv: EnvReader): () => void {
   let isRunning = false;
+  let midnightTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const checkMidnight = () => {
+  const runMidnightSnapshot = () => {
     if (isRunning) return;
-    if (!getServiceAdmin(getEnv)) return;
+    if (!getServiceAdmin(getEnv) || !isGoogleDriveBackupConfigured(getEnv)) return;
     const { dateStr, minutes } = getBangkokClockParts();
-    // Run daily between 00:00 and 00:10 Asia/Bangkok if today's snapshot hasn't run yet
-    if (minutes > 10 || lastServerSnapshotDate === dateStr) return;
+    if (lastServerSnapshotDate === dateStr) return;
 
     isRunning = true;
     void runServerMidnightSnapshots(getEnv)
@@ -571,9 +739,40 @@ export function startAutoBackupScheduler(getEnv: EnvReader): () => void {
       });
   };
 
-  const timer = setInterval(checkMidnight, SNAPSHOT_CHECK_INTERVAL_MS);
+  const scheduleNextMidnight = () => {
+    if (midnightTimer) clearTimeout(midnightTimer);
+    const now = new Date();
+    const bangkok = getBangkokClockParts(now);
+    const [year, month, day] = bangkok.dateStr.split('-').map(Number);
+    if (!year || !month || !day) return;
+
+    // Asia/Bangkok is UTC+7. Schedule the next local 00:00 directly.
+    const nextMidnightUtcMs = Date.UTC(year, month - 1, day + 1, 0, 0, 0) - (7 * 60 * 60 * 1000);
+    const delayMs = Math.max(1000, nextMidnightUtcMs - now.getTime());
+
+    midnightTimer = setTimeout(() => {
+      runMidnightSnapshot();
+      scheduleNextMidnight();
+    }, delayMs);
+    midnightTimer.unref?.();
+  };
+
+  scheduleNextMidnight();
+
+  // Watchdog: recover if the runtime slept or the exact timer was delayed.
+  const timer = setInterval(() => {
+    const { dateStr, minutes } = getBangkokClockParts();
+    if (minutes <= 10 && lastServerSnapshotDate !== dateStr) {
+      runMidnightSnapshot();
+      scheduleNextMidnight();
+    }
+  }, SNAPSHOT_CHECK_INTERVAL_MS);
   timer.unref?.();
-  return () => clearInterval(timer);
+
+  return () => {
+    if (midnightTimer) clearTimeout(midnightTimer);
+    clearInterval(timer);
+  };
 }
 
 function timingSafeBearerMatch(headerValue: string, expectedSecret: string): boolean {
@@ -594,7 +793,8 @@ export function createBackupRouter(getEnv: EnvReader) {
     res.json({
       ok: true,
       supabaseServiceRoleConfigured: true,
-      backupBucket: getBackupBucketName(getEnv),
+      backupBucket: 'Google Drive',
+      googleDriveConfigured: isGoogleDriveBackupConfigured(getEnv),
       retentionDays: getRetentionDays(getEnv),
       cronSecretConfigured: Boolean(getEnv('BACKUP_CRON_SECRET')),
       midnightTimeBangkok: '00:00',
@@ -608,39 +808,27 @@ export function createBackupRouter(getEnv: EnvReader) {
   router.get('/snapshots', async (req: Request, res: Response) => {
     const access = await resolveAccess(req, res, getEnv);
     if (!access) return;
-    const bucketName = getBackupBucketName(getEnv);
     try {
-      await ensurePrivateBackupBucket(access.admin, bucketName);
-      const { data: dateFolders, error } = await access.admin.storage.from(bucketName).list('daily-midnight', {
-        limit: 60,
-        sortBy: { column: 'name', order: 'desc' },
+      const files = await listDriveBackupFiles(getEnv);
+      const items = files.flatMap((file) => {
+        const scopeType = file.appProperties?.scopeType;
+        const schoolId = file.appProperties?.schoolId;
+        if (scopeType !== 'school' && scopeType !== 'system') return [];
+        if (access.role !== 'super_admin' &&
+            (scopeType !== 'school' || schoolId !== access.schoolId)) return [];
+        const createdAt = file.createdTime || '';
+        return [{
+          path: file.id,
+          date: file.appProperties?.snapshotDate || createdAt.slice(0, 10),
+          name: file.name,
+          scope: scopeType,
+          schoolId,
+          size: Number(file.size || 0),
+          createdAt,
+        }];
       });
-      if (error) throw new Error(error.message);
-      const items: Array<{ path: string; date: string; name: string; scope: 'school' | 'system'; schoolId?: string; size: number; createdAt: string }> = [];
-      const expectedSchoolFile = access.schoolId ? `school-${access.schoolId.replace(/[^a-zA-Z0-9_-]/g, '_')}.json` : '';
-
-      for (const folder of dateFolders || []) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(folder.name)) continue;
-        const prefix = `daily-midnight/${folder.name}`;
-        const { data: files } = await access.admin.storage.from(bucketName).list(prefix, { limit: 200, sortBy: { column: 'name', order: 'asc' } });
-        for (const file of files || []) {
-          if (!file.id) continue;
-          if (access.role !== 'super_admin' && file.name !== expectedSchoolFile) continue;
-          const isSystem = file.name === 'system-all.json';
-          const schoolMatch = file.name.match(/^school-([a-zA-Z0-9_-]+)\.json$/);
-          items.push({
-            path: `${prefix}/${file.name}`,
-            date: folder.name,
-            name: file.name,
-            scope: isSystem ? 'system' : 'school',
-            schoolId: schoolMatch?.[1],
-            size: Number((file.metadata as { size?: number } | null)?.size || 0),
-            createdAt: file.created_at || file.updated_at || `${folder.name}T00:00:00.000Z`,
-          });
-        }
-      }
       res.setHeader('Cache-Control', 'no-store');
-      res.json({ bucket: bucketName, snapshots: items });
+      res.json({ bucket: 'Google Drive', snapshots: items });
     } catch (error) {
       res.status(502).json({ error: 'SNAPSHOT_LIST_FAILED', message: error instanceof Error ? error.message : 'โหลดรายการ Snapshot ไม่สำเร็จ' });
     }
@@ -649,31 +837,41 @@ export function createBackupRouter(getEnv: EnvReader) {
   router.get('/snapshots/download', async (req: Request, res: Response) => {
     const access = await resolveAccess(req, res, getEnv);
     if (!access) return;
-    const rawPath = typeof req.query.path === 'string' ? req.query.path.trim() : '';
-    const match = rawPath.match(SNAPSHOT_PATH_REGEX);
-    if (!match) {
-      res.status(400).json({ error: 'INVALID_SNAPSHOT_PATH', message: 'เส้นทางไฟล์ Snapshot ไม่ถูกต้อง' });
+    const fileId = typeof req.query.path === 'string' ? req.query.path.trim() : '';
+    if (!/^[a-zA-Z0-9_-]{10,200}$/.test(fileId)) {
+      res.status(400).json({ error: 'INVALID_SNAPSHOT_ID', message: 'รหัสไฟล์ Snapshot ไม่ถูกต้อง' });
       return;
     }
-    const filename = `${match[2]}.json`;
-    if (access.role !== 'super_admin') {
-      const expected = `school-${String(access.schoolId || '').replace(/[^a-zA-Z0-9_-]/g, '_')}.json`;
-      if (filename !== expected) {
+    try {
+      const params = new URLSearchParams({ fields: 'id,name,appProperties' });
+      const metadataResponse = await googleDriveRequest(
+        getEnv,
+        `${DRIVE_FILES_API}/${encodeURIComponent(fileId)}?${params}`,
+      );
+      const metadata = await metadataResponse.json() as DriveBackupMetadata;
+      const properties = metadata.appProperties || {};
+      if (properties.baanpakkruBackup !== 'true' ||
+          !['school', 'system'].includes(properties.scopeType || '')) {
+        res.status(404).json({ error: 'SNAPSHOT_NOT_FOUND', message: 'ไม่พบไฟล์ Snapshot' });
+        return;
+      }
+      if (access.role !== 'super_admin' &&
+          (properties.scopeType !== 'school' || properties.schoolId !== access.schoolId)) {
         res.status(403).json({ error: 'SCOPE_FORBIDDEN', message: 'Admin โรงเรียนเข้าถึง Snapshot ได้เฉพาะโรงเรียนของตนเอง' });
         return;
       }
-    }
-    const bucketName = getBackupBucketName(getEnv);
-    try {
-      const { data: blob, error } = await access.admin.storage.from(bucketName).download(rawPath);
-      if (error || !blob) throw new Error(error?.message || 'ไม่พบไฟล์ Snapshot');
-      const text = await blob.text();
+      const mediaResponse = await googleDriveRequest(
+        getEnv,
+        `${DRIVE_FILES_API}/${encodeURIComponent(fileId)}?alt=media`,
+      );
+      const text = await mediaResponse.text();
+      const filename = metadata.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="baanpakkru-${match[1]}-${filename}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Cache-Control', 'no-store');
       res.send(text);
     } catch (error) {
-      res.status(404).json({ error: 'SNAPSHOT_NOT_FOUND', message: error instanceof Error ? error.message : 'ดาวน์โหลด Snapshot ไม่สำเร็จ' });
+      res.status(502).json({ error: 'SNAPSHOT_DOWNLOAD_FAILED', message: error instanceof Error ? error.message : 'ดาวน์โหลด Snapshot ไม่สำเร็จ' });
     }
   });
 
@@ -685,7 +883,15 @@ export function createBackupRouter(getEnv: EnvReader) {
         onlySchoolId: access.role === 'super_admin' ? null : access.schoolId,
         includeSystem: access.role === 'super_admin',
       });
-      res.json({ ok: true, ...result });
+      if (result.saved.length === 0 && result.errors.length > 0) {
+        res.status(502).json({
+          error: 'SNAPSHOT_RUN_FAILED',
+          message: result.errors.map((item) => `${item.target}: ${item.error}`).join('; '),
+          ...result,
+        });
+        return;
+      }
+      res.status(result.errors.length > 0 ? 207 : 200).json({ ok: true, ...result });
     } catch (error) {
       res.status(502).json({ error: 'SNAPSHOT_RUN_FAILED', message: error instanceof Error ? error.message : 'สร้าง Snapshot ไม่สำเร็จ' });
     }
@@ -703,7 +909,15 @@ export function createBackupRouter(getEnv: EnvReader) {
     }
     try {
       const result = await runServerMidnightSnapshots(getEnv);
-      res.json({ ok: true, ...result });
+      if (result.saved.length === 0 && result.errors.length > 0) {
+        res.status(502).json({
+          error: 'CRON_BACKUP_FAILED',
+          message: result.errors.map((item) => `${item.target}: ${item.error}`).join('; '),
+          ...result,
+        });
+        return;
+      }
+      res.status(result.errors.length > 0 ? 207 : 200).json({ ok: true, ...result });
     } catch (error) {
       res.status(502).json({ error: 'CRON_BACKUP_FAILED', message: error instanceof Error ? error.message : 'สำรองข้อมูลอัตโนมัติไม่สำเร็จ' });
     }

@@ -81,6 +81,7 @@ type ServerBackupStatus = {
   ok: boolean;
   supabaseServiceRoleConfigured: boolean;
   backupBucket: string;
+  googleDriveConfigured: boolean;
   retentionDays: number;
   cronSecretConfigured: boolean;
   midnightTimeBangkok: string;
@@ -528,66 +529,21 @@ export const BackupCenterModal: React.FC<Props> = ({
       };
       const savedCount = data.saved?.length || 0;
       const errCount = data.errors?.length || 0;
+      const summary = `สำรองขึ้น Google Drive สำเร็จ ${savedCount} ไฟล์${errCount ? ` (ไม่สำเร็จ ${errCount} รายการ)` : ''}`;
       setReport({
         ok: true,
-        message: `สร้าง Snapshot บนเซิร์ฟเวอร์สำเร็จ ${savedCount} ไฟล์${errCount ? ` (ผิดพลาด ${errCount} รายการ)` : ''}`,
+        message: summary,
       });
       emitAppToast({
-        tone: 'success',
-        title: 'สร้าง Snapshot สำเร็จ',
-        message: `บันทึกไฟล์สำรอง ${savedCount} รายการบนเซิร์ฟเวอร์แล้ว`,
+        tone: errCount ? 'warning' : 'success',
+        title: errCount ? 'สำรองข้อมูลได้บางส่วน' : 'สำรองข้อมูลสำเร็จ',
+        message: summary,
       });
       await refreshServerSnapshots();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'สร้าง Snapshot ไม่สำเร็จ';
       setReport({ error: msg });
       emitAppToast({ tone: 'error', title: 'สร้าง Snapshot ไม่สำเร็จ', message: msg });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleSyncSnapshotToDrive = async (snap: ServerSnapshotItem) => {
-    if (!googleToken) {
-      await handleConnectGoogle();
-      return;
-    }
-    setBusy(true);
-    setReport(null);
-    try {
-      const res = await request(
-        `/api/backup/snapshots/download?path=${encodeURIComponent(snap.path)}`
-      );
-      const jsonContent = await res.text();
-      const schoolName = snap.schoolId
-        ? schoolNameById.get(snap.schoolId) || snap.schoolId
-        : 'System (All Schools)';
-      await uploadBackupToGoogleDrive(googleToken, {
-        filename: `baanpakkru-${snap.date}-${snap.name}`,
-        jsonContent,
-        scopeType: snap.scope,
-        schoolId: snap.schoolId,
-        schoolName,
-        scheduleKind: 'server_sync',
-      });
-      setReport({
-        ok: true,
-        message: `ส่ง Snapshot (${snap.date} · ${schoolName}) ขึ้น Google Drive เรียบร้อยแล้ว`,
-      });
-      emitAppToast({
-        tone: 'success',
-        title: 'อัปโหลด Snapshot ขึ้น Google Drive สำเร็จ',
-        message: `${schoolName} (${snap.date})`,
-      });
-    } catch (err) {
-      if (err instanceof GoogleDriveAuthExpiredError) {
-        clearGoogleCalendarAccessToken();
-        setGoogleToken(null);
-        setGoogleUser(null);
-      }
-      const msg = err instanceof Error ? err.message : 'ส่งขึ้น Google Drive ไม่สำเร็จ';
-      setReport({ error: msg });
-      emitAppToast({ tone: 'error', title: 'ส่งขึ้น Google Drive ไม่สำเร็จ', message: msg });
     } finally {
       setBusy(false);
     }
@@ -1218,16 +1174,16 @@ export const BackupCenterModal: React.FC<Props> = ({
                   )}
                 </section>
 
-                {/* Server-side Midnight Snapshot Engine */}
+                {/* Server-side Google Drive backup */}
                 <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-title)]">
                         <Server className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>Snapshot อัตโนมัติบนเซิร์ฟเวอร์ทุกเที่ยงคืน (00:00 น.)</span>
+                        <span>สำรองขึ้น Google Drive อัตโนมัติทุกเที่ยงคืน (00:00 น.)</span>
                       </h3>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                        บันทึก Snapshot แยกเป็นรายโรงเรียนเก็บไว้ในพื้นที่ส่วนตัวบนเซิร์ฟเวอร์ทุกคืน 00:00 น. แม้ปิดหน้าเว็บไปแล้ว และส่งขึ้น Google Drive หรือกู้คืนได้ทันที
+                        เซิร์ฟเวอร์สำรองไฟล์แยกตามโรงเรียนและไฟล์ระบบกลางตรงไปยัง Google Drive แม้ปิดหน้าเว็บ โดยเก็บย้อนหลังตามจำนวนวันที่กำหนด
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1255,17 +1211,20 @@ export const BackupCenterModal: React.FC<Props> = ({
 
                   {serverUnavailableNote ? (
                     <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-200">
-                      {serverUnavailableNote} (จำเป็นต้องตั้งค่า <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> บนเซิร์ฟเวอร์เพื่อให้ Snapshot อัตโนมัติทำงาน)
+                      {serverUnavailableNote} (ต้องตั้งค่า <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> และข้อมูล OAuth ของ Google Drive บนเซิร์ฟเวอร์)
                     </div>
                   ) : (
                     <>
                       {serverStatus && (
                         <div className="flex flex-wrap gap-3 rounded-lg bg-[var(--color-card-subtle)] px-3 py-2 text-[11px] text-[var(--color-text-muted)]">
                           <span>
-                            Bucket: <b className="font-mono text-[var(--color-text-title)]">{serverStatus.backupBucket}</b>
+                            ปลายทาง: <b className="font-mono text-[var(--color-text-title)]">{serverStatus.backupBucket}</b>
                           </span>
                           <span>
                             เก็บรักษา: <b>{serverStatus.retentionDays} วัน</b>
+                          </span>
+                          <span>
+                            Google Drive: <b>{serverStatus.googleDriveConfigured ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้ตั้งค่า'}</b>
                           </span>
                           <span>
                             เที่ยงคืนล่าสุด:{' '}
@@ -1278,7 +1237,7 @@ export const BackupCenterModal: React.FC<Props> = ({
 
                       {serverSnapshots.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-[var(--color-border)] p-4 text-center text-xs text-[var(--color-text-muted)]">
-                          ยังไม่มีไฟล์ Snapshot บนเซิร์ฟเวอร์ — กด <b>สร้าง Snapshot เดี๋ยวนี้</b> เพื่อทดสอบหรือรอระบบรันอัตโนมัติเวลา 00:00 น.
+                          ยังไม่มีไฟล์สำรองใน Google Drive — กด <b>สร้าง Snapshot เดี๋ยวนี้</b> เพื่อทดสอบหรือรอระบบรันอัตโนมัติเวลา 00:00 น.
                         </div>
                       ) : (
                         <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
@@ -1300,15 +1259,6 @@ export const BackupCenterModal: React.FC<Props> = ({
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() => void handleSyncSnapshotToDrive(snap)}
-                                    className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-2.5 py-1 text-[11px] font-semibold text-white cursor-pointer"
-                                  >
-                                    <CloudUpload className="h-3 w-3" />
-                                    <span>ส่งขึ้น Drive</span>
-                                  </button>
                                   <button
                                     type="button"
                                     disabled={busy}

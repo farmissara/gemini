@@ -186,6 +186,20 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 หลัง migration และ deploy แล้ว ผู้ดูแลโรงเรียนไปที่ **System Settings → Packages and AI** เพื่อใส่ Gemini API key จาก Google AI Studio และกำหนดโควตาคำขอต่อเดือน ระบบแสดงจำนวนคำขอและ token ที่ใช้ แต่โควตาคำขอไม่ใช่วงเงินเป็นบาท และ Google เรียกเก็บเงินกับ Google project ที่เป็นเจ้าของ API key โดยตรง API keys จะไม่ถูกรวมในไฟล์สำรอง ต้องตั้งใหม่หลัง restore
 
+### สำรองข้อมูลอัตโนมัติไป Google Drive
+
+Snapshot อัตโนมัติถูกส่งตรงจากเซิร์ฟเวอร์ไปยังโฟลเดอร์ `BaanPakKru-Backups` ของบัญชี Google เฉพาะ ไม่ใช้ Supabase Storage เก็บไฟล์ Snapshot โดยค่าเริ่มต้นเก็บย้อนหลัง 14 วัน (`BACKUP_RETENTION_DAYS`) แล้วลบไฟล์ที่เก่ากว่าระยะเวลานี้ ไฟล์ยังอ่านข้อมูลจาก Supabase และรวมไฟล์ Storage ของโรงเรียนตามเดิม
+
+ตั้งค่า OAuth Web Client ใน Google Cloud Console และเปิด Google Drive API จากนั้นใช้ OAuth Playground กับ OAuth Client ของแอป เพื่อขอ refresh token สำหรับ scope `https://www.googleapis.com/auth/drive.file` (ต้องใช้ offline access) ตั้งค่า OAuth consent screen เป็น Production เพื่อไม่ให้ refresh token หมดอายุหลังช่วงทดสอบ แล้วเพิ่มค่าต่อไปนี้ใน **Render → Environment** เป็น Secret:
+
+- `GOOGLE_DRIVE_CLIENT_ID`
+- `GOOGLE_DRIVE_CLIENT_SECRET`
+- `GOOGLE_DRIVE_REFRESH_TOKEN`
+
+ระบบจะสร้างโฟลเดอร์สำรองเองด้วยบัญชีนี้ ส่วนบัญชีผู้ดูแลที่ใช้หน้าเว็บเชื่อม Google Drive สำหรับสำรอง/กู้คืนแบบสั่งเองยังเป็นคนละการเชื่อมต่อ
+
+**สำคัญ:** ตัวตั้งเวลาภายในเซิร์ฟเวอร์ทำงานเมื่อ Render instance กำลังทำงานเท่านั้น และ Render Free อาจพักบริการเมื่อไม่มีการใช้งาน จึงไม่รับประกันการทำงานตรงเที่ยงคืนด้วย timer อย่างเดียว หากต้องการให้รันทุกวันแม้ instance พัก ให้ตั้ง Scheduled Job ภายนอกเรียก `POST https://<โดเมนแอป>/api/backup/cron` ทุกวันเวลา `17:00 UTC` (00:00 น. ประเทศไทย) พร้อม Header `Authorization: Bearer <BACKUP_CRON_SECRET>` และตั้งค่า `BACKUP_CRON_SECRET` เป็น Secret บน Render ด้วย ปลายทางนี้จะสร้างไฟล์รายโรงเรียนและไฟล์ระบบกลางใน Google Drive
+
 หลังเข้าสู่ระบบ แอปจะโหลดและบันทึกข้อมูลนักเรียน รายวิชา คะแนน การเข้าเรียน ใบแจ้งหนี้ และประกาศของโรงเรียนที่บัญชีมีสิทธิ์ใช้งานโดยอัตโนมัติ หากตั้งค่า RLS หรือโปรไฟล์ไม่ครบ แอปจะแสดงข้อผิดพลาดและไม่ใช้ข้อมูลจำลองแทน
 
 > บทเรียน LMS และความคืบหน้าการเรียนใช้ migration `20261120_school_lms_lessons.sql`; ครูและผู้ดูแลเพิ่ม/แก้ไขบทเรียนได้ และนักเรียนบันทึกสถานะเรียนจบได้ เกม รายละเอียดโปรไฟล์เพิ่มเติม และข้อมูลอื่นที่ไม่มีตารางใน schema นี้ยังไม่ถูก persist ลง Supabase งานที่สั่ง/ส่งการบ้านใช้ migration `20261120_teacher_homework_workflow.sql` และแฟ้มผลงาน/พฤติกรรม/SDQ/ห้องพยาบาลใช้ migration `20261120_school_student_records.sql` ส่วนการชำระเงินจริงและ LINE OA ยังไม่เชื่อมต่อ ระบบจะไม่ทำเครื่องหมายว่าชำระเงินหรือส่งข้อความสำเร็จหากยังไม่ได้เชื่อมผู้ให้บริการจริง
