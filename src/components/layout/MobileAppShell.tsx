@@ -865,6 +865,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 school={activeSchool}
                 campusGates={campusGates}
                 schoolPeriods={schoolPeriods}
+                timetableSlots={timetableSlots}
                 leaveRequests={leaveRequests}
                 lang={lang}
                 onRecordAttendance={onRecordAttendance}

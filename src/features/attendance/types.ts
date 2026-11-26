@@ -14,6 +14,7 @@ import type {
   SchoolPeriodTime,
   Student,
   Teacher,
+  TimetableSlot,
   UserRole,
 } from '../../types';
 import type { LeaveApprovalScope } from '../../lib/leaveApprovalRouting';
@@ -24,6 +25,7 @@ export type AttendanceSubTab =
   | 'leave_request'
   | 'teacher_proxy'
   | 'period_checkin'
+  | 'daily_report'
   | 'corrections';
 
 export type PeriodRosterFilter = 'all' | 'unchecked' | 'proxy' | 'mobile';
@@ -106,6 +108,7 @@ export interface MobileAttendanceViewProps {
   initialPeriodToken?: string;
   currentRole?: UserRole;
   schoolPeriods?: SchoolPeriodTime[];
+  timetableSlots?: TimetableSlot[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;

@@ -1022,6 +1022,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   school={activeSchool}
                   campusGates={campusGates}
                   schoolPeriods={schoolPeriods}
+                  timetableSlots={viewTimetableSlots}
                   leaveRequests={viewLeaveRequests}
                   lang={lang}
                   initialSubTab={timetableCheckinTarget ? 'period_checkin' : (deepLinkParams?.subTab || 'selfie_mobile')}

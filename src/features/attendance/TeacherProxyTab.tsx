@@ -21,6 +21,10 @@ interface TeacherProxyTabProps {
   proxySavedNotification: string | null;
   proxyStudentIdInput: string;
   setProxyStudentIdInput: (val: string) => void;
+  proxyDate: string;
+  setProxyDate: (date: string) => void;
+  proxyTime: string;
+  setProxyTime: (time: string) => void;
   trimmedProxyStudentId: string;
   matchedProxyStudent: Student | undefined;
   proxyCheckType: AttendanceCheckType;
@@ -45,6 +49,10 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
   proxySavedNotification,
   proxyStudentIdInput,
   setProxyStudentIdInput,
+  proxyDate,
+  setProxyDate,
+  proxyTime,
+  setProxyTime,
   trimmedProxyStudentId,
   matchedProxyStudent,
   proxyCheckType,
@@ -132,6 +140,27 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
                   ตัวอย่าง: {students.slice(0, 3).map((s) => s.studentIdNumber).join(', ')}
                 </p>
               )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="block space-y-1.5">
+                <span className="type-label">วันที่บันทึก</span>
+                <input
+                  type="date"
+                  value={proxyDate}
+                  onChange={(event) => setProxyDate(event.target.value)}
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="type-label">เวลาบันทึก</span>
+                <input
+                  type="time"
+                  value={proxyTime}
+                  onChange={(event) => setProxyTime(event.target.value)}
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-title)]"
+                />
+              </label>
             </div>
 
             {/* Verification Feedback & Check-in Controls */}

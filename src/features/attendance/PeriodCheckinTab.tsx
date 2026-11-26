@@ -805,7 +805,12 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
           {(() => {
             const recordByStudent = new Map<string, PeriodAttendanceRecord>();
             for (const p of periodAttendance) {
-              if (p.courseId === selectedCourse.id && p.date === periodDate && p.periodNumber === selectedPeriod) {
+              if (
+                p.courseId === selectedCourse.id &&
+                p.date === periodDate &&
+                p.periodNumber === selectedPeriod &&
+                (p.recordType || 'check_in') === periodCheckType
+              ) {
                 recordByStudent.set(p.studentId, p);
               }
             }

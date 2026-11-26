@@ -4,6 +4,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   FileEdit,
   FileText,
   Fingerprint,
@@ -46,13 +47,25 @@ import type {
   PeriodAttendanceRecord,
   Student,
   Teacher,
+  TimetableSlot,
   UserRole,
 } from '../types';
 import { saveStudentSelfAttendance } from '../lib/supabase';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { buildCourseTeacherOptions, courseMatchesTeacherFilter, userMatchesCourse } from '../lib/courseTeacherFilter';
+import {
+  buildCourseTeacherOptions,
+  courseMatchesTeacherFilter,
+  slotMatchesLoggedInTeacher,
+  userMatchesCourse,
+} from '../lib/courseTeacherFilter';
+import { getHolidayForDate } from '../lib/thaiHolidays';
+import {
+  buildDailyPeriodReportSessions,
+  buildGateAttendanceReportRows,
+} from '../lib/attendanceDailyReport';
+import type { DailyPeriodReportSession } from '../lib/attendanceDailyReport';
 import {
   buildPrimaryGateFromSchool,
   calculateHaversineDistanceMeters,
@@ -104,6 +117,7 @@ import {
 } from '../components/attendance/AttendanceCorrectionHub';
 import {
   AttendanceModalsAndSheets,
+  DailyAttendanceReportTab,
   LeaveRequestTab,
   NfcTapAttendanceTab,
   PeriodCheckinTab,
@@ -145,6 +159,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   initialPeriodToken,
   currentRole,
   schoolPeriods = [],
+  timetableSlots = [],
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
@@ -152,6 +167,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 }) => {
   const effectiveRole: UserRole = currentUser?.role || currentRole || 'student';
   const isSchoolAdmin = effectiveRole === 'admin' || effectiveRole === 'super_admin';
+  const canViewDailyReport = ['teacher', 'admin', 'super_admin'].includes(effectiveRole);
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
   const isStudentOnly = effectiveRole === 'student';
   const isStaffUser = !isRestrictedViewer;
@@ -169,7 +185,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const scopedPeriodAttendance = filterPeriodAttendanceForUser(periodAttendance, currentUser, students);
 
   const safeInitialSubTab: AttendanceSubTab =
-    !isStaffUser && initialSubTab === 'teacher_proxy' ? 'selfie_mobile' : initialSubTab;
+    (!isStaffUser && initialSubTab === 'teacher_proxy') ||
+    (!canViewDailyReport && initialSubTab === 'daily_report')
+      ? 'selfie_mobile'
+      : initialSubTab;
 
   const [subTab, setSubTab] = useState<AttendanceSubTab>(safeInitialSubTab);
   const [showIdentitySheet, setShowIdentitySheet] = useState(false);
@@ -244,9 +263,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   useEffect(() => {
     if (initialSubTab) {
-      setSubTab(!isStaffUser && initialSubTab === 'teacher_proxy' ? 'selfie_mobile' : initialSubTab);
+      setSubTab(
+        (!isStaffUser && initialSubTab === 'teacher_proxy') ||
+        (!canViewDailyReport && initialSubTab === 'daily_report')
+          ? 'selfie_mobile'
+          : initialSubTab
+      );
     }
-  }, [initialSubTab, isStaffUser]);
+  }, [initialSubTab, isStaffUser, canViewDailyReport]);
 
   // 1. Mobile Selfie Check-in/out & Multi-Gate State
   const loggedInProfile = resolveCurrentUserAttendanceProfile(currentUser, teachers, students);
@@ -355,6 +379,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   // 3. Teacher Proxy & Period Check-in State
   const [proxyStudentIdInput, setProxyStudentIdInput] = useState<string>('');
+  const [proxyDate, setProxyDate] = useState<string>(getLocalDateString());
+  const [proxyTime, setProxyTime] = useState<string>(() =>
+    new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+  );
   const [proxyCheckType, setProxyCheckType] = useState<AttendanceCheckType>('check_in');
   const [proxySingleStatus, setProxySingleStatus] = useState<AttendanceStatus>('present');
   const [proxyShowRosterHint, setProxyShowRosterHint] = useState<boolean>(false);
@@ -414,6 +442,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   );
   const [selectedPeriod, setSelectedPeriod] = useState<number>(initialPeriodNumber || 1);
   const [periodDate, setPeriodDate] = useState<string>(initialPeriodDate || getLocalDateString());
+  const [dailyReportDate, setDailyReportDate] = useState<string>(getLocalDateString());
   const [periodStatuses, setPeriodStatuses] = useState<Record<string, 'present' | 'late' | 'absent' | 'excused'>>({});
   const [periodSavedNotification, setPeriodSavedNotification] = useState<string | null>(null);
   const [periodQrCopied, setPeriodQrCopied] = useState<boolean>(false);
@@ -605,7 +634,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   useEffect(() => {
     if (initialSubTab) {
-      const safe = !isStaffUser && initialSubTab === 'teacher_proxy' ? 'selfie_mobile' : initialSubTab;
+      const safe =
+        (!isStaffUser && initialSubTab === 'teacher_proxy') ||
+        (!canViewDailyReport && initialSubTab === 'daily_report')
+          ? 'selfie_mobile'
+          : initialSubTab;
       setSubTab(safe);
     }
     if (initialPeriodCourseId) setSelectedCourseId(initialPeriodCourseId);
@@ -615,6 +648,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     if (initialPeriodCheckType) setPeriodCheckType(initialPeriodCheckType);
   }, [
     isStaffUser,
+    canViewDailyReport,
     initialSubTab,
     initialPeriodCourseId,
     initialPeriodNumber,
@@ -646,11 +680,44 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     return [];
   }, [effectiveRole, periodFilteredCourses, selectedCourse, students]);
 
+  const gateDailyReportRows = useMemo(
+    () => buildGateAttendanceReportRows(gateRosterStudents, attendance, dailyReportDate),
+    [gateRosterStudents, attendance, dailyReportDate]
+  );
+  const dailyReportHoliday = useMemo(
+    () => getHolidayForDate(dailyReportDate, activeSchoolId),
+    [dailyReportDate, activeSchoolId]
+  );
+  const dailyPeriodReportSessions = useMemo<DailyPeriodReportSession[]>(() => {
+    return buildDailyPeriodReportSessions({
+      date: dailyReportDate,
+      schoolId: activeSchoolId,
+      timetableSlots,
+      courses: periodFilteredCourses,
+      students,
+      records: visiblePeriodAttendance,
+      schoolDayOff: dailyReportHoliday?.isSchoolDayOff,
+      isSlotInScope: effectiveRole === 'teacher'
+        ? (slot) => slotMatchesLoggedInTeacher(slot, currentUser, ownTeacher, periodFilteredCourses)
+        : undefined,
+    });
+  }, [
+    timetableSlots,
+    dailyReportDate,
+    dailyReportHoliday,
+    activeSchoolId,
+    effectiveRole,
+    currentUser,
+    ownTeacher,
+    periodFilteredCourses,
+    students,
+    visiblePeriodAttendance,
+  ]);
+
   const quickRosterStudents = effectiveRole === 'teacher' ? gateRosterStudents : scopedStudents;
 
   useEffect(() => {
     setPeriodRosterRoomFilter('all');
-    setPeriodRosterSearch('');
   }, [selectedCourseId, selectedPeriod, periodDate]);
 
   const isSelfCheckin = isRestrictedViewer || attendanceMode === 'self';
@@ -1399,6 +1466,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       'teacher_proxy',
       {
         recordType: proxyCheckType,
+        date: proxyDate,
+        time: proxyTime,
         userType: 'student',
         userName: `${matchedProxyStudent.firstNameTh} ${matchedProxyStudent.lastNameTh}`,
         userRole: `นักเรียน (${matchedProxyStudent.gradeLevel})`,
@@ -1419,6 +1488,37 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setProxyStudentIdInput(student.studentIdNumber);
     setProxyCheckType(checkType);
     setProxyShowRosterHint(false);
+  };
+
+  const handleOpenDailyGateEdit = (student: Student, checkType: AttendanceCheckType) => {
+    if (!gateRosterStudents.some((allowedStudent) => allowedStudent.id === student.id)) return;
+    const reportRow = gateDailyReportRows.find((row) => row.student.id === student.id);
+    const existingTime = checkType === 'check_in' ? reportRow?.checkIn?.time : reportRow?.checkOut?.time;
+    setProxyDate(dailyReportDate);
+    setProxyTime(
+      existingTime?.slice(0, 5) ||
+      new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+    );
+    setProxyStudentIdInput(student.studentIdNumber);
+    setProxyCheckType(checkType);
+    setProxyShowRosterHint(false);
+    setSubTab('teacher_proxy');
+  };
+
+  const handleOpenDailyPeriodEdit = (student: Student, session: DailyPeriodReportSession) => {
+    const course = periodFilteredCourses.find((candidate) => candidate.id === session.courseId);
+    if (!course || !getCourseRosterStudentIds(course, students).includes(student.id)) return;
+
+    setSelectedCourseId(session.courseId);
+    setSelectedPeriod(session.periodNumber);
+    setPeriodDate(dailyReportDate);
+    setPeriodCheckType('check_in');
+    setPeriodRosterFilter('all');
+    setPeriodRosterRoomFilter('all');
+    setPeriodRosterSearch(student.studentIdNumber);
+    setPeriodStatuses({});
+    setPeriodCustomTimes({});
+    setSubTab('period_checkin');
   };
 
   const expectedPeriodCode = `${selectedCourse.code || 'GEN-101'}-P${selectedPeriod}-${periodDate.replace(/-/g, '')}`;
@@ -1455,7 +1555,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         p.studentId === student.id &&
         p.courseId === selectedCourse.id &&
         p.date === periodDate &&
-        p.periodNumber === selectedPeriod
+        p.periodNumber === selectedPeriod &&
+        (p.recordType || 'check_in') === periodCheckType
     );
     const customTime = periodCustomTimes[student.id];
     const nowHm = new Date().toLocaleTimeString('th-TH', {
@@ -2423,6 +2524,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 staffOnly: false,
               },
               { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงชื่อแทน', labelEn: 'Proxy', staffOnly: true },
+              { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงานรายวัน', labelEn: 'Daily report', staffOnly: true },
               { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
               {
                 id: 'corrections',
@@ -2433,7 +2535,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 staffOnly: false,
               },
             ]
-              .filter((tab) => isStaffUser || !tab.staffOnly)
+              .filter((tab) => (
+                tab.id === 'daily_report'
+                  ? canViewDailyReport
+                  : isStaffUser || !tab.staffOnly
+              ))
               .map((tab) => {
                 const isActive = subTab === tab.id;
                 return (
@@ -2489,6 +2595,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 staffOnly: false,
               },
               { id: 'teacher_proxy', icon: UserCheck, labelTh: 'ลงแทน', labelEn: 'Proxy', staffOnly: true },
+              { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
               { id: 'period_checkin', icon: Users, labelTh: 'รายคาบ', labelEn: 'Periods', staffOnly: false },
               {
                 id: 'corrections',
@@ -2499,7 +2606,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 staffOnly: false,
               },
             ]
-              .filter((tab) => isStaffUser || !tab.staffOnly)
+              .filter((tab) => (
+                tab.id === 'daily_report'
+                  ? canViewDailyReport
+                  : isStaffUser || !tab.staffOnly
+              ))
               .map((tab) => {
                 const isActive = subTab === tab.id;
                 return (
@@ -2766,6 +2877,21 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         />
       )}
 
+      {subTab === 'daily_report' && canViewDailyReport && (
+        <DailyAttendanceReportTab
+          date={dailyReportDate}
+          setDate={setDailyReportDate}
+          gateRows={gateDailyReportRows}
+          periodSessions={dailyPeriodReportSessions}
+          lang={lang}
+          holidayLabel={dailyReportHoliday?.isSchoolDayOff
+            ? (lang === 'th' ? dailyReportHoliday.nameTh : dailyReportHoliday.nameEn)
+            : null}
+          onEditGateRecord={handleOpenDailyGateEdit}
+          onEditPeriodRecord={handleOpenDailyPeriodEdit}
+        />
+      )}
+
       {/* TAB 2: ONLINE LEAVE REQUEST */}
       {subTab === 'leave_request' && (
         <LeaveRequestTab
@@ -2876,6 +3002,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           proxySavedNotification={proxySavedNotification}
           proxyStudentIdInput={proxyStudentIdInput}
           setProxyStudentIdInput={setProxyStudentIdInput}
+          proxyDate={proxyDate}
+          setProxyDate={setProxyDate}
+          proxyTime={proxyTime}
+          setProxyTime={setProxyTime}
           trimmedProxyStudentId={trimmedProxyStudentId}
           matchedProxyStudent={matchedProxyStudent}
           proxyCheckType={proxyCheckType}
