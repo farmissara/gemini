@@ -538,11 +538,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         continueWithAuthenticatedContext(restored);
         return;
       }
-      setEmail(passkey.email);
+      setEmail('');
       setNotice(
         lang === 'th'
-          ? `ยืนยัน ${passkey.deviceLabel} สำหรับ ${passkey.fullNameTh} สำเร็จ — กรอกรหัสผ่านเพื่อออกเซสชันใหม่`
-          : `Verified ${passkey.deviceLabel} for ${passkey.fullNameEn || passkey.email}. Enter your password to issue a fresh session.`
+          ? `ยืนยัน ${passkey.deviceLabel} สำเร็จ — กรอกอีเมลบัญชีและรหัสผ่านเพื่อออกเซสชันใหม่`
+          : `Verified ${passkey.deviceLabel}. Enter your account email and password to issue a fresh session.`
       );
       window.setTimeout(() => passwordInputRef.current?.focus(), 100);
     } catch (bioErr) {
@@ -1492,7 +1492,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                                 <input
                                   ref={emailInputRef}
                                   type={allowStudentIdInput ? 'text' : 'email'}
-                                  autoComplete={allowStudentIdInput ? 'username' : 'email'}
+                                  autoComplete="off"
                                   required
                                   value={email}
                                   onChange={(e) => setEmail(e.target.value)}
