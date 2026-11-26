@@ -29,7 +29,7 @@ export async function loadSupabasePatchMigrationSql(): Promise<string> {
     import('../../supabase/migrations/20261124000001_school_wide_timetable_activity_read.sql?raw'),
     import('../../supabase/migrations/20261124000002_dual_role_teacher_school_admin.sql?raw'),
     import('../../supabase/migrations/20261124000003_session_operational_role.sql?raw'),
-    import('../../supabase/migrations/20261126000001_teacher_school_timetable_read.sql?raw'),
+    import('../../supabase/migrations/20261126000002_teacher_school_timetable_read.sql?raw'),
   ]);
 
   return [
