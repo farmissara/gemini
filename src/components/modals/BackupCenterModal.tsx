@@ -458,7 +458,7 @@ export const BackupCenterModal: React.FC<Props> = ({
       a.href = url;
       a.download = driveFile.name;
       a.click();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       emitAppToast({
         tone: 'error',
@@ -507,10 +507,13 @@ export const BackupCenterModal: React.FC<Props> = ({
       setReport(result);
       setPendingRestoreCheck(null);
       setPendingRestoreFile(null);
+      const partial = result.ok === false || result.partial === true;
       emitAppToast({
-        tone: 'success',
-        title: 'กู้คืนข้อมูลสำเร็จ',
-        message: 'นำเข้าข้อมูลจากไฟล์สำรองเรียบร้อยแล้ว',
+        tone: partial ? 'warning' : 'success',
+        title: partial ? 'กู้คืนข้อมูลได้บางส่วน' : 'กู้คืนข้อมูลสำเร็จ',
+        message: partial
+          ? result.error || 'นำเข้าข้อมูลได้บางส่วน โปรดตรวจรายงานก่อนดำเนินการต่อ'
+          : 'นำเข้าข้อมูลจากไฟล์สำรองเรียบร้อยแล้ว',
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'นำเข้าไม่สำเร็จ';

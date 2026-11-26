@@ -56,6 +56,10 @@ const SNAPSHOT_CHECK_INTERVAL_MS = 60 * 1000;
 const DRIVE_FILES_API = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files';
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
+const BACKUP_TABLE_MIGRATIONS: Record<string, string> = {
+  school_campus_records: '20261129000001_campus_moe_persistence.sql',
+  school_moe_qualitative: '20261129000001_campus_moe_persistence.sql',
+};
 
 let lastServerSnapshotDate: string | null = null;
 let lastServerSnapshotAt: string | null = null;
@@ -64,6 +68,17 @@ let lastServerSnapshotFiles = 0;
 let cachedDriveToken: { value: string; expiresAt: number } | null = null;
 let driveTokenRequest: Promise<string> | null = null;
 let cachedDriveFolderId: string | null = null;
+
+export function formatBackupSchemaError(table: string, error: { code?: string; message: string }): string {
+  const missingTable = error.code === 'PGRST205' ||
+    error.message.includes(`Could not find the table 'public.${table}' in the schema cache`);
+  if (!missingTable) return `${table}: ${error.message}`;
+  const migration = BACKUP_TABLE_MIGRATIONS[table];
+  if (migration) {
+    return `ฐานข้อมูลยังไม่มีตาราง ${table} กรุณารัน supabase/migrations/${migration} ใน Supabase SQL Editor แล้วรัน NOTIFY pgrst, 'reload schema'; ก่อนลองใหม่`;
+  }
+  return `ฐานข้อมูลยังไม่มีตาราง ${table} กรุณาตรวจสอบและรัน migration ของ Supabase ให้ครบ แล้วรัน NOTIFY pgrst, 'reload schema'; ก่อนสำรองหรือกู้คืนข้อมูล`;
+}
 
 function getClients(env: EnvReader, token: string) {
   const url = env('SUPABASE_URL') || env('VITE_SUPABASE_URL');
@@ -154,7 +169,7 @@ async function selectAll(client: SupabaseClient, table: string, configure: (quer
     let query: any = client.from(table).select('*').range(offset, offset + PAGE_SIZE - 1);
     query = configure(query);
     const { data, error } = await query;
-    if (error) throw new Error(`${table}: ${error.message}`);
+    if (error) throw new Error(formatBackupSchemaError(table, error));
     const rows = (data || []) as any[];
     all.push(...rows);
     if (rows.length < PAGE_SIZE) return all;
@@ -166,7 +181,7 @@ async function getSchoolProfileIds(client: SupabaseClient, schoolId: string) {
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await client.from('user_profiles').select('id')
       .eq('school_id', schoolId).range(offset, offset + PAGE_SIZE - 1);
-    if (error) throw new Error(`user_profiles: ${error.message}`);
+    if (error) throw new Error(formatBackupSchemaError('user_profiles', error));
     const rows = data || [];
     ids.push(...rows.map((row) => String(row.id)));
     if (rows.length < PAGE_SIZE) return ids;
@@ -414,6 +429,35 @@ async function validateRestore(backup: any, access: Access, res: Response) {
         res.status(403).json({ error: 'SCHOOL_MISMATCH', message: 'ข้อมูลการแจ้งเตือนมีบัญชีนอกโรงเรียนปะปนอยู่' });
         return null;
       }
+    }
+  }
+  const tablesToCheck = (Object.entries(backup.tables) as Array<[string, any[]]>)
+    .filter(([, rows]) => rows.length > 0);
+  for (let index = 0; index < tablesToCheck.length; index += 8) {
+    const checks = await Promise.all(tablesToCheck.slice(index, index + 8).map(async ([table]) => {
+      const { error } = await access.admin.from(table).select('*').limit(0);
+      return error ? { table, error } : null;
+    }));
+    const failedCheck = checks.find((check) => check !== null);
+    if (failedCheck) {
+      res.status(409).json({
+        error: 'RESTORE_SCHEMA_MISMATCH',
+        message: formatBackupSchemaError(failedCheck.table, failedCheck.error),
+      });
+      return null;
+    }
+  }
+  const bucketsToCheck = Array.from(new Set<string>(
+    (backup.storageFiles || []).map((file: { bucket: string }) => file.bucket)
+  ));
+  for (const bucket of bucketsToCheck) {
+    const { error } = await access.admin.storage.getBucket(bucket);
+    if (error) {
+      res.status(409).json({
+        error: 'RESTORE_STORAGE_MISMATCH',
+        message: `Storage bucket ${bucket} ไม่พร้อมใช้งาน กรุณาติดตั้ง migration ที่สร้าง bucket นี้ก่อนกู้คืน (${error.message})`,
+      });
+      return null;
     }
   }
   return { type: scope.type as 'school' | 'system', schoolId: allowedSchoolId };
