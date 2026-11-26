@@ -23,6 +23,7 @@ import type {
 } from '../../types';
 import { getBangkokDateInputValue } from '../../lib/timetableCalendar';
 import { PagedList } from '../../components/PagedList';
+import { TableActionMenu } from '../../components/common/TableActionMenu';
 
 interface MobileHomeworkTabProps {
   activeSchool: School;
@@ -514,23 +515,47 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
                         {sub.studentRoom} {sub.submittedAt ? `· ส่ง ${sub.submittedAt.slice(0, 10)}` : ''}
                       </p>
                     </div>
-                    <span
-                      className={`font-bold shrink-0 tabular-nums ${
-                        sub.status === 'graded'
-                          ? 'text-emerald-700 dark:text-emerald-400'
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span
+                        className={`font-bold tabular-nums ${
+                          sub.status === 'graded'
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : sub.status === 'late'
+                              ? 'text-rose-700 dark:text-rose-400'
+                              : 'text-amber-700 dark:text-amber-400'
+                        }`}
+                      >
+                        {sub.status === 'graded'
+                          ? `${sub.score ?? 0}/${sub.maxScore} คะแนน`
                           : sub.status === 'late'
-                            ? 'text-amber-700 dark:text-amber-400'
-                            : 'text-sky-700 dark:text-sky-400'
-                      }`}
-                    >
-                      {sub.status === 'graded'
-                        ? `${sub.score ?? 0}/${sub.maxScore} คะแนน`
-                        : sub.status === 'late'
-                          ? 'ส่งช้า'
-                          : sub.status === 'pending'
-                            ? 'ยังไม่ส่ง'
-                            : 'รอตรวจ'}
-                    </span>
+                            ? 'ส่งช้า'
+                            : sub.status === 'pending'
+                              ? 'ยังไม่ส่ง'
+                              : 'รอตรวจ'}
+                      </span>
+                      {canManageHomework &&
+                        onGradeHomeworkSubmission &&
+                        sub.status !== 'pending' &&
+                        !isGrading && (
+                          <TableActionMenu
+                            ariaLabel={`เมนูจัดการงานส่งของ ${sub.studentName}`}
+                            triggerClassName="min-h-10 min-w-10 justify-center shrink-0"
+                            items={[
+                              {
+                                id: 'grade-submission',
+                                label: sub.status === 'graded' ? 'แก้ไขคะแนน / ความเห็น' : 'ตรวจและให้คะแนน',
+                                icon: <FileCheck2 className="w-4 h-4" />,
+                                onClick: () => {
+                                  setGradingSubId(sub.id);
+                                  setGradeScoreInput(String(sub.score ?? sub.maxScore));
+                                  setGradeFeedbackInput(sub.teacherFeedback || '');
+                                },
+                                variant: 'primary',
+                              },
+                            ]}
+                          />
+                        )}
+                    </div>
                   </div>
 
                   {sub.textSubmission && (
@@ -601,19 +626,7 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGradingSubId(sub.id);
-                          setGradeScoreInput(String(sub.score ?? sub.maxScore));
-                          setGradeFeedbackInput(sub.teacherFeedback || '');
-                        }}
-                        className="w-full min-h-[40px] rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold text-xs cursor-pointer"
-                      >
-                        {sub.status === 'graded' ? 'แก้ไขคะแนน / ความเห็น' : 'ตรวจและให้คะแนน'}
-                      </button>
-                    )
+                    ) : null
                   )}
                 </div>
               );
@@ -649,13 +662,7 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
             return (
               <div
                 key={asg.id}
-                className={`p-4 rounded-2xl border ${
-                  stuSub?.status === 'graded'
-                    ? 'bg-emerald-50/70 dark:bg-emerald-950/35 border-emerald-300 dark:border-emerald-800'
-                    : isDone
-                      ? 'bg-sky-50/60 dark:bg-sky-950/30 border-sky-300 dark:border-sky-800'
-                      : 'bg-[var(--color-card)] border-[var(--color-border)]'
-                } space-y-2.5 text-xs`}
+                className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5 text-xs"
               >
                 <div className="flex items-center justify-between gap-2 text-[11px]">
                   <span className="font-semibold text-[var(--color-text-muted)] truncate">
@@ -670,9 +677,11 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
                       className={`font-bold shrink-0 ${
                         stuSub?.status === 'graded'
                           ? 'text-emerald-700 dark:text-emerald-400'
-                          : isDone
-                            ? 'text-sky-700 dark:text-sky-400'
-                            : 'text-amber-700 dark:text-amber-400'
+                          : stuSub?.status === 'late'
+                            ? 'text-rose-700 dark:text-rose-400'
+                            : isDone
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-amber-700 dark:text-amber-400'
                       }`}
                     >
                       {stuSub?.status === 'graded'

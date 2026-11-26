@@ -559,7 +559,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                             <div className="space-y-2 pt-1.5 border-t border-[var(--color-border)]">
                               <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                                 {leavingTeacher ? (
-                                  <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
+                                  <span className="font-bold text-indigo-700 dark:text-indigo-300">
                                     ครูลา
                                     {leavingTeacher.substituteTeacherName
                                       ? ` · แทน ${leavingTeacher.substituteTeacherName}`
@@ -567,32 +567,32 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                                   </span>
                                 ) : selectedTimetableDay === todayDayKey && primaryTeacher ? (
                                   primaryTeacher.status === 'checked_in' ? (
-                                    <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold tabular-nums">
+                                    <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
                                       ครูเข้า รร.{primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}
                                     </span>
                                   ) : primaryTeacher.status === 'late' ? (
-                                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold">
+                                    <span className="font-bold text-rose-700 dark:text-rose-300">
                                       ครูสาย รร.
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-semibold">
+                                    <span className="font-semibold text-amber-700 dark:text-amber-300">
                                       ครูยังไม่เช็คอิน รร.
                                     </span>
                                   )
                                 ) : null}
                                 {slotSummary.periodCheckedTotal > 0 ? (
                                   <>
-                                    <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 font-bold tabular-nums">
+                                    <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
                                       มา {slotSummary.periodPresent + slotSummary.periodLate}/
                                       {slotSummary.expectedTotal}
                                     </span>
                                     {slotSummary.periodExcused > 0 && (
-                                      <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 font-bold tabular-nums">
+                                      <span className="font-bold text-indigo-700 dark:text-indigo-300 tabular-nums">
                                         ลา {slotSummary.periodExcused}
                                       </span>
                                     )}
                                     {slotSummary.periodAbsent > 0 && (
-                                      <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold tabular-nums">
+                                      <span className="font-bold text-rose-700 dark:text-rose-300 tabular-nums">
                                         ขาด {slotSummary.periodAbsent}
                                       </span>
                                     )}
@@ -600,14 +600,14 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                                 ) : (
                                   <>
                                     {slotSummary.studentLeaveCount > 0 && (
-                                      <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold tabular-nums">
+                                      <span className="font-bold text-amber-700 dark:text-amber-300 tabular-nums">
                                         นร.ลา {slotSummary.studentLeaveCount}
                                       </span>
                                     )}
                                     {selectedTimetableDay === todayDayKey &&
                                       slotSummary.hasAnyGateRecordsForDate &&
                                       slotSummary.expectedTotal > 0 && (
-                                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
+                                        <span className="font-semibold text-[var(--color-text-muted)] tabular-nums">
                                           เข้า รร. {slotSummary.gatePresentCount}/{slotSummary.expectedTotal}
                                         </span>
                                       )}
@@ -932,6 +932,35 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                   (mobileSelectedCalendarDate === todayBangkokStr &&
                     slotActivity.isTodayWeekday &&
                     !slotActivity.isHolidayOff));
+              const calendarActionItems: TableActionItem[] = [];
+              if (canShowMobileCalCheckin) {
+                calendarActionItems.push({
+                  id: 'period-checkin',
+                  label: calStatus.hasCheckIn && calStatus.hasCheckOut
+                    ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
+                    : nextCheckType === 'check_out'
+                      ? 'เช็คเอาท์คาบเรียน'
+                      : slotActivity.isActive
+                        ? 'เช็คอินเข้าคาบตอนนี้'
+                        : 'เช็คอินเข้าคาบเรียน',
+                  icon: nextCheckType === 'check_out'
+                    ? <LogOut className="w-4 h-4" />
+                    : <LogIn className="w-4 h-4" />,
+                  onClick: () =>
+                    openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, nextCheckType),
+                  variant: slotActivity.isActive ? 'danger' : 'primary',
+                });
+                if (!calStatus.hasCheckIn) {
+                  calendarActionItems.push({
+                    id: 'period-checkout',
+                    label: 'เช็คเอาท์',
+                    icon: <LogOut className="w-4 h-4" />,
+                    onClick: () =>
+                      openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, 'check_out'),
+                    dividerBefore: true,
+                  });
+                }
+              }
               return (
                 <div
                   key={slot.id}
@@ -948,7 +977,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                           คาบ {slot.periodNumber} · {slotActivity.startTime}–{slotActivity.endTime}
                         </span>
                         {slotActivity.isActive && (
-                          <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
+                          <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">
                             ถึงคาบเรียน
                             {slotActivity.remainingMinutes !== null
                               ? ` · เหลือ ${slotActivity.remainingMinutes} น.`
@@ -960,57 +989,21 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                         {slot.courseCode} · {slot.courseTitleTh}
                       </p>
                     </div>
-                    {(calStatus.hasCheckIn || calStatus.hasCheckOut) && (
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                        {calStatus.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
-                      </span>
-                    )}
-                  </div>
-                  {canShowMobileCalCheckin && (
-                    <div className="flex items-center gap-2 pt-1 border-t border-[var(--color-border)]">
-                      <button
-                        type="button"
-                        onClick={() => openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, nextCheckType)}
-                        className={`flex-1 min-h-[42px] rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
-                          slotActivity.isActive
-                            ? 'bg-rose-600 hover:bg-rose-700'
-                            : nextCheckType === 'check_out'
-                              ? 'bg-slate-800 hover:bg-slate-900'
-                              : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                        }`}
-                      >
-                        {nextCheckType === 'check_out' ? (
-                          <LogOut className="w-4 h-4" />
-                        ) : (
-                          <LogIn className="w-4 h-4" />
-                        )}
-                        <span>
-                          {calStatus.hasCheckIn && calStatus.hasCheckOut
-                            ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
-                            : nextCheckType === 'check_out'
-                              ? 'เช็คเอาท์คาบเรียน'
-                              : slotActivity.isActive
-                                ? 'เช็คอินเข้าคาบตอนนี้'
-                                : 'เช็คอินเข้าคาบเรียน'}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {(calStatus.hasCheckIn || calStatus.hasCheckOut) && (
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          {calStatus.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
                         </span>
-                      </button>
-                      {!calStatus.hasCheckIn && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openPeriodCheckinFromSlot(slot, mobileSelectedCalendarDate, 'check_out')
-                          }
-                          className={`min-h-[42px] px-3 rounded-xl border text-xs font-bold cursor-pointer ${
-                            slotActivity.isActive
-                              ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
-                              : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
-                          }`}
-                        >
-                          เช็คเอาท์
-                        </button>
+                      )}
+                      {calendarActionItems.length > 0 && (
+                        <TableActionMenu
+                          ariaLabel={`เมนูดำเนินการคาบที่ ${slot.periodNumber}`}
+                          triggerClassName="min-h-10 min-w-10 justify-center shrink-0"
+                          items={calendarActionItems}
+                        />
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
