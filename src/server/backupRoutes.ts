@@ -75,9 +75,9 @@ export function formatBackupSchemaError(table: string, error: { code?: string; m
   if (!missingTable) return `${table}: ${error.message}`;
   const migration = BACKUP_TABLE_MIGRATIONS[table];
   if (migration) {
-    return `ฐานข้อมูลยังไม่มีตาราง ${table} กรุณารัน supabase/migrations/${migration} ใน Supabase SQL Editor แล้วรัน NOTIFY pgrst, 'reload schema'; ก่อนลองใหม่`;
+    return `ฐานข้อมูลยังไม่มีตาราง ${table} กรุณาเปิดไฟล์ supabase/migrations/${migration} แล้วคัดลอก SQL ทั้งหมดไปวางใน Supabase Dashboard > SQL Editor ของโปรเจกต์ที่แอปเชื่อมต่อ จากนั้นกด Run (ไฟล์มีคำสั่ง reload schema อยู่แล้ว)`;
   }
-  return `ฐานข้อมูลยังไม่มีตาราง ${table} กรุณาตรวจสอบและรัน migration ของ Supabase ให้ครบ แล้วรัน NOTIFY pgrst, 'reload schema'; ก่อนสำรองหรือกู้คืนข้อมูล`;
+  return `ฐานข้อมูลยังไม่มีตาราง ${table} กรุณาเปิดไฟล์ migration ที่สร้างตารางนี้ แล้วคัดลอก SQL ทั้งหมดไปวางใน Supabase Dashboard > SQL Editor ของโปรเจกต์ที่แอปเชื่อมต่อ จากนั้นกด Run`;
 }
 
 function getClients(env: EnvReader, token: string) {

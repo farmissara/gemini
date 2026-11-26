@@ -46,7 +46,7 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 17. รัน `supabase/migrations/20261120_school_lms_lessons.sql` เพื่อบันทึกบทเรียน LMS และสถานะเรียนจบรายบท พร้อม RLS แยกโรงเรียน/นักเรียน
 18. รัน `supabase/migrations/20261120_school_lms_teacher_course_rls.sql` เพื่อจำกัดการเพิ่ม/แก้ไขบทเรียนของครูให้ทำได้เฉพาะรายวิชาที่ได้รับมอบหมาย (ผู้ดูแลยังจัดการได้ทุกวิชา)
 19. รัน `supabase/migrations/20261123000005_school_ai_key_vault_and_quotas.sql` เพื่อเปิดคลัง Gemini API key แบบเข้ารหัสแยกโรงเรียนและโควตาคำขอรายเดือน
-20. รัน `supabase/migrations/20261129000001_campus_moe_persistence.sql` เพื่อสร้างตารางข้อมูลวิทยาเขตและข้อมูลเชิงคุณภาพ MOE ซึ่งรวมอยู่ในไฟล์สำรอง จากนั้นรัน `NOTIFY pgrst, 'reload schema';` เพื่อโหลด schema cache ใหม่ หากยังไม่ได้ติดตั้งตารางเหล่านี้ การสำรอง/กู้คืนจะหยุดพร้อมแจ้ง migration ที่ต้องรัน
+20. เปิด `supabase/migrations/20261129000001_campus_moe_persistence.sql` คัดลอก SQL ทั้งหมดไปวางใน Supabase Dashboard → SQL Editor ของโปรเจกต์ที่แอปเชื่อมต่อ แล้วกด **Run** เพื่อสร้างตารางข้อมูลวิทยาเขตและข้อมูลเชิงคุณภาพ MOE ซึ่งรวมอยู่ในไฟล์สำรอง ไฟล์นี้มีคำสั่ง reload schema cache อยู่แล้ว; วันที่ในชื่อไฟล์เป็นเพียงชื่อ migration ไม่ต้องรอถึงวันนั้นเมื่อรันด้วยตนเอง
 
 หากต้องการเปิดใช้คิวอนุมัติการสมัครโรงเรียนในหน้า Super Admin ให้รัน `supabase/super_admin_registration_approval_migration.sql` เพิ่มใน SQL Editor ด้วย Migration นี้จำกัดสิทธิ์แก้ไขโปรไฟล์ไม่ให้ผู้ใช้เปลี่ยน role/สถานะของตนเอง และสร้าง RPC ที่ตรวจ role `super_admin` ฝั่งฐานข้อมูลก่อนอ่านหรืออนุมัติคำขอ
 

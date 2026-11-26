@@ -10,7 +10,8 @@ test('formats missing campus backup tables with the migration needed to restore 
 
   assert.ok(message.includes('school_campus_records'));
   assert.ok(message.includes('20261129000001_campus_moe_persistence.sql'));
-  assert.ok(message.includes('Supabase SQL Editor'));
+  assert.ok(message.includes('SQL Editor'));
+  assert.ok(message.includes('คัดลอก SQL ทั้งหมด'));
 });
 
 test('formats other missing backup tables as a migration prerequisite', () => {
@@ -20,7 +21,8 @@ test('formats other missing backup tables as a migration prerequisite', () => {
   });
 
   assert.ok(message.includes('school_questions'));
-  assert.ok(message.includes('migration ของ Supabase'));
+  assert.ok(message.includes('ไฟล์ migration'));
+  assert.ok(message.includes('SQL Editor'));
 });
 
 test('preserves the original error for failures that are not missing-table errors', () => {
