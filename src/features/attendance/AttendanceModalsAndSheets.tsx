@@ -1012,7 +1012,7 @@ export const AttendanceQuickActionBar: React.FC<AttendanceQuickActionBarProps> =
   return (
     <div
       className={
-        embeddedMobile
+        embeddedMobile && opensUp
           ? 'relative z-30 shrink-0 flex items-center justify-end border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-1.5 rounded-t-xl'
           : 'relative z-30 shrink-0 flex items-center justify-end'
       }
@@ -1020,12 +1020,12 @@ export const AttendanceQuickActionBar: React.FC<AttendanceQuickActionBarProps> =
       {fabMenuOpen && (
         <>
           <div
-            className="fixed inset-0 z-20"
+            className="fixed inset-0 z-30"
             onClick={() => setFabMenuOpen(false)}
             aria-hidden="true"
           />
           <div
-            className={`absolute right-0 z-30 flex flex-col items-end gap-1.5 animate-in fade-in duration-150 ${
+            className={`absolute right-0 z-40 flex flex-col items-end gap-1.5 animate-in fade-in duration-150 ${
               opensUp ? 'bottom-full mb-2 slide-in-from-bottom-2' : 'top-full mt-2 slide-in-from-top-2'
             }`}
           >

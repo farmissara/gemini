@@ -201,7 +201,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
   return (
     <div
       data-guide-id="mobile-checkin-body"
-      className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5 pb-4' : 'space-y-4'}`}
+      className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5 pb-6' : 'space-y-4'}`}
     >
       <div className="saas-card">
         <div className="saas-card-header">
@@ -898,6 +898,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                   <PagedList
                     items={filteredIds}
                     pageSize={8}
+                    navClassName="px-3 pb-3 pt-2.5"
                     emptyState={<p className="type-meta text-center py-4">ไม่พบรายชื่อนักเรียนตามตัวกรอง</p>}
                     renderItem={(stuId) => {
                       const st = students.find((s) => s.id === stuId);

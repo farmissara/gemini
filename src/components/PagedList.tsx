@@ -8,6 +8,7 @@ interface PagedListProps<T> {
   previousLabel?: string;
   nextLabel?: string;
   paginationLabel?: string;
+  navClassName?: string;
 }
 
 export function PagedList<T>({
@@ -17,7 +18,8 @@ export function PagedList<T>({
   emptyState,
   previousLabel = 'ก่อนหน้า',
   nextLabel = 'ถัดไป',
-  paginationLabel = 'Pagination'
+  paginationLabel = 'Pagination',
+  navClassName = ''
 }: PagedListProps<T>) {
   const [page, setPage] = useState(0);
   const safePageSize = Math.max(1, pageSize);
@@ -39,7 +41,7 @@ export function PagedList<T>({
     <div className="space-y-2.5">
       {pageItems.map((item, index) => renderItem(item, startIndex + index))}
       {pageCount > 1 && (
-        <nav aria-label={paginationLabel} className="flex items-center justify-between gap-3 pt-1">
+        <nav aria-label={paginationLabel} className={`flex items-center justify-between gap-3 pt-1 ${navClassName}`.trim()}>
           <button
             type="button"
             onClick={() => setPage((currentPage) => Math.max(0, currentPage - 1))}

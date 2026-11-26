@@ -2791,6 +2791,28 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </button>
           )}
           </div>
+
+          {!hideFloatingToolbar && (
+            <AttendanceQuickActionBar
+              lang={lang}
+              direction="down"
+              embeddedMobile
+              isStaffUser={isStaffUser}
+              subTab={subTab}
+              setSubTab={setSubTab}
+              setLeaveFormStep={setLeaveFormStep}
+              fabMenuOpen={fabMenuOpen}
+              setFabMenuOpen={setFabMenuOpen}
+              runWithBiometricGuard={runWithBiometricGuard}
+              setShowRapidScanner={setShowRapidScanner}
+              setShowQuickRosterSheet={setShowQuickRosterSheet}
+              handlePrimaryFabCheckin={handlePrimaryFabCheckin}
+              isSavingAttendance={isSavingAttendance}
+              capturedPhotoUrl={capturedPhotoUrl}
+              matchedProxyStudent={matchedProxyStudent}
+              primaryFabLabel={primaryFabLabel}
+            />
+          )}
         </div>
       )}
 
@@ -3224,29 +3246,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             embeddedMobile={embeddedMobile}
           />
         </div>
-      )}
-
-      {/* DOCKED NON-OVERLAPPING QUICK ACTION BAR (Embedded Mobile Only) */}
-      {embeddedMobile && !hideFloatingToolbar && (
-        <AttendanceQuickActionBar
-          lang={lang}
-          direction="up"
-          embeddedMobile
-          isStaffUser={isStaffUser}
-          subTab={subTab}
-          setSubTab={setSubTab}
-          setLeaveFormStep={setLeaveFormStep}
-          fabMenuOpen={fabMenuOpen}
-          setFabMenuOpen={setFabMenuOpen}
-          runWithBiometricGuard={runWithBiometricGuard}
-          setShowRapidScanner={setShowRapidScanner}
-          setShowQuickRosterSheet={setShowQuickRosterSheet}
-          handlePrimaryFabCheckin={handlePrimaryFabCheckin}
-          isSavingAttendance={isSavingAttendance}
-          capturedPhotoUrl={capturedPhotoUrl}
-          matchedProxyStudent={matchedProxyStudent}
-          primaryFabLabel={primaryFabLabel}
-        />
       )}
 
       {/* MODALS & SHEETS */}
