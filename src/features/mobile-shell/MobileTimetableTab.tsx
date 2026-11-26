@@ -17,6 +17,7 @@ import {
   UserCheck,
   X,
 } from 'lucide-react';
+import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
 import type {
   AppLanguage,
   AttendanceRecord,
@@ -444,6 +445,46 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                       (selectedTimetableDay === todayDayKey &&
                         slotActivity.isTodayWeekday &&
                         !slotActivity.isHolidayOff));
+                  const canOpenPeriodRoster =
+                    currentRole === 'teacher' ||
+                    currentRole === 'admin' ||
+                    currentRole === 'super_admin';
+                  const dayActionItems: TableActionItem[] = [];
+                  if (canOpenPeriodRoster) {
+                    dayActionItems.push({
+                      id: 'period-roster',
+                      label: 'รายชื่อ / เช็กชื่อนักเรียน',
+                      icon: <UserCheck className="w-4 h-4" />,
+                      onClick: () => onOpenPeriodRoster({ slot, date: todayBangkokStr }),
+                      variant: 'success',
+                    });
+                  }
+                  if (canShowMobileDayCheckin) {
+                    dayActionItems.push({
+                      id: 'period-checkin',
+                      label: status.hasCheckIn && status.hasCheckOut
+                        ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
+                        : nextCheckType === 'check_out'
+                          ? 'เช็คเอาท์คาบเรียน'
+                          : slotActivity.isActive
+                            ? 'เช็คอินเข้าคาบตอนนี้'
+                            : 'เช็คอินเข้าคาบเรียน',
+                      icon: nextCheckType === 'check_out'
+                        ? <LogOut className="w-4 h-4" />
+                        : <LogIn className="w-4 h-4" />,
+                      onClick: () => openPeriodCheckinFromSlot(slot, todayBangkokStr, nextCheckType),
+                      variant: 'primary',
+                      dividerBefore: canOpenPeriodRoster,
+                    });
+                    if (!status.hasCheckIn) {
+                      dayActionItems.push({
+                        id: 'period-checkout',
+                        label: 'เช็คเอาท์',
+                        icon: <LogOut className="w-4 h-4" />,
+                        onClick: () => openPeriodCheckinFromSlot(slot, todayBangkokStr, 'check_out'),
+                      });
+                    }
+                  }
                   return (
                     <div
                       key={slot.id}
@@ -482,14 +523,23 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                             {slot.teacherName ? ` · ${slot.teacherName}` : ''}
                           </p>
                         </div>
-                        {(status.hasCheckIn || status.hasCheckOut) && slot.dayOfWeek === todayDayKey && (
-                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                            {status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {(status.hasCheckIn || status.hasCheckOut) && slot.dayOfWeek === todayDayKey && (
+                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                              {status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
+                            </span>
+                          )}
+                          {dayActionItems.length > 0 && (
+                            <TableActionMenu
+                              ariaLabel={`เมนูดำเนินการคาบที่ ${slot.periodNumber}`}
+                              triggerClassName="min-h-10 min-w-10 justify-center shrink-0"
+                              items={dayActionItems}
+                            />
+                          )}
+                        </div>
                       </div>
 
-                      {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') &&
+                      {canOpenPeriodRoster &&
                         (() => {
                           const slotSummary = getSlotAttendanceAndLeaveSummary({
                             slot,
@@ -564,62 +614,10 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                                   </>
                                 )}
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => onOpenPeriodRoster({ slot, date: todayBangkokStr })}
-                                className="w-full min-h-[40px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-xs"
-                              >
-                                <UserCheck className="w-4 h-4 shrink-0" />
-                                <span>รายชื่อ / เช็กชื่อนักเรียน</span>
-                              </button>
                             </div>
                           );
                         })()}
 
-                      {canShowMobileDayCheckin && (
-                        <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
-                          <button
-                            type="button"
-                            onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, nextCheckType)}
-                            className={`flex-1 min-h-[44px] px-3 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm ${
-                              slotActivity.isActive
-                                ? 'bg-rose-600 hover:bg-rose-700'
-                                : nextCheckType === 'check_out'
-                                  ? 'bg-slate-800 hover:bg-slate-900'
-                                  : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                            }`}
-                          >
-                            {nextCheckType === 'check_out' ? (
-                              <LogOut className="w-4 h-4" />
-                            ) : (
-                              <LogIn className="w-4 h-4" />
-                            )}
-                            <span>
-                              {status.hasCheckIn && status.hasCheckOut
-                                ? 'เช็คอิน/เอาท์แล้ว · อัปเดต'
-                                : nextCheckType === 'check_out'
-                                  ? 'เช็คเอาท์คาบเรียน'
-                                  : slotActivity.isActive
-                                    ? 'เช็คอินเข้าคาบตอนนี้'
-                                    : 'เช็คอินเข้าคาบเรียน'}
-                            </span>
-                          </button>
-                          {!status.hasCheckIn && (
-                            <button
-                              type="button"
-                              onClick={() => openPeriodCheckinFromSlot(slot, todayBangkokStr, 'check_out')}
-                              className={`min-h-[44px] px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition ${
-                                slotActivity.isActive
-                                  ? 'border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-200'
-                                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)]'
-                              }`}
-                            >
-                              <LogOut className="w-4 h-4" />
-                              <span>เช็คเอาท์</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}

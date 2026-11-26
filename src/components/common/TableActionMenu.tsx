@@ -15,6 +15,7 @@ export interface TableActionItem {
 interface TableActionMenuProps {
   items: TableActionItem[];
   triggerLabel?: string;
+  triggerClassName?: string;
   ariaLabel?: string;
   align?: 'right' | 'left';
 }
@@ -22,6 +23,7 @@ interface TableActionMenuProps {
 export const TableActionMenu: React.FC<TableActionMenuProps> = ({
   items,
   triggerLabel,
+  triggerClassName,
   ariaLabel = 'จัดการรายการ',
   align = 'right',
 }) => {
@@ -104,7 +106,7 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
           e.stopPropagation();
           setIsOpen((prev) => !prev);
         }}
-        className={`inline-flex items-center gap-1 rounded-lg border transition cursor-pointer whitespace-nowrap ${
+        className={`${triggerClassName || ''} inline-flex items-center gap-1 rounded-lg border transition cursor-pointer whitespace-nowrap ${
           triggerLabel ? 'px-2.5 py-1 text-xs font-semibold' : 'p-1.5'
         } ${
           isOpen
