@@ -24,7 +24,10 @@ import { loadSavedPeriodQrSessions, validatePeriodQrTokenState } from '../lib/pe
 import {
   filterLeaveRequestsForUser,
   filterPeriodAttendanceForUser,
+  filterPeriodAttendanceForCourses,
   getAllowedStudentScope,
+  getCourseRosterStudentIds,
+  getTeacherHomeroomStudents,
   isRestrictedAttendanceViewer,
   resolveCurrentUserAttendanceProfile,
   resolveOwnStudent,
@@ -49,7 +52,7 @@ import { saveStudentSelfAttendance } from '../lib/supabase';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
+import { buildCourseTeacherOptions, courseMatchesTeacherFilter, userMatchesCourse } from '../lib/courseTeacherFilter';
 import {
   buildPrimaryGateFromSchool,
   calculateHaversineDistanceMeters,
@@ -156,6 +159,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const ownStudent = resolveOwnStudent(currentUser, students);
   const ownTeacher = resolveOwnTeacher(currentUser, teachers);
   const scopedStudents = isRestrictedViewer ? studentScope.allowedStudents : students;
+  const teacherHomeroomStudents = useMemo(
+    () => getTeacherHomeroomStudents(currentUser, teachers, students),
+    [currentUser, teachers, students]
+  );
+  const gateRosterStudents = effectiveRole === 'teacher' ? teacherHomeroomStudents : scopedStudents;
+  const attendanceStudentScope = effectiveRole === 'teacher' ? gateRosterStudents : scopedStudents;
   const scopedLeaveRequests = filterLeaveRequestsForUser(leaveRequests, currentUser, students);
   const scopedPeriodAttendance = filterPeriodAttendanceForUser(periodAttendance, currentUser, students);
 
@@ -212,7 +221,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     payloadText: string;
   } | null>(null);
   const [bindTargetType, setBindTargetType] = useState<'student' | 'teacher'>('student');
-  const [bindTargetId, setBindTargetId] = useState<string>(students[0]?.id || teachers[0]?.id || '');
+  const [bindTargetId, setBindTargetId] = useState<string>(attendanceStudentScope[0]?.id || teachers[0]?.id || '');
   const [nfcRecentLogs, setNfcRecentLogs] = useState<NfcRecentLogEntry[]>([]);
   const nfcAbortRef = useRef<AbortController | null>(null);
   const nfcLastTapRef = useRef<{ key: string; at: number }>({ key: '', at: 0 });
@@ -223,15 +232,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   useEffect(() => {
     if (bindTargetType === 'student') {
-      if (!students.some((s) => s.id === bindTargetId)) {
-        setBindTargetId(students[0]?.id || '');
+      if (!attendanceStudentScope.some((s) => s.id === bindTargetId)) {
+        setBindTargetId(attendanceStudentScope[0]?.id || '');
       }
     } else {
       if (!teachers.some((t) => t.id === bindTargetId)) {
         setBindTargetId(teachers[0]?.id || '');
       }
     }
-  }, [bindTargetType, bindTargetId, students, teachers]);
+  }, [bindTargetType, bindTargetId, attendanceStudentScope, teachers]);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -248,7 +257,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       : 'student'
   );
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
-    ownStudent?.id || scopedStudents[0]?.id || (isRestrictedViewer ? '' : students[0]?.id || '')
+    ownStudent?.id || attendanceStudentScope[0]?.id || ''
   );
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(
     ownTeacher?.id || teachers[0]?.id || ''
@@ -267,8 +276,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     } else if (currentUser?.role === 'teacher') {
       setActiveUserType('teacher');
       if (ownTeacher) setSelectedTeacherId(ownTeacher.id);
+      if (!attendanceStudentScope.some((student) => student.id === selectedStudentId)) {
+        setSelectedStudentId(attendanceStudentScope[0]?.id || '');
+      }
     }
-  }, [isRestrictedViewer, currentUser?.role, ownStudent, ownTeacher, scopedStudents, selectedStudentId]);
+  }, [isRestrictedViewer, currentUser?.role, ownStudent, ownTeacher, attendanceStudentScope, selectedStudentId]);
 
   const normalizedGates = useMemo<CampusGateGeofence[]>(() => {
     const cleaned = sanitizeSchoolCampusGates(campusGates, _school?.id);
@@ -346,7 +358,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [proxyCheckType, setProxyCheckType] = useState<AttendanceCheckType>('check_in');
   const [proxySingleStatus, setProxySingleStatus] = useState<AttendanceStatus>('present');
   const [proxyShowRosterHint, setProxyShowRosterHint] = useState<boolean>(false);
-  const [proxyGradeFilter, setProxyGradeFilter] = useState<string>('all');
+  const [proxyRoomFilter, setProxyRoomFilter] = useState<string>('all');
+  const [proxySearch, setProxySearch] = useState('');
   const [proxySavedNotification, setProxySavedNotification] = useState<string | null>(null);
 
   const fallbackCourse: Course = {
@@ -374,21 +387,31 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   );
   const [periodTeacherFilter, setPeriodTeacherFilter] = useState<string>('all');
   const periodFilteredCourses = useMemo(() => {
+    if (effectiveRole === 'teacher') {
+      return courses.filter((course) => userMatchesCourse(currentUser, ownTeacher, course));
+    }
     const base = courses.length > 0 ? courses : [fallbackCourse];
     const filtered = base.filter((c) =>
       courseMatchesTeacherFilter(c, periodTeacherFilter, courseTeacherOptions)
     );
     return filtered.length > 0 ? filtered : base;
-  }, [courses, fallbackCourse, periodTeacherFilter, courseTeacherOptions]);
+  }, [courses, fallbackCourse, periodTeacherFilter, courseTeacherOptions, effectiveRole, currentUser, ownTeacher]);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>(
     initialPeriodCourseId || courses[0]?.id || fallbackCourse.id
   );
   const selectedCourse: Course =
     periodFilteredCourses.find((c) => c.id === selectedCourseId) ||
-    courses.find((c) => c.id === selectedCourseId) ||
+    (effectiveRole === 'teacher' ? undefined : courses.find((c) => c.id === selectedCourseId)) ||
     periodFilteredCourses[0] ||
     fallbackCourse;
+  const visiblePeriodAttendance = useMemo(
+    () =>
+      effectiveRole === 'teacher'
+        ? filterPeriodAttendanceForCourses(periodAttendance, periodFilteredCourses, students)
+        : scopedPeriodAttendance,
+    [effectiveRole, periodAttendance, periodFilteredCourses, students, scopedPeriodAttendance]
+  );
   const [selectedPeriod, setSelectedPeriod] = useState<number>(initialPeriodNumber || 1);
   const [periodDate, setPeriodDate] = useState<string>(initialPeriodDate || getLocalDateString());
   const [periodStatuses, setPeriodStatuses] = useState<Record<string, 'present' | 'late' | 'absent' | 'excused'>>({});
@@ -422,6 +445,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [roomGpsNotice, setRoomGpsNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [periodRosterFilter, setPeriodRosterFilter] = useState<PeriodRosterFilter>('all');
   const [periodRosterSearch, setPeriodRosterSearch] = useState('');
+  const [periodRosterRoomFilter, setPeriodRosterRoomFilter] = useState('all');
   const [periodFlexConfig, setPeriodFlexConfig] = useState<PeriodFlexConfig>(() =>
     loadPeriodFlexConfig(activeSchoolId, selectedCourse.id)
   );
@@ -600,6 +624,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   ]);
 
   const periodStudentIds: string[] = useMemo(() => {
+    if (effectiveRole === 'teacher') {
+      if (!periodFilteredCourses.some((course) => course.id === selectedCourse.id)) return [];
+      return getCourseRosterStudentIds(selectedCourse, students);
+    }
     if (selectedCourse.enrolledStudentIds && selectedCourse.enrolledStudentIds.length > 0) {
       return selectedCourse.enrolledStudentIds;
     }
@@ -616,13 +644,20 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       if (gradeStudents.length > 0) return gradeStudents.map((s) => s.id);
     }
     return [];
-  }, [selectedCourse, students]);
+  }, [effectiveRole, periodFilteredCourses, selectedCourse, students]);
+
+  const quickRosterStudents = effectiveRole === 'teacher' ? gateRosterStudents : scopedStudents;
+
+  useEffect(() => {
+    setPeriodRosterRoomFilter('all');
+    setPeriodRosterSearch('');
+  }, [selectedCourseId, selectedPeriod, periodDate]);
 
   const isSelfCheckin = isRestrictedViewer || attendanceMode === 'self';
 
   const selectedStudent = isStudentOnly
     ? ownStudent || loggedInProfile.linkedStudent
-    : scopedStudents.find((s) => s.id === selectedStudentId) || scopedStudents[0] || students[0];
+    : attendanceStudentScope.find((s) => s.id === selectedStudentId) || attendanceStudentScope[0];
   const selectedTeacher =
     currentUser?.role === 'teacher'
       ? ownTeacher || loggedInProfile.linkedTeacher
@@ -1350,11 +1385,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   const trimmedProxyStudentId = proxyStudentIdInput.trim();
   const matchedProxyStudent = trimmedProxyStudentId
-    ? students.find((s) => (s.studentIdNumber || '').trim().toLowerCase() === trimmedProxyStudentId.toLowerCase())
+    ? gateRosterStudents.find((s) => (s.studentIdNumber || '').trim().toLowerCase() === trimmedProxyStudentId.toLowerCase())
     : undefined;
 
   const handleConfirmProxySingleCheckin = () => {
     if (!matchedProxyStudent) return;
+    if (!gateRosterStudents.some((student) => student.id === matchedProxyStudent.id)) return;
     const actionLabel = proxyCheckType === 'check_in' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก';
     onRecordAttendance(
       matchedProxyStudent.id,
@@ -1376,6 +1412,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     );
     setProxyStudentIdInput('');
     setTimeout(() => setProxySavedNotification(null), 5000);
+  };
+
+  const handlePrepareProxyStudentEdit = (student: Student, checkType: AttendanceCheckType) => {
+    if (!gateRosterStudents.some((allowedStudent) => allowedStudent.id === student.id)) return;
+    setProxyStudentIdInput(student.studentIdNumber);
+    setProxyCheckType(checkType);
+    setProxyShowRosterHint(false);
   };
 
   const expectedPeriodCode = `${selectedCourse.code || 'GEN-101'}-P${selectedPeriod}-${periodDate.replace(/-/g, '')}`;
@@ -1405,6 +1448,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     status: 'present' | 'late' | 'absent' | 'excused' = 'present',
     isNoPhoneProxy = false
   ) => {
+    if (!periodStudentIds.includes(student.id)) return;
     const currentPeriodInfo = periodsList.find((p) => p.period === selectedPeriod);
     const existing = periodAttendance.find(
       (p) =>
@@ -1759,7 +1803,16 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   };
 
   const filteredProxyStudents =
-    proxyGradeFilter === 'all' ? students : students.filter((s) => s.gradeLevel === proxyGradeFilter);
+    gateRosterStudents.filter((student) => {
+      if (proxyRoomFilter !== 'all' && `${student.gradeLevel} ${student.room}`.trim() !== proxyRoomFilter) return false;
+      const query = proxySearch.trim().toLowerCase();
+      if (!query) return true;
+      return (
+        `${student.firstNameTh} ${student.lastNameTh}`.toLowerCase().includes(query) ||
+        `${student.firstNameEn} ${student.lastNameEn}`.toLowerCase().includes(query) ||
+        student.studentIdNumber.toLowerCase().includes(query)
+      );
+    });
 
   const todayDateStr = getLocalDateString();
   const todayAttendanceByStudent = useMemo(() => {
@@ -1776,15 +1829,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   const rosterGradeOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const s of scopedStudents) {
+    for (const s of quickRosterStudents) {
       if (s.gradeLevel) set.add(s.gradeLevel);
     }
     return Array.from(set);
-  }, [scopedStudents]);
+  }, [quickRosterStudents]);
 
   const filteredRosterStudents = useMemo(() => {
     const q = rosterSheetQuery.trim().toLowerCase();
-    return scopedStudents.filter((s) => {
+    return quickRosterStudents.filter((s) => {
       if (rosterSheetGradeFilter !== 'all' && s.gradeLevel !== rosterSheetGradeFilter) return false;
       if (!q) return true;
       return (
@@ -1794,12 +1847,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         `${s.gradeLevel}/${s.room}`.toLowerCase().includes(q)
       );
     });
-  }, [scopedStudents, rosterSheetGradeFilter, rosterSheetQuery]);
+  }, [quickRosterStudents, rosterSheetGradeFilter, rosterSheetQuery]);
 
   const rosterTodayStats = useMemo(() => {
     let checkedIn = 0;
     let late = 0;
-    for (const s of scopedStudents) {
+    for (const s of quickRosterStudents) {
       const rec = todayAttendanceByStudent.get(s.id);
       if (rec?.status === 'present') checkedIn += 1;
       else if (rec?.status === 'late') late += 1;
@@ -1807,9 +1860,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     return {
       checkedIn,
       late,
-      pending: Math.max(0, scopedStudents.length - checkedIn - late),
+      pending: Math.max(0, quickRosterStudents.length - checkedIn - late),
     };
-  }, [scopedStudents, todayAttendanceByStudent]);
+  }, [quickRosterStudents, todayAttendanceByStudent]);
 
   const stopNfcScanning = () => {
     if (nfcAbortRef.current) {
@@ -1941,7 +1994,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       schoolId: activeSchoolId,
       rawInput: clean,
       payloadText,
-      students: isRestrictedViewer ? scopedStudents : students,
+      students: attendanceStudentScope,
       teachers: isRestrictedViewer ? (ownTeacher ? [ownTeacher] : []) : teachers,
     });
 
@@ -2001,7 +2054,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
 
     if (bindTargetType === 'student') {
-      const stu = students.find((s) => s.id === bindTargetId);
+      const stu = attendanceStudentScope.find((s) => s.id === bindTargetId);
       if (!stu) return;
       const updated = saveNfcBinding(activeSchoolId, {
         uid: unregisteredNfcTag.uid,
@@ -2098,6 +2151,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   };
 
   const handleQuickRosterCheckin = (st: Student, status: AttendanceStatus = 'present') => {
+    if (!quickRosterStudents.some((student) => student.id === st.id)) return;
     runWithBiometricGuard(() => {
       const statusLabel = status === 'present' ? 'มาเรียน' : status === 'late' ? 'มาสาย' : 'ลา';
       onRecordAttendance(
@@ -2128,6 +2182,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   };
 
   const handleSelectRosterStudentForCurrentTab = (st: Student) => {
+    if (!quickRosterStudents.some((student) => student.id === st.id)) return;
     if (subTab === 'teacher_proxy') {
       setProxyStudentIdInput(st.studentIdNumber);
       setShowQuickRosterSheet(false);
@@ -2778,7 +2833,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           isStaffUser={isStaffUser}
           isRestrictedViewer={isRestrictedViewer}
           ownStudent={ownStudent}
-          students={students}
+          students={effectiveRole === 'teacher' ? gateRosterStudents : students}
           teachers={teachers}
           isNfcScanning={isNfcScanning}
           webNfcAvailable={webNfcAvailable}
@@ -2815,7 +2870,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {subTab === 'teacher_proxy' && isStaffUser && (
         <TeacherProxyTab
           embeddedMobile={embeddedMobile}
-          students={students}
+          students={gateRosterStudents}
           proxyShowRosterHint={proxyShowRosterHint}
           setProxyShowRosterHint={setProxyShowRosterHint}
           proxySavedNotification={proxySavedNotification}
@@ -2830,8 +2885,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           runWithBiometricGuard={runWithBiometricGuard}
           handleConfirmProxySingleCheckin={handleConfirmProxySingleCheckin}
           filteredProxyStudents={filteredProxyStudents}
-          proxyGradeFilter={proxyGradeFilter}
-          setProxyGradeFilter={setProxyGradeFilter}
+          proxySearch={proxySearch}
+          setProxySearch={setProxySearch}
+          proxyRoomFilter={proxyRoomFilter}
+          setProxyRoomFilter={setProxyRoomFilter}
+          onEditStudent={handlePrepareProxyStudentEdit}
         />
       )}
 
@@ -2841,6 +2899,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           embeddedMobile={embeddedMobile}
           isRestrictedViewer={isRestrictedViewer}
           isStaffUser={isStaffUser}
+          isTeacher={effectiveRole === 'teacher'}
           students={students}
           courses={courses}
           fallbackCourse={fallbackCourse}
@@ -2878,7 +2937,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           handleCopyPeriodLink={handleCopyPeriodLink}
           periodQrCopied={periodQrCopied}
           periodAttendance={periodAttendance}
-          scopedPeriodAttendance={scopedPeriodAttendance}
+          scopedPeriodAttendance={visiblePeriodAttendance}
           selectedStudent={selectedStudent}
           periodCheckType={periodCheckType}
           setPeriodCheckType={setPeriodCheckType}
@@ -2897,6 +2956,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           setPeriodRosterFilter={setPeriodRosterFilter}
           periodRosterSearch={periodRosterSearch}
           setPeriodRosterSearch={setPeriodRosterSearch}
+          periodRosterRoomFilter={periodRosterRoomFilter}
+          setPeriodRosterRoomFilter={setPeriodRosterRoomFilter}
           periodStatuses={periodStatuses}
           handleTeacherProxyPeriodCheckin={handleTeacherProxyPeriodCheckin}
           periodFlexConfig={periodFlexConfig}
@@ -2952,9 +3013,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         isSchoolAdmin={isSchoolAdmin}
         isStaffUser={isStaffUser}
         isRestrictedViewer={isRestrictedViewer}
-        students={students}
+        students={effectiveRole === 'teacher' ? gateRosterStudents : students}
         teachers={teachers}
-        scopedStudents={scopedStudents}
+        scopedStudents={quickRosterStudents}
         subTab={subTab}
         setSubTab={setSubTab}
         setLeaveFormStep={setLeaveFormStep}

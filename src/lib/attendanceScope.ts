@@ -1,4 +1,5 @@
-import { AttendanceRecord, AuthUser, LeaveRequest, PeriodAttendanceRecord, Student, Teacher } from '../types';
+import { AttendanceRecord, AuthUser, Course, LeaveRequest, PeriodAttendanceRecord, Student, Teacher } from '../types';
+import { extractShortThaiGradePrefix, normalizeTimetableRoomKey } from './timetableRoomMatch';
 
 export function resolveOwnStudent(currentUser: AuthUser | null | undefined, students: Student[]): Student | undefined {
   if (!currentUser || students.length === 0) return undefined;
@@ -61,6 +62,69 @@ export function resolveOwnTeacher(currentUser: AuthUser | null | undefined, teac
   }
 
   return undefined;
+}
+
+function normalizeAssignedRoom(value: string): string {
+  return normalizeTimetableRoomKey(value.replace(/\s*\([^)]*\)\s*$/, '').trim());
+}
+
+function studentMatchesClassLabel(student: Student, classLabel: string): boolean {
+  const target = normalizeAssignedRoom(classLabel);
+  if (!target) return false;
+
+  const room = (student.room || '').trim();
+  const labels = [room];
+  if (room && student.gradeLevel) {
+    labels.push(`${student.gradeLevel}/${room}`);
+    const shortGrade = extractShortThaiGradePrefix(student.gradeLevel);
+    if (shortGrade) labels.push(`${shortGrade}/${room}`);
+  }
+
+  return labels.some((label) => normalizeAssignedRoom(label) === target);
+}
+
+export function getTeacherHomeroomStudents(
+  currentUser: AuthUser | null | undefined,
+  teachers: Teacher[],
+  students: Student[]
+): Student[] {
+  if (currentUser?.role !== 'teacher') return students;
+
+  const teacher = resolveOwnTeacher(currentUser, teachers);
+  const classLabels = teacher?.homeroomClasses || [];
+  if (classLabels.length === 0) return [];
+
+  const schoolId = teacher?.schoolId || currentUser.schoolId;
+  return students.filter((student) => {
+    if (schoolId && student.schoolId && student.schoolId !== schoolId) return false;
+    return classLabels.some((classLabel) => studentMatchesClassLabel(student, classLabel));
+  });
+}
+
+export function getCourseRosterStudentIds(course: Course, students: Student[]): string[] {
+  const studentsById = new Map(
+    students
+      .filter((student) => !course.schoolId || !student.schoolId || student.schoolId === course.schoolId)
+      .map((student) => [student.id, student])
+  );
+  if (course.enrolledStudentIds.length > 0) {
+    return course.enrolledStudentIds.filter((studentId) => studentsById.has(studentId));
+  }
+  if (!course.room) return [];
+  return students
+    .filter((student) => studentsById.has(student.id) && studentMatchesClassLabel(student, course.room))
+    .map((student) => student.id);
+}
+
+export function filterPeriodAttendanceForCourses(
+  records: PeriodAttendanceRecord[],
+  courses: Course[],
+  students: Student[]
+): PeriodAttendanceRecord[] {
+  const allowedStudentIdsByCourse = new Map(
+    courses.map((course) => [course.id, new Set(getCourseRosterStudentIds(course, students))])
+  );
+  return records.filter((record) => allowedStudentIdsByCourse.get(record.courseId)?.has(record.studentId));
 }
 
 export interface CurrentUserAttendanceProfile {

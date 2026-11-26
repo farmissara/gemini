@@ -3,6 +3,9 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  LogIn,
+  LogOut,
+  MoreVertical,
   Search,
   UserCheck,
   X,
@@ -27,8 +30,11 @@ interface TeacherProxyTabProps {
   runWithBiometricGuard: (action: () => void) => void;
   handleConfirmProxySingleCheckin: () => void;
   filteredProxyStudents: Student[];
-  proxyGradeFilter: string;
-  setProxyGradeFilter: (grade: string) => void;
+  proxySearch: string;
+  setProxySearch: (query: string) => void;
+  proxyRoomFilter: string;
+  setProxyRoomFilter: (room: string) => void;
+  onEditStudent: (student: Student, checkType: AttendanceCheckType) => void;
 }
 
 export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
@@ -48,9 +54,22 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
   runWithBiometricGuard,
   handleConfirmProxySingleCheckin,
   filteredProxyStudents,
-  proxyGradeFilter,
-  setProxyGradeFilter,
+  proxySearch,
+  setProxySearch,
+  proxyRoomFilter,
+  setProxyRoomFilter,
+  onEditStudent,
 }) => {
+  const [openStudentMenuId, setOpenStudentMenuId] = React.useState<string | null>(null);
+  const roomOptions = Array.from(
+    new Map(
+      students.map((student) => {
+        const key = `${student.gradeLevel} ${student.room}`.trim();
+        return [key, key];
+      })
+    ).values()
+  ).sort((a, b) => a.localeCompare(b, 'th'));
+
   return (
     <div
       data-guide-id="mobile-checkin-body"
@@ -226,23 +245,37 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
         <div className="saas-card">
           <div className="saas-card-header">
             <span className="type-card-title">รายชื่ออ้างอิง ({filteredProxyStudents.length} คน)</span>
-            <select
-              aria-label="กรองตามระดับชั้น"
-              value={proxyGradeFilter}
-              onChange={(e) => setProxyGradeFilter(e.target.value)}
-              className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
-            >
-              <option value="all">ทุกระดับชั้น</option>
-              <option value="มัธยมศึกษาปีที่ 4 (M.4)">ม.4</option>
-              <option value="มัธยมศึกษาปีที่ 5 (M.5)">ม.5</option>
-              <option value="มัธยมศึกษาปีที่ 6 (M.6)">ม.6</option>
-            </select>
           </div>
           <div className="saas-card-body">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-2" />
+                <input
+                  type="search"
+                  value={proxySearch}
+                  onChange={(e) => setProxySearch(e.target.value)}
+                  placeholder="ค้นหาชื่อหรือรหัสนักเรียน"
+                  aria-label="ค้นหานักเรียนในห้องประจำชั้น"
+                  className="w-full pl-8 pr-2.5 py-1.5 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
+                />
+              </div>
+              <select
+                aria-label="กรองตามห้องเรียน"
+                value={proxyRoomFilter}
+                onChange={(e) => setProxyRoomFilter(e.target.value)}
+                className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] bg-[var(--color-card-subtle)]"
+              >
+                <option value="all">ทุกห้องประจำชั้น</option>
+                {roomOptions.map((room) => (
+                  <option key={room} value={room}>{room}</option>
+                ))}
+              </select>
+            </div>
             <div className="divide-y divide-[var(--color-border)]">
               <PagedList
                 items={filteredProxyStudents}
                 pageSize={4}
+                emptyState={<p className="type-meta text-center py-4">ไม่พบรายชื่อนักเรียนตามตัวกรอง</p>}
                 renderItem={(st) => (
                   <div key={st.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -263,6 +296,43 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
                     <span className="font-mono type-meta font-semibold text-[var(--color-text-title)] shrink-0">
                       {st.studentIdNumber}
                     </span>
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        aria-label={`แก้ไขเช็คชื่อ ${st.firstNameTh} ${st.lastNameTh}`}
+                        aria-expanded={openStudentMenuId === st.id}
+                        onClick={() => setOpenStudentMenuId(openStudentMenuId === st.id ? null : st.id)}
+                        className="min-h-9 min-w-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex items-center justify-center cursor-pointer"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      {openStudentMenuId === st.id && (
+                        <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xl">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onEditStudent(st, 'check_in');
+                              setOpenStudentMenuId(null);
+                            }}
+                            className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
+                          >
+                            <LogIn className="w-3.5 h-3.5" />
+                            แก้ไขเช็คเข้าโรงเรียน
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onEditStudent(st, 'check_out');
+                              setOpenStudentMenuId(null);
+                            }}
+                            className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
+                          >
+                            <LogOut className="w-3.5 h-3.5" />
+                            แก้ไขเช็คออกจากโรงเรียน
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               />
