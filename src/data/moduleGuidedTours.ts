@@ -714,7 +714,7 @@ export const MODULE_GUIDED_TOURS: Record<string, ModuleTourDefinition> = {
       },
       {
         id: 'gb-autonotify',
-        selector: '[data-guide-id="gradebook-autonotify"]',
+        selector: '[data-guide-id="gradebook-tools-menu"]',
         titleTh: '4. ควบคุมการแจ้งเตือนเกรดอัตโนมัติ',
         titleEn: '4. Auto-Notify Students & Parents',
         descriptionTh: 'เปิดเพื่อให้ระบบส่งแจ้งเตือนเมื่อบันทึกคะแนน หรือปิดชั่วคราวขณะทยอยกรอกคะแนนก่อนประกาศจริง',
@@ -731,7 +731,7 @@ export const MODULE_GUIDED_TOURS: Record<string, ModuleTourDefinition> = {
       },
       {
         id: 'gb-import-csv',
-        selector: '[data-guide-id="gradebook-import-csv"]',
+        selector: '[data-guide-id="gradebook-tools-menu"]',
         titleTh: '5. นำเข้าคะแนนจาก CSV / Excel แบบจับคู่คอลัมน์',
         titleEn: '5. Smart CSV/Excel Column Mapping Import',
         descriptionTh: 'อัปโหลดไฟล์คะแนนจาก Excel ของคุณ แล้วจับคู่หัวคอลัมน์ให้ตรงกับรหัสนักเรียนและคะแนน พร้อมตรวจแถวผิดพลาดก่อนบันทึก',
@@ -748,7 +748,7 @@ export const MODULE_GUIDED_TOURS: Record<string, ModuleTourDefinition> = {
       },
       {
         id: 'gb-pdf-export',
-        selector: '[data-guide-id="gradebook-pdf-export"]',
+        selector: '[data-guide-id="gradebook-tools-menu"]',
         titleTh: '6. ส่งออกรายงานการกระจายคะแนนเป็น PDF',
         titleEn: '6. Download PDF Grade Report',
         descriptionTh: 'คลิกปุ่มนี้เพื่อสร้างเอกสาร PDF สรุปสถิติคะแนนและตารางช่วงเกรดสำหรับฝ่ายวิชาการได้ทันที',

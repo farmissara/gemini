@@ -1677,79 +1677,67 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
           )}
 
-          {/* Consolidated Export, Import & Notification Tools Dropdown (Staff only) */}
+          {/* Consolidated Export, Import & Notification Tools 3-Dot Menu (Staff only) */}
           {!isPersonalGradeViewer && (
-          <details className="relative group">
-            <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-              <FileSpreadsheet className="w-3.5 h-3.5 tone-text" />
-              <span className="hidden sm:inline">ส่งออก &amp; เครื่องมือ</span>
-              <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
-            </summary>
-            <div className="absolute right-0 mt-1 w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
-              {activeTab === 'gradebook' && (
-                <button
-                  type="button"
-                  data-guide-id="gradebook-autonotify"
-                  onClick={() => setAutoNotifyEnabled((prev) => !prev)}
-                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-                >
-                  <span className="flex items-center gap-2">
-                    {autoNotifyEnabled ? <BellRing className="w-3.5 h-3.5 tone-text" /> : <BellOff className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
-                    <span>แจ้งเตือนคะแนนอัตโนมัติ</span>
-                  </span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${autoNotifyEnabled ? 'tone-active' : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'}`}>
-                    {autoNotifyEnabled ? 'เปิด' : 'ปิด'}
-                  </span>
-                </button>
-              )}
-              {activeTab === 'gradebook' && onOpenImportExport && (
-                <button
-                  type="button"
-                  data-guide-id="gradebook-import-csv"
-                  onClick={onOpenImportExport}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-                >
-                  <Upload className="w-3.5 h-3.5 tone-text" />
-                  <span>นำเข้าคะแนน CSV / Excel</span>
-                </button>
-              )}
-              {activeTab === 'gradebook' && (
-                <button
-                  type="button"
-                  data-guide-id="gradebook-pdf-export"
-                  onClick={handleDownloadGradeDistributionPdf}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-rose-700 dark:text-rose-300 font-semibold cursor-pointer text-left"
-                >
-                  <FileDown className="w-3.5 h-3.5" />
-                  <span>Download PDF (สรุปผลเกรด)</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-              >
-                <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                <span>ส่งออก ปพ.5 (CSV)</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportDmcCsv}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600 dark:text-sky-300" />
-                <span>ส่งออก DMC สพฐ.</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportSchoolMisCsv}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" />
-                <span>ส่งออก SchoolMIS</span>
-              </button>
-            </div>
-          </details>
+            <TableActionMenu
+              size="md"
+              dataGuideId="gradebook-tools-menu"
+              ariaLabel="ส่งออกและเครื่องมือสมุดคะแนน"
+              menuWidth={245}
+              items={[
+                ...(activeTab === 'gradebook'
+                  ? [
+                      {
+                        id: 'gradebook_autonotify',
+                        label: `แจ้งเตือนคะแนนอัตโนมัติ: ${autoNotifyEnabled ? 'เปิดอยู่' : 'ปิดอยู่'}`,
+                        icon: autoNotifyEnabled ? (
+                          <BellRing className="w-3.5 h-3.5 tone-text" />
+                        ) : (
+                          <BellOff className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                        ),
+                        variant: (autoNotifyEnabled ? 'primary' : 'default') as 'primary' | 'default',
+                        onClick: () => setAutoNotifyEnabled((prev) => !prev),
+                      },
+                      ...(onOpenImportExport
+                        ? [
+                            {
+                              id: 'gradebook_import_csv',
+                              label: 'นำเข้าคะแนน CSV / Excel',
+                              icon: <Upload className="w-3.5 h-3.5 tone-text" />,
+                              onClick: onOpenImportExport,
+                            },
+                          ]
+                        : []),
+                      {
+                        id: 'gradebook_pdf_export',
+                        label: 'Download PDF (สรุปผลเกรด)',
+                        icon: <FileDown className="w-3.5 h-3.5" />,
+                        variant: 'danger' as const,
+                        onClick: handleDownloadGradeDistributionPdf,
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'export_pp5_csv',
+                  label: 'ส่งออก ปพ.5 (CSV)',
+                  icon: <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />,
+                  dividerBefore: activeTab === 'gradebook',
+                  onClick: handleExportCSV,
+                },
+                {
+                  id: 'export_dmc_csv',
+                  label: 'ส่งออก DMC สพฐ.',
+                  icon: <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600 dark:text-sky-300" />,
+                  onClick: handleExportDmcCsv,
+                },
+                {
+                  id: 'export_schoolmis_csv',
+                  label: 'ส่งออก SchoolMIS',
+                  icon: <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" />,
+                  onClick: handleExportSchoolMisCsv,
+                },
+              ]}
+            />
           )}
 
           {effectiveCanEditGrades && activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (

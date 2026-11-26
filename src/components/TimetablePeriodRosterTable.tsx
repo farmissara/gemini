@@ -32,6 +32,7 @@ import {
 } from '../lib/classroomGps';
 import { isValidCoordinatePair } from '../lib/schoolGps';
 import { BaseModal } from './common/BaseModal';
+import { StatusIndicator } from './common/StatusIndicator';
 import {
   resolveMatchedCourseForSlot,
   resolveSlotStudents,
@@ -679,27 +680,13 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
         {/* Summary Strip + Search + Filter */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold tabular-nums">
-            <span className="px-2 py-0.5 rounded bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)]">
-              ทั้งหมด {stats.total}
-            </span>
-            <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
-              มาเรียน {stats.present}
-            </span>
-            <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-              สาย {stats.late}
-            </span>
-            <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800">
-              ลา {stats.excused}
-            </span>
-            <span className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
-              ขาดเรียน {stats.absent}
-            </span>
-            <span className="px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-200 dark:border-sky-800">
-              ครูกดรับแทน {stats.proxyCount}
-            </span>
-            <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-              ยังไม่เช็ค {stats.unchecked}
-            </span>
+            <StatusIndicator size="xs" tone="neutral" label={`ทั้งหมด ${stats.total}`} />
+            <StatusIndicator size="xs" tone="success" label={`มาเรียน ${stats.present}`} />
+            <StatusIndicator size="xs" tone="warning" label={`สาย ${stats.late}`} />
+            <StatusIndicator size="xs" tone="info" label={`ลา ${stats.excused}`} />
+            <StatusIndicator size="xs" tone="danger" label={`ขาดเรียน ${stats.absent}`} />
+            <StatusIndicator size="xs" tone="info" label={`รับแทน ${stats.proxyCount}`} />
+            <StatusIndicator size="xs" tone="warning" label={`รอเช็ค ${stats.unchecked}`} />
           </div>
 
           <div className="relative w-full sm:w-56">
@@ -816,65 +803,64 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
                       <div className="flex flex-wrap items-center gap-1.5">
                         {/* 1. School gate check-in status */}
                         {gate?.status === 'present' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold tabular-nums">
-                            <LogIn className="w-3 h-3 shrink-0" />
-                            <span>เข้า รร.{gate.time ? ` ${gate.time}` : ''}</span>
-                          </span>
+                          <StatusIndicator
+                            size="xs"
+                            tone="success"
+                            className="tabular-nums"
+                            label={`เข้า รร.${gate.time ? ` ${gate.time}` : ''}`}
+                          />
                         ) : gate?.status === 'late' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-[10px] font-bold tabular-nums">
-                            <Clock className="w-3 h-3 shrink-0" />
-                            <span>สาย รร.{gate.time ? ` ${gate.time}` : ''}</span>
-                          </span>
+                          <StatusIndicator
+                            size="xs"
+                            tone="warning"
+                            className="tabular-nums"
+                            label={`สาย รร.${gate.time ? ` ${gate.time}` : ''}`}
+                          />
                         ) : gate?.status === 'absent' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-[10px] font-bold">
-                            <span>ขาด รร.</span>
-                          </span>
+                          <StatusIndicator size="xs" tone="danger" label="ขาด รร." />
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold">
-                            <span>ยังไม่เช็คอินเข้า รร.</span>
-                          </span>
+                          <StatusIndicator size="xs" tone="neutral" label="รอเช็คอิน รร." />
                         )}
 
                         {/* 2. Leave system status */}
                         {leave && (
-                          <span
+                          <StatusIndicator
+                            size="xs"
+                            tone={leave.status === 'approved' ? 'info' : 'warning'}
                             title={leave.reason}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300/70 dark:border-amber-700 text-[10px] font-bold"
-                          >
-                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                            <span>
-                              {LEAVE_TYPE_LABELS[leave.leaveType] || 'ลา'} (
-                              {leave.status === 'approved' ? 'อนุมัติแล้ว' : 'รออนุมัติ'})
-                            </span>
-                          </span>
+                            label={`${LEAVE_TYPE_LABELS[leave.leaveType] || 'ลา'} (${leave.status === 'approved' ? 'อนุมัติ' : 'รออนุมัติ'})`}
+                          />
                         )}
 
                         {/* 3. Period check-in method / current status */}
                         {isPhoneChecked && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
-                            <Smartphone className="w-3 h-3 shrink-0" />
-                            <span>สแกนมือถือ/QR</span>
-                          </span>
+                          <StatusIndicator size="xs" tone="success" label="สแกน QR" />
                         )}
                         {isTeacherProxy && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-200 text-[10px] font-bold">
-                            <UserCheck className="w-3 h-3 shrink-0" />
-                            <span>ครูบันทึกแล้ว</span>
-                          </span>
+                          <StatusIndicator size="xs" tone="info" label="ครูบันทึก" />
                         )}
                         {currentStatus && !isPhoneChecked && !isTeacherProxy && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[var(--color-text-title)] text-[10px] font-bold">
-                            <Check className="w-3 h-3 shrink-0" />
-                            <span>
-                              {currentStatus === 'present'
+                          <StatusIndicator
+                            size="xs"
+                            tone={
+                              currentStatus === 'present'
+                                ? 'success'
+                                : currentStatus === 'late'
+                                  ? 'warning'
+                                  : currentStatus === 'excused'
+                                    ? 'info'
+                                    : 'danger'
+                            }
+                            label={
+                              currentStatus === 'present'
                                 ? 'มาเรียน'
                                 : currentStatus === 'late'
                                   ? 'สาย'
                                   : currentStatus === 'excused'
                                     ? 'ลา'
-                                    : 'ขาดเรียน'}
-                            </span>
-                          </span>
+                                    : 'ขาดเรียน'
+                            }
+                          />
                         )}
                       </div>
                       {leave?.reason && (

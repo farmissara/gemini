@@ -20,6 +20,7 @@ import {
   UserCheck,
   X,
 } from 'lucide-react';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 import {
   AppLanguage,
   AttendanceRecord,
@@ -830,73 +831,58 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
               <span className="hidden sm:inline">บันทึกพฤติกรรม</span>
             </button>
           )}
-          <details className="relative">
-            <summary className="btn-tool-neutral list-none px-2.5 py-1.5 text-xs whitespace-nowrap cursor-pointer">
-              <span>เอกสารและรายงาน</span>
-            </summary>
-            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-              {onOpenCoreReportCard && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    onOpenCoreReportCard(selectedStudent.id);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Award className="w-3.5 h-3.5 tone-text" />
-                  <span>Report Card วิชาพื้นฐาน</span>
-                </button>
-              )}
-              {onOpenQualitativeSummary && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    onOpenQualitativeSummary();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <ClipboardCheck className="w-3.5 h-3.5" />
-                  <span>สรุปคุณลักษณะฯ รายชั้น</span>
-                </button>
-              )}
-              {onOpenReportCard && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    onOpenReportCard(selectedStudent);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>ใบรายงานผล (ปพ.1)</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                  handleExportCsv();
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>ส่งออก CSV</span>
-              </button>
-            </div>
-          </details>
-          <button
-            type="button"
-            onClick={handlePrint}
-            aria-label="พิมพ์สมุดพัฒนาการ (A4)"
-            title="พิมพ์สมุดพัฒนาการ (A4)"
-            className="btn-action-primary min-h-10 px-3 py-1.5 text-xs whitespace-nowrap"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">พิมพ์สมุดพัฒนาการ (A4)</span>
-          </button>
+          <TableActionMenu
+            size="md"
+            ariaLabel="เอกสาร รายงาน และการพิมพ์สมุดพัฒนาการ"
+            menuWidth={230}
+            items={[
+              {
+                id: 'print_quality_book',
+                label: 'พิมพ์สมุดพัฒนาการ (A4)',
+                icon: <Printer className="w-3.5 h-3.5" />,
+                variant: 'primary',
+                onClick: handlePrint,
+              },
+              ...(onOpenCoreReportCard
+                ? [
+                    {
+                      id: 'core_report_card',
+                      label: 'Report Card วิชาพื้นฐาน',
+                      icon: <Award className="w-3.5 h-3.5 tone-text" />,
+                      dividerBefore: true,
+                      onClick: () => onOpenCoreReportCard(selectedStudent.id),
+                    },
+                  ]
+                : []),
+              ...(onOpenQualitativeSummary
+                ? [
+                    {
+                      id: 'qualitative_summary',
+                      label: 'สรุปคุณลักษณะฯ รายชั้น',
+                      icon: <ClipboardCheck className="w-3.5 h-3.5" />,
+                      onClick: onOpenQualitativeSummary,
+                    },
+                  ]
+                : []),
+              ...(onOpenReportCard
+                ? [
+                    {
+                      id: 'pp1_report_card',
+                      label: 'ใบรายงานผล (ปพ.1)',
+                      icon: <FileText className="w-3.5 h-3.5" />,
+                      onClick: () => onOpenReportCard(selectedStudent),
+                    },
+                  ]
+                : []),
+              {
+                id: 'export_csv',
+                label: 'ส่งออก CSV',
+                icon: <Download className="w-3.5 h-3.5" />,
+                dividerBefore: true,
+                onClick: handleExportCsv,
+              },
+            ]}
+          />
         </div>
       </div>
 

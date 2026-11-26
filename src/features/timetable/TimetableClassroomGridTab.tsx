@@ -43,6 +43,7 @@ import { enterLandscapeGameMode, exitLandscapeGameMode } from '../../lib/screenO
 import { printTimetableLandscape, setTimetableLandscapePageRule } from '../../lib/timetablePrint';
 import { findHomeroomTeachersForRoom } from '../../lib/timetableRoomMatch';
 import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
 import {
   ALL_CLASSROOMS,
   DAYS,
@@ -861,52 +862,42 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
                       return (
                         <td className="p-2 border-l border-[var(--color-border)] align-middle text-[10px] print:hidden">
                           {rowHoliday ? (
-                            <span className="inline-block rounded-md bg-rose-100 dark:bg-rose-950/70 px-2 py-1 text-[10px] font-bold text-rose-700 dark:text-rose-200">
-                              งดสอน (วันหยุด)
-                            </span>
+                            <StatusIndicator size="xs" tone="danger" label="งดสอน (วันหยุด)" />
                           ) : dayAllSlots.length === 0 ? (
-                            <span className="text-[var(--color-text-muted)]">ไม่มีคาบสอน</span>
+                            <StatusIndicator size="xs" tone="neutral" label="ไม่มีคาบสอน" />
                           ) : (
                             <div className="space-y-1.5">
                               <div className="flex flex-wrap gap-1 tabular-nums">
                                 {checkedSlotsCount > 0 ? (
                                   <>
-                                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold">
-                                      เช็กแล้ว {checkedSlotsCount}/{dayAllSlots.length} คาบ
-                                    </span>
-                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 font-semibold">
-                                      มา {totalPresentMarks}
-                                    </span>
+                                    <StatusIndicator
+                                      size="xs"
+                                      tone={checkedSlotsCount >= dayAllSlots.length ? 'success' : 'warning'}
+                                      label={`เช็กแล้ว ${checkedSlotsCount}/${dayAllSlots.length}`}
+                                    />
+                                    <StatusIndicator size="xs" tone="success" label={`มา ${totalPresentMarks}`} />
                                     {totalLeaveMarks > 0 && (
-                                      <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 font-bold">
-                                        ลา {totalLeaveMarks}
-                                      </span>
+                                      <StatusIndicator size="xs" tone="info" label={`ลา ${totalLeaveMarks}`} />
                                     )}
                                     {totalAbsentMarks > 0 && (
-                                      <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
-                                        ขาด {totalAbsentMarks}
-                                      </span>
+                                      <StatusIndicator size="xs" tone="danger" label={`ขาด ${totalAbsentMarks}`} />
                                     )}
                                   </>
                                 ) : (
-                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                                    รอเช็ก {dayAllSlots.length} คาบ
-                                  </span>
+                                  <StatusIndicator size="xs" tone="warning" label={`รอเช็ก ${dayAllSlots.length} คาบ`} />
                                 )}
                                 {teacherLeaveSlots > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 font-bold">
-                                    ครูลา {teacherLeaveSlots} คาบ
-                                  </span>
+                                  <StatusIndicator size="xs" tone="danger" label={`ครูลา ${teacherLeaveSlots}`} />
                                 )}
                                 {teacherCheckedSlots > 0 && day.date <= todayBangkokDate && (
-                                  <span className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-200 font-semibold">
-                                    ครูเข้า รร. {teacherCheckedSlots}/{dayAllSlots.length}
-                                  </span>
+                                  <StatusIndicator
+                                    size="xs"
+                                    tone="success"
+                                    label={`ครูเข้า ${teacherCheckedSlots}/${dayAllSlots.length}`}
+                                  />
                                 )}
                                 {maxStudentLeavesOnDay > 0 && checkedSlotsCount === 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold">
-                                    นร.ลา {maxStudentLeavesOnDay}
-                                  </span>
+                                  <StatusIndicator size="xs" tone="warning" label={`นร.ลา ${maxStudentLeavesOnDay}`} />
                                 )}
                               </div>
                               <button

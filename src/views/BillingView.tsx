@@ -149,40 +149,33 @@ export const BillingView: React.FC<BillingViewProps> = ({
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
           <ModuleTourTrigger moduleId="billing" lang="th" />
           {(isAdmin || (currentRole === 'super_admin' && onOpenExamPaymentSettings)) && (
-            <details className="relative">
-              <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-                <Sliders className="w-3.5 h-3.5 tone-text" />
-                <span>ตั้งค่า</span>
-              </summary>
-              <div className="absolute right-0 mt-1 w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.currentTarget.closest('details')?.removeAttribute('open');
-                      setShowFeePresetModal(true);
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-                  >
-                    <Sliders className="w-3.5 h-3.5 tone-text" />
-                    <span>ตั้งค่าหมวดค่าธรรมเนียม</span>
-                  </button>
-                )}
-                {currentRole === 'super_admin' && onOpenExamPaymentSettings && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.currentTarget.closest('details')?.removeAttribute('open');
-                      onOpenExamPaymentSettings();
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-                  >
-                    <CreditCard className="w-3.5 h-3.5 tone-text" />
-                    <span>ตั้งค่า QR ขายข้อสอบ</span>
-                  </button>
-                )}
-              </div>
-            </details>
+            <TableActionMenu
+              size="md"
+              ariaLabel="ตั้งค่าการเงิน"
+              menuWidth={220}
+              items={[
+                ...(isAdmin
+                  ? [
+                      {
+                        id: 'fee_presets',
+                        label: 'ตั้งค่าหมวดค่าธรรมเนียม',
+                        icon: <Sliders className="w-3.5 h-3.5 tone-text" />,
+                        onClick: () => setShowFeePresetModal(true),
+                      },
+                    ]
+                  : []),
+                ...(currentRole === 'super_admin' && onOpenExamPaymentSettings
+                  ? [
+                      {
+                        id: 'exam_payment_settings',
+                        label: 'ตั้งค่า QR ขายข้อสอบ',
+                        icon: <CreditCard className="w-3.5 h-3.5 tone-text" />,
+                        onClick: () => onOpenExamPaymentSettings(),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           )}
           {isAdmin && onAddInvoice && (
             <button

@@ -58,6 +58,7 @@ import {
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { calculateGrade } from '../lib/schoolSettings';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
@@ -1216,52 +1217,38 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               <span className="tabular-nums">{lastRefreshedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
             </button>
 
-            <details className="relative">
-              <summary className="btn-tool-neutral list-none h-8 px-2.5 cursor-pointer whitespace-nowrap text-xs">
-                <Download className="w-3.5 h-3.5 text-[var(--tone)]" />
-                <span>{copiedBrief ? 'คัดลอกแล้ว' : 'ส่งออก'}</span>
-                <ChevronDown className="w-3 h-3" />
-              </summary>
-              <div className="absolute right-0 top-full z-30 mt-1.5 min-w-52 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    void handleCopyExecutiveBrief();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                >
-                  {copiedBrief ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <TableActionMenu
+              ariaLabel="ส่งออกและพิมพ์รายงานผู้บริหาร"
+              menuWidth={210}
+              items={[
+                {
+                  id: 'copy_line_brief',
+                  label: copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE',
+                  icon: copiedBrief ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
                   ) : (
-                    <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                  )}
-                  <span>{copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    handleExportCsv();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                  <span>ส่งออก CSV</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    window.print();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                  <span>พิมพ์รายงาน A4</span>
-                </button>
-              </div>
-            </details>
+                    <Copy className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                  ),
+                  variant: copiedBrief ? 'success' : 'default',
+                  onClick: () => {
+                    void handleCopyExecutiveBrief();
+                  },
+                },
+                {
+                  id: 'export_csv',
+                  label: 'ส่งออก CSV',
+                  icon: <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />,
+                  onClick: handleExportCsv,
+                },
+                {
+                  id: 'print_a4',
+                  label: 'พิมพ์รายงาน A4',
+                  icon: <Printer className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />,
+                  dividerBefore: true,
+                  onClick: () => window.print(),
+                },
+              ]}
+            />
           </div>
         </div>
       )}

@@ -73,7 +73,7 @@ export const SlotStaffStatusBadges: React.FC<SlotStaffStatusBadgesProps> = ({
   if (!showTeacherBadge && !showStudentSummary) return null;
 
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-1 print:hidden">
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 print:hidden text-[9px] font-bold">
       {leavingTeacher && (
         <span
           title={
@@ -81,8 +81,9 @@ export const SlotStaffStatusBadges: React.FC<SlotStaffStatusBadgesProps> = ({
               ? `${leavingTeacher.teacherName} ลา · ครูสอนแทน: ${leavingTeacher.substituteTeacherName}`
               : `${leavingTeacher.teacherName} ยื่นใบลา`
           }
-          className="inline-flex items-center gap-0.5 rounded bg-rose-100 dark:bg-rose-950/90 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800"
+          className="inline-flex items-center gap-1 text-rose-800 dark:text-rose-200 whitespace-nowrap"
         >
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" aria-hidden="true" />
           <span>
             ครูลา{leavingTeacher.substituteTeacherName ? ` · แทน ${leavingTeacher.substituteTeacherName.split(' ')[0]}` : ''}
           </span>
@@ -91,56 +92,65 @@ export const SlotStaffStatusBadges: React.FC<SlotStaffStatusBadgesProps> = ({
       {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'checked_in' && dateStr <= todayBangkokDate && (
         <span
           title={`${primaryTeacher.teacherName} เช็คอินเข้าโรงเรียนแล้ว${primaryTeacher.checkInTime ? ` เวลา ${primaryTeacher.checkInTime}` : ''}`}
-          className="inline-flex items-center gap-0.5 rounded bg-emerald-100/90 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:text-emerald-200 tabular-nums"
+          className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-200 tabular-nums whitespace-nowrap"
         >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
           <span>ครูเข้า รร.{primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}</span>
         </span>
       )}
       {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'late' && dateStr <= todayBangkokDate && (
-        <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 dark:text-amber-200 tabular-nums">
+        <span className="inline-flex items-center gap-1 text-amber-800 dark:text-amber-200 tabular-nums whitespace-nowrap">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" aria-hidden="true" />
           <span>ครูสาย รร.</span>
         </span>
       )}
       {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'absent' && dateStr <= todayBangkokDate && (
-        <span className="inline-flex items-center gap-0.5 rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200">
+        <span className="inline-flex items-center gap-1 text-rose-800 dark:text-rose-200 whitespace-nowrap">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" aria-hidden="true" />
           <span>ครูขาด</span>
         </span>
       )}
       {!leavingTeacher && primaryTeacher && primaryTeacher.status === 'not_checked_in' && isTodayDate && (
         <span
           title={`${primaryTeacher.teacherName} ยังไม่เช็คอินเข้าโรงเรียนวันนี้`}
-          className="inline-flex items-center gap-0.5 rounded bg-amber-50 dark:bg-amber-950/70 px-1.5 py-0.5 text-[9px] font-semibold text-amber-900 dark:text-amber-200 border border-amber-300/70 dark:border-amber-700"
+          className="inline-flex items-center gap-1 text-amber-800 dark:text-amber-200 whitespace-nowrap"
         >
-          <span>ครูยังไม่เข้า รร.</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" aria-hidden="true" />
+          <span>ครูรอเข้า รร.</span>
         </span>
       )}
 
       {summary.periodCheckedTotal > 0 ? (
         <>
-          <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:text-emerald-200 tabular-nums">
+          <span className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-200 tabular-nums whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
             <span>มา {summary.periodPresent + summary.periodLate}/{summary.expectedTotal}</span>
           </span>
           {summary.periodExcused > 0 && (
-            <span className="inline-flex items-center rounded bg-indigo-100 dark:bg-indigo-950/80 px-1.5 py-0.5 text-[9px] font-bold text-indigo-800 dark:text-indigo-200 tabular-nums">
-              ลา {summary.periodExcused}
+            <span className="inline-flex items-center gap-1 text-sky-800 dark:text-sky-200 tabular-nums whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" aria-hidden="true" />
+              <span>ลา {summary.periodExcused}</span>
             </span>
           )}
           {summary.periodAbsent > 0 && (
-            <span className="inline-flex items-center rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 text-[9px] font-bold text-rose-800 dark:text-rose-200 tabular-nums">
-              ขาด {summary.periodAbsent}
+            <span className="inline-flex items-center gap-1 text-rose-800 dark:text-rose-200 tabular-nums whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" aria-hidden="true" />
+              <span>ขาด {summary.periodAbsent}</span>
             </span>
           )}
         </>
       ) : (
         <>
           {summary.studentLeaveCount > 0 && (
-            <span className="inline-flex items-center rounded bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 dark:text-amber-200 tabular-nums">
-              นร.ลา {summary.studentLeaveCount}
+            <span className="inline-flex items-center gap-1 text-amber-800 dark:text-amber-200 tabular-nums whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" aria-hidden="true" />
+              <span>นร.ลา {summary.studentLeaveCount}</span>
             </span>
           )}
           {isTodayDate && summary.hasAnyGateRecordsForDate && summary.expectedTotal > 0 && (
-            <span className="inline-flex items-center rounded bg-white/80 dark:bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-              เข้า รร. {summary.gatePresentCount}/{summary.expectedTotal}
+            <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-200 tabular-nums whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" aria-hidden="true" />
+              <span>เข้า รร. {summary.gatePresentCount}/{summary.expectedTotal}</span>
             </span>
           )}
         </>

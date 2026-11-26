@@ -70,6 +70,8 @@ import {
 import { AttendanceAudienceSwitch, type AttendanceAudience } from '../components/attendance/AttendanceAudienceSwitch';
 import { loadAttendanceCorrections } from '../lib/attendanceCorrections';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
+import { TableActionMenu } from '../components/common/TableActionMenu';
+import { StatusIndicator } from '../components/common/StatusIndicator';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -1460,50 +1462,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                               </div>
 
                                 <div className="flex flex-wrap items-center gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      onRecordAttendance(
-                                        stu.id,
-                                        'present',
-                                        `ครูประจำชั้นยืนยันออกโรงเรียน (กรณีลืมสแกนออก) โดย ${loggedInProfile.userName}`,
-                                        'teacher_proxy',
-                                        {
-                                          recordType: 'check_out',
-                                          userType: 'student',
-                                          userName: `${stu.firstNameTh} ${stu.lastNameTh}`,
-                                          userRole: `นักเรียน (${stu.gradeLevel})`,
-                                          userAvatar: stu.avatarUrl,
-                                          userDepartmentOrRoom: stu.room,
-                                          date: rollCallDate,
-                                          recordedBy: loggedInProfile.userName,
-                                          recordedByRole: currentRole,
-                                          confirmedByHomeroom: true,
-                                          confirmedByTeacherName: loggedInProfile.userName,
-                                        }
-                                      );
-                                      sendEduVerseNotification({
-                                        title: `ยืนยันออกโรงเรียน: ${stu.firstNameTh} ${stu.lastNameTh}`,
-                                        body: `${loggedInProfile.userName} ยืนยันออกโรงเรียนวันที่ ${rollCallDate} เรียบร้อยแล้ว`,
-                                        category: 'attendance',
-                                        priority: 'normal',
-                                        schoolId: activeSchoolId,
-                                        targetStudentIds: [stu.id],
-                                        targetRoles: ['student', 'parent', 'teacher', 'admin'],
-                                      }).catch((err) => {
-                                        console.warn('[AttendanceView] Failed to send checkout notification:', err);
-                                      });
-                                      emitAppToast({
-                                        tone: 'success',
-                                        message: `ยืนยันออกโรงเรียนให้ ${stu.firstNameTh} ${stu.lastNameTh} และส่งแจ้งเตือนแล้ว`,
-                                      });
-                                    }}
-                                    className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-primary-text)] text-[11px] font-bold hover:bg-[var(--color-primary-light)] transition cursor-pointer inline-flex items-center gap-1"
-                                    title="กรณีนักเรียนลืมสแกนออกโรงเรียน ให้ครูกดยืนยันออกทันที"
-                                  >
-                                    <LogOut className="w-3 h-3" />
-                                    <span>ยืนยันออก</span>
-                                  </button>
                                   {statusOptions.map((opt) => {
                                     const selected = currentStatus === opt.value;
                                     return (
@@ -1521,6 +1479,54 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                                       </button>
                                     );
                                   })}
+                                  <TableActionMenu
+                                    ariaLabel={`ตัวเลือกเพิ่มเติมสำหรับ ${stu.firstNameTh}`}
+                                    menuWidth={210}
+                                    items={[
+                                      {
+                                        id: 'confirm_checkout',
+                                        label: 'ยืนยันออกโรงเรียน (ลืมสแกน)',
+                                        icon: <LogOut className="w-3.5 h-3.5" />,
+                                        variant: 'primary',
+                                        onClick: () => {
+                                          onRecordAttendance(
+                                            stu.id,
+                                            'present',
+                                            `ครูประจำชั้นยืนยันออกโรงเรียน (กรณีลืมสแกนออก) โดย ${loggedInProfile.userName}`,
+                                            'teacher_proxy',
+                                            {
+                                              recordType: 'check_out',
+                                              userType: 'student',
+                                              userName: `${stu.firstNameTh} ${stu.lastNameTh}`,
+                                              userRole: `นักเรียน (${stu.gradeLevel})`,
+                                              userAvatar: stu.avatarUrl,
+                                              userDepartmentOrRoom: stu.room,
+                                              date: rollCallDate,
+                                              recordedBy: loggedInProfile.userName,
+                                              recordedByRole: currentRole,
+                                              confirmedByHomeroom: true,
+                                              confirmedByTeacherName: loggedInProfile.userName,
+                                            }
+                                          );
+                                          sendEduVerseNotification({
+                                            title: `ยืนยันออกโรงเรียน: ${stu.firstNameTh} ${stu.lastNameTh}`,
+                                            body: `${loggedInProfile.userName} ยืนยันออกโรงเรียนวันที่ ${rollCallDate} เรียบร้อยแล้ว`,
+                                            category: 'attendance',
+                                            priority: 'normal',
+                                            schoolId: activeSchoolId,
+                                            targetStudentIds: [stu.id],
+                                            targetRoles: ['student', 'parent', 'teacher', 'admin'],
+                                          }).catch((err) => {
+                                            console.warn('[AttendanceView] Failed to send checkout notification:', err);
+                                          });
+                                          emitAppToast({
+                                            tone: 'success',
+                                            message: `ยืนยันออกโรงเรียนให้ ${stu.firstNameTh} ${stu.lastNameTh} และส่งแจ้งเตือนแล้ว`,
+                                          });
+                                        },
+                                      },
+                                    ]}
+                                  />
                                 </div>
                             </div>
                           );
@@ -1621,39 +1627,43 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           </div>
 
                           <div className="text-right shrink-0 flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1 type-label ${
-                              log.status === 'present'
-                                ? 'text-emerald-700 dark:text-emerald-300'
-                                : log.status === 'late'
-                                  ? 'text-amber-700 dark:text-amber-300'
-                                  : 'text-rose-700 dark:text-rose-300'
-                            }`}>
-                              {log.status === 'present' ? (
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              ) : log.status === 'late' ? (
-                                <Clock className="w-3.5 h-3.5" />
-                              ) : (
-                                <AlertCircle className="w-3.5 h-3.5" />
-                              )}
-                              <span>{log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCorrectionPrefill({
-                                  targetScope: log.recordType === 'check_out' ? 'gate_checkout' : 'gate_checkin',
-                                  issueType: log.status === 'late' ? 'late_arrival' : 'time_mismatch',
-                                  date: log.date,
-                                  originalTime: (log.time || '').slice(0, 5),
-                                  requesterId: log.studentId,
-                                });
-                                setActiveTab('time_corrections');
-                              }}
-                              className="px-2 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[10px] font-bold text-[var(--color-primary-text)] cursor-pointer"
-                              title="ส่งคำขอแก้ไขปรับปรุงเวลาสำหรับรายการนี้"
-                            >
-                              ขอแก้เวลา
-                            </button>
+                            <StatusIndicator
+                              size="xs"
+                              tone={log.status === 'present' ? 'success' : log.status === 'late' ? 'warning' : 'danger'}
+                              label={log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}
+                            />
+                            <TableActionMenu
+                              ariaLabel={`จัดการรายการเช็คชื่อของ ${name}`}
+                              menuWidth={195}
+                              items={[
+                                ...(log.photoUrl
+                                  ? [
+                                      {
+                                        id: 'view_photo',
+                                        label: 'ดูรูปถ่ายเช็คชื่อ',
+                                        icon: <Eye className="w-3.5 h-3.5" />,
+                                        onClick: () => setSelectedPhotoModal(log),
+                                      },
+                                    ]
+                                  : []),
+                                {
+                                  id: 'request_time_correction',
+                                  label: 'ขอแก้ไขเวลา',
+                                  icon: <FileEdit className="w-3.5 h-3.5" />,
+                                  variant: 'primary',
+                                  onClick: () => {
+                                    setCorrectionPrefill({
+                                      targetScope: log.recordType === 'check_out' ? 'gate_checkout' : 'gate_checkin',
+                                      issueType: log.status === 'late' ? 'late_arrival' : 'time_mismatch',
+                                      date: log.date,
+                                      originalTime: (log.time || '').slice(0, 5),
+                                      requesterId: log.studentId,
+                                    });
+                                    setActiveTab('time_corrections');
+                                  },
+                                },
+                              ]}
+                            />
                           </div>
                         </div>
                       );
@@ -1767,22 +1777,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           </span>
                         </div>
 
-                        <span className={`inline-flex items-center gap-1 type-label self-start sm:self-auto ${
-                          req.status === 'approved'
-                            ? 'text-emerald-700 dark:text-emerald-300'
-                            : req.status === 'pending'
-                              ? 'text-amber-700 dark:text-amber-300'
-                              : 'text-rose-700 dark:text-rose-300'
-                        }`}>
-                          {req.status === 'approved' ? (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          ) : req.status === 'pending' ? (
-                            <Clock className="w-3.5 h-3.5" />
-                          ) : (
-                            <X className="w-3.5 h-3.5" />
-                          )}
-                          <span>{req.status === 'approved' ? 'อนุมัติเรียบร้อย' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}</span>
-                        </span>
+                        <StatusIndicator
+                          size="xs"
+                          tone={req.status === 'approved' ? 'success' : req.status === 'pending' ? 'warning' : 'danger'}
+                          label={req.status === 'approved' ? 'อนุมัติเรียบร้อย' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
+                          className="self-start sm:self-auto"
+                        />
                       </div>
 
                       <div className="space-y-1">
@@ -1807,7 +1807,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                             onChange={(e) => setApprovalNote({ ...approvalNote, [req.id]: e.target.value })}
                             className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-title)] flex-1 bg-[var(--color-card-subtle)]"
                           />
-                          <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               type="button"
                               onClick={() => onUpdateLeaveStatus(req.id, 'approved', approvalNote[req.id])}
@@ -1816,14 +1816,19 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                               <Check className="w-3.5 h-3.5" />
                               <span>อนุมัติ</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => onUpdateLeaveStatus(req.id, 'rejected', approvalNote[req.id])}
-                              className="text-rose-700 dark:text-rose-300 hover:underline font-bold text-xs underline-offset-4 flex items-center gap-1 cursor-pointer"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              <span>ปฏิเสธ</span>
-                            </button>
+                            <TableActionMenu
+                              ariaLabel={`ตัวเลือกคำขอลาของ ${req.userName}`}
+                              menuWidth={170}
+                              items={[
+                                {
+                                  id: 'reject_leave',
+                                  label: 'ปฏิเสธคำขอลา',
+                                  icon: <X className="w-3.5 h-3.5" />,
+                                  variant: 'danger',
+                                  onClick: () => onUpdateLeaveStatus(req.id, 'rejected', approvalNote[req.id]),
+                                },
+                              ]}
+                            />
                           </div>
                         </div>
                       )}

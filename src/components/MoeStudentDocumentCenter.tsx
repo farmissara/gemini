@@ -1015,59 +1015,52 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
                       <Download className="w-3.5 h-3.5" />
                       <span>ดาวน์โหลด PDF</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowBundleModal(true)}
-                      className="btn-tool-tone px-2.5 py-1.5 whitespace-nowrap shrink-0"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>พิมพ์ชุดรวม</span>
-                    </button>
                   </>
                 )}
 
-                <details className="relative">
-                  <summary className="btn-tool-neutral list-none px-2.5 py-1.5 whitespace-nowrap shrink-0 cursor-pointer">
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>ส่งออก</span>
-                  </summary>
-                  <div className="absolute right-0 mt-1 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.currentTarget.closest('details')?.removeAttribute('open');
-                        handleExportCsv();
-                      }}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>ส่งออก Excel / CSV รายบุคคล</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.currentTarget.closest('details')?.removeAttribute('open');
-                        handleExportJson();
-                      }}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
-                    >
-                      <FileDown className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>ส่งออก JSON ฐานข้อมูลเด็ก</span>
-                    </button>
-                  </div>
-                </details>
-
-                {canEdit && onDeleteStudent && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteStudent(selectedStudent)}
-                    title="ลบข้อมูลนักเรียนคนนี้"
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">ลบนักเรียน</span>
-                  </button>
-                )}
+                <TableActionMenu
+                  size="md"
+                  ariaLabel="เครื่องมือเอกสารและการจัดการข้อมูลนักเรียน"
+                  menuWidth={230}
+                  items={[
+                    ...(workspaceMode === 'docs' && activeDocView !== 'core_report_card'
+                      ? [
+                          {
+                            id: 'print_bundle',
+                            label: 'พิมพ์ชุดรวมเอกสาร',
+                            icon: <Layers className="w-3.5 h-3.5" />,
+                            variant: 'primary' as const,
+                            onClick: () => setShowBundleModal(true),
+                          },
+                        ]
+                      : []),
+                    {
+                      id: 'export_csv',
+                      label: 'ส่งออก Excel / CSV รายบุคคล',
+                      icon: <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />,
+                      dividerBefore: workspaceMode === 'docs' && activeDocView !== 'core_report_card',
+                      onClick: handleExportCsv,
+                    },
+                    {
+                      id: 'export_json',
+                      label: 'ส่งออก JSON ฐานข้อมูลเด็ก',
+                      icon: <FileDown className="w-3.5 h-3.5 text-indigo-600" />,
+                      onClick: handleExportJson,
+                    },
+                    ...(canEdit && onDeleteStudent
+                      ? [
+                          {
+                            id: 'delete_student',
+                            label: 'ลบข้อมูลนักเรียน',
+                            icon: <Trash2 className="w-3.5 h-3.5" />,
+                            variant: 'danger' as const,
+                            dividerBefore: true,
+                            onClick: () => setConfirmDeleteStudent(selectedStudent),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
               </div>
             </div>
 
