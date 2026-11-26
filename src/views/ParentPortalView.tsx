@@ -5,7 +5,6 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { 
   Student, 
   AttendanceRecord, 
-  TuitionInvoice, 
   GradeRecord, 
   Course, 
   AppLanguage, 
@@ -22,11 +21,8 @@ import {
   UserCheck, 
   Clock, 
   Award, 
-  Receipt, 
   MessageSquare, 
-  ExternalLink, 
   CheckCircle2, 
-  QrCode, 
   ShieldCheck, 
   Calendar,
   Sparkles,
@@ -61,13 +57,11 @@ import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions'
 import { getSharedCareerSnapshotForStudent, loadSchoolSharedCareerQuests } from '../lib/careerQuestStore';
 import { POPULAR_CAREERS } from '../data/careerQuestData';
 import type { StudentCareerQuestState } from '../types';
-import { compressImageFileToDataUrl } from '../lib/imageCompression';
 
 interface ParentPortalViewProps {
   schoolId?: string;
   students: Student[];
   attendance: AttendanceRecord[];
-  invoices: TuitionInvoice[];
   grades: GradeRecord[];
   courses: Course[];
   systemConfig: SystemConfig;
@@ -77,8 +71,6 @@ interface ParentPortalViewProps {
   infirmaryVisits?: InfirmaryVisit[];
   lang: AppLanguage;
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
-  onPayInvoice: (invoiceId: string, method: TuitionInvoice['paymentMethod']) => void;
-  onSubmitInvoiceSlip?: (invoiceId: string, slipDataUrl: string, note: string) => void;
   onOpenReportCard: (student: Student) => void;
   onAddLeaveRequest?: (req: LeaveRequest) => void;
   onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null, studentId?: string) => Promise<void> | void;
@@ -88,7 +80,6 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   schoolId = 'default-school',
   students,
   attendance,
-  invoices,
   grades,
   courses: _courses,
   systemConfig,
@@ -98,21 +89,13 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   infirmaryVisits = [],
   lang,
   schoolPermissions,
-  onPayInvoice: _onPayInvoice,
-  onSubmitInvoiceSlip,
   onOpenReportCard,
   onAddLeaveRequest,
   onLoadAttendanceRange,
 }) => {
   const canSeeRealtimeAttendance = isSchoolPolicyEnabled(schoolPermissions, 'parent_realtime_attendance');
-  const canPayTuition = isSchoolPolicyEnabled(schoolPermissions, 'parent_promptpay_tuition');
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [activePortalTab, setActivePortalTab] = useState<'overview' | 'selfie_album' | 'leave_submission' | 'consent_slips'>('overview');
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [slipFileDataUrl, setSlipFileDataUrl] = useState<string>('');
-  const [slipNote, setSlipNote] = useState<string>('');
-  const [slipError, setSlipError] = useState<string | null>(null);
-  const [slipToast, setSlipToast] = useState<string | null>(null);
   const [childCareerSnapshot, setChildCareerSnapshot] = useState<StudentCareerQuestState | null>(null);
   const [consentForms, setConsentForms] = useState<ConsentForm[]>(() => getConsentForms(schoolId));
   const [consentResponses, setConsentResponses] = useState<ConsentResponse[]>(() => getConsentResponses(schoolId));
@@ -154,7 +137,6 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
     }
   }, [albumSelectedDate, onLoadAttendanceRange, student?.id]);
   const studentAttendance = attendance.filter((a) => a.studentId === student?.id);
-  const studentInvoices = invoices.filter((i) => i.studentId === student?.id);
   const studentGrades = grades.filter((g) => g.studentId === student?.id);
   const studentLeaveRequests = leaveRequests.filter((r) => r.userId === student?.id);
   const studentPeriodAttendance = periodAttendance.filter((p) => p.studentId === student?.id);
@@ -162,11 +144,10 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   const studentInfirmary = infirmaryVisits.filter((v) => v.studentId === student?.id);
 
   const todayRecord = studentAttendance.find((a) => a.date === todayStr);
-  const pendingInvoice = studentInvoices.find((i) => i.status !== 'paid');
 
   // Build chronological Daily Pulse timeline events for selected child
   const dailyPulseEvents = React.useMemo(() => {
-    const events: { id: string; timeLabel: string; title: string; detail: string; category: 'gate' | 'class' | 'homework' | 'health' | 'billing'; onClick?: () => void }[] = [];
+    const events: { id: string; timeLabel: string; title: string; detail: string; category: 'gate' | 'class' | 'homework' | 'health'; onClick?: () => void }[] = [];
     studentAttendance.slice(0, 4).forEach((rec) => {
       events.push({
         id: `att-${rec.id}`,
@@ -214,19 +195,8 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         category: 'homework',
       });
     });
-    if (pendingInvoice) {
-      events.push({
-        id: `inv-${pendingInvoice.id}`,
-        timeLabel: pendingInvoice.dueDate,
-        title: `ค่าธรรมเนียมการศึกษา (${pendingInvoice.invoiceNumber})`,
-        detail: pendingInvoice.slipStatus === 'pending_review'
-          ? 'แนบสลิปแล้ว • รอเจ้าหน้าที่การเงินตรวจสอบ'
-          : `ยอดรอชำระ ฿${pendingInvoice.totalAmount.toLocaleString()}`,
-        category: 'billing',
-      });
-    }
     return events.sort((a, b) => b.timeLabel.localeCompare(a.timeLabel)).slice(0, 8);
-  }, [schoolId, student?.id, studentAttendance, studentPeriodAttendance, studentHomework, studentInfirmary, pendingInvoice]);
+  }, [schoolId, student?.id, studentAttendance, studentPeriodAttendance, studentHomework, studentInfirmary]);
 
   // Filter attendance for the selected date in child's selfie album
   const dateRecords = studentAttendance.filter((a) => a.date === albumSelectedDate);
@@ -453,19 +423,6 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                 </p>
               </div>
             </div>
-
-            {systemConfig.lineMessagingConfigured !== false && Boolean(systemConfig.lineOaAddFriendUrl) && (
-              <a
-                href={systemConfig.lineOaAddFriendUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3.5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto transition-colors shrink-0"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>เปิดแชท LINE OA โรงเรียน</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
           </div>
 
           {/* Grid: Digital Student ID & Tuition / Academic Overview */}
@@ -514,57 +471,22 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               </div>
             </div>
 
-            {/* Tuition & GPA Card */}
+            {/* Academic Overview & GPA Card */}
             <div className="p-5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] space-y-4 flex flex-col justify-between text-[var(--color-text-title)]">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <span>ค่าธรรมเนียมการศึกษา</span>
+                    <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>สรุปผลการเรียน &amp; ประเมินผล</span>
                   </h3>
-                  {pendingInvoice ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      <span>มียอดค้างชำระ</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-                      <span>ชำระครบถ้วนแล้ว</span>
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                    <span>ภาคเรียนที่ {systemConfig.currentSemester}/{systemConfig.academicYear}</span>
+                  </span>
                 </div>
-
-                {pendingInvoice ? (
-                  <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-2.5">
-                    <div className="flex items-center justify-between text-xs gap-2">
-                      <span className="text-[var(--color-text-body)] truncate">
-                        {pendingInvoice.items[0]?.title || `ใบแจ้งหนี้ ${pendingInvoice.invoiceNumber}`}
-                      </span>
-                      <span className="font-mono font-bold text-base text-[var(--color-text-title)] tabular-nums shrink-0">
-                        ฿{pendingInvoice.totalAmount.toLocaleString()}
-                      </span>
-                    </div>
-                    {canPayTuition ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowPayModal(true)}
-                        className="btn-action-primary w-full py-2 text-xs flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
-                      >
-                        <QrCode className="w-3.5 h-3.5" />
-                        <span>ชำระผ่าน PromptPay QR Code</span>
-                      </button>
-                    ) : (
-                      <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
-                        การชำระเงินออนไลน์ถูกปิดชั่วคราวโดยผู้ดูแลโรงเรียน
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    ไม่มีรายการค้างชำระในภาคเรียนปัจจุบัน
-                  </p>
-                )}
+                <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                  มีบันทึกผลการประเมินแล้ว {studentGrades.length} รายวิชา · บันทึกเข้าห้องเรียน {studentPeriodAttendance.length} คาบ
+                </p>
               </div>
 
               {/* GPA / Primary Percentage & Report Card Button */}
@@ -620,12 +542,6 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
               })()}
             </div>
           </div>
-
-          {slipToast && (
-            <div className="p-3 rounded-xl bg-teal-500/10 dark:bg-teal-950/60 border border-teal-500/30 text-teal-900 dark:text-teal-200 text-xs font-medium">
-              {slipToast}
-            </div>
-          )}
 
           {/* Child Career Quest AI Shared Goal */}
           {childCareerSnapshot && childCareerSnapshot.activeCareerId && (() => {
@@ -1106,102 +1022,6 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         </div>
       )}
 
-      {/* PromptPay + Transfer Slip Upload Modal */}
-      {showPayModal && pendingInvoice && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl text-center space-y-3.5">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 block">
-                Thai PromptPay พร้อมเพย์ • แนบสลิปตรวจสอบ
-              </span>
-              <h3 className="text-base font-bold text-white mt-1">
-                {systemConfig.schoolNameTh}
-              </h3>
-              <p className="text-xs text-slate-300 font-mono mt-0.5">
-                Biller: 0105558992019 • {pendingInvoice.invoiceNumber}
-              </p>
-            </div>
-
-            <div className="bg-white p-3 rounded-xl inline-block shadow-inner">
-              <div className="w-40 h-40 border-2 border-slate-900 rounded-lg flex flex-col items-center justify-center p-2 bg-white">
-                <div className="h-5 w-full bg-[#1A3764] rounded text-white text-[9px] font-bold flex items-center justify-center mb-1">
-                  PromptPay พร้อมเพย์
-                </div>
-                <QrCode className="w-24 h-24 text-slate-950" />
-                <span className="text-[10px] font-bold text-slate-900 font-mono mt-1">
-                  ฿{pendingInvoice.totalAmount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="text-left space-y-2 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-xs">
-              <label className="block font-semibold text-slate-100">
-                อัปโหลดสลิปการโอนเงิน (เพื่อให้การเงินโรงเรียนตรวจสอบ):
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  void compressImageFileToDataUrl(file, {
-                    maxDimension: 960,
-                    quality: 0.75,
-                    maxDataUrlLength: 140_000,
-                  })
-                    .then((compressed) => {
-                      setSlipFileDataUrl(compressed);
-                      setSlipError(null);
-                    })
-                    .catch(() => {
-                      setSlipError('ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาลองใหม่');
-                    });
-                }}
-                className="w-full text-[11px] text-slate-200 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-emerald-700 file:text-white file:font-semibold cursor-pointer"
-              />
-              {slipFileDataUrl && (
-                <img src={slipFileDataUrl} alt="Slip preview" className="w-full max-h-28 object-contain rounded-lg bg-white" />
-              )}
-              <input
-                type="text"
-                value={slipNote}
-                onChange={(e) => setSlipNote(e.target.value)}
-                placeholder="หมายเหตุ เช่น โอนจาก KBank เวลา 09:15 น."
-                className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs"
-              />
-              {slipError && <p className="text-rose-400 text-[11px] font-semibold">{slipError}</p>}
-            </div>
-
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowPayModal(false)}
-                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-medium cursor-pointer"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!slipFileDataUrl) {
-                    setSlipError('กรุณาเลือกรูปสลิปการโอนเงินก่อนส่งตรวจสอบ');
-                    return;
-                  }
-                  onSubmitInvoiceSlip?.(pendingInvoice.id, slipFileDataUrl, slipNote.trim());
-                  setShowPayModal(false);
-                  setSlipFileDataUrl('');
-                  setSlipNote('');
-                  setSlipToast(`ส่งสลิปสำหรับ ${pendingInvoice.invoiceNumber} ให้ฝ่ายการเงินตรวจสอบเรียบร้อยแล้ว`);
-                  setTimeout(() => setSlipToast(null), 5000);
-                }}
-                className="flex-1 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer"
-              >
-                ส่งสลิปให้การเงินตรวจสอบ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

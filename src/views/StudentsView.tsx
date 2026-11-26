@@ -209,8 +209,7 @@ interface StudentsViewProps {
   onSelectStudent: (student: Student) => void;
   onOpenReportCard: (student: Student) => void;
   onOpenMoeDocumentCenter?: (student: Student) => void;
-  onToggleLineSync: (studentId: string) => void;
-  onAddStudent: (newStudent: Student) => void;
+  onAddStudent?: (newStudent: Student) => void;
   onAddStudents?: (newStudents: Student[]) => void;
   onUpdateStudent?: (student: Student) => void;
   onDeleteStudent?: (studentId: string) => Promise<void> | void;
@@ -259,8 +258,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onSelectStudent,
   onOpenReportCard,
   onOpenMoeDocumentCenter,
-  onToggleLineSync,
-  onAddStudent,
+  onAddStudent = () => {},
   onAddStudents,
   onUpdateStudent,
   onDeleteStudent,
@@ -285,7 +283,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   gradebookJumpTarget,
   moeJumpTarget,
 }) => {
-  const isLineEnabled = systemConfig?.lineMessagingConfigured !== false;
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [roomFilter, setRoomFilter] = useState('all');
@@ -335,9 +332,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       semesterOptions: activeSchool?.semesterOptions || ['1', '2'],
       gradingSystem: activeSchool?.gradingSystem || gradingSystem,
       staffPositionOptions: activeSchool?.staffPositionOptions || [],
-      lineOaAddFriendUrl: '',
-      lineChannelId: '',
-      lineMessagingConfigured: false,
       resendApiKeyConfigured: false,
       resendFromEmail: '',
       supabaseConnected: false,
@@ -1104,8 +1098,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       guardianPhone: finalGuardianPhone,
       guardianEmail: finalGuardianEmail,
       guardians: finalGuardians,
-      lineLinked: false,
-      lineNotifyEnabled: false,
       enrolledDate: new Date().toISOString().split('T')[0],
     };
 
@@ -1232,8 +1224,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       guardianPhone: '',
       guardianEmail: '',
       guardians: [],
-      lineLinked: false,
-      lineNotifyEnabled: false,
       enrolledDate: new Date().toISOString().split('T')[0],
     }));
 
@@ -1282,10 +1272,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   const activeStudentsCount = useMemo(
     () => students.filter((s) => (s.status || 'active') === 'active').length,
-    [students]
-  );
-  const lineLinkedCount = useMemo(
-    () => students.filter((s) => s.lineLinked).length,
     [students]
   );
   const graduatedCount = useMemo(
@@ -1868,30 +1854,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           </div>
                           <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1.5 flex-wrap tabular-nums mt-0.5">
                             <span>{student.guardianPhone || '—'}</span>
-                            {isLineEnabled && (canManageStudentRecords ? (
-                              <>
-                                <span aria-hidden="true">·</span>
-                                <button
-                                  type="button"
-                                  onClick={() => onToggleLineSync(student.id)}
-                                  className="hover:underline cursor-pointer whitespace-nowrap inline-flex items-center"
-                                  title={student.lineLinked ? 'คลิกเพื่อยกเลิกสถานะเชื่อมต่อ LINE' : 'คลิกเพื่อเชื่อม LINE'}
-                                >
-                                  {student.lineLinked ? (
-                                    <StatusBadge status="complete" size="xs" label="LINE เชื่อมแล้ว" />
-                                  ) : (
-                                    <span className="font-medium text-[var(--tone)]">เชื่อม LINE</span>
-                                  )}
-                                </button>
-                              </>
-                            ) : (
-                              student.lineLinked && (
-                                <>
-                                  <span aria-hidden="true">·</span>
-                                  <StatusBadge status="complete" size="xs" label="LINE เชื่อมแล้ว" />
-                                </>
-                              )
-                            ))}
                           </div>
                         </td>
 
@@ -1997,8 +1959,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         <StudentsAnalyticsTab
           students={students}
           activeStudentsCount={activeStudentsCount}
-          isLineEnabled={isLineEnabled}
-          lineLinkedCount={lineLinkedCount}
           graduatedCount={graduatedCount}
           existingGradeLevels={existingGradeLevels}
           statusBadgeMap={statusBadgeMap}

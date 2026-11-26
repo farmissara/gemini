@@ -26,8 +26,6 @@ const makeStudent = (id: string, room: string, gradeLevel = 'มัธยมศ�
   guardianRelation: '',
   guardianPhone: '',
   guardianEmail: '',
-  lineLinked: false,
-  lineNotifyEnabled: false,
   enrolledDate: '2026-01-01',
 });
 
@@ -75,7 +73,6 @@ test('getTeacherHomeroomStudents restricts teachers to their assigned rooms and 
     fullNameEn: 'Somying',
     email: 'teacher@school.test',
     avatarUrl: '',
-    lineConnected: false,
     teacherRecordId: 'teacher-1',
   };
   const teacher = {

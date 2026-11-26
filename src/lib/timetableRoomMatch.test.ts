@@ -53,7 +53,6 @@ test('filterTimetableSlotsForPersonalRole matches ป.1 variants without leaking
     room: '1',
     gradeLevel: 'ประถมศึกษาปีที่ 1 (P.1)',
     avatarUrl: '',
-    lineConnected: false,
   };
   const students: Student[] = [
     {
@@ -75,8 +74,6 @@ test('filterTimetableSlotsForPersonalRole matches ป.1 variants without leaking
       guardianRelation: '',
       guardianPhone: '',
       guardianEmail: '',
-      lineLinked: false,
-      lineNotifyEnabled: false,
       enrolledDate: '2026-05-01',
     },
   ];

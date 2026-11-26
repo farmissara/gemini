@@ -833,7 +833,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         systemConfig,
         schoolId: school?.id || grade.schoolId || '',
         isNewRecord,
-        isDemoMode: true,
       });
     }
 

@@ -20,12 +20,12 @@ export interface TimetableScheduleViewProps {
   assignments?: Assignment[];
   teachers: Teacher[];
   students: Student[];
-  onAddSlot: (slot: TimetableSlot) => Promise<void>;
+  onAddSlot?: (slot: TimetableSlot) => Promise<void>;
   onUpdateSlot?: (slot: TimetableSlot) => Promise<void>;
-  onDeleteSlot: (id: string) => Promise<void>;
+  onDeleteSlot?: (id: string) => Promise<void>;
   onImportSlots?: (slots: TimetableSlot[]) => Promise<void> | void;
   schoolPeriods: SchoolPeriodTime[];
-  onSaveSchoolPeriods: (periods: SchoolPeriodTime[]) => Promise<void>;
+  onSaveSchoolPeriods?: (periods: SchoolPeriodTime[]) => Promise<void>;
   lang: AppLanguage;
   currentRole: UserRole;
   currentUser?: AuthUser | null;

@@ -41,7 +41,6 @@ const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
   fullNameEn: 'Somying Rakrian',
   email: 'somying@school.ac.th',
   avatarUrl: '',
-  lineConnected: false,
   ...overrides,
 });
 

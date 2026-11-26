@@ -32,8 +32,6 @@ const makeStudent = (id: string): Student => ({
   guardianRelation: '',
   guardianPhone: '',
   guardianEmail: '',
-  lineLinked: false,
-  lineNotifyEnabled: false,
   enrolledDate: '2026-01-01',
 });
 
@@ -49,7 +47,6 @@ const makeRecord = (
   time,
   status: 'present',
   checkinMethod: 'teacher_proxy',
-  lineNotificationSent: false,
   ...overrides,
 });
 

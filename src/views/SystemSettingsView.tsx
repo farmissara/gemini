@@ -45,7 +45,7 @@ import {
   CheckSquare,
   Square,
 } from 'lucide-react';
-import { AttendanceRecord, Course, GradeRecord, SystemConfig, LineNotificationSettings, Student, Teacher, TimetableSlot, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
+import { AttendanceRecord, Course, GradeRecord, SystemConfig, Student, Teacher, TimetableSlot, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
 import type { NavTab } from '../components/layout/Sidebar';
 import {
@@ -84,14 +84,10 @@ import { TableActionMenu, TableActionItem } from '../components/common/TableActi
 import { StatusBadge } from '../components/common/StatusBadge';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { LineSimulatorTab } from '../features/settings/LineSimulatorTab';
 
 export type SystemSettingsTab =
   | 'control_overview'
-  | 'line_events'
-  | 'line_connection'
-  | 'preview_simulator'
-  | 'subscribers'
+  | 'attendance_cutoff'
   | 'school_general'
   | 'school_gps'
   | 'school_permissions'
@@ -200,10 +196,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     type: 'success' | 'error';
     text: string;
   } | null>(null);
-  const [previewSampleType, setPreviewSampleType] = useState<'checkin' | 'infirmary' | 'billing' | 'grades' | 'homework'>('checkin');
-  const [simulatedSendState, setSimulatedSendState] = useState<'idle' | 'sending' | 'sent'>('idle');
-  const [eventCategoryPage, setEventCategoryPage] = useState(0);
-  const [subscriberPage, setSubscriberPage] = useState(0);
   const [studentAccounts, setStudentAccounts] = useState<StudentAccountLink[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
@@ -577,47 +569,16 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   };
 
   // Form State
-  const defaultLineSettings: LineNotificationSettings = systemConfig.lineNotificationSettings || {
-    lineOaId: '@eduverse_official',
-    lineOaName: 'EduVerse School Connect OA',
-    channelId: systemConfig.lineChannelId || '2001928431',
-    channelSecret: '8a9f3b1c6d7e2f50493817263548eabc',
-    channelAccessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eduverse_official_line_messaging_token_long_lived_2569_production',
-    liffId: '2001928431-Lx9kNmQz',
-    webhookUrl: 'https://school.eduverse.in.th/api/line/webhook',
-    addFriendUrl: systemConfig.lineOaAddFriendUrl || 'https://line.me/R/ti/p/@eduverse_official',
-    qrCodeImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://line.me/R/ti/p/@eduverse_official',
-    autoReplyGreeting: 'สวัสดีครับ ยินดีต้อนรับสู่ระบบแจ้งเตือนสารสนเทศโรงเรียน EduVerse Official สำหรับผู้ปกครองและนักเรียน',
-    schoolStartTime: '08:00',
-    lateCutoffTime: '08:15',
-    absenceCutoffTime: '08:30',
-    checkoutStartTime: '15:30',
-    behaviorAlertThreshold: 5,
-    notifyAttendanceCheckIn: true,
-    notifyAttendanceCheckOut: true,
-    notifyAttendanceLate: true,
-    notifyAttendanceAbsence: true,
-    notifyInfirmaryVisit: true,
-    notifyBehaviorDeduction: true,
-    notifyBehaviorMerit: true,
-    notifyNewHomework: true,
-    notifyHomeworkDeadline: true,
-    notifyHomeworkGraded: true,
-    notifyGradeReportReleased: true,
-    notifyBillingInvoice: true,
-    notifyBillingPaymentSuccess: true,
-    notifyEmergencyBroadcast: true,
-    customHeaderColor: '#00B900',
-    customFooterNote: 'ระบบแจ้งเตือนอัตโนมัติ EduVerse SIS • หากมีข้อสงสัยติดต่อห้องธุรการ โทร 02-999-8888',
-  };
-
-  const [lineSettings, setLineSettings] = useState<LineNotificationSettings>(defaultLineSettings);
   const [generalConfig, setGeneralConfig] = useState({
     academicYear: systemConfig.academicYear,
     currentSemester: systemConfig.currentSemester,
     semesterOptions: systemConfig.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
     gradingSystem: systemConfig.gradingSystem || 'thai',
     staffPositionOptions: systemConfig.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
+    schoolStartTime: systemConfig.schoolStartTime || '07:50',
+    lateCutoffTime: systemConfig.lateCutoffTime || '08:00',
+    absenceCutoffTime: systemConfig.absenceCutoffTime || '09:00',
+    checkoutStartTime: systemConfig.checkoutStartTime || '15:30',
     resendFromEmail: systemConfig.resendFromEmail,
     resendApiKeyConfigured: systemConfig.resendApiKeyConfigured,
     masterEmail: systemConfig.masterEmail || 'baanpakkru@gmail.com',
@@ -632,6 +593,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       semesterOptions: systemConfig.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
       gradingSystem: systemConfig.gradingSystem || 'thai',
       staffPositionOptions: systemConfig.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
+      schoolStartTime: systemConfig.schoolStartTime || '07:50',
+      lateCutoffTime: systemConfig.lateCutoffTime || '08:00',
+      absenceCutoffTime: systemConfig.absenceCutoffTime || '09:00',
+      checkoutStartTime: systemConfig.checkoutStartTime || '15:30',
     }));
   }, [
     activeSchool.id,
@@ -640,6 +605,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     systemConfig.semesterOptions,
     systemConfig.gradingSystem,
     systemConfig.staffPositionOptions,
+    systemConfig.schoolStartTime,
+    systemConfig.lateCutoffTime,
+    systemConfig.absenceCutoffTime,
+    systemConfig.checkoutStartTime,
   ]);
 
   const handleCopy = (text: string, fieldName: string) => {
@@ -709,34 +678,12 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     }
   };
 
-  const isLineEnabled = localFlags.lineEnabled !== false;
   const isAutoDeleteSelfiesEnabled = localFlags.autoDeleteSelfiesAfterCheckout !== false;
   const selfieRetentionMinutes = normalizeSelfieRetentionMinutes(localFlags.selfieRetentionAfterCheckoutMinutes);
   const storedSelfieCount = useMemo(
     () => attendance.filter((record) => Boolean(record.photoUrl || record.photoStoragePath)).length,
     [attendance]
   );
-
-  const handleToggleLineMaster = (nextEnabled?: boolean) => {
-    const resolvedNext = typeof nextEnabled === 'boolean' ? nextEnabled : !isLineEnabled;
-    const nextFlags: SchoolFeatureFlags = {
-      ...localFlags,
-      lineEnabled: resolvedNext,
-    };
-    setLocalFlags(nextFlags);
-    saveSchoolFeatureFlags(activeSchool.id, nextFlags);
-    onUpdateFeatureFlags?.(nextFlags);
-    onUpdateConfig({
-      ...systemConfig,
-      lineMessagingConfigured: resolvedNext,
-    });
-    setQuickSwitchMessage(
-      resolvedNext
-        ? 'เปิดใช้งานระบบแจ้งเตือนผ่าน LINE OA ทั้งโรงเรียนแล้ว'
-        : 'ปิดใช้งานระบบแจ้งเตือนผ่าน LINE OA แล้ว (ใช้แจ้งเตือนในแอป / Web Push แทน)'
-    );
-    window.setTimeout(() => setQuickSwitchMessage(null), 3000);
-  };
 
   const handleToggleAutoDeleteSelfies = (nextEnabled?: boolean) => {
     const resolvedNext = typeof nextEnabled === 'boolean' ? nextEnabled : !isAutoDeleteSelfiesEnabled;
@@ -802,13 +749,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     }
   };
 
-  const handleToggleEvent = (field: keyof LineNotificationSettings) => {
-    setLineSettings(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
-
   const handleSave = async () => {
     setSaveError(null);
     const semesterOptions = [...new Set(generalConfig.semesterOptions.map((term) => term.trim()).filter(Boolean))];
@@ -824,14 +764,14 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       semesterOptions,
       gradingSystem: generalConfig.gradingSystem,
       staffPositionOptions,
+      schoolStartTime: generalConfig.schoolStartTime,
+      lateCutoffTime: generalConfig.lateCutoffTime,
+      absenceCutoffTime: generalConfig.absenceCutoffTime,
+      checkoutStartTime: generalConfig.checkoutStartTime,
       resendFromEmail: generalConfig.resendFromEmail,
       resendApiKeyConfigured: generalConfig.resendApiKeyConfigured,
       masterEmail: generalConfig.masterEmail,
       replyToEmail: generalConfig.replyToEmail,
-      lineChannelId: lineSettings.channelId,
-      lineOaAddFriendUrl: lineSettings.addFriendUrl,
-      lineMessagingConfigured: isLineEnabled,
-      lineNotificationSettings: lineSettings,
     };
 
     try {
@@ -851,146 +791,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       setSaveError(error instanceof Error ? error.message : 'บันทึกการตั้งค่าโรงเรียนไม่สำเร็จ');
     }
   };
-
-  const handleSimulateSend = () => {
-    setSimulatedSendState('sending');
-    setTimeout(() => {
-      setSimulatedSendState('sent');
-      setTimeout(() => setSimulatedSendState('idle'), 3000);
-    }, 900);
-  };
-
-  // Connected students count
-  const connectedCount = students.filter(s => s.lineLinked).length;
-  const connectedPct = students.length > 0 ? Math.round((connectedCount / students.length) * 100) : 0;
-
-  // Event Categories for UI
-  const eventCategories = [
-    {
-      id: 'attendance',
-      titleTh: '1. ระบบเข้า-ออกโรงเรียน & เช็คชื่อ (Attendance & Gates)',
-      descriptionTh: 'ส่งแจ้งเตือนเข้าห้องแชตผู้ปกครองทันทีที่นักเรียนสแกนบัตรหรือเช็คชื่อในชั้นเรียน',
-      icon: Clock,
-      badgeColor: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700',
-      events: [
-        {
-          key: 'notifyAttendanceCheckIn' as const,
-          titleTh: 'แจ้งเตือนเมื่อนักเรียนแตะบัตรเข้าโรงเรียน (Check-in)',
-          descTh: 'ส่งการ์ดระบุชื่อ เวลาเข้าแถว ประตูที่ผ่าน และภาพถ่ายกล้องวงจรปิดแบบเรียลไทม์',
-        },
-        {
-          key: 'notifyAttendanceCheckOut' as const,
-          titleTh: 'แจ้งเตือนเมื่อนักเรียนแตะบัตรออกจากโรงเรียน (Check-out)',
-          descTh: 'แจ้งผู้ปกครองเมื่อนักเรียนเดินทางออกจากโรงเรียนหลังเวลาเลิกเรียน',
-        },
-        {
-          key: 'notifyAttendanceLate' as const,
-          titleTh: 'แจ้งเตือนกรณีมาสาย (Late Arrival Alert)',
-          descTh: `แจ้งเตือนทันทีเมื่อเข้าโรงเรียนหลังเวลา ${lineSettings.lateCutoffTime} น. พร้อมแนะนำการปรับเวลา`,
-        },
-        {
-          key: 'notifyAttendanceAbsence' as const,
-          titleTh: 'แจ้งเตือนด่วนกรณีขาดเรียนหรือไม่ปรากฏตัว (Absence Alert)',
-          descTh: `ส่งแจ้งเตือนเวลา ${lineSettings.absenceCutoffTime} น. หากระบบไม่พบบันทึกการสแกนบัตร`,
-        },
-      ]
-    },
-    {
-      id: 'health',
-      titleTh: '2. ห้องพยาบาล & การปฐมพยาบาล (Infirmary Health Alert)',
-      descriptionTh: 'แจ้งเตือนเร่งด่วนเมื่อนักเรียนมีอาการเจ็บป่วยหรือเข้ารับการรักษาที่ห้องพยาบาล',
-      icon: HeartPulse,
-      badgeColor: 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700',
-      events: [
-        {
-          key: 'notifyInfirmaryVisit' as const,
-          titleTh: 'แจ้งเตือนเมื่อนักเรียนเข้าห้องพยาบาล (Infirmary Visit)',
-          descTh: 'ส่งข้อมูลอุณหภูมิร่างกาย อาการเบื้องต้น การปฐมพยาบาล และยาที่ได้รับทันที',
-        },
-      ]
-    },
-    {
-      id: 'behavior',
-      titleTh: '3. ความประพฤติ & วินัยนักเรียน (Behavior & Conduct)',
-      descriptionTh: 'แจ้งเตือนพฤติกรรมทั้งด้านบวก (ทำความดี) และการตักเตือน (หักคะแนนพฤติกรรม)',
-      icon: ShieldAlert,
-      badgeColor: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700',
-      events: [
-        {
-          key: 'notifyBehaviorDeduction' as const,
-          titleTh: 'แจ้งเตือนเมื่อถูกตัดคะแนนความประพฤติ (Conduct Deduction)',
-          descTh: `ส่งแจ้งเตือนเหตุผล กฎระเบียบที่ผิด และคะแนนคงเหลือ (เมื่อถูกหักตั้งแต่ ${lineSettings.behaviorAlertThreshold} คะแนน)`,
-        },
-        {
-          key: 'notifyBehaviorMerit' as const,
-          titleTh: 'แจ้งเตือนเมื่อได้รับคะแนนความดี / จิตอาสา (Merit & Praise)',
-          descTh: 'ส่งการ์ดยกย่องชมเชยเมื่อทำคุณงามความดีหรือช่วยเหลือสถานศึกษา',
-        },
-      ]
-    },
-    {
-      id: 'academics',
-      titleTh: '4. การเรียน การบ้าน & ผลการสอบ (Academics & Gradebook)',
-      descriptionTh: 'รายงานความคืบหน้าทางการศึกษา มอบหมายงาน และการประเมินผลสัมฤทธิ์',
-      icon: FileCheck2,
-      badgeColor: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700',
-      events: [
-        {
-          key: 'notifyNewHomework' as const,
-          titleTh: 'แจ้งเตือนเมื่อมีการบ้านใหม่ (New Assignment)',
-          descTh: 'ส่งหัวข้อการบ้าน วิชา คำสั่ง และกำหนดส่ง เพื่อให้ผู้ปกครองช่วยติดตาม',
-        },
-        {
-          key: 'notifyHomeworkDeadline' as const,
-          titleTh: 'แจ้งเตือนล่วงหน้า 24 ชม. ก่อนครบกำหนดส่ง (Deadline Reminder)',
-          descTh: 'ระบบส่งแจ้งเตือนอัตโนมัติเฉพาะนักเรียนที่ยังไม่ได้ส่งงาน',
-        },
-        {
-          key: 'notifyHomeworkGraded' as const,
-          titleTh: 'แจ้งผลการตรวจการบ้านและข้อเสนอแนะของครู (Graded Feedback)',
-          descTh: 'ส่งคะแนนที่ได้ พร้อมคำแนะนำพัฒนาการเรียนรู้จากคุณครูผู้สอน',
-        },
-        {
-          key: 'notifyGradeReportReleased' as const,
-          titleTh: 'แจ้งเตือนเมื่อผลการเรียนประจำภาคเรียนออก (Grade & GPA Release)',
-          descTh: 'ส่งสรุป GPA / GPAX พร้อมลิงก์เข้าดูและดาวน์โหลดเอกสาร ปพ.1 ดิจิทัล',
-        },
-      ]
-    },
-    {
-      id: 'billing',
-      titleTh: '5. ค่าธรรมเนียมการเรียน & การเงิน (Tuition & PromptPay Invoices)',
-      descriptionTh: 'ส่งใบแจ้งยอดค่าเทอม พร้อม QR Code PromptPay และใบเสร็จรับเงิน',
-      icon: Receipt,
-      badgeColor: 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700',
-      events: [
-        {
-          key: 'notifyBillingInvoice' as const,
-          titleTh: 'แจ้งเตือนใบแจ้งหนี้ค่าเทอม (Tuition Invoice with PromptPay)',
-          descTh: 'ส่งการ์ดแจ้งยอดค่าใช้จ่ายพร้อมรูป QR Code PromptPay ชำระเงินได้ทันทีใน LINE',
-        },
-        {
-          key: 'notifyBillingPaymentSuccess' as const,
-          titleTh: 'ส่งใบเสร็จรับเงินดิจิทัลเมื่อชำระสำเร็จ (Payment Receipt)',
-          descTh: 'ส่งใบเสร็จยืนยันการรับเงิน เลขที่ใบเสร็จ และบันทึกเข้าประวัติการเงิน',
-        },
-      ]
-    },
-    {
-      id: 'broadcast',
-      titleTh: '6. ข่าวสาร & ประกาศด่วนสถานศึกษา (School Broadcast)',
-      descriptionTh: 'กระจายข่าวสารสำคัญ การปิดเรียนฉุกเฉิน หรือจดหมายข่าวจากโรงเรียน',
-      icon: Radio,
-      badgeColor: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700',
-      events: [
-        {
-          key: 'notifyEmergencyBroadcast' as const,
-          titleTh: 'กระจายข้อความประกาศด่วน / ฉุกเฉิน (Emergency Broadcast)',
-          descTh: 'บรอดแคสต์ตรงเข้า LINE ของผู้ปกครองทุกคนพร้อมกันใน 1 วินาที',
-        },
-      ]
-    },
-  ];
 
   const rawSettingsNavSections: Array<{
     groupLabel: string;
@@ -1020,17 +820,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       items: [
         { id: 'school_general', label: lang === 'th' ? 'ข้อมูลโรงเรียน & สำรองข้อมูล' : 'General & Backup', icon: Building2 },
         { id: 'school_gps', label: lang === 'th' ? 'พิกัด GPS & ประตู' : 'Campus GPS & Gates', icon: MapPin },
-      ],
-    },
-    {
-      groupLabel: lang === 'th' ? 'LINE OA & เวลาเรียน' : 'LINE & Cutoff',
-      tone: 'tone-6',
-      groupIcon: BellRing,
-      items: [
-        { id: 'line_events', label: lang === 'th' ? 'เงื่อนไขแจ้งเตือน & ตัดสาย' : 'Events & Cutoff', icon: BellRing },
-        { id: 'line_connection', label: lang === 'th' ? 'LINE API & Webhook' : 'LINE API & Webhook', icon: MessageSquare },
-        { id: 'preview_simulator', label: lang === 'th' ? 'จำลองการ์ด Flex' : 'Flex Simulator', icon: Smartphone },
-        { id: 'subscribers', label: lang === 'th' ? 'ผู้รับแจ้งเตือน' : 'Subscribers', icon: Users },
+        { id: 'attendance_cutoff', label: lang === 'th' ? 'เวลาเข้า-ออก & ตัดสาย' : 'Attendance Cutoff', icon: Clock },
       ],
     },
     {
@@ -1070,8 +860,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </h1>
             <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
               {lang === 'th'
-                ? `${isLineEnabled ? `LINE ผู้ปกครอง ${connectedCount}/${students.length} (${connectedPct}%)` : 'ปิดใช้งาน LINE ชั่วคราว'} · ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น.`
-                : `${isLineEnabled ? `LINE ${connectedCount}/${students.length} (${connectedPct}%)` : 'LINE Disabled'} · Late ${lineSettings.lateCutoffTime} · Absent ${lineSettings.absenceCutoffTime}`}
+                ? `เข้าเรียน ${generalConfig.schoolStartTime} น. · ตัดสาย ${generalConfig.lateCutoffTime} น. · ตัดขาด ${generalConfig.absenceCutoffTime} น.`
+                : `Start ${generalConfig.schoolStartTime} · Late ${generalConfig.lateCutoffTime} · Absent ${generalConfig.absenceCutoffTime}`}
             </p>
           </div>
         </div>
@@ -1258,16 +1048,14 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             actionLabel: 'จัดการสิทธิ์ทั้งหมด',
           },
           {
-            id: 'line_events',
-            category: 'การแจ้งเตือน & เวลาเรียน',
-            title: 'LINE OA & เวลาตัดสาย / ขาดเรียน',
-            statusLabel: !isLineEnabled ? 'ปิดใช้งาน LINE' : `เชื่อมต่อ ${connectedPct}%`,
-            ready: isLineEnabled && (connectedCount > 0 || Boolean(lineSettings.notifyAttendanceCheckIn)),
-            detail: !isLineEnabled
-              ? `ปิดการส่งแจ้งเตือนผ่าน LINE OA อยู่ (ใช้แจ้งเตือนในแอป & Web Push) · ตัดสาย ${lineSettings.lateCutoffTime} น.`
-              : `ตัดสาย ${lineSettings.lateCutoffTime} น. · ตัดขาด ${lineSettings.absenceCutoffTime} น. · ผู้ปกครองเชื่อม LINE ${connectedCount}/${students.length} คน`,
-            icon: BellRing,
-            actionLabel: 'ตั้งค่า LINE & เวลา',
+            id: 'attendance_cutoff',
+            category: 'เวลาเรียน & การมาเรียน',
+            title: 'เวลาเข้าเรียน ตัดสาย และเวลาเลิกเรียน',
+            statusLabel: `ตัดสาย ${generalConfig.lateCutoffTime} น.`,
+            ready: Boolean(generalConfig.lateCutoffTime && generalConfig.absenceCutoffTime),
+            detail: `เริ่ม ${generalConfig.schoolStartTime} น. · ตัดสาย ${generalConfig.lateCutoffTime} น. · ตัดขาด ${generalConfig.absenceCutoffTime} น. · เลิกเรียน ${generalConfig.checkoutStartTime} น.`,
+            icon: Clock,
+            actionLabel: 'ตั้งค่าเวลาเรียน',
           },
           {
             id: 'school_general',
@@ -1323,25 +1111,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             onToggle: () => handleQuickPolicyToggle('student_view_grades', 'ให้นักเรียนดูเกรดและ ปพ. ออนไลน์'),
           },
           {
-            id: 'teacher_view_financials',
-            label: 'ให้ครูเห็นสถานะการเงิน/ค่าเทอม',
-            desc: 'แสดงสถานะใบแจ้งหนี้และการชำระเงินให้ครูที่ปรึกษาช่วยติดตาม',
-            enabled: policyById.get('teacher_view_financials')?.enabled !== false,
-            onToggle: () => handleQuickPolicyToggle('teacher_view_financials', 'ให้ครูเห็นสถานะการเงิน/ค่าเทอม'),
-          },
-          {
             id: 'allowStudentsAi',
             label: 'เปิดใช้งานผู้ช่วย AI สำหรับนักเรียน',
             desc: 'ควบคุมการเข้าถึง AI Diagnostic, Socratic Tutor และ Career Quest AI',
             enabled: localFlags.allowStudentsAi !== false,
             onToggle: handleQuickStudentAiToggle,
-          },
-          {
-            id: 'line_oa_master',
-            label: 'เปิดใช้งานระบบแจ้งเตือนผ่าน LINE OA',
-            desc: 'เปิดหรือปิดฟังก์ชันแจ้งเตือนและผูกบัญชี LINE OA ทั้งโรงเรียน (หากปิดจะใช้ระบบแจ้งเตือนในแอป / Web Push แทน)',
-            enabled: isLineEnabled,
-            onToggle: () => handleToggleLineMaster(),
           },
           {
             id: 'auto_delete_selfies',
@@ -1612,65 +1386,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         );
       })()}
 
-      {/* TAB 1: LINE Notification Events & Rules */}
-      {activeTab === 'line_events' && (
+      {/* TAB 1: Attendance Cutoff Timers */}
+      {activeTab === 'attendance_cutoff' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Master LINE On/Off Switch Card */}
-          <div className={`rounded-2xl p-5 border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition ${
-            isLineEnabled
-              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800'
-              : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'
-          }`}>
-            <div className="flex items-start gap-3 min-w-0">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-                isLineEnabled
-                  ? 'bg-emerald-700 text-white border-emerald-700'
-                  : 'bg-[var(--color-card)] text-[var(--color-text-muted)] border-[var(--color-border)]'
-              }`}>
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
-                    เปิด-ปิดระบบแจ้งเตือนผ่าน LINE OA (ทั้งโรงเรียน)
-                  </h3>
-                  <StatusBadge
-                    size="xs"
-                    status={isLineEnabled ? 'complete' : 'neutral'}
-                    label={isLineEnabled ? 'เปิดใช้งาน (ON)' : 'ปิดใช้งาน (OFF)'}
-                  />
-                </div>
-                <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
-                  {isLineEnabled
-                    ? 'เปิดให้ส่งประกาศ แจ้งเตือน และปุ่มผูกบัญชี LINE OA ของผู้ปกครองและนักเรียน (สามารถปิดได้ทันทีหากโรงเรียนใช้แจ้งเตือนในแอป / Web Push เป็นหลัก)'
-                    : 'ปิดการใช้งาน LINE ทั้งระบบแล้ว — ปุ่มส่ง LINE, บรอดแคสต์ LINE และปุ่มเชื่อม LINE OA จะถูกซ่อนไว้ โดยระบบแจ้งเตือนในแอปและ Web Push ยังทำงานปกติ'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-              <span className="text-xs font-bold text-[var(--color-text-title)]">
-                {isLineEnabled ? 'เปิด' : 'ปิด'}
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isLineEnabled}
-                aria-label="เปิดหรือปิดระบบแจ้งเตือนผ่าน LINE OA ทั้งโรงเรียน"
-                onClick={() => handleToggleLineMaster()}
-                className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 ${
-                  isLineEnabled ? 'bg-emerald-700' : 'bg-slate-400 dark:bg-slate-600'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition duration-200 ${
-                    isLineEnabled ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-
           {quickSwitchMessage && (
             <div role="status" className="px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-xs font-semibold text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
@@ -1681,124 +1399,63 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </div>
           )}
 
-          {/* Rules & Cutoff Timers Card */}
           <div className="bg-[var(--color-card)] rounded-2xl p-5 border border-[var(--color-border)] shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-[var(--color-text-title)]">
               <Clock className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-              <h3 className="font-bold text-sm">การตั้งค่าเวลาและเกณฑ์การแจ้งเตือนอัตโนมัติ (Cutoff Times & Rules)</h3>
+              <h3 className="font-bold text-sm">
+                {lang === 'th' ? 'การตั้งค่าเวลาเข้า-ออกและเกณฑ์ตัดสายอัตโนมัติ (Cutoff Times)' : 'Attendance & Cutoff Time Settings'}
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">เวลาเริ่มกิจกรรมหน้าเสาธง</label>
+                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'เวลาเริ่มกิจกรรมหน้าเสาธง' : 'School Start Time'}
+                </label>
                 <input
                   type="time"
-                  value={lineSettings.schoolStartTime}
-                  onChange={(e) => setLineSettings(prev => ({ ...prev, schoolStartTime: e.target.value }))}
+                  value={generalConfig.schoolStartTime}
+                  onChange={(e) => setGeneralConfig((prev) => ({ ...prev, schoolStartTime: e.target.value }))}
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono font-bold"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">เวลาตัดสาย (Late Cutoff)</label>
+                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'เวลาตัดสาย (Late Cutoff)' : 'Late Cutoff Time'}
+                </label>
                 <input
                   type="time"
-                  value={lineSettings.lateCutoffTime}
-                  onChange={(e) => setLineSettings(prev => ({ ...prev, lateCutoffTime: e.target.value }))}
+                  value={generalConfig.lateCutoffTime}
+                  onChange={(e) => setGeneralConfig((prev) => ({ ...prev, lateCutoffTime: e.target.value }))}
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono font-bold text-amber-800 dark:text-amber-300"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">เวลาตัดขาดเรียน (Absence Cutoff)</label>
+                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'เวลาตัดขาดเรียน (Absence Cutoff)' : 'Absence Cutoff Time'}
+                </label>
                 <input
                   type="time"
-                  value={lineSettings.absenceCutoffTime}
-                  onChange={(e) => setLineSettings(prev => ({ ...prev, absenceCutoffTime: e.target.value }))}
+                  value={generalConfig.absenceCutoffTime}
+                  onChange={(e) => setGeneralConfig((prev) => ({ ...prev, absenceCutoffTime: e.target.value }))}
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono font-bold text-rose-800 dark:text-rose-300"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">เกณฑ์เตือนตัดคะแนนพฤติกรรม</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={lineSettings.behaviorAlertThreshold}
-                    onChange={(e) => setLineSettings(prev => ({ ...prev, behaviorAlertThreshold: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono font-bold"
-                  />
-                  <span className="text-xs text-[var(--color-text-muted)] shrink-0">คะแนนขึ้นไป</span>
-                </div>
+                <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'เวลาเริ่มเช็คเอาท์กลับบ้าน' : 'Checkout Start Time'}
+                </label>
+                <input
+                  type="time"
+                  value={generalConfig.checkoutStartTime}
+                  onChange={(e) => setGeneralConfig((prev) => ({ ...prev, checkoutStartTime: e.target.value }))}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono font-bold text-emerald-800 dark:text-emerald-300"
+                />
               </div>
             </div>
-          </div>
-
-          {/* Event Categories Accordion / Cards */}
-          <div className={`space-y-4 transition-opacity ${isLineEnabled ? '' : 'opacity-60'}`}>
-            {eventCategories.slice(eventCategoryPage, eventCategoryPage + 1).map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <div key={cat.id} className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-xs overflow-hidden">
-                  <div className="p-4 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`p-1.5 rounded-lg border ${cat.badgeColor}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xs sm:text-sm text-[var(--color-text-title)]">{cat.titleTh}</h4>
-                        <p className="text-[11px] text-[var(--color-text-muted)]">{cat.descriptionTh}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="divide-y divide-[var(--color-border)]">
-                    {cat.events.map((evt) => {
-                      const isEnabled = Boolean(lineSettings[evt.key]);
-                      return (
-                        <div key={evt.key} className="p-4 flex items-center justify-between gap-4 hover:bg-[var(--color-card-subtle)] transition">
-                          <div className="space-y-0.5 pr-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-xs text-[var(--color-text-title)]">{evt.titleTh}</span>
-                              {isEnabled ? (
-                                <StatusBadge status="complete" size="xs" label="เปิดใช้งาน" />
-                              ) : (
-                                <StatusBadge status="neutral" size="xs" label="ปิดการส่ง" />
-                              )}
-                            </div>
-                            <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{evt.descTh}</p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleEvent(evt.key)}
-                            className={`shrink-0 transition-transform active:scale-95 cursor-pointer ${
-                              isEnabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                            }`}
-                            title={isEnabled ? 'คลิกเพื่อปิด' : 'คลิกเพื่อเปิด'}
-                          >
-                            {isEnabled ? (
-                              <ToggleRight className="w-9 h-9" />
-                            ) : (
-                              <ToggleLeft className="w-9 h-9" />
-                            )}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {eventCategories.length > 1 && (
-                    <div className="flex items-center justify-between p-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-body)]">
-                      <button type="button" onClick={() => setEventCategoryPage(page => Math.max(0, page - 1))} disabled={eventCategoryPage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">หมวดก่อนหน้า</button>
-                      <span>{eventCategoryPage + 1} / {eventCategories.length}</span>
-                      <button type="button" onClick={() => setEventCategoryPage(page => Math.min(eventCategories.length - 1, page + 1))} disabled={eventCategoryPage === eventCategories.length - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">หมวดถัดไป</button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
 
           {saveError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{saveError}</p>}
@@ -1809,327 +1466,17 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>บันทึกการตั้งค่าเหตุการณ์แจ้งเตือน</span>
+              <span>{lang === 'th' ? 'บันทึกการตั้งค่าเวลาเข้า-ออก' : 'Save Cutoff Settings'}</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* TAB 2: Live Smartphone Chat & Flex Message Simulator */}
-      {activeTab === 'preview_simulator' && (
-        <LineSimulatorTab
-          activeSchool={activeSchool}
-          lineOaName={lineSettings.lineOaName}
-          customHeaderColor={lineSettings.customHeaderColor || '#047857'}
-          customFooterNote={lineSettings.customFooterNote || ''}
-          previewSampleType={previewSampleType}
-          setPreviewSampleType={setPreviewSampleType}
-          simulatedSendState={simulatedSendState}
-          handleSimulateSend={handleSimulateSend}
-          onUpdateCustomization={(patch) =>
-            setLineSettings((prev) => ({
-              ...prev,
-              ...(patch.customHeaderColor !== undefined ? { customHeaderColor: patch.customHeaderColor } : {}),
-              ...(patch.customFooterNote !== undefined ? { customFooterNote: patch.customFooterNote } : {}),
-            }))
-          }
-        />
-      )}
 
-      {/* TAB 3: LINE API Connection & Webhook Configuration */}
-      {activeTab === 'line_connection' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: API Keys Form */}
-            <div className="lg:col-span-8 bg-[var(--color-card)] rounded-2xl p-6 border border-[var(--color-border)] shadow-xs space-y-5">
-              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-[var(--color-border)] pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center font-bold text-xs">
-                    API
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-[var(--color-text-title)]">LINE Developers Console Credentials</h3>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">ข้อมูลจาก https://developers.line.biz ในส่วน Messaging API Channel</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge
-                    size="xs"
-                    status={isLineEnabled ? 'complete' : 'neutral'}
-                    label={isLineEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
-                  />
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={isLineEnabled}
-                    aria-label="เปิดหรือปิดใช้งาน LINE OA"
-                    onClick={() => handleToggleLineMaster()}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-                      isLineEnabled ? 'bg-emerald-700' : 'bg-slate-400 dark:bg-slate-600'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ${
-                        isLineEnabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-[var(--color-text-body)]">LINE Official Account ID</label>
-                    <input
-                      type="text"
-                      value={lineSettings.lineOaId}
-                      onChange={(e) => setLineSettings(prev => ({ ...prev, lineOaId: e.target.value }))}
-                      placeholder="@eduverse_official"
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono"
-                    />
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-[var(--color-text-body)]">ชื่อที่แสดงของบัญชี (LINE OA Name)</label>
-                    <input
-                      type="text"
-                      value={lineSettings.lineOaName}
-                      onChange={(e) => setLineSettings(prev => ({ ...prev, lineOaName: e.target.value }))}
-                      placeholder="EduVerse School Connect OA"
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-[var(--color-text-body)]">Channel ID</label>
-                    <input
-                      type="text"
-                      value={lineSettings.channelId}
-                      onChange={(e) => setLineSettings(prev => ({ ...prev, channelId: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono"
-                    />
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-[var(--color-text-body)]">Channel Secret</label>
-                    <input
-                      type="password"
-                      value={lineSettings.channelSecret}
-                      onChange={(e) => setLineSettings(prev => ({ ...prev, channelSecret: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--color-text-body)]">Channel Access Token (Long-Lived 24/7)</label>
-                  <textarea
-                    rows={2}
-                    value={lineSettings.channelAccessToken}
-                    onChange={(e) => setLineSettings(prev => ({ ...prev, channelAccessToken: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono text-[11px]"
-                  />
-                </div>
-
-                {/* Webhook Endpoint with Copy Button */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--color-text-body)]">Webhook URL (นำไปใส่ใน LINE Developers Console &gt; Messaging API)</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={lineSettings.webhookUrl}
-                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-mono text-[var(--color-text-title)] select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(lineSettings.webhookUrl, 'webhook')}
-                      className="px-3.5 py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-body)] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      {copiedField === 'webhook' ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                          <span className="text-emerald-800 dark:text-emerald-200">คัดลอกแล้ว</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>คัดลอก URL</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--color-text-body)]">LIFF ID (LINE Front-end Framework สำหรับบัตรดิจิทัล)</label>
-                  <input
-                    type="text"
-                    value={lineSettings.liffId}
-                    onChange={(e) => setLineSettings(prev => ({ ...prev, liffId: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[var(--color-text-body)]">ข้อความทักทายอัตโนมัติเมื่อกดเพิ่มเพื่อน (Greeting Message)</label>
-                  <textarea
-                    rows={2}
-                    value={lineSettings.autoReplyGreeting}
-                    onChange={(e) => setLineSettings(prev => ({ ...prev, autoReplyGreeting: e.target.value }))}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right: QR Code & Add Friend Guide */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="bg-[var(--color-card)] rounded-2xl p-5 border border-[var(--color-border)] shadow-xs text-center space-y-3">
-                <h4 className="font-bold text-xs text-[var(--color-text-title)]">QR Code เพิ่มเพื่อน LINE OA โรงเรียน</h4>
-                <div className="p-3 bg-white rounded-2xl border border-slate-200 inline-block shadow-inner">
-                  <img
-                    src={lineSettings.qrCodeImageUrl || 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://line.me/R/ti/p/@eduverse_official'}
-                    alt="LINE OA QR"
-                    className="w-36 h-36 object-contain mx-auto"
-                  />
-                </div>
-                <div className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                  {lineSettings.lineOaId}
-                </div>
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(lineSettings.addFriendUrl, 'addFriend')}
-                    className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                  >
-                    {copiedField === 'addFriend' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                        <span>คัดลอกลิงก์เรียบร้อย</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>คัดลอกลิงก์ Add Friend</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Developer Checklist */}
-              <div className="bg-[var(--color-card-subtle)] rounded-2xl p-4 border border-[var(--color-border)] text-xs space-y-2">
-                <span className="font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                  <HelpCircle className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
-                  ข้อกำหนดในการเปิดใช้งานจริง:
-                </span>
-                <ul className="text-[11px] text-[var(--color-text-muted)] space-y-1 list-disc pl-4">
-                  <li>เปิด <strong>Use webhook</strong> ใน LINE Developers เป็น Enabled</li>
-                  <li>ปิด <strong>Auto-reply messages</strong> ใน LINE Official Account Manager เพื่อให้บอท Flex Message ทำงานได้สมบูรณ์</li>
-                  <li>ตั้งค่า Webhook redelivery หากต้องการความแม่นยำสูง</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>บันทึกการตั้งค่าการเชื่อมต่อ</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: Subscribers & Connection Roster */}
-      {activeTab === 'subscribers' && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="bg-[var(--color-card)] rounded-2xl p-5 border border-[var(--color-border)] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-bold text-sm text-[var(--color-text-title)]">
-                สถานะการผูก LINE ของนักเรียนและผู้ปกครอง ({connectedCount}/{students.length} คน)
-              </h3>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                รายชื่อนักเรียนที่มีการจับคู่บัญชี LINE Official Account เพื่อรับการแจ้งเตือนแบบตัวต่อตัว (1-on-1 Flex Message)
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <StatusBadge status="complete" size="sm" label={`ผูกแล้ว ${connectedPct}%`} />
-            </div>
-          </div>
-
-          <div className="bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="table-comfortable w-full text-left text-xs">
-                <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-body)] font-bold uppercase text-[10px]">
-                  <tr>
-                    <th className="px-4 py-3">รหัสนักเรียน</th>
-                    <th className="px-4 py-3">ชื่อ - นามสกุล</th>
-                    <th className="px-4 py-3">ระดับชั้น</th>
-                    <th className="px-4 py-3">ผู้ปกครอง & เบอร์โทร</th>
-                    <th className="px-4 py-3">สถานะ LINE</th>
-                    <th className="px-4 py-3">LINE User ID</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-border)]">
-                  {students.slice(subscriberPage * 6, (subscriberPage + 1) * 6).map((stu) => (
-                    <tr key={stu.id} className="hover:bg-[var(--color-card-subtle)] transition">
-                      <td className="px-4 py-3 font-mono font-bold text-[var(--color-text-title)]">
-                        {stu.studentIdNumber}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={stu.avatarUrl}
-                            alt=""
-                            className="w-6 h-6 rounded-full object-cover border border-[var(--color-border)]"
-                          />
-                          <span className="font-bold text-[var(--color-text-title)]">
-                            {stu.firstNameTh} {stu.lastNameTh}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--color-text-body)]">
-                        {stu.gradeLevel} {stu.room}
-                      </td>
-                      <td className="px-4 py-3 text-[var(--color-text-body)]">
-                        <div>{stu.guardianName} ({stu.guardianRelation})</div>
-                        <div className="text-[10px] text-[var(--color-text-muted)] font-mono">{stu.guardianPhone}</div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {stu.lineLinked ? (
-                          <StatusBadge status="complete" size="xs" label="ผูก LINE แล้ว" />
-                        ) : (
-                          <StatusBadge status="neutral" size="xs" label="ยังไม่ผูก" />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-[var(--color-text-muted)]">
-                        {stu.lineUserId || '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {students.length > 6 && (
-              <div className="flex items-center justify-between p-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-body)]">
-                <button type="button" onClick={() => setSubscriberPage(page => Math.max(0, page - 1))} disabled={subscriberPage === 0} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
-                <span>หน้า {subscriberPage + 1} / {Math.ceil(students.length / 6)} · {students.length} คน</span>
-                <button type="button" onClick={() => setSubscriberPage(page => Math.min(Math.ceil(students.length / 6) - 1, page + 1))} disabled={subscriberPage >= Math.ceil(students.length / 6) - 1} className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] disabled:opacity-40 cursor-pointer">ถัดไป</button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* TAB 5: General School Config & Database Backup */}
       {activeTab === 'school_general' && (

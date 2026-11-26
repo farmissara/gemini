@@ -257,8 +257,8 @@ export const INITIAL_AT_RISK_FORECASTS: AtRiskStudentForecast[] = [
     earlyInterventionActions: [
       {
         id: 'act-1',
-        actionType: 'line_parent_alert',
-        titleTh: 'ส่งหนังสือแจ้งเตือนเวลาเรียนต่ำกว่า 80% ถึงผู้ปกครองผ่าน LINE OA อัตโนมัติ',
+        actionType: 'parent_alert',
+        titleTh: 'ส่งหนังสือแจ้งเตือนเวลาเรียนต่ำกว่า 80% ถึงผู้ปกครองอัตโนมัติ',
         status: 'pending',
       },
       {
@@ -288,8 +288,8 @@ export const INITIAL_AT_RISK_FORECASTS: AtRiskStudentForecast[] = [
       },
       {
         id: 'act-4',
-        actionType: 'line_parent_alert',
-        titleTh: 'แจ้งยอดการบ้านค้างส่ง 4 วิชาให้ผู้ปกครองรับทราบทาง LINE',
+        actionType: 'parent_alert',
+        titleTh: 'แจ้งยอดการบ้านค้างส่ง 4 วิชาให้ผู้ปกครองรับทราบ',
         status: 'pending',
       },
     ],

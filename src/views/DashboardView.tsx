@@ -50,7 +50,6 @@ import {
   Teacher,
   Course, 
   AttendanceRecord, 
-  TuitionInvoice, 
   Announcement, 
   SystemConfig,
   School,
@@ -120,7 +119,6 @@ interface DashboardViewProps {
   attendance: AttendanceRecord[];
   grades?: GradeRecord[];
   playerScores?: PlayerScore[];
-  invoices: TuitionInvoice[];
   announcements: Announcement[];
   systemConfig: SystemConfig;
   school?: School;
@@ -173,7 +171,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   attendance,
   grades = [],
   playerScores = [],
-  invoices,
   announcements,
   systemConfig,
   school,
@@ -236,12 +233,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isModuleEnabled = (tab: NavTab) => isTabEnabledByFeatureFlags(tab, featureFlags, currentRole);
   const canViewExecutiveMonitor = !isAdminSimplified && ['super_admin', 'admin', 'teacher'].includes(currentRole);
   const canViewEarlyWarning = !isAdminSimplified && ['super_admin', 'admin'].includes(currentRole) && isModuleEnabled('executive_warning');
-  const canViewFinancials =
-    isModuleEnabled('billing') &&
-    (currentRole === 'super_admin' ||
-      currentRole === 'admin' ||
-      currentRole === 'parent' ||
-      (currentRole === 'teacher' && (schoolPermissions?.teacher_view_financials ?? true)));
 
   const isStaffRole = !currentRole || currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin';
   const resolveAllowedSubTab = (candidate?: DashboardSubTab): DashboardSubTab => {
@@ -254,7 +245,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return candidate;
   };
 
-  const isLineEnabled = featureFlags?.lineEnabled !== false && systemConfig.lineMessagingConfigured !== false;
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
   useEffect(() => {
@@ -272,7 +262,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [teacherDeskTab, setTeacherDeskTab] = useState<'actions' | 'checkins'>('actions');
   const [innovationPage, setInnovationPage] = useState(0);
   const [attendanceStep, setAttendanceStep] = useState<'summary' | 'analytics' | 'records' | 'live_feed'>('summary');
-  const [drawerMode, setDrawerMode] = useState<null | 'onboarding' | 'guardian_line'>(null);
+  const [drawerMode, setDrawerMode] = useState<null | 'onboarding'>(null);
   const [exportFeedback, setExportFeedback] = useState<{ type: 'success' | 'warning'; message: string } | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -318,10 +308,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const scopedGrades = useMemo(
     () => (isRestrictedPersonalRole ? grades.filter((g) => scopedStudentIdSet.has(g.studentId)) : grades),
     [grades, isRestrictedPersonalRole, scopedStudentIdSet]
-  );
-  const scopedInvoices = useMemo(
-    () => (isRestrictedPersonalRole ? invoices.filter((inv) => scopedStudentIdSet.has(inv.studentId)) : invoices),
-    [invoices, isRestrictedPersonalRole, scopedStudentIdSet]
   );
   const scopedLeaves = useMemo(
     () =>
@@ -429,8 +415,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Compute key overall stats (scoped strictly for student/parent)
   const totalStudents = scopedStudents.length;
   const activeStudents = scopedStudents.filter(s => s.status === 'active').length;
-  const lineConnectedCount = scopedStudents.filter(s => s.lineLinked).length;
-  const linePercent = totalStudents > 0 ? Math.round((lineConnectedCount / totalStudents) * 100) : 0;
 
   // Scope attendance so students/parents only see their own check-in records & photos
   const scopedAttendance = useMemo(
@@ -519,11 +503,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       barPercent: Math.round((b.count / maxCount) * 100)
     }));
   }, [filteredAttendanceByDate, totalForDate, lang]);
-
-  // Tuition stats (respecting role/financial permissions)
-  const totalInvoiced = canViewFinancials ? scopedInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0) : 0;
-  const totalCollected = canViewFinancials ? scopedInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.totalAmount, 0) : 0;
-  const collectionRate = totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 100) : 0;
 
   // Top honor students (scoped for student/parent)
   const topStudents = [...scopedStudents]
@@ -636,13 +615,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       : scopedAttendance.length > 0
         ? Math.round((scopedAttendancePresentTotal / scopedAttendance.length) * 100)
         : 100;
-
-  const pendingInvoices = canViewFinancials
-    ? scopedInvoices.filter((inv) => inv.status !== 'paid')
-    : [];
-  const pendingSlipCount = canViewFinancials
-    ? scopedInvoices.filter((inv) => inv.slipStatus === 'pending_review').length
-    : 0;
 
   const currentHour = new Date().getHours();
   const timeGreeting =
@@ -773,7 +745,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const studentCanSelfCheckin = schoolPermissions?.student_self_checkin !== false && isModuleEnabled('mobile_checkin');
   const studentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
   const parentCanViewGrades = schoolPermissions?.student_view_grades !== false && isModuleEnabled('gradebook');
-  const parentCanPayTuition = schoolPermissions?.parent_promptpay_tuition !== false && isModuleEnabled('billing');
 
   const morningQuickActions: Array<{
     id: string;
@@ -874,14 +845,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         primary: true,
       });
     }
-    if (parentCanPayTuition) {
-      morningQuickActions.push({
-        id: 'bill',
-        label: lang === 'th' ? 'ค่าเล่าเรียน & ใบเสร็จ' : 'Tuition & Receipts',
-        tab: 'billing',
-        icon: Receipt,
-      });
-    } else if (isModuleEnabled('announcements')) {
+    if (isModuleEnabled('announcements')) {
       morningQuickActions.push({
         id: 'ann',
         label: lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements',
@@ -1235,11 +1199,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               selfieCount={selfieCount}
               pendingLeaveCount={pendingLeaveCount}
               ungradedHomeworkCount={ungradedHomeworkCount}
-              pendingSlipCount={pendingSlipCount}
-              pendingInvoicesCount={pendingInvoices.length}
-              collectionRate={collectionRate}
-              lineConnectedCount={lineConnectedCount}
-              linePercent={linePercent}
               sdqCount={sdqAssessments.length}
               behaviorCount={behaviorRecords.length}
               infirmaryCount={infirmaryVisits.length}
@@ -1247,7 +1206,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               unclaimedCentralPacksCount={unclaimedCentralPacksCount}
               completedOnboardingCount={completedOnboardingCount}
               showOnboardingCard={showOnboardingCard}
-              canViewFinancials={canViewFinancials}
               canViewExecutiveMonitor={canViewExecutiveMonitor}
               canViewEarlyWarning={canViewEarlyWarning}
               isModuleEnabled={isModuleEnabled}
@@ -1255,7 +1213,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onSwitchOperationalRole={onSwitchOperationalRole}
               campusGates={campusGates}
               schoolPermissions={schoolPermissions}
-              featureFlags={featureFlags}
               adminTeachersCount={adminTeachersCount}
               onOpenSystemSettingsTab={onOpenSystemSettingsTab}
               displayRecords={displayRecords}
@@ -1420,44 +1377,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </button>
                     )}
 
-                    {/* Parent KPI 3: Tuition (gated) or Announcements */}
-                    {parentCanPayTuition ? (
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('billing')}
-                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="type-meta">{lang === 'th' ? 'ค่าเล่าเรียนรอดำเนินการ' : 'Tuition Invoices'}</span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                        </div>
-                        <div className="flex items-baseline gap-2.5">
-                          <span className={`type-kpi tabular-nums ${pendingInvoices.length > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
-                            {pendingInvoices.length}
-                          </span>
-                          <span className="type-meta">
-                            {pendingInvoices.length > 0
-                              ? (lang === 'th' ? 'รายการรอชำระ / ตรวจสอบ' : 'pending payment')
-                              : (lang === 'th' ? 'ชำระครบถ้วนแล้ว' : 'All settled')}
-                          </span>
-                        </div>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setDashboardTab('announcements')}
-                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="type-meta">{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'Announcements'}</span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
-                        </div>
-                        <div className="flex items-baseline gap-2.5">
-                          <span className="type-kpi tabular-nums">{scopedAnnouncements.length}</span>
-                          <span className="type-meta">{lang === 'th' ? 'ข่าวสารล่าสุด' : 'school updates'}</span>
-                        </div>
-                      </button>
-                    )}
+                    {/* Parent KPI 3: Announcements */}
+                    <button
+                      type="button"
+                      onClick={() => setDashboardTab('announcements')}
+                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="type-meta">{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'Announcements'}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                      </div>
+                      <div className="flex items-baseline gap-2.5">
+                        <span className="type-kpi tabular-nums">{scopedAnnouncements.length}</span>
+                        <span className="type-meta">{lang === 'th' ? 'ข่าวสารล่าสุด' : 'school updates'}</span>
+                      </div>
+                    </button>
                   </>
                 ) : (
                   <>
@@ -1511,28 +1445,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </button>
 
-                    {/* Admin KPI 3: Guardian LINE Coverage */}
+                    {/* Admin KPI 3: Today's Timetable / Courses */}
                     <button
                       type="button"
-                      onClick={() => setDrawerMode('guardian_line')}
+                      onClick={() => {
+                        if (isModuleEnabled('timetable')) onNavigate('timetable');
+                        else if (isModuleEnabled('courses')) onNavigate('courses');
+                      }}
                       className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="type-meta">
-                          {isLineEnabled
-                            ? (lang === 'th' ? 'LINE ผู้ปกครอง' : 'Guardian LINE')
-                            : (lang === 'th' ? 'การแจ้งเตือนผู้ปกครอง' : 'Parent Alerts')}
+                          {lang === 'th' ? 'คาบสอนวันนี้' : 'Classes Today'}
                         </span>
                         <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">
-                          {isLineEnabled ? `${linePercent}%` : (lang === 'th' ? 'ในแอป' : 'In-App')}
+                          {todayScheduledSlots.length}
                         </span>
                         <span className="type-meta tabular-nums">
-                          {isLineEnabled
-                            ? `${lineConnectedCount}/${totalStudents} ${lang === 'th' ? 'ครอบครัว' : 'families'}`
-                            : (lang === 'th' ? 'ปิด LINE OA ชั่วคราว' : 'LINE OA off')}
+                          {lang === 'th'
+                            ? `${courses.length} รายวิชา`
+                            : `${courses.length} courses`}
                         </span>
                       </div>
                     </button>
@@ -2031,15 +1966,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick: () => void;
                       }> = [];
 
-                      if (parentCanPayTuition && pendingInvoices.length > 0) {
-                        actionRows.push({
-                          id: 'parent-invoices',
-                          label: lang === 'th' ? 'ค่าเล่าเรียนรอชำระ' : 'Pending Tuition Invoices',
-                          value: `${pendingInvoices.length} ${lang === 'th' ? 'รายการ' : 'items'}`,
-                          urgent: true,
-                          onClick: () => onNavigate('billing'),
-                        });
-                      }
                       if (pendingLeaveCount > 0) {
                         actionRows.push({
                           id: 'parent-leaves',
@@ -2136,20 +2062,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span>{lang === 'th' ? 'ประเมิน 8 กลุ่มสาระฯ สพฐ.' : 'OBEC 8-Area Eval'}</span>
                   </button>
                 )}
-                {canViewFinancials && (
-                  <button
-                    type="button"
-                    onClick={() => setDrawerMode('guardian_line')}
-                    className="btn-tool-neutral px-2.5 py-1 whitespace-nowrap"
-                  >
-                    <Receipt className="w-3.5 h-3.5" />
-                    <span>
-                      {isLineEnabled
-                        ? (lang === 'th' ? `ค่าเทอม & LINE (${linePercent}%)` : `Tuition & LINE (${linePercent}%)`)
-                        : (lang === 'th' ? `ค่าเทอม (${collectionRate}%)` : `Tuition (${collectionRate}%)`)}
-                    </span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -2217,8 +2129,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               schoolPeriods={schoolPeriods}
               leaveRequests={leaveRequests}
               infirmaryVisits={infirmaryVisits}
-              invoices={canViewFinancials ? invoices : []}
-              canViewFinancials={canViewFinancials}
               lang={lang}
               onNavigate={(tab) => {
                 if (tab === 'executive_monitor' && canViewExecutiveMonitor) {
@@ -2259,8 +2169,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               periodAttendance={periodAttendance}
               timetableSlots={timetableSlots}
               schoolPeriods={schoolPeriods}
-              invoices={canViewFinancials ? invoices : []}
-              canViewFinancials={canViewFinancials}
               announcements={announcements}
               infirmaryVisits={infirmaryVisits}
               behaviorRecords={behaviorRecords}
@@ -3276,8 +3184,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Slide-Over Drawer: 3-Step Onboarding OR Guardian LINE & Tuition Details */}
-      {drawerMode && (
+      {/* Slide-Over Drawer: 3-Step Onboarding */}
+      {drawerMode === 'onboarding' && (
         <div
           className="saas-drawer-backdrop animate-in fade-in duration-150"
           onClick={() => setDrawerMode(null)}
@@ -3291,14 +3199,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between gap-2 bg-[var(--color-card-subtle)]">
               <div className="min-w-0">
                 <h3 className="type-section-title truncate">
-                  {drawerMode === 'onboarding'
-                    ? (lang === 'th' ? `ตั้งค่าโรงเรียน (${completedOnboardingCount}/3)` : `School Setup (${completedOnboardingCount}/3)`)
-                    : (lang === 'th' ? 'LINE ผู้ปกครอง & การเงินค่าเทอม' : 'Guardian LINE & Tuition')}
+                  {lang === 'th' ? `ตั้งค่าโรงเรียน (${completedOnboardingCount}/3)` : `School Setup (${completedOnboardingCount}/3)`}
                 </h3>
                 <p className="type-meta truncate">
-                  {drawerMode === 'onboarding'
-                    ? (lang === 'th' ? 'เตรียมความพร้อมก่อนเปิดภาคเรียน' : 'Essential system configuration')
-                    : (lang === 'th' ? 'รายละเอียดการเชื่อมต่อและจัดเก็บค่าเล่าเรียน' : 'Connection & collection summary')}
+                  {lang === 'th' ? 'เตรียมความพร้อมก่อนเปิดภาคเรียน' : 'Essential system configuration'}
                 </p>
               </div>
               <button
@@ -3312,130 +3216,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
-              {drawerMode === 'onboarding' ? (
-                <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
-                  {isModuleEnabled('students') && (
-                    <button
-                      type="button"
-                      onClick={() => { setDrawerMode(null); onNavigate('students'); }}
-                      className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <div className="min-w-0">
-                        <div className="type-card-title">1. {lang === 'th' ? 'นำเข้าข้อมูลนักเรียน & รายวิชา' : 'Import Students & Courses'}</div>
-                        <div className="type-meta mt-0.5">{students.length} {lang === 'th' ? 'นักเรียน' : 'students'} · {courses.length} {lang === 'th' ? 'วิชา' : 'courses'}</div>
-                      </div>
-                      <span className={`type-meta font-bold shrink-0 ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                        {step1Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'ดำเนินการ' : 'Setup')}
-                      </span>
-                    </button>
-                  )}
+              <div className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+                {isModuleEnabled('students') && (
                   <button
                     type="button"
-                    onClick={() => { setDrawerMode(null); onNavigate('system_settings'); }}
+                    onClick={() => { setDrawerMode(null); onNavigate('students'); }}
                     className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
                   >
                     <div className="min-w-0">
-                      <div className="type-card-title">2. {lang === 'th' ? 'ตั้งค่าคาบเรียน & พิกัด GPS' : 'Periods & GPS Geofence'}</div>
-                      <div className="type-meta mt-0.5">{school?.latitude ? `GPS ${school.geofenceRadiusMeters || 200} ม.` : (lang === 'th' ? 'ยังไม่ได้ปักหมุด' : 'Not pinned')}</div>
+                      <div className="type-card-title">1. {lang === 'th' ? 'นำเข้าข้อมูลนักเรียน & รายวิชา' : 'Import Students & Courses'}</div>
+                      <div className="type-meta mt-0.5">{students.length} {lang === 'th' ? 'นักเรียน' : 'students'} · {courses.length} {lang === 'th' ? 'วิชา' : 'courses'}</div>
                     </div>
-                    <span className={`type-meta font-bold shrink-0 ${step2Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                      {step2Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'ตั้งค่า' : 'Setup')}
+                    <span className={`type-meta font-bold shrink-0 ${step1Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                      {step1Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'ดำเนินการ' : 'Setup')}
                     </span>
                   </button>
-                  {isModuleEnabled('timetable') && (
-                    <button
-                      type="button"
-                      onClick={() => { setDrawerMode(null); onNavigate('timetable'); }}
-                      className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-                    >
-                      <div className="min-w-0">
-                        <div className="type-card-title">3. {lang === 'th' ? 'จัดตารางเรียน & ภาคเรียน' : 'Timetable & Semester'}</div>
-                        <div className="type-meta mt-0.5">{timetableSlots.length} {lang === 'th' ? 'คาบในระบบ' : 'slots'}</div>
-                      </div>
-                      <span className={`type-meta font-bold shrink-0 ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                        {step3Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'จัดตาราง' : 'Setup')}
-                      </span>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="type-card-title flex items-center gap-1.5">
-                        <MessageSquare className={`w-4 h-4 ${isLineEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--color-text-muted)]'}`} />
-                        <span>{lang === 'th' ? 'การเชื่อมต่อ LINE ผู้ปกครอง' : 'Guardian LINE Sync'}</span>
-                      </span>
-                      {isLineEnabled ? (
-                        <span className="type-kpi-sm text-emerald-700 dark:text-emerald-300">{linePercent}%</span>
-                      ) : (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          {lang === 'th' ? 'ปิดใช้งาน' : 'Disabled'}
-                        </span>
-                      )}
-                    </div>
-                    {isLineEnabled ? (
-                      <>
-                        <div className="w-full h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
-                          <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${linePercent}%` }} />
-                        </div>
-                        <div className="flex items-center justify-between type-meta tabular-nums">
-                          <span>{lang === 'th' ? `เชื่อมต่อแล้ว ${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} connected`}</span>
-                          <span>{lang === 'th' ? `ยังไม่ผูก ${Math.max(0, totalStudents - lineConnectedCount)}` : `${Math.max(0, totalStudents - lineConnectedCount)} pending`}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="type-meta">
-                        {lang === 'th'
-                          ? 'ปิดใช้งาน LINE OA ทั้งโรงเรียนอยู่ (เปิด/ปิดได้ในหน้าตั้งค่าระบบ)'
-                          : 'LINE OA is disabled school-wide (toggle in System Settings).'}
-                      </p>
-                    )}
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setDrawerMode(null); onNavigate('system_settings'); }}
+                  className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                >
+                  <div className="min-w-0">
+                    <div className="type-card-title">2. {lang === 'th' ? 'ตั้งค่าคาบเรียน & พิกัด GPS' : 'Periods & GPS Geofence'}</div>
+                    <div className="type-meta mt-0.5">{school?.latitude ? `GPS ${school.geofenceRadiusMeters || 200} ม.` : (lang === 'th' ? 'ยังไม่ได้ปักหมุด' : 'Not pinned')}</div>
                   </div>
-
-                  {canViewFinancials && (
-                    <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="type-card-title flex items-center gap-1.5">
-                          <Receipt className="w-4 h-4 text-[var(--color-primary-text)]" />
-                          <span>{lang === 'th' ? 'การจัดเก็บค่าเล่าเรียน' : 'Tuition Collection'}</span>
-                        </span>
-                        <span className="type-kpi-sm">{collectionRate}%</span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-[var(--color-border)] overflow-hidden">
-                        <div className="h-full bg-[var(--color-primary)] rounded-full" style={{ width: `${collectionRate}%` }} />
-                      </div>
-                      <div className="flex items-center justify-between type-meta tabular-nums">
-                        <span>{lang === 'th' ? `รับชำระแล้ว ฿${totalCollected.toLocaleString()}` : `Collected ฿${totalCollected.toLocaleString()}`}</span>
-                        <span>{lang === 'th' ? `ยอดรวม ฿${totalInvoiced.toLocaleString()}` : `Total ฿${totalInvoiced.toLocaleString()}`}</span>
-                      </div>
+                  <span className={`type-meta font-bold shrink-0 ${step2Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    {step2Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'ตั้งค่า' : 'Setup')}
+                  </span>
+                </button>
+                {isModuleEnabled('timetable') && (
+                  <button
+                    type="button"
+                    onClick={() => { setDrawerMode(null); onNavigate('timetable'); }}
+                    className="w-full p-3.5 text-left flex items-center justify-between gap-2 hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
+                  >
+                    <div className="min-w-0">
+                      <div className="type-card-title">3. {lang === 'th' ? 'จัดตารางเรียน & ภาคเรียน' : 'Timetable & Semester'}</div>
+                      <div className="type-meta mt-0.5">{timetableSlots.length} {lang === 'th' ? 'คาบในระบบ' : 'slots'}</div>
                     </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {isStaffUser && (
-                      <button
-                        type="button"
-                        onClick={() => { setDrawerMode(null); onNavigate('students'); }}
-                        className="btn-tool-neutral px-3 py-2 justify-center"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>{lang === 'th' ? 'จัดการผู้ปกครอง' : 'Guardians'}</span>
-                      </button>
-                    )}
-                    {canViewFinancials && (
-                      <button
-                        type="button"
-                        onClick={() => { setDrawerMode(null); onNavigate('billing'); }}
-                        className="btn-action-primary px-3 py-2 justify-center"
-                      >
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>{lang === 'th' ? 'เปิดหน้าการเงิน' : 'Open Billing'}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+                    <span className={`type-meta font-bold shrink-0 ${step3Done ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                      {step3Done ? (lang === 'th' ? 'พร้อมแล้ว' : 'Done') : (lang === 'th' ? 'จัดตาราง' : 'Setup')}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

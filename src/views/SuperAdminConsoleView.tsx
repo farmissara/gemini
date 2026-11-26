@@ -85,7 +85,7 @@ interface SuperAdminConsoleViewProps {
   configError?: string | null;
   onToggleUserStatus?: (userId: string) => void;
   lang: AppLanguage;
-  isDemoMode: boolean;
+  isDemoMode?: boolean;
   onViewSchool: (school: School) => void;
   onToggleSchoolStatus: (schoolId: string, status: School['status']) => Promise<void>;
   onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
@@ -107,7 +107,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
   onSavePromoAssignment,
   configError,
   lang,
-  isDemoMode,
+  isDemoMode = false,
   onViewSchool,
   onToggleSchoolStatus,
   onUpdateSchoolFeatureFlags,
@@ -516,8 +516,6 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
     manageCourses: { title: 'จัดการรายวิชาและหลักสูตร', desc: 'สร้างรายวิชา กำหนดหน่วยกิต และลงทะเบียนนักเรียนเข้าชั้น' },
     editGrades: { title: 'บันทึกคะแนนและตัดเกรด', desc: 'กรอกคะแนนเก็บ กลางภาค ปลายภาค และคำนวณเกรดเฉลี่ย GPA' },
     recordAttendance: { title: 'บันทึกเวลาเรียนและเช็คชื่อ', desc: 'สแกน QR ผ่านประตู และเช็คชื่อรายคาบเรียน' },
-    manageTuition: { title: 'การเงินและค่าเล่าเรียน', desc: 'ออกใบแจ้งหนี้ ตรวจสอบการชำระ PromptPay และออกใบเสร็จ' },
-    sendBroadcastLine: { title: 'ส่งข้อความประกาศ LINE OA', desc: 'บรอดแคสต์ข่าวสารแจ้งเตือนตรงถึงผู้ปกครองผ่าน LINE' },
     manageTimetable: { title: 'จัดตารางสอนและตารางเรียน', desc: 'สร้างและแก้ไขคาบเรียน จัดห้องเรียนและตรวจจับคาบซ้ำซ้อน' },
     manageSdq: { title: 'ประเมินพฤติกรรม & SDQ สพฐ.', desc: 'บันทึกแบบประเมินจุดเด่นจุดพัฒนาและแบบประเมินวินัย' },
     viewInfirmary: { title: 'บันทึกสุขภาพและห้องพยาบาล', desc: 'ดูประวัติการเข้าห้องพยาบาล จ่ายยา และประวัติการแพ้ยา' },
@@ -1435,7 +1433,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
 
       {/* View 4: Central Exam Bank (8 Strands) Manager */}
       {activeSubTab === 'central_exams' && (
-        <SuperAdminCentralExamManager isDemoMode={isDemoMode} />
+        <SuperAdminCentralExamManager />
       )}
 
       {/* View 5: Central Exam Payment & PromptPay Settings (Requirement 2) */}

@@ -49,12 +49,10 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 
 interface SuperAdminCentralExamManagerProps {
-  isDemoMode: boolean;
   adminDisplayName?: string;
 }
 
 export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManagerProps> = ({
-  isDemoMode,
   adminDisplayName = 'Super Admin',
 }) => {
   const [packs, setPacks] = useState<CentralExamPack[]>([]);
@@ -146,13 +144,13 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   const loadPacks = async () => {
     setLoading(true);
     try {
-      let list = await fetchCentralExamPacks(isDemoMode);
+      let list = await fetchCentralExamPacks();
       const missingCount = countMissingBuiltInPacks(list);
 
-      if (!isDemoMode && missingCount > 0 && (list.length === 0 || !hasBuiltInSeedCompleted())) {
+      if (missingCount > 0 && (list.length === 0 || !hasBuiltInSeedCompleted())) {
         try {
           skipNextEventReloadRef.current = true;
-          const synced = await syncMissingDefaultCentralExamPacksToSupabase(list, { isDemoMode });
+          const synced = await syncMissingDefaultCentralExamPacksToSupabase(list);
           list = synced.packs;
           if (synced.insertedCount > 0) {
             setFeedbackMessage({
@@ -187,7 +185,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     setIsSyncingDefaults(true);
     try {
       skipNextEventReloadRef.current = true;
-      const result = await syncMissingDefaultCentralExamPacksToSupabase(packs, { isDemoMode });
+      const result = await syncMissingDefaultCentralExamPacksToSupabase(packs);
       setPacks(result.packs);
       if (!importExistingPackId && result.packs.length > 0) {
         setImportExistingPackId(result.packs[0].id);
@@ -223,7 +221,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     };
     window.addEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdate);
     return () => window.removeEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdate);
-  }, [isDemoMode]);
+  }, []);
 
   const handleVerifySlip = async (entitlement: SchoolExamEntitlement) => {
     setIsProcessingAudit(true);
@@ -353,7 +351,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
 
   const persistPack = async (pack: CentralExamPack): Promise<boolean> => {
     try {
-      const result = await upsertCentralExamPack(pack, isDemoMode);
+      const result = await upsertCentralExamPack(pack);
       setPacks(result.packs);
       return true;
     } catch (error) {
@@ -478,7 +476,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     const pack = pendingPackDeletion;
     setDeletingPack(true);
     try {
-      const res = await deleteCentralExamPack(pack.id, isDemoMode);
+      const res = await deleteCentralExamPack(pack.id);
       setPacks(res.packs);
       if (inspectPackId === pack.id) setInspectPackId(null);
       setFeedbackMessage({
@@ -684,7 +682,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {!isDemoMode && missingBuiltInCount > 0 && (
+          {missingBuiltInCount > 0 && (
             <button
               type="button"
               disabled={isSyncingDefaults}
@@ -869,11 +867,11 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
         <div className="rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] p-8 text-center space-y-3">
           <p className="text-sm font-bold text-[var(--color-text-title)]">ไม่พบชุดข้อสอบที่ตรงกับเงื่อนไข</p>
           <p className="text-xs text-[var(--color-text-muted)]">
-            {packs.length === 0 && !isDemoMode
+            {packs.length === 0
               ? 'ยังไม่มีชุดข้อสอบกลางในฐานข้อมูล Supabase สามารถกดปุ่มด้านล่างเพื่อซิงก์ชุดข้อสอบมาตรฐานทั้ง 80 ชุด (8 กลุ่มสาระฯ) ได้ทันที'
               : 'ลองเปลี่ยนตัวกรองสาระวิชา หรือกด "สร้างชุดข้อสอบกลางใหม่" เพื่อเริ่มต้น'}
           </p>
-          {!isDemoMode && missingBuiltInCount > 0 && (
+          {missingBuiltInCount > 0 && (
             <div className="pt-1 flex justify-center">
               <button
                 type="button"

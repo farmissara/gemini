@@ -69,9 +69,9 @@ interface TeachersViewProps {
   lang: AppLanguage;
   currentRole: UserRole;
   schoolId?: string;
-  onAddTeacher: (teacher: Teacher) => void;
-  onUpdateTeacher: (teacher: Teacher) => void;
-  onDeleteTeacher: (teacherId: string) => void;
+  onAddTeacher?: (teacher: Teacher) => void;
+  onUpdateTeacher?: (teacher: Teacher) => void;
+  onDeleteTeacher?: (teacherId: string) => void;
   onPurgeSampleTeachers?: () => void;
   onOpenImportExport?: () => void;
   staffPositionOptions?: string[];
@@ -102,9 +102,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   lang,
   currentRole,
   schoolId = 'default-school',
-  onAddTeacher,
-  onUpdateTeacher,
-  onDeleteTeacher,
+  onAddTeacher = () => {},
+  onUpdateTeacher = () => {},
+  onDeleteTeacher = () => {},
   onPurgeSampleTeachers,
   onOpenImportExport,
   staffPositionOptions = [],
@@ -181,7 +181,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
     homeroomClasses: [],
     teachingGrades: [],
     isSchoolAdmin: false,
-    lineLinked: false,
     teachingExperienceYears: undefined,
     otherSkills: [],
     certifications: [],
@@ -294,7 +293,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       homeroomClasses: [],
       teachingGrades: [],
       isSchoolAdmin: false,
-      lineLinked: false,
       teachingExperienceYears: undefined,
       otherSkills: [],
       certifications: [],
@@ -428,7 +426,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
         homeroomClasses: formData.homeroomClasses || [],
         teachingGrades: formData.teachingGrades || [],
         isSchoolAdmin: Boolean(formData.isSchoolAdmin),
-        lineLinked: Boolean(formData.lineLinked),
         teachingExperienceYears: experience,
         otherSkills: formData.otherSkills || [],
         certifications: formData.certifications || [],
@@ -2344,37 +2341,18 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
               <div className="border-b border-[var(--color-border)] pb-2">
                 <h4 className="text-xs font-bold text-[var(--color-text-title)]">การพัฒนาวิชาชีพ</h4>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">คะแนน PA (0–100)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={formData.paScore ?? ''}
-                    onChange={(e) => setFormData({ ...formData, paScore: e.target.value === '' ? undefined : Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[var(--color-text-title)] font-bold mb-1">LINE User ID</label>
-                  <input
-                    type="text"
-                    value={formData.lineUserId || ''}
-                    onChange={(e) => setFormData({ ...formData, lineUserId: e.target.value || undefined })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                  />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-xs text-[var(--color-text-body)]">
+              <div>
+                <label className="block text-[var(--color-text-title)] font-bold mb-1">คะแนน PA (0–100)</label>
                 <input
-                  type="checkbox"
-                  checked={Boolean(formData.lineLinked)}
-                  onChange={(e) => setFormData({ ...formData, lineLinked: e.target.checked })}
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.paScore ?? ''}
+                  onChange={(e) => setFormData({ ...formData, paScore: e.target.value === '' ? undefined : Number(e.target.value) })}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                 />
-                เชื่อมต่อ LINE แล้ว
-              </label>
+              </div>
               <label className="flex items-center gap-2 text-xs text-[var(--color-text-body)]">
                 <input
                   type="checkbox"

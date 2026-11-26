@@ -56,11 +56,11 @@ interface CoursesViewProps {
   currentRole?: UserRole;
   currentUser?: AuthUser | null;
   schoolId?: string;
-  onAddCourse: (newCourse: Course) => void;
+  onAddCourse?: (newCourse: Course) => void;
   onUpdateCourse?: (updatedCourse: Course) => void;
   onDeleteCourse?: (courseId: string) => Promise<boolean | void> | boolean | void;
   onDeleteCourses?: (courseIds: string[]) => Promise<boolean | void> | boolean | void;
-  onEnrollStudent: (courseId: string, studentId: string) => void;
+  onEnrollStudent?: (courseId: string, studentId: string) => void;
   onEnrollStudentsBatch?: (courseId: string, studentIds: string[]) => void;
   onUnenrollStudent?: (courseId: string, studentId: string) => Promise<void> | void;
   onUnenrollStudentsBatch?: (courseId: string, studentIds: string[]) => Promise<void> | void;
@@ -94,11 +94,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   currentRole = 'admin',
   currentUser,
   schoolId = 'default-school',
-  onAddCourse,
+  onAddCourse = () => {},
   onUpdateCourse,
   onDeleteCourse,
   onDeleteCourses,
-  onEnrollStudent,
+  onEnrollStudent = () => {},
   onEnrollStudentsBatch,
   onUnenrollStudent,
   onUnenrollStudentsBatch,

@@ -31,8 +31,6 @@ const makeStudent = (overrides: Partial<Student> = {}): Student => ({
   guardianRelation: 'มารดา',
   guardianPhone: '0811112222',
   guardianEmail: 'suda@example.com',
-  lineLinked: false,
-  lineNotifyEnabled: false,
   enrolledDate: '2026-05-01',
   ...overrides,
 });
