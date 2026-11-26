@@ -6,4 +6,4 @@ export { NfcTapAttendanceTab } from './NfcTapAttendanceTab';
 export { TeacherProxyTab } from './TeacherProxyTab';
 export { PeriodCheckinTab } from './PeriodCheckinTab';
 export { DailyAttendanceReportTab } from './DailyAttendanceReportTab';
-export { AttendanceModalsAndSheets } from './AttendanceModalsAndSheets';
+export { AttendanceModalsAndSheets, AttendanceQuickActionBar } from './AttendanceModalsAndSheets';

@@ -118,6 +118,7 @@ import {
 import { AttendanceAudienceSwitch } from '../components/attendance/AttendanceAudienceSwitch';
 import {
   AttendanceModalsAndSheets,
+  AttendanceQuickActionBar,
   DailyAttendanceReportTab,
   LeaveRequestTab,
   NfcTapAttendanceTab,
@@ -2445,7 +2446,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   return (
     <div
-      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-hidden w-full max-w-full pb-0' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-24'}`}
+      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-hidden w-full max-w-full pb-0' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-6'}`}
     >
       {/* Top Header (Desktop Only — Mobile merges tabs & actions into 1 compact top bar) */}
       {!embeddedMobile && (
@@ -2545,11 +2546,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
           </div>
 
-          <nav
-            data-guide-id="mobile-checkin-tabs"
-            aria-label="Attendance sub-navigation"
-            className="flex items-center gap-1 overflow-x-auto no-scrollbar -mb-px"
-          >
+          <div className="flex flex-wrap items-center justify-between gap-2 -mb-px">
+            <nav
+              data-guide-id="mobile-checkin-tabs"
+              aria-label="Attendance sub-navigation"
+              className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0"
+            >
             {[
               { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่', labelEn: 'Selfie', staffOnly: false },
               { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะ NFC', labelEn: 'NFC', staffOnly: false },
@@ -2613,6 +2615,30 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 );
               })}
           </nav>
+
+            {!hideFloatingToolbar && (
+              <div className="pb-1.5 shrink-0">
+                <AttendanceQuickActionBar
+                  lang={lang}
+                  direction="down"
+                  isStaffUser={isStaffUser}
+                  subTab={subTab}
+                  setSubTab={setSubTab}
+                  setLeaveFormStep={setLeaveFormStep}
+                  fabMenuOpen={fabMenuOpen}
+                  setFabMenuOpen={setFabMenuOpen}
+                  runWithBiometricGuard={runWithBiometricGuard}
+                  setShowRapidScanner={setShowRapidScanner}
+                  setShowQuickRosterSheet={setShowQuickRosterSheet}
+                  handlePrimaryFabCheckin={handlePrimaryFabCheckin}
+                  isSavingAttendance={isSavingAttendance}
+                  capturedPhotoUrl={capturedPhotoUrl}
+                  matchedProxyStudent={matchedProxyStudent}
+                  primaryFabLabel={primaryFabLabel}
+                />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -2947,6 +2973,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
       {subTab === 'daily_report' && canViewDailyReport && (
         <DailyAttendanceReportTab
+          embeddedMobile={embeddedMobile}
           date={dailyReportDate}
           setDate={setDailyReportDate}
           gateRows={gateDailyReportRows}
@@ -3199,7 +3226,30 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       )}
 
-      {/* MODALS, SHEETS & FLOATING ACTION TOOLBAR */}
+      {/* DOCKED NON-OVERLAPPING QUICK ACTION BAR (Embedded Mobile Only) */}
+      {embeddedMobile && !hideFloatingToolbar && (
+        <AttendanceQuickActionBar
+          lang={lang}
+          direction="up"
+          embeddedMobile
+          isStaffUser={isStaffUser}
+          subTab={subTab}
+          setSubTab={setSubTab}
+          setLeaveFormStep={setLeaveFormStep}
+          fabMenuOpen={fabMenuOpen}
+          setFabMenuOpen={setFabMenuOpen}
+          runWithBiometricGuard={runWithBiometricGuard}
+          setShowRapidScanner={setShowRapidScanner}
+          setShowQuickRosterSheet={setShowQuickRosterSheet}
+          handlePrimaryFabCheckin={handlePrimaryFabCheckin}
+          isSavingAttendance={isSavingAttendance}
+          capturedPhotoUrl={capturedPhotoUrl}
+          matchedProxyStudent={matchedProxyStudent}
+          primaryFabLabel={primaryFabLabel}
+        />
+      )}
+
+      {/* MODALS & SHEETS */}
       <AttendanceModalsAndSheets
         embeddedMobile={embeddedMobile}
         lang={lang}
@@ -3229,16 +3279,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         onUpdateCampusGates={onUpdateCampusGates}
         onSaveCampusGates={onSaveCampusGates}
         onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
-        hideFloatingToolbar={hideFloatingToolbar}
-        fabMenuOpen={fabMenuOpen}
-        setFabMenuOpen={setFabMenuOpen}
-        runWithBiometricGuard={runWithBiometricGuard}
         setShowQuickRosterSheet={setShowQuickRosterSheet}
-        handlePrimaryFabCheckin={handlePrimaryFabCheckin}
-        isSavingAttendance={isSavingAttendance}
-        capturedPhotoUrl={capturedPhotoUrl}
-        matchedProxyStudent={matchedProxyStudent}
-        primaryFabLabel={primaryFabLabel}
         showQuickRosterSheet={showQuickRosterSheet}
         rosterTodayStats={rosterTodayStats}
         rosterToast={rosterToast}

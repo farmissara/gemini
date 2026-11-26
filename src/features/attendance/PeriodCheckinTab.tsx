@@ -201,7 +201,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
   return (
     <div
       data-guide-id="mobile-checkin-body"
-      className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5' : 'space-y-4'}`}
+      className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5 pb-4' : 'space-y-4'}`}
     >
       <div className="saas-card">
         <div className="saas-card-header">

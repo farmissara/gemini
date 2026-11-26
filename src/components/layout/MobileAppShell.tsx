@@ -626,8 +626,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       {/* 2. MAIN ACTIVE VIEW CONTAINER (Compact mobile padding) */}
       <main
         className={`flex-1 min-h-0 w-full max-w-lg md:max-w-3xl lg:max-w-4xl mx-auto ${
-          activeTab === 'checkin' || activeTab === 'leave'
-            ? 'px-2.5 py-1.5 sm:p-5 overflow-hidden sm:overflow-y-auto flex flex-col'
+          activeTab === 'checkin' || activeTab === 'leave' || activeTab === 'student_attendance'
+            ? 'px-2.5 py-1.5 sm:p-4 overflow-hidden flex flex-col'
             : 'px-3.5 py-2.5 sm:p-5 overflow-y-auto'
         }`}
       >

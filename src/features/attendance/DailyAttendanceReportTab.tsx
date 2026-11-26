@@ -15,6 +15,7 @@ import type {
 } from '../../lib/attendanceDailyReport';
 
 interface DailyAttendanceReportTabProps {
+  embeddedMobile?: boolean;
   date: string;
   setDate: (date: string) => void;
   gateRows: GateAttendanceReportRow[];
@@ -105,6 +106,7 @@ function AttendanceBadge({
 }
 
 export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> = ({
+  embeddedMobile = false,
   date,
   setDate,
   gateRows,
@@ -174,7 +176,10 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
   };
 
   return (
-    <div className="space-y-4 overflow-y-auto pb-4">
+    <div
+      data-guide-id="mobile-checkin-body"
+      className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : 'overflow-y-auto pb-4'}`}
+    >
       <section className="saas-card">
         <div className="saas-card-body flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

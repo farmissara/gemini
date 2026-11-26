@@ -96,18 +96,8 @@ interface AttendanceModalsAndSheetsProps {
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
   onSaveCampusGates?: (gates: CampusGateGeofence[]) => Promise<boolean>;
   onUpdateSchoolCoordinates?: (lat: number, lng: number, radiusMeters: number) => void;
-  // One-handed FAB
-  hideFloatingToolbar: boolean;
-  fabMenuOpen: boolean;
-  setFabMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  runWithBiometricGuard: (action: () => void) => void;
-  setShowQuickRosterSheet: (val: boolean) => void;
-  handlePrimaryFabCheckin: () => void;
-  isSavingAttendance: boolean;
-  capturedPhotoUrl: string | null;
-  matchedProxyStudent: Student | undefined;
-  primaryFabLabel: string;
   // Quick Roster Sheet
+  setShowQuickRosterSheet: (val: boolean) => void;
   showQuickRosterSheet: boolean;
   rosterTodayStats: { checkedIn: number; late: number; pending: number };
   rosterToast: string | null;
@@ -190,16 +180,7 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
-  hideFloatingToolbar,
-  fabMenuOpen,
-  setFabMenuOpen,
-  runWithBiometricGuard,
   setShowQuickRosterSheet,
-  handlePrimaryFabCheckin,
-  isSavingAttendance,
-  capturedPhotoUrl,
-  matchedProxyStudent,
-  primaryFabLabel,
   showQuickRosterSheet,
   rosterTodayStats,
   rosterToast,
@@ -416,110 +397,7 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
         </div>
       )}
 
-      {/* ONE-HANDED FLOATING ACTION TOOLBAR (FAB) */}
-      {!hideFloatingToolbar && (
-        <div
-          className={`fixed ${embeddedMobile ? 'bottom-[74px] right-3' : 'bottom-5 right-4 sm:right-6'} z-30 flex flex-col items-end gap-2 pointer-events-none`}
-        >
-          {fabMenuOpen && (
-            <div className="pointer-events-auto flex flex-col items-end gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <button
-                type="button"
-                onClick={() => {
-                  setFabMenuOpen(false);
-                  setSubTab('nfc_tap');
-                }}
-                className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
-              >
-                <Nfc className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                <span>{lang === 'th' ? 'แตะบัตร NFC' : 'NFC Card Tap'}</span>
-              </button>
-
-              {isStaffUser && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFabMenuOpen(false);
-                    runWithBiometricGuard(() => setShowRapidScanner(true));
-                  }}
-                  className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                >
-                  <ScanLine className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                  <span>{lang === 'th' ? 'สแกน QR รัว (1วิ/คน)' : 'Rapid QR Scanner'}</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setFabMenuOpen(false);
-                  setSubTab('period_checkin');
-                }}
-                className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
-              >
-                <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                <span>{lang === 'th' ? 'เช็คชื่อรายคาบ (QR)' : 'Period Check-in'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setFabMenuOpen(false);
-                  setSubTab('leave_request');
-                  setLeaveFormStep(1);
-                }}
-                className="min-h-[44px] px-3.5 rounded-full bg-[var(--color-card)]/95 backdrop-blur-md border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap"
-              >
-                <FileText className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                <span>{lang === 'th' ? 'ยื่น / ตรวจใบลา' : 'Leave Requests'}</span>
-              </button>
-            </div>
-          )}
-
-          <div className="pointer-events-auto flex items-center gap-1.5 bg-[var(--color-card)]/95 backdrop-blur-md p-1 rounded-full border border-[var(--color-border)] shadow-xl">
-            <button
-              type="button"
-              onClick={() => {
-                setFabMenuOpen(false);
-                setShowQuickRosterSheet(true);
-              }}
-              aria-label={lang === 'th' ? 'ดูรายชื่อนักเรียน' : 'Open Student Roster'}
-              className="min-h-[44px] px-3 rounded-full hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
-            >
-              <Users className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-              <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePrimaryFabCheckin}
-              disabled={isSavingAttendance}
-              className="min-h-[44px] px-4 rounded-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
-            >
-              {subTab === 'selfie_mobile' && !capturedPhotoUrl ? (
-                <Camera className="w-4 h-4 shrink-0" />
-              ) : subTab === 'nfc_tap' ? (
-                <Nfc className="w-4 h-4 shrink-0" />
-              ) : subTab === 'teacher_proxy' && !matchedProxyStudent ? (
-                <QrCode className="w-4 h-4 shrink-0" />
-              ) : (
-                <Check className="w-4 h-4 shrink-0" />
-              )}
-              <span>{primaryFabLabel}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFabMenuOpen((prev) => !prev)}
-              aria-expanded={fabMenuOpen}
-              aria-label={lang === 'th' ? 'เมนูลัดเช็คชื่อ' : 'Quick attendance tools'}
-              className="min-h-[44px] min-w-[44px] rounded-full bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-            >
-              <Plus className={`w-4 h-4 transition-transform duration-150 ${fabMenuOpen ? 'rotate-45' : ''}`} />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Quick action toolbar rendered in-flow via AttendanceQuickActionBar so it never overlaps pagination */}
 
       {/* ONE-HANDED STUDENT ROSTER & QUICK CHECK-IN BOTTOM SHEET */}
       <MobileBottomSheet
@@ -1087,5 +965,166 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
         </div>
       )}
     </>
+  );
+};
+
+export interface AttendanceQuickActionBarProps {
+  lang: AppLanguage;
+  direction?: 'up' | 'down';
+  embeddedMobile?: boolean;
+  isStaffUser: boolean;
+  subTab: AttendanceSubTab;
+  setSubTab: (tab: AttendanceSubTab) => void;
+  setLeaveFormStep: (step: 1 | 2) => void;
+  fabMenuOpen: boolean;
+  setFabMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  runWithBiometricGuard: (action: () => void) => void;
+  setShowRapidScanner: (val: boolean) => void;
+  setShowQuickRosterSheet: (val: boolean) => void;
+  handlePrimaryFabCheckin: () => void;
+  isSavingAttendance: boolean;
+  capturedPhotoUrl: string | null;
+  matchedProxyStudent: Student | undefined;
+  primaryFabLabel: string;
+}
+
+export const AttendanceQuickActionBar: React.FC<AttendanceQuickActionBarProps> = ({
+  lang,
+  direction = 'up',
+  embeddedMobile = false,
+  isStaffUser,
+  subTab,
+  setSubTab,
+  setLeaveFormStep,
+  fabMenuOpen,
+  setFabMenuOpen,
+  runWithBiometricGuard,
+  setShowRapidScanner,
+  setShowQuickRosterSheet,
+  handlePrimaryFabCheckin,
+  isSavingAttendance,
+  capturedPhotoUrl,
+  matchedProxyStudent,
+  primaryFabLabel,
+}) => {
+  const opensUp = direction === 'up';
+
+  return (
+    <div
+      className={
+        embeddedMobile
+          ? 'relative z-30 shrink-0 flex items-center justify-end border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-1.5 rounded-t-xl'
+          : 'relative z-30 shrink-0 flex items-center justify-end'
+      }
+    >
+      {fabMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-20"
+            onClick={() => setFabMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            className={`absolute right-0 z-30 flex flex-col items-end gap-1.5 animate-in fade-in duration-150 ${
+              opensUp ? 'bottom-full mb-2 slide-in-from-bottom-2' : 'top-full mt-2 slide-in-from-top-2'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setFabMenuOpen(false);
+                setSubTab('nfc_tap');
+              }}
+              className="min-h-[40px] px-3.5 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap hover:bg-[var(--color-card-subtle)]"
+            >
+              <Nfc className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+              <span>{lang === 'th' ? 'แตะบัตร NFC' : 'NFC Card Tap'}</span>
+            </button>
+
+            {isStaffUser && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFabMenuOpen(false);
+                  runWithBiometricGuard(() => setShowRapidScanner(true));
+                }}
+                className="min-h-[40px] px-3.5 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap hover:bg-[var(--color-card-subtle)]"
+              >
+                <ScanLine className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <span>{lang === 'th' ? 'สแกน QR รัว (1วิ/คน)' : 'Rapid QR Scanner'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setFabMenuOpen(false);
+                setSubTab('period_checkin');
+              }}
+              className="min-h-[40px] px-3.5 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap hover:bg-[var(--color-card-subtle)]"
+            >
+              <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+              <span>{lang === 'th' ? 'เช็คชื่อรายคาบ (QR)' : 'Period Check-in'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFabMenuOpen(false);
+                setSubTab('leave_request');
+                setLeaveFormStep(1);
+              }}
+              className="min-h-[40px] px-3.5 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-lg text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap hover:bg-[var(--color-card-subtle)]"
+            >
+              <FileText className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+              <span>{lang === 'th' ? 'ยื่น / ตรวจใบลา' : 'Leave Requests'}</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      <div className="relative z-30 flex items-center gap-1 bg-[var(--color-card)] p-1 rounded-full border border-[var(--color-border)] shadow-sm">
+        <button
+          type="button"
+          onClick={() => {
+            setFabMenuOpen(false);
+            setShowQuickRosterSheet(true);
+          }}
+          aria-label={lang === 'th' ? 'ดูรายชื่อนักเรียน' : 'Open Student Roster'}
+          className="min-h-[36px] px-3 rounded-full hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
+        >
+          <Users className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
+          <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handlePrimaryFabCheckin}
+          disabled={isSavingAttendance}
+          className="min-h-[36px] px-3.5 rounded-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 transition-transform"
+        >
+          {subTab === 'selfie_mobile' && !capturedPhotoUrl ? (
+            <Camera className="w-3.5 h-3.5 shrink-0" />
+          ) : subTab === 'nfc_tap' ? (
+            <Nfc className="w-3.5 h-3.5 shrink-0" />
+          ) : subTab === 'teacher_proxy' && !matchedProxyStudent ? (
+            <QrCode className="w-3.5 h-3.5 shrink-0" />
+          ) : (
+            <Check className="w-3.5 h-3.5 shrink-0" />
+          )}
+          <span>{primaryFabLabel}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFabMenuOpen((prev) => !prev)}
+          aria-expanded={fabMenuOpen}
+          aria-label={lang === 'th' ? 'เมนูลัดเช็คชื่อ' : 'Quick attendance tools'}
+          className="min-h-[36px] min-w-[36px] rounded-full bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+        >
+          <Plus className={`w-4 h-4 transition-transform duration-150 ${fabMenuOpen ? 'rotate-45' : ''}`} />
+        </button>
+      </div>
+    </div>
   );
 };
