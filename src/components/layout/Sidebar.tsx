@@ -320,7 +320,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isAllowedBySchoolPolicy = (tabId: NavTab): boolean => {
     if (!schoolPermissions) return true;
     if (currentRole === 'student') {
-      if (tabId === 'mobile_checkin' && schoolPermissions.student_self_checkin === false) return false;
+      if ((tabId === 'attendance' || tabId === 'mobile_checkin') && schoolPermissions.student_self_checkin === false) return false;
       if (ARCADE_TABS.has(tabId) && schoolPermissions.student_treasure_game === false) return false;
       if (tabId === 'homework' && schoolPermissions.student_submit_homework === false) return false;
       if (tabId === 'portfolio' && schoolPermissions.student_upload_portfolio === false) return false;
@@ -576,18 +576,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'attendance',
-          labelTh: 'เช็คชื่อหน้าประตู / QR',
-          labelEn: 'Gate & QR Check-in',
+          labelTh: 'เช็คชื่อ',
+          labelEn: 'Attendance',
           shortLabelTh: 'เช็กชื่อ',
           shortLabelEn: 'Check-in',
           icon: QrCode,
-          roles: ['super_admin', 'admin', 'teacher'],
-        },
-        {
-          id: 'mobile_checkin',
-          labelTh: 'เช็คชื่อมือถือ & ใบลา',
-          labelEn: 'Mobile Check-in & Leaves',
-          icon: Smartphone,
           roles: ['super_admin', 'admin', 'teacher', 'student'],
         },
         {
@@ -946,6 +939,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
       return 'dashboard';
     }
+    if (currentTab === 'mobile_checkin') return 'attendance';
     if (currentTab !== 'system_settings') return currentTab;
     // In Focus mode, highlight the single consolidated System Settings item cleanly
     if (focusMode && supportsFocusMode) return 'system_settings';

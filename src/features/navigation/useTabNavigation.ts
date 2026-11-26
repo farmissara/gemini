@@ -350,7 +350,6 @@ export function useTabNavigation({
       'billing',
       'announcements',
       'central_exam_hub',
-      'attendance',
       'realtime_daily',
       'executive_monitor',
       'report_insights',
@@ -379,7 +378,7 @@ export function useTabNavigation({
 
     if (currentRole === 'student') {
       const blockedByPolicy =
-        (tab === 'mobile_checkin' && !schoolPermissions.student_self_checkin) ||
+        ((tab === 'attendance' || tab === 'mobile_checkin') && !schoolPermissions.student_self_checkin) ||
         (['games', 'study_streak', 'boss_raid', 'realworld_quests', 'subject_labs', 'ai_diagnostic', 'socratic_tutor', 'hall_of_fame'].includes(tab) &&
           !schoolPermissions.student_treasure_game) ||
         (tab === 'homework' && !schoolPermissions.student_submit_homework) ||
@@ -397,7 +396,7 @@ export function useTabNavigation({
         (tab === 'billing' && !schoolPermissions.teacher_view_financials) ||
         (tab === 'behavior_sdq' && !schoolPermissions.teacher_sdq_screening) ||
         (tab === 'infirmary' && !schoolPermissions.teacher_infirmary_access) ||
-        (tab === 'attendance' && !schoolPermissions.teacher_attendance) ||
+        ((tab === 'attendance' || tab === 'mobile_checkin') && !schoolPermissions.teacher_attendance) ||
         (tab === 'homework' && !schoolPermissions.teacher_homework);
       if (blockedByPolicy) {
         setDashboardInitialSubTab('overview');

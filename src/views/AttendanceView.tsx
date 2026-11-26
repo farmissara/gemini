@@ -67,6 +67,7 @@ import {
   AttendanceCorrectionHub,
   type CorrectionPrefillSeed,
 } from '../components/attendance/AttendanceCorrectionHub';
+import { AttendanceAudienceSwitch, type AttendanceAudience } from '../components/attendance/AttendanceAudienceSwitch';
 import { loadAttendanceCorrections } from '../lib/attendanceCorrections';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 
@@ -98,6 +99,7 @@ interface AttendanceViewProps {
   periodAttendance?: PeriodAttendanceRecord[];
   onRecordPeriodAttendance?: (records: PeriodAttendanceRecord[]) => void;
   onOpenGpsSettings?: () => void;
+  onAttendanceAudienceChange?: (audience: AttendanceAudience) => void;
   onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
   lineEnabled?: boolean;
 }
@@ -124,6 +126,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   periodAttendance = [],
   onRecordPeriodAttendance,
   onOpenGpsSettings,
+  onAttendanceAudienceChange,
   onLoadAttendanceRange,
   lineEnabled = true,
 }) => {
@@ -784,6 +787,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
         {/* Subtabs Navigation */}
         <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-2 shrink-0">
+          {onAttendanceAudienceChange && (
+            <AttendanceAudienceSwitch
+              active="students"
+              lang={lang}
+              onChange={onAttendanceAudienceChange}
+            />
+          )}
           <div className="seg-tab-group overflow-x-auto no-scrollbar">
             <button
               type="button"

@@ -1000,6 +1000,9 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   timetableSlots={viewTimetableSlots}
                   periodAttendance={viewPeriodAttendance}
                   onRecordPeriodAttendance={props.onRecordPeriodAttendance}
+                  onAttendanceAudienceChange={(audience) => {
+                    navigateToAppTab(audience === 'staff' ? 'mobile_checkin' : 'attendance');
+                  }}
                   onOpenGpsSettings={currentRole === 'teacher' ? undefined : () => {
                     setSystemSettingsInitialTab('school_gps');
                     setProgramMode('school_erp');
@@ -1010,7 +1013,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                 />
               )}
 
-              {currentTab === 'mobile_checkin' && (
+              {(currentTab === 'mobile_checkin' || (currentTab === 'attendance' && currentRole === 'student')) && (
                 <MobileAttendanceView
                   students={viewStudents}
                   teachers={viewTeachers}
@@ -1019,6 +1022,11 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   periodAttendance={viewPeriodAttendance}
                   currentUser={currentUser}
                   currentRole={currentRole}
+                  showAttendanceAudienceSwitch={['super_admin', 'admin', 'teacher'].includes(currentRole)}
+                  onAttendanceAudienceChange={(audience) => {
+                    navigateToAppTab(audience === 'students' ? 'attendance' : 'mobile_checkin');
+                  }}
+                  hideStaffOverviewTabs
                   school={activeSchool}
                   campusGates={campusGates}
                   schoolPeriods={schoolPeriods}

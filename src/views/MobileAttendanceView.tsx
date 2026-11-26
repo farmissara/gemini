@@ -115,6 +115,7 @@ import {
   AttendanceCorrectionHub,
   type CorrectionPrefillSeed,
 } from '../components/attendance/AttendanceCorrectionHub';
+import { AttendanceAudienceSwitch } from '../components/attendance/AttendanceAudienceSwitch';
 import {
   AttendanceModalsAndSheets,
   DailyAttendanceReportTab,
@@ -158,6 +159,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   initialPeriodExpiresAt,
   initialPeriodToken,
   currentRole,
+  showAttendanceAudienceSwitch = false,
+  onAttendanceAudienceChange,
+  hideStaffOverviewTabs = false,
   schoolPeriods = [],
   timetableSlots = [],
   onUpdateCampusGates,
@@ -186,7 +190,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   const safeInitialSubTab: AttendanceSubTab =
     (!isStaffUser && initialSubTab === 'teacher_proxy') ||
-    (!canViewDailyReport && initialSubTab === 'daily_report')
+    (!canViewDailyReport && initialSubTab === 'daily_report') ||
+    (hideStaffOverviewTabs && isStaffUser && (initialSubTab === 'daily_report' || initialSubTab === 'corrections'))
       ? 'selfie_mobile'
       : initialSubTab;
 
@@ -2429,7 +2434,9 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
+                    {showAttendanceAudienceSwitch
+                      ? lang === 'th' ? 'เช็คชื่อครู/บุคลากร' : 'Staff Attendance'
+                      : lang === 'th' ? 'เช็คชื่อมือถือ & แตะบัตร NFC' : 'Mobile Attendance & NFC'}
                   </h1>
                   <span className="text-xs text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
                     · {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -2439,6 +2446,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {showAttendanceAudienceSwitch && onAttendanceAudienceChange && (
+                <AttendanceAudienceSwitch
+                  active="staff"
+                  lang={lang}
+                  onChange={onAttendanceAudienceChange}
+                />
+              )}
               <ModuleTourTrigger moduleId="mobile_checkin" lang={lang} />
               {isStaffUser && userPasskey?.protectQuickAttendance && (
                 <button
@@ -2535,11 +2549,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 staffOnly: false,
               },
             ]
-              .filter((tab) => (
-                tab.id === 'daily_report'
+              .filter((tab) => {
+                if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
+                  return false;
+                }
+                return tab.id === 'daily_report'
                   ? canViewDailyReport
-                  : isStaffUser || !tab.staffOnly
-              ))
+                  : isStaffUser || !tab.staffOnly;
+              })
               .map((tab) => {
                 const isActive = subTab === tab.id;
                 return (
@@ -2606,11 +2623,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 staffOnly: false,
               },
             ]
-              .filter((tab) => (
-                tab.id === 'daily_report'
+              .filter((tab) => {
+                if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
+                  return false;
+                }
+                return tab.id === 'daily_report'
                   ? canViewDailyReport
-                  : isStaffUser || !tab.staffOnly
-              ))
+                  : isStaffUser || !tab.staffOnly;
+              })
               .map((tab) => {
                 const isActive = subTab === tab.id;
                 return (

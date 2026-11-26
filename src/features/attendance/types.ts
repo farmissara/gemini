@@ -107,6 +107,9 @@ export interface MobileAttendanceViewProps {
   initialPeriodExpiresAt?: number;
   initialPeriodToken?: string;
   currentRole?: UserRole;
+  showAttendanceAudienceSwitch?: boolean;
+  onAttendanceAudienceChange?: (audience: 'students' | 'staff') => void;
+  hideStaffOverviewTabs?: boolean;
   schoolPeriods?: SchoolPeriodTime[];
   timetableSlots?: TimetableSlot[];
   onUpdateCampusGates?: (gates: CampusGateGeofence[]) => void;
