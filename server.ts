@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { loadEnv } from 'vite';
 import { Type } from '@google/genai';
-import { backupRawParser, createBackupRouter, startAutoBackupScheduler } from './src/server/backupRoutes.ts';
+import { backupRawParser, createBackupRouter } from './src/server/backupRoutes.ts';
 import { createStaffInviteEmailRouter } from './src/server/staffInviteEmailRoutes.ts';
 import { createStudentCredentialsRouter } from './src/server/studentCredentialsRoutes.ts';
 import { createSchoolAiRouter, finishSchoolAiRequest, getSchoolAiContext, prepareSchoolAiRequest, reserveSchoolAiRequest } from './src/server/schoolAiRoutes.ts';
@@ -840,7 +840,6 @@ async function createApp() {
   httpServer.listen(PORT, HOST, () => {
     console.log(`[BaanPakKru Server] Listening on http://${HOST}:${PORT}`);
     startSelfieCleanupScheduler(getServerEnv);
-    startAutoBackupScheduler(getServerEnv);
   });
 }
 

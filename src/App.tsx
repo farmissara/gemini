@@ -23,7 +23,6 @@ import { SchoolErpViewSwitch } from './features/navigation/SchoolErpViewSwitch';
 import { AppModalsHost } from './features/navigation/AppModalsHost';
 import { BiometricLockScreen } from './features/auth/BiometricLockScreen';
 import { useScheduleNotificationWatcher } from './features/school/useScheduleNotificationWatcher';
-import { useAutoDriveBackupWatcher } from './features/school/useAutoDriveBackupWatcher';
 import { useSchoolScope } from './features/school/useSchoolScope';
 import {
   getAcademicYearStartDate,
@@ -208,14 +207,6 @@ export const App: React.FC = () => {
     schoolTeachers: scope.schoolTeachers,
     schoolStudents: scope.schoolStudents,
     schoolCourses: scope.schoolCourses,
-  });
-
-  useAutoDriveBackupWatcher({
-    currentUser: data.currentUser,
-    currentRole: data.currentRole,
-    activeSchoolId: data.activeSchool.id,
-    schools: data.schools,
-    isDataReady: data.isDataReady,
   });
 
   if (!data.currentUser) {
