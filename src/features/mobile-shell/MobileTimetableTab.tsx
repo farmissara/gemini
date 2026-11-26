@@ -330,7 +330,11 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                   : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
               }`}
             >
-              {timetableOnlyMine ? (lang === 'th' ? 'คาบฉัน' : 'Mine') : lang === 'th' ? 'ทั้งหมด' : 'All'}
+              {timetableOnlyMine
+                ? (lang === 'th' ? 'คาบฉัน' : 'Mine')
+                : lang === 'th'
+                  ? 'ทั้งโรงเรียน'
+                  : 'Whole school'}
             </button>
           )}
         </div>

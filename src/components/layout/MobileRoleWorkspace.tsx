@@ -350,7 +350,7 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            {lang === 'th' ? 'โรงเรียน & คอม' : 'School & PC'}
+            {lang === 'th' ? 'โรงเรียน' : 'School'}
           </button>
         </div>
       </div>
@@ -888,6 +888,7 @@ interface MobileSuperAdminHubProps {
   activeSchool: School;
   isDemoMode: boolean;
   lang: AppLanguage;
+  initialTab?: 'overview' | 'approvals' | 'schools';
   coordinationUnreadCount?: number;
   onViewSchool?: (school: School) => void;
   onToggleSchoolStatus?: (schoolId: string, status: School['status']) => Promise<void>;
@@ -900,13 +901,14 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
   activeSchool,
   isDemoMode,
   lang,
+  initialTab = 'overview',
   coordinationUnreadCount = 0,
   onViewSchool,
   onToggleSchoolStatus,
   onUpdateSchoolFeatureFlags,
   onJumpToDesktopTab,
 }) => {
-  const [tab, setTab] = useState<'overview' | 'approvals' | 'schools'>('overview');
+  const [tab, setTab] = useState<'overview' | 'approvals' | 'schools'>(initialTab);
   const [schoolSearch, setSchoolSearch] = useState('');
   const [pendingRegs, setPendingRegs] = useState<PendingSchoolRegistration[]>([]);
   const [loadingRegs, setLoadingRegs] = useState(false);
@@ -939,9 +941,7 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
     const activeCount = schools.filter((s) => s.status === 'active').length;
     const suspendedCount = schools.filter((s) => s.status === 'suspended').length;
     const pendingCount = pendingRegs.length + schools.filter((s) => s.status === 'pending').length;
-    const totalStudents = schools.reduce((sum, s) => sum + (s.studentsCount || 0), 0);
-    const totalTeachers = schools.reduce((sum, s) => sum + (s.teachersCount || 0), 0);
-    return { activeCount, suspendedCount, pendingCount, totalStudents, totalTeachers };
+    return { activeCount, suspendedCount, pendingCount };
   }, [schools, pendingRegs]);
 
   const filteredSchools = useMemo(() => {
@@ -1108,22 +1108,6 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
               >
                 {lang === 'th' ? 'เปิดคิวอนุมัติ →' : 'Review queue →'}
               </button>
-            </div>
-            <div className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]">
-              <p className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'นักเรียนรวมทั้งระบบ' : 'Total Students'}
-              </p>
-              <p className="text-xl font-bold tabular-nums text-[var(--color-text-title)] mt-1">
-                {metrics.totalStudents.toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]">
-              <p className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'ครูและบุคลากรรวม' : 'Total Staff'}
-              </p>
-              <p className="text-xl font-bold tabular-nums text-[var(--color-text-title)] mt-1">
-                {metrics.totalTeachers.toLocaleString()}
-              </p>
             </div>
           </div>
 

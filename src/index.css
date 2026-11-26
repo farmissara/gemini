@@ -1336,6 +1336,20 @@ textarea::placeholder {
   .app-workspace :is(.app-section-card, .saas-card, .frosted-card, .frosted-blue, .frosted-green, .frosted-purple, .frosted-orange, .frosted-amber) {
     border-radius: 0.75rem;
   }
+
+  .mobile-app-workspace {
+    --dash-shell-gap: 1rem;
+    --dash-grid-gap: 0.875rem;
+    --dash-subgrid-gap: 0.75rem;
+    --dash-card-pad: 0.875rem;
+    --dash-card-gap: 0.875rem;
+    --dash-divider-space: 0.625rem;
+  }
+
+  .mobile-app-workspace :is(.app-section-card, .saas-card, .frosted-card, .frosted-blue, .frosted-green, .frosted-purple, .frosted-orange, .frosted-amber) {
+    border-radius: 0.875rem;
+    box-shadow: none;
+  }
 }
 
 /* ========================================================

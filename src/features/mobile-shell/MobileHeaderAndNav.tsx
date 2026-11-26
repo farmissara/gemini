@@ -35,6 +35,7 @@ interface MobileHeaderProps {
   setThemePalette: (palette: ThemePalette) => void;
   unreadCount: number;
   onOpenNotifications?: () => void;
+  onOpenProfile: () => void;
   onOpenSchoolSwitcher?: () => void;
   canSwitchAdminTeacherMode: boolean;
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
@@ -52,6 +53,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   setThemePalette,
   unreadCount,
   onOpenNotifications,
+  onOpenProfile,
   onOpenSchoolSwitcher,
   canSwitchAdminTeacherMode,
   onSwitchOperationalRole,
@@ -148,6 +150,17 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             </button>
             {isHeaderMenuOpen && (
               <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-lg p-1.5 space-y-0.5 text-[13px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsHeaderMenuOpen(false);
+                    onOpenProfile();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg text-left flex items-center gap-2 text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+                >
+                  <User className="w-4 h-4 text-[var(--color-text-muted)]" />
+                  <span>{lang === 'th' ? 'บัญชีและโปรไฟล์' : 'Account & Profile'}</span>
+                </button>
                 {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
                   <button
                     type="button"
@@ -269,7 +282,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-0.5 safe-area-bottom">
-      <div className={`max-w-md mx-auto grid ${onOpenAllModules ? 'grid-cols-5' : 'grid-cols-4'} gap-1`}>
+      <div className={`max-w-md mx-auto grid ${onOpenAllModules ? 'grid-cols-4' : 'grid-cols-3'} gap-1`}>
         {/* SLOT 1: HOME */}
         <button
           type="button"
@@ -303,6 +316,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             if (canSelfCheckin) {
               onResetCheckinToSelfie();
               setActiveTab('checkin');
+            } else if (currentRole === 'super_admin') {
+              setActiveTab('executive');
             } else if (canViewTimetable) {
               setActiveTab('timetable');
             } else if (canOpenAnnouncements) {
@@ -321,20 +336,30 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
         >
-          {canSelfCheckin ? <Clock className="w-5 h-5 mb-0.5" /> : <Calendar className="w-5 h-5 mb-0.5" />}
+          {canSelfCheckin ? (
+            <Clock className="w-5 h-5 mb-0.5" />
+          ) : currentRole === 'super_admin' ? (
+            <LayoutGrid className="w-5 h-5 mb-0.5" />
+          ) : (
+            <Calendar className="w-5 h-5 mb-0.5" />
+          )}
           <span className="text-[11px] truncate max-w-full">
             {!canSelfCheckin
-              ? canViewTimetable
+              ? currentRole === 'super_admin'
                 ? lang === 'th'
-                  ? 'ตารางเรียน'
-                  : 'Schedule'
-                : canOpenAnnouncements
+                  ? 'ภาพรวม'
+                  : 'Overview'
+                : canViewTimetable
                   ? lang === 'th'
-                    ? 'ประกาศ'
-                    : 'News'
-                  : lang === 'th'
-                    ? 'หน้าหลัก'
-                    : 'Home'
+                    ? 'ตารางเรียน'
+                    : 'Schedule'
+                  : canOpenAnnouncements
+                    ? lang === 'th'
+                      ? 'ประกาศ'
+                      : 'News'
+                    : lang === 'th'
+                      ? 'หน้าหลัก'
+                      : 'Home'
               : currentRole === 'parent'
                 ? lang === 'th'
                   ? 'มาเรียน'
@@ -495,20 +520,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </span>
           </button>
         )}
-
-        {/* SLOT 4: ACCOUNT / SETTINGS */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('profile')}
-          className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-            activeTab === 'profile'
-              ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-          }`}
-        >
-          <User className="w-5 h-5 mb-0.5" />
-          <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'บัญชี' : 'Account'}</span>
-        </button>
 
         {onOpenAllModules && (
           <button

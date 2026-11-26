@@ -118,7 +118,7 @@ test('teacherMatchesCourse and userMatchesCourse match co-taught courses with ho
   );
 });
 
-test('slotMatchesLoggedInTeacher includes direct coTeacherName, honorific prefixes, and course-level co-teaching fallback', () => {
+test('slotMatchesLoggedInTeacher matches user and linked teacher names, honorifics, and course-level co-teaching fallback', () => {
   const coTeacher = makeTeacher({
     id: 'tch-2',
     fullNameTh: 'สมหญิง รักเรียน',
@@ -162,7 +162,7 @@ test('slotMatchesLoggedInTeacher includes direct coTeacherName, honorific prefix
   });
 
   assert.equal(slotMatchesLoggedInTeacher(directCoSlot, coTeacherUser, coTeacher, [coTaughtCourse]), true);
-  assert.equal(slotMatchesLoggedInTeacher(directCoSlot, coTeacherUser, undefined, []), false);
+  assert.equal(slotMatchesLoggedInTeacher(directCoSlot, coTeacherUser, undefined, []), true);
   assert.equal(slotMatchesLoggedInTeacher(courseFallbackSlot, coTeacherUser, coTeacher, [coTaughtCourse]), true);
   assert.equal(slotMatchesLoggedInTeacher(courseFallbackSlot, coTeacherUser, undefined, [coTaughtCourse]), false);
   assert.equal(slotMatchesLoggedInTeacher(unrelatedSlot, coTeacherUser, coTeacher, [coTaughtCourse]), false);

@@ -360,6 +360,8 @@ export function slotMatchesLoggedInTeacher(
   const candidateNames = [
     matchedTeacher?.fullNameTh,
     matchedTeacher?.fullNameEn,
+    currentUser?.fullNameTh,
+    currentUser?.fullNameEn,
   ].filter(Boolean) as string[];
 
   const slotTeachers = getSlotTeachers(slot);

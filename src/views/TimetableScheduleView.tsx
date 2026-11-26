@@ -1633,7 +1633,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
 
   const renderRoomAndTermControls = (showRoomFilter = true) => (
     <div className="flex flex-wrap items-center gap-2 print:hidden">
-      {hasTeacherTimetableMatch && (
+      {(currentRole === 'teacher' || hasTeacherTimetableMatch) && (
         currentRole === 'admin' || currentRole === 'super_admin' ? (
           <div
             role="group"
@@ -1670,14 +1670,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             className="btn-tool-neutral h-9 px-2.5 text-xs"
             title={
               myCoursesOnly
-                ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูตารางที่คุณมีสิทธิ์เข้าถึง'
-                : 'กำลังแสดงตารางที่คุณมีสิทธิ์เข้าถึง คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
+                ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูตารางทั้งโรงเรียน'
+                : 'กำลังแสดงตารางทั้งโรงเรียน คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
             }
           >
             {myCoursesOnly
               ? <UserCheck className="h-3.5 w-3.5 tone-text" />
               : <Users className="h-3.5 w-3.5 tone-text" />}
-            <span>{myCoursesOnly ? 'เฉพาะวิชาที่ฉันสอน' : 'ทุกวิชาที่เข้าถึงได้'}</span>
+            <span>{myCoursesOnly ? 'วิชาที่ฉันสอน' : 'ทั้งโรงเรียน'}</span>
           </button>
         )
       )}

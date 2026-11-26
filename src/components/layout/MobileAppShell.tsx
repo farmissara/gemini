@@ -592,7 +592,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
   return (
     <div
-      className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-14 sm:pb-16 select-none`}
+      className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} mobile-app-workspace h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-14 sm:pb-16 select-none`}
     >
       {/* 1. CLEAN SINGLE-ROW APPLE/LINEAR MOBILE HEADER */}
       <MobileHeader
@@ -605,6 +605,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         setThemePalette={setThemePalette}
         unreadCount={unreadCount}
         onOpenNotifications={onOpenNotifications}
+        onOpenProfile={() => setActiveTab('profile')}
         onOpenSchoolSwitcher={onOpenSchoolSwitcher}
         canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
         onSwitchOperationalRole={onSwitchOperationalRole}
@@ -638,6 +639,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   activeSchool={activeSchool}
                   isDemoMode={isDemoMode}
                   lang={lang}
+                  initialTab="overview"
                   coordinationUnreadCount={coordinationUnreadCount}
                   onViewSchool={onViewSchool}
                   onToggleSchoolStatus={onToggleSchoolStatus}
@@ -810,6 +812,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               activeSchool={activeSchool}
               isDemoMode={isDemoMode}
               lang={lang}
+              initialTab="schools"
               coordinationUnreadCount={coordinationUnreadCount}
               onViewSchool={onViewSchool}
               onToggleSchoolStatus={onToggleSchoolStatus}
