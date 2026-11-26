@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import type { AppLanguage, AuthUser, School, ThemePalette, TuitionInvoice, UserRole } from '../../types';
 import { BaanPakKruLogo } from '../../components/common/BaanPakKruLogo';
-import type { NavTab } from '../../components/layout/Sidebar';
 import type { ActiveGameView, MobileTab } from './types';
 
 interface MobileHeaderProps {
@@ -252,10 +251,10 @@ interface MobileBottomNavProps {
   canAccessHomework: boolean;
   canViewGradesStudent: boolean;
   canOpenPortfolio: boolean;
-  isModuleEnabled: (tab: NavTab) => boolean;
   pendingLeavesCount: number;
   invoices: TuitionInvoice[];
   onResetCheckinToSelfie: () => void;
+  onOpenStudentAttendance: () => void;
   onOpenAllModules?: () => void;
   allModulesActive?: boolean;
 }
@@ -273,10 +272,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   canAccessHomework,
   canViewGradesStudent,
   canOpenPortfolio,
-  isModuleEnabled,
   pendingLeavesCount,
   invoices,
   onResetCheckinToSelfie,
+  onOpenStudentAttendance,
   onOpenAllModules,
   allModulesActive = false,
 }) => {
@@ -404,14 +403,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             type="button"
             onClick={() => {
-              if (isModuleEnabled('gradebook')) setActiveTab('gradebook');
+              if (canSelfCheckin) onOpenStudentAttendance();
               else if (canViewTimetable) setActiveTab('timetable');
               else if (canOpenAnnouncements) setActiveTab('announcements');
               else setActiveTab('executive');
             }}
             className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              (isModuleEnabled('gradebook')
-                ? activeTab === 'gradebook'
+              (canSelfCheckin
+                ? activeTab === 'student_attendance'
                 : canViewTimetable
                   ? activeTab === 'timetable'
                   : canOpenAnnouncements
@@ -423,10 +422,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           >
             <ClipboardCheck className="w-5 h-5 mb-0.5" />
             <span className="text-[11px] truncate max-w-full">
-              {isModuleEnabled('gradebook')
+              {canSelfCheckin
                 ? lang === 'th'
-                  ? 'คะแนน'
-                  : 'Grades'
+                  ? 'เช็คนักเรียน'
+                  : 'Students'
                 : canViewTimetable
                   ? lang === 'th'
                     ? 'ตารางสอน'

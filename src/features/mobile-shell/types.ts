@@ -44,6 +44,7 @@ export type MobileTab =
   | 'super_schools'
   | 'executive'
   | 'checkin'
+  | 'student_attendance'
   | 'leave'
   | 'attendance_history'
   | 'gradebook'
@@ -74,6 +75,7 @@ export const MOBILE_TONE_TARGET: Record<MobileTab, NavTab> = {
   super_schools: 'super_admin_console',
   executive: 'executive_monitor',
   checkin: 'mobile_checkin',
+  student_attendance: 'mobile_checkin',
   leave: 'attendance',
   attendance_history: 'mobile_checkin',
   gradebook: 'gradebook',

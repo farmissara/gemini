@@ -63,7 +63,6 @@ interface MobileTeacherParentHomeProps {
   todayMySlots: TimetableSlot[];
   schoolPeriods: SchoolPeriodTime[];
   periodAttendance: PeriodAttendanceRecord[];
-  scopedCoursesCount: number;
   scopedAnnouncementsCount: number;
   pendingLeavesCount: number;
   scopedAssignmentsCount?: number;
@@ -73,6 +72,7 @@ interface MobileTeacherParentHomeProps {
     slot: TimetableSlot,
     dateValue: string
   ) => { hasCheckIn: boolean; hasCheckOut: boolean };
+  onOpenStudentAttendance: () => void;
   openPeriodCheckinFromSlot: (
     slot: TimetableSlot,
     dateValue: string,
@@ -116,13 +116,13 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   todayMySlots,
   schoolPeriods,
   periodAttendance,
-  scopedCoursesCount,
   scopedAnnouncementsCount,
   pendingLeavesCount,
   scopedAssignmentsCount = 0,
   lessonsCount = 0,
   execMetrics,
   getSlotTodayCheckStatus,
+  onOpenStudentAttendance,
   openPeriodCheckinFromSlot,
   setMobileAttendanceInitialSubTab,
   setMobileTimetableMode,
@@ -305,17 +305,17 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                   </span>
                 </button>
               )}
-              {isModuleEnabled('gradebook') && (
+              {canSelfCheckin && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab('gradebook')}
+                  onClick={onOpenStudentAttendance}
                   className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer"
                 >
                   <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'คะแนน ปพ.5' : 'Gradebook'}
+                    {lang === 'th' ? 'เช็คชื่อนักเรียน' : 'Student attendance'}
                   </span>
-                  <span className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
-                    {scopedCoursesCount} {lang === 'th' ? 'วิชา' : 'courses'}
+                  <span className="text-xs font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'เข้า-ออกโรงเรียน · รายคาบ' : 'School entry/exit · Periods'}
                   </span>
                 </button>
               )}
@@ -421,19 +421,19 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
             </button>
           )}
 
-          {isTeacher && isModuleEnabled('gradebook') && (
+          {isTeacher && canSelfCheckin && (
             <button
               type="button"
-              onClick={() => setActiveTab('gradebook')}
+              onClick={onOpenStudentAttendance}
               className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-400 text-left flex items-center gap-2.5 cursor-pointer transition"
             >
               <ClipboardCheck className="w-4 h-4 text-emerald-600 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'คะแนน ปพ.5' : 'Gradebook'}
+                  {lang === 'th' ? 'เช็คชื่อนักเรียน' : 'Student attendance'}
                 </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {scopedCoursesCount} {lang === 'th' ? 'วิชา' : 'courses'}
+                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                  {lang === 'th' ? 'เข้า-ออกโรงเรียน · รายคาบ' : 'School entry/exit · Periods'}
                 </p>
               </div>
             </button>

@@ -439,6 +439,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     setActiveTab('checkin');
   };
 
+  const openStudentAttendance = () => {
+    setMobileAttendanceInitialSubTab('teacher_proxy');
+    setMobilePeriodCourseId(undefined);
+    setMobilePeriodNumber(undefined);
+    setMobilePeriodDate(undefined);
+    setMobilePeriodCheckType(undefined);
+    setActiveTab('student_attendance');
+  };
+
   const getSlotTodayCheckStatus = (slot: TimetableSlot, dateValue: string) => {
     const resolvedCourseId =
       slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id || slot.courseCode;
@@ -498,6 +507,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   useEffect(() => {
     const blockedTab =
       (activeTab === 'checkin' && !canSelfCheckin) ||
+      (activeTab === 'student_attendance' && (currentRole !== 'teacher' || !canSelfCheckin)) ||
       (activeTab === 'leave' && !canOpenLeave) ||
       (activeTab === 'attendance_history' && !canOpenLeave && !canSelfCheckin) ||
       (activeTab === 'gradebook' && !isModuleEnabled('gradebook')) ||
@@ -517,6 +527,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   }, [
     activeTab,
     canSelfCheckin,
+    currentRole,
     canOpenLeave,
     canViewGradesStudent,
     canOpenPortfolio,
@@ -529,7 +540,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     canOpenInfirmary,
     canOpenLms,
     featureFlags,
-    currentRole,
   ]);
 
   useEffect(() => {
@@ -765,13 +775,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   todayMySlots={todayMySlots}
                   schoolPeriods={schoolPeriods}
                   periodAttendance={periodAttendance}
-                  scopedCoursesCount={scopedCourses.length}
                   scopedAnnouncementsCount={scopedAnnouncements.length}
                   pendingLeavesCount={pendingLeavesCount}
                   scopedAssignmentsCount={scopedAssignments.length}
                   lessonsCount={scopedLessons.length}
                   execMetrics={execMetrics}
                   getSlotTodayCheckStatus={getSlotTodayCheckStatus}
+                  onOpenStudentAttendance={openStudentAttendance}
                   openPeriodCheckinFromSlot={openPeriodCheckinFromSlot}
                   setMobileAttendanceInitialSubTab={setMobileAttendanceInitialSubTab}
                   setMobileTimetableMode={setMobileTimetableMode}
@@ -835,11 +845,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           )}
 
           {/* TAB B: CHECK-IN */}
-          {activeTab === 'checkin' && (
+          {(activeTab === 'checkin' || activeTab === 'student_attendance') && (
             <div className="h-full min-h-0 flex-1 flex flex-col overflow-hidden animate-in fade-in duration-200">
               <MobileAttendanceView
                 embeddedMobile
-                initialSubTab={mobileAttendanceInitialSubTab}
+                initialSubTab={activeTab === 'student_attendance' ? 'teacher_proxy' : mobileAttendanceInitialSubTab}
                 initialPeriodCourseId={mobilePeriodCourseId}
                 initialPeriodNumber={mobilePeriodNumber}
                 initialPeriodDate={mobilePeriodDate}
@@ -1182,7 +1192,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         canAccessHomework={canAccessHomework}
         canViewGradesStudent={canViewGradesStudent}
         canOpenPortfolio={canOpenPortfolio}
-        isModuleEnabled={isModuleEnabled}
         pendingLeavesCount={pendingLeavesCount}
         invoices={invoices}
         onResetCheckinToSelfie={() => {
@@ -1192,6 +1201,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           setMobilePeriodDate(undefined);
           setMobilePeriodCheckType(undefined);
         }}
+        onOpenStudentAttendance={openStudentAttendance}
         onOpenAllModules={onJumpToDesktopTab ? () => setShowModuleDrawer(true) : undefined}
         allModulesActive={showModuleDrawer}
       />
