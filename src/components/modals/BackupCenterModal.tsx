@@ -57,6 +57,7 @@ import {
 type Props = { isSuperAdmin: boolean; schools: School[]; activeSchoolId: string; onClose: () => void };
 type BackupScopeChoice = 'all_schools_separately' | 'school' | 'all';
 type ModalTab = 'backup' | 'restore' | 'schedule';
+type BackupDestination = 'device' | 'drive';
 
 type Report = {
   valid?: boolean;
@@ -115,6 +116,8 @@ export const BackupCenterModal: React.FC<Props> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<ModalTab>('backup');
+  const [backupDestination, setBackupDestination] = useState<BackupDestination>('device');
+  const [restoreSource, setRestoreSource] = useState<BackupDestination>('device');
   const [scopeChoice, setScopeChoice] = useState<BackupScopeChoice>(
     isSuperAdmin ? 'all_schools_separately' : 'school'
   );
@@ -225,6 +228,10 @@ export const BackupCenterModal: React.FC<Props> = ({
       const statusRes = await request('/api/backup/status');
       const statusData = (await statusRes.json()) as ServerBackupStatus;
       setServerStatus(statusData);
+      if (!statusData.googleDriveConfigured) {
+        setServerUnavailableNote('Google Drive ฝั่งเซิร์ฟเวอร์ยังไม่ได้เชื่อมต่อ ใช้ปุ่ม Google Drive ในแท็บสำรองข้อมูลเพื่อบันทึกด้วยบัญชีของคุณ');
+        return;
+      }
       const snapsRes = await request('/api/backup/snapshots');
       const snapsData = (await snapsRes.json()) as { snapshots?: ServerSnapshotItem[] };
       setServerSnapshots(snapsData.snapshots || []);
@@ -265,7 +272,7 @@ export const BackupCenterModal: React.FC<Props> = ({
     if (activeTab === 'restore' && googleToken) {
       void refreshDriveBackups();
     }
-    if (activeTab === 'schedule' || (activeTab === 'backup' && isSuperAdmin)) {
+    if (activeTab === 'schedule') {
       void refreshServerSnapshots();
     }
   }, [activeTab, googleToken, isSuperAdmin, refreshDriveBackups, refreshServerSnapshots]);
@@ -671,105 +678,105 @@ export const BackupCenterModal: React.FC<Props> = ({
 
           <div className="space-y-4 overflow-y-auto p-5">
             {/* Google Drive Account Connection Bar */}
-            {(!isSuperAdmin || activeTab === 'restore') && (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <HardDrive className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary-text)]" />
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-[var(--color-text-title)]">
-                      เชื่อมต่อ Google Drive (โฟลเดอร์ BaanPakKru-Backups)
+            {(activeTab === 'schedule' ||
+              (activeTab === 'backup' && backupDestination === 'drive') ||
+              (activeTab === 'restore' && restoreSource === 'drive')) && (
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <HardDrive className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary-text)]" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-[var(--color-text-title)]">
+                        เชื่อมต่อ Google Drive (โฟลเดอร์ BaanPakKru-Backups)
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                        จัดเก็บไฟล์สำรองในบัญชี Google Drive ของคุณโดยแยกโฟลเดอร์รายโรงเรียนและทั้งระบบอัตโนมัติ
+                      </p>
                     </div>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                      จัดเก็บไฟล์สำรองในบัญชี Google Drive ของคุณโดยแยกโฟลเดอร์รายโรงเรียนและทั้งระบบอัตโนมัติ
-                    </p>
                   </div>
-                </div>
 
-                {!googleToken || !googleUser ? (
-                  <button
-                    type="button"
-                    disabled={isConnectingGoogle}
-                    onClick={() => void handleConnectGoogle()}
-                    className="gsi-material-button"
-                  >
-                    <div className="gsi-material-button-state" />
-                    <div className="gsi-material-button-content-wrapper">
-                      <div className="gsi-material-button-icon">
-                        <svg
-                          version="1.1"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 48 48"
-                          style={{ display: 'block' }}
-                        >
-                          <path
-                            fill="#EA4335"
-                            d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-                          />
-                          <path
-                            fill="#4285F4"
-                            d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-                          />
-                          <path fill="none" d="M0 0h48v48H0z" />
-                        </svg>
-                      </div>
-                      <span className="gsi-material-button-contents">
-                        {isConnectingGoogle
-                          ? 'กำลังเชื่อมต่อ...'
-                          : 'Sign in with Google'}
-                      </span>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5">
-                    {googleUser.photoURL && (
-                      <img
-                        src={googleUser.photoURL}
-                        alt={googleUser.displayName}
-                        className="h-7 w-7 rounded-full object-cover"
-                      />
-                    )}
-                    <div className="text-xs leading-tight">
-                      <div className="font-semibold text-[var(--color-text-title)] flex items-center gap-1">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                        <span>{googleUser.displayName}</span>
-                      </div>
-                      <div className="text-[11px] text-[var(--color-text-muted)]">
-                        {googleUser.email}
-                      </div>
-                    </div>
+                  {!googleToken || !googleUser ? (
                     <button
                       type="button"
-                      disabled={isConnectingGoogle || busy}
+                      disabled={isConnectingGoogle}
                       onClick={() => void handleConnectGoogle()}
-                      className="ml-1 inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card)] cursor-pointer disabled:opacity-50"
-                      title="เปลี่ยนไปใช้บัญชี Google อื่น"
+                      className="gsi-material-button"
                     >
-                      <RefreshCw className={`h-3 w-3 ${isConnectingGoogle ? 'animate-spin' : ''}`} />
-                      <span>สลับบัญชี</span>
+                      <div className="gsi-material-button-state" />
+                      <div className="gsi-material-button-content-wrapper">
+                        <div className="gsi-material-button-icon">
+                          <svg
+                            version="1.1"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 48 48"
+                            style={{ display: 'block' }}
+                          >
+                            <path
+                              fill="#EA4335"
+                              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                            />
+                            <path
+                              fill="#4285F4"
+                              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+                            />
+                            <path
+                              fill="#FBBC05"
+                              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+                            />
+                            <path
+                              fill="#34A853"
+                              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                            />
+                            <path fill="none" d="M0 0h48v48H0z" />
+                          </svg>
+                        </div>
+                        <span className="gsi-material-button-contents">
+                          {isConnectingGoogle ? 'กำลังเชื่อมต่อ...' : 'เข้าสู่ระบบ Google Drive'}
+                        </span>
+                      </div>
                     </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void handleDisconnectGoogle()}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[11px] text-[var(--color-text-muted)] hover:text-rose-600 cursor-pointer disabled:opacity-50"
-                      title="ออกจากบัญชี Google"
-                    >
-                      <LogOut className="h-3 w-3" />
-                      <span>ออก</span>
-                    </button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5">
+                      {googleUser.photoURL && (
+                        <img
+                          src={googleUser.photoURL}
+                          alt={googleUser.displayName}
+                          className="h-7 w-7 rounded-full object-cover"
+                        />
+                      )}
+                      <div className="text-xs leading-tight">
+                        <div className="font-semibold text-[var(--color-text-title)] flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>{googleUser.displayName}</span>
+                        </div>
+                        <div className="text-[11px] text-[var(--color-text-muted)]">
+                          {googleUser.email}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isConnectingGoogle || busy}
+                        onClick={() => void handleConnectGoogle()}
+                        className="ml-1 inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card)] cursor-pointer disabled:opacity-50"
+                        title="เปลี่ยนไปใช้บัญชี Google อื่น"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isConnectingGoogle ? 'animate-spin' : ''}`} />
+                        <span>สลับบัญชี</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleDisconnectGoogle()}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[11px] text-[var(--color-text-muted)] hover:text-rose-600 cursor-pointer disabled:opacity-50"
+                        title="ออกจากบัญชี Google"
+                      >
+                        <LogOut className="h-3 w-3" />
+                        <span>ออก</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
             )}
 
             {/* TAB 1: BACKUP */}
@@ -853,44 +860,46 @@ export const BackupCenterModal: React.FC<Props> = ({
                   </div>
                 )}
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  {isSuperAdmin ? (
-                    <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 flex flex-col justify-between">
-                      <div>
-                        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-title)]">
-                          <Server className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                          <span>บันทึก Backup ลง Google Drive</span>
-                        </h3>
-                        <p className="mt-2 text-xs text-[var(--color-text-muted)] leading-relaxed">
-                          ให้เซิร์ฟเวอร์บันทึกข้อมูลทุกโรงเรียนและข้อมูลระบบกลาง ไม่ต้องเชื่อมบัญชี Google ในหน้านี้
-                        </p>
-                        {serverUnavailableNote && (
-                          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                            {serverUnavailableNote}
-                          </p>
-                        )}
-                        {!serverUnavailableNote && serverStatus && !serverStatus.googleDriveConfigured && (
-                          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                            ยังไม่ได้ตั้งค่าปลายทาง Google Drive บนเซิร์ฟเวอร์
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        disabled={busy || isLoadingSnapshots || !serverStatus?.googleDriveConfigured}
-                        onClick={() => void handleRunServerSnapshotNow()}
-                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer transition"
-                      >
-                        {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <DatabaseBackup className="h-4 w-4" />}
-                        <span>บันทึก Backup ทันที</span>
-                      </button>
-                    </article>
-                  ) : (
+                <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+                  <label className="mb-2 block text-sm font-semibold text-[var(--color-text-title)]">
+                    เลือกปลายทางสำรองข้อมูล
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      aria-pressed={backupDestination === 'device'}
+                      onClick={() => setBackupDestination('device')}
+                      className={`inline-flex items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold transition ${
+                        backupDestination === 'device'
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                          : 'border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
+                      }`}
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>ลงเครื่อง</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={backupDestination === 'drive'}
+                      onClick={() => setBackupDestination('drive')}
+                      className={`inline-flex items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold transition ${
+                        backupDestination === 'drive'
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                          : 'border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
+                      }`}
+                    >
+                      <CloudUpload className="h-4 w-4" />
+                      <span>Google Drive</span>
+                    </button>
+                  </div>
+                </section>
+
+                {backupDestination === 'drive' ? (
                   <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 flex flex-col justify-between">
                     <div>
                       <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-title)]">
                         <CloudUpload className="h-4 w-4 text-[var(--color-primary-text)]" />
-                        <span>อัปโหลดสำรองขึ้น Google Drive</span>
+                        <span>สำรองขึ้น Google Drive</span>
                       </h3>
                       <p className="mt-2 text-xs text-[var(--color-text-muted)] leading-relaxed">
                         {!isSuperAdmin || scopeChoice === 'school'
@@ -902,7 +911,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                     </div>
                     <button
                       type="button"
-                      disabled={busy || (scopeChoice === 'school' && !schoolId)}
+                      disabled={busy || (scopeChoice === 'school' && !schoolId) || !googleToken}
                       onClick={() => void handleBackupToGoogleDrive()}
                       className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer transition"
                     >
@@ -911,15 +920,10 @@ export const BackupCenterModal: React.FC<Props> = ({
                       ) : (
                         <CloudUpload className="h-4 w-4" />
                       )}
-                      <span>
-                        {googleToken
-                          ? 'สำรองขึ้น Google Drive ทันที'
-                          : 'เชื่อมต่อ Google เพื่อสำรองข้อมูล'}
-                      </span>
+                      <span>สำรองขึ้น Google Drive ทันที</span>
                     </button>
                   </article>
-                  )}
-
+                ) : (
                   <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 flex flex-col justify-between">
                     <div>
                       <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-title)]">
@@ -936,10 +940,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                     </div>
                     <button
                       type="button"
-                      disabled={
-                        busy ||
-                        (scopeChoice === 'school' && !schoolId)
-                      }
+                      disabled={busy || (scopeChoice === 'school' && !schoolId)}
                       onClick={() => void exportLocalBackup()}
                       className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] px-3 py-2.5 text-sm font-semibold text-[var(--color-text-title)] disabled:opacity-50 cursor-pointer transition"
                     >
@@ -951,7 +952,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                       </span>
                     </button>
                   </article>
-                </div>
+                )}
 
                 {progressInfo && (
                   <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-xs text-blue-900 dark:text-blue-200">
@@ -965,6 +966,41 @@ export const BackupCenterModal: React.FC<Props> = ({
             {/* TAB 2: RESTORE */}
             {activeTab === 'restore' && (
               <div className="space-y-4">
+                <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+                  <label className="mb-2 block text-sm font-semibold text-[var(--color-text-title)]">
+                    เลือกแหล่งกู้คืนข้อมูล
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      aria-pressed={restoreSource === 'device'}
+                      onClick={() => setRestoreSource('device')}
+                      className={`inline-flex items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold transition ${
+                        restoreSource === 'device'
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                          : 'border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
+                      }`}
+                    >
+                      <FileUp className="h-4 w-4" />
+                      <span>ไฟล์ในเครื่อง</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={restoreSource === 'drive'}
+                      onClick={() => setRestoreSource('drive')}
+                      className={`inline-flex items-center gap-2 rounded-lg border p-3 text-left text-sm font-semibold transition ${
+                        restoreSource === 'drive'
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                          : 'border-[var(--color-border)] hover:bg-[var(--color-card-subtle)]'
+                      }`}
+                    >
+                      <HardDrive className="h-4 w-4" />
+                      <span>Google Drive</span>
+                    </button>
+                  </div>
+                </section>
+
+                {restoreSource === 'drive' && (
                 <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -1100,12 +1136,14 @@ export const BackupCenterModal: React.FC<Props> = ({
                     </div>
                   )}
                 </section>
+                )}
 
                 {/* Local JSON file restore */}
+                {restoreSource === 'device' && (
                 <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
                   <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-title)]">
                     <FileUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <span>หรือกู้คืนจากไฟล์ JSON ในเครื่อง</span>
+                    <span>กู้คืนจากไฟล์ JSON ในเครื่อง</span>
                   </h3>
                   <div className="flex flex-wrap items-center gap-3">
                     <input
@@ -1129,6 +1167,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                     </button>
                   </div>
                 </section>
+                )}
               </div>
             )}
 
@@ -1245,7 +1284,7 @@ export const BackupCenterModal: React.FC<Props> = ({
 
                   {serverUnavailableNote ? (
                     <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-200">
-                      {serverUnavailableNote} (ต้องตั้งค่า <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> และข้อมูล OAuth ของ Google Drive บนเซิร์ฟเวอร์)
+                      {serverUnavailableNote} การสำรองอัตโนมัติขณะปิดแอปต้องเปิดใช้บริการสำรองฝั่งเซิร์ฟเวอร์
                     </div>
                   ) : (
                     <>
