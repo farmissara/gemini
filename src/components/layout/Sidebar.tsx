@@ -998,7 +998,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         const items = cat.items.filter(
           (i) =>
             i.roles.includes(currentRole) &&
-            isTabEnabledByFeatureFlags(i.id, featureFlags, currentRole) &&
+            isTabEnabledByFeatureFlags(
+              i.id === 'attendance' && currentRole === 'student' ? 'mobile_checkin' : i.id,
+              featureFlags,
+              currentRole
+            ) &&
             isAllowedBySchoolPolicy(i.id) &&
             (!SETTINGS_DEEP_LINK_TABS.has(i.id) || i.id === resolvedSidebarActiveTab) &&
             (!REPORT_DEEP_LINK_TABS.has(i.id) || i.id === resolvedSidebarActiveTab) &&

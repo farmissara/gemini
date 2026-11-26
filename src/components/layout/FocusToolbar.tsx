@@ -23,7 +23,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
-  Smartphone,
   Users,
   X,
   type LucideIcon,
@@ -83,13 +82,6 @@ const TOOL_CATALOG: Record<string, FocusToolMeta> = {
     labelTh: 'เช็คชื่อ & เวลาเรียน',
     labelEn: 'Attendance',
     icon: QrCode,
-    roles: ['super_admin', 'admin', 'teacher'],
-  },
-  mobile_checkin: {
-    id: 'mobile_checkin',
-    labelTh: 'เช็คชื่อมือถือ & ใบลา',
-    labelEn: 'Mobile Check-in',
-    icon: Smartphone,
     roles: ['super_admin', 'admin', 'teacher', 'student'],
   },
   homework: {
@@ -258,7 +250,7 @@ const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> =
 
 const CONTEXTUAL_CLUSTERS: Record<string, NavTab[]> = {
   teaching: ['timetable', 'courses', 'attendance', 'homework', 'students'],
-  attendance: ['attendance', 'mobile_checkin', 'timetable', 'behavior_sdq', 'students'],
+  attendance: ['attendance', 'timetable', 'behavior_sdq', 'students'],
   grading: ['students', 'homework', 'central_exam_hub', 'courses', 'timetable'],
   directory: ['students', 'teachers', 'timetable', 'courses', 'attendance'],
   care_ops: ['behavior_sdq', 'infirmary', 'attendance', 'announcements', 'billing'],
@@ -275,7 +267,6 @@ const ADMIN_SIMPLIFIED_CORE_TABS = new Set<NavTab>([
   'courses',
   'timetable',
   'attendance',
-  'mobile_checkin',
   'homework',
   'announcements',
 ]);
@@ -337,7 +328,8 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
     if (isSimplifiedAdmin && !ADMIN_SIMPLIFIED_CORE_TABS.has(tabId)) return false;
     const meta = TOOL_CATALOG[tabId];
     if (!meta || !meta.roles.includes(currentRole)) return false;
-    if (!isTabEnabledByFeatureFlags(tabId, featureFlags)) return false;
+    const featureFlagTab = tabId === 'attendance' && currentRole === 'student' ? 'mobile_checkin' : tabId;
+    if (!isTabEnabledByFeatureFlags(featureFlagTab, featureFlags, currentRole)) return false;
     if (schoolPermissions) {
       if (currentRole === 'teacher') {
         if (tabId === 'billing' && schoolPermissions.teacher_view_financials === false) return false;
@@ -347,7 +339,7 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
         if (tabId === 'homework' && schoolPermissions.teacher_homework === false) return false;
       }
       if (currentRole === 'student') {
-        if (tabId === 'mobile_checkin' && schoolPermissions.student_self_checkin === false) return false;
+        if ((tabId === 'attendance' || tabId === 'mobile_checkin') && schoolPermissions.student_self_checkin === false) return false;
         if (tabId === 'homework' && schoolPermissions.student_submit_homework === false) return false;
         if (tabId === 'gradebook' && schoolPermissions.student_view_grades === false) return false;
       }

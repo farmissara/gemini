@@ -131,6 +131,9 @@ export function useTabNavigation({
   }, [currentTab, currentRole, rolePermissions]);
 
   useEffect(() => {
+    const featureFlagTab = currentTab === 'attendance' && currentRole === 'student'
+      ? 'mobile_checkin'
+      : currentTab;
     if (currentRole === 'super_admin' && !isSuperAdminSchoolView) {
       if (programMode !== 'school_erp') {
         setProgramMode('school_erp');
@@ -157,7 +160,7 @@ export function useTabNavigation({
     if (
       programMode === 'school_erp' &&
       !(currentTab === 'super_admin_console' && currentRole === 'super_admin') &&
-      !isTabEnabledByFeatureFlags(currentTab, activeFeatureFlags, currentRole)
+      !isTabEnabledByFeatureFlags(featureFlagTab, activeFeatureFlags, currentRole)
     ) {
       setCurrentTab('dashboard');
     }
@@ -405,9 +408,10 @@ export function useTabNavigation({
       }
     }
 
+    const featureFlagTab = tab === 'attendance' && currentRole === 'student' ? 'mobile_checkin' : tab;
     if (
       !(currentRole === 'super_admin' && tab === 'super_admin_console') &&
-      !isTabEnabledByFeatureFlags(tab, activeFeatureFlags, currentRole)
+      !isTabEnabledByFeatureFlags(featureFlagTab, activeFeatureFlags, currentRole)
     ) {
       const isStudentAiTab =
         currentRole === 'student' &&
