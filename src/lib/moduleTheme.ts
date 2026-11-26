@@ -9,7 +9,7 @@ export type ModuleTone = 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 
  * - tone-3 (Amber): ศูนย์ควบคุมแม่ข่าย & เตือนภัย (Master Console & Early Warning)
  * - tone-4 (Rose): เช็กชื่อ กิจการ & สุขภาพ (Attendance, Care, Health & ID)
  * - tone-5 (Violet): AI & นวัตกรรมการเรียนรู้ (AI & Interactive Learning)
- * - tone-6 (Cyan): การเงิน & การสื่อสาร (Finance & Communications)
+ * - tone-6 (Cyan): การสื่อสาร (Communications)
  * - tone-7 (Slate): ตั้งค่าระบบ & ประสานงาน (Settings, Permissions & Desk)
  */
 export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
@@ -62,14 +62,12 @@ export const MODULE_TONE_MAP: Record<NavTab, ModuleTone> = {
   portfolio: 'tone-5',
   hall_of_fame: 'tone-5',
 
-  // tone-6 (Cyan): Finance & Announcements
-  billing: 'tone-6',
+  // tone-6 (Cyan): Announcements & Comms
   announcements: 'tone-6',
 
   // tone-7 (Slate): System Settings & Coordination Desk
   school_gps: 'tone-7',
   school_permissions: 'tone-7',
-  admin_line_control: 'tone-7',
   admin_student_accounts: 'tone-7',
   admin_saas_audit: 'tone-7',
   admin_superadmin_desk: 'tone-7',
@@ -145,12 +143,12 @@ export const TONE_GROUP_META: Record<ModuleTone, ModuleGroupMeta> = {
   'tone-6': {
     tone: 'tone-6',
     code: '06',
-    labelTh: 'การเงิน & การสื่อสาร',
-    labelEn: 'Finance & Comms',
+    labelTh: 'การสื่อสาร & ประกาศ',
+    labelEn: 'Communications',
     colorNameTh: 'ฟ้าอมเขียว',
     colorNameEn: 'Cyan',
-    meaningTh: 'ค่าเทอม ใบเสร็จรับเงิน ตรวจสลิป และประกาศข่าวสารโรงเรียน',
-    meaningEn: 'Tuition billing, slip verification, and announcements',
+    meaningTh: 'ประกาศข่าวสารโรงเรียนและหนังสือยินยอมผู้ปกครอง',
+    meaningEn: 'School announcements and parent consent notices',
   },
   'tone-7': {
     tone: 'tone-7',
@@ -159,8 +157,8 @@ export const TONE_GROUP_META: Record<ModuleTone, ModuleGroupMeta> = {
     labelEn: 'Settings & Governance',
     colorNameTh: 'เทาหินชนวน',
     colorNameEn: 'Slate',
-    meaningTh: 'ตั้งค่า GPS สิทธิ์บทบาท LINE OA สำรองข้อมูล และจดหมายประสานงาน',
-    meaningEn: 'System configuration, GPS, permissions, LINE, and coordination',
+    meaningTh: 'ตั้งค่า GPS สิทธิ์บทบาท สำรองข้อมูล และจดหมายประสานงาน',
+    meaningEn: 'System configuration, GPS, permissions, and coordination',
   },
   'tone-8': {
     tone: 'tone-8',
@@ -184,7 +182,6 @@ export const CATEGORY_TONE_MAP: Record<NavCategoryId, ModuleTone> = {
   report_monitor: 'tone-8',
   student_care: 'tone-4',
   innovation: 'tone-5',
-  finance: 'tone-6',
   administration: 'tone-7',
 };
 

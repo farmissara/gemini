@@ -12,7 +12,6 @@ import {
   Layers,
   ListChecks,
   QrCode,
-  Receipt,
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
@@ -22,7 +21,6 @@ import type {
   AuthUser,
   CampusGateGeofence,
   School,
-  SchoolFeatureFlags,
   SystemConfig,
   TimetableSlot,
 } from '../../types';
@@ -70,11 +68,6 @@ interface AdminDashboardWorkspaceProps {
   selfieCount: number;
   pendingLeaveCount: number;
   ungradedHomeworkCount: number;
-  pendingSlipCount: number;
-  pendingInvoicesCount: number;
-  collectionRate: number;
-  lineConnectedCount: number;
-  linePercent: number;
   sdqCount: number;
   behaviorCount: number;
   infirmaryCount: number;
@@ -82,7 +75,6 @@ interface AdminDashboardWorkspaceProps {
   unclaimedCentralPacksCount: number;
   completedOnboardingCount: number;
   showOnboardingCard: boolean;
-  canViewFinancials: boolean;
   canViewExecutiveMonitor: boolean;
   canViewEarlyWarning: boolean;
   isModuleEnabled: (tab: NavTab) => boolean;
@@ -91,7 +83,6 @@ interface AdminDashboardWorkspaceProps {
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
   campusGates?: CampusGateGeofence[];
   schoolPermissions?: Record<SchoolPolicyId, boolean>;
-  featureFlags?: SchoolFeatureFlags;
   adminTeachersCount?: number;
   onOpenSystemSettingsTab?: (tab: SystemSettingsTab) => void;
   // Lists
@@ -101,7 +92,7 @@ interface AdminDashboardWorkspaceProps {
   onNavigate: (tab: NavTab) => void;
   onSelectSubTab: (subTab: DashboardSubTab) => void;
   onOpenPhotoRecord: (rec: AttendanceRecord) => void;
-  onOpenDrawer: (mode: 'onboarding' | 'guardian_line') => void;
+  onOpenDrawer: (mode: 'onboarding') => void;
   onExportCsv: () => void;
   onOpenCentralExamPopup?: () => void;
   simplifiedView?: boolean;
@@ -134,22 +125,15 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   uncheckedPeriodsTodayCount = 0,
   pendingLeaveCount,
   ungradedHomeworkCount,
-  pendingSlipCount,
-  pendingInvoicesCount,
-  collectionRate,
-  lineConnectedCount,
-  linePercent,
   announcementsCount,
   unclaimedCentralPacksCount,
   completedOnboardingCount,
   showOnboardingCard,
-  canViewFinancials,
   isModuleEnabled,
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
   campusGates = [],
   schoolPermissions,
-  featureFlags,
   onOpenSystemSettingsTab,
   displayRecords,
   fallbackAvatarSvg,
@@ -162,8 +146,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   simplifiedView = false,
   onToggleSimplifiedView,
 }) => {
-  const isLineEnabled = featureFlags?.lineEnabled !== false && systemConfig.lineMessagingConfigured !== false;
-  const totalPendingActions = pendingLeaveCount + ungradedHomeworkCount + pendingSlipCount;
+  const totalPendingActions = pendingLeaveCount + ungradedHomeworkCount;
   const activeGatesCount = campusGates.filter((gate) => gate.isActive !== false).length;
   const hasGpsConfigured = Boolean(school?.latitude && school?.longitude) || activeGatesCount > 0;
   const enabledPoliciesCount = schoolPermissions
@@ -172,7 +155,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
   const totalPoliciesCount = schoolPermissions
     ? Object.keys(schoolPermissions).length
     : 12;
-  const lateCutoffTime = systemConfig.lineNotificationSettings?.lateCutoffTime || '08:00';
+  const lateCutoffTime = systemConfig.lateCutoffTime || '08:00';
   const openControlTab = (subTab: SystemSettingsTab, fallbackNav: NavTab) => {
     if (onOpenSystemSettingsTab) {
       onOpenSystemSettingsTab(subTab);
@@ -213,17 +196,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         value: `${uncheckedPeriodsTodayCount} ${lang === 'th' ? 'คาบ' : 'periods'}`,
         urgent: true,
         onClick: () => onSelectSubTab('realtime_daily'),
-      });
-    }
-    if (!simplifiedView && pendingSlipCount > 0 && canViewFinancials) {
-      rows.push({
-        id: 'slips',
-        groupLabel: lang === 'th' ? 'การเงิน' : 'Finance',
-        groupColorClass: 'text-amber-700 dark:text-amber-300',
-        label: lang === 'th' ? 'สลิปค่าเทอมรอตรวจ' : 'Payment Slips to Verify',
-        value: `${pendingSlipCount} ${lang === 'th' ? 'รายการ' : 'slips'}`,
-        urgent: true,
-        onClick: () => onNavigate('billing'),
       });
     }
     if (teacherLeavesTodayCount > 0 && isModuleEnabled('timetable')) {
@@ -275,7 +247,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
         onClick: () => onNavigate('attendance'),
       });
     }
-    const rowOrder = ['leaves', 'unchecked-periods', 'slips', 'staff-leave', 'homework', 'unchecked', 'central-exam'];
+    const rowOrder = ['leaves', 'unchecked-periods', 'staff-leave', 'homework', 'unchecked', 'central-exam'];
     rows.sort((a, b) => rowOrder.indexOf(a.id) - rowOrder.indexOf(b.id));
     return rows.slice(0, 6);
   }, [
@@ -286,8 +258,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     lang,
     onNavigate,
     onSelectSubTab,
-    pendingSlipCount,
-    canViewFinancials,
     teacherLeavesTodayCount,
     unclaimedCentralPacksCount,
     currentUser?.role,
@@ -377,24 +347,13 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             icon: FileCheck2,
             onClick: () => onNavigate('homework'),
           },
-          canViewFinancials && isModuleEnabled('billing')
-            ? {
-                id: 'billing',
-                label: lang === 'th' ? 'ค่าเทอม & ตรวจสอบสลิป' : 'Tuition & Slips',
-                meta: pendingSlipCount > 0
-                  ? (lang === 'th' ? `รอตรวจ ${pendingSlipCount} สลิป · ค้าง ${pendingInvoicesCount}` : `${pendingSlipCount} slips · ${pendingInvoicesCount} unpaid`)
-                  : (lang === 'th' ? `จัดเก็บแล้ว ${collectionRate}%` : `${collectionRate}% collected`),
-                icon: Receipt,
-                urgent: pendingSlipCount > 0,
-                onClick: () => onNavigate('billing'),
-              }
-            : isModuleEnabled('announcements') && {
-                id: 'announcements',
-                label: lang === 'th' ? 'ข่าวสาร & ประกาศโรงเรียน' : 'Announcements',
-                meta: lang === 'th' ? `${announcementsCount} ประกาศในระบบ` : `${announcementsCount} posts`,
-                icon: BellRing,
-                onClick: () => onNavigate('announcements'),
-              },
+          isModuleEnabled('announcements') && {
+            id: 'announcements',
+            label: lang === 'th' ? 'ข่าวสาร & ประกาศโรงเรียน' : 'Announcements',
+            meta: lang === 'th' ? `${announcementsCount} ประกาศในระบบ` : `${announcementsCount} posts`,
+            icon: BellRing,
+            onClick: () => onNavigate('announcements'),
+          },
           isModuleEnabled('students') && {
             id: 'students',
             label: lang === 'th' ? 'ทะเบียนนักเรียน' : 'Student Registry',
@@ -417,16 +376,7 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
     gradesCount,
     ungradedHomeworkCount,
     unclaimedCentralPacksCount,
-    canViewFinancials,
-    pendingSlipCount,
-    pendingInvoicesCount,
-    collectionRate,
     announcementsCount,
-    hasGpsConfigured,
-    activeGatesCount,
-    lateCutoffTime,
-    enabledPoliciesCount,
-    totalPoliciesCount,
     onNavigate,
   ]);
 
@@ -534,7 +484,6 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             type="button"
             onClick={() => {
               if (pendingLeaveCount > 0) onNavigate('mobile_checkin');
-              else if (pendingSlipCount > 0 && canViewFinancials) onNavigate('billing');
               else if (isModuleEnabled('homework')) onNavigate('homework');
             }}
             className="tone-3 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
@@ -552,8 +501,8 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
               </span>
               <span className="type-meta tabular-nums truncate">
                 {lang === 'th'
-                  ? `ลา ${pendingLeaveCount} · สลิป ${pendingSlipCount} · งาน ${ungradedHomeworkCount}`
-                  : `${pendingLeaveCount} leaves · ${pendingSlipCount} slips · ${ungradedHomeworkCount} hw`}
+                  ? `ใบลา ${pendingLeaveCount} · งานรอตรวจ ${ungradedHomeworkCount}`
+                  : `${pendingLeaveCount} leaves · ${ungradedHomeworkCount} hw`}
               </span>
             </div>
           </button>
@@ -581,62 +530,28 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             </div>
           </button>
 
-          {/* KPI 4: Courses & Schedule in Simplified View OR Guardian LINE & Tuition in Full View */}
-          {simplifiedView ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (isModuleEnabled('courses')) onNavigate('courses');
-              }}
-              className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
-                  <Calendar className="w-3.5 h-3.5 shrink-0" />
-                  <span>{lang === 'th' ? 'รายวิชา & ตารางสอน' : 'Courses & Schedule'}</span>
-                </span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
-              </div>
-              <div className="flex items-baseline gap-2.5 min-w-0">
-                <span className="type-kpi tabular-nums">{coursesCount}</span>
-                <span className="type-meta tabular-nums truncate">
-                  {lang === 'th' ? `วิชา · คาบวันนี้ ${todayScheduledSlots.length} · ครู ${teachersCount}` : `${todayScheduledSlots.length} slots · ${teachersCount} staff`}
-                </span>
-              </div>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onOpenDrawer('guardian_line')}
-              className="tone-6 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
-                  <Receipt className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {isLineEnabled
-                      ? (lang === 'th' ? 'LINE ผู้ปกครอง & การเงิน' : 'LINE & Tuition')
-                      : (lang === 'th' ? 'การเงิน & แจ้งเตือนในแอป' : 'Tuition & In-App Alerts')}
-                  </span>
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
-              </div>
-              <div className="flex items-baseline gap-2.5 min-w-0">
-                <span className="type-kpi tabular-nums">
-                  {isLineEnabled ? `${linePercent}%` : (canViewFinancials ? `${collectionRate}%` : `${announcementsCount}`)}
-                </span>
-                <span className="type-meta tabular-nums truncate">
-                  {isLineEnabled
-                    ? canViewFinancials
-                      ? (lang === 'th' ? `${lineConnectedCount}/${totalStudents} บ้าน · เก็บค่าเทอม ${collectionRate}%` : `${lineConnectedCount} LINE · ${collectionRate}% paid`)
-                      : (lang === 'th' ? `${lineConnectedCount}/${totalStudents} ครอบครัว` : `${lineConnectedCount}/${totalStudents} families`)
-                    : canViewFinancials
-                      ? (lang === 'th' ? `เก็บค่าเทอม ${collectionRate}% · ปิด LINE OA` : `${collectionRate}% paid · LINE OA off`)
-                      : (lang === 'th' ? 'ปิด LINE OA · ใช้แจ้งเตือนในแอป' : 'LINE OA off · In-app alerts')}
-                </span>
-              </div>
-            </button>
-          )}
+          {/* KPI 4: Courses & Schedule */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isModuleEnabled('courses')) onNavigate('courses');
+            }}
+            className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'รายวิชา & ตารางสอน' : 'Courses & Schedule'}</span>
+              </span>
+              <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
+            </div>
+            <div className="flex items-baseline gap-2.5 min-w-0">
+              <span className="type-kpi tabular-nums">{coursesCount}</span>
+              <span className="type-meta tabular-nums truncate">
+                {lang === 'th' ? `วิชา · คาบวันนี้ ${todayScheduledSlots.length} · ครู ${teachersCount}` : `${todayScheduledSlots.length} slots · ${teachersCount} staff`}
+              </span>
+            </div>
+          </button>
         </div>
       </section>
 
@@ -842,11 +757,9 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             const itemTone = getModuleTone(
               (item.id === 'gps'
                 ? 'school_gps'
-                : item.id === 'line'
-                  ? 'admin_line_control'
-                  : item.id === 'permissions'
-                    ? 'school_permissions'
-                    : item.id) as NavTab
+                : item.id === 'permissions'
+                  ? 'school_permissions'
+                  : item.id) as NavTab
             );
             return (
               <button

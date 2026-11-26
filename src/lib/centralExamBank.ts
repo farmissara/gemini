@@ -229,9 +229,7 @@ function mapPackToDb(pack: CentralExamPack): DbCentralExamPackRow {
   };
 }
 
-export async function fetchCentralExamPacks(isDemoMode: boolean): Promise<CentralExamPack[]> {
-  if (isDemoMode) return readLocalPacks();
-
+export async function fetchCentralExamPacks(): Promise<CentralExamPack[]> {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
 
@@ -245,13 +243,8 @@ export async function fetchCentralExamPacks(isDemoMode: boolean): Promise<Centra
 
 export async function syncMissingDefaultCentralExamPacksToSupabase(
   existingPacks?: CentralExamPack[],
-  options?: { isDemoMode?: boolean; silent?: boolean }
+  options?: { silent?: boolean }
 ): Promise<{ insertedCount: number; packs: CentralExamPack[]; alreadyComplete: boolean }> {
-  if (options?.isDemoMode) {
-    const localPacks = readLocalPacks();
-    return { insertedCount: 0, packs: localPacks, alreadyComplete: true };
-  }
-
   if (inFlightSeedPromise) {
     return inFlightSeedPromise;
   }
@@ -260,7 +253,7 @@ export async function syncMissingDefaultCentralExamPacksToSupabase(
     const client = getSupabaseClient();
     if (!client) throw new Error('Supabase is not configured.');
 
-    const currentPacks = existingPacks ?? (await fetchCentralExamPacks(false));
+    const currentPacks = existingPacks ?? (await fetchCentralExamPacks());
     const existingIds = new Set(currentPacks.map((p) => p.id));
     const missingPacks = DEFAULT_CENTRAL_EXAM_PACKS.filter((p) => !existingIds.has(p.id));
 
@@ -285,7 +278,7 @@ export async function syncMissingDefaultCentralExamPacksToSupabase(
     }
 
     markBuiltInSeedCompleted();
-    const refreshed = await fetchCentralExamPacks(false);
+    const refreshed = await fetchCentralExamPacks();
     if (!options?.silent) {
       dispatchCentralExamsUpdated();
     }
@@ -302,8 +295,7 @@ export async function syncMissingDefaultCentralExamPacksToSupabase(
 }
 
 export async function upsertCentralExamPack(
-  pack: CentralExamPack,
-  isDemoMode: boolean
+  pack: CentralExamPack
 ): Promise<{ ok: boolean; packs: CentralExamPack[]; persistedToDb: boolean }> {
   const normalizedPack: CentralExamPack = {
     ...pack,
@@ -316,16 +308,6 @@ export async function upsertCentralExamPack(
   }
   if (normalizedPack.pricingType === 'paid' && normalizedPack.priceThb < 1) {
     throw new Error('Paid exam packs must have a price greater than zero.');
-  }
-
-  if (isDemoMode) {
-    const currentLocal = readLocalPacks();
-    const nextLocal = currentLocal.some((p) => p.id === normalizedPack.id)
-      ? currentLocal.map((p) => (p.id === normalizedPack.id ? normalizedPack : p))
-      : [normalizedPack, ...currentLocal];
-    writeLocalPacks(nextLocal);
-    dispatchCentralExamsUpdated();
-    return { ok: true, packs: nextLocal, persistedToDb: false };
   }
 
   const client = getSupabaseClient();
@@ -346,15 +328,8 @@ export async function upsertCentralExamPack(
 }
 
 export async function deleteCentralExamPack(
-  packId: string,
-  isDemoMode: boolean
+  packId: string
 ): Promise<{ ok: boolean; packs: CentralExamPack[] }> {
-  if (isDemoMode) {
-    const nextLocal = readLocalPacks().filter((p) => p.id !== packId);
-    writeLocalPacks(nextLocal);
-    dispatchCentralExamsUpdated();
-    return { ok: true, packs: nextLocal };
-  }
   {
     const client = getSupabaseClient();
     if (!client) throw new Error('Supabase is not configured.');
@@ -409,12 +384,10 @@ function mapEntitlementFromDb(row: DbEntitlementRow): SchoolExamEntitlement {
 }
 
 export async function fetchSchoolExamEntitlements(
-  schoolId: string,
-  isDemoMode: boolean
+  schoolId: string
 ): Promise<SchoolExamEntitlement[]> {
   if (!schoolId) return [];
   const local = readLocalEntitlements(schoolId);
-  if (isDemoMode) return local;
 
   const client = getSupabaseClient();
   if (!client) return local;
@@ -465,12 +438,10 @@ interface DbSchoolQuestionRow {
 }
 
 export async function fetchSchoolPersistedQuestions(
-  schoolId: string,
-  isDemoMode: boolean
+  schoolId: string
 ): Promise<QuizQuestion[]> {
   if (!schoolId) return [];
   const local = readLocalSchoolQuestions(schoolId);
-  if (isDemoMode) return local;
 
   const client = getSupabaseClient();
   if (!client) return local;
@@ -519,8 +490,7 @@ export async function fetchSchoolPersistedQuestions(
 
 export async function saveSchoolQuestionsBatch(
   schoolId: string,
-  newQuestions: QuizQuestion[],
-  isDemoMode: boolean
+  newQuestions: QuizQuestion[]
 ): Promise<QuizQuestion[]> {
   if (!schoolId || newQuestions.length === 0) return readLocalSchoolQuestions(schoolId);
   const tagged = newQuestions.map((q) => ({
@@ -529,30 +499,28 @@ export async function saveSchoolQuestionsBatch(
     strand: q.strand || inferStrandFromSubject(q.subject),
   }));
 
-  if (!isDemoMode) {
-    const client = getSupabaseClient();
-    if (!client) throw new Error('Supabase is not configured.');
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
 
-    const payload = tagged.map((q) => ({
-      id: q.id,
-      school_id: schoolId,
-      pack_id: q.packId || null,
-      strand: q.strand || inferStrandFromSubject(q.subject),
-      subject: q.subject,
-      grade_level: q.gradeLevel || 'ป.1 - ม.6',
-      category: q.category || 'standard_exam',
-      question_th: q.questionTh,
-      question_en: q.questionEn || '',
-      options: q.options,
-      correct_index: q.correctIndex,
-      explanation_th: q.explanationTh || '',
-      points: q.points || 100,
-    }));
-    const { error } = await client
-      .from('school_questions')
-      .upsert(payload, { onConflict: 'id' });
-    if (error) throw new Error(`Could not save school questions: ${error.message}`);
-  }
+  const payload = tagged.map((q) => ({
+    id: q.id,
+    school_id: schoolId,
+    pack_id: q.packId || null,
+    strand: q.strand || inferStrandFromSubject(q.subject),
+    subject: q.subject,
+    grade_level: q.gradeLevel || 'ป.1 - ม.6',
+    category: q.category || 'standard_exam',
+    question_th: q.questionTh,
+    question_en: q.questionEn || '',
+    options: q.options,
+    correct_index: q.correctIndex,
+    explanation_th: q.explanationTh || '',
+    points: q.points || 100,
+  }));
+  const { error } = await client
+    .from('school_questions')
+    .upsert(payload, { onConflict: 'id' });
+  if (error) throw new Error(`Could not save school questions: ${error.message}`);
 
   const current = readLocalSchoolQuestions(schoolId);
   const byId = new Map<string, QuizQuestion>();
@@ -570,15 +538,13 @@ export async function claimCentralExamPack(params: {
   pack: CentralExamPack;
   paymentMethod: 'free' | 'promptpay' | 'invoice';
   claimedBy: string;
-  isDemoMode: boolean;
   slipUrl?: string;
 }): Promise<{
   entitlement: SchoolExamEntitlement;
   addedQuestions: QuizQuestion[];
   allEntitlements: SchoolExamEntitlement[];
 }> {
-  const { schoolId, pack, paymentMethod, claimedBy, isDemoMode, slipUrl } = params;
-  const now = new Date().toISOString();
+  const { schoolId, pack, paymentMethod, slipUrl } = params;
   const isPaid = pack.pricingType === 'paid' && pack.priceThb > 0;
 
   // บังคับแนบสลิป 100% สำหรับการสั่งซื้อ
@@ -586,44 +552,25 @@ export async function claimCentralExamPack(params: {
     throw new Error('กรุณาแนบภาพสลิปหลักฐานการโอนเงิน 100% (ตามโมเดลที่ 2 ปลดล็อกทันทีและตรวจสอบสลิปย้อนหลัง)');
   }
 
-  let entitlement: SchoolExamEntitlement;
-  let claimedPack = pack;
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase is not configured.');
+  const { data, error } = await client.rpc('claim_central_exam_pack', {
+    target_school_id: schoolId,
+    target_pack_id: pack.id,
+    target_payment_method: paymentMethod,
+    target_slip_data: slipUrl || null,
+  });
+  if (error) throw new Error(`Could not save exam entitlement: ${error.message}`);
 
-  if (isDemoMode) {
-    entitlement = {
-      id: `ent-${schoolId}-${pack.id}`,
-      schoolId,
-      packId: pack.id,
-      claimType: isPaid ? 'purchased' : 'free',
-      amountPaidThb: isPaid ? pack.priceThb : 0,
-      paymentMethod: isPaid ? (paymentMethod === 'free' ? 'promptpay' : paymentMethod) : 'free',
-      claimedBy,
-      claimedAt: now,
-      slipUrl: slipUrl || undefined,
-      slipAttachedAt: slipUrl ? now : undefined,
-      auditStatus: isPaid ? 'pending_audit' : 'verified',
-    };
-  } else {
-    const client = getSupabaseClient();
-    if (!client) throw new Error('Supabase is not configured.');
-    const { data, error } = await client.rpc('claim_central_exam_pack', {
-      target_school_id: schoolId,
-      target_pack_id: pack.id,
-      target_payment_method: paymentMethod,
-      target_slip_data: slipUrl || null,
-    });
-    if (error) throw new Error(`Could not save exam entitlement: ${error.message}`);
-
-    const claimResult = data as { entitlement?: DbEntitlementRow; questions?: QuizQuestion[] } | null;
-    if (!claimResult?.entitlement) throw new Error('The entitlement request returned no record.');
-    if (!Array.isArray(claimResult.questions)) {
-      throw new Error('The unlocked exam pack was not returned.');
-    }
-    entitlement = mapEntitlementFromDb(claimResult.entitlement);
-    claimedPack = { ...pack, questions: claimResult.questions };
-    if (claimedPack.questions.length < (pack.questionCount || pack.questions.length)) {
-      throw new Error('The full exam pack was not returned after entitlement was granted.');
-    }
+  const claimResult = data as { entitlement?: DbEntitlementRow; questions?: QuizQuestion[] } | null;
+  if (!claimResult?.entitlement) throw new Error('The entitlement request returned no record.');
+  if (!Array.isArray(claimResult.questions)) {
+    throw new Error('The unlocked exam pack was not returned.');
+  }
+  const entitlement = mapEntitlementFromDb(claimResult.entitlement);
+  const claimedPack = { ...pack, questions: claimResult.questions };
+  if (claimedPack.questions.length < (pack.questionCount || pack.questions.length)) {
+    throw new Error('The full exam pack was not returned after entitlement was granted.');
   }
 
   // Instant access is granted only after the database confirms the entitlement.
@@ -635,7 +582,7 @@ export async function claimCentralExamPack(params: {
     strand: q.strand || pack.strand,
   }));
 
-  await saveSchoolQuestionsBatch(schoolId, taggedQuestions, isDemoMode);
+  await saveSchoolQuestionsBatch(schoolId, taggedQuestions);
 
   const currentEntitlements = readLocalEntitlements(schoolId).filter((e) => e.packId !== pack.id);
   const nextEntitlements = [entitlement, ...currentEntitlements];

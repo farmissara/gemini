@@ -31,7 +31,6 @@ import type {
   Teacher,
   ThemePalette,
   TimetableSlot,
-  TuitionInvoice,
   UserRole,
   AppLanguage,
 } from '../../types';
@@ -112,8 +111,6 @@ export interface ExecMetrics {
   avgGpa: string;
   honorCount: number;
   todayInfirmary: number;
-  totalCollected: number;
-  pendingCount: number;
   riskCount: number;
   totalStudents: number;
   totalTeachers: number;
@@ -142,7 +139,6 @@ export interface MobileAppShellProps {
   courses: Course[];
   lessons?: Lesson[];
   grades?: GradeRecord[];
-  invoices?: TuitionInvoice[];
   infirmaryVisits?: InfirmaryVisit[];
   behaviorRecords?: BehaviorRecord[];
   sdqAssessments?: SdqAssessment[];
@@ -201,13 +197,11 @@ export interface MobileAppShellProps {
 
   // Role-first Mobile & Desktop Continuity Props
   schools?: School[];
-  isDemoMode?: boolean;
   coordinationUnreadCount?: number;
   unclaimedCentralPacksCount?: number;
   onOpenSchoolSwitcher?: () => void;
   onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
   onAddAnnouncement?: (announcement: Announcement) => void;
-  onBroadcastLine?: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onAddHomeworkAssignment?: (assignment: Assignment) => Promise<void>;
   onAddHomeworkSubmission?: (sub: HomeworkSubmission) => Promise<void>;
   onGradeHomeworkSubmission?: (id: string, score: number, feedback: string) => Promise<void>;
@@ -217,8 +211,6 @@ export interface MobileAppShellProps {
   onCompleteLesson?: (lessonId: string) => Promise<void>;
   onSaveLesson?: (lesson: Lesson) => Promise<void>;
   onSubmitAssignment?: (assignmentId: string) => Promise<void>;
-  onApproveInvoiceSlip?: (invoiceId: string) => void;
-  onRejectInvoiceSlip?: (invoiceId: string, reason: string) => void;
   onViewSchool?: (school: School) => void;
   onToggleSchoolStatus?: (schoolId: string, status: School['status']) => Promise<void>;
   onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;

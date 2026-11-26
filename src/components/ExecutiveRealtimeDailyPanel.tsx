@@ -41,7 +41,6 @@ import {
   SystemConfig,
   Teacher,
   TimetableSlot,
-  TuitionInvoice,
 } from '../types';
 import { NavTab } from './layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
@@ -73,8 +72,6 @@ interface ExecutiveRealtimeDailyPanelProps {
   schoolPeriods?: SchoolPeriodTime[];
   leaveRequests?: LeaveRequest[];
   infirmaryVisits?: InfirmaryVisit[];
-  invoices?: TuitionInvoice[];
-  canViewFinancials?: boolean;
   lang?: AppLanguage;
   isTvMode?: boolean;
   onNavigate?: (tab: NavTab) => void;
@@ -136,8 +133,6 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
   schoolPeriods = [],
   leaveRequests = [],
   infirmaryVisits = [],
-  invoices = [],
-  canViewFinancials = true,
   lang = 'th',
   isTvMode = false,
   onNavigate,
@@ -178,7 +173,7 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
     return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="%23e2e8f0"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="%23334155">${letter}</text></svg>`;
   };
 
-  const lateCutoffTime = systemConfig.lineNotificationSettings?.lateCutoffTime || '08:00';
+  const lateCutoffTime = systemConfig.lateCutoffTime || '08:00';
   const lateCutoffMinutes = parseTimeToMinutes(lateCutoffTime) ?? 480;
   const isTodaySelected = selectedDate === todayStr;
   const isMorningPhaseNow = bangkokClock.minutes < 540; // Before 09:00
@@ -563,16 +558,12 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
   const operationalSignals = useMemo(() => {
     const restingList = infirmaryVisits.filter((v) => v.status === 'resting');
     const todayVisits = infirmaryVisits.filter((v) => v.visitDate === selectedDate);
-    const pendingSlips = canViewFinancials
-      ? invoices.filter((inv) => inv.slipStatus === 'pending_review').length
-      : 0;
     return {
       restingNow: restingList.length,
       restingList: restingList.slice(0, 4),
       todayInfirmaryCount: todayVisits.length,
-      pendingSlips,
     };
-  }, [canViewFinancials, infirmaryVisits, invoices, selectedDate]);
+  }, [infirmaryVisits, selectedDate]);
 
   // Drawer Roster Details for selected classroom
   const selectedClassroomDetail = useMemo(() => {
@@ -671,20 +662,19 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
       'สถานะประตู',
       'เวลาเข้า',
       'สถานะใบลา',
-      'LINE ผู้ปกครอง',
     ];
     const rows: string[][] = [];
     studentGateOverview.presentList.forEach(({ student, time }) => {
-      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), 'มาตรงเวลา', time, '-', student.lineLinked ? 'เชื่อมแล้ว' : 'ยังไม่เชื่อม']);
+      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), 'มาตรงเวลา', time, '-']);
     });
     studentGateOverview.lateList.forEach(({ student, time, lateMinutes }) => {
-      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), `มาสาย (+${lateMinutes} นาที)`, time, '-', student.lineLinked ? 'เชื่อมแล้ว' : 'ยังไม่เชื่อม']);
+      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), `มาสาย (+${lateMinutes} นาที)`, time, '-']);
     });
     studentGateOverview.approvedLeaveList.forEach(({ student, leave }) => {
-      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), 'ลาเรียน', '-', leave?.reason || 'ลาที่อนุมัติ', student.lineLinked ? 'เชื่อมแล้ว' : 'ยังไม่เชื่อม']);
+      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), 'ลาเรียน', '-', leave?.reason || 'ลาที่อนุมัติ']);
     });
     studentGateOverview.absentUncheckedList.forEach(({ student }) => {
-      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), 'ยังไม่เช็คอิน/ขาด', '-', '-', student.lineLinked ? 'เชื่อมแล้ว' : 'ยังไม่เชื่อม']);
+      rows.push([selectedDate, student.studentIdNumber || student.id, `${student.firstNameTh} ${student.lastNameTh}`, getStudentRoomLabel(student), 'ยังไม่เช็คอิน/ขาด', '-', '-']);
     });
 
     const csv = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
@@ -976,20 +966,11 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
                       </div>
                       <div className="flex items-center gap-2 shrink-0 text-[11px]">
                         {student.guardianPhone && (
-                          <span className={`hidden sm:inline-flex items-center gap-1 tabular-nums ${mutedCls}`}>
+                          <span className={`inline-flex items-center gap-1 tabular-nums ${mutedCls}`}>
                             <Phone className="w-3 h-3" />
                             <span>{student.guardianPhone}</span>
                           </span>
                         )}
-                        <span
-                          className={`font-semibold ${
-                            student.lineLinked
-                              ? 'text-emerald-700 dark:text-emerald-300'
-                              : 'text-[var(--color-text-muted)]'
-                          }`}
-                        >
-                          {student.lineLinked ? 'LINE พร้อม' : 'ยังไม่เชื่อม LINE'}
-                        </span>
                       </div>
                     </div>
                   ))}
@@ -1655,11 +1636,10 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
               <HeartPulse className="w-3.5 h-3.5 shrink-0" />
             </div>
             <div className="type-kpi-sm tabular-nums text-[var(--color-text-title)]">
-              {teacherPresenceSummary.pendingLeaveCount + operationalSignals.pendingSlips}
+              {teacherPresenceSummary.pendingLeaveCount + operationalSignals.restingNow}
             </div>
             <div className="type-meta tabular-nums truncate">
-              ใบลา {teacherPresenceSummary.pendingLeaveCount}
-              {canViewFinancials ? ` · สลิป ${operationalSignals.pendingSlips}` : ''} · พยาบาลพัก{' '}
+              ใบลา {teacherPresenceSummary.pendingLeaveCount} · พยาบาลพัก{' '}
               {operationalSignals.restingNow}
             </div>
           </div>

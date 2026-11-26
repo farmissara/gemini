@@ -178,7 +178,7 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
   return (
     <div
       data-guide-id="mobile-checkin-body"
-      className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : 'overflow-y-auto pb-4'}`}
+      className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-24' : 'overflow-y-auto pb-12'}`}
     >
       <section className="saas-card">
         <div className="saas-card-body flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

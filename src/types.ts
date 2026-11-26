@@ -53,7 +53,6 @@ export interface School {
   staffPositionOptions?: string[];
   roomOptions?: string[];
   showPrimaryCourseCredits?: boolean;
-  lineOaId: string;
   createdAt: string;
   status: 'active' | 'pending' | 'suspended';
   subscriptionPlan?: 'Starter' | 'Professional' | 'Enterprise';
@@ -87,8 +86,6 @@ export interface RolePermissionConfig {
     manageCourses: boolean;
     editGrades: boolean;
     recordAttendance: boolean;
-    manageTuition: boolean;
-    sendBroadcastLine: boolean;
     manageTimetable: boolean;
     manageSdq: boolean;
     viewInfirmary: boolean;
@@ -130,9 +127,8 @@ export interface GuardianInfo {
   id: string;
   name: string;
   relation: string; // 'บิดา' | 'มารดา' | 'ผู้ปกครอง' | 'ปู่/ย่า/ตา/ยาย' | 'ญาติผู้ใหญ่'
-  phone: string;
+  phone?: string;
   email?: string;
-  lineUserId?: string;
   occupation?: string;
   isPrimary?: boolean;
 }
@@ -145,7 +141,6 @@ export interface AuthUser {
   role: UserRole;
   schoolId: string;
   avatarUrl: string;
-  lineConnected: boolean;
   phone?: string;
   studentRecordId?: string;
   teacherRecordId?: string;
@@ -163,7 +158,6 @@ export interface AuthUser {
   emergencyPhone?: string;
   address?: string;
   bio?: string;
-  lineUserId?: string;
 
   // Student Profile Fields (TCAS Portfolio & Academic Track)
   studentIdNumber?: string;
@@ -242,8 +236,6 @@ export interface Teacher {
   homeroomClasses: string[]; // ครูสอนได้มากกว่า 1 ห้อง
   teachingGrades: string[]; // ครูสอนได้มากกว่า 1 ระดับชั้น
   isSchoolAdmin?: boolean; // ครูมีสิทธิ์เป็น admin ได้
-  lineUserId?: string;
-  lineLinked?: boolean;
   otherSkills?: string[]; // ความสามารถพิเศษอื่นๆ
   certifications?: string[]; // วุฒิบัตร/ใบรับรอง
   teachingExperienceYears?: number; // อายุราชการ/ประสบการณ์สอน (ปี)
@@ -275,9 +267,6 @@ export interface Student {
   guardianPhone: string;
   guardianEmail: string;
   guardians?: GuardianInfo[]; // เด็ก 1 คนมีผู้ปกครองได้มากกว่า 1 คน
-  lineUserId?: string;
-  lineLinked: boolean;
-  lineNotifyEnabled: boolean;
   enrolledDate: string;
   bloodType?: 'A' | 'B' | 'AB' | 'O';
   allergies?: string[];
@@ -347,7 +336,6 @@ export interface AttendanceRecord {
     geofenceZoneName?: string;
   };
   remarks?: string;
-  lineNotificationSent: boolean;
   recordedBy?: string;
   recordedByRole?: string;
   confirmedByHomeroom?: boolean;
@@ -627,35 +615,6 @@ export interface MoeStandardCatalogItem {
   active: boolean;
 }
 
-export interface InvoiceItem {
-  id: string;
-  title: string;
-  amount: number;
-}
-
-export interface TuitionInvoice {
-  id: string;
-  schoolId?: string;
-  invoiceNumber: string; // e.g. INV-2026-0042
-  studentId: string;
-  semester: string;
-  academicYear: string;
-  issueDate: string;
-  dueDate: string;
-  totalAmount: number;
-  status: 'paid' | 'pending' | 'overdue';
-  items: InvoiceItem[];
-  paymentMethod?: 'promptpay' | 'credit_card' | 'bank_transfer' | 'line_pay';
-  paidAt?: string;
-  receiptNumber?: string;
-  slipImageUrl?: string;
-  slipSubmittedAt?: string;
-  slipStatus?: 'none' | 'pending_review' | 'approved' | 'rejected';
-  slipRejectReason?: string;
-  slipAmount?: number;
-  slipReferenceNote?: string;
-}
-
 export interface Announcement {
   id: string;
   schoolId?: string;
@@ -667,45 +626,7 @@ export interface Announcement {
   author: string;
   authorRole: string;
   pinned: boolean;
-  lineBroadcastSent: boolean;
   resendEmailSent: boolean;
-}
-
-export interface LineNotificationSettings {
-  lineOaId: string;
-  lineOaName: string;
-  channelId: string;
-  channelSecret: string;
-  channelAccessToken: string;
-  liffId: string;
-  webhookUrl: string;
-  addFriendUrl: string;
-  qrCodeImageUrl: string;
-  autoReplyGreeting: string;
-  schoolStartTime: string;
-  lateCutoffTime: string;
-  absenceCutoffTime: string;
-  checkoutStartTime: string;
-  behaviorAlertThreshold: number;
-  notifyAttendanceCheckIn: boolean;
-  notifyAttendanceCheckOut: boolean;
-  notifyAttendanceLate: boolean;
-  notifyAttendanceAbsence: boolean;
-  notifyInfirmaryVisit: boolean;
-  notifyBehaviorDeduction: boolean;
-  notifyBehaviorMerit: boolean;
-  notifyNewHomework: boolean;
-  notifyHomeworkDeadline: boolean;
-  notifyHomeworkGraded: boolean;
-  notifyGradeReportReleased: boolean;
-  notifyBillingInvoice: boolean;
-  notifyBillingPaymentSuccess: boolean;
-  notifyEmergencyBroadcast: boolean;
-  customHeaderColor: string;
-  customFooterNote: string;
-  notifyTargetSchool?: boolean;
-  notifyTargetParents?: boolean;
-  notifyTargetStudents?: boolean;
 }
 
 export interface SystemConfig {
@@ -716,16 +637,16 @@ export interface SystemConfig {
   semesterOptions: string[];
   gradingSystem: GradingSystem;
   staffPositionOptions: string[];
-  lineOaAddFriendUrl: string;
-  lineChannelId: string;
-  lineMessagingConfigured: boolean;
+  schoolStartTime?: string;
+  lateCutoffTime?: string;
+  absenceCutoffTime?: string;
+  checkoutStartTime?: string;
   resendApiKeyConfigured: boolean;
   resendFromEmail: string;
   masterEmail?: string;
   replyToEmail?: string;
   supabaseConnected: boolean;
   thaiPdfFontEnabled: boolean;
-  lineNotificationSettings?: LineNotificationSettings;
   latitude?: number;
   longitude?: number;
   geofenceRadiusMeters?: number;
@@ -1006,7 +927,6 @@ export interface BehaviorRecord {
   category: string;
   notes: string;
   recordedBy: string;
-  lineNotified: boolean;
 }
 
 export interface SdqAssessment {
@@ -1190,7 +1110,7 @@ export interface AtRiskStudentForecast {
   predictedOutcome: 'เสี่ยง มส. (เวลาเรียนไม่พอ)' | 'เสี่ยง ร. (งานค้างส่ง)' | 'เสี่ยงเกรดตกต่ำกว่าเกณฑ์' | 'ปกติ';
   earlyInterventionActions: {
     id: string;
-    actionType: 'line_parent_alert' | 'counselor_meeting' | 'remedial_task';
+    actionType: 'parent_alert' | 'counselor_meeting' | 'remedial_task';
     titleTh: string;
     status: 'pending' | 'in_progress' | 'completed';
     sentAt?: string;
@@ -1431,7 +1351,6 @@ export type SchoolFeatureFlagKey =
   | 'mobile_checkin'
   | 'behavior_sdq'
   | 'infirmary'
-  | 'billing'
   | 'portfolio'
   | 'parent_portal'
   | 'lms_classroom'
@@ -1450,7 +1369,6 @@ export type SchoolFeatureFlagKey =
 export interface SchoolFeatureFlags extends Record<SchoolFeatureFlagKey, boolean> {
   tier: SchoolTier;
   allowStudentsAi: boolean;
-  lineEnabled?: boolean;
   autoDeleteSelfiesAfterCheckout?: boolean;
   selfieRetentionAfterCheckoutMinutes?: number;
 }

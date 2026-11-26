@@ -169,7 +169,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   onUpdateCampusGates,
   onSaveCampusGates,
   onUpdateSchoolCoordinates,
-  isDemoMode = false,
 }) => {
   const effectiveRole: UserRole = currentUser?.role || currentRole || 'student';
   const isSchoolAdmin = effectiveRole === 'admin' || effectiveRole === 'super_admin';
@@ -395,7 +394,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   }, [isSimpleStaffCheckin]);
 
   const [checkinSuccessFeedback, setCheckinSuccessFeedback] = useState<CheckinSuccessFeedback | null>(null);
-  const [showLineFlexPreview, setShowLineFlexPreview] = useState(false);
 
   // 2. Online Leave Request State
   const [leaveType, setLeaveType] = useState<LeaveType>('sick');
@@ -700,13 +698,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       const roomStudents = students.filter((s) => (s.room || '').trim().toLowerCase() === targetRoom);
       if (roomStudents.length > 0) return roomStudents.map((s) => s.id);
     }
-    if (selectedCourse.category) {
-      const targetCategory = selectedCourse.category.toLowerCase();
-      const gradeStudents = students.filter((s) =>
-        (s.gradeLevel || '').toLowerCase().includes(targetCategory)
-      );
-      if (gradeStudents.length > 0) return gradeStudents.map((s) => s.id);
-    }
     return [];
   }, [effectiveRole, periodFilteredCourses, selectedCourse, students]);
 
@@ -987,7 +978,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       }
     }
 
-    if (isSelfCheckin && !isDemoMode) {
+    if (isSelfCheckin) {
       setIsSimulatedPhoto(false);
       setCapturedPhotoUrl('');
       setIsCapturing(false);
@@ -1184,7 +1175,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       return;
     }
     if (
-      ((currentUser?.role === 'student') || (isSelfCheckin && !isDemoMode)) &&
+      (currentUser?.role === 'student' || isSelfCheckin) &&
       (isSimulatedPhoto || !capturedPhotoUrl?.startsWith('data:image/jpeg;base64,'))
     ) {
       setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็คอิน');
@@ -1255,7 +1246,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         inGeofence: true,
         geofenceZoneName: selectedGate.nameTh,
       },
-      lineNotificationSent: false,
       recordedBy: isSelfCheckin ? undefined : currentUser?.fullNameTh || 'เจ้าหน้าที่',
       recordedByRole: isSelfCheckin ? undefined : currentUser?.role || 'staff',
     };
@@ -1829,10 +1819,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     } else if (targetCourse.room && targetStudent.room) {
       isStudentEnrolledInClass =
         targetCourse.room.trim().toLowerCase() === targetStudent.room.trim().toLowerCase();
-    } else if (targetCourse.category && targetStudent.gradeLevel) {
-      isStudentEnrolledInClass = (targetStudent.gradeLevel || '')
-        .toLowerCase()
-        .includes((targetCourse.category || '').toLowerCase());
     }
 
     if (!isStudentEnrolledInClass) {
@@ -1891,18 +1877,21 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   const handleSavePeriodAttendance = () => {
     const currentPeriodInfo = periodsList.find((p) => p.period === selectedPeriod);
+    const nowHm = getBangkokClockSnapshot().timeLabel;
+    const actionText = periodCheckType === 'check_out' ? 'เช็คชื่อออกคาบ' : 'เช็คชื่อเข้าเรียนรายคาบ';
     const newRecords: PeriodAttendanceRecord[] = periodStudentIds.map((stuId) => {
       const existing = periodAttendance.find(
         (p) =>
           p.studentId === stuId &&
           p.courseId === selectedCourse.id &&
           p.date === periodDate &&
-          p.periodNumber === selectedPeriod
+          p.periodNumber === selectedPeriod &&
+          (p.recordType || 'check_in') === periodCheckType
       );
       const customTime = periodCustomTimes[stuId];
       const status = periodStatuses[stuId] || existing?.status || 'present';
       return {
-        id: existing?.id || `patt-${Date.now()}-${stuId}`,
+        id: existing?.id || `patt-${Date.now()}-${periodCheckType}-${stuId}`,
         schoolId: selectedCourse.schoolId || 'sch-1',
         courseId: selectedCourse.id,
         courseCode: selectedCourse.code || 'GEN-101',
@@ -1911,8 +1900,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         date: periodDate,
         studentId: stuId,
         status,
-        actualCheckInTime: customTime?.checkIn || existing?.actualCheckInTime,
-        actualCheckOutTime: customTime?.checkOut || existing?.actualCheckOutTime,
+        recordType: periodCheckType,
+        actualCheckInTime:
+          customTime?.checkIn ||
+          existing?.actualCheckInTime ||
+          (periodCheckType === 'check_in' ? nowHm : undefined),
+        actualCheckOutTime:
+          customTime?.checkOut ||
+          existing?.actualCheckOutTime ||
+          (periodCheckType === 'check_out' ? nowHm : undefined),
         graceMinutes: periodFlexConfig.graceMinutes,
         flexReason: customTime?.reason || existing?.flexReason,
         verifiedByTeacherId: currentUser?.id || 'usr-teacher',
@@ -1922,13 +1918,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         remarks:
           customTime?.reason ||
           existing?.remarks ||
-          `เช็คชื่อรายคาบ ${selectedCourse.code || 'GEN-101'} คาบที่ ${selectedPeriod}`,
+          `${actionText} ${selectedCourse.code || 'GEN-101'} คาบที่ ${selectedPeriod}`,
       };
     });
 
     onRecordPeriodAttendance(newRecords);
     setPeriodSavedNotification(
-      `บันทึกการเช็คชื่อเข้าเรียนรายคาบ ${selectedCourse.code || 'GEN-101'} (คาบที่ ${selectedPeriod}) สำเร็จ (${newRecords.length} คน)`
+      `บันทึกการ${actionText} ${selectedCourse.code || 'GEN-101'} (คาบที่ ${selectedPeriod}) สำเร็จ (${newRecords.length} คน)`
     );
     setTimeout(() => setPeriodSavedNotification(null), 5000);
   };
@@ -2446,7 +2442,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   return (
     <div
-      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-hidden w-full max-w-full pb-0' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-6'}`}
+      className={`${getModuleTone('mobile_checkin')} ${embeddedMobile ? 'h-full min-h-0 flex flex-col gap-1.5 overflow-hidden w-full max-w-full pb-0' : 'space-y-4 max-w-5xl mx-auto overflow-x-hidden w-full pb-20'}`}
     >
       {/* Top Header (Desktop Only — Mobile merges tabs & actions into 1 compact top bar) */}
       {!embeddedMobile && (
@@ -3269,8 +3265,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         onRecordAttendance={onRecordAttendance}
         checkinSuccessFeedback={checkinSuccessFeedback}
         setCheckinSuccessFeedback={setCheckinSuccessFeedback}
-        showLineFlexPreview={showLineFlexPreview}
-        setShowLineFlexPreview={setShowLineFlexPreview}
         showRapidScanner={showRapidScanner}
         setShowRapidScanner={setShowRapidScanner}
         showGpsAdminModal={showGpsAdminModal}

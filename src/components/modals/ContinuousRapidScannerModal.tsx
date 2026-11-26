@@ -330,8 +330,6 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
         guardianRelation: '',
         guardianPhone: '',
         guardianEmail: '',
-        lineLinked: false,
-        lineNotifyEnabled: false,
         enrolledDate: '',
       });
       setFlashSuccess(true);
@@ -359,8 +357,6 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
             guardianRelation: '',
             guardianPhone: '',
             guardianEmail: '',
-            lineLinked: false,
-            lineNotifyEnabled: false,
             enrolledDate: '',
           },
           time: nowTimeStr,

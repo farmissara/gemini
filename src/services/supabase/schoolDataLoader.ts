@@ -12,7 +12,6 @@ import type {
   Student,
   Teacher,
   TimetableSlot,
-  TuitionInvoice,
 } from '../../types';
 import { getCourseType, inferCourseLearningArea } from '../../lib/courseClassification';
 import { getLocalDateString } from '../../lib/date';
@@ -37,7 +36,6 @@ export interface SchoolData {
   homeworkSubmissions: HomeworkSubmission[];
   grades: GradeRecord[];
   attendance: AttendanceRecord[];
-  invoices: TuitionInvoice[];
   announcements: Announcement[];
   schoolPeriods: SchoolPeriodTime[];
   campusGates: CampusGateGeofence[];
@@ -49,7 +47,7 @@ export interface SchoolData {
 }
 
 const ATTENDANCE_SELECT =
-  'id, school_id, student_id, user_name, record_type, date, time, status, checkin_method, photo_url, remarks, line_notification_sent';
+  'id, school_id, student_id, user_name, record_type, date, time, status, checkin_method, photo_url, remarks';
 const SUPABASE_PAGE_SIZE = 1000;
 const RECENT_ATTENDANCE_DAYS = 30;
 
@@ -137,17 +135,15 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
   }
 
   const STUDENTS_SELECT =
-    'id, school_id, student_id_number, national_id, first_name_en, last_name_en, first_name_th, last_name_th, gender, date_of_birth, grade_level, room, status, avatar_url, gpa, guardian_name, guardian_relation, guardian_phone, guardian_email, line_user_id, line_linked, line_notify_enabled, enrolled_date';
+    'id, school_id, student_id_number, national_id, first_name_en, last_name_en, first_name_th, last_name_th, gender, date_of_birth, grade_level, room, status, avatar_url, gpa, guardian_name, guardian_relation, guardian_phone, guardian_email, enrolled_date';
   const COURSES_SELECT =
     'id, school_id, code, title_en, title_th, category, course_type, learning_area, credits, weekly_hours, total_hours, min_attendance_hours, teacher_name, teacher_email, department, schedule, room, academic_year, semester, enrolled_student_ids, description, cover_image';
   const GRADES_SELECT =
     'id, school_id, student_id, course_id, academic_year, semester, midterm_score, final_score, assignment_score, quiz_score, total_score, letter_grade, grade_point';
-  const INVOICES_SELECT =
-    'id, school_id, invoice_number, student_id, semester, academic_year, issue_date, due_date, total_amount, status, items, payment_method, paid_at, receipt_number, slip_submitted_at, slip_status, slip_reject_reason, slip_amount, slip_reference_note';
   const ANNOUNCEMENTS_SELECT =
-    'id, school_id, title, content, category, target_audience, published_at, author, author_role, pinned, line_broadcast_sent, resend_email_sent';
+    'id, school_id, title, content, category, target_audience, published_at, author, author_role, pinned, resend_email_sent';
   const TEACHERS_SELECT =
-    'id, school_id, teacher_id_number, full_name_th, full_name_en, gender, email, phone, avatar_url, academic_degree, major, minor, academic_standing, position_title, reports_to_teacher_id, department, teacher_license_no, teaching_subjects, homeroom_classes, teaching_grades, is_school_admin, line_user_id, line_linked, other_skills, certifications, teaching_experience_years, pa_score, self_development_plan, pa_portfolio';
+    'id, school_id, teacher_id_number, full_name_th, full_name_en, gender, email, phone, avatar_url, academic_degree, major, minor, academic_standing, position_title, reports_to_teacher_id, department, teacher_license_no, teaching_subjects, homeroom_classes, teaching_grades, is_school_admin, other_skills, certifications, teaching_experience_years, pa_score, self_development_plan, pa_portfolio';
 
   const attendanceLoadedRange = getRecentAttendanceRange();
   const schoolDataQueries = [
@@ -180,12 +176,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
       .order('id', { ascending: true })
       .range(0, SUPABASE_PAGE_SIZE - 1),
     client
-      .from('invoices')
-      .select(INVOICES_SELECT)
-      .eq('school_id', schoolId)
-      .order('id', { ascending: true })
-      .range(0, SUPABASE_PAGE_SIZE - 1),
-    client
       .from('announcements')
       .select(ANNOUNCEMENTS_SELECT)
       .eq('school_id', schoolId)
@@ -205,7 +195,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
         homeworkSubmissions: [],
         grades: [],
         attendance: [],
-        invoices: [],
         announcements: [],
         schoolPeriods: DEFAULT_SCHOOL_PERIODS,
         campusGates: [],
@@ -217,13 +206,12 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     throw new Error(`Could not load school data: ${failedQuery.error.message}`);
   }
 
-  const [studentResult, courseResult, gradeResult, initialAttendanceResult, invoiceResult, announcementResult] = results;
+  const [studentResult, courseResult, gradeResult, initialAttendanceResult, announcementResult] = results;
   const [
     studentRows,
     courseRows,
     gradeRows,
     attendanceRows,
-    invoiceRows,
     announcementRows,
   ] = await Promise.all([
     fetchRemainingPages(
@@ -273,17 +261,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
           .order('id', { ascending: true })
           .range(from, to),
       'Could not load recent attendance',
-    ),
-    fetchRemainingPages(
-      invoiceResult.data || [],
-      (from, to) =>
-        client
-          .from('invoices')
-          .select(INVOICES_SELECT)
-          .eq('school_id', schoolId)
-          .order('id', { ascending: true })
-          .range(from, to),
-      'Could not load invoices',
     ),
     fetchRemainingPages(
       announcementResult.data || [],
@@ -405,8 +382,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     homeroomClasses: Array.isArray(row.homeroom_classes) ? row.homeroom_classes : [],
     teachingGrades: Array.isArray(row.teaching_grades) ? row.teaching_grades : [],
     isSchoolAdmin: Boolean(row.is_school_admin),
-    lineUserId: row.line_user_id || undefined,
-    lineLinked: Boolean(row.line_linked),
     otherSkills: Array.isArray(row.other_skills) ? row.other_skills : [],
     certifications: Array.isArray(row.certifications) ? row.certifications : [],
     teachingExperienceYears: row.teaching_experience_years == null ? undefined : Number(row.teaching_experience_years),
@@ -435,9 +410,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     guardianRelation: row.guardian_relation || '',
     guardianPhone: row.guardian_phone || '',
     guardianEmail: row.guardian_email || '',
-    lineUserId: row.line_user_id || undefined,
-    lineLinked: Boolean(row.line_linked),
-    lineNotifyEnabled: Boolean(row.line_notify_enabled),
     enrolledDate: row.enrolled_date || '',
   }));
   const courses: Course[] = courseRows.map((row) => ({
@@ -487,28 +459,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     gradePoint: Number(row.grade_point || 0),
   }));
   const attendance: AttendanceRecord[] = attendanceRows.map(mapAttendanceDbRow);
-  const invoices: TuitionInvoice[] = invoiceRows.map((row) => ({
-    id: row.id,
-    schoolId: row.school_id,
-    invoiceNumber: row.invoice_number,
-    studentId: row.student_id,
-    semester: row.semester || '',
-    academicYear: row.academic_year || '',
-    issueDate: row.issue_date || '',
-    dueDate: row.due_date || '',
-    totalAmount: Number(row.total_amount || 0),
-    status: row.status,
-    items: row.items || [],
-    paymentMethod: row.payment_method || undefined,
-    paidAt: row.paid_at || undefined,
-    receiptNumber: row.receipt_number || undefined,
-    slipImageUrl: (row as { slip_image_url?: string | null }).slip_image_url || undefined,
-    slipSubmittedAt: row.slip_submitted_at || undefined,
-    slipStatus: row.slip_status || undefined,
-    slipRejectReason: row.slip_reject_reason || undefined,
-    slipAmount: row.slip_amount == null ? undefined : Number(row.slip_amount),
-    slipReferenceNote: row.slip_reference_note || undefined,
-  }));
   const announcements: Announcement[] = announcementRows.map((row) => ({
     id: row.id,
     schoolId: row.school_id,
@@ -520,7 +470,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     author: row.author || '',
     authorRole: row.author_role || '',
     pinned: Boolean(row.pinned),
-    lineBroadcastSent: Boolean(row.line_broadcast_sent),
     resendEmailSent: Boolean(row.resend_email_sent),
   }));
 
@@ -805,7 +754,6 @@ async function loadSchoolDataFromSupabase(schoolId: string): Promise<SchoolData>
     homeworkSubmissions,
     grades,
     attendance,
-    invoices,
     announcements,
     schoolPeriods,
     campusGates,
@@ -842,23 +790,4 @@ export async function fetchSchoolCounts(
     };
   }
   return result;
-}
-
-export async function fetchInvoiceSlipImageFromSupabase(
-  schoolId: string,
-  invoiceId: string,
-): Promise<string | null> {
-  const client = getSupabaseClient();
-  if (!client || !schoolId || !invoiceId) return null;
-
-  const { data, error } = await client
-    .from('invoices')
-    .select('slip_image_url')
-    .eq('school_id', schoolId)
-    .eq('id', invoiceId)
-    .maybeSingle();
-
-  if (error || !data) return null;
-  const slipUrl = (data as { slip_image_url?: string | null }).slip_image_url;
-  return typeof slipUrl === 'string' && slipUrl.trim() ? slipUrl : null;
 }

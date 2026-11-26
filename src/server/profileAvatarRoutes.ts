@@ -131,10 +131,12 @@ export function createProfileAvatarRouter(getEnv: EnvReader) {
         if (teacherRow) {
           const userEmail = (authData.user.email || '').trim().toLowerCase();
           const tEmail = (teacherRow.email || '').trim().toLowerCase();
-          isSelfTeacher =
-            teacherRow.id === profile.id ||
-            (Boolean(userEmail) && userEmail === tEmail) ||
-            (Boolean(profile.full_name_th) && profile.full_name_th.trim() === (teacherRow.full_name_th || '').trim());
+          const matchesEmail = Boolean(userEmail) && userEmail === tEmail;
+          const matchesNameOnlyWhenUnlinked =
+            !tEmail &&
+            Boolean(profile.full_name_th) &&
+            profile.full_name_th.trim() === (teacherRow.full_name_th || '').trim();
+          isSelfTeacher = teacherRow.id === profile.id || matchesEmail || matchesNameOnlyWhenUnlinked;
         } else if (targetId === profile.id) {
           isSelfTeacher = true;
         }

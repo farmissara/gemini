@@ -4,18 +4,14 @@ export type SchoolPolicyId =
   | 'teacher_grade_entry'
   | 'teacher_attendance'
   | 'teacher_homework'
-  | 'teacher_line_broadcast'
   | 'teacher_sdq_screening'
   | 'teacher_infirmary_access'
-  | 'teacher_view_financials'
   | 'student_view_grades'
   | 'student_submit_homework'
   | 'student_self_checkin'
   | 'student_treasure_game'
   | 'student_upload_portfolio'
-  | 'parent_realtime_attendance'
-  | 'parent_promptpay_tuition'
-  | 'parent_line_alerts';
+  | 'parent_realtime_attendance';
 
 export interface SchoolRolePolicy {
   id: SchoolPolicyId;
@@ -56,14 +52,6 @@ export const DEFAULT_SCHOOL_ROLE_POLICIES: SchoolRolePolicy[] = [
     enabled: true,
   },
   {
-    id: 'teacher_line_broadcast',
-    role: 'teacher',
-    titleTh: 'อนุญาตให้ครูส่งข้อความแจ้งเตือนผ่าน LINE Official Account',
-    descTh: 'ส่งข่าวสารหรือแจ้งเตือนการบ้านถึงผู้ปกครองผ่านระบบ LINE อัตโนมัติ',
-    category: 'communication',
-    enabled: true,
-  },
-  {
     id: 'teacher_sdq_screening',
     role: 'teacher',
     titleTh: 'อนุญาตให้ครูประเมินพฤติกรรม & คัดกรอง SDQ สพฐ.',
@@ -77,14 +65,6 @@ export const DEFAULT_SCHOOL_ROLE_POLICIES: SchoolRolePolicy[] = [
     titleTh: 'อนุญาตให้ครูดูประวัติสุขภาพและการรักษาห้องพยาบาล',
     descTh: 'ตรวจสอบข้อมูลการแพ้ยา ประวัติการเจ็บป่วย และการส่งตัวไปห้องพยาบาล',
     category: 'student_care',
-    enabled: true,
-  },
-  {
-    id: 'teacher_view_financials',
-    role: 'teacher',
-    titleTh: 'อนุญาตให้ครูดูข้อมูลสรุปค่าเล่าเรียนและการเงินโรงเรียน',
-    descTh: 'แสดงรายการค่าเล่าเรียนและการแจ้งเตือนสถานะชำระเงินสำหรับครูที่ปรึกษา',
-    category: 'academic',
     enabled: true,
   },
   {
@@ -133,22 +113,6 @@ export const DEFAULT_SCHOOL_ROLE_POLICIES: SchoolRolePolicy[] = [
     titleTh: 'อนุญาตให้ผู้ปกครองดูเวลาผ่านประตูโรงเรียนแบบ Real-time',
     descTh: 'ตรวจสอบเวลาที่บุตรหลานสแกนบัตรผ่านประตูอัตโนมัติของโรงเรียน',
     category: 'student_care',
-    enabled: true,
-  },
-  {
-    id: 'parent_promptpay_tuition',
-    role: 'parent',
-    titleTh: 'อนุญาตให้ผู้ปกครองชำระค่าเล่าเรียนด้วย PromptPay QR',
-    descTh: 'ดูใบแจ้งหนี้ สแกนจ่ายเงินผ่านแอปธนาคาร และรับใบเสร็จรับเงินดิจิทัล',
-    category: 'academic',
-    enabled: true,
-  },
-  {
-    id: 'parent_line_alerts',
-    role: 'parent',
-    titleTh: 'ส่งการแจ้งเตือนเข้าเรียนและการบ้านผ่าน LINE OA ของผู้ปกครอง',
-    descTh: 'แจ้งเตือนเมื่อนักเรียนเข้าโรงเรียน หรือมีการบ้านใหม่ที่ต้องส่ง',
-    category: 'communication',
     enabled: true,
   },
 ];

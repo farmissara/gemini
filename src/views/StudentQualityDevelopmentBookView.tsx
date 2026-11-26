@@ -730,7 +730,6 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
       category: quickBehCategory.trim() || (quickBehType === 'merit' ? 'ทำความดี' : 'ตักเตือนพฤติกรรม'),
       notes: quickBehNotes.trim() || 'บันทึกจากสมุดบันทึกพัฒนาคุณภาพผู้เรียน (ครูประจำชั้น)',
       recordedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูประจำชั้น',
-      lineNotified: false,
     };
     onAddBehaviorRecord(newRecord);
     setQuickBehNotes('');

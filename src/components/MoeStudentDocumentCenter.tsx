@@ -498,8 +498,6 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
       guardianRelation: 'ผู้ปกครอง',
       guardianPhone: newStuGuardianPhone.trim() || '-',
       guardianEmail: '',
-      lineLinked: false,
-      lineNotifyEnabled: true,
       enrolledDate: new Date().toISOString().split('T')[0],
     };
     onAddStudent(created);

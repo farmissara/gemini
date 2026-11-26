@@ -131,7 +131,6 @@ export function getStudentTimetableSlots(
     role: 'student',
     schoolId: student.schoolId || '',
     avatarUrl: student.avatarUrl || '',
-    lineConnected: Boolean(student.lineLinked),
     studentRecordId: student.id,
     studentIdNumber: student.studentIdNumber,
     gradeLevel: student.gradeLevel,

@@ -27,7 +27,6 @@ import {
   Play,
   Printer,
   QrCode,
-  Receipt,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -53,7 +52,6 @@ import {
   SystemConfig,
   Teacher,
   TimetableSlot,
-  TuitionInvoice,
 } from '../types';
 import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
@@ -83,8 +81,6 @@ interface ExecutiveMonitorViewProps {
   periodAttendance?: PeriodAttendanceRecord[];
   timetableSlots?: TimetableSlot[];
   schoolPeriods?: SchoolPeriodTime[];
-  invoices: TuitionInvoice[];
-  canViewFinancials?: boolean;
   announcements: Announcement[];
   infirmaryVisits: InfirmaryVisit[];
   behaviorRecords: BehaviorRecord[];
@@ -118,8 +114,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
   periodAttendance = [],
   timetableSlots = [],
   schoolPeriods = [],
-  invoices,
-  canViewFinancials = true,
   announcements,
   infirmaryVisits,
   behaviorRecords,
@@ -169,9 +163,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       semesterOptions: ['1', '2', 'ฤดูร้อน'],
       gradingSystem: activeSchool.gradingSystem || 'thai',
       staffPositionOptions: [],
-      lineOaAddFriendUrl: '',
-      lineChannelId: '',
-      lineMessagingConfigured: false,
       resendApiKeyConfigured: false,
       resendFromEmail: '',
       supabaseConnected: false,
@@ -600,7 +591,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     const totalStudents = scopedStudents.length;
     const activeStudents = scopedStudents.filter((s) => s.status === 'active').length;
     const totalTeachers = teachers.length;
-    const lineLinkedStudents = scopedStudents.filter((s) => s.lineLinked).length;
 
     const studentAtt = scopedAttendance.filter((a) => a.userType !== 'teacher');
     const teacherAtt = scopedAttendance.filter((a) => a.userType === 'teacher');
@@ -641,7 +631,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
 
     // Pending action queues
     const pendingLeaves = leaveRequests.filter((l) => l.status === 'pending').length;
-    const pendingSlips = invoices.filter((inv) => inv.slipStatus === 'pending_review').length;
 
     // Academic & Homework
     const gradedGpaStudents = scopedStudents
@@ -718,19 +707,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       .slice(0, 6)
       .map((s) => ({ ...s.student, gpa: s.realGpa }));
 
-    // Finance
-    const totalBilled = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-    const totalPaid = invoices
-      .filter((inv) => inv.status === 'paid')
-      .reduce((sum, inv) => sum + inv.totalAmount, 0);
-    const pendingAmount = invoices
-      .filter((inv) => inv.status === 'pending')
-      .reduce((sum, inv) => sum + inv.totalAmount, 0);
-    const overdueAmount = invoices
-      .filter((inv) => inv.status === 'overdue')
-      .reduce((sum, inv) => sum + inv.totalAmount, 0);
-    const collectionRate = totalBilled > 0 ? Math.round((totalPaid / totalBilled) * 100) : 0;
-
     const recentScans = [...scopedAttendance].slice(0, 7);
     const pinnedAnnouncements = announcements.filter((a) => a.pinned || a.category === 'urgent');
     const displayAnnouncements =
@@ -742,7 +718,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       totalStudents,
       activeStudents,
       totalTeachers,
-      lineLinkedStudents,
       presentStudents,
       lateStudents,
       absentOrLeaveStudents,
@@ -753,7 +728,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       submittedTodayPeriodsCount,
       periodComplianceRate,
       pendingLeaves,
-      pendingSlips,
       avgGpa,
       gradedCount: gradedGpaStudents.length,
       gpaBands,
@@ -771,11 +745,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       sdqRisk,
       sdqProblem,
       lowGpaWatchlist,
-      totalBilled,
-      totalPaid,
-      pendingAmount,
-      overdueAmount,
-      collectionRate,
       recentScans,
       displayAnnouncements,
       watchRoomsCount,
@@ -788,7 +757,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     timeframe,
     todayPeriodAudit,
     leaveRequests,
-    invoices,
     studentAcademicMap,
     homeworkSubmissions,
     selectedGradeLevel,
@@ -841,47 +809,8 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       });
     }
 
-    if (canViewFinancials && (metrics.pendingSlips > 0 || metrics.overdueAmount > 0)) {
-      list.push({
-        id: 'finance-watch',
-        severity: metrics.overdueAmount > 0 ? 'critical' : 'warning',
-        title:
-          metrics.pendingSlips > 0
-            ? `มีสลิปค่าเทอมรอตรวจ ${metrics.pendingSlips} รายการ`
-            : `ยอดค่าเทอมเกินกำหนดชำระ ฿${metrics.overdueAmount.toLocaleString()}`,
-        detail: `จัดเก็บแล้ว ${metrics.collectionRate}% · ยอดรอชำระรวม ฿${(metrics.pendingAmount + metrics.overdueAmount).toLocaleString()}`,
-        actionLabel: 'จัดการการเงิน',
-        onAction: () => onNavigate('billing'),
-      });
-    }
-
-    if (metrics.watchRoomsCount > 0) {
-      list.push({
-        id: 'watch-rooms',
-        severity: 'critical',
-        title: `พบห้องเรียนต้องเฝ้าระวัง ${metrics.watchRoomsCount} ห้อง`,
-        detail: 'อัตราเข้าเรียนต่ำกว่า 85%, GPA เฉลี่ยต่ำกว่า 2.25 หรือมีผลคัดกรอง SDQ กลุ่มเสี่ยง',
-        actionLabel: 'ดูตารางรายห้อง',
-        onAction: () => {
-          setLens('rooms');
-          setRoomStatusFilter('watch');
-        },
-      });
-    }
-
-    if (metrics.currentlyResting > 0 || metrics.sdqProblem > 0) {
-      list.push({
-        id: 'student-care',
-        severity: 'info',
-        title: `นักเรียนพักห้องพยาบาล ${metrics.currentlyResting} คน · SDQ เร่งดูแล ${metrics.sdqProblem} คน`,
-        detail: 'ตรวจสอบการดูแลช่วยเหลือและแจ้งผู้ปกครอง',
-        actionLabel: 'ดูระบบดูแลช่วยเหลือ',
-        onAction: () => onNavigate('behavior_sdq'),
-      });
-    }
-
     return list;
-  }, [metrics, canViewFinancials, onNavigate]);
+  }, [metrics, onNavigate]);
 
   // Filtered + Sorted Room Matrix
   const displayedRooms = useMemo(() => {
@@ -929,9 +858,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       `• วินัยคาบสอนวันนี้: เช็กแล้ว ${metrics.submittedTodayPeriodsCount}/${metrics.scheduledTodayCount} คาบ (${metrics.periodComplianceRate}%)`,
       `• วิชาการ: GPAX เฉลี่ย ${metrics.avgGpa.toFixed(2)} · ส่งการบ้าน ${metrics.hwCompletionRate}% (รอตรวจ ${metrics.hwUngraded} ชิ้น)`,
       `• กิจการ & สุขภาพ: พักห้องพยาบาล ${metrics.currentlyResting} คน · SDQ เสี่ยง/ปัญหา ${metrics.sdqRisk + metrics.sdqProblem} คน · ใบลารออนุมัติ ${metrics.pendingLeaves} ใบ`,
-      canViewFinancials
-        ? `• การเงิน: จัดเก็บค่าเทอม ${metrics.collectionRate}% (รับแล้ว ฿${metrics.totalPaid.toLocaleString()} / ค้าง+เกินกำหนด ฿${(metrics.pendingAmount + metrics.overdueAmount).toLocaleString()})`
-        : '',
     ]
       .filter(Boolean)
       .join('\n');
@@ -1021,7 +947,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
         ['วิชาการ', 'GPAX เฉลี่ย', metrics.avgGpa.toFixed(2), `คิดจาก ${metrics.gradedCount} คน (${metrics.gradesCount} รายการคะแนน)`],
         ['วิชาการ', 'การส่งการบ้าน', `${metrics.hwCompletionRate}%`, `ส่งแล้ว ${metrics.hwCompleted}/${metrics.hwTotal} · รอครูตรวจ ${metrics.hwUngraded}`],
         ['กิจการนักเรียน', 'ห้องพยาบาล / SDQ เสี่ยง', `${metrics.currentlyResting} พักอยู่`, `ใช้บริการ ${metrics.infirmaryCount} ครั้ง · SDQ เสี่ยง/ปัญหา ${metrics.sdqRisk + metrics.sdqProblem} คน`],
-        ['การเงิน', 'อัตราจัดเก็บค่าเทอม', `${metrics.collectionRate}%`, `รับแล้ว ฿${metrics.totalPaid.toLocaleString()} · ค้าง/เกินกำหนด ฿${(metrics.pendingAmount + metrics.overdueAmount).toLocaleString()}`],
       ];
     }
 
@@ -1053,7 +978,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
     { id: 0, title: '1. การมาเรียน & วินัยคาบสอน', icon: QrCode },
     { id: 1, title: '2. ผลสัมฤทธิ์ทางวิชาการ & หลักสูตร', icon: GraduationCap },
     { id: 2, title: '3. กิจการนักเรียน ห้องพยาบาล & SDQ', icon: HeartPulse },
-    { id: 3, title: '4. สถานะการเงิน & ประกาศผู้บริหาร', icon: Receipt },
+    { id: 3, title: '4. ประกาศผู้บริหาร', icon: BellRing },
   ];
 
   // Quiet status style helpers
@@ -1224,8 +1149,8 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               menuWidth={210}
               items={[
                 {
-                  id: 'copy_line_brief',
-                  label: copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปส่ง LINE',
+                  id: 'copy_exec_brief',
+                  label: copiedBrief ? 'คัดลอกสรุปแล้ว' : 'คัดลอกสรุปผู้บริหาร',
                   icon: copiedBrief ? (
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
                   ) : (
@@ -1297,11 +1222,9 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               onClick: () => setLens('rooms'),
             },
             {
-              label: canViewFinancials ? 'คิวอนุมัติ & ค่าเทอม' : 'คิวอนุมัติ & ดูแลผู้เรียน',
-              value: `${metrics.pendingLeaves + metrics.pendingSlips}`,
-              sub: canViewFinancials
-                ? `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · ค่าเทอม ${metrics.collectionRate}%`
-                : `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · SDQ เสี่ยง ${metrics.sdqRisk + metrics.sdqProblem}`,
+              label: 'คิวอนุมัติ & ดูแลผู้เรียน',
+              value: `${metrics.pendingLeaves}`,
+              sub: `ใบลา ${metrics.pendingLeaves} · พยาบาล ${metrics.currentlyResting} · SDQ เสี่ยง ${metrics.sdqRisk + metrics.sdqProblem}`,
               icon: HeartPulse,
               accent: isTvMode ? 'text-rose-400' : 'text-rose-600 dark:text-rose-400',
               onClick: () => onNavigate('executive_warning'),
@@ -1637,46 +1560,14 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               </div>
             </section>
 
-            {/* Finance & School Bulletins */}
+            {/* School Bulletins */}
             <section className={`rounded-xl p-3 sm:p-4 space-y-3 ${cardSurface}`}>
               <div className="flex items-center justify-between gap-2 pb-2 border-b border-current/10">
                 <h2 className={`text-sm font-extrabold flex items-center gap-2 ${titleText}`}>
                   <Building2 className="w-4 h-4 text-teal-500" />
-                  <span>{canViewFinancials ? 'การเงินค่าเทอม & ประกาศ' : 'ประกาศสำคัญโรงเรียน'}</span>
+                  <span>ประกาศสำคัญโรงเรียน</span>
                 </h2>
-                {canViewFinancials && (
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('billing')}
-                    className="text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer print:hidden"
-                  >
-                    จัดการค่าเทอม →
-                  </button>
-                )}
               </div>
-
-              {canViewFinancials && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 tabular-nums text-center">
-                  <div className={`rounded-lg p-2 ${subtleSurface}`}>
-                    <div className={`text-[10px] ${mutedText}`}>รับแล้ว</div>
-                    <div className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                      ฿{metrics.totalPaid.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className={`rounded-lg p-2 ${subtleSurface}`}>
-                    <div className={`text-[10px] ${mutedText}`}>รอชำระ</div>
-                    <div className="text-xs font-extrabold text-amber-600 dark:text-amber-400 mt-0.5">
-                      ฿{metrics.pendingAmount.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className={`rounded-lg p-2 ${subtleSurface}`}>
-                    <div className={`text-[10px] ${mutedText}`}>เกินกำหนด</div>
-                    <div className="text-xs font-extrabold text-rose-600 dark:text-rose-400 mt-0.5">
-                      ฿{metrics.overdueAmount.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="divide-y divide-current/10">
                 {metrics.displayAnnouncements.length === 0 ? (
@@ -2234,24 +2125,8 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             <section className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
               <h2 className="text-base font-extrabold text-white flex items-center gap-2">
                 <BellRing className="w-5 h-5 text-amber-400" />
-                <span>สไลด์ 4: การเงินค่าเทอม &amp; ประกาศสำคัญโรงเรียน</span>
+                <span>สไลด์ 4: ประกาศสำคัญโรงเรียน</span>
               </h2>
-              {canViewFinancials && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 tabular-nums">
-                  <div className="rounded-lg border border-emerald-800 bg-emerald-950/60 p-3 text-emerald-200">
-                    <div className="text-xs">ชำระแล้ว ({metrics.collectionRate}%)</div>
-                    <div className="text-xl font-extrabold">฿{metrics.totalPaid.toLocaleString()}</div>
-                  </div>
-                  <div className="rounded-lg border border-amber-800 bg-amber-950/60 p-3 text-amber-200">
-                    <div className="text-xs">รอชำระ</div>
-                    <div className="text-xl font-extrabold">฿{metrics.pendingAmount.toLocaleString()}</div>
-                  </div>
-                  <div className="rounded-lg border border-rose-800 bg-rose-950/60 p-3 text-rose-200">
-                    <div className="text-xs">เกินกำหนด</div>
-                    <div className="text-xl font-extrabold">฿{metrics.overdueAmount.toLocaleString()}</div>
-                  </div>
-                </div>
-              )}
               <div className="divide-y divide-slate-800">
                 {metrics.displayAnnouncements.map((ann) => (
                   <div key={ann.id} className="py-2.5">

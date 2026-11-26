@@ -7,7 +7,6 @@ import {
   HeartPulse,
   Laptop,
   Monitor,
-  Receipt,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -18,7 +17,6 @@ interface MobileExecutiveTabProps {
   activeSchool: School;
   lang: AppLanguage;
   execMetrics: ExecMetrics;
-  canViewFinancialsMobile: boolean;
   pendingLeavesCount: number;
   onSwitchToDesktopMode: () => void;
   onSelectTab: (tab: MobileTab) => void;
@@ -28,7 +26,6 @@ export const MobileExecutiveTab: React.FC<MobileExecutiveTabProps> = ({
   activeSchool,
   lang,
   execMetrics,
-  canViewFinancialsMobile,
   pendingLeavesCount,
   onSwitchToDesktopMode,
   onSelectTab,
@@ -118,26 +115,6 @@ export const MobileExecutiveTab: React.FC<MobileExecutiveTabProps> = ({
             </p>
           </div>
         </div>
-
-        {/* Card 4: Finance (Respects teacher_view_financials) */}
-        {canViewFinancialsMobile && (
-          <div className="p-3.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[var(--color-text-muted)]">ยอดจัดเก็บค่าเทอม</span>
-              <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
-                <Receipt className="w-3.5 h-3.5" />
-              </div>
-            </div>
-            <div>
-              <div className="text-xl font-black text-blue-700 dark:text-blue-400 font-mono tabular-nums">
-                ฿{execMetrics.totalCollected.toLocaleString()}
-              </div>
-              <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 tabular-nums">
-                ค้างชำระ {execMetrics.pendingCount} ใบเสร็จ
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* School Composition Summary */}

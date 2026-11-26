@@ -80,7 +80,7 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
   return (
     <div
       data-guide-id="mobile-checkin-body"
-      className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}
+      className={`space-y-4 ${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-24' : 'pb-12'}`}
     >
       <div className="saas-card">
         <div className="saas-card-header">

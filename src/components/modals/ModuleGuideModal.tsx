@@ -12,8 +12,7 @@ import {
   QrCode, 
   Smartphone, 
   FolderGit2, 
-  Award, 
-  Receipt, 
+  Award,
   BellRing, 
   Cpu, 
   Laptop, 
@@ -46,7 +45,6 @@ export type GuideModuleId =
   | 'mobile_checkin'
   | 'portfolio'
   | 'gradebook'
-  | 'billing'
   | 'announcements'
   | 'integrations'
   | 'lms'
@@ -97,14 +95,14 @@ export const MODULE_GUIDES: GuideItem[] = [
     category: 'sis',
     icon: LayoutDashboard,
     roles: ['ผู้บริหาร/แอดมิน', 'ครูอาจารย์', 'นักเรียน', 'ผู้ปกครอง'],
-    summaryTh: 'ศูนย์รวมข้อมูลสถิติของโรงเรียนแบบเรียลไทม์ KPI ผู้เรียน การเข้าแถว การเงิน และทางลัดสู่ทุกฟังก์ชัน',
-    summaryEn: 'Centralized real-time analytics hub displaying key KPIs, attendance stats, tuition collection, and quick actions.',
+    summaryTh: 'ศูนย์รวมข้อมูลสถิติของโรงเรียนแบบเรียลไทม์ KPI ผู้เรียน การเข้าแถว ผลการเรียน และทางลัดสู่ทุกฟังก์ชัน',
+    summaryEn: 'Centralized real-time analytics hub displaying key KPIs, attendance stats, academic overview, and quick actions.',
     features: [
       {
         titleTh: 'ตัวชี้วัดสำคัญ (Key KPIs)',
         titleEn: 'Real-time Metrics',
-        descTh: 'แสดงจำนวนนักเรียนทั้งหมด, อัตราการมาเรียนวันนี้, สถิติการผูก LINE OA ของผู้ปกครอง, และยอดจัดเก็บค่าเทอม',
-        descEn: 'Displays total students, today attendance rate, LINE OA guardian link percentage, and tuition collection stats.'
+        descTh: 'แสดงจำนวนนักเรียนทั้งหมด, อัตราการมาเรียนวันนี้, รายการคำขอลา, และผลสัมฤทธิ์ทางการเรียน',
+        descEn: 'Displays total students, today attendance rate, pending leave requests, and academic achievement stats.'
       },
       {
         titleTh: 'การสลับบทบาท (Role Switcher)',
@@ -155,8 +153,8 @@ export const MODULE_GUIDES: GuideItem[] = [
     category: 'sis',
     icon: Users,
     roles: ['ผู้บริหาร/แอดมิน', 'ครูอาจารย์'],
-    summaryTh: 'จัดการฐานข้อมูลนักเรียน คัดกรองตามชั้นเรียน ผูก LINE OA แจ้งเตือนผู้ปกครอง และพิมพ์ใบ ปพ.1 สองภาษา',
-    summaryEn: 'Comprehensive student profile management, class filtering, LINE OA sync, and bilingual transcript generation.',
+    summaryTh: 'จัดการฐานข้อมูลนักเรียน คัดกรองตามชั้นเรียน พิมพ์บัตร QR ประจำตัว และพิมพ์ใบ ปพ.1 สองภาษา',
+    summaryEn: 'Comprehensive student profile management, class filtering, QR pass printing, and bilingual transcript generation.',
     features: [
       {
         titleTh: 'ค้นหา & คัดกรองหลายมิติ',
@@ -165,10 +163,10 @@ export const MODULE_GUIDES: GuideItem[] = [
         descEn: 'Search by Thai/English name, Student ID, or National ID with grade level (Grade 7 - 12) filters.'
       },
       {
-        titleTh: 'ผูกบัญชี LINE OA เพื่อแจ้งเตือน',
-        titleEn: 'LINE OA Guardian Sync',
-        descTh: 'สลับเปิด-ปิดสถานะการเชื่อมต่อ LINE ของผู้ปกครอง เมื่อเปิดระบบจะส่ง Push Notification เมื่อนักเรียนสแกนเข้าโรงเรียน',
-        descEn: 'Toggle guardian LINE notifications. When enabled, automated check-in pushes are sent to parent phones.'
+        titleTh: 'ข้อมูลติดต่อผู้ปกครอง & บัตร QR',
+        titleEn: 'Guardian Contact & QR Pass',
+        descTh: 'บันทึกข้อมูลติดต่อผู้ปกครองพร้อมพิมพ์บัตร QR ประจำตัวนักเรียนสำหรับสแกนเข้าโรงเรียนและแจ้งเตือนในแอป',
+        descEn: 'Manage guardian contact records and print student QR passes for school check-in alerts.'
       },
       {
         titleTh: 'ออกใบรายงานผลการเรียน ปพ.1 สองภาษา',
@@ -198,11 +196,11 @@ export const MODULE_GUIDES: GuideItem[] = [
       }
     ],
     tipsTh: [
-      'หากผู้ปกครองยังไม่ได้เชื่อมต่อ LINE สามารถคัดลอก LINE OA Add Friend URL ส่งให้ผู้ปกครองสแกนได้',
+      'สามารถพิมพ์บัตร QR นักเรียนทั้งห้องพร้อมกันได้จากเมนูเครื่องมือเพิ่มเติม',
       'เอกสาร ปพ.1 มีการคำนวณเกรดเฉลี่ยถ่วงน้ำหนักตามหน่วยกิต (Weighted GPA) ตามมาตรฐานกระทรวงศึกษาธิการ'
     ],
     tipsEn: [
-      'Share the school LINE OA link with parents so they can receive instant student check-in alerts.',
+      'Batch-print QR attendance passes for an entire homeroom from the bulk tools menu.',
       'The transcript complies with Ministry of Education standards with credit-weighted GPA calculation.'
     ]
   },
@@ -263,8 +261,8 @@ export const MODULE_GUIDES: GuideItem[] = [
     category: 'sis',
     icon: QrCode,
     roles: ['ผู้บริหาร/แอดมิน', 'ครูอาจารย์'],
-    summaryTh: 'บันทึกการเข้าแถวตอนเช้าด้วยระบบ QR Code, RFID หรือบันทึกด้วยมือ พร้อมส่งแจ้งเตือนเข้า LINE ผู้ปกครอง',
-    summaryEn: 'Morning assembly check-in with QR scanner, RFID emulation, or manual entry with automated LINE push.',
+    summaryTh: 'บันทึกการเข้าแถวตอนเช้าด้วยระบบ QR Code หรือบันทึกด้วยมือ พร้อมแจ้งเตือนผู้ปกครองผ่านแอป',
+    summaryEn: 'Morning assembly check-in with QR scanner or manual entry with automated parent app alerts.',
     features: [
       {
         titleTh: 'สถานะการเข้าเรียนครบถ้วน',
@@ -273,16 +271,16 @@ export const MODULE_GUIDES: GuideItem[] = [
         descEn: 'Full support for Present, Late, Absent, Sick, and Leave statuses.'
       },
       {
-        titleTh: 'สแกนเนอร์ QR & RFID จำลอง',
-        titleEn: 'QR & RFID Simulator',
-        descTh: 'มีระบบจำลองหัวอ่าน RFID หน้าประตูโรงเรียน สแกนปุ๊บบันทึกเวลาและส่ง LINE ทันที',
-        descEn: 'Built-in gate scanner simulator that logs timestamp and triggers guardian push alerts.'
+        titleTh: 'สแกนเนอร์ QR ความเร็วสูง',
+        titleEn: 'High-Speed QR Scanner',
+        descTh: 'รองรับเครื่องสแกนและกล้องหน้าประตูโรงเรียน สแกนปุ๊บบันทึกเวลาและแจ้งเตือนผู้ปกครองทันที',
+        descEn: 'Built-in gate scanner that logs timestamps and triggers guardian app alerts.'
       },
       {
-        titleTh: 'ระบบส่ง LINE Notification อัตโนมัติ',
-        titleEn: 'Automated LINE Notification',
-        descTh: 'เมื่อบันทึกการเช็คชื่อ หากนักเรียนผูก LINE ไว้ ระบบจะแจ้งเตือนผู้ปกครองว่านักเรียนถึงโรงเรียนแล้วในเวลาใด',
-        descEn: 'Sends instantaneous notification to parent smartphone indicating arrival timestamp.'
+        titleTh: 'ระบบแจ้งเตือนเข้าแอปผู้ปกครองอัตโนมัติ',
+        titleEn: 'Automated In-App Notification',
+        descTh: 'เมื่อบันทึกการเช็คชื่อ ระบบจะแจ้งเตือนผู้ปกครองผ่านแอปและศูนย์แจ้งเตือนว่านักเรียนถึงโรงเรียนแล้วในเวลาใด',
+        descEn: 'Sends instantaneous notification to parent portal indicating arrival timestamp.'
       }
     ],
     steps: [
@@ -457,70 +455,20 @@ export const MODULE_GUIDES: GuideItem[] = [
     ]
   },
   {
-    id: 'billing',
-    titleTh: 'การเงิน & ค่าเทอมพร้อมเพย์ (Tuition & PromptPay)',
-    titleEn: 'Tuition Invoicing & PromptPay Payments',
-    category: 'sis',
-    icon: Receipt,
-    roles: ['ผู้บริหาร/แอดมิน', 'ผู้ปกครอง'],
-    summaryTh: 'ออกใบแจ้งหนี้ค่าเทอม ค่าบำรุงการศึกษา สร้าง QR Code พร้อมเพย์ และออกใบเสร็จรับเงินอย่างเป็นทางการ',
-    summaryEn: 'Issue tuition invoices, generate dynamic PromptPay QR codes, track payments, and generate official receipts.',
-    features: [
-      {
-        titleTh: 'QR Code พร้อมเพย์มาตรฐานไทย',
-        titleEn: 'PromptPay QR Generator',
-        descTh: 'สร้าง QR Code พร้อมยอดเงินที่ถูกต้อง ผู้ปกครองสามารถเปิดแอปธนาคารสแกนจ่ายได้ทันที',
-        descEn: 'Generates standard Thai PromptPay QR codes matching invoice totals for mobile banking scans.'
-      },
-      {
-        titleTh: 'สถานะการชำระเงินแบบเรียลไทม์',
-        titleEn: 'Real-time Payment Tracking',
-        descTh: 'จำแนกสถานะ ชำระแล้ว (Paid), รอชำระ (Pending), เกินกำหนด (Overdue)',
-        descEn: 'Track payment progress: Paid (green), Pending (amber), Overdue (rose).'
-      },
-      {
-        titleTh: 'ส่ง LINE เตือนชำระค่าเทอม',
-        titleEn: 'LINE Payment Reminders',
-        descTh: 'มีปุ่มส่งข้อความแจ้งเตือนยอดค่าเทอมและกำหนดชำระเข้า LINE ผู้ปกครองในคลิกเดียว',
-        descEn: 'One-click action to push personalized tuition payment reminders directly to parent LINE OA.'
-      }
-    ],
-    steps: [
-      {
-        titleTh: '1. ตรวจสอบใบแจ้งหนี้',
-        titleEn: '1. Inspect Invoices',
-        descTh: 'ดูรายการค่าใช้จ่าย เช่น ค่าหน่วยกิต ค่าห้องเรียนปรับอากาศ ค่าประกันอุบัติเหตุ',
-        descEn: 'Review invoice breakdown: tuition fees, air-conditioned lab fees, and student insurance.'
-      },
-      {
-        titleTh: '2. ชำระเงินหรือจำลองการจ่าย',
-        titleEn: '2. Pay or Emulate Payment',
-        descTh: 'คลิกปุ่ม "ชำระเงิน (PromptPay)" เพื่อจำลองการจ่ายเงินและรับใบเสร็จรับเงินทันที',
-        descEn: 'Click "Pay Invoice" to simulate instant QR payment and issue an official receipt.'
-      }
-    ],
-    tipsTh: [
-      'สามารถส่งออกข้อมูลการเงินเพื่อส่งต่อให้ฝ่ายบัญชีของโรงเรียนได้'
-    ],
-    tipsEn: [
-      'Financial records and receipts can be audited and synchronized with accounting backends.'
-    ]
-  },
-  {
     id: 'announcements',
-    titleTh: 'ข่าวสาร & LINE บรอดแคสต์ (Announcements & Broadcast)',
-    titleEn: 'School Announcements & LINE Broadcasts',
+    titleTh: 'ข่าวสาร & ประกาศโรงเรียน (Announcements)',
+    titleEn: 'School Announcements & Broadcasts',
     category: 'communication',
     icon: BellRing,
     roles: ['ผู้บริหาร/แอดมิน', 'ครูอาจารย์', 'นักเรียน', 'ผู้ปกครอง'],
-    summaryTh: 'สื่อสารข่าวสารกิจกรรม ประกาศด่วน การปิดเรียนกรณีพิเศษ พร้อมระบบบรอดแคสต์เข้า LINE OA และอีเมล Resend',
-    summaryEn: 'Broadcast school news, urgent closures, and events to student and parent LINE OA accounts and emails.',
+    summaryTh: 'สื่อสารข่าวสารกิจกรรม ประกาศด่วน การปิดเรียนกรณีพิเศษ พร้อมระบบส่งแจ้งเตือนในแอปและอีเมล Resend',
+    summaryEn: 'Broadcast school news, urgent closures, and events to student and parent accounts and emails.',
     features: [
       {
-        titleTh: 'LINE Broadcast Integration',
-        titleEn: 'LINE Broadcast Push',
-        descTh: 'ส่งประกาศเข้ากระเป๋าผู้ปกครองและนักเรียนทุกคนผ่าน LINE Official Account ทันทีที่โพสต์',
-        descEn: 'Push notifications directly to subscriber phones through the LINE Messaging API.'
+        titleTh: 'แจ้งเตือนในแอปแบบเจาะกลุ่ม',
+        titleEn: 'Targeted In-App Alerts',
+        descTh: 'ส่งประกาศเข้าหน้าแรกและศูนย์แจ้งเตือนของผู้ปกครอง นักเรียน และครูตามกลุ่มเป้าหมายที่เลือก',
+        descEn: 'Deliver notifications directly to selected roles inside the app and notification center.'
       },
       {
         titleTh: 'Resend Transactional Email',
@@ -543,10 +491,10 @@ export const MODULE_GUIDES: GuideItem[] = [
         descEn: 'Click "+ New Announcement", enter headline, description, category, and target audience.'
       },
       {
-        titleTh: '2. บรอดแคสต์ผ่าน LINE',
-        titleEn: '2. Trigger LINE Broadcast',
-        descTh: 'ติ๊กเครื่องหมาย "ส่ง LINE Broadcast" เพื่อส่งข้อความเข้าผู้ติดตามทุกคนพร้อมกัน',
-        descEn: 'Check "Send LINE Broadcast" to fire real-time push notification across all linked parents.'
+        titleTh: '2. ส่งประกาศและแจ้งเตือน',
+        titleEn: '2. Publish Announcement',
+        descTh: 'เลือกว่าจะส่งอีเมลแจ้งเตือนเพิ่มเติมหรือไม่ แล้วกดเผยแพร่ประกาศให้กลุ่มเป้าหมายเห็นทันที',
+        descEn: 'Choose optional email delivery and publish immediately to targeted members.'
       }
     ],
     tipsTh: [
@@ -613,8 +561,8 @@ export const MODULE_GUIDES: GuideItem[] = [
     category: 'sis',
     icon: Smartphone,
     roles: ['ผู้ปกครอง', 'นักเรียน'],
-    summaryTh: 'มุมมองเฉพาะสำหรับผู้ปกครองและนักเรียน ติดตามเวลาเข้าแถว ดูผลการเรียน ชำระค่าเทอม และดาวน์โหลด ปพ.1',
-    summaryEn: 'Dedicated self-service portal for parents to monitor attendance, view grades, pay fees, and download report cards.',
+    summaryTh: 'มุมมองเฉพาะสำหรับผู้ปกครองและนักเรียน ติดตามเวลาเข้าแถว ดูผลการเรียน ยื่นใบลา และดาวน์โหลด ปพ.1',
+    summaryEn: 'Dedicated self-service portal for parents to monitor attendance, view grades, submit leaves, and download report cards.',
     features: [
       {
         titleTh: 'บันทึกเวลาเข้าโรงเรียนย้อนหลัง',
@@ -629,10 +577,10 @@ export const MODULE_GUIDES: GuideItem[] = [
         descEn: 'Check GPAX, individual course marks, and generate official bilingual transcripts.'
       },
       {
-        titleTh: 'จ่ายค่าเทอมผ่าน PromptPay',
-        titleEn: 'Direct PromptPay Payment',
-        descTh: 'ดูยอดค้างชำระ กดแสดง QR Code เพื่อสแกนจ่ายผ่านแอปธนาคารได้ทันทีบนมือถือ',
-        descEn: 'View unpaid tuition and open instant PromptPay QR codes for banking app checkouts.'
+        titleTh: 'ยื่นใบลา & หนังสือขออนุญาต',
+        titleEn: 'Leave & Consent Forms',
+        descTh: 'แจ้งลาป่วย/ลากิจส่งตรงถึงครูประจำชั้น และลงชื่อตอบรับหนังสือขออนุญาตกิจกรรมออนไลน์',
+        descEn: 'Submit leave requests to homeroom teachers and sign school activity consent forms online.'
       }
     ],
     steps: [
@@ -645,15 +593,15 @@ export const MODULE_GUIDES: GuideItem[] = [
       {
         titleTh: '2. เลือกดูข้อมูลของบุตรหลาน',
         titleEn: '2. Review Child Data',
-        descTh: 'สลับดูแท็บ ผลการเรียน, ประวัติการมาเรียน, และใบแจ้งหนี้ค่าเทอม',
-        descEn: 'Toggle between Academic Marks, Attendance Records, and Tuition Bills.'
+        descTh: 'สลับดูแท็บ ผลการเรียน, ประวัติการมาเรียน, ยื่นใบลา และหนังสือขออนุญาต',
+        descEn: 'Toggle between Academic Marks, Attendance Records, Leave Requests, and Consent Forms.'
       }
     ],
     tipsTh: [
-      'ผู้ปกครองสามารถทดลองเปลี่ยนบทบาทเป็น "ผู้ปกครอง" บน Navbar เพื่อสัมผัสการใช้งานจริงได้'
+      'ผู้ปกครองสามารถสลับดูข้อมูลบุตรหลานแต่ละคนได้ทันทีจากตัวเลือกด้านบน'
     ],
     tipsEn: [
-      'Switch your role to "Parent" in the top navbar to see the portal exactly as parents experience it.'
+      'Switch between linked children anytime using the child selector at the top of the portal.'
     ]
   },
   {
@@ -725,8 +673,8 @@ export const MODULE_GUIDES: GuideItem[] = [
     category: 'sis',
     icon: Cpu,
     roles: ['ผู้บริหาร/แอดมิน'],
-    summaryTh: 'ตรวจสอบสถานะเชื่อมต่อ Supabase PostgreSQL, นำขึ้นโฮสต์ Render.com, LINE Developers API, Resend, และ Redis',
-    summaryEn: 'Diagnostics and setup for Supabase PostgreSQL, Render.com hosting, LINE OA Webhooks, Resend, and Redis cache.',
+    summaryTh: 'ตรวจสอบสถานะเชื่อมต่อ Supabase PostgreSQL, นำขึ้นโฮสต์ Render.com, Resend, และระบบจัดเก็บข้อมูลโรงเรียน',
+    summaryEn: 'Diagnostics and setup for Supabase PostgreSQL, Render.com hosting, Resend email, and campus storage.',
     features: [
       {
         titleTh: 'Supabase PostgreSQL & Auto-Sync',
@@ -741,10 +689,10 @@ export const MODULE_GUIDES: GuideItem[] = [
         descEn: 'Configured with render.yaml and public/_redirects for instant, error-free Render.com deployments.'
       },
       {
-        titleTh: 'LINE Messaging & Webhook Diagnostics',
-        titleEn: 'LINE API Diagnostics',
-        descTh: 'ทดสอบการยิง Webhook แจ้งเตือน และตรวจสอบ Channel ID ของ LINE Official Account',
-        descEn: 'Test webhook connectivity and verify LINE Login and Messaging API channel status.'
+        titleTh: 'Resend Email Diagnostics',
+        titleEn: 'Email Service Diagnostics',
+        descTh: 'ตรวจสอบสถานะการส่งอีเมลแจ้งเตือนประกาศโรงเรียนและจดหมายข่าวผ่าน Resend API',
+        descEn: 'Verify transactional email connectivity for announcements and school newsletters via Resend.'
       }
     ],
     steps: [

@@ -6,7 +6,6 @@ import type {
   School,
   Student,
   Teacher,
-  TuitionInvoice,
   UserRole,
 } from '../../types';
 import { getCourseType, inferCourseLearningArea } from '../../lib/courseClassification';
@@ -21,7 +20,6 @@ export async function syncDataToSupabase(payload: {
   courses: Course[];
   grades: GradeRecord[];
   attendance: AttendanceRecord[];
-  invoices: TuitionInvoice[];
   announcements: Announcement[];
   changedIds?: {
     students?: string[];
@@ -29,7 +27,6 @@ export async function syncDataToSupabase(payload: {
     courses?: string[];
     grades?: string[];
     attendance?: string[];
-    invoices?: string[];
     announcements?: string[];
   };
 }): Promise<{ success: boolean; message: string; warnings?: string[] }> {
@@ -50,7 +47,6 @@ export async function syncDataToSupabase(payload: {
         courses: new Set(payload.changedIds.courses || []),
         grades: new Set(payload.changedIds.grades || []),
         attendance: new Set(payload.changedIds.attendance || []),
-        invoices: new Set(payload.changedIds.invoices || []),
         announcements: new Set(payload.changedIds.announcements || []),
       }
     : null;
@@ -80,9 +76,6 @@ export async function syncDataToSupabase(payload: {
           guardian_relation: s.guardianRelation,
           guardian_phone: s.guardianPhone,
           guardian_email: s.guardianEmail,
-          line_user_id: s.lineUserId || null,
-          line_linked: s.lineLinked,
-          line_notify_enabled: s.lineNotifyEnabled,
           enrolled_date: s.enrolledDate,
         }))
         .filter((row) => shouldSyncRow('students', row.id));
@@ -215,7 +208,6 @@ export async function syncDataToSupabase(payload: {
           status: a.status,
           checkin_method: a.checkinMethod,
           remarks: a.remarks || null,
-          line_notification_sent: a.lineNotificationSent,
           record_type: a.recordType || 'check_in',
           user_name: a.userName || null,
           photo_url: a.photoStoragePath || null,
@@ -240,7 +232,6 @@ export async function syncDataToSupabase(payload: {
               status: a.status,
               checkin_method: a.checkinMethod,
               remarks: a.remarks || null,
-              line_notification_sent: a.lineNotificationSent,
             }))
             .filter((row) => shouldSyncRow('attendance', row.id));
           const retryResult = await client.from('attendance').upsert(baseRows);
@@ -258,92 +249,6 @@ export async function syncDataToSupabase(payload: {
       }
     }
 
-    if (['super_admin', 'admin'].includes(payload.role) && payload.invoices.length > 0) {
-      const changedInvoices = payload.invoices.filter((i) => shouldSyncRow('invoices', i.id));
-      const invRowsWithSlip = changedInvoices
-        .filter((i) => i.slipImageUrl !== undefined)
-        .map((i) => ({
-          id: i.id,
-          school_id: payload.school.id,
-          invoice_number: i.invoiceNumber,
-          student_id: i.studentId,
-          semester: i.semester,
-          academic_year: i.academicYear,
-          issue_date: i.issueDate,
-          due_date: i.dueDate,
-          total_amount: i.totalAmount,
-          status: i.status,
-          items: i.items,
-          payment_method: i.paymentMethod || null,
-          paid_at: i.paidAt || null,
-          receipt_number: i.receiptNumber || null,
-          slip_image_url: i.slipImageUrl || null,
-          slip_submitted_at: i.slipSubmittedAt || null,
-          slip_status: i.slipStatus || 'none',
-          slip_reject_reason: i.slipRejectReason || null,
-          slip_amount: i.slipAmount ?? null,
-          slip_reference_note: i.slipReferenceNote || null,
-        }));
-      const invRowsWithoutSlip = changedInvoices
-        .filter((i) => i.slipImageUrl === undefined)
-        .map((i) => ({
-          id: i.id,
-          school_id: payload.school.id,
-          invoice_number: i.invoiceNumber,
-          student_id: i.studentId,
-          semester: i.semester,
-          academic_year: i.academicYear,
-          issue_date: i.issueDate,
-          due_date: i.dueDate,
-          total_amount: i.totalAmount,
-          status: i.status,
-          items: i.items,
-          payment_method: i.paymentMethod || null,
-          paid_at: i.paidAt || null,
-          receipt_number: i.receiptNumber || null,
-          slip_submitted_at: i.slipSubmittedAt || null,
-          slip_status: i.slipStatus || 'none',
-          slip_reject_reason: i.slipRejectReason || null,
-          slip_amount: i.slipAmount ?? null,
-          slip_reference_note: i.slipReferenceNote || null,
-        }));
-
-      const upsertInvoiceBatch = async (rows: Record<string, unknown>[]) => {
-        if (rows.length === 0) return;
-        const { error: invErr } = await client.from('invoices').upsert(rows);
-        if (
-          invErr &&
-          (invErr.code === 'PGRST204' ||
-            invErr.code === '42703' ||
-            /slip_image_url|slip_status|schema cache|could not find the '.*' column/i.test(invErr.message))
-        ) {
-          const baseInvRows = changedInvoices.map((i) => ({
-            id: i.id,
-            school_id: payload.school.id,
-            invoice_number: i.invoiceNumber,
-            student_id: i.studentId,
-            semester: i.semester,
-            academic_year: i.academicYear,
-            issue_date: i.issueDate,
-            due_date: i.dueDate,
-            total_amount: i.totalAmount,
-            status: i.status,
-            items: i.items,
-            payment_method: i.paymentMethod || null,
-            paid_at: i.paidAt || null,
-            receipt_number: i.receiptNumber || null,
-          }));
-          const retryInv = await client.from('invoices').upsert(baseInvRows);
-          if (retryInv.error) throw new Error(`Invoices sync error: ${retryInv.error.message}`);
-        } else if (invErr) {
-          throw new Error(`Invoices sync error: ${invErr.message}`);
-        }
-      };
-
-      await upsertInvoiceBatch(invRowsWithSlip);
-      await upsertInvoiceBatch(invRowsWithoutSlip);
-    }
-
     if (payload.announcements.length > 0) {
       const annRows = payload.announcements
         .map((an) => ({
@@ -357,7 +262,6 @@ export async function syncDataToSupabase(payload: {
           author: an.author,
           author_role: an.authorRole,
           pinned: an.pinned,
-          line_broadcast_sent: an.lineBroadcastSent,
           resend_email_sent: an.resendEmailSent,
         }))
         .filter((row) => shouldSyncRow('announcements', row.id));

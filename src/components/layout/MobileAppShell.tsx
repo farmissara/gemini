@@ -87,7 +87,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   courses,
   lessons = [],
   grades = [],
-  invoices = [],
   infirmaryVisits = [],
   behaviorRecords = [],
   sdqAssessments = [],
@@ -121,13 +120,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onUpdateGrade,
   onAddGrade,
   schools = [],
-  isDemoMode = false,
   coordinationUnreadCount = 0,
   unclaimedCentralPacksCount = 0,
   onOpenSchoolSwitcher,
   onUpdateSchool,
   onAddAnnouncement,
-  onBroadcastLine,
   onAddHomeworkAssignment,
   onAddHomeworkSubmission,
   onGradeHomeworkSubmission,
@@ -137,8 +134,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onCompleteLesson,
   onSaveLesson,
   onSubmitAssignment,
-  onApproveInvoiceSlip,
-  onRejectInvoiceSlip,
   onViewSchool,
   onToggleSchoolStatus,
   onUpdateSchoolFeatureFlags,
@@ -320,12 +315,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       : currentRole === 'teacher'
         ? schoolPermissions?.teacher_homework !== false
         : true);
-  const canViewFinancialsMobile =
-    isModuleEnabled('billing') &&
-    (currentRole === 'admin' ||
-      currentRole === 'super_admin' ||
-      currentRole === 'parent' ||
-      (currentRole === 'teacher' && schoolPermissions?.teacher_view_financials !== false));
   const canViewTimetable = isModuleEnabled('timetable');
   const canOpenPortfolio =
     isModuleEnabled('portfolio') &&
@@ -345,12 +334,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     (currentRole === 'admin' ||
       currentRole === 'super_admin' ||
       (currentRole === 'teacher' && schoolPermissions?.teacher_infirmary_access !== false));
-  const isLineEnabled = featureFlags?.lineEnabled !== false && systemConfig?.lineMessagingConfigured !== false;
-  const canBroadcastLine =
-    isLineEnabled &&
-    (currentRole === 'admin' ||
-      currentRole === 'super_admin' ||
-      (currentRole === 'teacher' && schoolPermissions?.teacher_line_broadcast !== false));
 
   const myLeaves = isRestrictedViewer
     ? filterLeaveRequestsForUser(leaveRequests, currentUser, students)
@@ -574,10 +557,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
     const todayInfirmary = infirmaryVisits.filter((v) => v.visitDate === today || !v.visitDate).length;
 
-    const paidInvoices = invoices.filter((i) => i.status === 'paid');
-    const totalCollected = paidInvoices.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
-    const pendingInvoices = invoices.filter((i) => i.status === 'pending' || i.status === 'overdue');
-
     const riskCount = sdqAssessments.filter(
       (s) => s.overallStatus === 'risk' || s.overallStatus === 'problem' || (s.totalDifficultiesScore ?? 0) >= 16
     ).length;
@@ -591,14 +570,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       avgGpa,
       honorCount,
       todayInfirmary,
-      totalCollected,
-      pendingCount: pendingInvoices.length,
       riskCount,
       totalStudents: students.length,
       totalTeachers: teachers.length,
       totalCourses: courses.length,
     };
-  }, [attendance, students, teachers, courses, invoices, infirmaryVisits, sdqAssessments]);
+  }, [attendance, students, teachers, courses, infirmaryVisits, sdqAssessments]);
 
   return (
     <div
@@ -647,7 +624,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 <MobileSuperAdminHub
                   schools={schools}
                   activeSchool={activeSchool}
-                  isDemoMode={isDemoMode}
                   lang={lang}
                   initialTab="overview"
                   coordinationUnreadCount={coordinationUnreadCount}
@@ -664,13 +640,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                   students={students}
                   attendance={attendance}
                   leaveRequests={leaveRequests}
-                  invoices={invoices}
-                  isDemoMode={isDemoMode}
                   coordinationUnreadCount={coordinationUnreadCount}
                   onRecordAttendance={onRecordAttendance}
                   onUpdateLeaveStatus={onUpdateLeaveStatus}
-                  onApproveInvoiceSlip={onApproveInvoiceSlip}
-                  onRejectInvoiceSlip={onRejectInvoiceSlip}
                   onOpenQuickHub={() => setActiveTab('admin_quick')}
                   onOpenCheckin={() => setActiveTab('checkin')}
                   onOpenExecutive={() => setActiveTab('executive')}
@@ -800,7 +772,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               teachers={teachers}
               courses={courses}
               leaveRequests={leaveRequests}
-              invoices={invoices}
               announcements={announcements}
               lang={lang}
               currentUser={currentUser}
@@ -808,8 +779,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               onUpdateSchool={onUpdateSchool}
               onAddAnnouncement={onAddAnnouncement}
               onUpdateLeaveStatus={onUpdateLeaveStatus}
-              onApproveInvoiceSlip={onApproveInvoiceSlip}
-              onRejectInvoiceSlip={onRejectInvoiceSlip}
               onJumpToDesktopTab={onJumpToDesktopTab}
               onOpenCheckin={() => setActiveTab('checkin')}
             />
@@ -820,7 +789,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <MobileSuperAdminHub
               schools={schools}
               activeSchool={activeSchool}
-              isDemoMode={isDemoMode}
               lang={lang}
               initialTab="schools"
               coordinationUnreadCount={coordinationUnreadCount}
@@ -837,7 +805,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               activeSchool={activeSchool}
               lang={lang}
               execMetrics={execMetrics}
-              canViewFinancialsMobile={canViewFinancialsMobile}
               pendingLeavesCount={pendingLeavesCount}
               onSwitchToDesktopMode={onSwitchToDesktopMode}
               onSelectTab={setActiveTab}
@@ -888,7 +855,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     ? onUpdateSchoolCoordinates
                     : undefined
                 }
-                isDemoMode={isDemoMode}
               />
             </div>
           )}
@@ -1122,7 +1088,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               selectedAnnouncement={selectedAnnouncement}
               setSelectedAnnouncement={setSelectedAnnouncement}
               onAddAnnouncement={onAddAnnouncement}
-              onBroadcastLine={canBroadcastLine ? onBroadcastLine : undefined}
               onBackHome={() => setActiveTab('home')}
             />
           )}
@@ -1199,7 +1164,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         canViewGradesStudent={canViewGradesStudent}
         canOpenPortfolio={canOpenPortfolio}
         pendingLeavesCount={pendingLeavesCount}
-        invoices={invoices}
         onResetCheckinToSelfie={() => {
           setMobileAttendanceInitialSubTab('selfie_mobile');
           setMobilePeriodCourseId(undefined);

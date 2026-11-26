@@ -267,8 +267,12 @@ function buildOfficialHeaderHtml(dossier: StudentMoeDossier, docCode: string, do
   const { school, systemConfig, registry } = dossier;
   const schoolNameTh = school?.nameTh || systemConfig.schoolNameTh || 'สถานศึกษา';
   const schoolNameEn = school?.nameEn || systemConfig.schoolNameEn || 'School';
-  const logoHtml = school?.logoUrl
-    ? `<img src="${escapeHtml(school.logoUrl)}" alt="ตราโรงเรียน" style="width:58px;height:58px;object-fit:contain;border:1px solid #cbd5e1;border-radius:8px;padding:3px;background:#fff;" />`
+  const rawLogoUrl = (school?.logoUrl || '').trim();
+  const safeLogoUrl = /^(https?:\/\/|data:image\/(?:png|jpeg|jpg|webp|gif);base64,)/i.test(rawLogoUrl)
+    ? rawLogoUrl
+    : '';
+  const logoHtml = safeLogoUrl
+    ? `<img src="${escapeHtml(safeLogoUrl)}" alt="ตราโรงเรียน" style="width:58px;height:58px;object-fit:contain;border:1px solid #cbd5e1;border-radius:8px;padding:3px;background:#fff;" />`
     : `<div style="width:58px;height:58px;border:2px solid #0f172a;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:13px;line-height:1.1;background:#f8fafc;"><span>ศธ.</span><span style="font-size:10px;font-weight:700;">สพฐ.</span></div>`;
 
   return `

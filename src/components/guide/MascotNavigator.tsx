@@ -35,7 +35,6 @@ const GUIDED_TOUR_MODULE_IDS = new Set([
   'portfolio',
   'behavior_sdq',
   'infirmary',
-  'billing',
   'announcements',
   'parent_portal',
 ]);
@@ -383,8 +382,8 @@ const MODULE_FRIENDLY_TIP: Record<string, { th: string; en: string }> = {
     en: 'Track homework, assign tasks, and grade submissions quickly.',
   },
   system_settings: {
-    th: 'ตั้งค่า GPS, เวลาตัดสาย, LINE OA และบัญชีนักเรียนได้ครบที่นี่ครับ',
-    en: 'Configure GPS gates, cutoff times, LINE OA, and accounts here.',
+    th: 'ตั้งค่า GPS, เวลาตัดสาย และบัญชีนักเรียนได้ครบที่นี่ครับ',
+    en: 'Configure GPS gates, cutoff times, and accounts here.',
   },
 };
 

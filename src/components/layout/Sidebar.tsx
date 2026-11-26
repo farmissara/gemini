@@ -5,7 +5,6 @@ import {
   BookOpen,
   QrCode,
   Award,
-  Receipt,
   BellRing,
   Swords,
   Smartphone,
@@ -69,7 +68,6 @@ export type NavTab =
   | 'school_permissions'
   | 'system_settings'
   | 'school_gps'
-  | 'admin_line_control'
   | 'admin_student_accounts'
   | 'admin_saas_audit'
   | 'executive_warning'
@@ -104,7 +102,6 @@ export type NavTab =
   | 'qualitative_summary'
   | 'central_exam_hub'
   | 'report_insights'
-  | 'billing'
   | 'announcements';
 
 export type NavCategoryId =
@@ -117,7 +114,6 @@ export type NavCategoryId =
   | 'report_monitor'
   | 'student_care'
   | 'innovation'
-  | 'finance'
   | 'administration';
 
 interface SidebarProps {
@@ -202,7 +198,6 @@ const ADMIN_FOCUS_TABS = new Set<NavTab>([
   'mobile_checkin',
   'behavior_sdq',
   'infirmary',
-  'billing',
   'announcements',
   'system_settings',
   'admin_superadmin_desk',
@@ -227,7 +222,6 @@ const ARCADE_TABS = new Set<NavTab>(['games', 'boss_raid', 'study_streak', 'hall
 const SETTINGS_DEEP_LINK_TABS = new Set<NavTab>([
   'school_permissions',
   'school_gps',
-  'admin_line_control',
   'admin_student_accounts',
   'admin_saas_audit',
 ]);
@@ -327,7 +321,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       if (tabId === 'gradebook' && schoolPermissions.student_view_grades === false) return false;
     }
     if (currentRole === 'teacher') {
-      if (tabId === 'billing' && schoolPermissions.teacher_view_financials === false) return false;
       if (tabId === 'behavior_sdq' && schoolPermissions.teacher_sdq_screening === false) return false;
       if (tabId === 'infirmary' && schoolPermissions.teacher_infirmary_access === false) return false;
       if ((tabId === 'attendance' || tabId === 'mobile_checkin') && schoolPermissions.teacher_attendance === false) return false;
@@ -650,29 +643,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     });
 
-    // Billing is used by payment cycle; announcements stay with daily work.
-    list.push({
-      id: 'finance',
-      labelTh: 'การเงินตามรอบชำระ',
-      labelEn: 'Billing Cycle',
-      helperTh: 'ตรวจเมื่อถึงรอบชำระ หรือมีรายการรอตรวจ',
-      helperEn: 'Check during billing cycles or when items are pending',
-      shortLabelTh: 'การเงิน',
-      shortLabelEn: 'Finance',
-      icon: Receipt,
-      items: [
-        {
-          id: 'billing',
-          labelTh: 'ค่าเทอม & ใบเสร็จรับเงิน',
-          labelEn: 'Tuition & Invoices',
-          shortLabelTh: 'ค่าเทอม',
-          shortLabelEn: 'Billing',
-          icon: Receipt,
-          roles: ['super_admin', 'admin', 'parent'],
-        },
-      ],
-    });
-
     // System administration is intentionally kept below everyday workflows.
     list.push({
       id: 'administration',
@@ -686,7 +656,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'system_settings',
-          labelTh: focusMode && supportsFocusMode ? 'ตั้งค่าระบบ (GPS · สิทธิ์ · LINE)' : 'ศูนย์ควบคุมระบบโรงเรียน',
+          labelTh: focusMode && supportsFocusMode ? 'ตั้งค่าระบบ (GPS · สิทธิ์ · เวลา)' : 'ศูนย์ควบคุมระบบโรงเรียน',
           labelEn: focusMode && supportsFocusMode ? 'School Settings & Control' : 'System Control Center',
           shortLabelTh: 'คุมระบบ',
           shortLabelEn: 'Control',
@@ -714,13 +684,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           labelTh: 'พิกัด GPS & จุดสแกนประตู',
           labelEn: 'School GPS & Gates',
           icon: MapPin,
-          roles: ['super_admin', 'admin'],
-        },
-        {
-          id: 'admin_line_control',
-          labelTh: 'แจ้งเตือน LINE & เวลาตัดสาย',
-          labelEn: 'LINE OA & Cutoff Rules',
-          icon: BellRing,
           roles: ['super_admin', 'admin'],
         },
         {
@@ -890,7 +853,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       'daily_work',
       'academic_setup',
       'student_care',
-      'finance',
       'report_monitor',
       'administration',
       'innovation',
@@ -945,14 +907,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (focusMode && supportsFocusMode) return 'system_settings';
     if (activeSettingsSubTab === 'school_gps') return 'school_gps';
     if (activeSettingsSubTab === 'school_permissions') return 'school_permissions';
-    if (
-      activeSettingsSubTab === 'line_events' ||
-      activeSettingsSubTab === 'line_connection' ||
-      activeSettingsSubTab === 'preview_simulator' ||
-      activeSettingsSubTab === 'subscribers'
-    ) {
-      return 'admin_line_control';
-    }
     if (activeSettingsSubTab === 'student_accounts' || activeSettingsSubTab === 'student_login_config') {
       return 'admin_student_accounts';
     }

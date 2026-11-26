@@ -310,15 +310,6 @@ export function useTabNavigation({
       return;
     }
 
-    if (tab === 'admin_line_control') {
-      if (['super_admin', 'admin'].includes(currentRole)) {
-        setSystemSettingsInitialTab('line_events');
-        setProgramMode('school_erp');
-        setCurrentTab('system_settings');
-      }
-      return;
-    }
-
     if (tab === 'admin_student_accounts') {
       if (['super_admin', 'admin'].includes(currentRole)) {
         setSystemSettingsInitialTab('student_accounts');
@@ -350,7 +341,6 @@ export function useTabNavigation({
       'students',
       'teachers',
       'courses',
-      'billing',
       'announcements',
       'central_exam_hub',
       'realtime_daily',
@@ -396,7 +386,6 @@ export function useTabNavigation({
 
     if (currentRole === 'teacher') {
       const blockedByPolicy =
-        (tab === 'billing' && !schoolPermissions.teacher_view_financials) ||
         (tab === 'behavior_sdq' && !schoolPermissions.teacher_sdq_screening) ||
         (tab === 'infirmary' && !schoolPermissions.teacher_infirmary_access) ||
         ((tab === 'attendance' || tab === 'mobile_checkin') && !schoolPermissions.teacher_attendance) ||

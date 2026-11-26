@@ -41,23 +41,23 @@ export function PagedList<T>({
     <div className="space-y-2.5">
       {pageItems.map((item, index) => renderItem(item, startIndex + index))}
       {pageCount > 1 && (
-        <nav aria-label={paginationLabel} className={`flex items-center justify-between gap-3 pt-1 ${navClassName}`.trim()}>
+        <nav aria-label={paginationLabel} className={`flex flex-wrap items-center justify-center gap-3 pt-2 ${navClassName}`.trim()}>
           <button
             type="button"
             onClick={() => setPage((currentPage) => Math.max(0, currentPage - 1))}
             disabled={currentPage === 0}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:cursor-not-allowed disabled:opacity-45 transition cursor-pointer whitespace-nowrap"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:cursor-not-allowed disabled:opacity-45 transition cursor-pointer whitespace-nowrap"
           >
             {previousLabel}
           </button>
-          <span aria-live="polite" className="text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums">
+          <span aria-live="polite" className="min-w-[3.5rem] text-center text-[11px] font-semibold text-[var(--color-text-muted)] tabular-nums">
             {currentPage + 1} / {pageCount}
           </span>
           <button
             type="button"
             onClick={() => setPage((currentPage) => Math.min(pageCount - 1, currentPage + 1))}
             disabled={currentPage === pageCount - 1}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:cursor-not-allowed disabled:opacity-45 transition cursor-pointer whitespace-nowrap"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:cursor-not-allowed disabled:opacity-45 transition cursor-pointer whitespace-nowrap"
           >
             {nextLabel}
           </button>

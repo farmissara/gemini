@@ -5,9 +5,8 @@ import {
   Course, 
   AttendanceRecord, 
   GradeRecord, 
-  TuitionInvoice, 
   Announcement, 
-  SystemConfig, 
+  SystemConfig,  
   Lesson, 
   Assignment,
   QuizQuestion,
@@ -46,141 +45,8 @@ export const INITIAL_SCHOOLS: School[] = [
     teachersCount: 86,
     academicYear: '2569 (2026)',
     currentSemester: '1',
-    lineOaId: '@eduverse_official',
     createdAt: '2022-01-15',
     status: 'active',
-  }
-];
-
-export const DEMO_USERS: AuthUser[] = [
-  {
-    id: 'usr-super',
-    email: 'baanpakkru@gmail.com',
-    fullNameTh: 'ดร.กิตติพงษ์ ศรีสุวรรณ (Super Admin)',
-    fullNameEn: 'Dr. Kittipong Srisuwan (Master Admin)',
-    role: 'super_admin',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '081-999-8888',
-    nickname: 'ดร.กิตติ',
-    bio: 'ผู้พัฒนาระบบแม่ข่ายและสถาปัตยกรรมคลาวด์ EduVerse SIS เพื่อการศึกษาไทยในศตวรรษที่ 21',
-  },
-  {
-    id: 'usr-admin',
-    email: 'admin@eduverse.school',
-    fullNameTh: 'ดร.ธนพร กิตติศักดิ์ (ผู้อำนวยการ)',
-    fullNameEn: 'Dr. Thanaporn Kittisak (Principal)',
-    role: 'admin',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '081-234-5678',
-    nickname: 'ผอ.ป้อม',
-    nationalId: '3-1002-00456-78-1',
-    gender: 'female',
-    dateOfBirth: '1975-08-12',
-    bloodType: 'O',
-    allergies: ['กุ้งและอาหารทะเลบางชนิด'],
-    emergencyContact: 'นายเกียรติศักดิ์ กิตติศักดิ์ (สามี)',
-    emergencyPhone: '081-998-7766',
-    address: '99/12 ถนนสาทร แขวงยานนาวา เขตสาทร กรุงเทพฯ 10120',
-    adminPositionTitle: 'ผู้อำนวยการสถานศึกษา (Director & Principal)',
-    adminDepartment: 'สำนักงานบริหารและอำนวยการสถานศึกษา',
-    directOfficePhone: '02-555-1234 ต่อ 101',
-    officeRoom: 'ห้องบริหาร 101 อาคารเฉลิมพระเกียรติ',
-    bio: 'มุ่งมั่นขับเคลื่อนการศึกษาไทยสู่ระดับสากลด้วยนวัตกรรมดิจิทัลและการเรียนรู้แบบบูรณาการ พัฒนานักเรียนและคุณครูให้มีความเป็นเลิศรอบด้าน',
-  },
-  {
-    id: 'usr-teacher',
-    email: 'teacher@eduverse.school',
-    fullNameTh: 'อ.ดร.ประเสริฐ ถาวร (หัวหน้ากลุ่มสาระ)',
-    fullNameEn: 'Ajarn Dr. Prasert Thaworn',
-    role: 'teacher',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '089-112-3344',
-    nickname: 'อ.เสริฐ',
-    nationalId: '3-1005-00123-45-9',
-    gender: 'male',
-    dateOfBirth: '1982-04-18',
-    bloodType: 'B',
-    allergies: [],
-    emergencyContact: 'นางมณี ถาวร (ภรรยา)',
-    emergencyPhone: '089-223-4455',
-    address: '45/8 ถนนสุขุมวิท ซอย 71 แขวงพระโขนงเหนือ เขตวัฒนา กรุงเทพฯ 10110',
-    teacherIdNumber: 'TCH-2024-0012',
-    academicDegree: 'ปริญญาเอก ปร.ด. นวัตกรรมหลักสูตรและการสอน (Ph.D. in Curriculum & Instruction)',
-    major: 'วิทยาการคำนวณและเทคโนโลยีศึกษา (Computer Science & EdTech)',
-    academicStanding: 'ครูเชี่ยวชาญ (คศ.4)',
-    department: 'กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี',
-    teachingSubjects: ['ว30101 วิทยาการคำนวณ', 'ว30205 การเขียนโปรแกรมปัญญาประดิษฐ์ (AI)'],
-    homeroomClass: 'ห้อง 401 (วิทย์-คณิต)',
-    homeroomClasses: ['ห้อง 401 (วิทย์-คณิต)', 'ห้อง 402 (ห้องเรียนพิเศษ AI)'],
-    teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)', 'มัธยมศึกษาปีที่ 6 (M.6)'],
-    teacherLicenseNo: 'คส. 6110900045678',
-    expertise: ['Active Learning', 'Python & Robotics Programming', 'การออกแบบสื่อนวัตกรรมดิจิทัล ว.PA'],
-    researchWorks: ['การพัฒนารูปแบบการสอนวิทยาการคำนวณด้วยเกมมิฟิเคชัน 3D เพื่อส่งเสริมทักษะการคิดเชิงคำนวณ'],
-    isSchoolAdmin: true, // ครูมีสิทธิ์เป็น admin ได้!
-    bio: 'มุ่งมั่นส่งเสริมกระบวนการคิดเชิงคำนวณและการแก้ปัญหาอย่างสร้างสรรค์ บ่มเพาะนักเรียนรุ่นใหม่ให้พร้อมก้าวสู่เวทีนวัตกรรมระดับโลก',
-  },
-  {
-    id: 'usr-student',
-    email: 'student@eduverse.school',
-    fullNameTh: 'นายธนาธร สมชาย (ม.4/1)',
-    fullNameEn: 'Thanatorn Somchai (STU-6901)',
-    role: 'student',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '081-456-7890',
-    nickname: 'ธันวา',
-    nationalId: '1-1002-00345-67-1',
-    gender: 'male',
-    dateOfBirth: '2008-05-14',
-    bloodType: 'O',
-    allergies: ['แพ้ละอองเกสรดอกไม้บางชนิด'],
-    emergencyContact: 'นายประภาส สมชาย (บิดา)',
-    emergencyPhone: '086-554-3322',
-    address: '123/45 ถนนพหลโยธิน แขวงลาดยาว เขตจตุจักร กรุงเทพฯ 10900',
-    studentIdNumber: 'ED-6901',
-    gradeLevel: 'มัธยมศึกษาปีที่ 4 (M.4)',
-    room: 'ห้อง 401 (วิทย์-คณิต)',
-    academicTrack: 'วิทยาศาสตร์ - คณิตศาสตร์ (Gifted STEM)',
-    advisorName: 'อ.ดร.ประเสริฐ ถาวร',
-    gpax: 3.92,
-    targetUniversity: 'จุฬาลงกรณ์มหาวิทยาลัย / สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง (KMITL)',
-    targetFaculty: 'คณะวิศวกรรมศาสตร์ สาขาวิศวกรรมคอมพิวเตอร์และปัญญาประดิษฐ์ (AI & Computer Engineering)',
-    dreamCareer: 'AI Research Scientist & Lead Software Engineer',
-    skills: ['Python & C++', 'Machine Learning / PyTorch', 'Three.js & WebGL 3D', 'Robotics Embedded Systems', 'English Presentation (IELTS 7.5)'],
-    languages: ['ไทย (Native)', 'อังกฤษ (Fluent - IELTS 7.5)', 'จีน (Basic - HSK 3)'],
-    interests: ['การพัฒนาปัญญาประดิษฐ์', 'การแข่งขันโอลิมปิกคอมพิวเตอร์ (POSN)', 'ดนตรีสากลและเปียโน', 'บาสเกตบอล'],
-    bio: 'นักเรียนสายวิทย์-คณิตที่มีความมุ่งมั่นและหลงใหลในการเขียนโค้ด การวิจัย AI และการสร้างนวัตกรรมที่มีผลกระทบต่อสังคม ตั้งใจรวบรวมผลงานเพื่อยื่น TCAS รอบที่ 1 แฟ้มสะสมผลงาน (Portfolio)',
-  },
-  {
-    id: 'usr-parent',
-    email: 'parent@eduverse.school',
-    fullNameTh: 'นายประภาส สมชาย (ผู้ปกครอง)',
-    fullNameEn: 'Mr. Prapas Somchai',
-    role: 'parent',
-    schoolId: 'sch-1',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
-    lineConnected: true,
-    phone: '086-554-3322',
-    nickname: 'ภาส',
-    nationalId: '3-1002-00112-23-4',
-    gender: 'male',
-    dateOfBirth: '1973-10-20',
-    bloodType: 'B',
-    allergies: [],
-    emergencyContact: 'นางนภา สมชาย (ภรรยา)',
-    emergencyPhone: '086-554-3323',
-    address: '123/45 ถนนพหลโยธิน แขวงลาดยาว เขตจตุจักร กรุงเทพฯ 10900',
-    occupation: 'วิศวกรและผู้บริหารระบบเครือข่ายสารสนเทศ',
-    workplace: 'บริษัท เทคโนโลยีแห่งชาติ จำกัด (มหาชน)',
-    childrenStudentIds: ['stu-1', 'stu-4', 'stu-2'], // ผู้ปกครอง 1 คน มีนักเรียนในความดูแลได้มากกว่า 1 คน
-    bio: 'ผู้ปกครองของนักเรียนในระดับชั้น ม.4 และ ม.5 ติดตามการเรียน พฤติกรรม และความก้าวหน้าทางการศึกษาอย่างใกล้ชิด',
   }
 ];
 
@@ -214,7 +80,6 @@ export const INITIAL_STUDENTS: Student[] = [
         relation: 'บิดา',
         phone: '081-456-7890',
         email: 'prapas.s@gmail.com',
-        lineUserId: 'U9a8b7c6d5e4f3a2b1',
         occupation: 'วิศวกรระบบ',
         isPrimary: true,
       },
@@ -224,7 +89,6 @@ export const INITIAL_STUDENTS: Student[] = [
         relation: 'มารดา',
         phone: '089-876-5432',
         email: 'warunee.s@gmail.com',
-        lineUserId: 'Uwarunee_line_id_99',
         occupation: 'เภสัชกรชำนาญการ',
         isPrimary: false,
       },
@@ -237,9 +101,6 @@ export const INITIAL_STUDENTS: Student[] = [
         isPrimary: false,
       }
     ],
-    lineUserId: 'U9a8b7c6d5e4f3a2b1',
-    lineLinked: true,
-    lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
     bloodType: 'O',
     allergies: ['ถั่วลิสง (Peanuts)'],
@@ -274,7 +135,6 @@ export const INITIAL_STUDENTS: Student[] = [
         relation: 'มารดา',
         phone: '089-223-4455',
         email: 'supaporn.w@outlook.co.th',
-        lineUserId: 'Ub2c3d4e5f6a1b2c3',
         occupation: 'ผู้จัดการสาขาธนาคาร',
         isPrimary: true,
       },
@@ -287,9 +147,6 @@ export const INITIAL_STUDENTS: Student[] = [
         isPrimary: false,
       }
     ],
-    lineUserId: 'Ub2c3d4e5f6a1b2c3',
-    lineLinked: true,
-    lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
     bloodType: 'B',
     allergies: ['ยาปฏิชีวนะกลุ่ม Penicillin'],
@@ -316,9 +173,6 @@ export const INITIAL_STUDENTS: Student[] = [
     guardianRelation: 'บิดา',
     guardianPhone: '084-556-9911',
     guardianEmail: 'chai.c@yahoo.com',
-    lineUserId: 'Uc3d4e5f6a1b2c3d4',
-    lineLinked: true,
-    lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
     bloodType: 'AB',
     allergies: [],
@@ -345,9 +199,6 @@ export const INITIAL_STUDENTS: Student[] = [
     guardianRelation: 'มารดา',
     guardianPhone: '086-778-1234',
     guardianEmail: 'naree.r@gmail.com',
-    lineUserId: 'Ud4e5f6a1b2c3d4e5',
-    lineLinked: true,
-    lineNotifyEnabled: true,
     enrolledDate: '2022-05-15',
   },
   {
@@ -370,9 +221,6 @@ export const INITIAL_STUDENTS: Student[] = [
     guardianRelation: 'บิดา',
     guardianPhone: '082-990-1122',
     guardianEmail: 'somkiat.b@gmail.com',
-    lineUserId: '',
-    lineLinked: false,
-    lineNotifyEnabled: false,
     enrolledDate: '2022-05-15',
   },
 
@@ -397,8 +245,6 @@ export const INITIAL_STUDENTS: Student[] = [
     guardianRelation: 'บิดา',
     guardianPhone: '083-441-2929',
     guardianEmail: 'boonlerd@eduverse.school',
-    lineLinked: true,
-    lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
   },
   {
@@ -421,8 +267,6 @@ export const INITIAL_STUDENTS: Student[] = [
     guardianRelation: 'มารดา',
     guardianPhone: '081-332-9090',
     guardianEmail: 'orathai.s@gmail.com',
-    lineLinked: true,
-    lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
   },
   {
@@ -445,8 +289,6 @@ export const INITIAL_STUDENTS: Student[] = [
     guardianRelation: 'Father',
     guardianPhone: '089-887-2121',
     guardianEmail: 'david.t@eduverse.school',
-    lineLinked: true,
-    lineNotifyEnabled: true,
     enrolledDate: '2023-05-15',
   }
 ];
@@ -472,8 +314,6 @@ export const INITIAL_TEACHERS: Teacher[] = [
     homeroomClasses: ['ห้อง 401 (วิทย์-คณิต)', 'ห้อง 402 (ห้องเรียนพิเศษ AI)'],
     teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)', 'มัธยมศึกษาปีที่ 6 (M.6)'],
     isSchoolAdmin: true,
-    lineUserId: 'Upra_sert_line_official',
-    lineLinked: true,
     teachingExperienceYears: 16,
     paScore: 94.5,
     otherSkills: ['Python & PyTorch', 'หุ่นยนต์อัตโนมัติ (Robotics IoT)', 'การจัดห้องเรียน Active Learning 3D', 'การสร้างสื่อนวัตกรรม AR/VR'],
@@ -542,8 +382,6 @@ export const INITIAL_TEACHERS: Teacher[] = [
     homeroomClasses: ['ห้อง 501 (วิทย์-คณิต)'],
     teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)'],
     isSchoolAdmin: false,
-    lineUserId: 'Uwichian_line_id_88',
-    lineLinked: true,
     teachingExperienceYears: 8,
     paScore: 88.0,
     otherSkills: ['GeoGebra Dynamic Math', 'สถิติวิเคราะห์ Data Analysis ด้วย R', 'คณิตศาสตร์โอลิมปิกมูลนิธิ สอวน.', 'การแนะแนวทุนการศึกษา'],
@@ -599,8 +437,6 @@ export const INITIAL_TEACHERS: Teacher[] = [
     homeroomClasses: ['ห้อง 402 (ศิลป์-ภาษาอังกฤษ)', 'ห้อง 601 (English Program)'],
     teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)', 'มัธยมศึกษาปีที่ 6 (M.6)'],
     isSchoolAdmin: true,
-    lineUserId: 'Usarah_jenkins_line',
-    lineLinked: true,
     teachingExperienceYears: 13,
     paScore: 92.5,
     otherSkills: ['TOEFL/IELTS Examiner Certified', 'Parliamentary Debate Coach', 'Cross-Cultural Psychology', 'Public Speaking & Emceeing'],
@@ -657,8 +493,6 @@ export const INITIAL_TEACHERS: Teacher[] = [
     homeroomClasses: ['ห้อง 401 (วิทย์-คณิต)'],
     teachingGrades: ['มัธยมศึกษาปีที่ 4 (M.4)', 'มัธยมศึกษาปีที่ 5 (M.5)'],
     isSchoolAdmin: false,
-    lineUserId: 'Uwiphada_line_bio',
-    lineLinked: true,
     teachingExperienceYears: 18,
     paScore: 96.0,
     otherSkills: ['การวิจัยปฏิบัติการทางพันธุศาสตร์', 'การเพาะเลี้ยงเนื้อเยื่อพืช', 'วิทยาศาสตร์สิ่งแวดล้อมและการวิเคราะห์น้ำเสีย', 'STEM Project Based Learning'],
@@ -1048,8 +882,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูใหญ่ฝั่งถนนวิทยุ (Main Gate)'
     },
-    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเองในเขตพื้นที่ 18 ม.',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเองในเขตพื้นที่ 18 ม.'
   },
   {
     id: 'att-today-2-in',
@@ -1073,8 +906,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'จุดเช็คชื่อหน้าอาคาร 1'
     },
-    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเอง',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนผ่านโทรศัพท์ตัวเอง'
   },
   {
     id: 'att-today-3-in',
@@ -1098,8 +930,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ป้อมยามประตูทิศเหนือ'
     },
-    remarks: 'มาสาย 12 นาที ถ่ายรูปเช็คชื่อผ่านมือถือ (การจราจรหนาแน่น)',
-    lineNotificationSent: true
+    remarks: 'มาสาย 12 นาที ถ่ายรูปเช็คชื่อผ่านมือถือ (การจราจรหนาแน่น)'
   },
   // --- วันนี้: ครูเข้า-ออกโรงเรียน ---
   {
@@ -1125,8 +956,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'อาคารอำนวยการและห้องพักครู'
     },
-    remarks: 'ครูถ่ายรูปเซลฟี่เช็คอินเข้าปฏิบัติหน้าที่ตรงเวลา',
-    lineNotificationSent: true
+    remarks: 'ครูถ่ายรูปเซลฟี่เช็คอินเข้าปฏิบัติหน้าที่ตรงเวลา'
   },
   {
     id: 'att-today-tch2-in',
@@ -1151,8 +981,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ลานเสาธงกลาง'
     },
-    remarks: 'ครูถ่ายรูปเช็คอินเข้าทำงานผ่านโทรศัพท์มือถือ',
-    lineNotificationSent: true
+    remarks: 'ครูถ่ายรูปเช็คอินเข้าทำงานผ่านโทรศัพท์มือถือ'
   },
   {
     id: 'att-today-tch3-in',
@@ -1177,8 +1006,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ห้อง English Program'
     },
-    remarks: 'ถ่ายรูปเช็คอินเข้าทำงานระบบ Geofence ผ่านมือถือ',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเช็คอินเข้าทำงานระบบ Geofence ผ่านมือถือ'
   },
   // --- วันนี้: ตัวอย่างการเช็คชื่อออกโรงเรียน (Check-out) ---
   {
@@ -1203,8 +1031,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ซุ้มประตูใหญ่ทางออก'
     },
-    remarks: 'ถ่ายรูปเช็คชื่อออกจากโรงเรียนหลังเลิกเรียน ส่งแจ้งเตือน LINE ผู้ปกครอง',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเช็คชื่อออกจากโรงเรียนหลังเลิกเรียน ส่งแจ้งเตือนผู้ปกครอง'
   },
 
   // --- เมื่อวาน (Yesterday) ---
@@ -1230,8 +1057,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูทางเข้าหลัก'
     },
-    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนตรงเวลา',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเช็คอินเข้าโรงเรียนตรงเวลา'
   },
   {
     id: 'att-yest-1-out',
@@ -1255,8 +1081,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูหน้าโรงเรียน'
     },
-    remarks: 'ถ่ายรูปเช็คชื่อออกจากโรงเรียน',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเช็คชื่อออกจากโรงเรียน'
   },
   {
     id: 'att-yest-2-in',
@@ -1280,8 +1105,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'หน้าอาคารเรียนรวม'
     },
-    remarks: 'ถ่ายรูปเซลฟี่เช็คอินผ่านโทรศัพท์มือถือ',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเซลฟี่เช็คอินผ่านโทรศัพท์มือถือ'
   },
   {
     id: 'att-yest-2-out',
@@ -1305,8 +1129,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูทางออกฝั่งอาคาร 1'
     },
-    remarks: 'เช็คชื่อออกจากโรงเรียนผ่านมือถือ',
-    lineNotificationSent: true
+    remarks: 'เช็คชื่อออกจากโรงเรียนผ่านมือถือ'
   },
   {
     id: 'att-yest-tch1-in',
@@ -1331,8 +1154,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ห้องพักครูวิชาการ'
     },
-    remarks: 'ครูถ่ายรูปเซลฟี่เช็คอินเข้าทำงาน',
-    lineNotificationSent: true
+    remarks: 'ครูถ่ายรูปเซลฟี่เช็คอินเข้าทำงาน'
   },
   {
     id: 'att-yest-tch1-out',
@@ -1357,8 +1179,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ทางออกลานจอดรถครู'
     },
-    remarks: 'ครูถ่ายรูปเซลฟี่เช็คเอาท์เลิกงาน',
-    lineNotificationSent: true
+    remarks: 'ครูถ่ายรูปเซลฟี่เช็คเอาท์เลิกงาน'
   },
 
   // --- 2 วันก่อน (Two Days Ago) ---
@@ -1384,8 +1205,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูทางเข้าหลัก'
     },
-    remarks: 'ถ่ายรูปเซลฟี่เช็คอินเข้าโรงเรียน',
-    lineNotificationSent: true
+    remarks: 'ถ่ายรูปเซลฟี่เช็คอินเข้าโรงเรียน'
   },
   {
     id: 'att-2days-3-in',
@@ -1409,8 +1229,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'ประตูรั้วทิศเหนือ'
     },
-    remarks: 'มาสาย 25 นาที ถ่ายรูปเช็คชื่อผ่านมือถือ',
-    lineNotificationSent: true
+    remarks: 'มาสาย 25 นาที ถ่ายรูปเช็คชื่อผ่านมือถือ'
   },
   {
     id: 'att-2days-tch2-in',
@@ -1435,70 +1254,7 @@ export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
       inGeofence: true,
       geofenceZoneName: 'อาคารเรียนคณิตศาสตร์'
     },
-    remarks: 'ครูถ่ายรูปเช็คอินเข้าทำงาน',
-    lineNotificationSent: true
-  }
-];
-
-export const INITIAL_INVOICES: TuitionInvoice[] = [
-  {
-    id: 'inv-1',
-    schoolId: 'sch-1',
-    invoiceNumber: 'INV-2026-00101',
-    studentId: 'stu-1',
-    semester: 'ภาคเรียนที่ 1/2569',
-    academicYear: '2569',
-    issueDate: '2026-10-15',
-    dueDate: '2026-11-20',
-    totalAmount: 24500,
-    status: 'paid',
-    items: [
-      { id: 'item-1', title: 'ค่าบำรุงการศึกษาหลักสูตรวิทย์-คณิต', amount: 18000 },
-      { id: 'item-2', title: 'ค่าห้องปฏิบัติการคอมพิวเตอร์และวิทยาศาสตร์', amount: 3500 },
-      { id: 'item-3', title: 'ค่าประกันอุบัติเหตุและห้องพยาบาล', amount: 1200 },
-      { id: 'item-4', title: 'ค่าบริการระบบสารสนเทศและห้องสมุดดิจิทัล', amount: 1800 }
-    ],
-    paymentMethod: 'promptpay',
-    paidAt: '2026-10-28 14:22:05',
-    receiptNumber: 'REC-2569-9901'
-  },
-  {
-    id: 'inv-3',
-    schoolId: 'sch-1',
-    invoiceNumber: 'INV-2026-00103',
-    studentId: 'stu-3',
-    semester: 'ภาคเรียนที่ 1/2569',
-    academicYear: '2569',
-    issueDate: '2026-10-15',
-    dueDate: '2026-11-20',
-    totalAmount: 21500,
-    status: 'pending',
-    items: [
-      { id: 'item-1', title: 'ค่าบำรุงการศึกษาแผนศิลป์-ภาษา', amount: 16000 },
-      { id: 'item-2', title: 'ค่าครูผู้สอนชาวต่างชาติและ Sound Lab', amount: 3000 },
-      { id: 'item-3', title: 'ค่าประกันอุบัติเหตุ', amount: 1200 },
-      { id: 'item-4', title: 'ค่าระบบออนไลน์ EduVerse', amount: 1300 }
-    ]
-  },
-  {
-    id: 'inv-7',
-    schoolId: 'sch-1',
-    invoiceNumber: 'INV-CM-2026-042',
-    studentId: 'stu-7',
-    semester: 'ภาคเรียนที่ 1/2569',
-    academicYear: '2569',
-    issueDate: '2026-10-15',
-    dueDate: '2026-11-25',
-    totalAmount: 26000,
-    status: 'paid',
-    items: [
-      { id: 'item-1', title: 'ค่าธรรมเนียมการศึกษาพิเศษสาธิต', amount: 20000 },
-      { id: 'item-2', title: 'ค่าห้องปฏิบัติการชีวสารสนเทศ', amount: 4500 },
-      { id: 'item-3', title: 'ค่ากิจกรรมพัฒนาผู้เรียน', amount: 1500 }
-    ],
-    paymentMethod: 'promptpay',
-    paidAt: '2026-10-25 09:15:00',
-    receiptNumber: 'REC-CM-0091'
+    remarks: 'ครูถ่ายรูปเช็คอินเข้าทำงาน'
   }
 ];
 
@@ -1514,7 +1270,6 @@ export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
     author: 'ฝ่ายวิชาการและวัดผล',
     authorRole: 'รองผู้อำนวยการ',
     pinned: true,
-    lineBroadcastSent: true,
     resendEmailSent: true
   },
   {
@@ -1528,7 +1283,6 @@ export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
     author: 'งานแนะแนวและความสัมพันธ์ชุมชน',
     authorRole: 'หัวหน้างาน',
     pinned: true,
-    lineBroadcastSent: true,
     resendEmailSent: false
   },
   {
@@ -1542,7 +1296,6 @@ export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
     author: 'กลุ่มวิจัยนวัตกรรม EduVerse',
     authorRole: 'อาจารย์ที่ปรึกษา',
     pinned: true,
-    lineBroadcastSent: true,
     resendEmailSent: true
   }
 ];
@@ -1637,9 +1390,10 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
     'รองผู้อำนวยการ',
     'ผู้อำนวยการ',
   ],
-  lineOaAddFriendUrl: 'https://line.me/R/ti/p/@eduverse_official',
-  lineChannelId: '2001928431',
-  lineMessagingConfigured: true,
+  schoolStartTime: '07:50',
+  lateCutoffTime: '08:00',
+  absenceCutoffTime: '09:00',
+  checkoutStartTime: '15:30',
   resendApiKeyConfigured: true,
   resendFromEmail: 'baanpakkru@gmail.com',
   masterEmail: 'baanpakkru@gmail.com',
@@ -2484,8 +2238,7 @@ export const INITIAL_BEHAVIOR_RECORDS: BehaviorRecord[] = [
     points: 10,
     category: 'จิตอาสาบำเพ็ญประโยชน์',
     notes: 'ช่วยงานห้องสมุดและจัดเตรียมสถานที่งานสัปดาห์วิทยาศาสตร์',
-    recordedBy: 'อ.ดร.ประเสริฐ ถาวร',
-    lineNotified: true
+    recordedBy: 'อ.ดร.ประเสริฐ ถาวร'
   },
   {
     id: 'beh-2',
@@ -2498,8 +2251,7 @@ export const INITIAL_BEHAVIOR_RECORDS: BehaviorRecord[] = [
     points: 15,
     category: 'สร้างชื่อเสียงให้โรงเรียน',
     notes: 'ได้รับรางวัลเหรียญทองการแข่งขันโครงงานปัญญาประดิษฐ์ระดับภาค',
-    recordedBy: 'ดร.ธนพร กิตติศักดิ์ (ผู้อำนวยการ)',
-    lineNotified: true
+    recordedBy: 'ดร.ธนพร กิตติศักดิ์ (ผู้อำนวยการ)'
   },
   {
     id: 'beh-3',
@@ -2512,8 +2264,7 @@ export const INITIAL_BEHAVIOR_RECORDS: BehaviorRecord[] = [
     points: -5,
     category: 'มาสายเข้าแถวเคารพธงชาติ',
     notes: 'มาโรงเรียนหลังเวลา 08.00 น. ครั้งที่ 3 ในเดือนนี้',
-    recordedBy: 'ครูชัชวาลย์ กล้าหาญ',
-    lineNotified: true
+    recordedBy: 'ครูชัชวาลย์ กล้าหาญ'
   },
   {
     id: 'beh-4',
@@ -2526,8 +2277,7 @@ export const INITIAL_BEHAVIOR_RECORDS: BehaviorRecord[] = [
     points: -10,
     category: 'แต่งกายไม่ถูกระเบียบสถานศึกษา',
     notes: 'ไม่สวมสูทหรือเสื้อกั๊กตราโรงเรียนในวันพิธีการ',
-    recordedBy: 'ฝ่ายกิจการนักเรียน',
-    lineNotified: true
+    recordedBy: 'ฝ่ายกิจการนักเรียน'
   },
   {
     id: 'beh-5',
@@ -2540,8 +2290,7 @@ export const INITIAL_BEHAVIOR_RECORDS: BehaviorRecord[] = [
     points: 5,
     category: 'ความมีน้ำใจต่อเพื่อนร่วมชั้น',
     notes: 'ติวหนังสือให้เพื่อนร่วมชั้นก่อนสอบเก็บคะแนนกลางภาค',
-    recordedBy: 'ครูสมศักดิ์ ปรีชากุล',
-    lineNotified: true
+    recordedBy: 'ครูสมศักดิ์ ปรีชากุล'
   }
 ];
 
@@ -2763,14 +2512,12 @@ export const INITIAL_ROLE_PERMISSIONS: RolePermissionConfig[] = [
     role: 'admin',
     roleNameTh: 'ผู้อำนวยการ / ผู้บริหารสถานศึกษา (School Principal)',
     roleNameEn: 'School Administrator',
-    descriptionTh: 'มีสิทธิ์เต็มในการบริหารจัดการนักเรียน ครู รายวิชา การเงิน และการออกเอกสาร ปพ. ของโรงเรียน',
+    descriptionTh: 'มีสิทธิ์เต็มในการบริหารจัดการนักเรียน ครู รายวิชา และการออกเอกสาร ปพ. ของโรงเรียน',
     permissions: {
       manageStudents: true,
       manageCourses: true,
       editGrades: true,
       recordAttendance: true,
-      manageTuition: true,
-      sendBroadcastLine: true,
       manageTimetable: true,
       manageSdq: true,
       viewInfirmary: true,
@@ -2781,14 +2528,12 @@ export const INITIAL_ROLE_PERMISSIONS: RolePermissionConfig[] = [
     role: 'teacher',
     roleNameTh: 'อาจารย์ผู้สอน / ครูประจำชั้น (Teaching Faculty)',
     roleNameEn: 'Teacher / Instructor',
-    descriptionTh: 'จัดการเช็คชื่อในคาบ บันทึกคะแนน สั่งการบ้าน ประเมิน SDQ และส่งข้อความหานักเรียนในชั้น',
+    descriptionTh: 'จัดการเช็คชื่อในคาบ บันทึกคะแนน สั่งการบ้าน ประเมิน SDQ และสื่อสารกับนักเรียนในชั้น',
     permissions: {
       manageStudents: false,
       manageCourses: false,
       editGrades: true,
       recordAttendance: true,
-      manageTuition: false,
-      sendBroadcastLine: true,
       manageTimetable: false,
       manageSdq: true,
       viewInfirmary: true,
@@ -2805,8 +2550,6 @@ export const INITIAL_ROLE_PERMISSIONS: RolePermissionConfig[] = [
       manageCourses: false,
       editGrades: false,
       recordAttendance: false,
-      manageTuition: false,
-      sendBroadcastLine: false,
       manageTimetable: false,
       manageSdq: false,
       viewInfirmary: false,
@@ -2817,14 +2560,12 @@ export const INITIAL_ROLE_PERMISSIONS: RolePermissionConfig[] = [
     role: 'parent',
     roleNameTh: 'ผู้ปกครอง (Parent / Guardian)',
     roleNameEn: 'Parent / Legal Guardian',
-    descriptionTh: 'ติดตามเวลาเข้าแถวของบุตรหลาน ชำระค่าเทอมด้วย PromptPay ดูสมุดพกเกรด และรับแจ้งเตือนผ่าน LINE OA',
+    descriptionTh: 'ติดตามเวลาเข้าแถวของบุตรหลาน ดูสมุดพกเกรด ผลการเรียน และรับแจ้งเตือนผ่านแอป',
     permissions: {
       manageStudents: false,
       manageCourses: false,
       editGrades: false,
       recordAttendance: false,
-      manageTuition: false,
-      sendBroadcastLine: false,
       manageTimetable: false,
       manageSdq: false,
       viewInfirmary: false,

@@ -47,7 +47,6 @@ export async function saveSchoolPeriodTimes(
         throw new Error(`Could not save school period times: ${compatError.message}`);
       }
     }
-    return;
   }
 
   const { data: savedPeriods, error: loadError } = await client
@@ -169,7 +168,7 @@ export async function deleteStudentFromDb(schoolId: string, studentId: string): 
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase is not configured.');
 
-  const dependentTables = ['grades', 'attendance', 'period_attendance', 'invoices'] as const;
+  const dependentTables = ['grades', 'attendance', 'period_attendance'] as const;
   for (const table of dependentTables) {
     const { error: depErr } = await client
       .from(table)
@@ -190,21 +189,31 @@ export async function deleteStudentFromDb(schoolId: string, studentId: string): 
     console.warn('Could not unlink user_profiles for deleted student:', unlinkErr.message);
   }
 
-  const { data: schoolCourseRows } = await client
-    .from('courses')
-    .select('id, enrolled_student_ids')
-    .eq('school_id', schoolId);
-  if (Array.isArray(schoolCourseRows)) {
-    for (const row of schoolCourseRows) {
+  for (let offset = 0; ; offset += 1000) {
+    const { data: schoolCourseRows, error: courseLoadErr } = await client
+      .from('courses')
+      .select('id, enrolled_student_ids')
+      .eq('school_id', schoolId)
+      .order('id', { ascending: true })
+      .range(offset, offset + 999);
+    if (courseLoadErr) {
+      throw new Error(`Could not load courses for deleted student cleanup: ${courseLoadErr.message}`);
+    }
+    const page = schoolCourseRows || [];
+    for (const row of page) {
       const currentIds: string[] = Array.isArray(row.enrolled_student_ids) ? row.enrolled_student_ids : [];
       if (currentIds.includes(studentId)) {
-        await client
+        const { error: courseUpdateErr } = await client
           .from('courses')
           .update({ enrolled_student_ids: currentIds.filter((id) => id !== studentId) })
           .eq('school_id', schoolId)
           .eq('id', row.id);
+        if (courseUpdateErr) {
+          throw new Error(`Could not unlink deleted student from course: ${courseUpdateErr.message}`);
+        }
       }
     }
+    if (page.length < 1000) break;
   }
 
   const { error } = await client
@@ -322,38 +331,6 @@ export async function uploadSchoolAttachment(
     console.warn('[Storage] Attachment upload fallback triggered:', err);
     return null;
   }
-}
-
-export async function submitInvoiceSlipToDb(
-  schoolId: string,
-  invoiceId: string,
-  slipDataUrlOrUrl: string,
-  note: string,
-): Promise<string | null> {
-  const client = getSupabaseClient();
-  if (!client) return null;
-
-  const uploadedUrl = await uploadSchoolAttachment(schoolId, 'slips', slipDataUrlOrUrl);
-  const finalUrl = uploadedUrl || slipDataUrlOrUrl;
-
-  const { error } = await client.rpc('submit_invoice_slip', {
-    target_school_id: schoolId,
-    target_invoice_id: invoiceId,
-    target_slip_url: finalUrl,
-    target_note: note,
-  });
-  if (error) {
-    if (
-      error.code === 'PGRST202' ||
-      error.code === '42883' ||
-      /could not find the function|submit_invoice_slip/i.test(error.message)
-    ) {
-      console.warn('[Billing] submit_invoice_slip RPC not installed yet; kept locally:', error.message);
-      return uploadedUrl;
-    }
-    throw new Error(`ไม่สามารถส่งหลักฐานสลิปได้: ${error.message}`);
-  }
-  return finalUrl;
 }
 
 export async function persistAvatarChangeToSupabase(params: {

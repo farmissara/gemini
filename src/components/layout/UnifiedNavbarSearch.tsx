@@ -107,7 +107,6 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
           fullNameEn: '',
           email: '',
           avatarUrl: '',
-          lineConnected: false,
           role: currentRole,
           schoolId: activeSchool.id,
           studentRecordId: currentStudentRecordId,

@@ -46,7 +46,6 @@ import type {
   SystemConfig,
   Teacher,
   TimetableSlot,
-  TuitionInvoice,
   UserRole,
 } from '../../types';
 import type { SchoolPermissionsState } from '../../lib/schoolPermissions';
@@ -68,7 +67,6 @@ const PortfolioView = lazyNamed(() => import('../../views/PortfolioView'), 'Port
 const GradebookView = lazyNamed(() => import('../../views/GradebookView'), 'GradebookView');
 const StudentQualityDevelopmentBookView = lazyNamed(() => import('../../views/StudentQualityDevelopmentBookView'), 'StudentQualityDevelopmentBookView');
 const GradeLevelQualitativeSummaryView = lazyNamed(() => import('../../components/GradeLevelQualitativeSummaryView'), 'GradeLevelQualitativeSummaryView');
-const BillingView = lazyNamed(() => import('../../views/BillingView'), 'BillingView');
 const AnnouncementsView = lazyNamed(() => import('../../views/AnnouncementsView'), 'AnnouncementsView');
 const LmsClassroomView = lazyNamed(() => import('../../views/LmsClassroomView'), 'LmsClassroomView');
 const ParentPortalView = lazyNamed(() => import('../../views/ParentPortalView'), 'ParentPortalView');
@@ -103,7 +101,6 @@ export interface SchoolErpViewSwitchProps {
   activeSchool: School;
   schools: School[];
   setSchools: React.Dispatch<React.SetStateAction<School[]>>;
-  isDemoMode: boolean;
   shouldShowMobileView: boolean;
   lang: AppLanguage;
   systemConfig: SystemConfig;
@@ -120,8 +117,6 @@ export interface SchoolErpViewSwitchProps {
   viewGrades: GradeRecord[];
   viewAttendance: AttendanceRecord[];
   schoolAttendance: AttendanceRecord[];
-  schoolInvoices: TuitionInvoice[];
-  viewInvoices: TuitionInvoice[];
   schoolAnnouncements: Announcement[];
   viewAnnouncements: Announcement[];
   viewLessons: Lesson[];
@@ -221,7 +216,6 @@ export interface SchoolErpViewSwitchProps {
   onCopyCoursesToSchool: (newCourses: Course[]) => void;
   onQuickCheckIn: (studentId: string) => void;
   onRecordMilestoneActivity: (userId: string, kind: 'library_visit' | 'attendance', studentId?: string) => void;
-  onToggleLineSync: (studentId: string) => void;
   onAddStudent: (s: Student) => void;
   onAddStudents: (list: Student[]) => void;
   onUpdateStudent: (s: Student) => void;
@@ -294,14 +288,7 @@ export interface SchoolErpViewSwitchProps {
   onAddLeaveRequest: (req: LeaveRequest) => void;
   onUpdateLeaveStatus: (reqId: string, status: LeaveStatus, remarks?: string) => void;
   onUpdateOwnAvatar: (avatarUrl: string) => void;
-  onPayInvoice: (invoiceId: string, method?: TuitionInvoice['paymentMethod']) => void;
-  onAddInvoice: (newInvoice: TuitionInvoice) => void;
-  onSendPrivateAppReminder: (invoice: TuitionInvoice) => Promise<any>;
-  onApproveInvoiceSlip: (invoiceId: string) => void;
-  onRejectInvoiceSlip: (invoiceId: string, reason: string) => void;
-  onSubmitInvoiceSlip: (invoiceId: string, slipDataUrl: string, note: string) => void;
   onAddAnnouncement: (newAnn: Announcement) => void;
-  onBroadcastLine: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onCompleteLesson: (lessonId: string) => Promise<void>;
   onSaveLesson: (lesson: Lesson) => Promise<void>;
   onSubmitAssignment: (assignmentId: string) => Promise<void>;
@@ -321,7 +308,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
     activeSchool,
     schools,
     setSchools,
-    isDemoMode,
     shouldShowMobileView,
     lang,
     systemConfig,
@@ -337,8 +323,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
     viewGrades,
     viewAttendance,
     schoolAttendance,
-    schoolInvoices,
-    viewInvoices,
     schoolAnnouncements,
     viewAnnouncements,
     viewLessons,
@@ -457,7 +441,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   setSuperAdminConfigError(null);
                 }}
                 lang={lang}
-                isDemoMode={isDemoMode}
                 onViewSchool={props.onViewSchool}
                 onToggleSchoolStatus={props.onToggleSchoolStatus}
                 coordinationUnreadCount={coordinationUnreadCount}
@@ -501,7 +484,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                     setSuperAdminConfigError(null);
                   }}
                   lang={lang}
-                  isDemoMode={isDemoMode}
                   onViewSchool={props.onViewSchool}
                   onToggleSchoolStatus={props.onToggleSchoolStatus}
                   coordinationUnreadCount={coordinationUnreadCount}
@@ -563,7 +545,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   attendance={viewAttendance}
                   grades={viewGrades}
                   playerScores={viewPlayerScores}
-                  invoices={viewInvoices}
                   announcements={viewAnnouncements}
                   systemConfig={systemConfig}
                   school={activeSchool}
@@ -659,8 +640,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   lang={lang}
                   onSelectStudent={props.onSelectStudentForProfile}
                   onOpenReportCard={props.onSelectStudentForReport}
-                  onToggleLineSync={currentRole === 'teacher' ? () => undefined : props.onToggleLineSync}
-                  onAddStudent={currentRole === 'teacher' ? () => undefined : props.onAddStudent}
+                  onAddStudent={currentRole === 'teacher' ? undefined : props.onAddStudent}
                   onAddStudents={currentRole === 'teacher' ? undefined : props.onAddStudents}
                   onUpdateStudent={currentRole === 'teacher' ? undefined : props.onUpdateStudent}
                   onUpdateRoomOptions={currentRole === 'teacher' ? undefined : (roomOptions) => props.onUpdateSchool({ roomOptions })}
@@ -704,9 +684,9 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   lang={lang}
                   currentRole={currentRole}
                   schoolId={activeSchool.id}
-                  onAddTeacher={currentRole === 'teacher' ? () => undefined : props.onAddTeacher}
-                  onUpdateTeacher={currentRole === 'teacher' ? () => undefined : props.onUpdateTeacher}
-                  onDeleteTeacher={currentRole === 'teacher' ? () => undefined : props.onDeleteTeacher}
+                  onAddTeacher={currentRole === 'teacher' ? undefined : props.onAddTeacher}
+                  onUpdateTeacher={currentRole === 'teacher' ? undefined : props.onUpdateTeacher}
+                  onDeleteTeacher={currentRole === 'teacher' ? undefined : props.onDeleteTeacher}
                   onPurgeSampleTeachers={currentRole === 'teacher' ? undefined : props.onPurgeSampleTeachers}
                   staffPositionOptions={systemConfig.staffPositionOptions}
                   onUpdateStaffPositionOptions={currentRole === 'teacher' ? undefined : (options) => props.onUpdateSchool({ staffPositionOptions: options })}
@@ -725,11 +705,11 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   currentRole={currentRole}
                   currentUser={currentUser}
                   schoolId={activeSchool.id}
-                  onAddCourse={currentRole === 'teacher' ? () => undefined : props.onAddCourse}
+                  onAddCourse={currentRole === 'teacher' ? undefined : props.onAddCourse}
                   onUpdateCourse={currentRole === 'teacher' ? undefined : props.onUpdateCourse}
                   onDeleteCourse={currentRole === 'teacher' ? undefined : props.onDeleteCourse}
                   onDeleteCourses={currentRole === 'teacher' ? undefined : props.onDeleteCourses}
-                  onEnrollStudent={currentRole === 'teacher' ? () => undefined : props.onEnrollStudent}
+                  onEnrollStudent={currentRole === 'teacher' ? undefined : props.onEnrollStudent}
                   onEnrollStudentsBatch={currentRole === 'teacher' ? undefined : props.onEnrollStudentsBatch}
                   onUnenrollStudent={currentRole === 'teacher' ? undefined : props.onUnenrollStudent}
                   onUnenrollStudentsBatch={currentRole === 'teacher' ? undefined : props.onUnenrollStudentsBatch}
@@ -918,12 +898,12 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   assignments={viewAssignments}
                   teachers={viewTeachers}
                   students={viewStudents}
-                  onAddSlot={currentRole === 'teacher' ? async () => undefined : props.onAddTimetableSlot}
+                  onAddSlot={currentRole === 'teacher' ? undefined : props.onAddTimetableSlot}
                   onUpdateSlot={currentRole === 'teacher' ? undefined : props.onUpdateTimetableSlot}
-                  onDeleteSlot={currentRole === 'teacher' ? async () => undefined : props.onDeleteTimetableSlot}
+                  onDeleteSlot={currentRole === 'teacher' ? undefined : props.onDeleteTimetableSlot}
                   onImportSlots={currentRole === 'teacher' ? undefined : props.onImportTimetableSlots}
                   schoolPeriods={schoolPeriods}
-                  onSaveSchoolPeriods={currentRole === 'teacher' ? async () => undefined : props.onSaveSchoolPeriods}
+                  onSaveSchoolPeriods={currentRole === 'teacher' ? undefined : props.onSaveSchoolPeriods}
                   lang={lang}
                   currentRole={currentRole}
                   currentUser={currentUser}
@@ -1009,7 +989,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                     setCurrentTab('system_settings');
                   }}
                   onLoadAttendanceRange={props.onLoadAttendanceRange}
-                  lineEnabled={activeFeatureFlags?.lineEnabled !== false && systemConfig.lineMessagingConfigured !== false}
                 />
               )}
 
@@ -1048,7 +1027,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   onUpdateCampusGates={['admin', 'super_admin'].includes(currentRole) ? props.onUpdateCampusGates : undefined}
                   onSaveCampusGates={['admin', 'super_admin'].includes(currentRole) ? props.onSaveCampusGates : undefined}
                   onUpdateSchoolCoordinates={['admin', 'super_admin'].includes(currentRole) ? props.onUpdateSchoolCoordinates : undefined}
-                  isDemoMode={isDemoMode}
                 />
               )}
 
@@ -1141,7 +1119,7 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   homeworkSubmissions={viewHomeworkSubmissions}
                   assignments={viewAssignments}
                   onUpdateStudent={currentRole === 'teacher' ? undefined : props.onUpdateStudent}
-                  onAddStudent={currentRole === 'teacher' ? () => undefined : props.onAddStudent}
+                  onAddStudent={currentRole === 'teacher' ? undefined : props.onAddStudent}
                   onDeleteStudent={currentRole === 'teacher' ? undefined : props.onDeleteStudent}
                   onDeleteGrade={props.onDeleteGrade}
                   onPracticeInAi={
@@ -1227,28 +1205,11 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                 />
               )}
 
-              {currentTab === 'billing' && ['super_admin', 'admin'].includes(currentRole) && (
-                <BillingView
-                  students={viewStudents}
-                  invoices={schoolInvoices}
-                  systemConfig={systemConfig}
-                  schoolId={activeSchool.id}
-                  onPayInvoice={props.onPayInvoice}
-                  onAddInvoice={props.onAddInvoice}
-                  onSendPrivateAppReminder={props.onSendPrivateAppReminder}
-                  currentRole={currentRole}
-                  onOpenExamPaymentSettings={props.onOpenExamPaymentSettings}
-                  onApproveSlip={props.onApproveInvoiceSlip}
-                  onRejectSlip={props.onRejectInvoiceSlip}
-                />
-              )}
-
               {currentTab === 'announcements' && ['super_admin', 'admin', 'teacher'].includes(currentRole) && (
                 <AnnouncementsView
                   announcements={schoolAnnouncements}
                   systemConfig={systemConfig}
                   onAddAnnouncement={props.onAddAnnouncement}
-                  onBroadcastLine={props.onBroadcastLine}
                   schoolId={activeSchool.id}
                   currentUserName={currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email}
                   currentUserRoleLabel={
@@ -1298,14 +1259,12 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
               <ParentPortalView
                 students={viewStudents}
                 attendance={viewAttendance}
-                invoices={viewInvoices}
                 grades={viewGrades}
                 courses={viewCourses}
                 systemConfig={systemConfig}
                 leaveRequests={viewLeaveRequests}
                 lang={lang}
                 schoolPermissions={schoolPermissions}
-                onPayInvoice={props.onPayInvoice}
                 onOpenReportCard={props.onSelectStudentForReport}
                 onAddLeaveRequest={props.onAddLeaveRequest}
                 schoolId={activeSchool.id}
@@ -1313,7 +1272,6 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                 periodAttendance={viewPeriodAttendance}
                 homeworkSubmissions={viewHomeworkSubmissions}
                 infirmaryVisits={viewInfirmaryVisits}
-                onSubmitInvoiceSlip={props.onSubmitInvoiceSlip}
               />
             ) : (
               <div className="saas-card saas-card-body max-w-lg mx-auto my-8 text-center space-y-3">

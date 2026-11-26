@@ -1,4 +1,4 @@
-import type { CampusGateGeofence, PortfolioItem, TuitionInvoice } from '../../types';
+import type { CampusGateGeofence, PortfolioItem } from '../../types';
 
 export type PendingAvatarCache = {
   self?: string;
@@ -25,7 +25,6 @@ export const STORAGE_KEYS = {
   coursesCachePrefix: 'eduverse_courses_',
   gradesCachePrefix: 'eduverse_grades_',
   timetableSlotsCachePrefix: 'eduverse_timetable_slots_',
-  invoiceSlipsPrefix: 'eduverse_invoice_slips_v1_',
   portfolioItemsPrefix: 'eduverse_portfolio_items_',
 } as const;
 
@@ -146,40 +145,6 @@ export function writeCampusGatesCache(schoolId: string, gates: CampusGateGeofenc
     safeWriteJson(key, gates);
   } else {
     safeRemoveStorageItem(key);
-  }
-}
-
-export function readInvoiceSlipsCache(schoolId: string): Record<string, Partial<TuitionInvoice>> {
-  if (!schoolId) return {};
-  const parsed = safeReadJson<unknown>(`${STORAGE_KEYS.invoiceSlipsPrefix}${schoolId}`, {});
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-    ? (parsed as Record<string, Partial<TuitionInvoice>>)
-    : {};
-}
-
-export function updateInvoiceSlipCache(
-  schoolId: string,
-  invoiceId: string,
-  patch: Partial<TuitionInvoice>,
-): void {
-  if (!schoolId || !invoiceId) return;
-  const map = readInvoiceSlipsCache(schoolId);
-  map[invoiceId] = { ...(map[invoiceId] || {}), ...patch };
-  safeWriteJson(`${STORAGE_KEYS.invoiceSlipsPrefix}${schoolId}`, map);
-}
-
-export function removeInvoiceSlipsFromCache(schoolId: string, invoiceIds: Iterable<string>): void {
-  if (!schoolId) return;
-  const map = readInvoiceSlipsCache(schoolId);
-  let changed = false;
-  for (const invId of invoiceIds) {
-    if (invId in map) {
-      delete map[invId];
-      changed = true;
-    }
-  }
-  if (changed) {
-    safeWriteJson(`${STORAGE_KEYS.invoiceSlipsPrefix}${schoolId}`, map);
   }
 }
 

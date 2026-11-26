@@ -6,7 +6,6 @@ import {
   Minus, 
   HeartHandshake, 
   User, 
-  Send, 
   Award, 
   Sparkles, 
   Search, 
@@ -93,7 +92,6 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   const [recordCategory, setRecordCategory] = useState<string>(meritPresets[0]?.label || '');
   const [recordPoints, setRecordPoints] = useState<number>(meritPresets[0]?.points || 10);
   const [recordNotes, setRecordNotes] = useState<string>('');
-  const [notifyParentLine, setNotifyParentLine] = useState<boolean>(true);
 
   // SDQ Form State
   const [sdqStudentId, setSdqStudentId] = useState<string>(students[0]?.id || '');
@@ -154,7 +152,6 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       category: recordCategory,
       notes: recordNotes || (recordType === 'merit' ? 'บันทึกคะแนนความประพฤติเชิงบวก' : 'ตัดคะแนนความประพฤติ'),
       recordedBy: currentUserName?.trim() || (currentRole === 'teacher' ? 'ครูผู้สอน / ครูที่ปรึกษา' : 'ฝ่ายกิจการนักเรียน'),
-      lineNotified: notifyParentLine
     };
 
     onAddBehaviorRecord(newRecord);
@@ -489,13 +486,13 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
             <div className="bg-[var(--color-card)] p-3 rounded-xl border border-[var(--color-border)] shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-[var(--color-text-muted)]">{lang === 'th' ? 'แจ้งเตือน LINE' : 'LINE Alerts'}</span>
+                <span className="text-[11px] text-[var(--color-text-muted)]">{lang === 'th' ? 'คัดกรอง SDQ แล้ว' : 'SDQ Screened'}</span>
                 <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200">
-                  <Send className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                 </span>
               </div>
               <p className="text-lg font-bold text-[var(--color-text-title)] mt-1">
-                {records.filter((r) => r.lineNotified).length} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">ครั้ง</span>
+                {uniqueSdqStudentCount} <span className="text-[10px] font-normal text-[var(--color-text-muted)]">คน ({sdqCoveragePct}%)</span>
               </p>
             </div>
           </div>
@@ -649,11 +646,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                     {rec.notes && <p className="text-[10px] text-[var(--color-text-muted)] italic">"{rec.notes}"</p>}
                     <div className="flex items-center justify-between text-[9px] text-[var(--color-text-muted)] pt-1 border-t border-[var(--color-border)]">
                       <span>{rec.date}</span>
-                      {rec.lineNotified && (
-                        <span className="text-emerald-700 dark:text-emerald-300 flex items-center gap-0.5 font-semibold">
-                          <CheckCircle2 className="w-2.5 h-2.5" /> LINE แล้ว
-                        </span>
-                      )}
+                      <span>{rec.recordedBy}</span>
                     </div>
                   </div>
                 )} />
@@ -1206,20 +1199,6 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   onChange={(e) => setRecordNotes(e.target.value)}
                   placeholder="เช่น บันทึกเหตุการณ์ สถานที่ หรือพยาน..."
                   className="w-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] rounded-xl p-2.5 text-[var(--color-text-title)]"
-                />
-              </div>
-
-              {/* LINE Notification Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                <div className="flex items-center gap-2">
-                  <Send className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                  <span className="text-[var(--color-text-title)] font-semibold">ส่งแจ้งเตือนเข้า LINE ผู้ปกครองอัตโนมัติ</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notifyParentLine}
-                  onChange={(e) => setNotifyParentLine(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-600 rounded"
                 />
               </div>
 

@@ -176,10 +176,6 @@ export async function loadSchoolFeatureFlagsFromDb(
           : typeof rawFlags.allowStudentsAi === 'boolean'
             ? rawFlags.allowStudentsAi
             : basePreset.allowStudentsAi,
-      lineEnabled:
-        typeof rawFlags.lineEnabled === 'boolean'
-          ? rawFlags.lineEnabled
-          : basePreset.lineEnabled,
       autoDeleteSelfiesAfterCheckout:
         typeof rawFlags.autoDeleteSelfiesAfterCheckout === 'boolean'
           ? rawFlags.autoDeleteSelfiesAfterCheckout
@@ -205,7 +201,6 @@ export async function saveSchoolFeatureFlagsToDb(
   const normalized: SchoolFeatureFlags = {
     ...flags,
     tier: normalizedTier,
-    lineEnabled: flags.lineEnabled !== false,
     autoDeleteSelfiesAfterCheckout: flags.autoDeleteSelfiesAfterCheckout !== false,
     selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(
       flags.selfieRetentionAfterCheckoutMinutes

@@ -20,7 +20,6 @@ const previewSchool: School = {
   teachersCount: 1,
   academicYear: '2569 (2026)',
   currentSemester: '2',
-  lineOaId: '',
   createdAt: '2026-01-01',
   status: 'active',
 };
@@ -33,9 +32,6 @@ const previewSystemConfig: SystemConfig = {
   semesterOptions: ['1', '2'],
   gradingSystem: 'thai',
   staffPositionOptions: [],
-  lineOaAddFriendUrl: '',
-  lineChannelId: '',
-  lineMessagingConfigured: false,
   resendApiKeyConfigured: false,
   resendFromEmail: '',
   supabaseConnected: false,
@@ -68,8 +64,6 @@ const previewStudents: Student[] = [
   guardianRelation: 'ผู้ปกครอง',
   guardianPhone: '',
   guardianEmail: '',
-  lineLinked: false,
-  lineNotifyEnabled: false,
   enrolledDate: '2024-05-01',
 }));
 

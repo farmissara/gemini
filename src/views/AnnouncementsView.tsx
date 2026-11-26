@@ -33,7 +33,6 @@ interface AnnouncementsViewProps {
   announcements: Announcement[];
   systemConfig: SystemConfig;
   onAddAnnouncement: (announcement: Announcement) => void;
-  onBroadcastLine: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onConsentPublished?: (title: string) => void;
   currentUserName?: string;
   currentUserRoleLabel?: string;
@@ -44,7 +43,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   announcements,
   systemConfig,
   onAddAnnouncement,
-  onBroadcastLine,
   onConsentPublished,
   currentUserName,
   currentUserRoleLabel,
@@ -74,8 +72,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     authorRole: currentUserRoleLabel?.trim() || 'ผู้ดูแลระบบ',
   });
 
-  const isLineEnabled = systemConfig.lineMessagingConfigured !== false;
-
   const duplicateAnnReasons = showComposeModal && formData.title.trim()
     ? getAnnouncementDuplicateReasons({ title: formData.title, targetAudience: formData.targetAudience }, announcements)
     : [];
@@ -95,7 +91,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       author: formData.author,
       authorRole: formData.authorRole,
       pinned: formData.pinned,
-      lineBroadcastSent: false,
       resendEmailSent: false,
     };
 
@@ -107,23 +102,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       title: 'เผยแพร่ประกาศแล้ว',
       message: `บันทึกประกาศ "${newAnn.title}" บนกระดานข่าวสารโรงเรียนแล้ว`,
     });
-  };
-
-  const handleManualLineBroadcast = async (id: string, title: string) => {
-    if (!isLineEnabled) return;
-    const result = await onBroadcastLine(id);
-    if (result && typeof result === 'object' && 'ok' in result) {
-      emitAppToast({
-        tone: result.ok ? 'success' : 'error',
-        title: result.ok ? `ส่ง LINE OA: ${title}` : 'ไม่สามารถส่งแจ้งเตือน LINE OA ได้',
-        message: result.message,
-      });
-    } else {
-      emitAppToast({
-        tone: 'info',
-        message: `ระบบบันทึกการส่งแจ้งเตือนสำหรับ "${title}" (ตั้งค่า LINE OA ได้ที่หน้าตั้งค่าระบบ)`,
-      });
-    }
   };
 
   const filteredAnnouncements = announcements.filter((a) => {
@@ -264,34 +242,11 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {isLineEnabled && (
-                  <StatusBadge
-                    size="xs"
-                    status={ann.lineBroadcastSent ? 'complete' : 'neutral'}
-                    label={ann.lineBroadcastSent ? 'ส่ง LINE OA แล้ว' : 'ยังไม่ส่ง LINE'}
-                  />
-                )}
-
                 {ann.resendEmailSent && (
                   <StatusBadge
                     size="xs"
                     status="info"
                     label="ส่งอีเมลแล้ว"
-                  />
-                )}
-
-                {isLineEnabled && !ann.lineBroadcastSent && (
-                  <TableActionMenu
-                    ariaLabel={`จัดการประกาศ ${ann.title}`}
-                    items={[
-                      {
-                        id: 'send-line',
-                        label: 'ส่งแจ้งเตือน LINE OA',
-                        icon: <Send className="w-3.5 h-3.5" />,
-                        variant: 'success',
-                        onClick: () => void handleManualLineBroadcast(ann.id, ann.title),
-                      },
-                    ]}
                   />
                 )}
               </div>
@@ -308,7 +263,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
                 <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
-                {isLineEnabled ? 'Publish School Announcement & LINE Push' : 'เผยแพร่ประกาศโรงเรียน'}
+                <span>เผยแพร่ประกาศโรงเรียน</span>
               </h3>
               <button
                 onClick={() => setShowComposeModal(false)}

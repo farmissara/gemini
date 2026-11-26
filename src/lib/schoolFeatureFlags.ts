@@ -32,7 +32,7 @@ export const PACKAGE_CATEGORY_META: {
 }[] = [
   { id: 'academics', labelTh: 'งานวิชาการ & ทะเบียนหลัก', labelEn: 'Core Academics & SIS' },
   { id: 'student_care', labelTh: 'เช็คชื่อ กิจการ & สุขภาพ', labelEn: 'Attendance, Care & Health' },
-  { id: 'finance_portal', labelTh: 'การเงิน แฟ้มผลงาน & พอร์ทัล', labelEn: 'Finance, Portfolio & Portal' },
+  { id: 'finance_portal', labelTh: 'แฟ้มผลงาน & พอร์ทัลผู้ปกครอง', labelEn: 'Portfolio & Portal' },
   { id: 'learning_games', labelTh: 'LMS คลังข้อสอบ เกม & แล็บ 3D', labelEn: 'LMS, Exams, Games & Labs' },
   { id: 'ai_suite', labelTh: 'ชุดปัญญาประดิษฐ์ (AI Suite)', labelEn: 'AI Intelligence Suite' },
 ];
@@ -157,16 +157,7 @@ export const FEATURE_FLAG_LABELS: FeatureFlagDescriptor[] = [
     tabIds: ['infirmary'],
   },
 
-  // Category 3: Finance, Portfolio & Parent Portal (Level 2)
-  {
-    key: 'billing',
-    category: 'finance_portal',
-    minLevel: 'level_2',
-    labelTh: 'การเงิน ค่าเทอม & ตรวจสลิป PromptPay',
-    labelEn: 'Tuition & Billing',
-    descTh: 'ออกใบแจ้งหนี้ รับชำระ PromptPay และอนุมัติใบเสร็จ',
-    tabIds: ['billing'],
-  },
+  // Category 3: Portfolio & Parent Portal (Level 2)
   {
     key: 'portfolio',
     category: 'finance_portal',
@@ -182,7 +173,7 @@ export const FEATURE_FLAG_LABELS: FeatureFlagDescriptor[] = [
     minLevel: 'level_2',
     labelTh: 'พอร์ทัลผู้ปกครอง (Parent Portal)',
     labelEn: 'Parent Portal Mode',
-    descTh: 'หน้าติดตามเวลาเรียน เกรด การลา และชำระค่าเทอมสำหรับผู้ปกครอง',
+    descTh: 'หน้าติดตามเวลาเรียน เกรด การลา และประกาศสำหรับผู้ปกครอง',
     tabIds: [],
     programModes: ['parent_portal'],
   },
@@ -318,7 +309,6 @@ const LEVEL_1_FEATURES: Record<SchoolFeatureFlagKey, boolean> = {
   mobile_checkin: false,
   behavior_sdq: false,
   infirmary: false,
-  billing: false,
   portfolio: false,
   parent_portal: false,
   lms_classroom: false,
@@ -341,7 +331,6 @@ const LEVEL_2_FEATURES: Record<SchoolFeatureFlagKey, boolean> = {
   mobile_checkin: true,
   behavior_sdq: true,
   infirmary: true,
-  billing: true,
   portfolio: true,
   parent_portal: true,
 };
@@ -386,9 +375,9 @@ export const DEFAULT_PACKAGE_CATALOG: PackageLevelConfig[] = [
     levelNumber: 2,
     nameTh: 'Level 2 · Standard Campus',
     nameEn: 'Level 2 · Standard Campus',
-    audienceTh: 'สำหรับโรงเรียนที่ต้องการระบบเช็คชื่อ ดูแลช่วยเหลือ & การเงิน',
-    audienceEn: 'For growing schools adding care, GPS check-in & billing',
-    descriptionTh: 'เพิ่มระบบเช็คชื่อ QR/GPS มือถือ ใบลา ห้องพยาบาล SDQ การเงิน PromptPay แฟ้มผลงาน และพอร์ทัลผู้ปกครอง',
+    audienceTh: 'สำหรับโรงเรียนที่ต้องการระบบเช็คชื่อ ดูแลช่วยเหลือ & พอร์ทัลผู้ปกครอง',
+    audienceEn: 'For growing schools adding care, GPS check-in & parent portal',
+    descriptionTh: 'เพิ่มระบบเช็คชื่อ QR/GPS มือถือ ใบลา ห้องพยาบาล SDQ แฟ้มผลงาน และพอร์ทัลผู้ปกครอง',
     yearlyPriceThb: 11900,
     monthlyPriceThb: 1190,
     maxStudents: 1500,
@@ -483,7 +472,6 @@ export function buildFlagsFromLevel(
   tier: SchoolTier,
   catalog: PackageLevelConfig[] = getStoredPackageCatalog(),
   allowStudentsAi?: boolean,
-  lineEnabled: boolean = true,
   autoDeleteSelfiesAfterCheckout: boolean = true,
   selfieRetentionAfterCheckoutMinutes: number = DEFAULT_SELFIE_RETENTION_MINUTES
 ): SchoolFeatureFlags {
@@ -494,20 +482,19 @@ export function buildFlagsFromLevel(
     ...pkg.features,
     tier: levelId,
     allowStudentsAi: allowStudentsAi !== undefined ? allowStudentsAi : anyAiEnabled,
-    lineEnabled,
     autoDeleteSelfiesAfterCheckout,
     selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(selfieRetentionAfterCheckoutMinutes),
   };
 }
 
 export const TIER_PRESETS: Record<SchoolTier, SchoolFeatureFlags> = {
-  level_1: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
-  level_2: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
-  level_3: { ...LEVEL_3_FEATURES, tier: 'level_3', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
-  level_4: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
-  small: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
-  standard: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
-  enterprise: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, lineEnabled: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  level_1: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  level_2: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  level_3: { ...LEVEL_3_FEATURES, tier: 'level_3', allowStudentsAi: false, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  level_4: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  small: { ...LEVEL_1_FEATURES, tier: 'level_1', allowStudentsAi: false, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  standard: { ...LEVEL_2_FEATURES, tier: 'level_2', allowStudentsAi: false, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
+  enterprise: { ...LEVEL_4_FEATURES, tier: 'level_4', allowStudentsAi: true, autoDeleteSelfiesAfterCheckout: true, selfieRetentionAfterCheckoutMinutes: DEFAULT_SELFIE_RETENTION_MINUTES },
 };
 
 export const getSchoolFeatureFlags = (
@@ -531,10 +518,6 @@ export const getSchoolFeatureFlags = (
         typeof parsed.allowStudentsAi === 'boolean'
           ? parsed.allowStudentsAi
           : tierPreset.allowStudentsAi,
-      lineEnabled:
-        typeof parsed.lineEnabled === 'boolean'
-          ? parsed.lineEnabled
-          : tierPreset.lineEnabled,
       autoDeleteSelfiesAfterCheckout:
         typeof parsed.autoDeleteSelfiesAfterCheckout === 'boolean'
           ? parsed.autoDeleteSelfiesAfterCheckout
@@ -555,7 +538,6 @@ export const saveSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFla
     const normalized: SchoolFeatureFlags = {
       ...flags,
       tier: normalizeSchoolTier(flags.tier),
-      lineEnabled: flags.lineEnabled !== false,
       autoDeleteSelfiesAfterCheckout: flags.autoDeleteSelfiesAfterCheckout !== false,
       selfieRetentionAfterCheckoutMinutes: normalizeSelfieRetentionMinutes(
         flags.selfieRetentionAfterCheckoutMinutes
@@ -567,7 +549,7 @@ export const saveSchoolFeatureFlags = (schoolId: string, flags: SchoolFeatureFla
   }
 };
 
-// Tabs that are always accessible to keep navigation, package billing, and Super Admin controls working
+// Tabs that are always accessible to keep navigation and Super Admin controls working
 const PROTECTED_SYSTEM_TABS = new Set<string>([
   'dashboard',
   'system_settings',
@@ -584,7 +566,6 @@ const PROTECTED_SYSTEM_TABS = new Set<string>([
   'admin_superadmin_desk',
   'school_gps',
   'school_permissions',
-  'admin_line_control',
   'admin_student_accounts',
   'admin_saas_audit',
   'realtime_daily',

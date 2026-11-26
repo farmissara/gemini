@@ -37,7 +37,6 @@ import type {
   SystemConfig,
   Teacher,
   TimetableSlot,
-  TuitionInvoice,
   UserRole,
 } from '../../types';
 import {
@@ -95,12 +94,10 @@ import {
   saveSchoolPeriodTimes,
   saveTeachersToDb,
   saveTimetableSlotsToDb,
-  submitInvoiceSlipToDb,
   syncDataToSupabase,
   updateCourseEnrollmentInDb,
   updateLeaveRequestStatusInDb,
   uploadSchoolAttachment,
-  getSupabaseClient,
 } from '../../lib/supabase';
 import {
   cleanupStudentCampusData,
@@ -145,7 +142,7 @@ import { sendPrivateParentNotification } from '../../lib/parentNotifications';
 import { dispatchGradeAlert } from '../../lib/gradeNotifications';
 import { getLocalDateString } from '../../lib/date';
 import { syncPublicHolidaysFromApi } from '../../lib/thaiHolidays';
-import { enqueueOfflineAction, type OfflineQueueItem } from '../../lib/offlineSync';
+import { enqueueOfflineAction, isOnlineNow, type OfflineQueueItem } from '../../lib/offlineSync';
 import { appendAuditLog } from '../../lib/auditLog';
 import {
   loadPackageCatalog,
@@ -153,11 +150,7 @@ import {
   saveSchoolFeatureFlagsToDb,
 } from '../../lib/schoolPackageStore';
 import { getSchoolFeatureFlags } from '../../lib/schoolFeatureFlags';
-import {
-  getBangkokClockParts,
-  normalizeSelfieRetentionMinutes,
-  selectDueAttendanceSelfies,
-} from '../../lib/selfieCleanupLogic';
+import { normalizeSelfieRetentionMinutes } from '../../lib/selfieCleanupLogic';
 import { cleanupDueAttendanceSelfiesOnServer } from '../../services/supabase/selfieCleanupClient';
 import { useSchoolPermissions } from '../../lib/schoolPermissions';
 import { loadSchoolLessons, saveSchoolLessonCompletionToDb, saveSchoolLessonToDb } from '../../lib/lmsPersistence';
@@ -175,13 +168,10 @@ import {
   appendDeletedIdsCache,
   readCampusGatesCache,
   readDeletedIdsCache,
-  readInvoiceSlipsCache,
   readPendingAvatarCache,
   readPortfolioItemsCache,
-  removeInvoiceSlipsFromCache,
   safeReadJson,
   safeWriteJson,
-  updateInvoiceSlipCache,
   writeCampusGatesCache,
   writePendingAvatarCache,
   writePortfolioItemsCache,
@@ -194,7 +184,6 @@ type CoreSyncRows = {
   courses: Course[];
   grades: GradeRecord[];
   attendance: AttendanceRecord[];
-  invoices: TuitionInvoice[];
   announcements: Announcement[];
 };
 
@@ -223,7 +212,6 @@ const EMPTY_SCHOOL: School = {
   teachersCount: 0,
   academicYear: '',
   currentSemester: '',
-  lineOaId: '',
   createdAt: '',
   status: 'pending',
 };
@@ -264,8 +252,6 @@ export function useSchoolDataManager({
   hasDeepLink,
   navCallbacksRef,
 }: UseSchoolDataManagerOptions) {
-  const isDemoMode = false;
-
   // Multi-School & Auth State
   const [schools, setSchools] = useState<School[]>([]);
   const [activeSchool, setActiveSchool] = useState<School>(EMPTY_SCHOOL);
@@ -311,7 +297,6 @@ export function useSchoolDataManager({
   const [courses, setCourses] = useState<Course[]>([]);
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [invoices, setInvoices] = useState<TuitionInvoice[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [systemConfig, setSystemConfig] = useState<SystemConfig>(INITIAL_SYSTEM_CONFIG);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -355,7 +340,7 @@ export function useSchoolDataManager({
 
   // Role Permission Config Loading
   useEffect(() => {
-    if (!currentUser || isDemoMode || currentRole === 'super_admin' || !operationalRoleReady) return;
+    if (!currentUser || currentRole === 'super_admin' || !operationalRoleReady) return;
     let active = true;
     setRolePermissions([]);
     fetchMyRolePermissionConfig(currentRole)
@@ -370,13 +355,12 @@ export function useSchoolDataManager({
         if (active) setRolePermissions([]);
       });
     return () => { active = false; };
-  }, [currentUser?.id, currentRole, isDemoMode, operationalRoleReady]);
+  }, [currentUser?.id, currentRole, operationalRoleReady]);
 
   // Operational Role Restore
   useEffect(() => {
     if (
       !currentUser ||
-      isDemoMode ||
       (authenticatedRole !== 'admin' && authenticatedRole !== 'teacher')
     ) {
       setOperationalRoleReady(true);
@@ -415,11 +399,11 @@ export function useSchoolDataManager({
       });
 
     return () => { active = false; };
-  }, [currentUser?.id, authenticatedRole, isDemoMode]);
+  }, [currentUser?.id, authenticatedRole]);
 
   // Super Admin Settings
   useEffect(() => {
-    if (currentUser?.role !== 'super_admin' || isDemoMode) return;
+    if (currentUser?.role !== 'super_admin') return;
     let active = true;
     setSuperAdminConfigError(null);
     fetchSuperAdminSettings()
@@ -445,7 +429,7 @@ export function useSchoolDataManager({
     return () => {
       active = false;
     };
-  }, [currentUser?.id, currentUser?.role, isDemoMode]);
+  }, [currentUser?.id, currentUser?.role]);
 
   // Central Exam State
   useEffect(() => {
@@ -455,21 +439,19 @@ export function useSchoolDataManager({
     const loadCentralExamState = async () => {
       try {
         let [packs, entitlements, persistedSchoolQs] = await Promise.all([
-          fetchCentralExamPacks(isDemoMode),
-          fetchSchoolExamEntitlements(activeSchool.id, isDemoMode),
-          fetchSchoolPersistedQuestions(activeSchool.id, isDemoMode),
+          fetchCentralExamPacks(),
+          fetchSchoolExamEntitlements(activeSchool.id),
+          fetchSchoolPersistedQuestions(activeSchool.id),
         ]);
         if (!active) return;
 
         if (
-          !isDemoMode &&
           currentRole === 'super_admin' &&
           countMissingBuiltInPacks(packs) > 0 &&
           (packs.length === 0 || !hasBuiltInSeedCompleted())
         ) {
           try {
             const synced = await syncMissingDefaultCentralExamPacksToSupabase(packs, {
-              isDemoMode,
               silent: true,
             });
             if (!active) return;
@@ -509,15 +491,14 @@ export function useSchoolDataManager({
       active = false;
       window.removeEventListener(CENTRAL_EXAMS_UPDATED_EVENT, handleUpdated);
     };
-  }, [currentUser?.id, currentRole, activeSchool.id, isDemoMode]);
+  }, [currentUser?.id, currentRole, activeSchool.id]);
 
   const getCurrentSchoolSyncRows = (): CoreSyncRows => ({
     students: students.filter((item) => item.schoolId === activeSchool.id),
-    teachers: teachers.filter((item) => belongsToSchool(item, activeSchool.id, isDemoMode)),
+    teachers: teachers.filter((item) => belongsToSchool(item, activeSchool.id)),
     courses: courses.filter((item) => item.schoolId === activeSchool.id),
     grades: grades.filter((item) => item.schoolId === activeSchool.id),
     attendance: attendance.filter((item) => item.schoolId === activeSchool.id),
-    invoices: invoices.filter((item) => item.schoolId === activeSchool.id),
     announcements: announcements.filter((item) => item.schoolId === activeSchool.id),
   });
 
@@ -616,7 +597,6 @@ export function useSchoolDataManager({
     if (school) {
       setActiveSchool(school);
       setLoadedSchoolId(null);
-      const localFlags = getSchoolFeatureFlags(school.id, school.schoolTier || 'enterprise');
       setSystemConfig((prev) => ({
         ...prev,
         schoolNameEn: school.nameEn,
@@ -626,7 +606,6 @@ export function useSchoolDataManager({
         semesterOptions: school.semesterOptions || DEFAULT_SEMESTER_OPTIONS,
         gradingSystem: school.gradingSystem || 'thai',
         staffPositionOptions: school.staffPositionOptions || DEFAULT_STAFF_POSITION_OPTIONS,
-        lineMessagingConfigured: localFlags.lineEnabled !== false,
       }));
     }
     setStudents([]);
@@ -634,7 +613,6 @@ export function useSchoolDataManager({
     setCourses([]);
     setGrades([]);
     setAttendance([]);
-    setInvoices([]);
     setAnnouncements([]);
     setLessons([]);
     setAssignments([]);
@@ -681,7 +659,7 @@ export function useSchoolDataManager({
 
   // Load main school data
   useEffect(() => {
-    if (!currentUser || isDemoMode || !operationalRoleReady) return;
+    if (!currentUser || !operationalRoleReady) return;
     if (currentUser.role === 'super_admin' && !isSuperAdminSchoolView) {
       setDataLoadError(null);
       setIsDataReady(true);
@@ -715,7 +693,6 @@ export function useSchoolDataManager({
         let resolvedGrades = data.grades;
         let deletedStudentGrades: GradeRecord[] = [];
         let resolvedAttendance = data.attendance;
-        let resolvedInvoices = data.invoices;
         let resolvedTimetableSlots = (data.timetableSlots || []).map((slot) => ({
           ...slot,
           academicYear: slot.academicYear || activeSchool.academicYear || systemConfig.academicYear,
@@ -732,7 +709,6 @@ export function useSchoolDataManager({
           deletedStudentGrades = resolvedGrades.filter((g) => deletedStudentSet.has(g.studentId));
           resolvedGrades = resolvedGrades.filter((g) => !deletedStudentSet.has(g.studentId));
           resolvedAttendance = resolvedAttendance.filter((a) => !deletedStudentSet.has(a.studentId));
-          resolvedInvoices = resolvedInvoices.filter((inv) => !deletedStudentSet.has(inv.studentId));
           resolvedCourses = resolvedCourses.map((c) => ({
             ...c,
             enrolledStudentIds: (c.enrolledStudentIds || []).filter((id) => !deletedStudentSet.has(id)),
@@ -846,18 +822,6 @@ export function useSchoolDataManager({
         setCourses(resolvedCourses);
         setGrades(normalizedGrades);
         setAttendance(resolvedAttendance);
-
-        const slipMap = readInvoiceSlipsCache(activeSchool.id);
-        if (Object.keys(slipMap).length > 0) {
-          resolvedInvoices = resolvedInvoices.map((inv) => {
-            const hasDbSlip = Boolean(inv.slipImageUrl || (inv.slipStatus && inv.slipStatus !== 'none'));
-            if (!hasDbSlip && slipMap[inv.id]) {
-              return { ...inv, ...slipMap[inv.id] };
-            }
-            return inv;
-          });
-        }
-        setInvoices(resolvedInvoices);
         setAnnouncements(data.announcements);
         setSchoolPeriods(data.schoolPeriods);
         setTimetableSlots(resolvedTimetableSlots);
@@ -918,13 +882,13 @@ export function useSchoolDataManager({
     return () => {
       active = false;
     };
-  }, [currentUser?.id, currentUser?.role, activeSchool.id, isDemoMode, isSuperAdminSchoolView, operationalRoleReady]);
+  }, [currentUser?.id, currentUser?.role, activeSchool.id, isSuperAdminSchoolView, operationalRoleReady]);
 
   // Load Student Records (portfolio, behavior, sdq, infirmary)
   useEffect(() => {
-    if (!activeSchool.id || !currentUser || !isDataReady || isDemoMode) return;
+    if (!activeSchool.id || !currentUser || !isDataReady) return;
     let active = true;
-    const schoolStudents = students.filter((s) => belongsToSchool(s, activeSchool.id, isDemoMode));
+    const schoolStudents = students.filter((s) => belongsToSchool(s, activeSchool.id));
 
     const loadStudentRecords = async () => {
       const [portfolioResult, behaviorResult, sdqResult, infirmaryResult] = await Promise.allSettled([
@@ -945,7 +909,7 @@ export function useSchoolDataManager({
 
       if (portfolioResult.status === 'fulfilled') {
         const cachedRaw = readPortfolioItemsCache(activeSchool.id) || [];
-        const cachedItems = cachedRaw.filter((item) => belongsToSchool(item, activeSchool.id, isDemoMode));
+        const cachedItems = cachedRaw.filter((item) => belongsToSchool(item, activeSchool.id));
         const byId = new Map<string, PortfolioItem>();
         cachedItems.forEach((item) => byId.set(item.id, { ...item, schoolId: activeSchool.id }));
         portfolioResult.value.forEach((item) => byId.set(item.id, { ...item, schoolId: activeSchool.id }));
@@ -994,7 +958,7 @@ export function useSchoolDataManager({
     return () => {
       active = false;
     };
-  }, [activeSchool.id, currentUser?.id, loadedSchoolId, isDataReady, isDemoMode]);
+  }, [activeSchool.id, currentUser?.id, loadedSchoolId, isDataReady]);
 
   // Arcade Profiles, Rewards Catalog & Redemptions
   useEffect(() => {
@@ -1021,7 +985,6 @@ export function useSchoolDataManager({
 
   // Package Catalog & School Feature Flags
   useEffect(() => {
-    if (isDemoMode) return;
     let active = true;
     void loadPackageCatalog();
     if (!activeSchool.id) {
@@ -1033,10 +996,6 @@ export function useSchoolDataManager({
       .then((flags) => {
         if (!active) return;
         setFeatureFlagsBySchool((prev) => ({ ...prev, [activeSchool.id]: flags }));
-        setSystemConfig((prev) => ({
-          ...prev,
-          lineMessagingConfigured: flags.lineEnabled !== false,
-        }));
       })
       .catch((error) => {
         console.warn('[FeatureFlags] Could not load school feature flags:', error);
@@ -1044,11 +1003,11 @@ export function useSchoolDataManager({
     return () => {
       active = false;
     };
-  }, [activeSchool.id, activeSchool.schoolTier, isDemoMode]);
+  }, [activeSchool.id, activeSchool.schoolTier]);
 
   // Hydrate unified student OBEC/MOE registration, campus records & qualitative evaluations
   useEffect(() => {
-    if (isDemoMode || !isDataReady || !activeSchool.id || loadedSchoolId !== activeSchool.id) {
+    if (!isDataReady || !activeSchool.id || loadedSchoolId !== activeSchool.id) {
       return;
     }
     const year = systemConfig.academicYear || '2569';
@@ -1057,7 +1016,6 @@ export function useSchoolDataManager({
     void hydrateCampusDataFromSupabase(activeSchool.id);
     void hydrateMoeQualitativeFromSupabase(activeSchool.id, year, sem);
   }, [
-    isDemoMode,
     isDataReady,
     activeSchool.id,
     loadedSchoolId,
@@ -1069,7 +1027,6 @@ export function useSchoolDataManager({
   useEffect(() => {
     if (
       !currentUser ||
-      isDemoMode ||
       (currentUser.role === 'super_admin' && !isSuperAdminSchoolView) ||
       !['super_admin', 'admin', 'teacher'].includes(currentUser.role) ||
       !isDataReady ||
@@ -1095,7 +1052,6 @@ export function useSchoolDataManager({
           courses: findChangedRowIds(rows.courses, previousRows?.courses),
           grades: findChangedRowIds(rows.grades, previousRows?.grades),
           attendance: findChangedRowIds(rows.attendance, previousRows?.attendance),
-          invoices: findChangedRowIds(rows.invoices, previousRows?.invoices),
           announcements: findChangedRowIds(rows.announcements, previousRows?.announcements),
         };
         if (!hasChangedRowIds(changedIds)) return;
@@ -1118,7 +1074,6 @@ export function useSchoolDataManager({
   }, [
     currentUser?.id,
     currentUser?.role,
-    isDemoMode,
     isSuperAdminSchoolView,
     isDataReady,
     loadedSchoolId,
@@ -1128,18 +1083,17 @@ export function useSchoolDataManager({
     courses,
     grades,
     attendance,
-    invoices,
     announcements,
   ]);
 
   // Helper slices for handlers
-  const activeSchoolCourses = courses.filter((c) => belongsToSchool(c, activeSchool.id, isDemoMode));
-  const activeSchoolStudents = students.filter((s) => belongsToSchool(s, activeSchool.id, isDemoMode));
-  const activeSchoolTeachers = teachers.filter((t) => belongsToSchool(t, activeSchool.id, isDemoMode));
-  const activeSchoolAssignments = assignments.filter((a) => belongsToSchool(a, activeSchool.id, isDemoMode));
-  const activeSchoolLessons = lessons.filter((l) => belongsToSchool(l, activeSchool.id, isDemoMode));
-  const activeSchoolGrades = grades.filter((g) => belongsToSchool(g, activeSchool.id, isDemoMode));
-  const activeSchoolHomeworkSubmissions = homeworkSubmissions.filter((h) => belongsToSchool(h, activeSchool.id, isDemoMode));
+  const activeSchoolCourses = courses.filter((c) => belongsToSchool(c, activeSchool.id));
+  const activeSchoolStudents = students.filter((s) => belongsToSchool(s, activeSchool.id));
+  const activeSchoolTeachers = teachers.filter((t) => belongsToSchool(t, activeSchool.id));
+  const activeSchoolAssignments = assignments.filter((a) => belongsToSchool(a, activeSchool.id));
+  const activeSchoolLessons = lessons.filter((l) => belongsToSchool(l, activeSchool.id));
+  const activeSchoolGrades = grades.filter((g) => belongsToSchool(g, activeSchool.id));
+  const activeSchoolHomeworkSubmissions = homeworkSubmissions.filter((h) => belongsToSchool(h, activeSchool.id));
   const timetableAcademicYear = normalizeTimetableAcademicYear(activeSchool.academicYear || systemConfig.academicYear);
   const timetableSemester = activeSchool.currentSemester || systemConfig.currentSemester;
 
@@ -1151,7 +1105,7 @@ export function useSchoolDataManager({
   ) => {
     setStudents((prevStudents) =>
       prevStudents.map((stu) => {
-        if (!belongsToSchool(stu, activeSchool.id, isDemoMode)) return stu;
+        if (!belongsToSchool(stu, activeSchool.id)) return stu;
         if (targetStudentIds && !targetStudentIds.has(stu.id)) return stu;
         const summary = calculateStudentAcademicSummary({
           student: stu,
@@ -1212,11 +1166,11 @@ export function useSchoolDataManager({
       if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
         throw new Error('เฉพาะผู้ดูแลโรงเรียนเท่านั้นที่แก้ไขการตั้งค่าโรงเรียนได้');
       }
-      if (!isDemoMode) await updateSchoolSettingsInSupabase(activeSchool.id, updates);
+      await updateSchoolSettingsInSupabase(activeSchool.id, updates);
       if (updates.gradingSystem && updates.gradingSystem !== systemConfig.gradingSystem) {
         const targetMode = updates.gradingSystem;
         const recalculatedGrades = grades.map((grade) => {
-          if (!belongsToSchool(grade, activeSchool.id, isDemoMode)) return grade;
+          if (!belongsToSchool(grade, activeSchool.id)) return grade;
           if (isSpecialMoeGrade(grade.letterGrade)) {
             return { ...grade, gradePoint: 0 };
           }
@@ -1306,12 +1260,10 @@ export function useSchoolDataManager({
     }
     if (payload.newTimetableSlots.length > 0) {
       setTimetableSlots((prev) => [...payload.newTimetableSlots, ...prev]);
-      if (!isDemoMode) {
-        await saveTimetableSlotsToDb(activeSchool.id, payload.newTimetableSlots).catch((err) => {
-          console.warn('[Rollover] Failed to persist rolled-over timetable slots:', err);
-          setDataSyncError('บันทึกตารางสอนภาคเรียนใหม่ไม่สำเร็จ กรุณาลองบันทึกอีกครั้ง');
-        });
-      }
+      await saveTimetableSlotsToDb(activeSchool.id, payload.newTimetableSlots).catch((err) => {
+        console.warn('[Rollover] Failed to persist rolled-over timetable slots:', err);
+        setDataSyncError('บันทึกตารางสอนภาคเรียนใหม่ไม่สำเร็จ กรุณาลองบันทึกอีกครั้ง');
+      });
     }
     if (payload.promotedStudents && payload.promotedStudents.length > 0) {
       const promotedMap = new Map(payload.promotedStudents.map((s) => [s.id, s]));
@@ -1333,22 +1285,14 @@ export function useSchoolDataManager({
         ? { ...prev, schoolTier: flags.tier, aiStudentEnabled: flags.allowStudentsAi }
         : prev
     );
-    if (schoolId === activeSchool.id) {
-      setSystemConfig((prev) => ({
-        ...prev,
-        lineMessagingConfigured: flags.lineEnabled !== false,
-      }));
-    }
-    if (!isDemoMode) {
-      void saveSchoolFeatureFlagsToDb(schoolId, flags);
-    }
+    void saveSchoolFeatureFlagsToDb(schoolId, flags);
     if (currentUser) {
       appendAuditLog(schoolId, {
         actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
         actorRole: currentUser.role,
         actionType: 'feature_flags_update',
         targetLabel: flags.tier,
-        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier}) · สิทธิ์ AI นักเรียน: ${flags.allowStudentsAi ? 'เปิด' : 'ปิด'} · แจ้งเตือน LINE: ${flags.lineEnabled === false ? 'ปิด' : 'เปิด'} · ลบรูปเซลฟี่อัตโนมัติ: ${flags.autoDeleteSelfiesAfterCheckout === false ? 'ปิด' : `เปิด (${normalizeSelfieRetentionMinutes(flags.selfieRetentionAfterCheckoutMinutes)} นาทีหลังเช็คเอาท์)`}`,
+        details: `อัปเดตแพ็กเกจโมดูล (${flags.tier}) · สิทธิ์ AI นักเรียน: ${flags.allowStudentsAi ? 'เปิด' : 'ปิด'} · ลบรูปเซลฟี่อัตโนมัติ: ${flags.autoDeleteSelfiesAfterCheckout === false ? 'ปิด' : `เปิด (${normalizeSelfieRetentionMinutes(flags.selfieRetentionAfterCheckoutMinutes)} นาทีหลังเช็คเอาท์)`}`,
       });
     }
   };
@@ -1373,52 +1317,16 @@ export function useSchoolDataManager({
         ? normalizeSelfieRetentionMinutes(options.retentionMinutes)
         : normalizeSelfieRetentionMinutes(schoolFlags.selfieRetentionAfterCheckoutMinutes);
 
-    let clearedIds: string[] = [];
-    let deletedPhotosCount = 0;
-    let clearedRecordsCount = 0;
-    let matchedByCheckoutCount = 0;
-    let matchedPreviousDaysCount = 0;
-
-    if (isDemoMode) {
-      const { dateStr: todayBangkok, minutes: nowMinutes } = getBangkokClockParts();
-      const selection = selectDueAttendanceSelfies(
-        attendance
-          .filter((a) => belongsToSchool(a, targetSchoolId, true))
-          .map((a) => ({
-            id: a.id,
-            schoolId: a.schoolId,
-            studentId: a.studentId,
-            date: a.date,
-            time: a.time,
-            recordType: a.recordType || 'check_in',
-            photoUrl: a.photoUrl ?? null,
-            photoStoragePath: a.photoStoragePath ?? null,
-          })),
-        {
-          todayBangkok,
-          nowMinutes,
-          retentionMinutes,
-          includePreviousDays: true,
-          schoolId: targetSchoolId,
-        }
-      );
-      clearedIds = selection.recordIdsToClear;
-      deletedPhotosCount = selection.storagePathsToDelete.length || selection.recordIdsToClear.length;
-      clearedRecordsCount = selection.recordIdsToClear.length;
-      matchedByCheckoutCount = selection.matchedByCheckoutCount;
-      matchedPreviousDaysCount = selection.matchedPreviousDaysCount;
-    } else {
-      const serverResult = await cleanupDueAttendanceSelfiesOnServer({
-        schoolId: targetSchoolId,
-        retentionMinutes,
-        includePreviousDays: true,
-      });
-      clearedIds = serverResult.deletedRecordIds;
-      deletedPhotosCount = serverResult.deletedPhotosCount;
-      clearedRecordsCount = serverResult.clearedRecordsCount;
-      matchedByCheckoutCount = serverResult.matchedByCheckoutCount;
-      matchedPreviousDaysCount = serverResult.matchedPreviousDaysCount;
-    }
+    const serverResult = await cleanupDueAttendanceSelfiesOnServer({
+      schoolId: targetSchoolId,
+      retentionMinutes,
+      includePreviousDays: true,
+    });
+    const clearedIds = serverResult.deletedRecordIds;
+    const deletedPhotosCount = serverResult.deletedPhotosCount;
+    const clearedRecordsCount = serverResult.clearedRecordsCount;
+    const matchedByCheckoutCount = serverResult.matchedByCheckoutCount;
+    const matchedPreviousDaysCount = serverResult.matchedPreviousDaysCount;
 
     if (clearedIds.length > 0) {
       const clearedIdSet = new Set(clearedIds);
@@ -1459,11 +1367,10 @@ export function useSchoolDataManager({
       matchedByCheckoutCount,
       matchedPreviousDaysCount,
     };
-  }, [activeSchool.id, activeSchool.schoolTier, attendance, currentUser, featureFlagsBySchool, isDemoMode]);
+  }, [activeSchool.id, activeSchool.schoolTier, currentUser, featureFlagsBySchool]);
 
   useEffect(() => {
     if (
-      isDemoMode ||
       !isDataReady ||
       !activeSchool.id ||
       loadedSchoolId !== activeSchool.id ||
@@ -1502,7 +1409,6 @@ export function useSchoolDataManager({
     featureFlagsBySchool,
     handleCleanupDueSelfies,
     isDataReady,
-    isDemoMode,
     loadedSchoolId,
   ]);
 
@@ -1649,7 +1555,7 @@ export function useSchoolDataManager({
       setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: updatedStudent.avatarUrl } : prev));
     }
 
-    if (avatarChanged && currentUser && activeSchool.id && !isDemoMode) {
+    if (avatarChanged && currentUser && activeSchool.id) {
       void persistAvatarChangeToSupabase({
         schoolId: activeSchool.id,
         userId: currentUser.id,
@@ -1724,13 +1630,7 @@ export function useSchoolDataManager({
 
   const handleDeleteStudent = async (studentId: string) => {
     try {
-      if (!isDemoMode) {
-        await deleteStudentFromDb(activeSchool.id, studentId);
-      }
-
-      const removedInvoiceIds = new Set(
-        invoices.filter((inv) => inv.studentId === studentId).map((inv) => inv.id)
-      );
+      await deleteStudentFromDb(activeSchool.id, studentId);
 
       setStudents((prev) => {
         const next = prev.filter((student) => student.id !== studentId);
@@ -1756,7 +1656,6 @@ export function useSchoolDataManager({
 
       setAttendance((prev) => prev.filter((rec) => rec.studentId !== studentId));
       setPeriodAttendance((prev) => prev.filter((rec) => rec.studentId !== studentId));
-      setInvoices((prev) => prev.filter((inv) => inv.studentId !== studentId));
       setLessons((prev) => prev.map((lesson) => ({
         ...lesson,
         completedByStudentIds: (lesson.completedByStudentIds || []).filter((id) => id !== studentId),
@@ -1774,9 +1673,6 @@ export function useSchoolDataManager({
 
       if (typeof window !== 'undefined') {
         try {
-          if (removedInvoiceIds.size > 0) {
-            removeInvoiceSlipsFromCache(activeSchool.id, removedInvoiceIds);
-          }
           cleanupStudentCampusData(activeSchool.id, studentId);
         } catch (error) {
           console.warn('Could not clean student local cache:', error);
@@ -1814,21 +1710,6 @@ export function useSchoolDataManager({
     setDataSyncError(errors.length ? `Could not delete ${errors.length} sample student record(s): ${errors.join('; ')}` : null);
   };
 
-  const handleToggleLineSync = (studentId: string) => {
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.id === studentId
-          ? {
-              ...s,
-              lineLinked: !s.lineLinked,
-              lineNotifyEnabled: !s.lineLinked,
-            }
-          : s
-      )
-    );
-    setDataSyncError(null);
-  };
-
   // Teacher Handlers
   const handleAddTeacher = (newTeacher: Teacher) => {
     const fullTeacher = { ...newTeacher, schoolId: activeSchool.id };
@@ -1858,7 +1739,7 @@ export function useSchoolDataManager({
       setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: updatedTeacher.avatarUrl } : prev));
     }
 
-    if (avatarChanged && currentUser && activeSchool.id && !isDemoMode) {
+    if (avatarChanged && currentUser && activeSchool.id) {
       void persistAvatarChangeToSupabase({
         schoolId: activeSchool.id,
         userId: currentUser.id,
@@ -1971,12 +1852,10 @@ export function useSchoolDataManager({
   const handleImportTeachers = async (newTeachers: Teacher[]) => {
     const importedTeachers = newTeachers.map((teacher) => ({ ...teacher, schoolId: activeSchool.id }));
     try {
-      if (!isDemoMode) {
-        if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
-          throw new Error('เฉพาะผู้ดูแลโรงเรียนเท่านั้นที่นำเข้ารายชื่อครูได้');
-        }
-        await saveTeachersToDb(activeSchool.id, importedTeachers);
+      if (!currentUser || !['admin', 'super_admin'].includes(currentUser.role)) {
+        throw new Error('เฉพาะผู้ดูแลโรงเรียนเท่านั้นที่นำเข้ารายชื่อครูได้');
       }
+      await saveTeachersToDb(activeSchool.id, importedTeachers);
       setTeachers((prev) => [...importedTeachers, ...prev]);
       setDataSyncError(null);
     } catch (error) {
@@ -2027,7 +1906,7 @@ export function useSchoolDataManager({
 
   const handleDeleteCourse = async (courseId: string) => {
     try {
-      if (!isDemoMode) await deleteCoursesFromDb(activeSchool.id, [courseId]);
+      await deleteCoursesFromDb(activeSchool.id, [courseId]);
       cleanupDeletedCoursesStateAndCache([courseId]);
       if (currentUser) {
         appendAuditLog(activeSchool.id, {
@@ -2049,7 +1928,7 @@ export function useSchoolDataManager({
   const handleDeleteCourses = async (courseIds: string[]) => {
     if (courseIds.length === 0) return false;
     try {
-      if (!isDemoMode) await deleteCoursesFromDb(activeSchool.id, courseIds);
+      await deleteCoursesFromDb(activeSchool.id, courseIds);
       cleanupDeletedCoursesStateAndCache(courseIds);
       if (currentUser) {
         appendAuditLog(activeSchool.id, {
@@ -2101,10 +1980,8 @@ export function useSchoolDataManager({
     const nextEnrolledIds = (targetCourse?.enrolledStudentIds || []).filter((id) => !removeSet.has(id));
 
     try {
-      if (!isDemoMode) {
-        await updateCourseEnrollmentInDb(activeSchool.id, courseId, nextEnrolledIds);
-        await deleteGradesForEnrollmentFromDb(activeSchool.id, courseId, studentIds);
-      }
+      await updateCourseEnrollmentInDb(activeSchool.id, courseId, nextEnrolledIds);
+      await deleteGradesForEnrollmentFromDb(activeSchool.id, courseId, studentIds);
 
       setCourses((prev) => {
         const next = prev.map((c) => (
@@ -2217,7 +2094,6 @@ export function useSchoolDataManager({
               systemConfig,
               schoolId: activeSchool.id,
               isNewRecord,
-              isDemoMode,
             });
           }
         });
@@ -2289,7 +2165,7 @@ export function useSchoolDataManager({
       ? (extra.time.length === 5 ? `${extra.time}:00` : extra.time)
       : new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const attendanceRecordId = extra?.recordId || `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    skipNextOfflineRowSyncRef.current = !isDemoMode && ['super_admin', 'admin', 'teacher'].includes(currentUser?.role || '');
+    skipNextOfflineRowSyncRef.current = ['super_admin', 'admin', 'teacher'].includes(currentUser?.role || '');
     setAttendance((prev) => {
       const isCheckOut = extra?.recordType === 'check_out';
       const isCurrentUser = currentUser && (currentUser.id === studentId || currentUser.studentRecordId === studentId);
@@ -2323,7 +2199,6 @@ export function useSchoolDataManager({
         photoUrl: extra?.photoUrl,
         photoStoragePath: extra?.photoStoragePath,
         location: extra?.location,
-        lineNotificationSent: true,
         recordedBy: extra?.recordedBy,
         recordedByRole: extra?.recordedByRole,
         confirmedByHomeroom: extra?.confirmedByHomeroom,
@@ -2347,36 +2222,34 @@ export function useSchoolDataManager({
     const st = activeSchoolStudents.find((s) => s.id === studentId);
     const tc = activeSchoolTeachers.find((t) => t.id === studentId || t.id === extra?.teacherId);
     const personName = extra?.userName || (st ? `${st.firstNameTh} ${st.lastNameTh}` : (tc ? tc.fullNameTh : 'นักเรียน/บุคลากร'));
-    if (!isDemoMode) {
-      const queuedRecord = {
-        id: attendanceRecordId,
+    const queuedRecord = {
+      id: attendanceRecordId,
+      schoolId: activeSchool.id,
+      studentId,
+      date: todayStr,
+      time: nowTime,
+      status,
+      checkinMethod: method || (extra?.photoUrl ? 'selfie_geofence' : 'qr_scanner'),
+      remarks,
+      recordType: extra?.recordType || 'check_in',
+      userName: personName,
+    };
+    void saveQueuedAttendanceToDb(queuedRecord).catch((error: unknown) => {
+      enqueueOfflineAction({
+        actionType: 'attendance',
+        userId: currentUser?.id || '',
         schoolId: activeSchool.id,
-        studentId,
-        date: todayStr,
-        time: nowTime,
-        status,
-        checkinMethod: method || (extra?.photoUrl ? 'selfie_geofence' : 'qr_scanner'),
-        remarks,
-        recordType: extra?.recordType || 'check_in',
-        userName: personName,
-      };
-      void saveQueuedAttendanceToDb(queuedRecord).catch((error: unknown) => {
-        enqueueOfflineAction({
-          actionType: 'attendance',
-          userId: currentUser?.id || '',
-          schoolId: activeSchool.id,
-          description: `เช็คชื่อรอซิงค์: ${personName}`,
-          payload: {
-            studentId,
-            status,
-            remarks,
-            method: queuedRecord.checkinMethod,
-            extra: { ...extra, date: todayStr, recordId: attendanceRecordId, userName: personName },
-          },
-        });
-        setDataSyncError(error instanceof Error ? error.message : String(error));
+        description: `เช็คชื่อรอซิงค์: ${personName}`,
+        payload: {
+          studentId,
+          status,
+          remarks,
+          method: queuedRecord.checkinMethod,
+          extra: { ...extra, date: todayStr, recordId: attendanceRecordId, userName: personName },
+        },
       });
-    }
+      setDataSyncError(error instanceof Error ? error.message : String(error));
+    });
     const statusLabel = status === 'present' ? 'มาเรียน (ตรงเวลา)' : status === 'late' ? 'มาสาย' : 'ลา';
 
     const isCurrentActor = currentUser && (currentUser.id === studentId || currentUser.studentRecordId === studentId);
@@ -2395,7 +2268,6 @@ export function useSchoolDataManager({
     });
 
     if (
-      !isDemoMode &&
       st &&
       currentUser &&
       ['admin', 'super_admin', 'teacher'].includes(currentUser.role)
@@ -2495,10 +2367,27 @@ export function useSchoolDataManager({
       return updated;
     });
 
-    if (!isDemoMode && activeSchool.id && taggedRecords.length > 0) {
-      void savePeriodAttendanceBatchToDb(activeSchool.id, taggedRecords).catch((error: unknown) => {
-        setDataSyncError(error instanceof Error ? error.message : String(error));
-      });
+    if (activeSchool.id && taggedRecords.length > 0) {
+      const firstRec = taggedRecords[0];
+      const queuePeriodAttendance = () => {
+        if (!currentUser?.id) return;
+        enqueueOfflineAction({
+          actionType: 'period_attendance',
+          userId: currentUser.id,
+          schoolId: activeSchool.id,
+          description: `เช็คชื่อรายคาบรอซิงค์: ${firstRec.courseCode || firstRec.courseId} คาบ ${firstRec.periodNumber} (${taggedRecords.length} คน)`,
+          payload: { records: taggedRecords },
+        });
+      };
+
+      if (!isOnlineNow()) {
+        queuePeriodAttendance();
+      } else {
+        void savePeriodAttendanceBatchToDb(activeSchool.id, taggedRecords).catch((error: unknown) => {
+          queuePeriodAttendance();
+          setDataSyncError(error instanceof Error ? error.message : String(error));
+        });
+      }
     }
 
     if (taggedRecords.length > 0) {
@@ -2545,7 +2434,7 @@ export function useSchoolDataManager({
     const taggedReq: LeaveRequest = { ...req, schoolId: activeSchool.id };
     setLeaveRequests((prev) => [taggedReq, ...prev]);
 
-    if (!isDemoMode && activeSchool.id) {
+    if (activeSchool.id) {
       void (async () => {
         try {
           let finalAttachmentUrl = taggedReq.attachmentUrl;
@@ -2581,7 +2470,7 @@ export function useSchoolDataManager({
       };
     }));
 
-    if (!isDemoMode && activeSchool.id) {
+    if (activeSchool.id) {
       void updateLeaveRequestStatusInDb(activeSchool.id, reqId, status, approverName, remarks).catch((error: unknown) => {
         setDataSyncError(error instanceof Error ? error.message : String(error));
       });
@@ -2647,7 +2536,7 @@ export function useSchoolDataManager({
       throw new Error('เฉพาะผู้ดูแลระบบโรงเรียนเท่านั้นที่มีสิทธิ์แก้ไขพิกัดและจุดเช็คชื่อ');
     }
     const cleaned = sanitizeSchoolCampusGates(gates, activeSchool.id);
-    const savedToDatabase = isDemoMode ? false : await saveSchoolCampusGates(activeSchool.id, cleaned);
+    const savedToDatabase = await saveSchoolCampusGates(activeSchool.id, cleaned);
     handleUpdateCampusGates(cleaned);
     return savedToDatabase;
   };
@@ -2666,7 +2555,7 @@ export function useSchoolDataManager({
     setSystemConfig((prev) => ({ ...prev, latitude: lat, longitude: lng, geofenceRadiusMeters: safeRadius }));
     safeWriteJson(`${STORAGE_KEYS.schoolGpsPrefix}${activeSchool.id}`, { lat, lng, radiusMeters: safeRadius });
 
-    if (!isDemoMode && activeSchool.id) {
+    if (activeSchool.id) {
       saveSchoolGpsCoordinates(activeSchool.id, lat, lng, safeRadius).catch((err) => {
         console.warn('Could not sync school coordinates to Supabase:', err);
       });
@@ -2699,7 +2588,7 @@ export function useSchoolDataManager({
         );
       }
       writeCampusGatesCache(activeSchool.id, nextGates);
-      if (!isDemoMode && activeSchool.id) {
+      if (activeSchool.id) {
         saveSchoolCampusGates(activeSchool.id, nextGates).catch((err) => {
           console.warn('Could not sync updated primary gate to Supabase:', err);
         });
@@ -2710,122 +2599,6 @@ export function useSchoolDataManager({
 
   const handleQuickCheckIn = (studentId: string) => {
     handleRecordAttendance(studentId, 'present', 'สแกนบัตรผ่านประตูอัตโนมัติ (Gate Turnstile)');
-  };
-
-  // Billing / Invoices
-  const handlePayInvoice = (invoiceId: string, method?: TuitionInvoice['paymentMethod']) => {
-    const paidTime = new Date().toISOString();
-    const receiptNum = `RCP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const resolvedMethod = method || 'promptpay';
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === invoiceId
-          ? { ...inv, status: 'paid', paymentMethod: resolvedMethod, paidAt: paidTime, receiptNumber: receiptNum }
-          : inv
-      )
-    );
-    updateInvoiceSlipCache(activeSchool.id, invoiceId, {
-      status: 'paid',
-      paymentMethod: resolvedMethod,
-      paidAt: paidTime,
-      receiptNumber: receiptNum,
-    });
-    setDataSyncError(null);
-  };
-
-  const handleSubmitInvoiceSlip = (invoiceId: string, slipDataUrl: string, note: string) => {
-    const submittedAt = new Date().toISOString();
-    const patch: Partial<TuitionInvoice> = {
-      slipImageUrl: slipDataUrl,
-      slipSubmittedAt: submittedAt,
-      slipStatus: 'pending_review',
-      slipReferenceNote: note,
-      slipRejectReason: undefined,
-    };
-    setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...patch } : inv)));
-    updateInvoiceSlipCache(activeSchool.id, invoiceId, patch);
-    if (!isDemoMode && activeSchool.id) {
-      void submitInvoiceSlipToDb(activeSchool.id, invoiceId, slipDataUrl, note)
-        .then((finalUrl) => {
-          if (finalUrl && finalUrl !== slipDataUrl) {
-            setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? { ...inv, slipImageUrl: finalUrl } : inv)));
-            updateInvoiceSlipCache(activeSchool.id, invoiceId, { slipImageUrl: finalUrl });
-          }
-        })
-        .catch((error: unknown) => {
-          setDataSyncError(error instanceof Error ? error.message : String(error));
-        });
-    }
-    if (currentUser) {
-      appendAuditLog(activeSchool.id, {
-        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
-        actorRole: currentUser.role,
-        actionType: 'invoice_slip_submitted',
-        targetLabel: invoiceId,
-        details: note || 'ผู้ปกครองแนบสลิป PromptPay รอตรวจสอบ',
-      });
-    }
-  };
-
-  const handleApproveInvoiceSlip = (invoiceId: string) => {
-    handlePayInvoice(invoiceId, 'promptpay');
-    setInvoices((prev) =>
-      prev.map((inv) => (inv.id === invoiceId ? { ...inv, slipStatus: 'approved', slipRejectReason: undefined } : inv))
-    );
-    updateInvoiceSlipCache(activeSchool.id, invoiceId, {
-      slipStatus: 'approved',
-      slipRejectReason: undefined,
-    });
-    if (currentUser) {
-      appendAuditLog(activeSchool.id, {
-        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
-        actorRole: currentUser.role,
-        actionType: 'invoice_slip_approved',
-        targetLabel: invoiceId,
-        details: 'อนุมัติสลิปโอนเงินและออกเลขที่ใบเสร็จอัตโนมัติ',
-      });
-    }
-  };
-
-  const handleRejectInvoiceSlip = (invoiceId: string, reason: string) => {
-    const patch: Partial<TuitionInvoice> = {
-      slipStatus: 'rejected',
-      slipRejectReason: reason,
-    };
-    setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...patch } : inv)));
-    updateInvoiceSlipCache(activeSchool.id, invoiceId, patch);
-    if (currentUser) {
-      appendAuditLog(activeSchool.id, {
-        actorName: currentUser.fullNameTh || currentUser.fullNameEn || currentUser.email,
-        actorRole: currentUser.role,
-        actionType: 'invoice_slip_rejected',
-        targetLabel: invoiceId,
-        details: reason,
-      });
-    }
-  };
-
-  const handleSendPrivateAppReminder = async (invoice: TuitionInvoice) => {
-    const student = activeSchoolStudents.find((item) => item.id === invoice.studentId);
-    if (!student) throw new Error('ไม่พบข้อมูลนักเรียนที่ผูกกับใบแจ้งหนี้นี้');
-    if (!currentUser || !['admin', 'super_admin', 'teacher'].includes(currentUser.role)) {
-      throw new Error('เฉพาะผู้ดูแลหรือครูที่มีสิทธิ์เท่านั้นที่ส่งแจ้งเตือนได้');
-    }
-    const result = await sendPrivateParentNotification({
-      schoolId: activeSchool.id,
-      studentId: student.id,
-      eventId: `${invoice.id}-reminder-${getLocalDateString()}`,
-      category: 'billing',
-      title: 'มีรายการค่าใช้จ่ายของบุตรหลาน',
-      body: `${student.firstNameTh} ${student.lastNameTh} • ใบแจ้งหนี้ ${invoice.invoiceNumber} • ครบกำหนด ${invoice.dueDate} • ${invoice.totalAmount.toLocaleString('th-TH')} บาท`,
-    });
-    setDataSyncError(null);
-    return result;
-  };
-
-  const handleAddInvoice = (newInvoice: TuitionInvoice) => {
-    setInvoices((prev) => [{ ...newInvoice, schoolId: activeSchool.id }, ...prev]);
-    setDataSyncError(null);
   };
 
   // Announcements
@@ -2851,60 +2624,6 @@ export function useSchoolDataManager({
       targetRoles: audienceRoles,
       sourceKind: 'announcement',
     });
-  };
-
-  const handleBroadcastLine = async (
-    announcementId: string
-  ): Promise<{ ok: boolean; message: string }> => {
-    const targetAnnouncement = announcements.find((a) => a.id === announcementId);
-    if (!targetAnnouncement) {
-      return { ok: false, message: 'ไม่พบประกาศที่ต้องการส่งแจ้งเตือน' };
-    }
-    if (isDemoMode) {
-      setAnnouncements((prev) =>
-        prev.map((a) => (a.id === announcementId ? { ...a, lineBroadcastSent: true } : a))
-      );
-      return { ok: true, message: 'จำลองการส่งแจ้งเตือน LINE OA ในโหมดทดลองใช้แล้ว' };
-    }
-    try {
-      const client = getSupabaseClient();
-      const { data: sessionData } = client ? await client.auth.getSession() : { data: { session: null } };
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) {
-        return { ok: false, message: 'กรุณาเข้าสู่ระบบใหม่ก่อนส่งแจ้งเตือน LINE OA' };
-      }
-
-      const response = await fetch('/api/line/broadcast', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          announcementId: targetAnnouncement.id,
-          title: targetAnnouncement.title,
-          content: targetAnnouncement.content,
-        }),
-      });
-      const payload = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
-
-      if (!response.ok || !payload?.ok) {
-        const errMsg =
-          payload?.message || `ไม่สามารถส่งแจ้งเตือน LINE OA ได้ (HTTP ${response.status})`;
-        setDataSyncError(errMsg);
-        return { ok: false, message: errMsg };
-      }
-
-      setAnnouncements((prev) =>
-        prev.map((a) => (a.id === announcementId ? { ...a, lineBroadcastSent: true } : a))
-      );
-      setDataSyncError(null);
-      return { ok: true, message: payload.message || 'ส่งข้อความผ่าน LINE OA เรียบร้อยแล้ว' };
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ LINE OA ได้';
-      setDataSyncError(errMsg);
-      return { ok: false, message: errMsg };
-    }
   };
 
   // LMS & Homework
@@ -2992,7 +2711,7 @@ export function useSchoolDataManager({
       status: getLocalDateString() <= assignment.dueDate ? 'submitted' : 'late',
       maxScore: assignment.maxScore ?? assignment.points,
     };
-    if (!isDemoMode) await saveHomeworkSubmissionToDb(activeSchool.id, submission);
+    await saveHomeworkSubmissionToDb(activeSchool.id, submission);
     setHomeworkSubmissions((prev) => [submission, ...prev]);
     setAssignments((prev) => prev.map((item) => (
       item.id === assignment.id
@@ -3005,7 +2724,7 @@ export function useSchoolDataManager({
   const handleAddQuestion = (question: QuizQuestion) => {
     const tagged = { ...question, schoolId: activeSchool.id };
     setQuestions((prev) => [tagged, ...prev.filter((q) => q.id !== tagged.id)]);
-    void saveSchoolQuestionsBatch(activeSchool.id, [tagged], isDemoMode);
+    void saveSchoolQuestionsBatch(activeSchool.id, [tagged]);
   };
 
   const handleImportQuestions = (newQuestions: QuizQuestion[]) => {
@@ -3017,7 +2736,7 @@ export function useSchoolDataManager({
       }
       return Array.from(byId.values());
     });
-    void saveSchoolQuestionsBatch(activeSchool.id, tagged, isDemoMode);
+    void saveSchoolQuestionsBatch(activeSchool.id, tagged);
   };
 
   const handleClaimFreeCentralPack = async (pack: CentralExamPack) => {
@@ -3026,7 +2745,6 @@ export function useSchoolDataManager({
       pack,
       paymentMethod: 'free',
       claimedBy: currentUser?.fullNameTh || currentUser?.email || 'School Admin',
-      isDemoMode,
     });
     setSchoolExamEntitlements(res.allEntitlements);
     handleImportQuestions(res.addedQuestions);
@@ -3057,7 +2775,6 @@ export function useSchoolDataManager({
       pack,
       paymentMethod: method,
       claimedBy: currentUser?.fullNameTh || currentUser?.email || 'School Admin',
-      isDemoMode,
       slipUrl,
     });
     setSchoolExamEntitlements(res.allEntitlements);
@@ -3065,7 +2782,7 @@ export function useSchoolDataManager({
     sendEduVerseNotification({
       title: `⚡ ปลดล็อกข้อสอบกลางทันที: ${pack.titleTh}`,
       body: `ปลดล็อก ${res.addedQuestions.length} ข้อเข้าคลังโรงเรียนแล้ว (แนบสลิป 100% รอตรวจสอบย้อนหลัง)`,
-      category: 'billing',
+      category: 'system',
       schoolId: activeSchool.id,
       targetRoles: ['admin', 'super_admin'],
     });
@@ -3355,12 +3072,12 @@ export function useSchoolDataManager({
       if (activeSchool.id) {
         writePortfolioItemsCache(
           activeSchool.id,
-          next.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode)),
+          next.filter((p) => belongsToSchool(p, activeSchool.id)),
         );
       }
       return next;
     });
-    if (activeSchool.id && !isDemoMode) {
+    if (activeSchool.id) {
       const student = item.ownerRole === 'student'
         ? activeSchoolStudents.find((candidate) => candidate.id === item.ownerId)
           || (currentUser && item.ownerId === currentUser.id && currentUser.studentRecordId
@@ -3388,12 +3105,12 @@ export function useSchoolDataManager({
       if (activeSchool.id) {
         writePortfolioItemsCache(
           activeSchool.id,
-          next.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode)),
+          next.filter((p) => belongsToSchool(p, activeSchool.id)),
         );
       }
       return next;
     });
-    if (activeSchool.id && !isDemoMode) {
+    if (activeSchool.id) {
       void deleteSchoolStudentRecord(activeSchool.id, 'portfolio', itemId).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         setDataSyncError(message);
@@ -3410,7 +3127,7 @@ export function useSchoolDataManager({
     setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: cleanUrl } : prev));
     syncOwnAvatarInDirectory(cleanUrl);
 
-    if (activeSchool.id && !isDemoMode) {
+    if (activeSchool.id) {
       const ownStu = currentUser.role === 'student' ? resolveOwnStudent(currentUser, students) : undefined;
       const ownTch = ['teacher', 'admin', 'super_admin'].includes(currentUser.role)
         ? resolveOwnTeacher(currentUser, teachers)
@@ -3462,13 +3179,6 @@ export function useSchoolDataManager({
       role: currentUser?.role || 'student',
       schoolId: activeSchool.id,
     });
-
-    if (isDemoMode) {
-      const demoUser = buildUser(resolvedAvatarUrl);
-      setCurrentUser(demoUser);
-      syncOwnAvatarInDirectory(demoUser.avatarUrl);
-      return;
-    }
 
     try {
       if (avatarChanged && activeSchool.id) {
@@ -3533,7 +3243,7 @@ export function useSchoolDataManager({
     };
     let updated = false;
     const next = timetableSlots.map((currentSlot) => {
-      if (currentSlot.id !== slot.id || !belongsToSchool(currentSlot, activeSchool.id, isDemoMode)) {
+      if (currentSlot.id !== slot.id || !belongsToSchool(currentSlot, activeSchool.id)) {
         return currentSlot;
       }
       updated = true;
@@ -3560,9 +3270,7 @@ export function useSchoolDataManager({
       semester: slot.semester || timetableSemester,
     }));
     const next = [...normalized, ...timetableSlots];
-    if (!isDemoMode) {
-      await saveTimetableSlotsToDb(activeSchool.id, next);
-    }
+    await saveTimetableSlotsToDb(activeSchool.id, next);
     setTimetableSlots(next);
     setDataSyncError(null);
   };
@@ -3576,7 +3284,7 @@ export function useSchoolDataManager({
         .map((period) => period.periodNumber)
     );
     const activeTermSlots = timetableSlots.filter((slot) => (
-      belongsToSchool(slot, activeSchool.id, isDemoMode) &&
+      belongsToSchool(slot, activeSchool.id) &&
       (slot.academicYear || timetableAcademicYear) === timetableAcademicYear &&
       (slot.semester || timetableSemester) === timetableSemester
     ));
@@ -3598,11 +3306,9 @@ export function useSchoolDataManager({
         }
         : slot;
     });
-    if (!isDemoMode) {
-      await saveSchoolPeriodTimes(activeSchool.id, periods);
-      if (updatedActiveTermSlots.length > 0) {
-        await saveTimetableSlotsToDb(activeSchool.id, updatedActiveTermSlots);
-      }
+    await saveSchoolPeriodTimes(activeSchool.id, periods);
+    if (updatedActiveTermSlots.length > 0) {
+      await saveTimetableSlotsToDb(activeSchool.id, updatedActiveTermSlots);
     }
     setSchoolPeriods(periods);
     const updatedSlotsById = new Map(updatedActiveTermSlots.map((slot) => [slot.id, slot]));
@@ -3614,7 +3320,7 @@ export function useSchoolDataManager({
   const handleAddBehaviorRecord = (record: BehaviorRecord) => {
     const taggedRecord = { ...record, schoolId: activeSchool.id };
     setBehaviorRecords((prev) => [taggedRecord, ...prev]);
-    if (activeSchool.id && !isDemoMode) {
+    if (activeSchool.id) {
       void saveSchoolStudentRecord({
         schoolId: activeSchool.id,
         recordKind: 'behavior',
@@ -3632,7 +3338,7 @@ export function useSchoolDataManager({
   const handleAddSdqAssessment = (sdq: SdqAssessment) => {
     const taggedAssessment = { ...sdq, schoolId: activeSchool.id };
     setSdqAssessments((prev) => [taggedAssessment, ...prev]);
-    if (activeSchool.id && !isDemoMode) {
+    if (activeSchool.id) {
       void saveSchoolStudentRecord({
         schoolId: activeSchool.id,
         recordKind: 'sdq',
@@ -3651,7 +3357,7 @@ export function useSchoolDataManager({
   const handleAddInfirmaryVisit = (visit: InfirmaryVisit) => {
     const taggedVisit = { ...visit, schoolId: activeSchool.id };
     setInfirmaryVisits((prev) => [taggedVisit, ...prev]);
-    if (activeSchool.id && !isDemoMode) {
+    if (activeSchool.id) {
       void saveSchoolStudentRecord({
         schoolId: activeSchool.id,
         recordKind: 'infirmary',
@@ -3687,9 +3393,7 @@ export function useSchoolDataManager({
       schoolId: activeSchool.id,
       courseCode: course.code,
     };
-    if (!isDemoMode) {
-      await saveSchoolAssignmentToDb(activeSchool.id, taggedAssignment, currentUser?.id);
-    }
+    await saveSchoolAssignmentToDb(activeSchool.id, taggedAssignment, currentUser?.id);
     setAssignments((prev) => [taggedAssignment, ...prev.filter((item) => item.id !== taggedAssignment.id)]);
   };
 
@@ -3720,9 +3424,7 @@ export function useSchoolDataManager({
       dueDate: assignment.dueDate,
       maxScore: assignment.maxScore ?? assignment.points,
     };
-    if (!isDemoMode) {
-      await saveHomeworkSubmissionToDb(activeSchool.id, taggedSubmission);
-    }
+    await saveHomeworkSubmissionToDb(activeSchool.id, taggedSubmission);
     setHomeworkSubmissions((prev) => [taggedSubmission, ...prev]);
     setAssignments((prev) => prev.map((item) => (
       item.id === assignment.id
@@ -3744,9 +3446,7 @@ export function useSchoolDataManager({
       throw new Error(`Score must be between 0 and ${submission.maxScore}.`);
     }
     const gradedBy = currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email || 'ครูผู้สอน';
-    if (!isDemoMode) {
-      await saveHomeworkGradeToDb(activeSchool.id, id, score, feedback, gradedBy);
-    }
+    await saveHomeworkGradeToDb(activeSchool.id, id, score, feedback, gradedBy);
     setHomeworkSubmissions((prev) =>
       prev.map((item) => item.id === id
         ? { ...item, score, teacherFeedback: feedback, gradedAt: new Date().toISOString(), gradedBy, status: 'graded' }
@@ -3765,7 +3465,6 @@ export function useSchoolDataManager({
       systemConfig,
       schoolId: activeSchool.id,
       isNewRecord,
-      isDemoMode,
       actorName: currentUser?.fullNameTh || currentUser?.fullNameEn || currentUser?.email,
     });
   };
@@ -3778,7 +3477,7 @@ export function useSchoolDataManager({
     };
     setGrades((prev) => {
       const existingIdx = prev.findIndex(
-        (g) => belongsToSchool(g, activeSchool.id, isDemoMode) && g.studentId === created.studentId && g.courseId === created.courseId
+        (g) => belongsToSchool(g, activeSchool.id) && g.studentId === created.studentId && g.courseId === created.courseId
       );
       const next = existingIdx >= 0
         ? prev.map((g, idx) => (idx === existingIdx ? { ...g, ...created, id: g.id } : g))
@@ -3826,9 +3525,7 @@ export function useSchoolDataManager({
 
   const handleDeleteGrade = async (gradeId: string) => {
     const target = grades.find((g) => g.id === gradeId);
-    if (!isDemoMode) {
-      await deleteStaleGradesFromDb(activeSchool.id, [gradeId]);
-    }
+    await deleteStaleGradesFromDb(activeSchool.id, [gradeId]);
     setGrades((prev) => {
       const next = prev.filter((g) => g.id !== gradeId);
       safeWriteJson(`${STORAGE_KEYS.gradesCachePrefix}${activeSchool.id}`, next);
@@ -3861,7 +3558,7 @@ export function useSchoolDataManager({
       for (const entry of entries) {
         affectedIds.add(entry.studentId);
         const idx = next.findIndex(
-          (g) => belongsToSchool(g, activeSchool.id, isDemoMode) && g.courseId === courseId && g.studentId === entry.studentId
+          (g) => belongsToSchool(g, activeSchool.id) && g.courseId === courseId && g.studentId === entry.studentId
         );
         if (idx >= 0) {
           const existing = next[idx];
@@ -3988,10 +3685,36 @@ export function useSchoolDataManager({
             remarks,
             recordType,
             userName,
-            lineNotificationSent: false,
           },
           ...previous.filter((record) => record.id !== item.id),
         ]);
+        return true;
+      }
+      if (item.actionType === 'period_attendance' && Array.isArray(payload.records)) {
+        const queuedRecords = (payload.records as PeriodAttendanceRecord[]).map((rec) => ({
+          ...rec,
+          schoolId: rec.schoolId || item.schoolId,
+        }));
+        if (queuedRecords.length > 0) {
+          await savePeriodAttendanceBatchToDb(item.schoolId, queuedRecords);
+          setPeriodAttendance((previous) => {
+            const updated = [...previous];
+            for (const rec of queuedRecords) {
+              const idx = updated.findIndex(
+                (p) =>
+                  p.id === rec.id ||
+                  (p.studentId === rec.studentId &&
+                    p.courseId === rec.courseId &&
+                    p.date === rec.date &&
+                    p.periodNumber === rec.periodNumber &&
+                    (p.recordType || 'check_in') === (rec.recordType || 'check_in'))
+              );
+              if (idx >= 0) updated[idx] = rec;
+              else updated.push(rec);
+            }
+            return updated;
+          });
+        }
         return true;
       }
       if (item.actionType === 'health_visit') {
@@ -4027,7 +3750,6 @@ export function useSchoolDataManager({
   };
 
   return {
-    isDemoMode,
     schools,
     setSchools,
     activeSchool,
@@ -4069,7 +3791,6 @@ export function useSchoolDataManager({
     courses,
     grades,
     attendance,
-    invoices,
     announcements,
     systemConfig,
     setSystemConfig,
@@ -4115,7 +3836,6 @@ export function useSchoolDataManager({
     handleCleanupOrphanGrades,
     handleDeleteStudent,
     handlePurgeSampleStudents,
-    handleToggleLineSync,
     handleAddTeacher,
     handleUpdateTeacher,
     handleDeleteTeacher,
@@ -4142,14 +3862,7 @@ export function useSchoolDataManager({
     handleSaveCampusGates,
     handleUpdateSchoolCoordinates,
     handleQuickCheckIn,
-    handlePayInvoice,
-    handleSubmitInvoiceSlip,
-    handleApproveInvoiceSlip,
-    handleRejectInvoiceSlip,
-    handleSendPrivateAppReminder,
-    handleAddInvoice,
     handleAddAnnouncement,
-    handleBroadcastLine,
     handleCompleteLesson,
     handleSaveSchoolLesson,
     handleSubmitAssignment,

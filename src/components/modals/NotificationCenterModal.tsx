@@ -680,9 +680,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                             attendance: lang === 'th' ? 'เช็คชื่อ' : 'Attendance',
                             homework: lang === 'th' ? 'การบ้าน' : 'Homework',
                             announcement: lang === 'th' ? 'ประกาศ' : 'Bulletin',
-                            billing: lang === 'th' ? 'ค่าเทอม' : 'Billing',
                             system: lang === 'th' ? 'ระบบ' : 'System',
-                          }[notif.category];
+                          }[notif.category as 'attendance' | 'homework' | 'announcement' | 'system'];
 
                   const parsedDate = new Date(notif.timestamp);
                   const timeText = Number.isNaN(parsedDate.getTime())
@@ -791,7 +790,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               </h4>
               {[
                 { key: 'attendanceEnabled', labelTh: 'การเข้าเรียน มาสาย และการลา', labelEn: 'Attendance, late arrivals, and leave' },
-                { key: 'billingEnabled', labelTh: 'ค่าใช้จ่ายและใบเสร็จ', labelEn: 'Billing and receipts' },
+                { key: 'homeworkEnabled', labelTh: 'การบ้านและผลการเรียน', labelEn: 'Homework and grades' },
+                { key: 'announcementEnabled', labelTh: 'ประกาศจากโรงเรียน', labelEn: 'School announcements' },
               ].map((item) => {
                 const key = item.key as keyof Omit<ParentNotificationPreferences, 'pushEnabled'>;
                 return (
@@ -898,9 +898,6 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 { key: 'attendance', labelTh: 'เช็คชื่อเข้า-ออก & ขาด ลา มาสาย', labelEn: 'Attendance & Late Alerts' },
                 { key: 'homework', labelTh: 'การบ้านใหม่ & ผลการเรียน', labelEn: 'New Homework & Grades' },
                 { key: 'announcement', labelTh: 'ประกาศจากโรงเรียน & วันหยุดราชการ', labelEn: 'School Bulletins & Holidays' },
-                ...(currentUser.role !== 'student'
-                  ? [{ key: 'billing', labelTh: 'ค่าธรรมเนียมและใบเสร็จ', labelEn: 'Tuition Invoices & Receipts' }]
-                  : []),
               ].map((item) => (
                 <div key={item.key} className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between">
                   <span>{lang === 'th' ? item.labelTh : item.labelEn}</span>

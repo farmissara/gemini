@@ -10,7 +10,7 @@ export interface EduVerseNotification {
   id: string;
   title: string;
   body: string;
-  category: 'attendance' | 'homework' | 'announcement' | 'billing' | 'system';
+  category: 'attendance' | 'homework' | 'announcement' | 'system';
   timestamp: string;
   icon?: string;
   url?: string;
@@ -34,7 +34,6 @@ export interface NotificationSettings {
     attendance: boolean;
     homework: boolean;
     announcement: boolean;
-    billing: boolean;
   };
 }
 
@@ -56,7 +55,6 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
     attendance: true,
     homework: true,
     announcement: true,
-    billing: true,
   },
 };
 
@@ -603,7 +601,7 @@ function playNotificationChime() {
 export async function sendEduVerseNotification(params: {
   title: string;
   body: string;
-  category: 'attendance' | 'homework' | 'announcement' | 'billing' | 'system';
+  category: 'attendance' | 'homework' | 'announcement' | 'system';
   url?: string;
   priority?: 'normal' | 'urgent';
   tag?: string;

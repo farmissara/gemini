@@ -6,7 +6,6 @@ export interface ParentNotificationPreferences {
   attendanceEnabled: boolean;
   homeworkEnabled: boolean;
   announcementEnabled: boolean;
-  billingEnabled: boolean;
 }
 
 interface ParentNotificationRow {
@@ -23,7 +22,6 @@ export const DEFAULT_PARENT_NOTIFICATION_PREFERENCES: ParentNotificationPreferen
   attendanceEnabled: true,
   homeworkEnabled: true,
   announcementEnabled: true,
-  billingEnabled: true,
 };
 
 function getClient() {
@@ -77,7 +75,7 @@ export async function loadParentNotificationPreferences(): Promise<ParentNotific
   if (!client) return DEFAULT_PARENT_NOTIFICATION_PREFERENCES;
   const { data, error } = await client
     .from('parent_notification_preferences')
-    .select('push_enabled, attendance_enabled, homework_enabled, announcement_enabled, billing_enabled')
+    .select('push_enabled, attendance_enabled, homework_enabled, announcement_enabled')
     .maybeSingle();
   if (error || !data) return DEFAULT_PARENT_NOTIFICATION_PREFERENCES;
   return {
@@ -85,7 +83,6 @@ export async function loadParentNotificationPreferences(): Promise<ParentNotific
     attendanceEnabled: data.attendance_enabled,
     homeworkEnabled: data.homework_enabled,
     announcementEnabled: data.announcement_enabled,
-    billingEnabled: data.billing_enabled,
   };
 }
 
@@ -104,7 +101,6 @@ export async function saveParentNotificationPreferences(
       attendance_enabled: preferences.attendanceEnabled,
       homework_enabled: preferences.homeworkEnabled,
       announcement_enabled: preferences.announcementEnabled,
-      billing_enabled: preferences.billingEnabled,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'profile_id' });
   if (error) throw new Error(`Could not save notification preferences: ${error.message}`);
@@ -208,7 +204,7 @@ export async function sendPrivateParentNotification(params: {
   schoolId: string;
   studentId: string;
   eventId: string;
-  category: 'attendance' | 'homework' | 'announcement' | 'billing';
+  category: 'attendance' | 'homework' | 'announcement';
   title: string;
   body: string;
 }): Promise<{ stored: number; delivered: number }> {

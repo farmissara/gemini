@@ -579,7 +579,6 @@ export function buildAttendanceRecordsFromImport(
         status: row.status,
         checkinMethod: 'manual',
         remarks: row.remarks,
-        lineNotificationSent: false,
         recordedBy,
         recordedByRole,
       };

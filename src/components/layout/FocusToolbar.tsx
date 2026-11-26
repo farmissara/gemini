@@ -19,7 +19,6 @@ import {
   MonitorPlay,
   Package,
   QrCode,
-  Receipt,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
@@ -140,13 +139,6 @@ const TOOL_CATALOG: Record<string, FocusToolMeta> = {
     icon: BellRing,
     roles: ['super_admin', 'admin', 'teacher', 'student', 'parent'],
   },
-  billing: {
-    id: 'billing',
-    labelTh: 'ค่าเทอม & ใบเสร็จ',
-    labelEn: 'Billing',
-    icon: Receipt,
-    roles: ['super_admin', 'admin', 'parent'],
-  },
   realtime_daily: {
     id: 'realtime_daily',
     labelTh: 'เรียลไทม์ประจำวัน',
@@ -227,7 +219,6 @@ const EXTRA_ACTIVE_LABELS: Partial<Record<NavTab, { th: string; en: string }>> =
   report_insights: { th: 'รายงานสถิติ & กราฟ', en: 'Analytics & Charts' },
   school_permissions: { th: 'ตั้งค่าสิทธิ์บทบาท', en: 'Role Permissions' },
   school_gps: { th: 'ตั้งค่า GPS โรงเรียน', en: 'School GPS' },
-  admin_line_control: { th: 'ตั้งค่าแจ้งเตือน LINE OA', en: 'LINE OA Rules' },
   admin_student_accounts: { th: 'บัญชีนักเรียน', en: 'Student Accounts' },
   admin_saas_audit: { th: 'แพ็กเกจ AI & Audit Log', en: 'Packages & Audit' },
   student_id_cards: { th: 'บัตรนักเรียนดิจิทัล', en: 'Digital Student ID' },
@@ -253,7 +244,7 @@ const CONTEXTUAL_CLUSTERS: Record<string, NavTab[]> = {
   attendance: ['attendance', 'timetable', 'behavior_sdq', 'students'],
   grading: ['students', 'homework', 'central_exam_hub', 'courses', 'timetable'],
   directory: ['students', 'teachers', 'timetable', 'courses', 'attendance'],
-  care_ops: ['behavior_sdq', 'infirmary', 'attendance', 'announcements', 'billing'],
+  care_ops: ['behavior_sdq', 'infirmary', 'attendance', 'announcements'],
   executive_admin: ['dashboard', 'realtime_daily', 'executive_monitor', 'executive_warning', 'attendance'],
   executive_teacher: ['dashboard', 'timetable', 'attendance', 'homework', 'students'],
   student_parent_home: ['dashboard', 'timetable', 'homework', 'gradebook', 'announcements'],
@@ -278,14 +269,13 @@ function getContextualClusterIds(tab: NavTab, role: UserRole): NavTab[] {
     return role === 'student' || role === 'parent' ? CONTEXTUAL_CLUSTERS.student_parent_home : CONTEXTUAL_CLUSTERS.grading;
   }
   if (tab === 'students' || tab === 'teachers') return CONTEXTUAL_CLUSTERS.directory;
-  if (tab === 'behavior_sdq' || tab === 'infirmary' || tab === 'billing' || tab === 'announcements') {
+  if (tab === 'behavior_sdq' || tab === 'infirmary' || tab === 'announcements') {
     return role === 'student' || role === 'parent' ? CONTEXTUAL_CLUSTERS.student_parent_home : CONTEXTUAL_CLUSTERS.care_ops;
   }
   if (
     tab === 'system_settings' ||
     tab === 'school_gps' ||
     tab === 'school_permissions' ||
-    tab === 'admin_line_control' ||
     tab === 'admin_student_accounts' ||
     tab === 'admin_saas_audit' ||
     tab === 'admin_superadmin_desk'
@@ -332,7 +322,6 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
     if (!isTabEnabledByFeatureFlags(featureFlagTab, featureFlags, currentRole)) return false;
     if (schoolPermissions) {
       if (currentRole === 'teacher') {
-        if (tabId === 'billing' && schoolPermissions.teacher_view_financials === false) return false;
         if (tabId === 'behavior_sdq' && schoolPermissions.teacher_sdq_screening === false) return false;
         if (tabId === 'infirmary' && schoolPermissions.teacher_infirmary_access === false) return false;
         if ((tabId === 'attendance' || tabId === 'mobile_checkin') && schoolPermissions.teacher_attendance === false) return false;
@@ -394,7 +383,6 @@ export const FocusToolbar: React.FC<FocusToolbarProps> = ({
     if (
       currentTab === 'school_gps' ||
       currentTab === 'school_permissions' ||
-      currentTab === 'admin_line_control' ||
       currentTab === 'admin_student_accounts' ||
       currentTab === 'admin_saas_audit'
     ) {

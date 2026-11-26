@@ -19,7 +19,6 @@ export type AttendanceDbRow = {
   checkin_method: string | null;
   photo_url: string | null;
   remarks: string | null;
-  line_notification_sent: boolean | null;
 };
 
 export function parseAssignmentStatus(value: unknown): Assignment['status'] {
@@ -48,7 +47,6 @@ export function mapAttendanceDbRow(row: AttendanceDbRow): AttendanceRecord {
     photoUrl: photoStoragePath,
     photoStoragePath,
     remarks: row.remarks || undefined,
-    lineNotificationSent: Boolean(row.line_notification_sent),
   };
 }
 
@@ -75,8 +73,6 @@ export function mapTeacherToDb(teacher: Teacher, schoolId: string) {
     homeroom_classes: teacher.homeroomClasses || [],
     teaching_grades: teacher.teachingGrades || [],
     is_school_admin: Boolean(teacher.isSchoolAdmin),
-    line_user_id: teacher.lineUserId || null,
-    line_linked: Boolean(teacher.lineLinked),
     other_skills: teacher.otherSkills || [],
     certifications: teacher.certifications || [],
     teaching_experience_years: teacher.teachingExperienceYears ?? null,

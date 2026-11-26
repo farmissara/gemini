@@ -12,7 +12,6 @@ import {
   Student,
   Teacher,
   TimetableSlot,
-  TuitionInvoice,
 } from '../types';
 import { formatSlotTeachersDisplay, getSlotTeachers, normalizeTeacherName } from './timetableTeachers';
 
@@ -33,7 +32,6 @@ export type DuplicateRecordTarget =
   | 'teachers'
   | 'courses'
   | 'gradebook'
-  | 'billing'
   | 'timetable'
   | 'attendance'
   | 'announcements'
@@ -82,10 +80,6 @@ const DUPLICATE_REPORT_DESTINATIONS: Record<DuplicateRecordTarget, { module: str
   gradebook: {
     module: 'Gradebook / ปพ.5',
     guidance: 'เปิด Gradebook / ปพ.5 เลือกนักเรียน รายวิชา ปีการศึกษา และภาคเรียนตามรายการ ตรวจผลคะแนนก่อนแก้ไขหรือลบระเบียนที่เกิน',
-  },
-  billing: {
-    module: 'การเงินและใบแจ้งหนี้',
-    guidance: 'เปิดการเงิน แล้วค้นหาเลขที่ใบแจ้งหนี้หรือชื่อนักเรียน ตรวจยอดชำระและใบเสร็จก่อนแก้ไขหรือลบ เพื่อไม่ให้กระทบประวัติการเงิน',
   },
   timetable: {
     module: 'ตารางเรียนและตารางสอน',
@@ -150,7 +144,6 @@ export interface DuplicateRecordData {
   teachers: Teacher[];
   courses: Course[];
   grades: GradeRecord[];
-  invoices: TuitionInvoice[];
   timetableSlots: TimetableSlot[];
   attendance?: AttendanceRecord[];
   periodAttendance?: PeriodAttendanceRecord[];
@@ -262,18 +255,6 @@ export function getDuplicateRecordReports(data: DuplicateRecordData): DuplicateR
     },
     (grade) => `ผลการเรียน ${grade.letterGrade} · ${grade.totalScore} คะแนน`
   ));
-  addCheck('billing', 'เลขที่ใบแจ้งหนี้', getDuplicateMatches(
-    data.invoices,
-    (invoice) => invoice.invoiceNumber,
-    (invoice) => invoice.invoiceNumber,
-    (invoice) => `${studentById.get(invoice.studentId)?.firstNameTh || invoice.studentId} · ${invoice.academicYear}/${invoice.semester} · ${invoice.totalAmount} บาท`
-  ));
-  addCheck('billing', 'ใบแจ้งหนี้นักเรียน/รายการ/ภาคเรียนเดียวกัน', getDuplicateMatches(
-    data.invoices,
-    (invoice) => `${invoice.studentId}|${invoice.semester}|${(invoice.items[0]?.title || '').trim()}`,
-    (invoice) => `${studentById.get(invoice.studentId)?.firstNameTh || invoice.studentId} · ${invoice.items[0]?.title || 'ไม่ระบุรายการ'} · ${invoice.semester}`,
-    (invoice) => `${invoice.invoiceNumber} · ${invoice.totalAmount} บาท · ${invoice.academicYear}`
-  ));
   addCheck('timetable', 'ห้องเรียนเดียวกันในวัน/คาบเดียวกัน', getDuplicateMatches(
     data.timetableSlots,
     (slot) => `${slot.classRoom}|${slot.dayOfWeek}|${slot.periodNumber}`,
@@ -339,7 +320,6 @@ export function getDuplicateIdReports(data: Record<string, Array<{ id: string }>
     courses: { label: 'ระเบียนรายวิชา', target: 'courses' },
     grades: { label: 'ระเบียนผลการเรียน', target: 'gradebook' },
     attendance: { label: 'ระเบียนเวลาเรียน', target: 'attendance' },
-    invoices: { label: 'ระเบียนใบแจ้งหนี้', target: 'billing' },
     announcements: { label: 'ระเบียนประกาศ', target: 'announcements' },
     lessons: { label: 'ระเบียนบทเรียน', target: 'dashboard' },
     assignments: { label: 'ระเบียนงานที่มอบหมาย', target: 'dashboard' },
@@ -571,30 +551,6 @@ export function getInfirmaryDuplicateReasons(
       v.symptoms.trim().toLowerCase() === candidate.symptoms.trim().toLowerCase()
   );
   return sameDay ? ['มีบันทึกการเข้าห้องพยาบาลของนักเรียนคนนี้ด้วยอาการเดียวกันในวันนี้แล้ว'] : [];
-}
-
-export function getInvoiceDuplicateReasons(
-  candidate: { studentId: string; invoiceNumber: string; semester: string; title: string },
-  existing: TuitionInvoice[]
-): string[] {
-  const reasons: string[] = [];
-  if (
-    candidate.invoiceNumber.trim() &&
-    existing.some((inv) => inv.invoiceNumber.trim().toLowerCase() === candidate.invoiceNumber.trim().toLowerCase())
-  ) {
-    reasons.push('เลขที่ใบแจ้งหนี้ซ้ำในระบบ');
-  }
-  if (
-    existing.some(
-      (inv) =>
-        inv.studentId === candidate.studentId &&
-        inv.semester.trim().toLowerCase() === candidate.semester.trim().toLowerCase() &&
-        inv.items.some((item) => item.title.trim().toLowerCase() === candidate.title.trim().toLowerCase())
-    )
-  ) {
-    reasons.push('นักเรียนมีใบแจ้งหนี้หัวข้อและภาคเรียนเดียวกันนี้อยู่แล้ว');
-  }
-  return reasons;
 }
 
 export function getAnnouncementDuplicateReasons(

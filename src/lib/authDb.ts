@@ -132,7 +132,6 @@ interface SchoolRow {
   latitude?: number | null;
   longitude?: number | null;
   geofence_radius_meters?: number | null;
-  line_oa_id: string;
   created_at: string;
   status: School['status'];
 };
@@ -207,7 +206,6 @@ function mapSchool(row: SchoolRow): School {
       Number.isFinite(Number(row.geofence_radius_meters))
         ? Number(row.geofence_radius_meters)
         : undefined,
-    lineOaId: row.line_oa_id,
     createdAt: row.created_at,
     status: row.status,
   };
@@ -271,7 +269,6 @@ async function loadAuthContext(userId: string, email: string, emailConfirmed: bo
         role: profileRow.role,
         schoolId: profileRow.school_id || '',
         avatarUrl: profileRow.avatar_url,
-        lineConnected: false,
         phone: profileRow.phone || undefined,
         studentRecordId: profileRow.student_id || undefined,
         mustChangePassword: true,
@@ -334,7 +331,6 @@ async function loadAuthContext(userId: string, email: string, emailConfirmed: bo
     role: profileRow.role,
     schoolId: resolvedSchool?.id || '',
     avatarUrl: profileRow.avatar_url,
-    lineConnected: false,
     phone: profileRow.phone || undefined,
     studentRecordId: profileRow.student_id || undefined,
     teacherRecordId,
@@ -764,7 +760,7 @@ export async function inviteTeacherOrParentAccount(params: {
   const { data: sessionData } = await client.auth.getSession();
   if (!sessionData?.session?.access_token) {
     throw new Error(
-      `โหมดสาธิตไม่สามารถส่งคำเชิญบัญชี${roleLabelTh}จริงได้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase`
+      `ยังไม่ได้เข้าสู่ระบบที่เชื่อมต่อ Supabase จึงไม่สามารถส่งคำเชิญบัญชี${roleLabelTh}ได้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียน`
     );
   }
 
@@ -1217,7 +1213,7 @@ async function invokeStudentCredentialManager(
   const { data: sessionData } = await client.auth.getSession();
   const accessToken = sessionData?.session?.access_token;
   if (!accessToken) {
-    throw new Error('โหมดสาธิตไม่สามารถจัดการบัญชีหรือรหัสผ่านนักเรียนได้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase');
+    throw new Error('กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase ก่อนจัดการบัญชีหรือรหัสผ่านนักเรียน');
   }
 
   // Tier 1: Supabase Edge Function
@@ -1318,7 +1314,7 @@ export async function createMissingStudentLoginAccounts(
     const { data: sessionData } = await client.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
     if (!accessToken) {
-      throw new Error('โหมดสาธิตไม่สามารถจัดการบัญชีหรือรหัสผ่านนักเรียนได้ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase');
+      throw new Error('กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลโรงเรียนที่เชื่อมต่อ Supabase ก่อนจัดการบัญชีหรือรหัสผ่านนักเรียน');
     }
 
     const expressAttempt = await callExpressStudentCredentials(accessToken, {

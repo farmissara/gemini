@@ -25,7 +25,6 @@ import type {
   SystemConfig,
   Teacher,
   TimetableSlot,
-  TuitionInvoice,
   UserRole,
 } from '../../types';
 import type { NavTab } from '../../components/layout/Sidebar';
@@ -82,7 +81,6 @@ export interface UseSchoolScopeParams {
   authenticatedRole: UserRole | null;
   currentTab: NavTab;
   lang: AppLanguage;
-  isDemoMode: boolean;
   featureFlagsBySchool: Record<string, SchoolFeatureFlags>;
   centralExamPacks: CentralExamPack[];
   schoolExamEntitlements: SchoolExamEntitlement[];
@@ -91,7 +89,6 @@ export interface UseSchoolScopeParams {
   courses: Course[];
   grades: GradeRecord[];
   attendance: AttendanceRecord[];
-  invoices: TuitionInvoice[];
   announcements: Announcement[];
   lessons: Lesson[];
   assignments: Assignment[];
@@ -117,7 +114,6 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
     authenticatedRole,
     currentTab,
     lang,
-    isDemoMode,
     featureFlagsBySchool,
     centralExamPacks,
     schoolExamEntitlements,
@@ -126,7 +122,6 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
     courses,
     grades,
     attendance,
-    invoices,
     announcements,
     lessons,
     assignments,
@@ -178,23 +173,22 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
   const unclaimedCentralPacks = getUnclaimedPublishedPacks(centralExamPacks, schoolExamEntitlements);
 
   // Filter items by active school
-  const schoolStudents = students.filter((s) => belongsToSchool(s, activeSchool.id, isDemoMode));
-  const schoolTeachers = teachers.filter((t) => belongsToSchool(t, activeSchool.id, isDemoMode));
-  const schoolCourses = courses.filter((c) => belongsToSchool(c, activeSchool.id, isDemoMode));
-  const schoolGrades = grades.filter((g) => belongsToSchool(g, activeSchool.id, isDemoMode));
-  const schoolAttendance = attendance.filter((a) => belongsToSchool(a, activeSchool.id, isDemoMode));
-  const schoolInvoices = invoices.filter((i) => belongsToSchool(i, activeSchool.id, isDemoMode));
-  const schoolAnnouncements = announcements.filter((a) => belongsToSchool(a, activeSchool.id, isDemoMode));
-  const schoolLessons = lessons.filter((l) => belongsToSchool(l, activeSchool.id, isDemoMode));
-  const schoolAssignments = assignments.filter((a) => belongsToSchool(a, activeSchool.id, isDemoMode));
-  const schoolQuestions = questions.filter((q) => belongsToSchool(q, activeSchool.id, isDemoMode));
-  const schoolPeriodAttendance = periodAttendance.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode));
-  const schoolPortfolioItems = portfolioItems.filter((p) => belongsToSchool(p, activeSchool.id, isDemoMode));
+  const schoolStudents = students.filter((s) => belongsToSchool(s, activeSchool.id));
+  const schoolTeachers = teachers.filter((t) => belongsToSchool(t, activeSchool.id));
+  const schoolCourses = courses.filter((c) => belongsToSchool(c, activeSchool.id));
+  const schoolGrades = grades.filter((g) => belongsToSchool(g, activeSchool.id));
+  const schoolAttendance = attendance.filter((a) => belongsToSchool(a, activeSchool.id));
+  const schoolAnnouncements = announcements.filter((a) => belongsToSchool(a, activeSchool.id));
+  const schoolLessons = lessons.filter((l) => belongsToSchool(l, activeSchool.id));
+  const schoolAssignments = assignments.filter((a) => belongsToSchool(a, activeSchool.id));
+  const schoolQuestions = questions.filter((q) => belongsToSchool(q, activeSchool.id));
+  const schoolPeriodAttendance = periodAttendance.filter((p) => belongsToSchool(p, activeSchool.id));
+  const schoolPortfolioItems = portfolioItems.filter((p) => belongsToSchool(p, activeSchool.id));
 
   const timetableAcademicYear = normalizeTimetableAcademicYear(activeSchool.academicYear || systemConfig.academicYear);
   const timetableSemester = activeSchool.currentSemester || systemConfig.currentSemester;
   const schoolTimetableSlotsAllTerms = timetableSlots
-    .filter((slot) => belongsToSchool(slot, activeSchool.id, isDemoMode))
+    .filter((slot) => belongsToSchool(slot, activeSchool.id))
     .map((slot) => ({
       ...slot,
       academicYear: normalizeTimetableAcademicYear(slot.academicYear || timetableAcademicYear),
@@ -203,11 +197,11 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
   const schoolTimetableSlots = schoolTimetableSlotsAllTerms.filter(
     (slot) => slot.academicYear === timetableAcademicYear && slot.semester === timetableSemester
   );
-  const schoolBehaviorRecords = behaviorRecords.filter((b) => belongsToSchool(b, activeSchool.id, isDemoMode));
-  const schoolSdqAssessments = sdqAssessments.filter((s) => belongsToSchool(s, activeSchool.id, isDemoMode));
-  const schoolInfirmaryVisits = infirmaryVisits.filter((i) => belongsToSchool(i, activeSchool.id, isDemoMode));
-  const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => belongsToSchool(h, activeSchool.id, isDemoMode));
-  const schoolLeaveRequests = leaveRequests.filter((request) => belongsToSchool(request, activeSchool.id, isDemoMode));
+  const schoolBehaviorRecords = behaviorRecords.filter((b) => belongsToSchool(b, activeSchool.id));
+  const schoolSdqAssessments = sdqAssessments.filter((s) => belongsToSchool(s, activeSchool.id));
+  const schoolInfirmaryVisits = infirmaryVisits.filter((i) => belongsToSchool(i, activeSchool.id));
+  const schoolHomeworkSubmissions = homeworkSubmissions.filter((h) => belongsToSchool(h, activeSchool.id));
+  const schoolLeaveRequests = leaveRequests.filter((request) => belongsToSchool(request, activeSchool.id));
 
   const schoolPermissions = useSchoolPermissions(activeSchool.id);
 
@@ -357,7 +351,6 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
       courses: schoolCourses,
       grades: schoolGrades,
       attendance: schoolAttendance,
-      invoices: schoolInvoices,
       announcements: schoolAnnouncements,
       lessons: schoolLessons,
       assignments: schoolAssignments,
@@ -375,7 +368,6 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
       teachers: schoolTeachers,
       courses: schoolCourses,
       grades: schoolGrades,
-      invoices: schoolInvoices,
       timetableSlots: schoolTimetableSlots,
       attendance: schoolAttendance,
       periodAttendance: schoolPeriodAttendance,
@@ -458,9 +450,6 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
     : currentRole === 'teacher'
       ? schoolGrades.filter((grade) => teacherStudentIds.has(grade.studentId) && teacherCourseIds.has(grade.courseId))
       : schoolGrades;
-  const viewInvoices = isRestrictedViewer
-    ? schoolInvoices.filter((inv) => scopedStudentIdSet.has(inv.studentId))
-    : currentRole === 'teacher' ? [] : schoolInvoices;
   const viewHomeworkSubmissions = isRestrictedViewer
     ? schoolHomeworkSubmissions.filter((sub) => scopedStudentIdSet.has(sub.studentId))
     : currentRole === 'teacher'
@@ -524,7 +513,6 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
     schoolCourses,
     schoolGrades,
     schoolAttendance,
-    schoolInvoices,
     schoolAnnouncements,
     schoolLessons,
     schoolAssignments,
@@ -560,7 +548,6 @@ export function useSchoolScope(params: UseSchoolScopeParams) {
     viewPeriodAttendance,
     viewLeaveRequests,
     viewGrades,
-    viewInvoices,
     viewHomeworkSubmissions,
     viewInfirmaryVisits,
     viewBehaviorRecords,

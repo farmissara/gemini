@@ -158,21 +158,12 @@ export const QUICK_NAV_CATALOG: QuickNavEntry[] = [
     roles: ['super_admin', 'admin', 'teacher', 'student'],
   },
   {
-    tab: 'billing',
-    labelTh: 'การเงิน & ค่าบำรุงการศึกษา',
-    labelEn: 'Billing & Tuition',
-    categoryTh: 'การเงิน',
-    categoryEn: 'Finance',
-    keywords: ['billing', 'tuition', 'invoice', 'ค่าเทอม', 'ใบเสร็จ', 'สลิป'],
-    roles: ['super_admin', 'admin'],
-  },
-  {
     tab: 'announcements',
     labelTh: 'ประกาศข่าวสาร & หนังสือยินยอม',
     labelEn: 'Announcements & Consent',
     categoryTh: 'สื่อสาร',
     categoryEn: 'Communication',
-    keywords: ['announcement', 'line', 'ประกาศ', 'ข่าวสาร', 'ขออนุญาต'],
+    keywords: ['announcement', 'ประกาศ', 'ข่าวสาร', 'ขออนุญาต'],
     roles: ['super_admin', 'admin', 'teacher'],
   },
   {

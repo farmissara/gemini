@@ -12,7 +12,6 @@ import { createStudentCredentialsRouter } from './src/server/studentCredentialsR
 import { createSchoolAiRouter, finishSchoolAiRequest, getSchoolAiContext, prepareSchoolAiRequest, reserveSchoolAiRequest } from './src/server/schoolAiRoutes.ts';
 import { createProfileAvatarRouter } from './src/server/profileAvatarRoutes.ts';
 import { createSelfieCleanupRouter, startSelfieCleanupScheduler } from './src/server/selfieCleanupRoutes.ts';
-import { createLineMessagingRouter } from './src/server/lineMessagingRoutes.ts';
 import { createLearningAiRouter } from './src/server/learningAiRoutes.ts';
 
 const viteEnv = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
@@ -282,7 +281,6 @@ async function createApp() {
   app.use('/api/student-credentials', createStudentCredentialsRouter(getServerEnv));
   app.use('/api/school-ai', createSchoolAiRouter(getServerEnv));
   app.use('/api/attendance/cleanup-selfies', createSelfieCleanupRouter(getServerEnv));
-  app.use('/api/line', createLineMessagingRouter(getServerEnv));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({
@@ -336,7 +334,7 @@ async function createApp() {
         careerQuery?: string;
         studentContext?: Record<string, unknown>;
       };
-      if (!careerQuery || !careerQuery.trim()) {
+      if (typeof careerQuery !== 'string' || !careerQuery.trim()) {
         return res.status(400).json({ error: 'INVALID_REQUEST', message: 'กรุณาระบุชื่ออาชีพที่ต้องการวิเคราะห์' });
       }
       if (careerQuery.trim().length > 160) {
@@ -436,8 +434,13 @@ async function createApp() {
       if (!Array.isArray(quizAnswers) || quizAnswers.length < 1 || quizAnswers.length > 20) {
         return res.status(400).json({ error: 'INVALID_REQUEST', message: 'กรุณาส่งคำตอบแบบทดสอบ 1–20 ข้อ' });
       }
-      if (quizAnswers.some((answer) => String(answer.selectedLabelTh || '').length > 500 || String(answer.questionTh || '').length > 500)) {
-        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อความคำตอบยาวเกินกำหนด' });
+      if (quizAnswers.some((answer) =>
+        (answer?.selectedLabelTh !== undefined && typeof answer.selectedLabelTh !== 'string') ||
+        (answer?.questionTh !== undefined && typeof answer.questionTh !== 'string') ||
+        String(answer?.selectedLabelTh || '').length > 500 ||
+        String(answer?.questionTh || '').length > 500
+      )) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อความคำตอบไม่ถูกต้องหรือยาวเกินกำหนด' });
       }
       if (!(await reserveCareerQuestAiQuota(req, res))) return;
       const stage = String(studentContext?.stage || 'high');
@@ -527,8 +530,8 @@ async function createApp() {
         careerTitleTh?: string;
         studentContext?: Record<string, unknown>;
       };
-      if (careerTitleTh && careerTitleTh.length > 160) {
-        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ชื่ออาชีพยาวได้ไม่เกิน 160 ตัวอักษร' });
+      if (careerTitleTh !== undefined && (typeof careerTitleTh !== 'string' || careerTitleTh.length > 160)) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ชื่ออาชีพไม่ถูกต้องหรือยาวเกิน 160 ตัวอักษร' });
       }
       if (!(await reserveCareerQuestAiQuota(req, res))) return;
       const stage = String(studentContext?.stage || 'high');
@@ -610,8 +613,16 @@ async function createApp() {
 
       const currentTurn = Math.max(1, Number(turnNumber) || 1);
       const totalTurns = Math.min(5, Math.max(3, Number(maxTurns) || 4));
-      if ((careerTitleTh || '').length > 160 || (chosenOptionText || '').length > 500 || !Array.isArray(history || []) || (history || []).length > 10 || (history || []).some((entry) => String(entry.text || '').length > 1000)) {
-        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อมูลสถานการณ์ยาวหรือมีจำนวนเกินกำหนด' });
+      if (
+        (careerTitleTh !== undefined && typeof careerTitleTh !== 'string') ||
+        (chosenOptionText !== undefined && typeof chosenOptionText !== 'string') ||
+        (history !== undefined && !Array.isArray(history)) ||
+        (careerTitleTh || '').length > 160 ||
+        (chosenOptionText || '').length > 500 ||
+        (history || []).length > 10 ||
+        (history || []).some((entry) => (entry?.text !== undefined && typeof entry.text !== 'string') || String(entry?.text || '').length > 1000)
+      ) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อมูลสถานการณ์ไม่ถูกต้องหรือยาวเกินกำหนด' });
       }
       if (!(await reserveCareerQuestAiQuota(req, res))) return;
       const isFinalTurn = currentTurn >= totalTurns;
@@ -702,11 +713,16 @@ async function createApp() {
         chatHistory?: Array<{ sender?: string; text?: string }>;
       };
 
-      if (!message || !message.trim()) {
+      if (typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ error: 'INVALID_REQUEST', message: 'กรุณาพิมพ์คำถามถึงพี่เลี้ยง AI' });
       }
-      if (message.trim().length > 2000 || (chatHistory || []).length > 50 || (chatHistory || []).some((entry) => String(entry.text || '').length > 2000)) {
-        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อความหรือประวัติสนทนายาวเกินกำหนด' });
+      if (
+        (chatHistory !== undefined && !Array.isArray(chatHistory)) ||
+        message.trim().length > 2000 ||
+        (chatHistory || []).length > 50 ||
+        (chatHistory || []).some((entry) => (entry?.text !== undefined && typeof entry.text !== 'string') || String(entry?.text || '').length > 2000)
+      ) {
+        return res.status(400).json({ error: 'INVALID_REQUEST', message: 'ข้อความหรือประวัติสนทนาไม่ถูกต้องหรือยาวเกินกำหนด' });
       }
       if (!(await reserveCareerQuestAiQuota(req, res))) return;
 
@@ -798,7 +814,7 @@ async function createApp() {
       server: {
         middlewareMode: true,
         hmr: hmrEnabled ? { server: httpServer } : false,
-        ws: hmrEnabled ? { server: httpServer } : false,
+        ws: hmrEnabled ? undefined : false,
         watch: hmrEnabled ? undefined : null,
       },
       appType: 'spa',

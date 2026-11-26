@@ -6,8 +6,6 @@ import { StatusBadge, type StatusBadgeStatus } from '../../components/common/Sta
 interface StudentsAnalyticsTabProps {
   students: Student[];
   activeStudentsCount: number;
-  isLineEnabled: boolean;
-  lineLinkedCount: number;
   graduatedCount: number;
   existingGradeLevels: string[];
   statusBadgeMap: Record<StudentStatus, StatusBadgeStatus>;
@@ -18,14 +16,14 @@ interface StudentsAnalyticsTabProps {
 export const StudentsAnalyticsTab: React.FC<StudentsAnalyticsTabProps> = ({
   students,
   activeStudentsCount,
-  isLineEnabled,
-  lineLinkedCount,
   graduatedCount,
   existingGradeLevels,
   statusBadgeMap,
   onFilterByStatus,
   onFilterByGrade,
-}) => (
+}) => {
+  const uniqueRoomsCount = new Set(students.map((s) => s.room?.trim()).filter(Boolean)).size;
+  return (
   <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
     {/* 1-Row Unified KPI Strip */}
     <div className="saas-kpi-strip grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border)]">
@@ -47,24 +45,13 @@ export const StudentsAnalyticsTab: React.FC<StudentsAnalyticsTabProps> = ({
         </div>
       </div>
       <div className="saas-kpi-cell">
-        <div className="text-xs font-medium text-[var(--color-text-muted)]">
-          {isLineEnabled ? 'เชื่อมต่อ LINE OA' : 'แจ้งเตือน LINE OA'}
+        <div className="text-xs font-medium text-[var(--color-text-muted)]">ห้องเรียนที่มีนักเรียน</div>
+        <div className="mt-1 text-2xl font-bold text-[var(--color-text-title)] tabular-nums">
+          {uniqueRoomsCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">ห้อง</span>
         </div>
-        {isLineEnabled ? (
-          <>
-            <div className="mt-1 text-2xl font-bold text-[var(--color-text-title)] tabular-nums">
-              {lineLinkedCount} <span className="text-xs font-normal text-[var(--color-text-muted)]">คน</span>
-            </div>
-            <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)] tabular-nums">
-              {students.length > 0 ? Math.round((lineLinkedCount / students.length) * 100) : 0}% ของนักเรียนทั้งหมด
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="mt-1 text-xl font-bold text-[var(--color-text-muted)]">ปิดใช้งาน</div>
-            <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">ใช้แจ้งเตือนในแอป / Web Push</div>
-          </>
-        )}
+        <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+          ครอบคลุม {existingGradeLevels.length} ระดับชั้น
+        </div>
       </div>
       <div className="saas-kpi-cell">
         <div className="text-xs font-medium text-[var(--color-text-muted)]">สำเร็จการศึกษาแล้ว</div>
@@ -134,7 +121,6 @@ export const StudentsAnalyticsTab: React.FC<StudentsAnalyticsTabProps> = ({
               const activeCount = students.filter(
                 (s) => s.gradeLevel === grade && (s.status === 'active' || !s.status)
               ).length;
-              const lineCount = students.filter((s) => s.gradeLevel === grade && s.lineLinked).length;
               const pct = students.length > 0 ? Math.round((count / students.length) * 100) : 0;
               return (
                 <button
@@ -159,7 +145,7 @@ export const StudentsAnalyticsTab: React.FC<StudentsAnalyticsTabProps> = ({
                     <div className="flex items-center gap-3 text-[11px] text-[var(--color-text-muted)] tabular-nums">
                       <span>กำลังศึกษา {activeCount} คน</span>
                       <span aria-hidden="true">·</span>
-                      <span>LINE {lineCount} คน</span>
+                      <span>สัดส่วน {pct}%</span>
                     </div>
                   </div>
                 </button>
@@ -170,4 +156,5 @@ export const StudentsAnalyticsTab: React.FC<StudentsAnalyticsTabProps> = ({
       </section>
     </div>
   </div>
-);
+  );
+};

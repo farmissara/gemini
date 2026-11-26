@@ -117,15 +117,13 @@ export const App: React.FC = () => {
     },
   };
 
-  // Lazy-load LMS lessons when entering lms_classroom
+  // Load LMS lessons once the active school data is ready (used by ERP Dashboard, Mobile Shell, and LMS mode)
   useEffect(() => {
     if (
-      nav.programMode !== 'lms_classroom' ||
       !data.activeSchool.id ||
       !data.currentUser ||
       !data.isDataReady ||
-      data.loadedSchoolId !== data.activeSchool.id ||
-      data.isDemoMode
+      data.loadedSchoolId !== data.activeSchool.id
     ) {
       return;
     }
@@ -143,7 +141,7 @@ export const App: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [nav.programMode, data.activeSchool.id, data.currentUser?.id, data.loadedSchoolId, data.isDataReady, data.isDemoMode]);
+  }, [data.activeSchool.id, data.currentUser?.id, data.loadedSchoolId, data.isDataReady]);
 
   // Gradebook attendance history prefetch
   useEffect(() => {
@@ -172,7 +170,6 @@ export const App: React.FC = () => {
     authenticatedRole: data.authenticatedRole,
     currentTab: nav.currentTab,
     lang: prefs.lang,
-    isDemoMode: data.isDemoMode,
     featureFlagsBySchool: data.featureFlagsBySchool,
     centralExamPacks: data.centralExamPacks,
     schoolExamEntitlements: data.schoolExamEntitlements,
@@ -181,7 +178,6 @@ export const App: React.FC = () => {
     courses: data.courses,
     grades: data.grades,
     attendance: data.attendance,
-    invoices: data.invoices,
     announcements: data.announcements,
     lessons: data.lessons,
     assignments: data.assignments,
@@ -359,7 +355,6 @@ export const App: React.FC = () => {
         nav.setCurrentTab('students');
       }}
       onLoadAttendanceHistory={data.loadAttendanceHistory}
-      onToggleLineSync={data.handleToggleLineSync}
       onUpdateStudent={data.handleUpdateStudent}
       onUpdateUserProfile={data.handleUpdateUserProfile}
       onAddPortfolioItem={data.handleAddPortfolioItem}
@@ -408,7 +403,6 @@ export const App: React.FC = () => {
               courses={scope.viewCourses}
               lessons={scope.viewLessons}
               grades={scope.viewGrades}
-              invoices={scope.viewInvoices}
               infirmaryVisits={scope.viewInfirmaryVisits}
               behaviorRecords={scope.viewBehaviorRecords}
               sdqAssessments={scope.viewSdqAssessments}
@@ -446,13 +440,11 @@ export const App: React.FC = () => {
               onUpdateGrade={data.handleUpdateGrade}
               onAddGrade={data.handleAddGrade}
               schools={data.currentRole === 'super_admin' ? data.schools : (data.activeSchool.id ? [data.activeSchool] : [])}
-              isDemoMode={data.isDemoMode}
               coordinationUnreadCount={scope.coordinationUnreadCount}
               unclaimedCentralPacksCount={scope.unclaimedCentralPacks.length}
               onOpenSchoolSwitcher={data.currentRole === 'super_admin' ? () => setShowSchoolSwitcher(true) : undefined}
               onUpdateSchool={data.currentRole === 'teacher' ? undefined : data.handleUpdateSchool}
               onAddAnnouncement={data.handleAddAnnouncement}
-              onBroadcastLine={data.handleBroadcastLine}
               onAddHomeworkAssignment={data.handleAddHomeworkAssignment}
               onAddHomeworkSubmission={data.handleAddHomeworkSubmission}
               onGradeHomeworkSubmission={data.handleGradeHomeworkSubmission}
@@ -462,8 +454,6 @@ export const App: React.FC = () => {
               onCompleteLesson={data.handleCompleteLesson}
               onSaveLesson={data.handleSaveSchoolLesson}
               onSubmitAssignment={data.handleSubmitAssignment}
-              onApproveInvoiceSlip={data.handleApproveInvoiceSlip}
-              onRejectInvoiceSlip={data.handleRejectInvoiceSlip}
               onViewSchool={data.handleViewSchool}
               onToggleSchoolStatus={data.handleToggleSchoolStatus}
               onUpdateSchoolFeatureFlags={data.handleUpdateSchoolFeatureFlags}
@@ -754,7 +744,6 @@ export const App: React.FC = () => {
                 activeSchool={data.activeSchool}
                 schools={data.schools}
                 setSchools={data.setSchools}
-                isDemoMode={data.isDemoMode}
                 shouldShowMobileView={prefs.shouldShowMobileView}
                 lang={prefs.lang}
                 systemConfig={data.systemConfig}
@@ -770,8 +759,6 @@ export const App: React.FC = () => {
                 viewGrades={scope.viewGrades}
                 viewAttendance={scope.viewAttendance}
                 schoolAttendance={scope.schoolAttendance}
-                schoolInvoices={scope.schoolInvoices}
-                viewInvoices={scope.viewInvoices}
                 schoolAnnouncements={scope.schoolAnnouncements}
                 viewAnnouncements={scope.viewAnnouncements}
                 viewLessons={scope.viewLessons}
@@ -859,7 +846,6 @@ export const App: React.FC = () => {
                 onCopyCoursesToSchool={data.handleCopyCoursesToSchool}
                 onQuickCheckIn={data.handleQuickCheckIn}
                 onRecordMilestoneActivity={data.handleRecordMilestoneActivity}
-                onToggleLineSync={data.handleToggleLineSync}
                 onAddStudent={data.handleAddStudent}
                 onAddStudents={data.handleAddStudents}
                 onUpdateStudent={data.handleUpdateStudent}
@@ -914,14 +900,7 @@ export const App: React.FC = () => {
                 onAddLeaveRequest={data.handleAddLeaveRequest}
                 onUpdateLeaveStatus={data.handleUpdateLeaveStatus}
                 onUpdateOwnAvatar={data.handleUpdateOwnAvatar}
-                onPayInvoice={data.handlePayInvoice}
-                onAddInvoice={data.handleAddInvoice}
-                onSendPrivateAppReminder={data.handleSendPrivateAppReminder}
-                onApproveInvoiceSlip={data.handleApproveInvoiceSlip}
-                onRejectInvoiceSlip={data.handleRejectInvoiceSlip}
-                onSubmitInvoiceSlip={data.handleSubmitInvoiceSlip}
                 onAddAnnouncement={data.handleAddAnnouncement}
-                onBroadcastLine={data.handleBroadcastLine}
                 onCompleteLesson={data.handleCompleteLesson}
                 onSaveLesson={data.handleSaveSchoolLesson}
                 onSubmitAssignment={data.handleSubmitAssignment}

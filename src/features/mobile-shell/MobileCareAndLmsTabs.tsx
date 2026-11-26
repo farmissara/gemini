@@ -333,7 +333,7 @@ export const MobileBehaviorSdqTab: React.FC<MobileBehaviorSdqTabProps> = ({
   const [category, setCategory] = useState(presets.behaviorMeritPresets[0]?.label || 'ช่วยงานครู / จิตอาสา');
   const [points, setPoints] = useState<number>(presets.behaviorMeritPresets[0]?.points || 5);
   const [notes, setNotes] = useState('');
-  const [notifyLine, setNotifyLine] = useState(true);
+  const [notifyParent, setNotifyParent] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
   // SDQ form state
@@ -383,7 +383,6 @@ export const MobileBehaviorSdqTab: React.FC<MobileBehaviorSdqTabProps> = ({
       category: category || (recordType === 'merit' ? 'ความดี' : 'ตักเตือน'),
       notes: notes.trim() || (recordType === 'merit' ? 'บันทึกคะแนนความประพฤติเชิงบวก' : 'ตัดคะแนนความประพฤติ'),
       recordedBy: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
-      lineNotified: notifyLine,
     });
     setNotes('');
     setToast(`บันทึกคะแนน ${activeStudent.firstNameTh} (${signedPts > 0 ? `+${signedPts}` : signedPts}) แล้ว`);
@@ -589,8 +588,8 @@ export const MobileBehaviorSdqTab: React.FC<MobileBehaviorSdqTabProps> = ({
             <span className="font-semibold text-[var(--color-text-title)]">ส่งแจ้งเตือนผู้ปกครอง</span>
             <input
               type="checkbox"
-              checked={notifyLine}
-              onChange={(e) => setNotifyLine(e.target.checked)}
+              checked={notifyParent}
+              onChange={(e) => setNotifyParent(e.target.checked)}
               className="w-4 h-4 accent-[var(--color-primary)]"
             />
           </label>

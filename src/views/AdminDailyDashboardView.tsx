@@ -17,7 +17,6 @@ import {
   Monitor,
   Phone,
   QrCode,
-  Receipt,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -38,7 +37,6 @@ import type {
   LeaveStatus,
   School,
   Student,
-  TuitionInvoice,
 } from '../types';
 import { getLocalDateString } from '../lib/date';
 import {
@@ -48,7 +46,6 @@ import {
   updateStudentAccountStatusInSupabase,
 } from '../lib/authDb';
 import { MobileBottomSheet } from '../components/layout/MobileRoleWorkspace';
-import { InvoiceSlipImage } from '../components/InvoiceSlipImage';
 import type { NavTab } from '../components/layout/Sidebar';
 
 interface AdminDailyDashboardViewProps {
@@ -58,8 +55,6 @@ interface AdminDailyDashboardViewProps {
   students: Student[];
   attendance: AttendanceRecord[];
   leaveRequests: LeaveRequest[];
-  invoices: TuitionInvoice[];
-  isDemoMode?: boolean;
   coordinationUnreadCount?: number;
   onRecordAttendance: (
     studentId: string,
@@ -84,8 +79,6 @@ interface AdminDailyDashboardViewProps {
     }
   ) => void;
   onUpdateLeaveStatus: (reqId: string, status: LeaveStatus, remarks?: string) => void;
-  onApproveInvoiceSlip?: (invoiceId: string) => void;
-  onRejectInvoiceSlip?: (invoiceId: string, reason: string) => void;
   onOpenQuickHub?: () => void;
   onOpenCheckin?: () => void;
   onOpenExecutive?: () => void;
@@ -104,13 +97,9 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   students,
   attendance,
   leaveRequests,
-  invoices,
-  isDemoMode = false,
   coordinationUnreadCount = 0,
   onRecordAttendance,
   onUpdateLeaveStatus,
-  onApproveInvoiceSlip,
-  onRejectInvoiceSlip,
   onOpenQuickHub,
   onOpenCheckin,
   onOpenExecutive,
@@ -124,7 +113,6 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   const [attQuery, setAttQuery] = useState('');
   const [showAllStudents, setShowAllStudents] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [previewSlipInvoice, setPreviewSlipInvoice] = useState<TuitionInvoice | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   // Pending new student account requests (from Supabase when connected)
@@ -139,7 +127,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   };
 
   const loadAccountLinks = async () => {
-    if (isDemoMode || !activeSchool.id) {
+    if (!activeSchool.id) {
       setAccountLinks([]);
       setAccountError(null);
       return;
@@ -159,7 +147,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   useEffect(() => {
     void loadAccountLinks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSchool.id, isDemoMode]);
+  }, [activeSchool.id]);
 
   // Map today's latest attendance record per student
   const todayStudentRecordMap = useMemo(() => {
@@ -237,18 +225,13 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
     [leaveRequests, todayStr]
   );
 
-  // Approvals: Tuition Slips + Pending Student Accounts
-  const pendingSlips = useMemo(
-    () => invoices.filter((inv) => inv.slipStatus === 'pending_review'),
-    [invoices]
-  );
-
+  // Approvals: Pending Student Accounts
   const pendingStudentAccounts = useMemo(
     () => accountLinks.filter((acc) => acc.status === 'pending'),
     [accountLinks]
   );
 
-  const totalPendingApprovals = pendingSlips.length + pendingStudentAccounts.length;
+  const totalPendingApprovals = pendingStudentAccounts.length;
 
   const handleQuickMarkAttendance = (stu: Student, status: AttendanceStatus) => {
     const statusLabel =
@@ -788,99 +771,11 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 3: NEW DOCUMENT / SLIP / ACCOUNT APPROVAL REQUESTS                */}
+      {/* TAB 3: NEW STUDENT ACCOUNT APPROVAL REQUESTS                          */}
       {/* ===================================================================== */}
       {section === 'approvals' && (
         <div className="space-y-3">
-          {/* A. Pending Tuition Slips / Financial Documents */}
-          <section className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <span>{lang === 'th' ? 'เอกสารโอนเงิน / สลิปค่าเทอมใหม่' : 'New Payment Slips'}</span>
-              </h2>
-              <span className="text-xs font-semibold tabular-nums text-[var(--color-text-muted)]">
-                {pendingSlips.length}
-              </span>
-            </div>
-
-            {pendingSlips.length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)] py-2.5 text-center">
-                {lang === 'th' ? 'ไม่มีเอกสารสลิปค้างตรวจสอบ' : 'No payment slips awaiting approval.'}
-              </p>
-            ) : (
-              <div className="divide-y divide-[var(--color-border)]">
-                {pendingSlips.map((inv) => {
-                  const stu = students.find((s) => s.id === inv.studentId);
-                  return (
-                    <div key={inv.id} className="py-3 first:pt-0 last:pb-0 space-y-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                            {stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : inv.invoiceNumber}
-                          </p>
-                          <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums mt-0.5">
-                            {inv.invoiceNumber}
-                            <span aria-hidden="true"> · </span>
-                            ฿{inv.totalAmount.toLocaleString()}
-                            {inv.slipSubmittedAt ? ` · ${inv.slipSubmittedAt}` : ''}
-                          </p>
-                        </div>
-                        {(inv.slipImageUrl || (inv.slipStatus && inv.slipStatus !== 'none')) && (
-                          <button
-                            type="button"
-                            onClick={() => setPreviewSlipInvoice(inv)}
-                            className="min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-primary-text)] cursor-pointer shrink-0"
-                          >
-                            {lang === 'th' ? 'ดูสลิป' : 'View Slip'}
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {onApproveInvoiceSlip && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onApproveInvoiceSlip(inv.id);
-                              notify(
-                                lang === 'th'
-                                  ? `อนุมัติเอกสาร ${inv.invoiceNumber} แล้ว`
-                                  : `Approved ${inv.invoiceNumber}`
-                              );
-                            }}
-                            className="min-h-[44px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <Check className="w-4 h-4" />
-                            <span>{lang === 'th' ? 'ยืนยันยอด' : 'Approve'}</span>
-                          </button>
-                        )}
-                        {onRejectInvoiceSlip && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onRejectInvoiceSlip(inv.id, 'หลักฐานไม่ชัดเจน กรุณาส่งใหม่');
-                              notify(
-                                lang === 'th'
-                                  ? `ส่งกลับสลิป ${inv.invoiceNumber} แล้ว`
-                                  : `Rejected ${inv.invoiceNumber}`
-                              );
-                            }}
-                            className="min-h-[44px] rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                            <span>{lang === 'th' ? 'ตีกลับ' : 'Reject'}</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* B. Pending New Student Account Approvals */}
+          {/* Pending New Student Account Approvals */}
           <section className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
@@ -898,13 +793,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
               </button>
             </div>
 
-            {isDemoMode ? (
-              <p className="text-xs text-[var(--color-text-muted)] py-2">
-                {lang === 'th'
-                  ? 'โหมดสาธิต: คำขอสมัครบัญชีนักเรียนใหม่จะแสดงอัตโนมัติเมื่อเชื่อมต่อฐานข้อมูลโรงเรียนจริง'
-                  : 'Demo mode: live student account requests appear when connected to Supabase.'}
-              </p>
-            ) : accountError ? (
+            {accountError ? (
               <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-200 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{accountError}</span>
@@ -1051,16 +940,6 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                 </button>
                 <button
                   type="button"
-                  onClick={() => onJumpToDesktopTab('billing')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <Receipt className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'การเงิน & ค่าเทอม' : 'Billing'}
-                  </span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => onJumpToDesktopTab('announcements')}
                   className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
                 >
@@ -1192,76 +1071,6 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
                 </span>
               </a>
             )}
-          </div>
-        )}
-      </MobileBottomSheet>
-
-      {/* ===================================================================== */}
-      {/* BOTTOM SHEET: TUITION SLIP PREVIEW                                    */}
-      {/* ===================================================================== */}
-      <MobileBottomSheet
-        isOpen={Boolean(previewSlipInvoice)}
-        onClose={() => setPreviewSlipInvoice(null)}
-        title={previewSlipInvoice?.invoiceNumber || (lang === 'th' ? 'หลักฐานการโอนเงิน' : 'Payment Slip')}
-        subtitle={
-          previewSlipInvoice
-            ? `฿${previewSlipInvoice.totalAmount.toLocaleString()} · ${previewSlipInvoice.slipSubmittedAt || ''}`
-            : undefined
-        }
-      >
-        {previewSlipInvoice && (
-          <div className="space-y-4">
-            {(previewSlipInvoice.slipImageUrl || (previewSlipInvoice.slipStatus && previewSlipInvoice.slipStatus !== 'none')) && (
-              <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)]">
-                <InvoiceSlipImage
-                  schoolId={previewSlipInvoice.schoolId || activeSchool.id}
-                  invoiceId={previewSlipInvoice.id}
-                  initialSrc={previewSlipInvoice.slipImageUrl}
-                  slipStatus={previewSlipInvoice.slipStatus}
-                  alt={previewSlipInvoice.invoiceNumber}
-                  className="w-full max-h-[55vh] object-contain"
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              {onApproveInvoiceSlip && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onApproveInvoiceSlip(previewSlipInvoice.id);
-                    notify(
-                      lang === 'th'
-                        ? `อนุมัติเอกสาร ${previewSlipInvoice.invoiceNumber} แล้ว`
-                        : `Approved ${previewSlipInvoice.invoiceNumber}`
-                    );
-                    setPreviewSlipInvoice(null);
-                  }}
-                  className="min-h-[46px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'ยืนยันยอดถูกต้อง' : 'Confirm Payment'}</span>
-                </button>
-              )}
-              {onRejectInvoiceSlip && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onRejectInvoiceSlip(previewSlipInvoice.id, 'หลักฐานไม่ชัดเจน กรุณาส่งใหม่');
-                    notify(
-                      lang === 'th'
-                        ? `ส่งกลับสลิป ${previewSlipInvoice.invoiceNumber} แล้ว`
-                        : `Rejected ${previewSlipInvoice.invoiceNumber}`
-                    );
-                    setPreviewSlipInvoice(null);
-                  }}
-                  className="min-h-[46px] rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'ตีกลับ' : 'Reject'}</span>
-                </button>
-              )}
-            </div>
           </div>
         )}
       </MobileBottomSheet>

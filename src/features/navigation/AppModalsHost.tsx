@@ -116,7 +116,6 @@ export interface AppModalsHostProps {
   onOpenMoeDocumentCenter: (student: Student) => void;
   onOpenDevelopmentBook: (student: Student) => void;
   onLoadAttendanceHistory: (startDate?: string | null, endDate?: string | null, studentId?: string) => Promise<void>;
-  onToggleLineSync: (studentId: string) => void;
   onUpdateStudent: (student: Student) => void;
   onUpdateUserProfile: (user: AuthUser) => Promise<void>;
   onAddPortfolioItem: (item: PortfolioItem) => void;
@@ -254,9 +253,7 @@ export const AppModalsHost: React.FC<AppModalsHostProps> = (props) => {
                   }
                 : undefined
             }
-            onToggleLineSync={currentRole === 'teacher' ? () => undefined : props.onToggleLineSync}
             gradingSystem={systemConfig.gradingSystem}
-            lineEnabled={systemConfig.lineMessagingConfigured !== false}
             onUpdateStudent={currentRole === 'teacher' ? undefined : (updated) => {
               props.onUpdateStudent(updated);
               setSelectedStudentForProfile(updated);

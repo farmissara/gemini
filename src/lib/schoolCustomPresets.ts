@@ -6,12 +6,6 @@ export interface BehaviorPresetItem {
   points: number;
 }
 
-export interface BillingFeePresetItem {
-  title: string;
-  amount: number;
-  category: string;
-}
-
 export interface AnnouncementCategoryPreset {
   id: string;
   labelTh: string;
@@ -30,7 +24,6 @@ export interface SchoolCustomPresets {
   infirmaryMedications: string[];
   infirmaryBeds: string[];
   announcementCategories: AnnouncementCategoryPreset[];
-  billingFeePresets: BillingFeePresetItem[];
 }
 
 export const DEFAULT_SCHOOL_CUSTOM_PRESETS: SchoolCustomPresets = {
@@ -103,14 +96,6 @@ export const DEFAULT_SCHOOL_CUSTOM_PRESETS: SchoolCustomPresets = {
     { id: 'academic', labelTh: 'วิชาการ / การสอบ', labelEn: 'Academic' },
     { id: 'urgent', labelTh: 'ประกาศด่วน', labelEn: 'Urgent' },
     { id: 'event', labelTh: 'กิจกรรม / ประชุมผู้ปกครอง', labelEn: 'Event' },
-    { id: 'finance', labelTh: 'การเงิน / ค่าเทอม', labelEn: 'Finance' },
-  ],
-  billingFeePresets: [
-    { title: 'ค่าบำรุงการศึกษาประจำภาคเรียน', amount: 3500, category: 'tuition' },
-    { title: 'ค่าห้องเรียนพิเศษ (EP / วิทย์-คณิต)', amount: 6500, category: 'special_program' },
-    { title: 'ค่าอาหารกลางวันและนมโรงเรียน', amount: 1800, category: 'meal' },
-    { title: 'ค่าทัศนศึกษา / กิจกรรมพัฒนาผู้เรียน', amount: 850, category: 'activity' },
-    { title: 'ค่าหนังสือเรียนและเอกสารประกอบการเรียน', amount: 1200, category: 'books' },
   ],
 };
 
@@ -155,14 +140,6 @@ function sanitizePresets(raw: Partial<SchoolCustomPresets> | null | undefined): 
             labelEn: String(c.labelEn || '').trim() || String(c.id || ''),
           }))
         : DEFAULT_SCHOOL_CUSTOM_PRESETS.announcementCategories,
-    billingFeePresets:
-      Array.isArray(raw?.billingFeePresets) && raw.billingFeePresets.length > 0
-        ? raw.billingFeePresets.map((f) => ({
-            title: String(f.title || '').trim(),
-            amount: Math.max(0, Number(f.amount) || 0),
-            category: String(f.category || 'tuition').trim(),
-          })).filter((f) => f.title)
-        : DEFAULT_SCHOOL_CUSTOM_PRESETS.billingFeePresets,
   };
 }
 

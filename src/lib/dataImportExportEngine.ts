@@ -686,8 +686,6 @@ export function validateAndParseMappedRows(
         guardianRelation: getVal(row, 'guardianRelation') || 'ผู้ปกครอง',
         guardianPhone: getVal(row, 'guardianPhone'),
         guardianEmail: '',
-        lineLinked: false,
-        lineNotifyEnabled: false,
         enrolledDate: getLocalDateString(),
       };
       validRecords.push(record);
@@ -1068,7 +1066,6 @@ export function validateAndParseMappedRows(
         status: status!,
         checkinMethod: 'manual',
         remarks: getVal(row, 'remarks') || 'นำเข้าจากไฟล์ Excel/CSV',
-        lineNotificationSent: false,
       };
       validRecords.push(record);
     });

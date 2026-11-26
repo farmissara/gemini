@@ -64,7 +64,6 @@ export interface DispatchGradeAlertParams {
   systemConfig: Pick<SystemConfig, 'gradingSystem' | 'academicYear' | 'currentSemester'>;
   schoolId: string;
   isNewRecord?: boolean;
-  isDemoMode?: boolean;
   actorName?: string;
 }
 
@@ -82,7 +81,6 @@ export async function dispatchGradeAlert(
     systemConfig,
     schoolId,
     isNewRecord = false,
-    isDemoMode = true,
   } = params;
 
   const stage = detectEducationStage(student.gradeLevel);
@@ -147,7 +145,7 @@ export async function dispatchGradeAlert(
     },
   });
 
-  if (!isDemoMode && schoolId) {
+  if (schoolId) {
     try {
       await sendPrivateParentNotification({
         schoolId,

@@ -19,7 +19,7 @@ import {
   Sun,
   User,
 } from 'lucide-react';
-import type { AppLanguage, AuthUser, School, ThemePalette, TuitionInvoice, UserRole } from '../../types';
+import type { AppLanguage, AuthUser, School, ThemePalette, UserRole } from '../../types';
 import { BaanPakKruLogo } from '../../components/common/BaanPakKruLogo';
 import type { ActiveGameView, MobileTab } from './types';
 
@@ -251,7 +251,6 @@ interface MobileBottomNavProps {
   canViewGradesStudent: boolean;
   canOpenPortfolio: boolean;
   pendingLeavesCount: number;
-  invoices: TuitionInvoice[];
   onResetCheckinToSelfie: () => void;
   onOpenAllModules?: () => void;
   allModulesActive?: boolean;
@@ -271,7 +270,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   canViewGradesStudent,
   canOpenPortfolio,
   pendingLeavesCount,
-  invoices,
   onResetCheckinToSelfie,
   onOpenAllModules,
   allModulesActive = false,
@@ -380,7 +378,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            {pendingLeavesCount + invoices.filter((i) => i.slipStatus === 'pending_review').length > 0 && (
+            {pendingLeavesCount > 0 && (
               <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-rose-600" />
             )}
             <Edit3 className="w-5 h-5 mb-0.5" />

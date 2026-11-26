@@ -24,7 +24,6 @@ import {
   Monitor,
   Plus,
   QrCode,
-  Receipt,
   RefreshCw,
   Search,
   Settings,
@@ -51,7 +50,6 @@ import type {
   SchoolTier,
   Student,
   Teacher,
-  TuitionInvoice,
 } from '../../types';
 import type { NavTab } from './Sidebar';
 import {
@@ -131,15 +129,12 @@ interface MobileAdminQuickHubProps {
   teachers: Teacher[];
   courses: Course[];
   leaveRequests: LeaveRequest[];
-  invoices: TuitionInvoice[];
   announcements: Announcement[];
   lang: AppLanguage;
   onUpdateStudent?: (student: Student) => void;
   onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
   onAddAnnouncement?: (announcement: Announcement) => void;
   onUpdateLeaveStatus: (reqId: string, status: LeaveStatus, remarks?: string) => void;
-  onApproveInvoiceSlip?: (invoiceId: string) => void;
-  onRejectInvoiceSlip?: (invoiceId: string, reason: string) => void;
   onJumpToDesktopTab?: (tab: NavTab) => void;
   onOpenCheckin?: () => void;
   currentUser: AuthUser | null;
@@ -151,14 +146,11 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
   teachers,
   courses,
   leaveRequests,
-  invoices,
   lang,
   onUpdateStudent,
   onUpdateSchool,
   onAddAnnouncement,
   onUpdateLeaveStatus,
-  onApproveInvoiceSlip,
-  onRejectInvoiceSlip,
   onJumpToDesktopTab,
   onOpenCheckin,
   currentUser,
@@ -193,11 +185,6 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
   const pendingLeaves = useMemo(
     () => leaveRequests.filter((l) => l.status === 'pending'),
     [leaveRequests]
-  );
-
-  const pendingSlips = useMemo(
-    () => invoices.filter((inv) => inv.slipStatus === 'pending_review'),
-    [invoices]
   );
 
   const filteredStudents = useMemo(() => {
@@ -253,7 +240,6 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
       author: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ผู้บริหารโรงเรียน',
       authorRole: lang === 'th' ? 'ผู้บริหารโรงเรียน' : 'School Admin',
       pinned: false,
-      lineBroadcastSent: false,
       resendEmailSent: false,
     };
     onAddAnnouncement(newAnn);
@@ -328,7 +314,7 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            {lang === 'th' ? `งานรอตรวจ (${pendingLeaves.length + pendingSlips.length})` : `Inbox (${pendingLeaves.length + pendingSlips.length})`}
+            {lang === 'th' ? `งานรอตรวจ (${pendingLeaves.length})` : `Inbox (${pendingLeaves.length})`}
           </button>
           <button
             type="button"
@@ -418,76 +404,6 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-
-          {/* Pending Tuition Slips */}
-          <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                <Receipt className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>{lang === 'th' ? 'สลิปค่าเทอมรอตรวจ' : 'Tuition Slips Pending Review'}</span>
-              </h3>
-              <span className="text-xs font-bold tabular-nums text-[var(--color-text-muted)]">
-                {pendingSlips.length}
-              </span>
-            </div>
-
-            {pendingSlips.length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)] py-3 text-center">
-                {lang === 'th' ? 'ไม่มีสลิปโอนเงินรอตรวจสอบ' : 'No slips awaiting review.'}
-              </p>
-            ) : (
-              <div className="divide-y divide-[var(--color-border)]">
-                {pendingSlips.slice(0, 5).map((inv) => {
-                  const stu = students.find((s) => s.id === inv.studentId);
-                  return (
-                    <div
-                      key={inv.id}
-                      className="py-3 first:pt-0 last:pb-0 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                            {stu ? `${stu.firstNameTh} ${stu.lastNameTh}` : inv.invoiceNumber}
-                          </p>
-                          <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                            {inv.invoiceNumber} · ฿{inv.totalAmount.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {onApproveInvoiceSlip && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onApproveInvoiceSlip(inv.id);
-                              notify(`อนุมัติใบเสร็จ ${inv.invoiceNumber} แล้ว`);
-                            }}
-                            className="min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <Check className="w-4 h-4" />
-                            <span>{lang === 'th' ? 'ยืนยันยอด' : 'Confirm'}</span>
-                          </button>
-                        )}
-                        {onRejectInvoiceSlip && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onRejectInvoiceSlip(inv.id, 'ยอด/หลักฐานไม่ตรง กรุณาส่งใหม่');
-                              notify(`ส่งกลับสลิป ${inv.invoiceNumber} แล้ว`);
-                            }}
-                            className="min-h-[44px] rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-200 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                            <span>{lang === 'th' ? 'ตีกลับ' : 'Reject'}</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </div>
@@ -618,9 +534,8 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                   { tab: 'gradebook' as NavTab, th: 'คะแนน & ปพ.5/6', en: 'Gradebook', icon: Award },
                   { tab: 'timetable' as NavTab, th: 'ตารางสอน', en: 'Timetable', icon: Calendar },
                   { tab: 'school_gps' as NavTab, th: 'พิกัด GPS ประตู', en: 'Campus GPS', icon: MapPin },
-                  { tab: 'system_settings' as NavTab, th: 'ตั้งค่าระบบ & LINE', en: 'Settings', icon: Settings },
+                  { tab: 'system_settings' as NavTab, th: 'ตั้งค่าระบบโรงเรียน', en: 'Settings', icon: Settings },
                   { tab: 'school_permissions' as NavTab, th: 'สิทธิ์ในโรงเรียน', en: 'Permissions', icon: SlidersHorizontal },
-                  { tab: 'billing' as NavTab, th: 'การเงิน & ใบเสร็จ', en: 'Billing', icon: Receipt },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -886,7 +801,6 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
 interface MobileSuperAdminHubProps {
   schools: School[];
   activeSchool: School;
-  isDemoMode: boolean;
   lang: AppLanguage;
   initialTab?: 'overview' | 'approvals' | 'schools';
   coordinationUnreadCount?: number;
@@ -899,7 +813,6 @@ interface MobileSuperAdminHubProps {
 export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
   schools,
   activeSchool,
-  isDemoMode,
   lang,
   initialTab = 'overview',
   coordinationUnreadCount = 0,
@@ -924,7 +837,6 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
   };
 
   const loadPending = () => {
-    if (isDemoMode) return;
     setLoadingRegs(true);
     setRegError(null);
     listPendingSchoolRegistrations()
@@ -935,7 +847,7 @@ export const MobileSuperAdminHub: React.FC<MobileSuperAdminHubProps> = ({
 
   useEffect(() => {
     loadPending();
-  }, [isDemoMode]);
+  }, []);
 
   const metrics = useMemo(() => {
     const activeCount = schools.filter((s) => s.status === 'active').length;

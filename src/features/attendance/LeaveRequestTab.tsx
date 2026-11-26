@@ -36,6 +36,7 @@ import {
 import { PagedList } from '../../components/PagedList';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
+import { compressImageFileToDataUrl } from '../../lib/imageCompression';
 
 interface LeaveRequestTabProps {
   embeddedMobile: boolean;
@@ -154,7 +155,7 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
   return (
     <div
       data-guide-id="mobile-checkin-body"
-      className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-4' : ''}`}
+      className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pr-0.5 pb-24' : 'pb-12'}`}
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Form */}
@@ -507,18 +508,32 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                     <label className="type-label block">
                       {leaveScope === 'period_hourly' ? 'แนบคำสั่ง / ใบมอบหมายสอนแทน (ถ้ามี)' : 'แนบใบรับรองแพทย์ / เอกสาร (ถ้ามี)'}
                     </label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const sampleCert = 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=500';
-                          setLeaveAttachmentUrl(sampleCert);
-                        }}
-                        className="text-[var(--color-primary-text)] hover:underline font-semibold flex items-center gap-1.5 underline-offset-4 cursor-pointer text-xs"
-                      >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold inline-flex items-center gap-1.5 cursor-pointer text-xs transition">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>แนบเอกสารตัวอย่าง</span>
-                      </button>
+                        <span>อัปโหลดรูปเอกสาร / ใบรับรองแพทย์</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const compressed = await compressImageFileToDataUrl(file, {
+                                maxDimension: 1024,
+                                quality: 0.78,
+                                maxDataUrlLength: 220_000,
+                              });
+                              setLeaveAttachmentUrl(compressed);
+                            } catch {
+                              // ignore unreadable file
+                            } finally {
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </label>
                       {leaveAttachmentUrl && (
                         <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
                           <Check className="w-3.5 h-3.5" />

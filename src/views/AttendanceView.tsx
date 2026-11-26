@@ -103,7 +103,6 @@ interface AttendanceViewProps {
   onOpenGpsSettings?: () => void;
   onAttendanceAudienceChange?: (audience: AttendanceAudience) => void;
   onLoadAttendanceRange?: (startDate?: string | null, endDate?: string | null) => Promise<void> | void;
-  lineEnabled?: boolean;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -130,7 +129,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onOpenGpsSettings,
   onAttendanceAudienceChange,
   onLoadAttendanceRange,
-  lineEnabled = true,
 }) => {
   const isRestrictedViewer = isRestrictedAttendanceViewer(currentUser);
   const isAdminUser = currentRole === 'admin' || currentRole === 'super_admin';
@@ -288,7 +286,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         status: resolved,
         checkinMethod: 'teacher_proxy',
         remarks: `เช็คชื่อโฮมรูมห้อง ${stu.room} (${loggedInProfile.userName})`,
-        lineNotificationSent: lineEnabled && stu.lineLinked && stu.lineNotifyEnabled,
         recordedBy: loggedInProfile.userName,
         recordedByRole: currentUser?.role || currentRole,
       };
@@ -402,7 +399,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           status: mappedStatus,
           remarks: `รายวิชา ${matchedCourse?.code || ''} ${matchedCourse?.titleTh || ''} (คาบ ${pa.periodNumber})${pa.remarks ? ` - ${pa.remarks}` : ''}`.trim(),
           checkinMethod: mappedMethod,
-          lineNotificationSent: false,
           recordedBy: pa.verifiedByTeacherName,
         };
       });

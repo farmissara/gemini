@@ -558,7 +558,6 @@ interface MobileAnnouncementsTabProps {
   selectedAnnouncement: Announcement | null;
   setSelectedAnnouncement: (ann: Announcement | null) => void;
   onAddAnnouncement?: (announcement: Announcement) => void;
-  onBroadcastLine?: (announcementId: string) => Promise<{ ok: boolean; message: string } | void> | void;
   onBackHome: () => void;
 }
 
@@ -570,7 +569,6 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
   selectedAnnouncement,
   setSelectedAnnouncement,
   onAddAnnouncement,
-  onBroadcastLine,
   onBackHome,
 }) => {
   const canCreate = ['teacher', 'admin', 'super_admin'].includes(currentRole) && Boolean(onAddAnnouncement);
@@ -603,7 +601,6 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
       author: currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครูผู้สอน',
       authorRole: currentRole === 'teacher' ? 'ครูผู้สอน' : 'ผู้ดูแลระบบ',
       pinned,
-      lineBroadcastSent: false,
       resendEmailSent: false,
     };
     onAddAnnouncement(newAnn);
@@ -654,23 +651,6 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
                 </p>
               )}
             />
-            {canCreate && onBroadcastLine && (
-              <button
-                type="button"
-                onClick={async () => {
-                  const res = await onBroadcastLine(selectedAnnouncement.id);
-                  if (res && typeof res === 'object' && 'message' in res) {
-                    setToast(res.message);
-                  } else {
-                    setToast('ส่งแจ้งเตือน LINE เรียบร้อยแล้ว');
-                  }
-                  window.setTimeout(() => setToast(null), 3200);
-                }}
-                className="w-full min-h-[40px] mt-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 text-xs font-bold cursor-pointer"
-              >
-                {selectedAnnouncement.lineBroadcastSent ? 'ส่ง LINE ซ้ำอีกครั้ง' : 'ส่งแจ้งเตือนเข้า LINE'}
-              </button>
-            )}
           </article>
         </>
       ) : (
