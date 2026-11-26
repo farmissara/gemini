@@ -850,6 +850,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               <MobileAttendanceView
                 embeddedMobile
                 initialSubTab={activeTab === 'student_attendance' ? 'teacher_proxy' : mobileAttendanceInitialSubTab}
+                showAttendanceAudienceSwitch={['teacher', 'admin', 'super_admin'].includes(currentRole)}
+                filterTabsByAudience
+                onAttendanceAudienceChange={(audience) => {
+                  setActiveTab(audience === 'students' ? 'student_attendance' : 'checkin');
+                }}
                 initialPeriodCourseId={mobilePeriodCourseId}
                 initialPeriodNumber={mobilePeriodNumber}
                 initialPeriodDate={mobilePeriodDate}
@@ -1202,7 +1207,6 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           setMobilePeriodDate(undefined);
           setMobilePeriodCheckType(undefined);
         }}
-        onOpenStudentAttendance={openStudentAttendance}
         onOpenAllModules={onJumpToDesktopTab ? () => setShowModuleDrawer(true) : undefined}
         allModulesActive={showModuleDrawer}
       />

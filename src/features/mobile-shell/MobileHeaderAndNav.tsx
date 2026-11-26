@@ -6,7 +6,6 @@ import {
   BookOpen,
   Building2,
   Calendar,
-  ClipboardCheck,
   Clock,
   Edit3,
   Gamepad2,
@@ -254,7 +253,6 @@ interface MobileBottomNavProps {
   pendingLeavesCount: number;
   invoices: TuitionInvoice[];
   onResetCheckinToSelfie: () => void;
-  onOpenStudentAttendance: () => void;
   onOpenAllModules?: () => void;
   allModulesActive?: boolean;
 }
@@ -275,7 +273,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   pendingLeavesCount,
   invoices,
   onResetCheckinToSelfie,
-  onOpenStudentAttendance,
   onOpenAllModules,
   allModulesActive = false,
 }) => {
@@ -327,7 +324,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }}
           className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
             (canSelfCheckin
-              ? activeTab === 'checkin' || activeTab === 'leave' || activeTab === 'attendance_history'
+              ? activeTab === 'checkin' ||
+                activeTab === 'student_attendance' ||
+                activeTab === 'leave' ||
+                activeTab === 'attendance_history'
               : canViewTimetable
                 ? activeTab === 'timetable'
                 : activeTab === 'announcements')
@@ -403,33 +403,30 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             type="button"
             onClick={() => {
-              if (canSelfCheckin) onOpenStudentAttendance();
-              else if (canViewTimetable) setActiveTab('timetable');
+              if (canViewTimetable) setActiveTab('timetable');
               else if (canOpenAnnouncements) setActiveTab('announcements');
               else setActiveTab('executive');
             }}
             className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              (canSelfCheckin
-                ? activeTab === 'student_attendance'
-                : canViewTimetable
-                  ? activeTab === 'timetable'
-                  : canOpenAnnouncements
-                    ? activeTab === 'announcements'
-                    : activeTab === 'executive')
+              (canViewTimetable
+                ? activeTab === 'timetable'
+                : canOpenAnnouncements
+                  ? activeTab === 'announcements'
+                  : activeTab === 'executive')
                 ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <ClipboardCheck className="w-5 h-5 mb-0.5" />
+            <Calendar className="w-5 h-5 mb-0.5" />
             <span className="text-[11px] truncate max-w-full">
-              {canSelfCheckin
+              {canViewTimetable
                 ? lang === 'th'
-                  ? 'เช็คนักเรียน'
-                  : 'Students'
-                : canViewTimetable
+                  ? 'ตารางสอน'
+                  : 'Schedule'
+                : canOpenAnnouncements
                   ? lang === 'th'
-                    ? 'ตารางสอน'
-                    : 'Schedule'
+                    ? 'ประกาศ'
+                    : 'News'
                   : lang === 'th'
                     ? 'ภาพรวม'
                     : 'Overview'}

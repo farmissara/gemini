@@ -59,6 +59,7 @@ import { PagedList } from '../../components/PagedList';
 
 interface SelfieAttendanceTabProps {
   embeddedMobile: boolean;
+  simpleStaffCheckin?: boolean;
   lang: AppLanguage;
   checkType: AttendanceCheckType;
   setCheckType: (type: AttendanceCheckType) => void;
@@ -314,6 +315,7 @@ const StickerArtwork: React.FC<{ stickerId: SelfieStickerId; compact?: boolean }
 
 export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
   embeddedMobile,
+  simpleStaffCheckin = false,
   lang,
   checkType,
   setCheckType,
@@ -455,6 +457,9 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
   };
 
   const frameWrapperClass = (() => {
+    if (simpleStaffCheckin) {
+      return 'bg-slate-950';
+    }
     if (capturedPhotoUrl) {
       return 'bg-slate-950';
     }
@@ -508,7 +513,29 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             </div>
 
             <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-              {normalizedGates.length > 1 && selectedGate ? (
+              {simpleStaffCheckin ? (
+                <>
+                  <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-[var(--color-text-body)]">
+                    {isGpsLoading || currentGpsDistance === null ? (
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                    ) : isInGeofence ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-600" />
+                    )}
+                    <span className="truncate">{gpsStatusShortLabel}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRefreshGps}
+                    className="h-7 w-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] inline-flex items-center justify-center cursor-pointer shrink-0"
+                    title="รีเฟรชสัญญาณ GPS"
+                    aria-label="รีเฟรชสัญญาณ GPS"
+                  >
+                    <Navigation className={`h-3.5 w-3.5 text-[var(--color-primary-text)] ${isGpsLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </>
+              ) : normalizedGates.length > 1 && selectedGate ? (
                 <select
                   aria-label={lang === 'th' ? 'จุดประตูเช็คชื่อ' : 'Check-in gate'}
                   value={selectedGate.id}
@@ -530,7 +557,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                 </span>
               )}
 
-              {embeddedMobile && (
+              {embeddedMobile && !simpleStaffCheckin && (
                 <button
                   type="button"
                   onClick={handleRefreshGps}
@@ -546,7 +573,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
           </div>
 
           {/* Dedicated Live Time + GPS Strip ABOVE the sticker stage (Desktop only; mobile integrates GPS button above to save height) */}
-          {!capturedPhotoUrl && !embeddedMobile && (
+          {!capturedPhotoUrl && !embeddedMobile && !simpleStaffCheckin && (
             <div className="px-3 py-1.5 bg-slate-900 text-slate-100 border-b border-slate-800 flex items-center justify-between gap-2 text-[11px] shrink-0">
               <div className="inline-flex items-center gap-2 min-w-0 tabular-nums">
                 <span className="inline-flex items-center gap-1 font-mono text-slate-200 shrink-0">
@@ -586,7 +613,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             {/* Unobstructed Photo & Sticker Stage */}
             <div
               ref={stageRef}
-              onClick={handleViewfinderClick}
+              onClick={simpleStaffCheckin ? undefined : handleViewfinderClick}
               className={`relative w-full bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 flex items-center justify-center overflow-hidden select-none ${
                 embeddedMobile ? 'flex-1 min-h-[140px]' : 'aspect-[4/3]'
               } ${
@@ -599,7 +626,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                 autoPlay
                 playsInline
                 muted
-                style={{ filter: activeFilter.cssFilter }}
+                style={{ filter: simpleStaffCheckin ? 'none' : activeFilter.cssFilter }}
                 className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''} ${
                   capturedPhotoUrl ? 'hidden' : 'block'
                 }`}
@@ -614,24 +641,30 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                 />
               )}
 
-              {/* Simulated Studio Ambient Backdrop when Webcam is Not Active */}
+              {/* Camera placeholder when webcam is not active */}
               {!capturedPhotoUrl && !isCameraActive && (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
-                  <div className="w-52 h-52 sm:w-64 sm:h-64 rounded-full bg-sky-500/15 blur-3xl -translate-x-16 -translate-y-8" />
-                  <div className="w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-pink-500/15 blur-3xl translate-x-16 translate-y-10" />
-                  <div className="flex flex-col items-center gap-1.5 text-center px-4">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 border-2 border-white/25 flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-inner">
-                      {(activePersonName || 'BP').trim().slice(0, 2)}
-                    </div>
-                    <span className="text-[11px] font-medium text-slate-300/90">
-                      ลากหรือแตะวางสติกเกอร์ได้ทั่วทั้งภาพ
-                    </span>
+                simpleStaffCheckin ? (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-white/35">
+                    <Camera className="w-10 h-10" />
                   </div>
-                </div>
+                ) : (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
+                    <div className="w-52 h-52 sm:w-64 sm:h-64 rounded-full bg-sky-500/15 blur-3xl -translate-x-16 -translate-y-8" />
+                    <div className="w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-pink-500/15 blur-3xl translate-x-16 translate-y-10" />
+                    <div className="flex flex-col items-center gap-1.5 text-center px-4">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 border-2 border-white/25 flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-inner">
+                        {(activePersonName || 'BP').trim().slice(0, 2)}
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-300/90">
+                        ลากหรือแตะวางสติกเกอร์ได้ทั่วทั้งภาพ
+                      </span>
+                    </div>
+                  </div>
+                )
               )}
 
               {/* Animated Camera Effects SVG Overlay */}
-              {!capturedPhotoUrl && <CameraEffectsOverlay effectId={selfieEffectId} />}
+              {!capturedPhotoUrl && !simpleStaffCheckin && <CameraEffectsOverlay effectId={selfieEffectId} />}
 
               {/* Subtle Face Alignment Reticle when camera is active */}
               {!capturedPhotoUrl && isCameraActive && selfieCountdown === null && (
@@ -646,7 +679,8 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               )}
 
               {/* Interactive Draggable & Tappable Stickers Layer */}
-              {!capturedPhotoUrl &&
+              {!simpleStaffCheckin &&
+                !capturedPhotoUrl &&
                 placedStickers.map((stk) => {
                   const isSelected = stk.uid === selectedStickerUid;
                   return (
@@ -750,7 +784,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             </div>
 
             {/* Dedicated Frame Caption Footer BELOW Stage */}
-            {!capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'mascot_duo' && (
+            {!simpleStaffCheckin && !capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'mascot_duo' && (
               <div className="mt-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-amber-400/35 flex items-center justify-between gap-2">
                 <ChacoAvatar size={28} />
                 <div className="text-center min-w-0 flex-1">
@@ -765,7 +799,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               </div>
             )}
 
-            {!capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'pastel_cute' && (
+            {!simpleStaffCheckin && !capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'pastel_cute' && (
               <div className="mt-1.5 flex justify-center">
                 <div className="px-3.5 py-1 rounded-full bg-white/95 shadow-sm border border-pink-200 text-pink-700 text-[11px] font-bold truncate max-w-full">
                   {checkTypeLabel} · {activePersonName} · {liveTimeText}
@@ -773,7 +807,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               </div>
             )}
 
-            {!capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'polaroid' && (
+            {!simpleStaffCheckin && !capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'polaroid' && (
               <div className="pt-2 pb-0.5 px-1 flex items-center justify-between gap-2 text-slate-900">
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate">
@@ -787,7 +821,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               </div>
             )}
 
-            {!capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'clean' && (
+            {!simpleStaffCheckin && !capturedPhotoUrl && !embeddedMobile && selfieFrameId === 'clean' && (
               <div className="px-3 py-1.5 bg-slate-950 border-t border-slate-800/80 text-slate-200 text-[11px] font-medium flex items-center justify-between gap-2">
                 <span className="truncate">
                   {checkTypeLabel} · {activePersonName}
@@ -816,19 +850,21 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                 >
                   เปิดกล้อง
                 </button>
-                <button
-                  type="button"
-                  onClick={handleCaptureSnapshot}
-                  className="h-7 px-2 rounded-md bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-[11px] border border-amber-500 shadow-2xs cursor-pointer transition active:scale-95"
-                >
-                  จำลองถ่าย
-                </button>
+                {!simpleStaffCheckin && (
+                  <button
+                    type="button"
+                    onClick={handleCaptureSnapshot}
+                    className="h-7 px-2 rounded-md bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-[11px] border border-amber-500 shadow-2xs cursor-pointer transition active:scale-95"
+                  >
+                    จำลองถ่าย
+                  </button>
+                )}
               </div>
             </div>
           )}
 
           {/* Interactive Photo-Booth Creative Tray (Stickers · Effects · Frames · Filters) */}
-          {!capturedPhotoUrl && (
+          {!simpleStaffCheckin && !capturedPhotoUrl && (
             <div className={`bg-[var(--color-card-subtle)] border-t border-[var(--color-border)] shrink-0 ${embeddedMobile ? 'px-2.5 py-1.5 space-y-1.5' : 'px-3 py-2.5 space-y-2'}`}>
               <div className="flex items-center justify-between gap-1.5">
                 <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] overflow-x-auto no-scrollbar max-w-full">
@@ -1023,15 +1059,17 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     <span>ถ่ายใหม่</span>
                   </button>
 
-                  <a
-                    href={capturedPhotoUrl}
-                    download={`baanpakkru-selfie-${Date.now()}.jpg`}
-                    className={`${embeddedMobile ? 'h-8 px-2.5 text-[11px]' : 'h-10 px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold inline-flex items-center justify-center gap-1 border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer`}
-                    title="ดาวน์โหลดภาพเซลฟี่เก็บไว้"
-                  >
-                    <Download className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                    <span>บันทึกรูป</span>
-                  </a>
+                  {!simpleStaffCheckin && (
+                    <a
+                      href={capturedPhotoUrl}
+                      download={`baanpakkru-selfie-${Date.now()}.jpg`}
+                      className={`${embeddedMobile ? 'h-8 px-2.5 text-[11px]' : 'h-10 px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold inline-flex items-center justify-center gap-1 border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer`}
+                      title="ดาวน์โหลดภาพเซลฟี่เก็บไว้"
+                    >
+                      <Download className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                      <span>บันทึกรูป</span>
+                    </a>
+                  )}
 
                   <button
                     type="button"
@@ -1053,7 +1091,8 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     </span>
                   </button>
                 </div>
-                <p className="text-[10px] text-center text-[var(--color-text-muted)] flex items-center justify-center gap-1">
+                {!simpleStaffCheckin && (
+                  <p className="text-[10px] text-center text-[var(--color-text-muted)] flex items-center justify-center gap-1">
                   {!hasSchoolGpsConfigured ? (
                     <>
                       <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -1080,7 +1119,8 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                       <span>อยู่นอกพื้นที่โรงเรียน ({currentGpsDistance.toLocaleString()} ม.)</span>
                     </>
                   )}
-                </p>
+                  </p>
+                )}
                 {selfieActionError && (
                   <p className="text-[11px] text-center text-rose-600 dark:text-rose-400 font-medium">{selfieActionError}</p>
                 )}
@@ -1102,46 +1142,50 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     {!embeddedMobile && <span className="hidden sm:inline">รีเฟรช</span>}
                   </button>
 
-                  <button
-                    type="button"
-                    disabled={isCameraSwitching}
-                    onClick={handleToggleFacingMode}
-                    className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 sm:px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold disabled:opacity-60 shrink-0`}
-                    title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
-                    aria-label="สลับกล้องหน้าหรือกล้องหลัง"
-                  >
-                    <SwitchCamera className={`w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
-                    <span>{embeddedMobile ? 'สลับ' : 'สลับกล้อง'}</span>
-                  </button>
+                  {!simpleStaffCheckin && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isCameraSwitching}
+                        onClick={handleToggleFacingMode}
+                        className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 sm:px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold disabled:opacity-60 shrink-0`}
+                        title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
+                        aria-label="สลับกล้องหน้าหรือกล้องหลัง"
+                      >
+                        <SwitchCamera className={`w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
+                        <span>{embeddedMobile ? 'สลับ' : 'สลับกล้อง'}</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelfieFilterId(getNextFilterId(selfieFilterId))}
-                    className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 text-xs'} rounded-lg border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
-                      selfieFilterId !== 'normal'
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-card)]'
-                    }`}
-                    title="แตะเพื่อสลับฟิลเตอร์กล้อง"
-                    aria-label="สลับฟิลเตอร์กล้อง"
-                  >
-                    <span className={`w-2.5 h-2.5 rounded-full bg-gradient-to-tr ${activeFilter.swatchGradient} border border-black/20 shrink-0`} />
-                    <span className="truncate max-w-[52px] sm:max-w-none">{activeFilter.labelTh}</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelfieFilterId(getNextFilterId(selfieFilterId))}
+                        className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 text-xs'} rounded-lg border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
+                          selfieFilterId !== 'normal'
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                            : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-card)]'
+                        }`}
+                        title="แตะเพื่อสลับฟิลเตอร์กล้อง"
+                        aria-label="สลับฟิลเตอร์กล้อง"
+                      >
+                        <span className={`w-2.5 h-2.5 rounded-full bg-gradient-to-tr ${activeFilter.swatchGradient} border border-black/20 shrink-0`} />
+                        <span className="truncate max-w-[52px] sm:max-w-none">{activeFilter.labelTh}</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelfieTimerSeconds(selfieTimerSeconds === 0 ? 3 : 0)}
-                    className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 text-xs'} rounded-lg border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
-                      selfieTimerSeconds === 3
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                    }`}
-                    title="ตั้งเวลานับถอยหลัง 3 วินาทีก่อนถ่าย"
-                  >
-                    <Timer className="w-3 h-3 shrink-0" />
-                    <span className="tabular-nums">{selfieTimerSeconds === 3 ? '3วิ' : '0วิ'}</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelfieTimerSeconds(selfieTimerSeconds === 0 ? 3 : 0)}
+                        className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 text-xs'} rounded-lg border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
+                          selfieTimerSeconds === 3
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                            : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+                        }`}
+                        title="ตั้งเวลานับถอยหลัง 3 วินาทีก่อนถ่าย"
+                      >
+                        <Timer className="w-3 h-3 shrink-0" />
+                        <span className="tabular-nums">{selfieTimerSeconds === 3 ? '3วิ' : '0วิ'}</span>
+                      </button>
+                    </>
+                  )}
 
                   {!embeddedMobile && availableCameras.length > 2 && (
                     <select
@@ -1177,6 +1221,8 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                   <span>
                     {selfieCountdown !== null
                       ? `${selfieCountdown}...`
+                      : simpleStaffCheckin
+                        ? 'ถ่ายรูป'
                       : selfieTimerSeconds === 3
                         ? 'ถ่าย (3วิ)'
                         : embeddedMobile
@@ -1191,7 +1237,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
       </div>
 
       {/* RIGHT COLUMN (Desktop Only — on mobile, Identity & Geofence live inside Bottom Sheets) */}
-      {!embeddedMobile && (
+      {!embeddedMobile && !simpleStaffCheckin && (
         <div className="lg:col-span-5 flex flex-col gap-4">
           {/* User Profile Card */}
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">

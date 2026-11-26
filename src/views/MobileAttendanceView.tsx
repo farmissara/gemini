@@ -161,6 +161,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   currentRole,
   showAttendanceAudienceSwitch = false,
   onAttendanceAudienceChange,
+  filterTabsByAudience = false,
   hideStaffOverviewTabs = false,
   schoolPeriods = [],
   timetableSlots = [],
@@ -196,6 +197,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       : initialSubTab;
 
   const [subTab, setSubTab] = useState<AttendanceSubTab>(safeInitialSubTab);
+  const isStudentAttendanceSubTab = (
+    tab: AttendanceSubTab
+  ): boolean => ['teacher_proxy', 'period_checkin', 'daily_report', 'corrections'].includes(tab);
+  const activeAttendanceAudience = isStudentAttendanceSubTab(subTab) ? 'students' : 'staff';
+  const isSimpleStaffCheckin =
+    showAttendanceAudienceSwitch &&
+    subTab === 'selfie_mobile' &&
+    activeAttendanceAudience === 'staff';
+  const handleAttendanceAudienceChange = (audience: 'students' | 'staff') => {
+    setSubTab(audience === 'students' ? 'teacher_proxy' : 'selfie_mobile');
+    onAttendanceAudienceChange?.(audience);
+  };
   const [showIdentitySheet, setShowIdentitySheet] = useState(false);
   const [showGeofenceSheet, setShowGeofenceSheet] = useState(false);
   const [nfcDrawerMode, setNfcDrawerMode] = useState<null | 'quick_tap' | 'recent_logs'>(null);
@@ -368,6 +381,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [selfieTimerSeconds, setSelfieTimerSeconds] = useState<0 | 3>(0);
   const [selfieCountdown, setSelfieCountdown] = useState<number | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isSimpleStaffCheckin) return;
+    setAttendanceMode('self');
+    setSelfieTimerSeconds(0);
+    setSelfieCountdown(null);
+    if (countdownIntervalRef.current !== null) {
+      window.clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  }, [isSimpleStaffCheckin]);
 
   const [checkinSuccessFeedback, setCheckinSuccessFeedback] = useState<CheckinSuccessFeedback | null>(null);
   const [showLineFlexPreview, setShowLineFlexPreview] = useState(false);
@@ -934,10 +958,10 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setTimeout(() => setIsFlashActive(false), 200);
 
     const studioOptions = {
-      frameId: selfieFrameId,
-      filterId: selfieFilterId,
-      effectId: selfieEffectId,
-      stickers: placedStickers,
+      frameId: isSimpleStaffCheckin ? 'clean' : selfieFrameId,
+      filterId: isSimpleStaffCheckin ? 'normal' : selfieFilterId,
+      effectId: isSimpleStaffCheckin ? 'none' : selfieEffectId,
+      stickers: isSimpleStaffCheckin ? [] : placedStickers,
       personName: activePersonName || 'ผู้ใช้งาน',
       gateName: selectedGate?.nameTh || 'จุดเช็คชื่อโรงเรียน',
       checkTypeLabel: checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน',
@@ -996,7 +1020,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   const handleCaptureSnapshot = () => {
     if (selfieCountdown !== null) return;
-    if (selfieTimerSeconds > 0) {
+    if (selfieTimerSeconds > 0 && !isSimpleStaffCheckin) {
       let remaining: number = selfieTimerSeconds;
       setSelfieCountdown(remaining);
       countdownIntervalRef.current = window.setInterval(() => {
@@ -2450,7 +2474,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 <AttendanceAudienceSwitch
                   active="staff"
                   lang={lang}
-                  onChange={onAttendanceAudienceChange}
+                  onChange={handleAttendanceAudienceChange}
                 />
               )}
               <ModuleTourTrigger moduleId="mobile_checkin" lang={lang} />
@@ -2594,7 +2618,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
       {/* Mobile Sub-Navigation & Compact Action Buttons (Embedded Mobile Only) */}
       {embeddedMobile && (
-        <div className="shrink-0 flex items-center justify-between gap-1.5">
+        <div className="shrink-0 flex flex-col gap-1.5">
+          {showAttendanceAudienceSwitch && onAttendanceAudienceChange && (
+            <div className="flex justify-center">
+              <AttendanceAudienceSwitch
+                active={activeAttendanceAudience}
+                lang={lang}
+                onChange={handleAttendanceAudienceChange}
+              />
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-1.5">
           <nav
             data-guide-id="mobile-checkin-tabs"
             aria-label="Attendance sub-navigation"
@@ -2624,6 +2658,18 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               },
             ]
               .filter((tab) => {
+                if (
+                  filterTabsByAudience &&
+                  showAttendanceAudienceSwitch &&
+                  isStaffUser &&
+                  !(
+                    activeAttendanceAudience === 'students'
+                      ? ['teacher_proxy', 'daily_report', 'period_checkin', 'corrections'].includes(tab.id)
+                      : ['selfie_mobile', 'nfc_tap', 'leave_request'].includes(tab.id)
+                  )
+                ) {
+                  return false;
+                }
                 if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
                   return false;
                 }
@@ -2718,6 +2764,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
               </span>
             </button>
           )}
+          </div>
         </div>
       )}
 
@@ -2771,7 +2818,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         )}
 
       {/* Compact Single-Line Context Bar for Mobile Selfie (clearly clickable bordered buttons) */}
-      {embeddedMobile && subTab === 'selfie_mobile' && (
+      {embeddedMobile && subTab === 'selfie_mobile' && !isSimpleStaffCheckin && (
         <div className="shrink-0 flex items-center gap-1.5">
           <button
             type="button"
@@ -2831,6 +2878,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       {subTab === 'selfie_mobile' && (
         <SelfieAttendanceTab
           embeddedMobile={embeddedMobile}
+          simpleStaffCheckin={isSimpleStaffCheckin}
           lang={lang}
           checkType={checkType}
           setCheckType={setCheckType}

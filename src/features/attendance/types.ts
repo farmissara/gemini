@@ -109,6 +109,7 @@ export interface MobileAttendanceViewProps {
   currentRole?: UserRole;
   showAttendanceAudienceSwitch?: boolean;
   onAttendanceAudienceChange?: (audience: 'students' | 'staff') => void;
+  filterTabsByAudience?: boolean;
   hideStaffOverviewTabs?: boolean;
   schoolPeriods?: SchoolPeriodTime[];
   timetableSlots?: TimetableSlot[];
