@@ -31,7 +31,7 @@ import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { InvoiceSlipImage } from '../components/InvoiceSlipImage';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface BillingViewProps {
@@ -254,9 +254,9 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       <span className="font-mono font-bold text-xs text-[var(--color-primary-text)] bg-[var(--color-card-subtle)] px-2 py-0.5 rounded border border-[var(--color-border)]">
                         {inv.invoiceNumber}
                       </span>
-                      <StatusIndicator
+                      <StatusBadge
                         size="xs"
-                        tone={inv.status === 'paid' ? 'success' : inv.status === 'pending' ? 'warning' : 'danger'}
+                        status={inv.status === 'paid' ? 'complete' : inv.status === 'pending' ? 'pending' : 'delayed'}
                         label={inv.status === 'paid' ? 'ชำระแล้ว' : inv.status === 'pending' ? 'รอชำระ' : 'ค้างชำระ'}
                       />
                     </div>
@@ -335,9 +335,9 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   <span className="text-xs font-mono font-bold text-[var(--color-primary-text)]">
                     {activeInvoice.invoiceNumber}
                   </span>
-                  <StatusIndicator
+                  <StatusBadge
                     size="xs"
-                    tone={activeInvoice.status === 'paid' ? 'success' : activeInvoice.status === 'pending' ? 'warning' : 'danger'}
+                    status={activeInvoice.status === 'paid' ? 'complete' : activeInvoice.status === 'pending' ? 'pending' : 'delayed'}
                     label={activeInvoice.status === 'paid' ? 'ชำระแล้ว' : activeInvoice.status === 'pending' ? 'รอชำระ' : 'ค้างชำระ'}
                   />
                 </div>
@@ -381,14 +381,14 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       <FileCheck2 className="w-4 h-4 text-[var(--color-primary-text)]" />
                       <span>หลักฐานการโอนจากผู้ปกครอง</span>
                     </span>
-                    <StatusIndicator
+                    <StatusBadge
                       size="xs"
-                      tone={
+                      status={
                         activeInvoice.slipStatus === 'approved'
-                          ? 'success'
+                          ? 'complete'
                           : activeInvoice.slipStatus === 'rejected'
-                            ? 'danger'
-                            : 'warning'
+                            ? 'delayed'
+                            : 'pending'
                       }
                       label={
                         activeInvoice.slipStatus === 'approved'

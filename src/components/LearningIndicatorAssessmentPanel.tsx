@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { StatusBadge } from './common/StatusBadge';
+import { PaginatedTableRows } from './common/PaginatedTableRows';
 import type {
   GradeRecord,
   GradingSystem,
@@ -1809,8 +1810,8 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                 <table className="min-w-full text-xs border-collapse tabular-nums">
                   <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                     <tr>
-                      <th className="px-3 py-2.5 text-center w-12">ที่</th>
-                      <th className="px-3 py-2.5 text-left min-w-[200px]">รหัส / ชื่อ-สกุล</th>
+                      <th className="px-3 py-2.5 text-center w-12 sticky left-0 z-10 bg-[var(--color-card-subtle)] print:static">ที่</th>
+                      <th className="px-3 py-2.5 text-left min-w-[200px] sticky left-12 z-10 bg-[var(--color-card-subtle)] print:static">รหัส / ชื่อ-สกุล</th>
                       <th className="px-2 py-2.5 text-center">ห้อง</th>
                       {sets.map((s, idx) => {
                         const unitMax = s.indicators.reduce((sum, i) => sum + i.maxScore, 0);
@@ -1831,17 +1832,20 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
-                    {unitSummaryRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={sets.length + 8} className="py-6 text-center text-[var(--color-text-muted)]">
+                    <PaginatedTableRows
+                      items={unitSummaryRows}
+                      colSpan={sets.length + 8}
+                      pageSize={15}
+                      keepAllInDomForPrint
+                      emptyState={
+                        <p className="py-2 text-center text-[var(--color-text-muted)]">
                           ไม่พบรายชื่อนักเรียนที่ลงทะเบียนในรายวิชานี้
-                        </td>
-                      </tr>
-                    ) : (
-                      unitSummaryRows.map((row, idx) => (
-                        <tr key={row.student.id} className="hover:bg-[var(--color-card-subtle)]">
-                          <td className="px-3 py-2 text-center font-mono text-[var(--color-text-muted)]">{idx + 1}</td>
-                          <td className="px-3 py-2 text-left">
+                        </p>
+                      }
+                      renderRow={(row, idx, hiddenClass) => (
+                        <tr key={row.student.id} className={`${hiddenClass} group hover:bg-[var(--color-card-subtle)]`}>
+                          <td className="px-3 py-2 text-center font-mono text-[var(--color-text-muted)] sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] print:static">{idx + 1}</td>
+                          <td className="px-3 py-2 text-left sticky left-12 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] whitespace-nowrap print:static">
                             <span className="font-semibold text-[var(--color-text-title)]">
                               {getStudentShortPrefixTh(row.student)} {row.student.firstNameTh} {row.student.lastNameTh}
                             </span>
@@ -1898,8 +1902,8 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                             )}
                           </td>
                         </tr>
-                      ))
-                    )}
+                      )}
+                    />
                   </tbody>
                 </table>
               </div>
@@ -1932,7 +1936,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
               <table className="min-w-full text-xs tabular-nums">
                 <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)]">
                   <tr>
-                    <th className="px-3 py-2 text-left sticky left-0 bg-[var(--color-card-subtle)] min-w-[210px]">
+                    <th className="px-3 py-2 text-left sticky left-0 z-10 bg-[var(--color-card-subtle)] min-w-[210px] print:static">
                       นักเรียน
                     </th>
                     {selectedSet.indicators.map((indicator) => {
@@ -1968,7 +1972,12 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                  {roster.map((student) => {
+                  <PaginatedTableRows
+                    items={roster}
+                    colSpan={selectedSet.indicators.length + 3}
+                    pageSize={15}
+                    keepAllInDomForPrint
+                    renderRow={(student, _idx, hiddenClass) => {
                     const unitMax = selectedSet.indicators.reduce((sum, i) => sum + i.maxScore, 0);
                     const unitSum = selectedSet.indicators.reduce(
                       (sum, i) => sum + (getScore(student.id, i.id)?.score ?? 0),
@@ -1984,8 +1993,8 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                     });
 
                     return (
-                      <tr key={student.id} className="hover:bg-[var(--color-card-subtle)]">
-                        <td className="px-3 py-2 sticky left-0 bg-[var(--color-card)] whitespace-nowrap font-medium text-[var(--color-text-title)]">
+                      <tr key={student.id} className={`${hiddenClass} group hover:bg-[var(--color-card-subtle)]`}>
+                        <td className="px-3 py-2 sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] whitespace-nowrap font-medium text-[var(--color-text-title)] print:static">
                           {student.studentIdNumber} · {getStudentShortPrefixTh(student)} {student.firstNameTh} {student.lastNameTh}
                         </td>
                         {selectedSet.indicators.map((indicator) => {
@@ -2034,7 +2043,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                         </td>
                       </tr>
                     );
-                  })}
+                  }} />
                 </tbody>
               </table>
               {roster.length === 0 && (

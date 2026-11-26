@@ -40,6 +40,7 @@ import {
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { printHtmlElementInIsolatedFrame } from '../lib/moeReportPdf';
 import { StatusBadge } from './common/StatusBadge';
+import { PaginatedTableRows } from './common/PaginatedTableRows';
 
 interface Pp5CoreRoomSummaryViewProps {
   students: Student[];
@@ -936,7 +937,7 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                 <table className="table-comfortable w-full text-[11px] text-left">
                   <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                     <tr>
-                      <th className="py-2 px-2.5">ห้อง</th>
+                      <th className="py-2 px-2.5 sticky left-0 z-10 bg-[var(--color-card-subtle)] print:static">ห้อง</th>
                       <th className="py-2 px-2.5">รหัสวิชา · รายวิชา</th>
                       <th className="py-2 px-2 text-right">คน</th>
                       <th className="py-2 px-2 text-right">ระหว่างเรียน</th>
@@ -958,9 +959,14 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)] font-mono tabular-nums">
-                    {filteredRows.map((row) => (
-                      <tr key={row.key} className="hover:bg-[var(--color-card-subtle)]">
-                        <td className="py-2 px-2.5 font-sans font-bold text-[var(--color-text-title)] whitespace-nowrap">
+                    <PaginatedTableRows
+                      items={filteredRows}
+                      colSpan={19}
+                      pageSize={15}
+                      keepAllInDomForPrint
+                      renderRow={(row, _idx, hiddenClass) => (
+                      <tr key={row.key} className={`${hiddenClass} group hover:bg-[var(--color-card-subtle)]`}>
+                        <td className="py-2 px-2.5 font-sans font-bold text-[var(--color-text-title)] whitespace-nowrap sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] print:static">
                           {row.room}
                         </td>
                         <td className="py-2 px-2.5 font-sans">
@@ -1028,7 +1034,7 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )} />
                   </tbody>
                   <tfoot className="bg-[var(--color-card-subtle)] border-t-2 border-[var(--color-border)] font-bold text-xs font-mono tabular-nums">
                     <tr>
@@ -1076,7 +1082,7 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
               <table className="table-comfortable w-full text-xs text-left">
                 <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                   <tr>
-                    <th className="py-2.5 px-3">ห้องเรียน</th>
+                    <th className="py-2.5 px-3 sticky left-0 z-10 bg-[var(--color-card-subtle)] whitespace-nowrap print:static">ห้องเรียน</th>
                     <th className="py-2.5 px-3">ระดับชั้น</th>
                     <th className="py-2.5 px-3 text-right">จำนวนวิชา</th>
                     <th className="py-2.5 px-3 text-right">รายการ GradeRecord</th>
@@ -1089,9 +1095,14 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)] font-mono tabular-nums">
-                  {roomAggregateRows.map((r) => (
-                    <tr key={r.room} className="hover:bg-[var(--color-card-subtle)]">
-                      <td className="py-2.5 px-3 font-sans font-bold text-[var(--color-text-title)]">{r.room}</td>
+                  <PaginatedTableRows
+                    items={roomAggregateRows}
+                    colSpan={10}
+                    pageSize={15}
+                    keepAllInDomForPrint
+                    renderRow={(r, _idx, hiddenClass) => (
+                    <tr key={r.room} className={`${hiddenClass} group hover:bg-[var(--color-card-subtle)]`}>
+                      <td className="py-2.5 px-3 font-sans font-bold text-[var(--color-text-title)] sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] whitespace-nowrap print:static">{r.room}</td>
                       <td className="py-2.5 px-3 font-sans text-[var(--color-text-body)]">{r.gradeLevel || '—'}</td>
                       <td className="py-2.5 px-3 text-right">{r.courseCount}</td>
                       <td className="py-2.5 px-3 text-right">{r.recordCount}</td>
@@ -1118,7 +1129,7 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                         {r.specialCount}
                       </td>
                     </tr>
-                  ))}
+                  )} />
                 </tbody>
                 <tfoot className="bg-[var(--color-card-subtle)] border-t-2 border-[var(--color-border)] font-bold font-mono tabular-nums">
                   <tr>
@@ -1201,9 +1212,9 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                 <table className="table-comfortable w-full text-xs text-left">
                   <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                     <tr>
-                      <th className="py-2 px-2.5 w-10 text-center">ที่</th>
-                      <th className="py-2 px-2.5">รหัสนักเรียน</th>
-                      <th className="py-2 px-2.5">ชื่อ-นามสกุล</th>
+                      <th className="py-2 px-2.5 w-10 text-center sticky left-0 z-10 bg-[var(--color-card-subtle)] print:static">ที่</th>
+                      <th className="py-2 px-2.5 sticky left-10 z-10 bg-[var(--color-card-subtle)] whitespace-nowrap print:static">รหัสนักเรียน</th>
+                      <th className="py-2 px-2.5 whitespace-nowrap">ชื่อ-นามสกุล</th>
                       <th className="py-2 px-2 text-right">กลางภาค (30)</th>
                       <th className="py-2 px-2 text-right">งาน (20)</th>
                       <th className="py-2 px-2 text-right">ทดสอบ (10)</th>
@@ -1215,13 +1226,18 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)] font-mono tabular-nums">
-                    {activeRosterGroup.roster.map((item, idx) => (
-                      <tr key={item.grade.id} className="hover:bg-[var(--color-card-subtle)]">
-                        <td className="py-2 px-2.5 text-center text-[var(--color-text-muted)]">{idx + 1}</td>
-                        <td className="py-2 px-2.5 text-[var(--color-primary-text)] font-semibold">
+                    <PaginatedTableRows
+                      items={activeRosterGroup.roster}
+                      colSpan={11}
+                      pageSize={20}
+                      keepAllInDomForPrint
+                      renderRow={(item, idx, hiddenClass) => (
+                      <tr key={item.grade.id} className={`${hiddenClass} group hover:bg-[var(--color-card-subtle)]`}>
+                        <td className="py-2 px-2.5 text-center text-[var(--color-text-muted)] sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] print:static">{idx + 1}</td>
+                        <td className="py-2 px-2.5 text-[var(--color-primary-text)] font-semibold sticky left-10 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] whitespace-nowrap print:static">
                           {item.student.studentIdNumber}
                         </td>
-                        <td className="py-2 px-2.5 font-sans font-semibold text-[var(--color-text-title)]">
+                        <td className="py-2 px-2.5 font-sans font-semibold text-[var(--color-text-title)] whitespace-nowrap">
                           {item.student.firstNameTh} {item.student.lastNameTh}
                         </td>
                         <td className="py-2 px-2 text-right">{item.grade.midtermScore}</td>
@@ -1252,7 +1268,7 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                           />
                         </td>
                       </tr>
-                    ))}
+                    )} />
                   </tbody>
                   <tfoot className="bg-[var(--color-card-subtle)] border-t-2 border-[var(--color-border)] font-bold font-mono tabular-nums">
                     <tr>

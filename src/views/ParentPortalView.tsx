@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import AttendancePhoto from '../components/AttendancePhoto';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { 
   Student, 
   AttendanceRecord, 
@@ -957,9 +957,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                       <span className="font-semibold text-[var(--color-text-title)]">
                         {req.leaveType === 'sick' ? 'ลาป่วย (Sick Leave)' : 'ลากิจ (Personal Leave)'}
                       </span>
-                      <StatusIndicator
+                      <StatusBadge
                         size="xs"
-                        tone={req.status === 'approved' ? 'success' : req.status === 'pending' ? 'warning' : 'danger'}
+                        status={req.status === 'approved' ? 'complete' : req.status === 'pending' ? 'pending' : 'delayed'}
                         label={req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รอครูอนุมัติ' : 'ไม่อนุมัติ'}
                       />
                     </div>
@@ -1007,9 +1007,9 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                         ผู้ประกาศ: {form.createdBy}
                       </span>
                       {existingResp ? (
-                        <StatusIndicator
+                        <StatusBadge
                           size="xs"
-                          tone={existingResp.decision === 'approved' ? 'success' : 'danger'}
+                          status={existingResp.decision === 'approved' ? 'complete' : 'delayed'}
                           label={`${existingResp.decision === 'approved' ? 'ยินยอมแล้ว' : 'ไม่ยินยอม'} โดย ${existingResp.parentName} (${new Date(existingResp.respondedAt).toLocaleDateString('th-TH')})`}
                         />
                       ) : (

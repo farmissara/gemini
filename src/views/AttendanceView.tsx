@@ -71,7 +71,6 @@ import { AttendanceAudienceSwitch, type AttendanceAudience } from '../components
 import { loadAttendanceCorrections } from '../lib/attendanceCorrections';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { TableActionMenu } from '../components/common/TableActionMenu';
-import { StatusIndicator } from '../components/common/StatusIndicator';
 import { StatusBadge } from '../components/common/StatusBadge';
 
 interface AttendanceViewProps {
@@ -1628,9 +1627,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           </div>
 
                           <div className="text-right shrink-0 flex items-center gap-2">
-                            <StatusIndicator
+                            <StatusBadge
                               size="xs"
-                              tone={log.status === 'present' ? 'success' : log.status === 'late' ? 'warning' : 'danger'}
+                              status={log.status === 'present' ? 'complete' : log.status === 'late' ? 'pending' : 'delayed'}
                               label={log.status === 'present' ? 'ตรงเวลา' : log.status === 'late' ? 'มาสาย' : 'ขาด/ลา'}
                             />
                             <TableActionMenu
@@ -1778,9 +1777,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           </span>
                         </div>
 
-                        <StatusIndicator
+                        <StatusBadge
                           size="xs"
-                          tone={req.status === 'approved' ? 'success' : req.status === 'pending' ? 'warning' : 'danger'}
+                          status={req.status === 'approved' ? 'complete' : req.status === 'pending' ? 'pending' : 'delayed'}
                           label={req.status === 'approved' ? 'อนุมัติเรียบร้อย' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
                           className="self-start sm:self-auto"
                         />

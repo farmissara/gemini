@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 export interface PaginatedTableRowsProps<T> {
   items: readonly T[];
   colSpan: number;
-  renderRow: (item: T) => React.ReactNode;
+  renderRow: (item: T, index: number, hiddenClass: string) => React.ReactNode;
   pageSize?: number;
   emptyState?: React.ReactNode;
+  keepAllInDomForPrint?: boolean;
 }
 
 export const PaginatedTableRows = <T,>({
@@ -14,10 +15,13 @@ export const PaginatedTableRows = <T,>({
   renderRow,
   pageSize = 8,
   emptyState,
+  keepAllInDomForPrint = false,
 }: PaginatedTableRowsProps<T>) => {
   const [page, setPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
+  const startIndex = currentPage * pageSize;
+  const endIndex = startIndex + pageSize;
 
   if (items.length === 0) {
     if (!emptyState) return null;
@@ -32,9 +36,14 @@ export const PaginatedTableRows = <T,>({
 
   return (
     <>
-      {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(renderRow)}
+      {keepAllInDomForPrint
+        ? items.map((item, idx) => {
+            const isVisibleOnScreen = idx >= startIndex && idx < endIndex;
+            return renderRow(item, idx, isVisibleOnScreen ? '' : 'hidden print:table-row');
+          })
+        : items.slice(startIndex, endIndex).map((item, localIdx) => renderRow(item, startIndex + localIdx, ''))}
       {pageCount > 1 && (
-        <tr>
+        <tr className="print:hidden">
           <td colSpan={colSpan} className="p-2">
             <div className="flex items-center justify-between gap-2 text-xs">
               <button
@@ -46,7 +55,7 @@ export const PaginatedTableRows = <T,>({
                 ก่อนหน้า
               </button>
               <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                {currentPage + 1} / {pageCount}
+                {currentPage + 1} / {pageCount} · {items.length} รายการ
               </span>
               <button
                 type="button"

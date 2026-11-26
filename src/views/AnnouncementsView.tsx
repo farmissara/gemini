@@ -25,7 +25,7 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface AnnouncementsViewProps {
@@ -229,9 +229,9 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {ann.pinned && (
-                    <StatusIndicator
+                    <StatusBadge
                       size="xs"
-                      tone="warning"
+                      status="pending"
                       icon={<Pin className="w-2.5 h-2.5" />}
                       label="ปักหมุด"
                     />
@@ -265,17 +265,17 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
               <div className="flex items-center gap-2">
                 {isLineEnabled && (
-                  <StatusIndicator
+                  <StatusBadge
                     size="xs"
-                    tone={ann.lineBroadcastSent ? 'success' : 'neutral'}
+                    status={ann.lineBroadcastSent ? 'complete' : 'neutral'}
                     label={ann.lineBroadcastSent ? 'ส่ง LINE OA แล้ว' : 'ยังไม่ส่ง LINE'}
                   />
                 )}
 
                 {ann.resendEmailSent && (
-                  <StatusIndicator
+                  <StatusBadge
                     size="xs"
-                    tone="info"
+                    status="info"
                     label="ส่งอีเมลแล้ว"
                   />
                 )}

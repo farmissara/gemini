@@ -951,7 +951,7 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
             <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-semibold">
                 <tr>
-                  <th className="py-2.5 px-3">กลุ่มสาระการเรียนรู้</th>
+                  <th className="py-2.5 px-3 sticky left-0 z-10 bg-[var(--color-card-subtle)] whitespace-nowrap print:static">กลุ่มสาระการเรียนรู้</th>
                   <th className="py-2.5 px-2 text-center">วิชา / ครู</th>
                   <th className="py-2.5 px-2 text-right">ผู้เรียนประเมิน</th>
                   <th className="py-2.5 px-2 text-right">เวลาเรียนเฉลี่ย</th>
@@ -973,9 +973,9 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
                         onClick={() =>
                           setExpandedAreaId((prev) => (prev === area.areaId ? null : area.areaId))
                         }
-                        className="hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+                        className="group hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
                       >
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-3 sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] print:static">
                           <div className="flex items-center gap-2">
                             <span className="text-[var(--color-text-muted)] print:hidden">
                               {isExpanded ? (
@@ -1067,7 +1067,7 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
                                   <table className="w-full text-[11px] text-left">
                                     <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
                                       <tr>
-                                        <th className="py-1.5 px-2.5">รหัสวิชา</th>
+                                        <th className="py-1.5 px-2.5 sticky left-0 z-10 bg-[var(--color-card-subtle)] whitespace-nowrap print:static">รหัสวิชา</th>
                                         <th className="py-1.5 px-2.5">ชื่อรายวิชา</th>
                                         <th className="py-1.5 px-2.5">ครูผู้สอน</th>
                                         <th className="py-1.5 px-2 text-right">นักเรียน</th>
@@ -1083,8 +1083,8 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
                                     </thead>
                                     <tbody className="divide-y divide-[var(--color-border)] tabular-nums">
                                       {area.courseBreakdown.map((item) => (
-                                        <tr key={item.course.id}>
-                                          <td className="py-1.5 px-2.5 font-mono font-bold text-[var(--color-primary-text)]">
+                                        <tr key={item.course.id} className="group hover:bg-[var(--color-card-subtle)]">
+                                          <td className="py-1.5 px-2.5 font-mono font-bold text-[var(--color-primary-text)] sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] whitespace-nowrap print:static">
                                             {item.course.code}
                                           </td>
                                           <td className="py-1.5 px-2.5 font-medium text-[var(--color-text-title)]">

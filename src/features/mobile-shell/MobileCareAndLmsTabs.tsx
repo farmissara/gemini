@@ -35,7 +35,7 @@ import type {
 import { getLocalDateString } from '../../lib/date';
 import { useSchoolCustomPresets } from '../../lib/schoolCustomPresets';
 import { PagedList } from '../../components/PagedList';
-import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { StatusBadge } from '../../components/common/StatusBadge';
 
 /* -------------------------------------------------------------------------- */
 /* 1. STUDENT / PARENT ATTENDANCE HISTORY TAB                                 */
@@ -216,16 +216,16 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
                   {rec.remarks ? ` · ${rec.remarks}` : ''}
                 </p>
               </div>
-              <StatusIndicator
+              <StatusBadge
                 size="xs"
-                tone={
+                status={
                   rec.status === 'present'
-                    ? 'success'
+                    ? 'complete'
                     : rec.status === 'late'
-                      ? 'warning'
+                      ? 'pending'
                       : rec.status === 'leave'
                         ? 'info'
-                        : 'danger'
+                        : 'delayed'
                 }
                 label={
                   rec.status === 'present'
@@ -268,16 +268,16 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
                     {rec.actualCheckInTime ? ` ${rec.actualCheckInTime}` : ''}
                   </p>
                 </div>
-                <StatusIndicator
+                <StatusBadge
                   size="xs"
-                  tone={
+                  status={
                     rec.status === 'present'
-                      ? 'success'
+                      ? 'complete'
                       : rec.status === 'late'
-                        ? 'warning'
+                        ? 'pending'
                         : rec.status === 'excused'
                           ? 'info'
-                          : 'danger'
+                          : 'delayed'
                   }
                   label={
                     rec.status === 'present'
@@ -610,8 +610,9 @@ export const MobileBehaviorSdqTab: React.FC<MobileBehaviorSdqTabProps> = ({
         <form onSubmit={handleSaveSdq} className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
           <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] flex items-center justify-between text-xs">
             <span>ผลคัดกรองรวม 4 ด้าน (0–40):</span>
-            <StatusIndicator
-              tone={sdqStatus === 'problem' ? 'danger' : sdqStatus === 'risk' ? 'warning' : 'success'}
+            <StatusBadge
+              size="sm"
+              status={sdqStatus === 'problem' ? 'delayed' : sdqStatus === 'risk' ? 'pending' : 'complete'}
               label={`${totalDifficulties} · ${sdqStatus === 'problem' ? 'มีปัญหา' : sdqStatus === 'risk' ? 'กลุ่มเสี่ยง' : 'ปกติ'}`}
             />
           </div>
@@ -1205,7 +1206,7 @@ export const MobileLmsTab: React.FC<MobileLmsTabProps> = ({
                     <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] tabular-nums">
                       <span>บทที่ {lesson.chapterNumber} · {lesson.durationMinutes} นาที</span>
                       {done && (
-                        <StatusIndicator tone="success" size="xs" label="เรียนจบแล้ว" />
+                        <StatusBadge status="complete" size="xs" label="เรียนจบแล้ว" />
                       )}
                     </div>
                     <h3 className="text-sm font-bold text-[var(--color-text-title)]">{lesson.titleTh}</h3>

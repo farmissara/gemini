@@ -24,7 +24,7 @@ import type {
 import { getBangkokDateInputValue } from '../../lib/timetableCalendar';
 import { PagedList } from '../../components/PagedList';
 import { TableActionMenu } from '../../components/common/TableActionMenu';
-import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { StatusBadge } from '../../components/common/StatusBadge';
 
 interface MobileHomeworkTabProps {
   activeSchool: School;
@@ -517,16 +517,16 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <StatusIndicator
+                      <StatusBadge
                         size="xs"
-                        tone={
+                        status={
                           sub.status === 'graded'
-                            ? 'success'
+                            ? 'complete'
                             : sub.status === 'late'
-                              ? 'danger'
+                              ? 'delayed'
                               : sub.status === 'pending'
                                 ? 'neutral'
-                                : 'warning'
+                                : 'pending'
                         }
                         label={
                           sub.status === 'graded'

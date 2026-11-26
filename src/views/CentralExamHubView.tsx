@@ -43,7 +43,7 @@ import { QrCodeMatrix } from '../components/QrCodeMatrix';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import { compressImageFileToDataUrl } from '../lib/imageCompression';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface CentralExamPurchaseModalProps {
@@ -1205,11 +1205,11 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                       {strandMeta.code} · {strandMeta.nameTh}
                     </span>
                     {entitlement ? (
-                      <StatusIndicator size="xs" tone="success" label="รับเข้าโรงเรียนแล้ว" />
+                      <StatusBadge size="xs" status="complete" label="รับเข้าโรงเรียนแล้ว" />
                     ) : isFree ? (
-                      <StatusIndicator size="xs" tone="success" label="ฟรี" />
+                      <StatusBadge size="xs" status="complete" label="ฟรี" />
                     ) : (
-                      <StatusIndicator size="xs" tone="warning" label={`฿${pack.priceThb.toLocaleString()} / รร.`} />
+                      <StatusBadge size="xs" status="pending" label={`฿${pack.priceThb.toLocaleString()} / รร.`} />
                     )}
                   </div>
 

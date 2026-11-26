@@ -34,7 +34,7 @@ import {
   type LeaveApprovalScope,
 } from '../../lib/leaveApprovalRouting';
 import { PagedList } from '../../components/PagedList';
-import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
 
 interface LeaveRequestTabProps {
@@ -669,8 +669,9 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <StatusIndicator
-                            tone={req.status === 'approved' ? 'success' : req.status === 'pending' ? 'warning' : 'danger'}
+                          <StatusBadge
+                            size="sm"
+                            status={req.status === 'approved' ? 'complete' : req.status === 'pending' ? 'pending' : 'delayed'}
                             label={req.status === 'approved' ? 'อนุมัติครบ' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
                           />
                           {approvalMenuItems.length > 0 && (
@@ -690,14 +691,14 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                               ครูประจำชั้น:{' '}
                               <strong className="text-[var(--color-text-title)]">{req.homeroomTeacherName || 'ครูประจำชั้น'}</strong>
                             </span>
-                            <StatusIndicator
+                            <StatusBadge
                               size="xs"
-                              tone={
+                              status={
                                 req.homeroomApprovalStatus === 'approved'
-                                  ? 'success'
+                                  ? 'complete'
                                   : req.homeroomApprovalStatus === 'rejected'
-                                    ? 'danger'
-                                    : 'warning'
+                                    ? 'delayed'
+                                    : 'pending'
                               }
                               label={
                                 req.homeroomApprovalStatus === 'approved'
@@ -715,14 +716,14 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                                 {(req.subjectTeacherNames || []).slice(0, 2).join(', ') || 'ครูผู้สอนรายวิชา'}
                               </strong>
                             </span>
-                            <StatusIndicator
+                            <StatusBadge
                               size="xs"
-                              tone={
+                              status={
                                 subjectList.length > 0 && approvedSubjects === subjectList.length
-                                  ? 'success'
+                                  ? 'complete'
                                   : subjectList.some((s) => s.status === 'rejected')
-                                    ? 'danger'
-                                    : 'warning'
+                                    ? 'delayed'
+                                    : 'pending'
                               }
                               label={
                                 subjectList.length > 0 && approvedSubjects === subjectList.length

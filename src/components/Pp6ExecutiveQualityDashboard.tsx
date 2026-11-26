@@ -49,6 +49,7 @@ import {
 } from '../lib/moeQualitativeStore';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { printHtmlElementInIsolatedFrame } from '../lib/moeReportPdf';
+import { PaginatedTableRows } from './common/PaginatedTableRows';
 
 interface Pp6ExecutiveQualityDashboardProps {
   students: Student[];
@@ -351,8 +352,7 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
   const drilldownStudents = useMemo(() => {
     if (!selectedGroupKey) {
       return studentMetrics
-        .filter((x) => x.hasMsRisk || x.hasAcademicRisk || x.qualSummary.attrLevel === 0 || x.qualSummary.readingLevel === 0)
-        .slice(0, 12);
+        .filter((x) => x.hasMsRisk || x.hasAcademicRisk || x.qualSummary.attrLevel === 0 || x.qualSummary.readingLevel === 0);
     }
     return studentMetrics.filter((m) => {
       const key =
@@ -776,16 +776,18 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
             <table className="table-comfortable w-full text-xs text-left">
               <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                 <tr>
-                  <th className="py-2.5 px-3">{groupByMode === 'gradeLevel' ? 'ระดับชั้น' : 'ห้องเรียน'}</th>
-                  <th className="py-2.5 px-3 text-right">นักเรียน</th>
-                  <th className="py-2.5 px-3 text-right">GPA เฉลี่ย</th>
-                  <th className="py-2.5 px-3 text-right">คะแนนเฉลี่ย</th>
-                  <th className="py-2.5 px-3 text-right">มาเรียนเฉลี่ย</th>
-                  <th className="py-2.5 px-3 text-right">คุณลักษณะฯ ดี+</th>
-                  <th className="py-2.5 px-3 text-right">อ่านเขียน ดี+</th>
-                  <th className="py-2.5 px-3 text-right">สมรรถนะ/กิจกรรม ผ่าน</th>
-                  <th className="py-2.5 px-3 text-right">เสี่ยง (ร/มส./&lt;80%)</th>
-                  <th className="py-2.5 px-3 text-right">ผ่านครบ ปพ.6</th>
+                  <th className="py-2.5 px-3 sticky left-0 z-10 bg-[var(--color-card-subtle)] whitespace-nowrap print:static">
+                    {groupByMode === 'gradeLevel' ? 'ระดับชั้น' : 'ห้องเรียน'}
+                  </th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">นักเรียน</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">GPA เฉลี่ย</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">คะแนนเฉลี่ย</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">มาเรียนเฉลี่ย</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">คุณลักษณะฯ ดี+</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">อ่านเขียน ดี+</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">สมรรถนะ/กิจกรรม ผ่าน</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">เสี่ยง (ร/มส./&lt;80%)</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">ผ่านครบ ปพ.6</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] font-mono tabular-nums">
@@ -796,13 +798,19 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
                     <tr
                       key={row.groupKey}
                       onClick={() => setSelectedGroupKey((prev) => (prev === row.label ? null : row.label))}
-                      className={`cursor-pointer transition ${
+                      className={`group cursor-pointer transition ${
                         isSelected
                           ? 'bg-[var(--color-primary-light)]'
                           : 'hover:bg-[var(--color-card-subtle)]'
                       }`}
                     >
-                      <td className="py-2.5 px-3 font-sans">
+                      <td
+                        className={`py-2.5 px-3 font-sans sticky left-0 z-10 whitespace-nowrap print:static ${
+                          isSelected
+                            ? 'bg-[var(--color-primary-light)]'
+                            : 'bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)]'
+                        }`}
+                      >
                         <div className="font-bold text-[var(--color-text-title)]">{row.label}</div>
                         <div className="text-[11px] text-[var(--color-text-muted)]">{row.subLabel}</div>
                       </td>
@@ -874,19 +882,23 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
               <table className="table-comfortable w-full text-xs text-left">
                 <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-title)] font-bold">
                   <tr>
-                    <th className="py-2 px-3">รหัส · ชื่อ-นามสกุล</th>
-                    <th className="py-2 px-3">ระดับชั้น / ห้อง</th>
-                    <th className="py-2 px-3 text-right">GPA / เฉลี่ย</th>
-                    <th className="py-2 px-3 text-right">เวลาเรียน</th>
-                    <th className="py-2 px-3">คุณลักษณะฯ</th>
-                    <th className="py-2 px-3">อ่าน คิดวิเคราะห์ฯ</th>
-                    <th className="py-2 px-3 text-right">เครื่องมือ ปพ.6</th>
+                    <th className="py-2 px-3 sticky left-0 z-10 bg-[var(--color-card-subtle)] whitespace-nowrap">รหัส · ชื่อ-นามสกุล</th>
+                    <th className="py-2 px-3 whitespace-nowrap">ระดับชั้น / ห้อง</th>
+                    <th className="py-2 px-3 text-right whitespace-nowrap">GPA / เฉลี่ย</th>
+                    <th className="py-2 px-3 text-right whitespace-nowrap">เวลาเรียน</th>
+                    <th className="py-2 px-3 whitespace-nowrap">คุณลักษณะฯ</th>
+                    <th className="py-2 px-3 whitespace-nowrap">อ่าน คิดวิเคราะห์ฯ</th>
+                    <th className="py-2 px-3 text-right whitespace-nowrap">เครื่องมือ ปพ.6</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                  {drilldownStudents.slice(0, 25).map((item) => (
-                    <tr key={item.student.id} className="hover:bg-[var(--color-card-subtle)]">
-                      <td className="py-2 px-3">
+                  <PaginatedTableRows
+                    items={drilldownStudents}
+                    colSpan={7}
+                    pageSize={15}
+                    renderRow={(item) => (
+                    <tr key={item.student.id} className="group hover:bg-[var(--color-card-subtle)]">
+                      <td className="py-2 px-3 sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] whitespace-nowrap">
                         <div className="font-semibold text-[var(--color-text-title)]">
                           {item.student.firstNameTh} {item.student.lastNameTh}
                         </div>
@@ -894,7 +906,7 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
                           {item.student.studentIdNumber}
                         </div>
                       </td>
-                      <td className="py-2 px-3 text-[var(--color-text-body)]">
+                      <td className="py-2 px-3 text-[var(--color-text-body)] whitespace-nowrap">
                         {item.student.gradeLevel} · {item.student.room}
                       </td>
                       <td className="py-2 px-3 text-right font-mono tabular-nums font-bold">
@@ -909,9 +921,9 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
                       >
                         {item.attendanceRate.toFixed(1)}%
                       </td>
-                      <td className="py-2 px-3 text-[var(--color-text-body)]">{item.qualSummary.attrLabel}</td>
-                      <td className="py-2 px-3 text-[var(--color-text-body)]">{item.qualSummary.readingLabel}</td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2 px-3 text-[var(--color-text-body)] whitespace-nowrap">{item.qualSummary.attrLabel}</td>
+                      <td className="py-2 px-3 text-[var(--color-text-body)] whitespace-nowrap">{item.qualSummary.readingLabel}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
                           {onOpenStudentDevBook && (
                             <button
@@ -935,7 +947,7 @@ export const Pp6ExecutiveQualityDashboard: React.FC<Pp6ExecutiveQualityDashboard
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )} />
                 </tbody>
               </table>
             </div>

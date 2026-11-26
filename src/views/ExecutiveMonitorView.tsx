@@ -60,6 +60,7 @@ import { getLocalDateString } from '../lib/date';
 import { calculateGrade } from '../lib/schoolSettings';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
@@ -1787,7 +1788,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             <table className="table-comfortable w-full text-left border-collapse text-xs tabular-nums">
                 <thead>
                   <tr className={`border-b border-current/15 text-[11px] font-bold ${mutedText}`}>
-                    <th className="py-2.5 px-3 whitespace-nowrap">ห้องเรียน</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap sticky left-0 z-10 bg-[var(--color-card)] print:static">ห้องเรียน</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">นักเรียน</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">เข้าเรียน (%)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">มา / สาย / ขาด</th>
@@ -1799,12 +1800,17 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-current/10">
-                  {displayedRooms.map((row) => (
+                  <PaginatedTableRows
+                    items={displayedRooms}
+                    colSpan={9}
+                    pageSize={15}
+                    keepAllInDomForPrint
+                    renderRow={(row, _idx, hiddenClass) => (
                     <tr
                       key={row.key}
-                      className="h-10 hover:bg-[var(--color-card-subtle)] transition-colors"
+                      className={`${hiddenClass} group h-10 hover:bg-[var(--color-card-subtle)] transition-colors`}
                     >
-                      <td className={`py-2 px-3 font-bold whitespace-nowrap ${titleText}`}>
+                      <td className={`py-2 px-3 font-bold whitespace-nowrap sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] print:static ${titleText}`}>
                         {row.roomLabel}
                       </td>
                       <td className="py-2 px-3 text-right font-mono">{row.studentCount}</td>
@@ -1869,7 +1875,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                         />
                       </td>
                     </tr>
-                  ))}
+                  )} />
                 </tbody>
               </table>
             </div>
@@ -1938,18 +1944,23 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             <table className="table-comfortable w-full text-left border-collapse text-xs tabular-nums">
                   <thead>
                     <tr className={`border-b border-current/15 text-[11px] font-bold ${mutedText}`}>
-                      <th className="py-2 px-3">คาบ / เวลา</th>
-                      <th className="py-2 px-3">รหัสวิชา &amp; รายวิชา</th>
-                      <th className="py-2 px-3">ห้องเรียน</th>
-                      <th className="py-2 px-3">ครูผู้สอน</th>
-                      <th className="py-2 px-3 text-right">จำนวนเช็กชื่อ</th>
-                      <th className="py-2 px-3 text-right">สถานะคาบ</th>
+                      <th className="py-2 px-3 whitespace-nowrap sticky left-0 z-10 bg-[var(--color-card)] print:static">คาบ / เวลา</th>
+                      <th className="py-2 px-3 whitespace-nowrap">รหัสวิชา &amp; รายวิชา</th>
+                      <th className="py-2 px-3 whitespace-nowrap">ห้องเรียน</th>
+                      <th className="py-2 px-3 whitespace-nowrap">ครูผู้สอน</th>
+                      <th className="py-2 px-3 text-right whitespace-nowrap">จำนวนเช็กชื่อ</th>
+                      <th className="py-2 px-3 text-right whitespace-nowrap">สถานะคาบ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-current/10">
-                    {displayedPeriodAudit.map((row) => (
-                      <tr key={row.slot.id} className="h-10 hover:bg-[var(--color-card-subtle)]">
-                        <td className="py-2 px-3 font-mono whitespace-nowrap">
+                    <PaginatedTableRows
+                      items={displayedPeriodAudit}
+                      colSpan={6}
+                      pageSize={15}
+                      keepAllInDomForPrint
+                      renderRow={(row, _idx, hiddenClass) => (
+                      <tr key={row.slot.id} className={`${hiddenClass} group h-10 hover:bg-[var(--color-card-subtle)]`}>
+                        <td className="py-2 px-3 font-mono whitespace-nowrap sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] print:static">
                           คาบ {row.slot.periodNumber} · {row.timeLabel}
                         </td>
                         <td className={`py-2 px-3 font-bold ${titleText}`}>
@@ -1969,7 +1980,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                           />
                         </td>
                       </tr>
-                    ))}
+                    )} />
                   </tbody>
                 </table>
               </div>
@@ -2007,23 +2018,28 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
             <table className="table-comfortable w-full text-left border-collapse text-xs tabular-nums">
                   <thead>
                     <tr className={`border-b border-current/15 text-[11px] font-bold ${mutedText}`}>
-                      <th className="py-2 px-3">รายวิชา</th>
-                      <th className="py-2 px-3">ครูผู้สอน</th>
-                      <th className="py-2 px-3 text-right">ผู้เรียน</th>
-                      <th className="py-2 px-3 text-right">กรอกคะแนน (%)</th>
-                      <th className="py-2 px-3 text-right">คะแนนเฉลี่ย</th>
-                      <th className="py-2 px-3 text-right">อัตราผ่าน</th>
-                      <th className="py-2 px-3 text-right">งานรอตรวจ</th>
+                      <th className="py-2 px-3 whitespace-nowrap sticky left-0 z-10 bg-[var(--color-card)] print:static">รายวิชา</th>
+                      <th className="py-2 px-3 whitespace-nowrap">ครูผู้สอน</th>
+                      <th className="py-2 px-3 text-right whitespace-nowrap">ผู้เรียน</th>
+                      <th className="py-2 px-3 text-right whitespace-nowrap">กรอกคะแนน (%)</th>
+                      <th className="py-2 px-3 text-right whitespace-nowrap">คะแนนเฉลี่ย</th>
+                      <th className="py-2 px-3 text-right whitespace-nowrap">อัตราผ่าน</th>
+                      <th className="py-2 px-3 text-right whitespace-nowrap">งานรอตรวจ</th>
                       <th className="py-2 px-3 text-right print:hidden">การดำเนินการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-current/10">
-                    {courseAuditRows.map((row) => (
-                      <tr key={row.course.id} className="h-10 hover:bg-[var(--color-card-subtle)]">
-                        <td className={`py-2 px-3 font-bold ${titleText}`}>
+                    <PaginatedTableRows
+                      items={courseAuditRows}
+                      colSpan={8}
+                      pageSize={15}
+                      keepAllInDomForPrint
+                      renderRow={(row, _idx, hiddenClass) => (
+                      <tr key={row.course.id} className={`${hiddenClass} group h-10 hover:bg-[var(--color-card-subtle)]`}>
+                        <td className={`py-2 px-3 font-bold whitespace-nowrap sticky left-0 z-10 bg-[var(--color-card)] group-hover:bg-[var(--color-card-subtle)] print:static ${titleText}`}>
                           {row.course.code} · {row.course.titleTh}
                         </td>
-                        <td className={`py-2 px-3 ${mutedText}`}>{row.course.teacherName}</td>
+                        <td className={`py-2 px-3 whitespace-nowrap ${mutedText}`}>{row.course.teacherName}</td>
                         <td className="py-2 px-3 text-right font-mono">{row.enrolledCount}</td>
                         <td
                           className={`py-2 px-3 text-right font-bold ${
@@ -2059,14 +2075,14 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                                 onNavigate('gradebook');
                               }
                             }}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap"
                           >
                             <span>เปิด ปพ.5</span>
                             <ExternalLink className="w-3 h-3" />
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    )} />
                   </tbody>
                 </table>
               </div>
