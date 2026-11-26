@@ -188,15 +188,15 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 ### สำรองข้อมูลอัตโนมัติไป Google Drive
 
-Snapshot อัตโนมัติถูกส่งตรงจากเซิร์ฟเวอร์ไปยังโฟลเดอร์ `BaanPakKru-Backups` ใน Google Drive ของ `baanpakkru@gmail.com` ไม่ใช้ Supabase Storage เก็บไฟล์ Snapshot โดยค่าเริ่มต้นเก็บย้อนหลัง 14 วัน (`BACKUP_RETENTION_DAYS`) แล้วลบไฟล์ที่เก่ากว่าระยะเวลานี้ ไฟล์ยังอ่านข้อมูลจาก Supabase และรวมไฟล์ Storage ของโรงเรียนตามเดิม
+Snapshot อัตโนมัติถูกส่งตรงจากเซิร์ฟเวอร์ไปยังโฟลเดอร์ `BaanPakKru-Backups` ใน Google Drive ของ `baanpakkru@gmail.com` ไม่ใช้ Supabase Storage เก็บไฟล์ Snapshot โดยค่าเริ่มต้นเก็บย้อนหลัง 14 วัน (`BACKUP_RETENTION_DAYS`) แล้วลบไฟล์ที่เก่ากว่าระยะเวลานี้ ไฟล์ยังอ่านข้อมูลจาก Supabase และรวมไฟล์ Storage ของโรงเรียนตามเดิม การเชื่อมต่อนี้ใช้ OAuth ของเซิร์ฟเวอร์แยกจาก Firebase Login และไม่ต้องมีสิทธิ์แก้ Firebase project
 
-ตั้งค่า OAuth Web Client ใน Google Cloud Console และเปิด Google Drive API จากนั้นลงชื่อเข้า OAuth Playground ด้วย `baanpakkru@gmail.com` และใช้ OAuth Client ของแอปเพื่อขอ refresh token สำหรับ scope `https://www.googleapis.com/auth/drive.file` (ต้องใช้ offline access) ตั้งค่า OAuth consent screen เป็น Production เพื่อไม่ให้ refresh token หมดอายุหลังช่วงทดสอบ แล้วเพิ่มค่าต่อไปนี้ใน **Render → Environment** เป็น Secret:
+ใช้ Google Cloud project ที่ `baanpakkru@gmail.com` มีสิทธิ์จัดการ (ไม่จำเป็นต้องเป็นโปรเจกต์เดียวกับ Firebase) เปิด Google Drive API และสร้าง OAuth Web Client สำหรับงานสำรอง จากนั้นตั้ง OAuth consent screen ให้บัญชีนี้ใช้แอปได้ แล้วลงชื่อเข้า OAuth Playground ด้วย `baanpakkru@gmail.com` และใช้ OAuth Client ใหม่นี้เพื่อขอ refresh token สำหรับ scope `https://www.googleapis.com/auth/drive.file` (ต้องใช้ offline access) ตั้ง OAuth consent screen เป็น Production เพื่อไม่ให้ refresh token หมดอายุหลังช่วงทดสอบ แล้วเพิ่มค่าต่อไปนี้ใน **Render → Environment** เป็น Secret:
 
 - `GOOGLE_DRIVE_CLIENT_ID`
 - `GOOGLE_DRIVE_CLIENT_SECRET`
 - `GOOGLE_DRIVE_REFRESH_TOKEN`
 
-ระบบจะสร้างโฟลเดอร์สำรองเองด้วยบัญชีนี้ ส่วนบัญชีผู้ดูแลที่ใช้หน้าเว็บเชื่อม Google Drive สำหรับสำรอง/กู้คืนแบบสั่งเองยังเป็นคนละการเชื่อมต่อ
+ระบบจะสร้างโฟลเดอร์สำรองเองด้วยบัญชีนี้ ส่วนปุ่ม Sign in with Google ในหน้าเว็บเป็นอีกการเชื่อมต่อหนึ่ง และการเพิ่มโดเมนใน Firebase/OAuth client ฝั่งหน้าเว็บจำเป็นเฉพาะการสำรอง/กู้คืนแบบสั่งเอง ไม่ใช่เงื่อนไขของงานสำรองอัตโนมัติฝั่งเซิร์ฟเวอร์
 
 **สำคัญ:** ตัวตั้งเวลาภายในเซิร์ฟเวอร์ทำงานเมื่อ Render instance กำลังทำงานเท่านั้น และ Render Free อาจพักบริการเมื่อไม่มีการใช้งาน จึงไม่รับประกันการทำงานตรงเที่ยงคืนด้วย timer อย่างเดียว หากต้องการให้รันทุกวันแม้ instance พัก ให้ตั้ง Scheduled Job ภายนอกเรียก `POST https://<โดเมนแอป>/api/backup/cron` ทุกวันเวลา `17:00 UTC` (00:00 น. ประเทศไทย) พร้อม Header `Authorization: Bearer <BACKUP_CRON_SECRET>` และตั้งค่า `BACKUP_CRON_SECRET` เป็น Secret บน Render ด้วย ปลายทางนี้จะสร้างไฟล์รายโรงเรียนและไฟล์ระบบกลางใน Google Drive
 

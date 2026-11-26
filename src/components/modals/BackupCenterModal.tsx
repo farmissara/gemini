@@ -222,13 +222,11 @@ export const BackupCenterModal: React.FC<Props> = ({
     setIsLoadingSnapshots(true);
     setServerUnavailableNote(null);
     try {
-      const [statusRes, snapsRes] = await Promise.all([
-        request('/api/backup/status'),
-        request('/api/backup/snapshots'),
-      ]);
+      const statusRes = await request('/api/backup/status');
       const statusData = (await statusRes.json()) as ServerBackupStatus;
-      const snapsData = (await snapsRes.json()) as { snapshots?: ServerSnapshotItem[] };
       setServerStatus(statusData);
+      const snapsRes = await request('/api/backup/snapshots');
+      const snapsData = (await snapsRes.json()) as { snapshots?: ServerSnapshotItem[] };
       setServerSnapshots(snapsData.snapshots || []);
     } catch (err) {
       setServerUnavailableNote(err instanceof Error ? err.message : 'ยังไม่ได้เชื่อมต่อศูนย์สำรองบนเซิร์ฟเวอร์');
@@ -267,10 +265,10 @@ export const BackupCenterModal: React.FC<Props> = ({
     if (activeTab === 'restore' && googleToken) {
       void refreshDriveBackups();
     }
-    if (activeTab === 'schedule') {
+    if (activeTab === 'schedule' || (activeTab === 'backup' && isSuperAdmin)) {
       void refreshServerSnapshots();
     }
-  }, [activeTab, googleToken, refreshDriveBackups, refreshServerSnapshots]);
+  }, [activeTab, googleToken, isSuperAdmin, refreshDriveBackups, refreshServerSnapshots]);
 
   const handleConnectGoogle = async () => {
     setIsConnectingGoogle(true);
@@ -380,7 +378,7 @@ export const BackupCenterModal: React.FC<Props> = ({
       a.href = url;
       a.download = `baanpakkru-${effectiveScope === 'all' ? 'system' : 'school'}-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setReport({ ok: true, message: 'ดาวน์โหลดไฟล์สำรองลงเครื่องเรียบร้อยแล้ว' });
       emitAppToast({
         tone: 'success',
@@ -609,10 +607,10 @@ export const BackupCenterModal: React.FC<Props> = ({
                   id="backup-center-title"
                   className="font-bold text-[var(--color-text-title)]"
                 >
-                  ศูนย์สำรองและกู้คืนข้อมูล (Google Drive & อัตโนมัติรายวัน)
+                  ศูนย์สำรองและกู้คืนข้อมูล
                 </h2>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  สำรองฐานข้อมูลและไฟล์ Storage แยกตามรายโรงเรียนหรือทั้งระบบ พร้อมกู้คืนทันที
+                  ดาวน์โหลดไฟล์ลงเครื่องหรือบันทึก Google Drive สำรองฐานข้อมูลและไฟล์ Storage พร้อมกู้คืน
                 </p>
               </div>
             </div>
@@ -638,7 +636,7 @@ export const BackupCenterModal: React.FC<Props> = ({
               }`}
             >
               <CloudUpload className="h-3.5 w-3.5" />
-              <span>สำรองลง Google Drive</span>
+              <span>สำรองข้อมูล</span>
             </button>
             <button
               type="button"
@@ -673,6 +671,7 @@ export const BackupCenterModal: React.FC<Props> = ({
 
           <div className="space-y-4 overflow-y-auto p-5">
             {/* Google Drive Account Connection Bar */}
+            {(!isSuperAdmin || activeTab === 'restore') && (
             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-start gap-2.5 min-w-0">
@@ -771,6 +770,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                 )}
               </div>
             </div>
+            )}
 
             {/* TAB 1: BACKUP */}
             {activeTab === 'backup' && (
@@ -854,6 +854,38 @@ export const BackupCenterModal: React.FC<Props> = ({
                 )}
 
                 <div className="grid gap-4 md:grid-cols-2">
+                  {isSuperAdmin ? (
+                    <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 flex flex-col justify-between">
+                      <div>
+                        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-title)]">
+                          <Server className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          <span>บันทึก Backup ลง Google Drive</span>
+                        </h3>
+                        <p className="mt-2 text-xs text-[var(--color-text-muted)] leading-relaxed">
+                          ให้เซิร์ฟเวอร์บันทึกข้อมูลทุกโรงเรียนและข้อมูลระบบกลาง ไม่ต้องเชื่อมบัญชี Google ในหน้านี้
+                        </p>
+                        {serverUnavailableNote && (
+                          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                            {serverUnavailableNote}
+                          </p>
+                        )}
+                        {!serverUnavailableNote && serverStatus && !serverStatus.googleDriveConfigured && (
+                          <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                            ยังไม่ได้ตั้งค่าปลายทาง Google Drive บนเซิร์ฟเวอร์
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={busy || isLoadingSnapshots || !serverStatus?.googleDriveConfigured}
+                        onClick={() => void handleRunServerSnapshotNow()}
+                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer transition"
+                      >
+                        {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <DatabaseBackup className="h-4 w-4" />}
+                        <span>บันทึก Backup ทันที</span>
+                      </button>
+                    </article>
+                  ) : (
                   <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 flex flex-col justify-between">
                     <div>
                       <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-title)]">
@@ -886,6 +918,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                       </span>
                     </button>
                   </article>
+                  )}
 
                   <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 flex flex-col justify-between">
                     <div>
@@ -896,15 +929,16 @@ export const BackupCenterModal: React.FC<Props> = ({
                       <p className="mt-2 text-xs text-[var(--color-text-muted)] leading-relaxed">
                         {!isSuperAdmin || scopeChoice === 'school'
                           ? `ดาวน์โหลดไฟล์ .json ของโรงเรียน ${selectedSchool?.nameTh || selectedSchool?.nameEn || ''}`
-                          : 'ดาวน์โหลดไฟล์ .json ของระบบทั้งหมดเก็บสำรองบนอุปกรณ์นี้'}
+                          : scopeChoice === 'all_schools_separately'
+                            ? 'ดาวน์โหลดไฟล์ .json รวมทั้งระบบเป็นไฟล์เดียวเก็บบนอุปกรณ์นี้'
+                            : 'ดาวน์โหลดไฟล์ .json ของระบบทั้งหมดเก็บสำรองบนอุปกรณ์นี้'}
                       </p>
                     </div>
                     <button
                       type="button"
                       disabled={
                         busy ||
-                        (scopeChoice === 'school' && !schoolId) ||
-                        scopeChoice === 'all_schools_separately'
+                        (scopeChoice === 'school' && !schoolId)
                       }
                       onClick={() => void exportLocalBackup()}
                       className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] px-3 py-2.5 text-sm font-semibold text-[var(--color-text-title)] disabled:opacity-50 cursor-pointer transition"
@@ -912,7 +946,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                       <Download className="h-4 w-4" />
                       <span>
                         {scopeChoice === 'all_schools_separately'
-                          ? 'เลือก "ทั้งระบบ" หรือ "1 โรงเรียน" เพื่อดาวน์โหลดลงเครื่อง'
+                          ? 'ดาวน์โหลดทั้งระบบเป็นไฟล์เดียว (.json)'
                           : 'ดาวน์โหลดไฟล์ .json'}
                       </span>
                     </button>
