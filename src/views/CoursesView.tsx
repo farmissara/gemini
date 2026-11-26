@@ -45,6 +45,7 @@ import {
 } from '../lib/courseClassification';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -573,75 +574,62 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </button>
               )}
 
-              <details className="relative">
-                <summary className="btn-tool-neutral list-none h-9 px-3">
-                  <span>เครื่องมือจัดการ</span>
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </summary>
-                <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-                  {onOpenImportExport && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        onOpenImportExport('courses');
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>นำเข้า/ส่งออกวิชาการ</span>
-                    </button>
-                  )}
-
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        setShowDeptPresetModal(true);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <Layers className="w-3.5 h-3.5 tone-text shrink-0" />
-                      <span>จัดการกลุ่มสาระ</span>
-                    </button>
-                  )}
-
-                  {filteredCourses.length > 0 && (onDeleteCourses || onDeleteCourse) && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        const visibleIds = filteredCourses.map((c) => c.id);
-                        const allVisibleSelected = visibleIds.every((id) => selectedCourseIds.includes(id));
-                        setSelectedCourseIds(allVisibleSelected ? [] : visibleIds);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5 tone-text shrink-0" />
-                      <span>
-                        {filteredCourses.every((c) => selectedCourseIds.includes(c.id))
-                          ? 'ล้างที่เลือก'
-                          : `เลือกทุกรายวิชา (${filteredCourses.length})`}
-                      </span>
-                    </button>
-                  )}
-
-                  {duplicateExtraCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        setSelectedCourseIds(duplicateExtraCourseIds);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-amber-800 dark:text-amber-300 transition hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                      <span>เลือกเฉพาะวิชาซ้ำ ({duplicateExtraCourseIds.length})</span>
-                    </button>
-                  )}
-                </div>
-              </details>
+              <TableActionMenu
+                triggerLabel="เครื่องมือจัดการ"
+                ariaLabel="เครื่องมือจัดการหลักสูตร"
+                menuWidth={230}
+                items={[
+                  ...(onOpenImportExport
+                    ? [
+                        {
+                          id: 'import-export',
+                          label: 'นำเข้า/ส่งออกวิชาการ',
+                          icon: <FileSpreadsheet className="w-3.5 h-3.5" />,
+                          variant: 'success' as const,
+                          onClick: () => onOpenImportExport('courses'),
+                        },
+                      ]
+                    : []),
+                  ...(isAdmin
+                    ? [
+                        {
+                          id: 'dept-presets',
+                          label: 'จัดการกลุ่มสาระ',
+                          icon: <Layers className="w-3.5 h-3.5" />,
+                          onClick: () => setShowDeptPresetModal(true),
+                        },
+                      ]
+                    : []),
+                  ...(filteredCourses.length > 0 && (onDeleteCourses || onDeleteCourse)
+                    ? [
+                        {
+                          id: 'toggle-select-all',
+                          label: filteredCourses.every((c) => selectedCourseIds.includes(c.id))
+                            ? 'ล้างที่เลือก'
+                            : `เลือกทุกรายวิชา (${filteredCourses.length})`,
+                          icon: <CheckCircle className="w-3.5 h-3.5" />,
+                          dividerBefore: Boolean(onOpenImportExport || isAdmin),
+                          onClick: () => {
+                            const visibleIds = filteredCourses.map((c) => c.id);
+                            const allVisibleSelected = visibleIds.every((id) => selectedCourseIds.includes(id));
+                            setSelectedCourseIds(allVisibleSelected ? [] : visibleIds);
+                          },
+                        },
+                      ]
+                    : []),
+                  ...(duplicateExtraCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse)
+                    ? [
+                        {
+                          id: 'select-dupes',
+                          label: `เลือกเฉพาะวิชาซ้ำ (${duplicateExtraCourseIds.length})`,
+                          icon: <Trash2 className="w-3.5 h-3.5" />,
+                          variant: 'warning' as const,
+                          onClick: () => setSelectedCourseIds(duplicateExtraCourseIds),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
 
               <button
                 type="button"
@@ -904,28 +892,31 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                     {activeCourse.code} • ห้อง {activeCourse.room}
                   </span>
                   {canManageCourses && (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditCourse(activeCourse)}
-                        className="px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] text-xs font-semibold flex items-center gap-1 cursor-pointer transition"
-                        title="แก้ไขข้อมูลหลักสูตรและรายวิชา"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>แก้ไขวิชา</span>
-                      </button>
-                      {onDeleteCourse && (
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteOneCourse(activeCourse)}
-                          disabled={isDeletingCourses}
-                          className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs cursor-pointer transition"
-                          title="ลบรายวิชานี้"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                    <TableActionMenu
+                      ariaLabel={`จัดการรายวิชา ${activeCourse.code}`}
+                      items={[
+                        {
+                          id: 'edit-course',
+                          label: 'แก้ไขข้อมูลรายวิชา',
+                          icon: <Edit3 className="w-3.5 h-3.5" />,
+                          variant: 'primary',
+                          onClick: () => handleOpenEditCourse(activeCourse),
+                        },
+                        ...(onDeleteCourse
+                          ? [
+                              {
+                                id: 'delete-course',
+                                label: 'ลบรายวิชานี้',
+                                icon: <Trash2 className="w-3.5 h-3.5" />,
+                                variant: 'danger' as const,
+                                dividerBefore: true,
+                                disabled: isDeletingCourses,
+                                onClick: () => void handleDeleteOneCourse(activeCourse),
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
                   )}
                 </div>
 
@@ -1375,15 +1366,18 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                                     );
                                   })()}
                                   {canManageCourses && (
-                                    <button
-                                      type="button"
-                                      onClick={() => requestUnenrollStudent(activeCourse, student)}
-                                      title="ยกเลิกลงทะเบียนรายวิชานี้"
-                                      className="px-2 py-1 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-200 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
-                                    >
-                                      <UserMinus className="w-3 h-3" />
-                                      <span>ยกเลิก</span>
-                                    </button>
+                                    <TableActionMenu
+                                      ariaLabel={`จัดการลงทะเบียน ${student.firstNameTh} ${student.lastNameTh}`}
+                                      items={[
+                                        {
+                                          id: 'unenroll',
+                                          label: 'ยกเลิกลงทะเบียนวิชานี้',
+                                          icon: <UserMinus className="w-3.5 h-3.5" />,
+                                          variant: 'danger',
+                                          onClick: () => requestUnenrollStudent(activeCourse, student),
+                                        },
+                                      ]}
+                                    />
                                   )}
                                 </div>
                               </div>

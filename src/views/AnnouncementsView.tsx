@@ -25,6 +25,8 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { StatusIndicator } from '../components/common/StatusIndicator';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface AnnouncementsViewProps {
   schoolId?: string;
@@ -143,36 +145,26 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <ModuleTourTrigger moduleId="announcements" lang="th" />
-          <details className="relative">
-            <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-              <Sliders className="w-3.5 h-3.5 tone-text" />
-              <span>เครื่องมือ</span>
-            </summary>
-            <div className="absolute right-0 mt-1 w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl p-1.5 z-30 space-y-1 text-xs">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.currentTarget.closest('details')?.removeAttribute('open');
-                  setShowCategoryModal(true);
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-              >
-                <Sliders className="w-3.5 h-3.5 tone-text" />
-                <span>จัดการหมวดประกาศ</span>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.currentTarget.closest('details')?.removeAttribute('open');
-                  setShowConsentModal(true);
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer text-left"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>สร้างหนังสือขออนุญาตผู้ปกครอง</span>
-              </button>
-            </div>
-          </details>
+          <TableActionMenu
+            triggerLabel="เครื่องมือ"
+            ariaLabel="เครื่องมือจัดการประกาศ"
+            menuWidth={240}
+            items={[
+              {
+                id: 'categories',
+                label: 'จัดการหมวดประกาศ',
+                icon: <Sliders className="w-3.5 h-3.5" />,
+                onClick: () => setShowCategoryModal(true),
+              },
+              {
+                id: 'consent',
+                label: 'สร้างหนังสือขออนุญาตผู้ปกครอง',
+                icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+                variant: 'success',
+                onClick: () => setShowConsentModal(true),
+              },
+            ]}
+          />
           <button
             type="button"
             data-guide-id="announcements-compose-btn"
@@ -237,9 +229,12 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {ann.pinned && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                      <Pin className="w-2.5 h-2.5" /> Pinned
-                    </span>
+                    <StatusIndicator
+                      size="xs"
+                      tone="warning"
+                      icon={<Pin className="w-2.5 h-2.5" />}
+                      label="ปักหมุด"
+                    />
                   )}
                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border border-[var(--color-border)]">
                     {ann.category}
@@ -269,26 +264,35 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {isLineEnabled && (ann.lineBroadcastSent ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-900 dark:text-emerald-200 font-semibold bg-emerald-100 dark:bg-emerald-950 px-2.5 py-1 rounded border border-emerald-300 dark:border-emerald-700">
-                    <MessageSquare className="w-3 h-3 fill-current" />
-                    LINE OA Broadcast Active
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => handleManualLineBroadcast(ann.id, ann.title)}
-                    className="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition"
-                  >
-                    <Send className="w-3 h-3" />
-                    Send LINE Push
-                  </button>
-                ))}
+                {isLineEnabled && (
+                  <StatusIndicator
+                    size="xs"
+                    tone={ann.lineBroadcastSent ? 'success' : 'neutral'}
+                    label={ann.lineBroadcastSent ? 'ส่ง LINE OA แล้ว' : 'ยังไม่ส่ง LINE'}
+                  />
+                )}
 
                 {ann.resendEmailSent && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-sky-900 dark:text-sky-200 font-semibold bg-sky-100 dark:bg-sky-950 px-2 py-1 rounded border border-sky-300 dark:border-sky-700">
-                    <Mail className="w-3 h-3" />
-                    Email Dispatched
-                  </span>
+                  <StatusIndicator
+                    size="xs"
+                    tone="info"
+                    label="ส่งอีเมลแล้ว"
+                  />
+                )}
+
+                {isLineEnabled && !ann.lineBroadcastSent && (
+                  <TableActionMenu
+                    ariaLabel={`จัดการประกาศ ${ann.title}`}
+                    items={[
+                      {
+                        id: 'send-line',
+                        label: 'ส่งแจ้งเตือน LINE OA',
+                        icon: <Send className="w-3.5 h-3.5" />,
+                        variant: 'success',
+                        onClick: () => void handleManualLineBroadcast(ann.id, ann.title),
+                      },
+                    ]}
+                  />
                 )}
               </div>
             </div>

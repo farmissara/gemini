@@ -31,6 +31,8 @@ import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { InvoiceSlipImage } from '../components/InvoiceSlipImage';
+import { StatusIndicator } from '../components/common/StatusIndicator';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface BillingViewProps {
   schoolId?: string;
@@ -259,17 +261,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       <span className="font-mono font-bold text-xs text-[var(--color-primary-text)] bg-[var(--color-card-subtle)] px-2 py-0.5 rounded border border-[var(--color-border)]">
                         {inv.invoiceNumber}
                       </span>
-                      <span
-                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
-                          inv.status === 'paid'
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                            : inv.status === 'pending'
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                            : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                        }`}
-                      >
-                        {inv.status}
-                      </span>
+                      <StatusIndicator
+                        size="xs"
+                        tone={inv.status === 'paid' ? 'success' : inv.status === 'pending' ? 'warning' : 'danger'}
+                        label={inv.status === 'paid' ? 'ชำระแล้ว' : inv.status === 'pending' ? 'รอชำระ' : 'ค้างชำระ'}
+                      />
                     </div>
 
                     <h3 className="font-bold text-[var(--color-text-title)] text-sm mt-2">
@@ -290,26 +286,47 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 mt-3 border-t border-[var(--color-border)] text-xs gap-2 flex-wrap">
-                  <span className="text-[var(--color-text-body)]">
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-[var(--color-border)] text-xs gap-2">
+                  <span className="text-[var(--color-text-body)] truncate">
                     Guardian: {student?.guardianName} ({student?.guardianPhone})
                   </span>
 
-                  <div className="flex items-center gap-2">
-                    {inv.status !== 'paid' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleTriggerReminder(inv);
-                        }}
-                        disabled={reminderBusy}
-                        className="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <MessageSquare className="w-3 h-3 fill-current" />
-                        App Reminder
-                      </button>
-                    )}
-                  </div>
+                  <TableActionMenu
+                    ariaLabel={`จัดการบิล ${inv.invoiceNumber}`}
+                    items={[
+                      ...(inv.status !== 'paid'
+                        ? [
+                            {
+                              id: 'pay',
+                              label: 'ชำระด้วย PromptPay QR',
+                              icon: <QrCode className="w-3.5 h-3.5" />,
+                              variant: 'success' as const,
+                              onClick: () => {
+                                setActiveInvoice(inv);
+                                setShowPromptPayModal(true);
+                              },
+                            },
+                            {
+                              id: 'remind',
+                              label: 'ส่งแจ้งเตือนผู้ปกครอง',
+                              icon: <MessageSquare className="w-3.5 h-3.5" />,
+                              variant: 'primary' as const,
+                              disabled: reminderBusy,
+                              onClick: () => void handleTriggerReminder(inv),
+                            },
+                          ]
+                        : []),
+                      {
+                        id: 'print',
+                        label: inv.status === 'paid' ? 'พิมพ์ใบเสร็จ PDF' : 'พิมพ์ใบแจ้งหนี้ PDF',
+                        icon: <Printer className="w-3.5 h-3.5" />,
+                        onClick: () => {
+                          setActiveInvoice(inv);
+                          setShowPrintDocModal(true);
+                        },
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             );
@@ -325,17 +342,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   <span className="text-xs font-mono font-bold text-[var(--color-primary-text)]">
                     {activeInvoice.invoiceNumber}
                   </span>
-                  <span
-                    className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
-                      activeInvoice.status === 'paid'
-                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                        : activeInvoice.status === 'pending'
-                        ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                        : 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                    }`}
-                  >
-                    {activeInvoice.status}
-                  </span>
+                  <StatusIndicator
+                    size="xs"
+                    tone={activeInvoice.status === 'paid' ? 'success' : activeInvoice.status === 'pending' ? 'warning' : 'danger'}
+                    label={activeInvoice.status === 'paid' ? 'ชำระแล้ว' : activeInvoice.status === 'pending' ? 'รอชำระ' : 'ค้างชำระ'}
+                  />
                 </div>
 
                 <h3 className="text-base font-bold text-[var(--color-text-title)] mt-2">
@@ -377,15 +388,23 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       <FileCheck2 className="w-4 h-4 text-[var(--color-primary-text)]" />
                       <span>หลักฐานการโอนจากผู้ปกครอง</span>
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      activeInvoice.slipStatus === 'approved'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-                        : activeInvoice.slipStatus === 'rejected'
-                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
-                    }`}>
-                      {activeInvoice.slipStatus === 'approved' ? 'อนุมัติแล้ว' : activeInvoice.slipStatus === 'rejected' ? 'ปฏิเสธแล้ว' : 'รอการตรวจสอบ'}
-                    </span>
+                    <StatusIndicator
+                      size="xs"
+                      tone={
+                        activeInvoice.slipStatus === 'approved'
+                          ? 'success'
+                          : activeInvoice.slipStatus === 'rejected'
+                            ? 'danger'
+                            : 'warning'
+                      }
+                      label={
+                        activeInvoice.slipStatus === 'approved'
+                          ? 'อนุมัติแล้ว'
+                          : activeInvoice.slipStatus === 'rejected'
+                            ? 'ปฏิเสธแล้ว'
+                            : 'รอการตรวจสอบ'
+                      }
+                    />
                   </div>
                   <InvoiceSlipImage
                     schoolId={activeInvoice.schoolId || schoolId}
@@ -470,34 +489,37 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2.5 pt-2">
-                  <button
-                    onClick={() => setShowPromptPayModal(true)}
-                    className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-                  >
-                    <QrCode className="w-4 h-4" />
-                    <span>Pay with Thai PromptPay QR / Bank Transfer</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPrintDocModal(true)}
-                    className="w-full py-2 rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>พิมพ์ใบแจ้งหนี้ PDF พร้อม QR พร้อมเพย์</span>
-                  </button>
-
-                  <button
-                    onClick={() => void handleTriggerReminder(activeInvoice)}
-                    disabled={reminderBusy}
-                    className="w-full py-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 fill-current" />
-                    <span>Send private app alert to guardian</span>
-                  </button>
-                </div>
-              )}
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      onClick={() => setShowPromptPayModal(true)}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <QrCode className="w-4 h-4 shrink-0" />
+                      <span>ชำระด้วย PromptPay QR / โอนเงิน</span>
+                    </button>
+                    <TableActionMenu
+                      size="md"
+                      menuWidth={240}
+                      ariaLabel="ตัวเลือกใบแจ้งหนี้เพิ่มเติม"
+                      items={[
+                        {
+                          id: 'print-pdf',
+                          label: 'พิมพ์ใบแจ้งหนี้ PDF พร้อม QR',
+                          icon: <Printer className="w-3.5 h-3.5" />,
+                          onClick: () => setShowPrintDocModal(true),
+                        },
+                        {
+                          id: 'send-alert',
+                          label: 'ส่งแจ้งเตือนผู้ปกครองในแอป',
+                          icon: <MessageSquare className="w-3.5 h-3.5" />,
+                          variant: 'primary',
+                          disabled: reminderBusy,
+                          onClick: () => void handleTriggerReminder(activeInvoice),
+                        },
+                      ]}
+                    />
+                  </div>
+                )}
             </>
           ) : (
             <EmptyState

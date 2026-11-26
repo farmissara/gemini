@@ -34,6 +34,8 @@ import {
   type LeaveApprovalScope,
 } from '../../lib/leaveApprovalRouting';
 import { PagedList } from '../../components/PagedList';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
 
 interface LeaveRequestTabProps {
   embeddedMobile: boolean;
@@ -593,6 +595,65 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                   const subjectList = req.subjectApprovals || [];
                   const approvedSubjects = subjectList.filter((s) => s.status === 'approved').length;
                   const teacherRoleInfo = detectTeacherApprovalRoleForLeave(req, currentUser, teachers);
+                  const canApproveLeave =
+                    req.status === 'pending' &&
+                    Boolean(onUpdateLeaveStatus) &&
+                    (currentUser?.role === 'teacher' ||
+                      currentUser?.role === 'admin' ||
+                      currentUser?.role === 'super_admin');
+                  const approvalMenuItems: TableActionItem[] = [];
+                  if (canApproveLeave && onUpdateLeaveStatus) {
+                    if (isStudentLeave) {
+                      if (req.homeroomApprovalStatus !== 'approved') {
+                        approvalMenuItems.push({
+                          id: 'approve-homeroom',
+                          label: 'อนุมัติ (ครูประจำชั้น)',
+                          icon: <Check className="w-3.5 h-3.5" />,
+                          variant: 'success',
+                          onClick: () =>
+                            onUpdateLeaveStatus(req.id, 'approved', 'ครูประจำชั้นอนุมัติผ่านระบบ', 'homeroom'),
+                        });
+                      }
+                      if (!(subjectList.length > 0 && approvedSubjects === subjectList.length)) {
+                        approvalMenuItems.push({
+                          id: 'approve-subject',
+                          label: 'อนุมัติ (ครูประจำวิชา)',
+                          icon: <Check className="w-3.5 h-3.5" />,
+                          variant: 'primary',
+                          onClick: () =>
+                            onUpdateLeaveStatus(req.id, 'approved', 'ครูประจำวิชาอนุมัติผ่านระบบ', 'subject'),
+                        });
+                      }
+                      if (isSchoolAdmin || (teacherRoleInfo.isHomeroomApprover && teacherRoleInfo.isSubjectApprover)) {
+                        approvalMenuItems.push({
+                          id: 'approve-both',
+                          label: 'อนุมัติครบทั้ง 2 ฝ่าย',
+                          icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+                          variant: 'success',
+                          onClick: () =>
+                            onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติครบทั้ง 2 ฝ่าย', 'both'),
+                        });
+                      }
+                    } else {
+                      approvalMenuItems.push({
+                        id: 'approve-staff',
+                        label: 'อนุมัติคำขอลา',
+                        icon: <Check className="w-3.5 h-3.5" />,
+                        variant: 'success',
+                        onClick: () =>
+                          onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบ', 'both'),
+                      });
+                    }
+                    approvalMenuItems.push({
+                      id: 'reject',
+                      label: 'ไม่อนุมัติ / ปฏิเสธ',
+                      icon: <X className="w-3.5 h-3.5" />,
+                      variant: 'danger',
+                      dividerBefore: approvalMenuItems.length > 0,
+                      onClick: () => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ', 'both'),
+                    });
+                  }
+
                   return (
                     <div key={req.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
@@ -607,24 +668,18 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                           </p>
                         </div>
 
-                        <span
-                          className={`inline-flex items-center gap-1 type-label shrink-0 ${
-                            req.status === 'approved'
-                              ? 'text-emerald-700 dark:text-emerald-300'
-                              : req.status === 'pending'
-                                ? 'text-amber-700 dark:text-amber-300'
-                                : 'text-rose-700 dark:text-rose-300'
-                          }`}
-                        >
-                          {req.status === 'approved' ? (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          ) : req.status === 'pending' ? (
-                            <Clock className="w-3.5 h-3.5" />
-                          ) : (
-                            <X className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <StatusIndicator
+                            tone={req.status === 'approved' ? 'success' : req.status === 'pending' ? 'warning' : 'danger'}
+                            label={req.status === 'approved' ? 'อนุมัติครบ' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}
+                          />
+                          {approvalMenuItems.length > 0 && (
+                            <TableActionMenu
+                              ariaLabel={`พิจารณาคำขอลา ${req.userName}`}
+                              items={approvalMenuItems}
+                            />
                           )}
-                          <span>{req.status === 'approved' ? 'อนุมัติครบ' : req.status === 'pending' ? 'รออนุมัติ' : 'ไม่อนุมัติ'}</span>
-                        </span>
+                        </div>
                       </div>
 
                       {/* Dual Approval Status: Homeroom + Subject Teachers */}
@@ -635,21 +690,23 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                               ครูประจำชั้น:{' '}
                               <strong className="text-[var(--color-text-title)]">{req.homeroomTeacherName || 'ครูประจำชั้น'}</strong>
                             </span>
-                            <span
-                              className={`font-bold shrink-0 ${
+                            <StatusIndicator
+                              size="xs"
+                              tone={
                                 req.homeroomApprovalStatus === 'approved'
-                                  ? 'text-emerald-700 dark:text-emerald-300'
+                                  ? 'success'
                                   : req.homeroomApprovalStatus === 'rejected'
-                                    ? 'text-rose-700 dark:text-rose-300'
-                                    : 'text-amber-700 dark:text-amber-300'
-                              }`}
-                            >
-                              {req.homeroomApprovalStatus === 'approved'
-                                ? 'อนุมัติแล้ว'
-                                : req.homeroomApprovalStatus === 'rejected'
-                                  ? 'ไม่อนุมัติ'
-                                  : 'รออนุมัติ'}
-                            </span>
+                                    ? 'danger'
+                                    : 'warning'
+                              }
+                              label={
+                                req.homeroomApprovalStatus === 'approved'
+                                  ? 'อนุมัติแล้ว'
+                                  : req.homeroomApprovalStatus === 'rejected'
+                                    ? 'ไม่อนุมัติ'
+                                    : 'รออนุมัติ'
+                              }
+                            />
                           </div>
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[var(--color-text-muted)] truncate">
@@ -658,23 +715,25 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                                 {(req.subjectTeacherNames || []).slice(0, 2).join(', ') || 'ครูผู้สอนรายวิชา'}
                               </strong>
                             </span>
-                            <span
-                              className={`font-bold shrink-0 ${
+                            <StatusIndicator
+                              size="xs"
+                              tone={
                                 subjectList.length > 0 && approvedSubjects === subjectList.length
-                                  ? 'text-emerald-700 dark:text-emerald-300'
+                                  ? 'success'
                                   : subjectList.some((s) => s.status === 'rejected')
-                                    ? 'text-rose-700 dark:text-rose-300'
-                                    : 'text-amber-700 dark:text-amber-300'
-                              }`}
-                            >
-                              {subjectList.length > 0 && approvedSubjects === subjectList.length
-                                ? 'อนุมัติครบ'
-                                : subjectList.some((s) => s.status === 'rejected')
-                                  ? 'ไม่อนุมัติ'
-                                  : approvedSubjects > 0
-                                    ? `อนุมัติแล้ว ${approvedSubjects}`
-                                    : 'รออนุมัติ'}
-                            </span>
+                                    ? 'danger'
+                                    : 'warning'
+                              }
+                              label={
+                                subjectList.length > 0 && approvedSubjects === subjectList.length
+                                  ? 'อนุมัติครบ'
+                                  : subjectList.some((s) => s.status === 'rejected')
+                                    ? 'ไม่อนุมัติ'
+                                    : approvedSubjects > 0
+                                      ? `อนุมัติแล้ว ${approvedSubjects}`
+                                      : 'รออนุมัติ'
+                              }
+                            />
                           </div>
                         </div>
                       )}
@@ -700,81 +759,6 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                           ผู้อนุมัติ: {req.approvedBy} ({req.approvalRemarks})
                         </p>
                       )}
-
-                      {req.status === 'pending' &&
-                        onUpdateLeaveStatus &&
-                        (currentUser?.role === 'teacher' ||
-                          currentUser?.role === 'admin' ||
-                          currentUser?.role === 'super_admin') && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
-                            {isStudentLeave ? (
-                              <>
-                                {req.homeroomApprovalStatus !== 'approved' && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onUpdateLeaveStatus(req.id, 'approved', 'ครูประจำชั้นอนุมัติผ่านมือถือ', 'homeroom')
-                                    }
-                                    className="flex-1 min-w-[118px] py-1.5 px-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>อนุมัติ (ครูประจำชั้น)</span>
-                                  </button>
-                                )}
-                                {!(subjectList.length > 0 && approvedSubjects === subjectList.length) && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onUpdateLeaveStatus(req.id, 'approved', 'ครูประจำวิชาอนุมัติผ่านมือถือ', 'subject')
-                                    }
-                                    className="flex-1 min-w-[118px] py-1.5 px-2.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>อนุมัติ (ครูวิชา)</span>
-                                  </button>
-                                )}
-                                {(isSchoolAdmin || (teacherRoleInfo.isHomeroomApprover && teacherRoleInfo.isSubjectApprover)) && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติครบทั้ง 2 ฝ่าย', 'both')
-                                    }
-                                    className="py-1.5 px-2.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] transition cursor-pointer"
-                                  >
-                                    อนุมัติทั้ง 2 ฝ่าย
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ', 'both')}
-                                  className="py-1.5 px-2.5 rounded-lg bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-[11px] transition cursor-pointer inline-flex items-center justify-center gap-1"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                  <span>ปฏิเสธ</span>
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateLeaveStatus(req.id, 'approved', 'อนุมัติผ่านระบบมือถือ', 'both')}
-                                  className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>อนุมัติ</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateLeaveStatus(req.id, 'rejected', 'ไม่อนุมัติ', 'both')}
-                                  className="py-1.5 px-3 rounded-lg bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                  <span>ปฏิเสธ</span>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
                     </div>
                   );
                 }}

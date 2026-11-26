@@ -57,6 +57,7 @@ import {
 } from '../lib/schoolFeatureFlags';
 import { loadPackageCatalog, saveSchoolFeatureFlagsToDb } from '../lib/schoolPackageStore';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { StatusIndicator } from '../components/common/StatusIndicator';
 import { getModuleTone } from '../lib/moduleTheme';
 import { 
   School, 
@@ -1030,17 +1031,24 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-[var(--color-text-body)]">{sch?.nameTh || u.school_id || '—'}</td>
-                        <td className="py-2.5 px-3 text-right">
-                          <span className={`inline-flex items-center gap-1 font-semibold text-[11px] ${
-                            u.status === 'active'
-                              ? 'text-emerald-800 dark:text-emerald-300'
-                              : u.status === 'pending'
-                                ? 'text-amber-800 dark:text-amber-300'
-                                : 'text-rose-800 dark:text-rose-300'
-                          }`}>
-                            {u.status === 'active' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-                            <span>{u.status}</span>
-                          </span>
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                          <StatusIndicator
+                            size="xs"
+                            tone={
+                              u.status === 'active'
+                                ? 'success'
+                                : u.status === 'pending'
+                                  ? 'warning'
+                                  : 'danger'
+                            }
+                            label={
+                              u.status === 'active'
+                                ? 'ใช้งานได้'
+                                : u.status === 'pending'
+                                  ? 'รออนุมัติ'
+                                  : u.status
+                            }
+                          />
                         </td>
                       </tr>
                     );

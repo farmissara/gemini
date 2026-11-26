@@ -471,6 +471,17 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                       muted
                       className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                     />
+                    <button
+                      type="button"
+                      disabled={isCapturing}
+                      onClick={flipCamera}
+                      className="absolute top-2.5 right-2.5 z-20 h-8 px-2.5 rounded-xl bg-slate-950/75 hover:bg-slate-900/90 text-white border border-white/25 backdrop-blur-md shadow-md flex items-center gap-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer disabled:opacity-50"
+                      title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
+                      aria-label="สลับกล้องหน้าหรือกล้องหลัง"
+                    >
+                      <SwitchCamera className="w-3.5 h-3.5 shrink-0" />
+                      <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
+                    </button>
                     {isCapturing && (
                       <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-white text-xs font-semibold">
                         กำลังเปิด{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}...
@@ -489,11 +500,11 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
                       type="button"
                       disabled={isCapturing}
                       onClick={flipCamera}
-                      className="px-3 py-2.5 rounded-2xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] transition cursor-pointer shadow-sm flex items-center gap-1.5 text-xs font-bold disabled:opacity-50"
-                      title="สลับกล้องหน้า/หลัง"
+                      className="px-3.5 py-2.5 rounded-2xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] border border-[var(--color-border)] transition cursor-pointer shadow-sm flex items-center gap-1.5 text-xs font-bold disabled:opacity-50"
+                      title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
                     >
                       <SwitchCamera className="w-4 h-4 shrink-0" />
-                      <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
+                      <span>สลับกล้อง ({facingMode === 'user' ? 'หน้า' : 'หลัง'})</span>
                     </button>
 
                     <button

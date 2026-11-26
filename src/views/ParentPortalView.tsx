@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AttendancePhoto from '../components/AttendancePhoto';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { StatusIndicator } from '../components/common/StatusIndicator';
 import { 
   Student, 
   AttendanceRecord, 
@@ -956,12 +957,11 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                       <span className="font-semibold text-[var(--color-text-title)]">
                         {req.leaveType === 'sick' ? 'ลาป่วย (Sick Leave)' : 'ลากิจ (Personal Leave)'}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
-                        req.status === 'approved' ? 'bg-teal-500/10 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 border-teal-500/30' :
-                        req.status === 'pending' ? 'bg-amber-500/10 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border-amber-500/30' : 'bg-rose-500/10 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-rose-500/30'
-                      }`}>
-                        {req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รอครูอนุมัติ' : 'ไม่อนุมัติ'}
-                      </span>
+                      <StatusIndicator
+                        size="xs"
+                        tone={req.status === 'approved' ? 'success' : req.status === 'pending' ? 'warning' : 'danger'}
+                        label={req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'pending' ? 'รอครูอนุมัติ' : 'ไม่อนุมัติ'}
+                      />
                     </div>
                     <p className="text-[11px] text-[var(--color-text-body)]">
                       ช่วงวันที่: {req.startDate} ถึง {req.endDate}
@@ -1007,13 +1007,11 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
                         ผู้ประกาศ: {form.createdBy}
                       </span>
                       {existingResp ? (
-                        <span className={`px-3 py-1 rounded-lg font-bold ${
-                          existingResp.decision === 'approved'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200'
-                        }`}>
-                          {existingResp.decision === 'approved' ? '✓ ยินยอมแล้ว' : '✕ ไม่ยินยอม'} โดย {existingResp.parentName} ({new Date(existingResp.respondedAt).toLocaleDateString('th-TH')})
-                        </span>
+                        <StatusIndicator
+                          size="xs"
+                          tone={existingResp.decision === 'approved' ? 'success' : 'danger'}
+                          label={`${existingResp.decision === 'approved' ? 'ยินยอมแล้ว' : 'ไม่ยินยอม'} โดย ${existingResp.parentName} (${new Date(existingResp.respondedAt).toLocaleDateString('th-TH')})`}
+                        />
                       ) : (
                         <div className="flex items-center gap-2">
                           <button

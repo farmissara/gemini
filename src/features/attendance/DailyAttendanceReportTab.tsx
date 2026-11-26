@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, CalendarDays, CheckCircle2, ClipboardCheck, MoreVertical, Search } from 'lucide-react';
+import { CalendarDays, ClipboardCheck, Search } from 'lucide-react';
 import { PagedList } from '../../components/PagedList';
+import { TableActionMenu } from '../../components/common/TableActionMenu';
+import { StatusIndicator, type StatusTone } from '../../components/common/StatusIndicator';
 import type {
   AttendanceCheckType,
   AttendanceRecord,
@@ -73,10 +75,11 @@ function AttendanceBadge({
 }) {
   if (!record) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/50 px-2 py-1 text-[10px] font-semibold text-rose-700 dark:text-rose-300">
-        <AlertCircle className="h-3 w-3" />
-        {label ? `${label}: ` : ''}{lang === 'th' ? 'ตกหล่น' : 'Missing'}
-      </span>
+      <StatusIndicator
+        tone="danger"
+        size="xs"
+        label={`${label ? `${label}: ` : ''}${lang === 'th' ? 'ตกหล่น' : 'Missing'}`}
+      />
     );
   }
 
@@ -84,19 +87,20 @@ function AttendanceBadge({
     ? (lang === 'th' ? 'มีเหตุผล' : 'Excused')
     : attendanceLabel(record.status, lang);
   const time = 'time' in record ? record.time : record.actualCheckInTime;
-  const statusTone = record.status === 'present'
-    ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+  const tone: StatusTone = record.status === 'present'
+    ? 'success'
     : record.status === 'late'
-      ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200'
+      ? 'warning'
       : record.status === 'absent'
-        ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300'
-        : 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300';
+        ? 'danger'
+        : 'info';
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold ${statusTone}`}>
-      {record.status === 'present' ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-      {label ? `${label}: ` : ''}{statusLabel}{time ? ` · ${time.slice(0, 5)}` : ''}
-    </span>
+    <StatusIndicator
+      tone={tone}
+      size="xs"
+      label={`${label ? `${label}: ` : ''}${statusLabel}${time ? ` · ${time.slice(0, 5)}` : ''}`}
+    />
   );
 }
 
@@ -153,23 +157,17 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <AttendanceBadge record={record} lang={lang} />
-          <details className="relative">
-            <summary
-              aria-label={lang === 'th' ? `แก้ไขการเข้าเรียน ${studentName(student, lang)}` : `Edit attendance for ${studentName(student, lang)}`}
-              className="h-8 w-8 list-none rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-center cursor-pointer"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </summary>
-            <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-lg">
-              <button
-                type="button"
-                onClick={() => onEditPeriodRecord(student, session)}
-                className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold hover:bg-[var(--color-card-subtle)]"
-              >
-                {lang === 'th' ? (record ? 'แก้ไขรายการคาบนี้' : 'ลงชื่อคาบนี้ที่ตกหล่น') : (record ? 'Edit this period' : 'Record missing period')}
-              </button>
-            </div>
-          </details>
+          <TableActionMenu
+            ariaLabel={lang === 'th' ? `แก้ไขการเข้าเรียน ${studentName(student, lang)}` : `Edit attendance for ${studentName(student, lang)}`}
+            items={[
+              {
+                id: 'edit-period',
+                label: lang === 'th' ? (record ? 'แก้ไขรายการคาบนี้' : 'ลงชื่อคาบนี้ที่ตกหล่น') : (record ? 'Edit this period' : 'Record missing period'),
+                variant: 'primary',
+                onClick: () => onEditPeriodRecord(student, session),
+              },
+            ]}
+          />
         </div>
       </div>
     );
@@ -213,9 +211,10 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
                 : `Arrivals ${gateRows.filter((row) => row.checkIn).length}/${gateRows.length} · Departures ${gateRows.filter((row) => row.checkOut).length}/${gateRows.length}`}
             </p>
           </div>
-          <span className="rounded-full bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-200">
-            {lang === 'th' ? `ตกหล่น ${gateRows.filter((row) => !row.checkIn || !row.checkOut).length} คน` : `${gateRows.filter((row) => !row.checkIn || !row.checkOut).length} incomplete`}
-          </span>
+          <StatusIndicator
+            tone={gateRows.some((row) => !row.checkIn || !row.checkOut) ? 'warning' : 'success'}
+            label={lang === 'th' ? `ตกหล่น ${gateRows.filter((row) => !row.checkIn || !row.checkOut).length} คน` : `${gateRows.filter((row) => !row.checkIn || !row.checkOut).length} incomplete`}
+          />
         </div>
         <div className="saas-card-body space-y-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -265,28 +264,17 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
                     <AttendanceBadge record={checkOut} lang={lang} label={lang === 'th' ? 'ออก' : 'Out'} />
                   </div>
                 </div>
-                <details className="relative shrink-0">
-                  <summary
-                    aria-label={lang === 'th' ? `แก้ไขการเข้าออก ${studentName(student, lang)}` : `Edit school attendance for ${studentName(student, lang)}`}
-                    className="h-8 w-8 list-none rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-center cursor-pointer"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </summary>
-                  <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-lg">
-                    {(['check_in', 'check_out'] as AttendanceCheckType[]).map((checkType) => (
-                      <button
-                        key={checkType}
-                        type="button"
-                        onClick={() => onEditGateRecord(student, checkType)}
-                        className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold hover:bg-[var(--color-card-subtle)]"
-                      >
-                        {lang === 'th'
-                          ? `${checkType === 'check_in' ? 'แก้ไข/ลงชื่อเข้า' : 'แก้ไข/ลงชื่อออก'}โรงเรียน`
-                          : `Edit / record ${checkType === 'check_in' ? 'arrival' : 'departure'}`}
-                      </button>
-                    ))}
-                  </div>
-                </details>
+                <TableActionMenu
+                  ariaLabel={lang === 'th' ? `แก้ไขการเข้าออก ${studentName(student, lang)}` : `Edit school attendance for ${studentName(student, lang)}`}
+                  items={(['check_in', 'check_out'] as AttendanceCheckType[]).map((checkType) => ({
+                    id: checkType,
+                    label: lang === 'th'
+                      ? `${checkType === 'check_in' ? 'แก้ไข/ลงชื่อเข้า' : 'แก้ไข/ลงชื่อออก'}โรงเรียน`
+                      : `Edit / record ${checkType === 'check_in' ? 'arrival' : 'departure'}`,
+                    variant: checkType === 'check_in' ? 'success' : 'primary',
+                    onClick: () => onEditGateRecord(student, checkType),
+                  }))}
+                />
               </div>
             )}
           />
@@ -303,9 +291,10 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
                 : `${periodRecordedCount}/${periodExpectedCount} records entered`}
             </p>
           </div>
-          <span className="rounded-full bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-200">
-            {lang === 'th' ? `ตกหล่น ${periodExpectedCount - periodRecordedCount} รายการ` : `${periodExpectedCount - periodRecordedCount} missing`}
-          </span>
+          <StatusIndicator
+            tone={periodExpectedCount - periodRecordedCount > 0 ? 'warning' : 'success'}
+            label={lang === 'th' ? `ตกหล่น ${periodExpectedCount - periodRecordedCount} รายการ` : `${periodExpectedCount - periodRecordedCount} missing`}
+          />
         </div>
         <div className="saas-card-body space-y-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -373,13 +362,11 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
                           {session.courseCode} · {session.classRoom} · {session.startTime}–{session.endTime}
                         </p>
                       </div>
-                      <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${
-                        recordedCount === session.students.length
-                          ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
-                          : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200'
-                      }`}>
-                        {recordedCount}/{session.students.length}
-                      </span>
+                      <StatusIndicator
+                        tone={recordedCount === session.students.length ? 'success' : 'warning'}
+                        size="xs"
+                        label={`${recordedCount}/${session.students.length}`}
+                      />
                     </summary>
                     <div className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)] px-3 py-2">
                       <PagedList

@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
 import type {
   AppLanguage,
   AttendanceRecord,
@@ -525,9 +526,11 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {(status.hasCheckIn || status.hasCheckOut) && slot.dayOfWeek === todayDayKey && (
-                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                              {status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
-                            </span>
+                            <StatusIndicator
+                              size="xs"
+                              tone="success"
+                              label={status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
+                            />
                           )}
                           {dayActionItems.length > 0 && (
                             <TableActionMenu
@@ -559,25 +562,22 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                             <div className="space-y-2 pt-1.5 border-t border-[var(--color-border)]">
                               <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                                 {leavingTeacher ? (
-                                  <span className="font-bold text-indigo-700 dark:text-indigo-300">
-                                    ครูลา
-                                    {leavingTeacher.substituteTeacherName
-                                      ? ` · แทน ${leavingTeacher.substituteTeacherName}`
-                                      : ''}
-                                  </span>
+                                  <StatusIndicator
+                                    size="xs"
+                                    tone="info"
+                                    label={`ครูลา${leavingTeacher.substituteTeacherName ? ` · แทน ${leavingTeacher.substituteTeacherName}` : ''}`}
+                                  />
                                 ) : selectedTimetableDay === todayDayKey && primaryTeacher ? (
                                   primaryTeacher.status === 'checked_in' ? (
-                                    <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
-                                      ครูเข้า รร.{primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}
-                                    </span>
+                                    <StatusIndicator
+                                      size="xs"
+                                      tone="success"
+                                      label={`ครูเข้า รร.${primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}`}
+                                    />
                                   ) : primaryTeacher.status === 'late' ? (
-                                    <span className="font-bold text-rose-700 dark:text-rose-300">
-                                      ครูสาย รร.
-                                    </span>
+                                    <StatusIndicator size="xs" tone="warning" label="ครูสาย รร." />
                                   ) : (
-                                    <span className="font-semibold text-amber-700 dark:text-amber-300">
-                                      ครูยังไม่เช็คอิน รร.
-                                    </span>
+                                    <StatusIndicator size="xs" tone="warning" label="ครูยังไม่เช็คอิน รร." />
                                   )
                                 ) : null}
                                 {slotSummary.periodCheckedTotal > 0 ? (

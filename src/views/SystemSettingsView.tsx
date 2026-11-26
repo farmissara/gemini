@@ -81,6 +81,7 @@ import { normalizeSelfieRetentionMinutes } from '../lib/selfieCleanupLogic';
 import { getSchoolRolePolicies, saveSchoolRolePolicies, type SchoolPolicyId } from '../lib/schoolPermissions';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { StatusIndicator } from '../components/common/StatusIndicator';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 export type SystemSettingsTab =
@@ -1631,13 +1632,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   <h3 className="font-bold text-sm text-[var(--color-text-title)]">
                     เปิด-ปิดระบบแจ้งเตือนผ่าน LINE OA (ทั้งโรงเรียน)
                   </h3>
-                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
-                    isLineEnabled
-                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                      : 'bg-[var(--color-card)] text-[var(--color-text-muted)] border-[var(--color-border)]'
-                  }`}>
-                    {isLineEnabled ? 'เปิดใช้งานอยู่ (ON)' : 'ปิดใช้งานอยู่ (OFF)'}
-                  </span>
+                  <StatusIndicator
+                    size="xs"
+                    tone={isLineEnabled ? 'success' : 'neutral'}
+                    label={isLineEnabled ? 'เปิดใช้งานอยู่ (ON)' : 'ปิดใช้งานอยู่ (OFF)'}
+                  />
                 </div>
                 <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
                   {isLineEnabled
@@ -1762,13 +1761,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-xs text-[var(--color-text-title)]">{evt.titleTh}</span>
                               {isEnabled ? (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-semibold">
-                                  เปิดใช้งาน (Active)
-                                </span>
+                                <StatusIndicator tone="success" size="xs" label="เปิดใช้งาน (Active)" />
                               ) : (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border border-[var(--color-border)] font-semibold">
-                                  ปิดการส่ง (Disabled)
-                                </span>
+                                <StatusIndicator tone="neutral" size="xs" label="ปิดการส่ง (Disabled)" />
                               )}
                             </div>
                             <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{evt.descTh}</p>
@@ -2232,13 +2227,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${
-                    isLineEnabled
-                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border-[var(--color-border)]'
-                  }`}>
-                    {isLineEnabled ? '✓ เปิดใช้งาน LINE' : 'ปิดใช้งาน LINE อยู่'}
-                  </span>
+                  <StatusIndicator
+                    size="xs"
+                    tone={isLineEnabled ? 'success' : 'neutral'}
+                    label={isLineEnabled ? 'เปิดใช้งาน LINE' : 'ปิดใช้งาน LINE อยู่'}
+                  />
                   <button
                     type="button"
                     role="switch"
@@ -2444,9 +2437,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
-                ผูกแล้ว {connectedPct}%
-              </span>
+              <StatusIndicator tone="success" label={`ผูกแล้ว ${connectedPct}%`} />
             </div>
           </div>
 
@@ -2488,16 +2479,11 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                         <div>{stu.guardianName} ({stu.guardianRelation})</div>
                         <div className="text-[10px] text-[var(--color-text-muted)] font-mono">{stu.guardianPhone}</div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {stu.lineLinked ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold">
-                            <Check className="w-3 h-3 text-emerald-700 dark:text-emerald-300" />
-                            ผูก LINE แล้ว
-                          </span>
+                          <StatusIndicator tone="success" size="xs" label="ผูก LINE แล้ว" />
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] border border-[var(--color-border)] text-[10px] font-semibold">
-                            ยังไม่ผูก
-                          </span>
+                          <StatusIndicator tone="neutral" size="xs" label="ยังไม่ผูก" />
                         )}
                       </td>
                       <td className="px-4 py-3 font-mono text-[11px] text-[var(--color-text-muted)]">
@@ -3811,18 +3797,24 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                                 <span className="text-amber-700 dark:text-amber-300">ยังไม่ผูกกับรายชื่อนักเรียน</span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 text-center">
-                              <span
-                                className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                              <StatusIndicator
+                                size="xs"
+                                tone={
                                   account.status === 'active'
-                                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                                    ? 'success'
                                     : account.status === 'suspended'
-                                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                                    : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                                }`}
-                              >
-                                {account.status === 'active' ? 'ใช้งานได้' : account.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติ'}
-                              </span>
+                                    ? 'danger'
+                                    : 'warning'
+                                }
+                                label={
+                                  account.status === 'active'
+                                    ? 'ใช้งานได้'
+                                    : account.status === 'suspended'
+                                    ? 'ระงับสิทธิ์'
+                                    : 'รออนุมัติ'
+                                }
+                              />
                             </td>
                             <td className="py-2.5 px-3 text-right">
                               <TableActionMenu

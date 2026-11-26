@@ -39,6 +39,7 @@ import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -291,16 +292,16 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
     }
   };
 
-  const getStatusBadge = (status: HomeworkSubmission['status']) => {
+  const getStatusBadge = (status: HomeworkSubmission['status']): { label: string; tone: StatusTone } => {
     switch (status) {
       case 'graded':
-        return { label: 'ตรวจและให้คะแนนแล้ว', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' };
+        return { label: 'ตรวจและให้คะแนนแล้ว', tone: 'success' };
       case 'submitted':
-        return { label: 'ส่งตรงเวลา (รอตรวจ)', color: 'bg-sky-100 dark:bg-sky-950 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-700' };
+        return { label: 'ส่งตรงเวลา (รอตรวจ)', tone: 'info' };
       case 'late':
-        return { label: 'ส่งช้ากว่ากำหนด', color: 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' };
+        return { label: 'ส่งช้ากว่ากำหนด', tone: 'warning' };
       case 'pending':
-        return { label: 'ยังไม่ส่ง (ค้างส่ง)', color: 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' };
+        return { label: 'ยังไม่ส่ง (ค้างส่ง)', tone: 'danger' };
     }
   };
 
@@ -573,9 +574,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                       </td>
 
                       <td className="p-2.5 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${status.color}`}>
-                          {status.label}
-                        </span>
+                        <StatusIndicator size="xs" tone={status.tone} label={status.label} />
                       </td>
 
                       <td className="p-2.5 text-right">

@@ -18,6 +18,9 @@ interface TableActionMenuProps {
   triggerClassName?: string;
   ariaLabel?: string;
   align?: 'right' | 'left';
+  size?: 'sm' | 'md';
+  menuWidth?: number;
+  dataGuideId?: string;
 }
 
 export const TableActionMenu: React.FC<TableActionMenuProps> = ({
@@ -26,6 +29,9 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
   triggerClassName,
   ariaLabel = 'จัดการรายการ',
   align = 'right',
+  size = 'sm',
+  menuWidth = 220,
+  dataGuideId,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; openUp: boolean }>({
@@ -42,7 +48,6 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
     const btn = buttonRef.current;
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    const menuWidth = 220;
     const estimatedHeight = Math.min(320, visibleItems.length * 38 + 16);
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUp = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
@@ -56,7 +61,7 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
     if (!isOpen) return;
     updatePosition();
 
-    const handleOutside = (event: MouseEvent) => {
+    const handleOutside = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (
         menuRef.current &&
@@ -72,12 +77,12 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
     };
     const handleViewportChange = () => setIsOpen(false);
 
-    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('pointerdown', handleOutside);
     document.addEventListener('keydown', handleKey);
     window.addEventListener('scroll', handleViewportChange, true);
     window.addEventListener('resize', handleViewportChange);
     return () => {
-      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('pointerdown', handleOutside);
       document.removeEventListener('keydown', handleKey);
       window.removeEventListener('scroll', handleViewportChange, true);
       window.removeEventListener('resize', handleViewportChange);
@@ -99,6 +104,7 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
       <button
         ref={buttonRef}
         type="button"
+        data-guide-id={dataGuideId}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={isOpen}
@@ -106,8 +112,14 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
           e.stopPropagation();
           setIsOpen((prev) => !prev);
         }}
-        className={`${triggerClassName || ''} inline-flex items-center gap-1 rounded-lg border transition cursor-pointer whitespace-nowrap ${
-          triggerLabel ? 'px-2.5 py-1 text-xs font-semibold' : 'p-1.5'
+        className={`${triggerClassName || ''} inline-flex items-center justify-center gap-1 rounded-lg border transition cursor-pointer whitespace-nowrap ${
+          triggerLabel
+            ? size === 'md'
+              ? 'px-3 py-1.5 text-xs font-semibold min-h-9'
+              : 'px-2.5 py-1 text-xs font-semibold'
+            : size === 'md'
+            ? 'h-9 w-9 p-2'
+            : 'p-1.5'
         } ${
           isOpen
             ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
@@ -115,7 +127,7 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
         }`}
       >
         {triggerLabel && <span>{triggerLabel}</span>}
-        <MoreVertical className="w-3.5 h-3.5 shrink-0" />
+        <MoreVertical className="w-4 h-4 shrink-0" />
       </button>
 
       {isOpen &&
@@ -127,7 +139,7 @@ export const TableActionMenu: React.FC<TableActionMenuProps> = ({
               position: 'fixed',
               top: coords.top,
               left: coords.left,
-              width: 220,
+              width: menuWidth,
               transform: coords.openUp ? 'translateY(-100%)' : 'none',
             }}
             className="z-[90] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-xl space-y-0.5 max-h-[320px] overflow-y-auto"

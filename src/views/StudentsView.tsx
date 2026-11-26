@@ -98,6 +98,7 @@ import { MoeDocViewSelection, MoeStudentDocumentCenter } from '../components/Moe
 import { GradeAlertRecord } from '../lib/gradeNotifications';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
 
 const StudentAvatar: React.FC<{
   src?: string;
@@ -1293,15 +1294,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const hasActiveRosterFilters =
     searchTerm.trim() !== '' || gradeFilter !== 'all' || roomFilter !== 'all' || statusFilter !== 'all' || sortBy !== 'default';
 
-  const statusTextToneMap: Record<StudentStatus, string> = {
-    active: 'text-emerald-700 dark:text-emerald-400',
-    transferred_in: 'text-cyan-700 dark:text-cyan-300',
-    transferred_out: 'text-amber-700 dark:text-amber-300',
-    transferred: 'text-amber-700 dark:text-amber-300',
-    graduated: 'text-violet-700 dark:text-violet-300',
-    suspended: 'text-amber-700 dark:text-amber-300',
-    resigned: 'text-rose-700 dark:text-rose-300',
-    dropped: 'text-[var(--color-text-muted)]',
+  const statusToneMap: Record<StudentStatus, StatusTone> = {
+    active: 'success',
+    transferred_in: 'info',
+    transferred_out: 'warning',
+    transferred: 'warning',
+    graduated: 'info',
+    suspended: 'warning',
+    resigned: 'danger',
+    dropped: 'neutral',
   };
 
   return (
@@ -1355,104 +1356,84 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <ModuleTourTrigger moduleId="students" lang="th" />
             {activeTab === 'roster' && (
               <>
-                <details className="relative" data-guide-id="students-import-export">
-                  <summary className="btn-tool-neutral list-none px-3 py-1.5 whitespace-nowrap shrink-0">
-                    <span>เครื่องมือชุด</span>
-                    {selectedQrStudentIds.length > 0 && (
-                      <span className="font-mono font-bold tone-text tabular-nums">
-                        ({selectedQrStudentIds.length})
-                      </span>
-                    )}
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </summary>
-                  <div className="absolute right-0 top-full z-30 mt-1.5 min-w-60 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-                    {canManageStudentRecords && (
-                      <button
-                        type="button"
-                        data-guide-id="students-add-bulk"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          handleOpenBulkModal();
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
-                      >
-                        <Users className="w-3.5 h-3.5 shrink-0" />
-                        <span>เพิ่มนักเรียนทั้งห้อง (Batch)</span>
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                        setShowBatchQrModal(true);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                    >
-                      <QrCode className="w-3.5 h-3.5 tone-text shrink-0" />
-                      <span>
-                        พิมพ์ QR ชุด (PDF)
-                        {selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}
-                      </span>
-                    </button>
-
-                    {canManageStudentRecords && onOpenImportExport && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          onOpenImportExport();
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                        <span>นำเข้า/ส่งออก Excel</span>
-                      </button>
-                    )}
-
-                    {canManageStudentRecords && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          setShowPromotionModal(true);
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
-                        <span>เลื่อนชั้นเรียนข้ามปี</span>
-                      </button>
-                    )}
-
-                    {['admin', 'super_admin'].includes(currentRole) && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          setShowRoomPresetModal(true);
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                      >
-                        <GraduationCap className="w-3.5 h-3.5 tone-text shrink-0" />
-                        <span>ตั้งค่าระดับชั้น/ห้องเรียน</span>
-                      </button>
-                    )}
-
-                    {onPurgeSampleStudents && ['admin', 'super_admin'].includes(currentRole) && students.some(s => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')) && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                          handleRequestPurgeSampleStudents();
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>ล้างข้อมูลตัวอย่าง</span>
-                      </button>
-                    )}
-                  </div>
-                </details>
+                <TableActionMenu
+                  dataGuideId="students-import-export"
+                  ariaLabel="เครื่องมือจัดการชุดนักเรียน"
+                  triggerLabel={
+                    selectedQrStudentIds.length > 0
+                      ? `เครื่องมือชุด (${selectedQrStudentIds.length})`
+                      : 'เครื่องมือชุด'
+                  }
+                  triggerClassName="btn-tool-neutral px-3 py-1.5 whitespace-nowrap shrink-0"
+                  menuWidth={240}
+                  items={[
+                    ...(canManageStudentRecords
+                      ? [
+                          {
+                            id: 'bulk_add',
+                            label: 'เพิ่มนักเรียนทั้งห้อง (Batch)',
+                            icon: <Users className="w-3.5 h-3.5" />,
+                            variant: 'success' as const,
+                            onClick: () => handleOpenBulkModal(),
+                          },
+                        ]
+                      : []),
+                    {
+                      id: 'batch_qr',
+                      label: `พิมพ์ QR ชุด (PDF)${selectedQrStudentIds.length > 0 ? ` (${selectedQrStudentIds.length})` : ''}`,
+                      icon: <QrCode className="w-3.5 h-3.5" />,
+                      variant: 'primary',
+                      onClick: () => setShowBatchQrModal(true),
+                    },
+                    ...(canManageStudentRecords && onOpenImportExport
+                      ? [
+                          {
+                            id: 'import_export_excel',
+                            label: 'นำเข้า/ส่งออก Excel',
+                            icon: <FileSpreadsheet className="w-3.5 h-3.5" />,
+                            variant: 'success' as const,
+                            onClick: () => onOpenImportExport(),
+                          },
+                        ]
+                      : []),
+                    ...(canManageStudentRecords
+                      ? [
+                          {
+                            id: 'promote_students',
+                            label: 'เลื่อนชั้นเรียนข้ามปี',
+                            icon: <GraduationCap className="w-3.5 h-3.5" />,
+                            onClick: () => setShowPromotionModal(true),
+                          },
+                        ]
+                      : []),
+                    ...(['admin', 'super_admin'].includes(currentRole)
+                      ? [
+                          {
+                            id: 'room_presets',
+                            label: 'ตั้งค่าระดับชั้น/ห้องเรียน',
+                            icon: <GraduationCap className="w-3.5 h-3.5" />,
+                            onClick: () => setShowRoomPresetModal(true),
+                          },
+                        ]
+                      : []),
+                    ...(onPurgeSampleStudents &&
+                    ['admin', 'super_admin'].includes(currentRole) &&
+                    students.some(
+                      (s) => s.id.startsWith('std-0') || s.id.startsWith('std-demo') || s.id.startsWith('std-mock')
+                    )
+                      ? [
+                          {
+                            id: 'purge_sample',
+                            label: 'ล้างข้อมูลตัวอย่าง',
+                            icon: <Trash2 className="w-3.5 h-3.5" />,
+                            variant: 'danger' as const,
+                            dividerBefore: true,
+                            onClick: () => handleRequestPurgeSampleStudents(),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
 
                 {canManageStudentRecords && (
                   <button
@@ -1828,12 +1809,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         </td>
 
                         <td className="py-2.5 px-3 align-middle whitespace-nowrap">
-                          <span
-                            className={`text-xs font-medium ${statusTextToneMap[statusKey] || 'text-[var(--color-text-body)]'}`}
+                          <StatusIndicator
+                            tone={statusToneMap[statusKey] || 'neutral'}
+                            label={statusCfg.labelTh}
                             title={statusCfg.descriptionTh}
-                          >
-                            {statusCfg.labelTh}
-                          </span>
+                          />
                         </td>
 
                         <td className="py-2.5 px-3 align-middle text-right whitespace-nowrap">
@@ -1892,21 +1872,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => onToggleLineSync(student.id)}
-                                  className={`font-medium hover:underline cursor-pointer whitespace-nowrap ${
-                                    student.lineLinked
-                                      ? 'text-emerald-700 dark:text-emerald-400'
-                                      : 'text-[var(--tone)]'
-                                  }`}
+                                  className="hover:underline cursor-pointer whitespace-nowrap inline-flex items-center"
                                   title={student.lineLinked ? 'คลิกเพื่อยกเลิกสถานะเชื่อมต่อ LINE' : 'คลิกเพื่อเชื่อม LINE'}
                                 >
-                                  {student.lineLinked ? 'LINE เชื่อมแล้ว' : 'เชื่อม LINE'}
+                                  {student.lineLinked ? (
+                                    <StatusIndicator tone="success" size="xs" label="LINE เชื่อมแล้ว" />
+                                  ) : (
+                                    <span className="font-medium text-[var(--tone)]">เชื่อม LINE</span>
+                                  )}
                                 </button>
                               </>
                             ) : (
                               student.lineLinked && (
                                 <>
                                   <span aria-hidden="true">·</span>
-                                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">LINE เชื่อมแล้ว</span>
+                                  <StatusIndicator tone="success" size="xs" label="LINE เชื่อมแล้ว" />
                                 </>
                               )
                             ))}
@@ -2087,9 +2067,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2 text-xs">
-                          <span className={`font-medium ${statusTextToneMap[st.value] || 'text-[var(--color-text-title)]'}`}>
-                            {st.labelTh}
-                          </span>
+                          <StatusIndicator
+                            tone={statusToneMap[st.value] || 'neutral'}
+                            label={st.labelTh}
+                          />
                           <span className="font-mono font-semibold text-[var(--color-text-title)] tabular-nums">
                             {count} <span className="text-[11px] font-normal text-[var(--color-text-muted)]">({pct}%)</span>
                           </span>
@@ -2293,17 +2274,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             </div>
                           </td>
                           <td className="py-3 px-3 text-center whitespace-nowrap">
-                            <span
-                              className={`text-xs font-medium ${
+                            <StatusIndicator
+                              tone={
                                 acc.status === 'active'
-                                  ? 'text-emerald-700 dark:text-emerald-400'
+                                  ? 'success'
                                   : acc.status === 'suspended'
-                                  ? 'text-rose-700 dark:text-rose-400'
-                                  : 'text-amber-700 dark:text-amber-300'
-                              }`}
-                            >
-                              {acc.status === 'active' ? 'อนุมัติแล้ว' : acc.status === 'suspended' ? 'ระงับสิทธิ์' : 'รออนุมัติ'}
-                            </span>
+                                  ? 'danger'
+                                  : 'warning'
+                              }
+                              label={
+                                acc.status === 'active'
+                                  ? 'อนุมัติแล้ว'
+                                  : acc.status === 'suspended'
+                                  ? 'ระงับสิทธิ์'
+                                  : 'รออนุมัติ'
+                              }
+                            />
                           </td>
                           <td className="py-3 px-3">
                             <select
@@ -2372,15 +2358,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             {parent.full_name_th || parent.full_name_en || 'ผู้ปกครอง'}
                           </span>
                           <span aria-hidden="true" className="text-[var(--color-text-muted)]">·</span>
-                          <span
-                            className={`text-xs font-medium ${
-                              parent.status === 'active'
-                                ? 'text-emerald-700 dark:text-emerald-400'
-                                : 'text-amber-700 dark:text-amber-300'
-                            }`}
-                          >
-                            {parent.status === 'active' ? 'ใช้งานได้' : parent.status}
-                          </span>
+                          <StatusIndicator
+                            tone={parent.status === 'active' ? 'success' : 'warning'}
+                            label={parent.status === 'active' ? 'ใช้งานได้' : parent.status}
+                          />
                         </div>
                         <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-2 flex-wrap">
                           {parent.email && <span className="font-mono">{parent.email}</span>}
@@ -3207,9 +3188,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                                 ผู้ปกครองคนที่ {idx + 1}
                               </span>
                               {g.isPrimary ? (
-                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 text-[10px] font-bold border border-emerald-300 dark:border-emerald-700">
-                                  ★ ผู้ปกครองหลัก
-                                </span>
+                                <StatusIndicator tone="success" size="xs" label="ผู้ปกครองหลัก" />
                               ) : (
                                 <button
                                   type="button"

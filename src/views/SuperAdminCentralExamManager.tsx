@@ -44,6 +44,7 @@ import {
 } from '../lib/centralExamBank';
 import { CentralExamPack, LearningStrandId, QuizQuestion, SchoolExamEntitlement } from '../types';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { StatusIndicator } from '../components/common/StatusIndicator';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 
@@ -1358,29 +1359,23 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                             <span className="text-[11px] text-[var(--color-text-muted)] italic">ไม่มีสลิป (ฟรี)</span>
                           )}
                         </td>
-                        <td className="p-3">
+                        <td className="p-3 whitespace-nowrap">
                           {status === 'pending_audit' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
-                              <AlertTriangle className="w-3 h-3" /> รอตรวจสอบย้อนหลัง
-                            </span>
+                            <StatusIndicator tone="warning" size="xs" label="รอตรวจสอบย้อนหลัง" />
                           )}
                           {status === 'verified' && (
                             <div className="space-y-0.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                <Check className="w-3 h-3" /> สลิปถูกต้องแล้ว
-                              </span>
+                              <StatusIndicator tone="success" size="xs" label="สลิปถูกต้องแล้ว" />
                               {item.verifiedBy && (
-                                <span className="text-[9px] text-[var(--color-text-muted)] block">โดย {item.verifiedBy}</span>
+                                <span className="text-[10px] text-[var(--color-text-muted)] block">โดย {item.verifiedBy}</span>
                               )}
                             </div>
                           )}
                           {status === 'revoked' && (
                             <div className="space-y-0.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
-                                <ShieldAlert className="w-3 h-3" /> เพิกถอนสิทธิ์แล้ว
-                              </span>
+                              <StatusIndicator tone="danger" size="xs" label="เพิกถอนสิทธิ์แล้ว" />
                               {item.revocationReason && (
-                                <span className="text-[9px] text-rose-600 font-medium block truncate max-w-xs">
+                                <span className="text-[10px] text-rose-600 font-medium block truncate max-w-xs">
                                   เหตุผล: {item.revocationReason}
                                 </span>
                               )}

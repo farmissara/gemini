@@ -5,13 +5,13 @@ import {
   CheckCircle2,
   LogIn,
   LogOut,
-  MoreVertical,
   Search,
   UserCheck,
   X,
 } from 'lucide-react';
 import type { AttendanceCheckType, AttendanceStatus, Student } from '../../types';
 import { PagedList } from '../../components/PagedList';
+import { TableActionMenu } from '../../components/common/TableActionMenu';
 
 interface TeacherProxyTabProps {
   embeddedMobile: boolean;
@@ -68,7 +68,6 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
   setProxyRoomFilter,
   onEditStudent,
 }) => {
-  const [openStudentMenuId, setOpenStudentMenuId] = React.useState<string | null>(null);
   const roomOptions = Array.from(
     new Map(
       students.map((student) => {
@@ -325,43 +324,26 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
                     <span className="font-mono type-meta font-semibold text-[var(--color-text-title)] shrink-0">
                       {st.studentIdNumber}
                     </span>
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        aria-label={`แก้ไขเช็คชื่อ ${st.firstNameTh} ${st.lastNameTh}`}
-                        aria-expanded={openStudentMenuId === st.id}
-                        onClick={() => setOpenStudentMenuId(openStudentMenuId === st.id ? null : st.id)}
-                        className="min-h-9 min-w-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex items-center justify-center cursor-pointer"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {openStudentMenuId === st.id && (
-                        <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xl">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onEditStudent(st, 'check_in');
-                              setOpenStudentMenuId(null);
-                            }}
-                            className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
-                          >
-                            <LogIn className="w-3.5 h-3.5" />
-                            แก้ไขเช็คเข้าโรงเรียน
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onEditStudent(st, 'check_out');
-                              setOpenStudentMenuId(null);
-                            }}
-                            className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
-                          >
-                            <LogOut className="w-3.5 h-3.5" />
-                            แก้ไขเช็คออกจากโรงเรียน
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    <TableActionMenu
+                      size="md"
+                      ariaLabel={`แก้ไขเช็คชื่อ ${st.firstNameTh} ${st.lastNameTh}`}
+                      items={[
+                        {
+                          id: 'check-in',
+                          label: 'แก้ไขเช็คเข้าโรงเรียน',
+                          icon: <LogIn className="w-3.5 h-3.5" />,
+                          variant: 'success',
+                          onClick: () => onEditStudent(st, 'check_in'),
+                        },
+                        {
+                          id: 'check-out',
+                          label: 'แก้ไขเช็คออกจากโรงเรียน',
+                          icon: <LogOut className="w-3.5 h-3.5" />,
+                          variant: 'primary',
+                          onClick: () => onEditStudent(st, 'check_out'),
+                        },
+                      ]}
+                    />
                   </div>
                 )}
               />

@@ -43,6 +43,8 @@ import { QrCodeMatrix } from '../components/QrCodeMatrix';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import { compressImageFileToDataUrl } from '../lib/imageCompression';
+import { StatusIndicator } from '../components/common/StatusIndicator';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface CentralExamPurchaseModalProps {
   pack: CentralExamPack;
@@ -1203,18 +1205,11 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                       {strandMeta.code} · {strandMeta.nameTh}
                     </span>
                     {entitlement ? (
-                      <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>รับเข้าโรงเรียนแล้ว</span>
-                      </span>
+                      <StatusIndicator size="xs" tone="success" label="รับเข้าโรงเรียนแล้ว" />
                     ) : isFree ? (
-                      <span className="text-emerald-700 dark:text-emerald-300 font-bold">
-                        ฟรี
-                      </span>
+                      <StatusIndicator size="xs" tone="success" label="ฟรี" />
                     ) : (
-                      <span className="text-amber-700 dark:text-amber-300 font-bold tabular-nums">
-                        ฿{pack.priceThb.toLocaleString()} / โรงเรียน
-                      </span>
+                      <StatusIndicator size="xs" tone="warning" label={`฿${pack.priceThb.toLocaleString()} / รร.`} />
                     )}
                   </div>
 
@@ -1233,66 +1228,83 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
                 </div>
 
                 <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewPack(pack)}
-                    className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>ดูตัวอย่าง</span>
-                  </button>
-
                   {entitlement ? (
-                    <div className="flex flex-wrap items-center gap-1.5 justify-end">
-                      {courses.length > 0 && onSyncQuizScoresToGradebook && (
-                        <button
-                          type="button"
-                          onClick={() => openQuizSyncModal(pack)}
-                          className="px-2.5 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
-                        >
-                          ส่ง Quiz เข้าสมุดคะแนน
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={onOpenQuestionBankInEduBattle}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>เปิดใช้ในคลัง</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={onOpenQuestionBankInEduBattle}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                      <span>เปิดใช้ในคลัง</span>
+                    </button>
                   ) : canSchoolAdminAcquire ? (
                     isFree ? (
                       <button
                         type="button"
                         disabled={processingPackId === pack.id || processingPackId === 'bulk_free_view'}
                         onClick={() => void handleClaimFree(pack)}
-                        className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        className="flex-1 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <Gift className="w-3.5 h-3.5" />
+                        <Gift className="w-3.5 h-3.5 shrink-0" />
                         <span>{processingPackId === pack.id ? 'กำลังรับ...' : 'กดรับข้อสอบฟรี'}</span>
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => setCheckoutPack(pack)}
-                        className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer tabular-nums"
+                        className="flex-1 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer tabular-nums"
                       >
-                        <Coins className="w-3.5 h-3.5" />
+                        <Coins className="w-3.5 h-3.5 shrink-0" />
                         <span>สั่งซื้อ ฿{pack.priceThb.toLocaleString()}</span>
                       </button>
                     )
                   ) : (
                     <button
                       type="button"
-                      onClick={onOpenCoordinationDesk}
-                      className="px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)] text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      onClick={() => setPreviewPack(pack)}
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>ให้ Admin โรงเรียนกดรับ/ซื้อ</span>
+                      <Eye className="w-3.5 h-3.5 shrink-0" />
+                      <span>ดูตัวอย่างข้อสอบ</span>
                     </button>
                   )}
+
+                  <TableActionMenu
+                    ariaLabel={`จัดการชุดข้อสอบ ${pack.titleTh}`}
+                    items={[
+                      ...(entitlement || canSchoolAdminAcquire
+                        ? [
+                            {
+                              id: 'preview',
+                              label: 'ดูตัวอย่างข้อสอบ',
+                              icon: <Eye className="w-3.5 h-3.5" />,
+                              onClick: () => setPreviewPack(pack),
+                            },
+                          ]
+                        : onOpenCoordinationDesk
+                          ? [
+                              {
+                                id: 'ask-admin',
+                                label: 'แจ้ง Admin กดรับ/ซื้อชุดนี้',
+                                icon: <Lock className="w-3.5 h-3.5" />,
+                                variant: 'warning' as const,
+                                onClick: () => onOpenCoordinationDesk(),
+                              },
+                            ]
+                          : []),
+                      ...(entitlement && courses.length > 0 && onSyncQuizScoresToGradebook
+                        ? [
+                            {
+                              id: 'sync-quiz',
+                              label: 'ส่ง Quiz เข้าสมุดคะแนน',
+                              icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+                              variant: 'primary' as const,
+                              onClick: () => openQuizSyncModal(pack),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
                 </div>
               </div>
             );

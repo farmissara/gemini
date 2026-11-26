@@ -36,6 +36,7 @@ import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
 
 interface InfirmaryHealthViewProps {
   schoolId?: string;
@@ -160,16 +161,16 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
     setSymptoms('');
   };
 
-  const getStatusBadge = (status: InfirmaryStatus) => {
+  const getStatusBadge = (status: InfirmaryStatus): { label: string; tone: StatusTone } => {
     switch (status) {
       case 'resting':
-        return { label: 'กำลังนอนพักเตียง', color: 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' };
+        return { label: 'กำลังนอนพักเตียง', tone: 'warning' };
       case 'discharged':
-        return { label: 'กลับเข้าชั้นเรียนแล้ว', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' };
+        return { label: 'กลับเข้าชั้นเรียนแล้ว', tone: 'success' };
       case 'sent_home':
-        return { label: 'ผู้ปกครองรับกลับบ้าน', color: 'bg-sky-100 dark:bg-sky-950 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-700' };
+        return { label: 'ผู้ปกครองรับกลับบ้าน', tone: 'info' };
       case 'hospital':
-        return { label: 'นำส่งโรงพยาบาล', color: 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' };
+        return { label: 'นำส่งโรงพยาบาล', tone: 'danger' };
     }
   };
 
@@ -356,9 +357,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                         )}
                       </td>
                       <td className="p-2.5 text-center">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${status.color}`}>
-                          {status.label}
-                        </span>
+                        <StatusIndicator size="xs" tone={status.tone} label={status.label} />
                       </td>
                       <td className="p-2.5 text-right">
                         <p className="text-[var(--color-text-body)] text-[11px]">{visit.recordedByNurse}</p>
@@ -439,11 +438,11 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                         <Bed className={`w-3.5 h-3.5 ${restingPatient ? 'text-amber-800 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`} />
                         <span>{bedLabel}</span>
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        restingPatient ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                      }`}>
-                        {restingPatient ? 'มีผู้ป่วยนอนพัก' : 'ว่าง (พร้อมใช้งาน)'}
-                      </span>
+                      <StatusIndicator
+                        size="xs"
+                        tone={restingPatient ? 'warning' : 'success'}
+                        label={restingPatient ? 'มีผู้ป่วยนอนพัก' : 'ว่าง (พร้อมใช้งาน)'}
+                      />
                     </div>
 
                     {restingPatient ? (

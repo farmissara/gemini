@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Calendar,
   CalendarDays,
-  ChevronDown,
   Clock,
   FileSpreadsheet,
   LogIn,
@@ -43,6 +42,7 @@ import { getThaiHolidayCategoryLabel, ThaiHoliday } from '../../lib/thaiHolidays
 import { enterLandscapeGameMode, exitLandscapeGameMode } from '../../lib/screenOrientation';
 import { printTimetableLandscape, setTimetableLandscapePageRule } from '../../lib/timetablePrint';
 import { findHomeroomTeachersForRoom } from '../../lib/timetableRoomMatch';
+import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
 import {
   ALL_CLASSROOMS,
   DAYS,
@@ -367,156 +367,110 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
             <span>{lang === 'th' ? 'พิมพ์แนวนอน (A4)' : 'Print Landscape'}</span>
           </button>
 
-          {/* Consolidated Secondary Schedule Tools Dropdown */}
-          <details className="group relative">
-            <summary className="btn-tool-tone list-none px-2.5 py-1.5">
-              <SlidersHorizontal className="h-3.5 w-3.5 tone-text" />
-              <span>เครื่องมือ &amp; ส่งออก</span>
-              <ChevronDown className="h-3 w-3 text-[var(--color-text-muted)] transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-xl space-y-1 text-xs">
-              <div className="px-2 pt-1 text-[10px] font-bold text-[var(--color-text-muted)]">
-                การแสดงผล &amp; ตั้งค่า
-              </div>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                  openScheduleSettings();
-                }}
-                className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5 tone-text" />
-                <span>กรองหลายเงื่อนไข / ตั้งค่าการแสดง</span>
-              </button>
-              {isViewingCurrentTerm && isAdmin && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    openPeriodSettingsModal();
-                  }}
-                  className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <Clock className="h-3.5 w-3.5 tone-text" />
-                  <span>ตั้งเวลาคาบเรียนมาตรฐาน</span>
-                </button>
-              )}
-
-              {!isPersonalViewer && (
-                <>
-                  <div className="my-1 border-t border-[var(--color-border)]" />
-                  <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
-                    ส่งออก &amp; พิมพ์
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      setShowImportExportModal(true);
-                    }}
-                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Export / Import Excel &amp; CSV</span>
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                  openGoogleCalendarModal();
-                }}
-                className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <Calendar className="h-3.5 w-3.5 tone-text" />
-                <span>Google Calendar &amp; ภาพหน้าจอมือถือ</span>
-              </button>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                  printTimetableLandscape();
-                }}
-                className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <Printer className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-                <span>พิมพ์ตารางเรียน A4 (แนวนอน)</span>
-              </button>
-
-              {!isPersonalViewer && (
-                <>
-                  <div className="my-1 border-t border-[var(--color-border)]" />
-                  <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
-                    วันหยุดราชการไทย ({currentBangkokYear + 543})
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isSyncingHolidays}
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      void handleManualHolidaySync(currentBangkokYear);
-                    }}
-                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] disabled:opacity-60 cursor-pointer"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
-                    <span>{isSyncingHolidays ? 'กำลังซิงค์วันหยุด...' : 'ซิงค์วันหยุดราชการ'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      setCalendarLayoutMode('month');
-                      setViewMode('calendar');
-                    }}
-                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <CalendarDays className="h-3.5 w-3.5 tone-text" />
-                    <span>ปฏิทินวันหยุด ({yearHolidaysCount} วัน)</span>
-                  </button>
-                  <div className="my-1 border-t border-[var(--color-border)]" />
-                  <div className="px-2 text-[10px] font-bold text-[var(--color-text-muted)]">
-                    ทดสอบแจ้งเตือน
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      sendEduVerseNotification({
-                        title: '[ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
-                        body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'}`,
-                        category: 'attendance',
-                        priority: 'urgent',
-                        schoolId,
-                        targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
-                      });
-                    }}
-                    className="w-full rounded-lg px-2.5 py-1.5 text-left text-emerald-700 hover:bg-[var(--color-card-subtle)] dark:text-emerald-300 cursor-pointer"
-                  >
-                    ทดสอบเริ่มคาบ &amp; เช็คอิน
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      sendEduVerseNotification({
-                        title: '[ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
-                        body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาเช็คชื่อออก (Check-out)`,
-                        category: 'attendance',
-                        priority: 'normal',
-                        schoolId,
-                        targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
-                      });
-                    }}
-                    className="w-full rounded-lg px-2.5 py-1.5 text-left text-indigo-700 hover:bg-[var(--color-card-subtle)] dark:text-indigo-300 cursor-pointer"
-                  >
-                    ทดสอบหมดคาบ &amp; เช็คเอาท์
-                  </button>
-                </>
-              )}
-            </div>
-          </details>
+          <TableActionMenu
+            ariaLabel="เครื่องมือ & ส่งออกตารางสอน"
+            triggerLabel="เครื่องมือ & ส่งออก"
+            triggerClassName="btn-tool-tone px-2.5 py-1.5"
+            menuWidth={260}
+            items={[
+              {
+                id: 'schedule_settings',
+                label: 'กรองหลายเงื่อนไข / ตั้งค่าการแสดง',
+                icon: <SlidersHorizontal className="h-3.5 w-3.5" />,
+                variant: 'primary',
+                onClick: () => openScheduleSettings(),
+              },
+              ...(isViewingCurrentTerm && isAdmin
+                ? [
+                    {
+                      id: 'period_settings',
+                      label: 'ตั้งเวลาคาบเรียนมาตรฐาน',
+                      icon: <Clock className="h-3.5 w-3.5" />,
+                      onClick: () => openPeriodSettingsModal(),
+                    },
+                  ]
+                : []),
+              ...(!isPersonalViewer
+                ? [
+                    {
+                      id: 'import_export',
+                      label: 'Export / Import Excel & CSV',
+                      icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
+                      variant: 'success' as const,
+                      dividerBefore: true,
+                      onClick: () => setShowImportExportModal(true),
+                    },
+                  ]
+                : []),
+              {
+                id: 'google_calendar',
+                label: 'Google Calendar & ภาพหน้าจอมือถือ',
+                icon: <Calendar className="h-3.5 w-3.5" />,
+                onClick: () => openGoogleCalendarModal(),
+              },
+              {
+                id: 'print_a4',
+                label: 'พิมพ์ตารางเรียน A4 (แนวนอน)',
+                icon: <Printer className="h-3.5 w-3.5" />,
+                onClick: () => printTimetableLandscape(),
+              },
+              ...(!isPersonalViewer
+                ? ([
+                    {
+                      id: 'sync_holidays',
+                      label: isSyncingHolidays
+                        ? 'กำลังซิงค์วันหยุด...'
+                        : `ซิงค์วันหยุดราชการ (${currentBangkokYear + 543})`,
+                      icon: <RefreshCw className={`h-3.5 w-3.5 ${isSyncingHolidays ? 'animate-spin' : ''}`} />,
+                      variant: 'danger',
+                      dividerBefore: true,
+                      disabled: isSyncingHolidays,
+                      onClick: () => void handleManualHolidaySync(currentBangkokYear),
+                    },
+                    {
+                      id: 'holiday_calendar',
+                      label: `ปฏิทินวันหยุด (${yearHolidaysCount} วัน)`,
+                      icon: <CalendarDays className="h-3.5 w-3.5" />,
+                      onClick: () => {
+                        setCalendarLayoutMode('month');
+                        setViewMode('calendar');
+                      },
+                    },
+                    {
+                      id: 'test_checkin_notif',
+                      label: 'ทดสอบเริ่มคาบ & เช็คอิน',
+                      icon: <LogIn className="h-3.5 w-3.5" />,
+                      variant: 'success',
+                      dividerBefore: true,
+                      onClick: () =>
+                        sendEduVerseNotification({
+                          title: '[ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
+                          body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'}`,
+                          category: 'attendance',
+                          priority: 'urgent',
+                          schoolId,
+                          targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
+                        }),
+                    },
+                    {
+                      id: 'test_checkout_notif',
+                      label: 'ทดสอบหมดคาบ & เช็คเอาท์',
+                      icon: <LogOut className="h-3.5 w-3.5" />,
+                      variant: 'primary',
+                      onClick: () =>
+                        sendEduVerseNotification({
+                          title: '[ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
+                          body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาเช็คชื่อออก (Check-out)`,
+                          category: 'attendance',
+                          priority: 'normal',
+                          schoolId,
+                          targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
+                        }),
+                    },
+                  ] satisfies TableActionItem[])
+                : []),
+            ]}
+          />
         </div>
       </div>
 

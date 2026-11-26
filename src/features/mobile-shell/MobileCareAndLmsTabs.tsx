@@ -35,6 +35,7 @@ import type {
 import { getLocalDateString } from '../../lib/date';
 import { useSchoolCustomPresets } from '../../lib/schoolCustomPresets';
 import { PagedList } from '../../components/PagedList';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
 
 /* -------------------------------------------------------------------------- */
 /* 1. STUDENT / PARENT ATTENDANCE HISTORY TAB                                 */
@@ -215,25 +216,27 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
                   {rec.remarks ? ` · ${rec.remarks}` : ''}
                 </p>
               </div>
-              <span
-                className={`font-bold shrink-0 ${
+              <StatusIndicator
+                size="xs"
+                tone={
                   rec.status === 'present'
-                    ? 'text-emerald-700 dark:text-emerald-400'
+                    ? 'success'
                     : rec.status === 'late'
-                      ? 'text-amber-700 dark:text-amber-400'
+                      ? 'warning'
                       : rec.status === 'leave'
-                        ? 'text-indigo-700 dark:text-indigo-400'
-                        : 'text-rose-700 dark:text-rose-400'
-                }`}
-              >
-                {rec.status === 'present'
-                  ? 'ตรงเวลา'
-                  : rec.status === 'late'
-                    ? 'สาย'
-                    : rec.status === 'leave'
-                      ? 'ลา'
-                      : 'ขาด'}
-              </span>
+                        ? 'info'
+                        : 'danger'
+                }
+                label={
+                  rec.status === 'present'
+                    ? 'ตรงเวลา'
+                    : rec.status === 'late'
+                      ? 'สาย'
+                      : rec.status === 'leave'
+                        ? 'ลา'
+                        : 'ขาด'
+                }
+              />
             </div>
           )}
         />
@@ -265,25 +268,27 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
                     {rec.actualCheckInTime ? ` ${rec.actualCheckInTime}` : ''}
                   </p>
                 </div>
-                <span
-                  className={`font-bold shrink-0 ${
+                <StatusIndicator
+                  size="xs"
+                  tone={
                     rec.status === 'present'
-                      ? 'text-emerald-700 dark:text-emerald-400'
+                      ? 'success'
                       : rec.status === 'late'
-                        ? 'text-amber-700 dark:text-amber-400'
+                        ? 'warning'
                         : rec.status === 'excused'
-                          ? 'text-indigo-700 dark:text-indigo-400'
-                          : 'text-rose-700 dark:text-rose-400'
-                  }`}
-                >
-                  {rec.status === 'present'
-                    ? 'เข้าเรียน'
-                    : rec.status === 'late'
-                      ? 'สาย'
-                      : rec.status === 'excused'
-                        ? 'ลา'
-                        : 'ขาด'}
-                </span>
+                          ? 'info'
+                          : 'danger'
+                  }
+                  label={
+                    rec.status === 'present'
+                      ? 'เข้าเรียน'
+                      : rec.status === 'late'
+                        ? 'สาย'
+                        : rec.status === 'excused'
+                          ? 'ลา'
+                          : 'ขาด'
+                  }
+                />
               </div>
             );
           }}
@@ -605,17 +610,10 @@ export const MobileBehaviorSdqTab: React.FC<MobileBehaviorSdqTabProps> = ({
         <form onSubmit={handleSaveSdq} className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-3">
           <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] flex items-center justify-between text-xs">
             <span>ผลคัดกรองรวม 4 ด้าน (0–40):</span>
-            <span
-              className={`font-extrabold tabular-nums ${
-                sdqStatus === 'problem'
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : sdqStatus === 'risk'
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-emerald-600 dark:text-emerald-400'
-              }`}
-            >
-              {totalDifficulties} · {sdqStatus === 'problem' ? 'มีปัญหา' : sdqStatus === 'risk' ? 'กลุ่มเสี่ยง' : 'ปกติ'}
-            </span>
+            <StatusIndicator
+              tone={sdqStatus === 'problem' ? 'danger' : sdqStatus === 'risk' ? 'warning' : 'success'}
+              label={`${totalDifficulties} · ${sdqStatus === 'problem' ? 'มีปัญหา' : sdqStatus === 'risk' ? 'กลุ่มเสี่ยง' : 'ปกติ'}`}
+            />
           </div>
 
           {(
@@ -1207,7 +1205,7 @@ export const MobileLmsTab: React.FC<MobileLmsTabProps> = ({
                     <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] tabular-nums">
                       <span>บทที่ {lesson.chapterNumber} · {lesson.durationMinutes} นาที</span>
                       {done && (
-                        <span className="font-bold text-emerald-700 dark:text-emerald-400">เรียนจบแล้ว</span>
+                        <StatusIndicator tone="success" size="xs" label="เรียนจบแล้ว" />
                       )}
                     </div>
                     <h3 className="text-sm font-bold text-[var(--color-text-title)]">{lesson.titleTh}</h3>

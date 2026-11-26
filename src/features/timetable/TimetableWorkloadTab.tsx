@@ -1,8 +1,5 @@
 import React from 'react';
 import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Search,
@@ -10,6 +7,7 @@ import {
   Users,
 } from 'lucide-react';
 import { normalizeTeacherName } from '../../lib/timetableTeachers';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
 import { TeacherWorkloadRow, WorkloadStatusFilter } from './types';
 
 interface TimetableWorkloadTabProps {
@@ -297,21 +295,13 @@ export const TimetableWorkloadTab: React.FC<TimetableWorkloadTabProps> = ({
                   </div>
 
                   {teacher.status === 'unassigned' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                      ยังไม่มีคาบ
-                    </span>
+                    <StatusIndicator size="xs" tone="neutral" label="ยังไม่มีคาบ" />
                   ) : teacher.status === 'low' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
-                      <AlertCircle className="h-3 w-3" /> ต่ำกว่า {workloadMinPeriods}
-                    </span>
+                    <StatusIndicator size="xs" tone="warning" label={`ต่ำกว่า ${workloadMinPeriods}`} />
                   ) : teacher.status === 'high' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-900 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200">
-                      <AlertTriangle className="h-3 w-3" /> เกิน {workloadMaxPeriods}
-                    </span>
+                    <StatusIndicator size="xs" tone="danger" label={`เกิน ${workloadMaxPeriods}`} />
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
-                      <CheckCircle2 className="h-3 w-3" /> {workloadMinPeriods}–{workloadMaxPeriods}
-                    </span>
+                    <StatusIndicator size="xs" tone="success" label={`${workloadMinPeriods}–${workloadMaxPeriods}`} />
                   )}
 
                   <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap text-[10px] font-semibold text-[var(--color-primary-text)]">

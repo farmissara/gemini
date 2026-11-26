@@ -24,6 +24,7 @@ import type {
 import { getBangkokDateInputValue } from '../../lib/timetableCalendar';
 import { PagedList } from '../../components/PagedList';
 import { TableActionMenu } from '../../components/common/TableActionMenu';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
 
 interface MobileHomeworkTabProps {
   activeSchool: School;
@@ -516,23 +517,27 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span
-                        className={`font-bold tabular-nums ${
+                      <StatusIndicator
+                        size="xs"
+                        tone={
                           sub.status === 'graded'
-                            ? 'text-emerald-700 dark:text-emerald-400'
+                            ? 'success'
                             : sub.status === 'late'
-                              ? 'text-rose-700 dark:text-rose-400'
-                              : 'text-amber-700 dark:text-amber-400'
-                        }`}
-                      >
-                        {sub.status === 'graded'
-                          ? `${sub.score ?? 0}/${sub.maxScore} คะแนน`
-                          : sub.status === 'late'
-                            ? 'ส่งช้า'
-                            : sub.status === 'pending'
-                              ? 'ยังไม่ส่ง'
-                              : 'รอตรวจ'}
-                      </span>
+                              ? 'danger'
+                              : sub.status === 'pending'
+                                ? 'neutral'
+                                : 'warning'
+                        }
+                        label={
+                          sub.status === 'graded'
+                            ? `${sub.score ?? 0}/${sub.maxScore} คะแนน`
+                            : sub.status === 'late'
+                              ? 'ส่งช้า'
+                              : sub.status === 'pending'
+                                ? 'ยังไม่ส่ง'
+                                : 'รอตรวจ'
+                        }
+                      />
                       {canManageHomework &&
                         onGradeHomeworkSubmission &&
                         sub.status !== 'pending' &&

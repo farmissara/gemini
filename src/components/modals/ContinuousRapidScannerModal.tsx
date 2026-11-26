@@ -592,8 +592,19 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
           />
+          <button
+            type="button"
+            disabled={isCameraStarting}
+            onClick={() => setFacingMode(facingMode === 'environment' ? 'user' : 'environment')}
+            className="absolute top-3 right-3 z-30 h-9 px-3 rounded-xl bg-slate-950/80 hover:bg-slate-900 text-white border border-white/25 backdrop-blur-md shadow-lg inline-flex items-center gap-1.5 text-xs font-semibold transition active:scale-95 cursor-pointer disabled:opacity-55"
+            title={facingMode === 'environment' ? 'สลับเป็นกล้องหน้า' : 'สลับเป็นกล้องหลัง'}
+            aria-label="สลับกล้องหน้าหรือกล้องหลัง"
+          >
+            <SwitchCamera className={`w-4 h-4 shrink-0 ${isCameraStarting ? 'animate-spin' : ''}`} />
+            <span>{lang === 'th' ? `สลับกล้อง · ${facingMode === 'environment' ? 'หลัง' : 'หน้า'}` : `Flip · ${facingMode === 'environment' ? 'Rear' : 'Front'}`}</span>
+          </button>
           {cameraNotice && !cameraError && !isCameraStarting && (
             <div className="absolute inset-x-4 bottom-3 z-20 rounded-xl bg-slate-900/85 border border-slate-700 px-3 py-1.5 text-center text-[11px] text-slate-200 backdrop-blur-md">
               {cameraNotice}

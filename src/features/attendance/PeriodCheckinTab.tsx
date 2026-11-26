@@ -12,7 +12,6 @@ import {
   LogOut,
   MapPin,
   Maximize2,
-  MoreVertical,
   QrCode,
   ScanLine,
   Search,
@@ -32,6 +31,8 @@ import { checkDistanceToClassroomGps } from '../../lib/classroomGps';
 import type { PeriodFlexConfig } from '../../lib/attendanceCorrections';
 import { QrCodeMatrix } from '../../components/QrCodeMatrix';
 import { PagedList } from '../../components/PagedList';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { TableActionMenu } from '../../components/common/TableActionMenu';
 import type { PeriodRosterFilter } from './types';
 
 interface PeriodCheckinTabProps {
@@ -189,7 +190,6 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
   onOpenPeriodCorrection,
 }) => {
   const [editingTimeStudentId, setEditingTimeStudentId] = React.useState<string | null>(null);
-  const [openActionsStudentId, setOpenActionsStudentId] = React.useState<string | null>(null);
   const periodRoomOptions = Array.from(
     new Set(
       periodStudentIds
@@ -769,25 +769,27 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                             {rec.date} ({rec.timeSlot}) · {rec.checkMethod === 'qr_code' ? 'QR/ลิงก์' : 'อาจารย์เช็คชื่อ'}
                           </p>
                         </div>
-                        <span
-                          className={`inline-flex items-center gap-1 type-label shrink-0 ${
+                        <StatusIndicator
+                          size="xs"
+                          tone={
                             rec.status === 'present'
-                              ? 'text-emerald-700 dark:text-emerald-300'
+                              ? 'success'
                               : rec.status === 'late'
-                                ? 'text-amber-700 dark:text-amber-300'
+                                ? 'warning'
                                 : rec.status === 'excused'
-                                  ? 'text-[var(--color-primary-text)]'
-                                  : 'text-rose-700 dark:text-rose-300'
-                          }`}
-                        >
-                          {rec.status === 'present'
-                            ? 'เข้าเรียน'
-                            : rec.status === 'late'
-                              ? 'สาย'
-                              : rec.status === 'excused'
-                                ? 'ลา'
-                                : 'ขาด'}
-                        </span>
+                                  ? 'info'
+                                  : 'danger'
+                          }
+                          label={
+                            rec.status === 'present'
+                              ? 'เข้าเรียน'
+                              : rec.status === 'late'
+                                ? 'สาย'
+                                : rec.status === 'excused'
+                                  ? 'ลา'
+                                  : 'ขาด'
+                          }
+                        />
                       </div>
                     )}
                   />
@@ -923,45 +925,43 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                     {st.firstNameTh} {st.lastNameTh}
                                   </p>
                                   {savedRecord?.checkMethod === 'qr_code' && (
-                                    <span className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-[10px] font-bold">
-                                      สแกนมือถือแล้ว
-                                    </span>
+                                    <StatusIndicator size="xs" tone="info" label="สแกนมือถือแล้ว" />
                                   )}
                                   {savedRecord?.checkMethod === 'teacher_proxy' && (
-                                    <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-[10px] font-bold">
-                                      ครูกดรับแทน
-                                    </span>
+                                    <StatusIndicator size="xs" tone="warning" label="ครูกดรับแทน" />
                                   )}
                                   {(displayIn || displayOut) && (
-                                    <span className="px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[10px] font-mono font-semibold text-[var(--color-primary-text)] tabular-nums">
+                                    <span className="px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] text-[10px] font-mono font-semibold text-[var(--color-primary-text)] tabular-nums">
                                       {displayIn ? `เข้า ${displayIn}` : ''}
                                       {displayIn && displayOut ? ' · ' : ''}
                                       {displayOut ? `ออก ${displayOut}` : ''}
                                     </span>
                                   )}
-                                  <span
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  <StatusIndicator
+                                    size="xs"
+                                    tone={
                                       !recordedStatus
-                                        ? 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'
+                                        ? 'neutral'
                                         : recordedStatus === 'present'
-                                          ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200'
+                                          ? 'success'
                                           : recordedStatus === 'late'
-                                            ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200'
+                                            ? 'warning'
                                             : recordedStatus === 'excused'
-                                              ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                                              : 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200'
-                                    }`}
-                                  >
-                                    {!recordedStatus
-                                      ? 'ยังไม่เช็ค'
-                                      : recordedStatus === 'present'
-                                        ? 'มาเรียน'
-                                        : recordedStatus === 'late'
-                                          ? 'สาย'
-                                          : recordedStatus === 'excused'
-                                            ? 'ลา'
-                                            : 'ขาด'}
-                                  </span>
+                                              ? 'info'
+                                              : 'danger'
+                                    }
+                                    label={
+                                      !recordedStatus
+                                        ? 'ยังไม่เช็ค'
+                                        : recordedStatus === 'present'
+                                          ? 'มาเรียน'
+                                          : recordedStatus === 'late'
+                                            ? 'สาย'
+                                            : recordedStatus === 'excused'
+                                              ? 'ลา'
+                                              : 'ขาด'
+                                    }
+                                  />
                                 </div>
                                 <p className="type-meta font-mono truncate">
                                   {st.studentIdNumber} · {st.gradeLevel} {st.room}
@@ -970,58 +970,57 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                               </div>
                             </div>
 
-                            <div className="relative self-end sm:self-auto shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => setOpenActionsStudentId(openActionsStudentId === st.id ? null : st.id)}
-                                aria-label={`แก้ไขเช็คชื่อรายคาบ ${st.firstNameTh} ${st.lastNameTh}`}
-                                aria-expanded={openActionsStudentId === st.id}
-                                className="min-h-9 min-w-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] flex items-center justify-center cursor-pointer"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </button>
-                              {openActionsStudentId === st.id && (
-                                <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xl">
-                                  <p className="px-2.5 py-1.5 type-meta font-semibold">แก้ไขสถานะรายคาบ</p>
-                                  {(['present', 'late', 'absent', 'excused'] as const).map((pst) => (
-                                    <button
-                                      key={pst}
-                                      type="button"
-                                      onClick={() => {
-                                        handleTeacherProxyPeriodCheckin(st, pst, false);
-                                        setOpenActionsStudentId(null);
-                                      }}
-                                      className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                                    >
-                                      {pst === 'present' ? 'มาเรียน' : pst === 'late' ? 'มาสาย' : pst === 'absent' ? 'ขาดเรียน' : 'ลา'}
-                                    </button>
-                                  ))}
-                                  {(!savedRecord || savedRecord.checkMethod !== 'qr_code') && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleTeacherProxyPeriodCheckin(st, 'present', true);
-                                        setOpenActionsStudentId(null);
-                                      }}
-                                      className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-amber-800 dark:text-amber-200 hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <UserCheck className="w-3.5 h-3.5" />
-                                      กดเช็คแทน (ไม่มีมือถือ)
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingTimeStudentId(isEditingTime ? null : st.id);
-                                      setOpenActionsStudentId(null);
-                                    }}
-                                    className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Clock className="w-3.5 h-3.5" />
-                                    ปรับเวลาเข้า–ออก
-                                  </button>
-                                </div>
-                              )}
+                            <div className="self-end sm:self-auto shrink-0">
+                              <TableActionMenu
+                                size="md"
+                                menuWidth={230}
+                                ariaLabel={`แก้ไขเช็คชื่อรายคาบ ${st.firstNameTh} ${st.lastNameTh}`}
+                                items={[
+                                  {
+                                    id: 'present',
+                                    label: 'มาเรียน',
+                                    variant: 'success',
+                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'present', false),
+                                  },
+                                  {
+                                    id: 'late',
+                                    label: 'มาสาย',
+                                    variant: 'warning',
+                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'late', false),
+                                  },
+                                  {
+                                    id: 'excused',
+                                    label: 'ลา / มีเหตุผล',
+                                    variant: 'primary',
+                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'excused', false),
+                                  },
+                                  {
+                                    id: 'absent',
+                                    label: 'ขาดเรียน',
+                                    variant: 'danger',
+                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'absent', false),
+                                  },
+                                  ...(!savedRecord || savedRecord.checkMethod !== 'qr_code'
+                                    ? [
+                                        {
+                                          id: 'no-phone-proxy',
+                                          label: 'กดเช็คแทน (ไม่มีมือถือ)',
+                                          icon: <UserCheck className="w-3.5 h-3.5" />,
+                                          variant: 'warning' as const,
+                                          dividerBefore: true,
+                                          onClick: () => handleTeacherProxyPeriodCheckin(st, 'present', true),
+                                        },
+                                      ]
+                                    : []),
+                                  {
+                                    id: 'edit-time',
+                                    label: isEditingTime ? 'ปิดการปรับเวลาเข้า–ออก' : 'ปรับเวลาเข้า–ออก',
+                                    icon: <Clock className="w-3.5 h-3.5" />,
+                                    dividerBefore: Boolean(savedRecord && savedRecord.checkMethod === 'qr_code'),
+                                    onClick: () => setEditingTimeStudentId(isEditingTime ? null : st.id),
+                                  },
+                                ]}
+                              />
                             </div>
                           </div>
 

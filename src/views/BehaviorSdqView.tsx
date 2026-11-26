@@ -41,6 +41,7 @@ import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
 
 interface BehaviorSdqViewProps {
   schoolId?: string;
@@ -211,28 +212,28 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     setSdqNotes('');
   };
 
-  const getStatusBadge = (score: number) => {
+  const getStatusBadge = (score: number): { label: string; tone: StatusTone } => {
     if (score >= 90) {
       return {
         label: lang === 'th' ? 'ดีเยี่ยม' : 'Excellent',
-        bg: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+        tone: 'success',
       };
     }
     if (score >= 75) {
       return {
         label: lang === 'th' ? 'ปกติ' : 'Good',
-        bg: 'bg-sky-100 dark:bg-sky-950 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-700'
+        tone: 'info',
       };
     }
     if (score >= 60) {
       return {
         label: lang === 'th' ? 'เฝ้าระวัง/ตักเตือน' : 'Warning',
-        bg: 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+        tone: 'warning',
       };
     }
     return {
       label: lang === 'th' ? 'ทัณฑ์บน' : 'Probation',
-      bg: 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+      tone: 'danger',
     };
   };
 
@@ -567,9 +568,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                             <span className="text-[10px] text-[var(--color-text-muted)]"> / 100</span>
                           </td>
                           <td className="p-2.5 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${badge.bg}`}>
-                              {badge.label}
-                            </span>
+                            <StatusIndicator size="xs" tone={badge.tone} label={badge.label} />
                           </td>
                           <td className="p-2.5 text-right">
                             <TableActionMenu
@@ -835,11 +834,12 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                       />
                     )}
                     renderRow={(sdq) => {
-                    const statusConfig = {
-                      normal: { label: 'กลุ่มปกติ', color: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' },
-                      risk: { label: 'กลุ่มเสี่ยง', color: 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' },
-                      problem: { label: 'กลุ่มมีปัญหา', color: 'bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700' }
-                    }[sdq.overallStatus];
+                    const statusMap: Record<'normal' | 'risk' | 'problem', { label: string; tone: StatusTone }> = {
+                      normal: { label: 'กลุ่มปกติ', tone: 'success' },
+                      risk: { label: 'กลุ่มเสี่ยง', tone: 'warning' },
+                      problem: { label: 'กลุ่มมีปัญหา', tone: 'danger' },
+                    };
+                    const statusConfig = statusMap[sdq.overallStatus];
                     const interpretation = interpretSdqAssessment(sdq);
 
                     return (
@@ -857,9 +857,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                           {sdq.totalDifficultiesScore}/40
                         </td>
                         <td className="p-3 text-center">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${statusConfig.color}`}>
-                            {statusConfig.label}
-                          </span>
+                          <StatusIndicator size="xs" tone={statusConfig.tone} label={statusConfig.label} />
                         </td>
                         <td className="p-2.5 text-[11px] leading-snug">
                           <p className="font-semibold text-[var(--color-text-title)]">{interpretation.focusSummary}</p>
@@ -962,19 +960,11 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                         {income.toLocaleString()} บาท
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        {isSpecialPoor ? (
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300">
-                            ยากจนพิเศษ (CCT)
-                          </span>
-                        ) : isNormalPoor ? (
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border border-amber-300">
-                            ยากจน (สพฐ.)
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            ทั่วไป
-                          </span>
-                        )}
+                        <StatusIndicator
+                          size="xs"
+                          tone={isSpecialPoor ? 'danger' : isNormalPoor ? 'warning' : 'neutral'}
+                          label={isSpecialPoor ? 'ยากจนพิเศษ (CCT)' : isNormalPoor ? 'ยากจน (สพฐ.)' : 'ทั่วไป'}
+                        />
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">

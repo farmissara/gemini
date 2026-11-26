@@ -77,6 +77,7 @@ import {
 } from '../lib/moeGrading';
 import { dispatchGradeAlert, GradeAlertRecord } from '../lib/gradeNotifications';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
+import { StatusIndicator } from '../components/common/StatusIndicator';
 import {
   buildCourseTeacherOptions,
   courseMatchesTeacherFilter,
@@ -1850,59 +1851,46 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
               {/* Evaluation settings and score modes */}
               {!isPersonalGradeViewer && (activeTab === 'gradebook' || activeTab === 'indicators') && (
-                <details className="relative shrink-0">
-                  <summary className="btn-tool-tone list-none h-9 px-2.5 text-xs cursor-pointer">
-                    <Calculator className="w-3.5 h-3.5 tone-text" />
-                    <span>เกณฑ์ประเมิน</span>
-                    <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)]" />
-                  </summary>
-                  <div className="absolute right-0 z-40 mt-1 w-64 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-xl space-y-1.5">
-                    <button
-                      type="button"
-                      data-active={activeTab === 'gradebook'}
-                      onClick={(event) => {
-                        setActiveTab('gradebook');
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                      }}
-                      className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] data-[active=true]:bg-[var(--tone-soft)] data-[active=true]:text-[var(--tone)]"
-                    >
-                      สมุดคะแนน (ปพ.5)
-                    </button>
-                    <button
-                      type="button"
-                      data-active={activeTab === 'indicators'}
-                      onClick={(event) => {
-                        setActiveTab('indicators');
-                        event.currentTarget.closest('details')?.removeAttribute('open');
-                      }}
-                      className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] data-[active=true]:bg-[var(--tone-soft)] data-[active=true]:text-[var(--tone)]"
-                    >
-                      ตัวชี้วัด สพฐ.
-                    </button>
-                    {effectiveCanEditGrades && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          setActiveTab('gradebook');
-                          setShowWeightConfigPanel(
-                            activeTab === 'gradebook' ? !showWeightConfigPanel : true
-                          );
-                          event.currentTarget.closest('details')?.removeAttribute('open');
-                        }}
-                        className="w-full rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-                      >
-                        {activeTab === 'gradebook' && showWeightConfigPanel
-                          ? 'ซ่อนการตั้งค่าน้ำหนักคะแนน'
-                          : 'ตั้งค่าน้ำหนักคะแนน'}
-                      </button>
-                    )}
-                    <p className="border-t border-[var(--color-border)] px-2.5 pt-2 text-[11px] leading-relaxed text-[var(--color-text-muted)]">
-                      เกณฑ์ผลการเรียน: {isPrimaryCourse
-                        ? '80–100 ดีเยี่ยม · 70–79 ดีมาก · 60–69 ดี · 50–59 ผ่าน'
-                        : getGradingScaleLegend(systemConfig.gradingSystem)}
-                    </p>
-                  </div>
-                </details>
+                <TableActionMenu
+                  triggerLabel="เกณฑ์ประเมิน"
+                  ariaLabel="เกณฑ์ประเมินและโหมดคะแนน"
+                  menuWidth={240}
+                  items={[
+                    {
+                      id: 'mode-gradebook',
+                      label: `สมุดคะแนน (ปพ.5)${activeTab === 'gradebook' ? ' ✓' : ''}`,
+                      icon: <BookOpen className="w-3.5 h-3.5" />,
+                      variant: activeTab === 'gradebook' ? 'primary' : 'default',
+                      onClick: () => setActiveTab('gradebook'),
+                    },
+                    {
+                      id: 'mode-indicators',
+                      label: `ตัวชี้วัด สพฐ.${activeTab === 'indicators' ? ' ✓' : ''}`,
+                      icon: <Calculator className="w-3.5 h-3.5" />,
+                      variant: activeTab === 'indicators' ? 'primary' : 'default',
+                      onClick: () => setActiveTab('indicators'),
+                    },
+                    ...(effectiveCanEditGrades
+                      ? [
+                          {
+                            id: 'toggle-weights',
+                            label:
+                              activeTab === 'gradebook' && showWeightConfigPanel
+                                ? 'ซ่อนการตั้งค่าน้ำหนักคะแนน'
+                                : 'ตั้งค่าน้ำหนักคะแนน',
+                            icon: <Sliders className="w-3.5 h-3.5" />,
+                            dividerBefore: true,
+                            onClick: () => {
+                              setActiveTab('gradebook');
+                              setShowWeightConfigPanel(
+                                activeTab === 'gradebook' ? !showWeightConfigPanel : true
+                              );
+                            },
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
               )}
 
               {/* Student Live Search */}
@@ -2657,17 +2645,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                         <td className="py-3 px-3 text-center tabular-nums">
                           {eligibility.isAtRiskMs ? (
-                            <span
+                            <StatusIndicator
+                              size="xs"
+                              tone="danger"
                               title={`เข้าเรียน ${eligibility.attendedHours}/${eligibility.totalScheduledHours} ชม. (ต่ำกว่า 80% เสี่ยง มส.)`}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-[10px] font-bold"
-                            >
-                              <AlertTriangle className="w-3 h-3" />
-                              มส. ({eligibility.attendancePercent}%)
-                            </span>
+                              label={`มส. (${eligibility.attendancePercent}%)`}
+                            />
                           ) : (
-                            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                              {eligibility.attendancePercent}% ({eligibility.attendedHours}/{eligibility.totalScheduledHours} ชม.)
-                            </span>
+                            <StatusIndicator
+                              size="xs"
+                              tone="success"
+                              label={`${eligibility.attendancePercent}% (${eligibility.attendedHours}/${eligibility.totalScheduledHours} ชม.)`}
+                            />
                           )}
                         </td>
 

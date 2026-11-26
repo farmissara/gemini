@@ -777,9 +777,28 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
               {isFlashActive && <div className="absolute inset-0 bg-white z-40 animate-out fade-out duration-200" />}
 
               {cameraNotice && !cameraError && !capturedPhotoUrl && (
-                <div className="absolute inset-x-3 top-2.5 z-20 px-3 py-1 rounded-lg bg-black/65 border border-white/10 text-slate-200 text-[11px] text-center backdrop-blur-md pointer-events-none">
+                <div className="absolute left-3 right-28 top-2.5 z-20 px-3 py-1 rounded-lg bg-black/65 border border-white/10 text-slate-200 text-[11px] text-center backdrop-blur-md pointer-events-none truncate">
                   {cameraNotice}
                 </div>
+              )}
+
+              {/* Floating Front/Rear Camera Flip Button directly on viewfinder */}
+              {!capturedPhotoUrl && (
+                <button
+                  type="button"
+                  disabled={isCameraSwitching}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleFacingMode();
+                  }}
+                  className="absolute top-2.5 right-2.5 z-30 h-9 px-2.5 rounded-xl bg-slate-950/75 hover:bg-slate-900/90 text-white border border-white/25 backdrop-blur-md shadow-lg inline-flex items-center gap-1.5 text-xs font-semibold transition active:scale-95 cursor-pointer disabled:opacity-55"
+                  title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
+                  aria-label="สลับกล้องหน้าหรือกล้องหลัง"
+                >
+                  <SwitchCamera className={`w-4 h-4 shrink-0 ${isCameraSwitching ? 'animate-spin' : ''}`} />
+                  <span>{facingMode === 'user' ? 'กล้องหน้า' : 'กล้องหลัง'}</span>
+                </button>
               )}
             </div>
 
@@ -841,6 +860,16 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  disabled={isCameraSwitching}
+                  onClick={handleToggleFacingMode}
+                  className="h-7 px-2 rounded-md bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-semibold text-[11px] cursor-pointer border border-amber-400 dark:border-amber-600 shadow-2xs transition active:scale-95 inline-flex items-center gap-1 disabled:opacity-50"
+                  title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
+                >
+                  <SwitchCamera className="w-3 h-3 shrink-0" />
+                  <span>สลับกล้อง</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -1142,20 +1171,20 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     {!embeddedMobile && <span className="hidden sm:inline">รีเฟรช</span>}
                   </button>
 
+                  <button
+                    type="button"
+                    disabled={isCameraSwitching}
+                    onClick={handleToggleFacingMode}
+                    className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 sm:px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold disabled:opacity-60 shrink-0`}
+                    title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
+                    aria-label="สลับกล้องหน้าหรือกล้องหลัง"
+                  >
+                    <SwitchCamera className={`w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
+                    <span>{embeddedMobile ? 'สลับ' : 'สลับกล้อง'}</span>
+                  </button>
+
                   {!simpleStaffCheckin && (
                     <>
-                      <button
-                        type="button"
-                        disabled={isCameraSwitching}
-                        onClick={handleToggleFacingMode}
-                        className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 sm:px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold disabled:opacity-60 shrink-0`}
-                        title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
-                        aria-label="สลับกล้องหน้าหรือกล้องหลัง"
-                      >
-                        <SwitchCamera className={`w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
-                        <span>{embeddedMobile ? 'สลับ' : 'สลับกล้อง'}</span>
-                      </button>
-
                       <button
                         type="button"
                         onClick={() => setSelfieFilterId(getNextFilterId(selfieFilterId))}

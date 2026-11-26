@@ -6,7 +6,6 @@ import {
   Search, 
   Filter, 
   Plus, 
-  ChevronDown,
   Mail, 
   Phone, 
   Award, 
@@ -63,6 +62,7 @@ import {
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
+import { StatusIndicator } from '../components/common/StatusIndicator';
 
 interface TeachersViewProps {
   teachers: Teacher[];
@@ -714,95 +714,77 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
         <div data-guide-id="teachers-tools" className="flex flex-wrap items-center gap-1.5">
           <ModuleTourTrigger moduleId="teachers" lang={lang} />
-          <details className="relative">
-            <summary className="btn-tool-neutral list-none h-9 px-3">
-              <span>{lang === 'th' ? 'เครื่องมือจัดการ' : 'Manage'}</span>
-              <ChevronDown className="h-3.5 w-3.5" />
-            </summary>
-            <div className="absolute right-0 top-full z-30 mt-1.5 min-w-56 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1.5 shadow-lg space-y-0.5">
-              {onOpenImportExport && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    onOpenImportExport();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                  <span>{lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel'}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.currentTarget.closest('details')?.removeAttribute('open');
-                  handleExportCSV();
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <Download className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300 shrink-0" />
-                <span>{lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV'}</span>
-              </button>
-              {canManage && (
-                <>
-                  <div className="my-1 border-t border-[var(--color-border)]" />
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      setShowAccountsPanel((prev) => !prev);
-                      void refreshTeacherAccounts();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Mail className="h-3.5 w-3.5 tone-text shrink-0" />
-                    <span>{lang === 'th' ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})` : `Teacher accounts (${teacherAccounts.length})`}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      setShowPositionConfigPanel((prev) => !prev);
-                    }}
-                    aria-expanded={showPositionConfigPanel}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Briefcase className="h-3.5 w-3.5 tone-text shrink-0" />
-                    <span>{lang === 'th' ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})` : `Staff positions (${configuredPositionOptions.length})`}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      setShowStaffMetaModal(true);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--color-text-body)] transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                  >
-                    <Tag className="h-3.5 w-3.5 tone-text shrink-0" />
-                    <span>{lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings'}</span>
-                  </button>
-                </>
-              )}
-              {canPurgeSampleTeachers && onPurgeSampleTeachers && (
-                <>
-                  <div className="my-1 border-t border-[var(--color-border)]" />
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.currentTarget.closest('details')?.removeAttribute('open');
-                      onPurgeSampleTeachers();
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50 cursor-pointer"
-                    title="ล้างข้อมูลครูตัวอย่างออกจากโรงเรียน"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                    <span>{lang === 'th' ? 'ล้างข้อมูลตัวอย่าง' : 'Remove sample data'}</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </details>
+          <TableActionMenu
+            ariaLabel={lang === 'th' ? 'เครื่องมือจัดการบุคลากร' : 'Manage staff tools'}
+            triggerLabel={lang === 'th' ? 'เครื่องมือจัดการ' : 'Manage'}
+            triggerClassName="btn-tool-neutral h-9 px-3"
+            menuWidth={240}
+            items={[
+              ...(onOpenImportExport
+                ? [
+                    {
+                      id: 'import_export_excel',
+                      label: lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel',
+                      icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
+                      variant: 'success' as const,
+                      onClick: () => onOpenImportExport(),
+                    },
+                  ]
+                : []),
+              {
+                id: 'export_csv',
+                label: lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV',
+                icon: <Download className="h-3.5 w-3.5" />,
+                variant: 'success',
+                onClick: () => handleExportCSV(),
+              },
+              ...(canManage
+                ? [
+                    {
+                      id: 'teacher_accounts',
+                      label:
+                        lang === 'th'
+                          ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})`
+                          : `Teacher accounts (${teacherAccounts.length})`,
+                      icon: <Mail className="h-3.5 w-3.5" />,
+                      variant: 'primary' as const,
+                      dividerBefore: true,
+                      onClick: () => {
+                        setShowAccountsPanel((prev) => !prev);
+                        void refreshTeacherAccounts();
+                      },
+                    },
+                    {
+                      id: 'staff_positions',
+                      label:
+                        lang === 'th'
+                          ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})`
+                          : `Staff positions (${configuredPositionOptions.length})`,
+                      icon: <Briefcase className="h-3.5 w-3.5" />,
+                      onClick: () => setShowPositionConfigPanel((prev) => !prev),
+                    },
+                    {
+                      id: 'staff_meta',
+                      label: lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings',
+                      icon: <Tag className="h-3.5 w-3.5" />,
+                      onClick: () => setShowStaffMetaModal(true),
+                    },
+                  ]
+                : []),
+              ...(canPurgeSampleTeachers && onPurgeSampleTeachers
+                ? [
+                    {
+                      id: 'purge_sample_teachers',
+                      label: lang === 'th' ? 'ล้างข้อมูลตัวอย่าง' : 'Remove sample data',
+                      icon: <Trash2 className="h-3.5 w-3.5" />,
+                      variant: 'danger' as const,
+                      dividerBefore: true,
+                      onClick: () => onPurgeSampleTeachers(),
+                    },
+                  ]
+                : []),
+            ]}
+          />
 
           {canManage && (
             <button
@@ -898,25 +880,26 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     <p className="text-[11px] font-mono text-[var(--color-text-muted)] truncate">{acc.email || '—'}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <StatusIndicator
+                      size="xs"
+                      tone={acc.status === 'active' ? 'success' : acc.status === 'pending' ? 'warning' : 'danger'}
+                      label={acc.status === 'active' ? 'ใช้งานได้' : acc.status === 'pending' ? 'รออนุมัติ' : acc.status}
+                    />
                     {acc.status === 'pending' && (
-                      <button
-                        type="button"
-                        disabled={approvingAccountId === acc.id}
-                        onClick={() => void handleApproveTeacherAccount(acc.id)}
-                        className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white cursor-pointer disabled:opacity-50"
-                      >
-                        {approvingAccountId === acc.id ? 'กำลังอนุมัติ...' : 'อนุมัติใช้งาน'}
-                      </button>
+                      <TableActionMenu
+                        ariaLabel={`จัดการบัญชี ${acc.full_name_th || acc.full_name_en}`}
+                        items={[
+                          {
+                            id: 'approve_teacher_account',
+                            label: approvingAccountId === acc.id ? 'กำลังอนุมัติ...' : 'อนุมัติใช้งานบัญชี',
+                            icon: <UserCheck className="w-3.5 h-3.5" />,
+                            variant: 'success',
+                            disabled: approvingAccountId === acc.id,
+                            onClick: () => void handleApproveTeacherAccount(acc.id),
+                          },
+                        ]}
+                      />
                     )}
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        acc.status === 'active'
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                          : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                      }`}
-                    >
-                      {acc.status === 'active' ? 'ใช้งานได้' : acc.status === 'pending' ? 'รออนุมัติ' : acc.status}
-                    </span>
                   </div>
                 </div>
               ))}
@@ -1266,10 +1249,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       {teacher.minor && <div className="text-[10px] text-[var(--color-primary-text)] font-medium">โท: {teacher.minor}</div>}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-text-body)]">{teacher.positionTitle || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] font-bold text-[10px]">
-                        {teacher.academicStanding}
-                      </span>
+                    <td className="px-4 py-3 text-xs font-medium text-[var(--color-primary-text)]">
+                      {teacher.academicStanding || '—'}
                     </td>
                     <td className="px-4 py-3 font-mono text-[var(--color-text-body)]">
                       {teacher.teachingExperienceYears === undefined ? 'ไม่ระบุ' : `${teacher.teachingExperienceYears} ปี`}
@@ -1654,10 +1635,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                               </h5>
                             </div>
 
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>รับรองผลงานแล้ว</span>
-                            </span>
+                            <StatusIndicator tone="success" size="xs" label="รับรองผลงานแล้ว" />
                           </div>
 
                           <p className="text-[var(--color-text-body)] text-xs">
