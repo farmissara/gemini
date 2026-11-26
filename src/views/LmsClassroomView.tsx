@@ -18,6 +18,7 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter, teacherMatchesCourse } from '../lib/courseTeacherFilter';
 import { resolveLinkedStudentsForUser } from '../lib/attendanceScope';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface LmsClassroomViewProps {
   schoolId: string;
@@ -177,8 +178,8 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
       {/* Compact Classroom Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg tone-chip shrink-0">
-            <BookOpen className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl tone-chip shrink-0">
+            <FutureNavIcon tab="courses" size={18} active />
           </div>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? activeCourse?.titleTh : activeCourse?.titleEn}

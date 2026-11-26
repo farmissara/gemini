@@ -5,6 +5,7 @@ import type { NavTab } from '../../components/layout/Sidebar';
 import type { SchoolPermissionsState } from '../../lib/schoolPermissions';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone } from '../../lib/moduleTheme';
+import { FutureNavIcon } from '../../components/common/FutureIcon';
 
 interface MobileBottomNavProps {
   currentRole: UserRole;
@@ -79,21 +80,27 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           ? 'การบ้าน'
           : 'หน้าหลัก';
 
+  const isHomeActive = programMode === 'school_erp' && currentTab === 'dashboard';
+  const isSlot2Active = programMode === 'school_erp' && currentTab === slot2Target;
+  const isSlot3Active = programMode === 'school_erp' && currentTab === slot3Target;
+
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)]/95 backdrop-blur-md border-t border-[var(--color-border)] px-3 py-1.5 grid grid-cols-4 gap-1">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)]/92 backdrop-blur-xl border-t border-[var(--color-border)] px-3 py-1.5 grid grid-cols-4 gap-1 shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.18)]">
       <button
         type="button"
         onClick={() => {
           onChangeProgramMode('school_erp');
           onNavigateTab('dashboard');
         }}
-        className={`${getModuleTone('dashboard')} min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-          programMode === 'school_erp' && currentTab === 'dashboard'
-            ? 'text-[var(--tone)] bg-[var(--tone-soft)]/70 font-semibold'
+        className={`${getModuleTone('dashboard')} min-h-[46px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition cursor-pointer ${
+          isHomeActive
+            ? 'text-[var(--tone)] font-bold'
             : 'text-[var(--color-text-muted)]'
         }`}
       >
-        <LayoutDashboard className="w-5 h-5" />
+        <span className={`flex h-7 w-11 items-center justify-center rounded-xl transition-all ${isHomeActive ? 'tone-chip-solid' : ''}`}>
+          <FutureNavIcon tab="dashboard" fallback={LayoutDashboard} size={18} active={isHomeActive} />
+        </span>
         <span>หน้าหลัก</span>
       </button>
 
@@ -103,13 +110,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onChangeProgramMode('school_erp');
           onNavigateTab(slot2Target);
         }}
-        className={`${getModuleTone(slot2Target)} min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-          programMode === 'school_erp' && currentTab === slot2Target
-            ? 'text-[var(--tone)] bg-[var(--tone-soft)]/70 font-semibold'
+        className={`${getModuleTone(slot2Target)} min-h-[46px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition cursor-pointer ${
+          isSlot2Active
+            ? 'text-[var(--tone)] font-bold'
             : 'text-[var(--color-text-muted)]'
         }`}
       >
-        <QrCode className="w-5 h-5" />
+        <span className={`flex h-7 w-11 items-center justify-center rounded-xl transition-all ${isSlot2Active ? 'tone-chip-solid' : ''}`}>
+          <FutureNavIcon tab={slot2Target} fallback={QrCode} size={18} active={isSlot2Active} />
+        </span>
         <span>{slot2Label}</span>
       </button>
 
@@ -119,22 +128,26 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onChangeProgramMode('school_erp');
           onNavigateTab(slot3Target);
         }}
-        className={`${getModuleTone(slot3Target)} min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
-          programMode === 'school_erp' && currentTab === slot3Target
-            ? 'text-[var(--tone)] bg-[var(--tone-soft)]/70 font-semibold'
+        className={`${getModuleTone(slot3Target)} min-h-[46px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition cursor-pointer ${
+          isSlot3Active
+            ? 'text-[var(--tone)] font-bold'
             : 'text-[var(--color-text-muted)]'
         }`}
       >
-        <Briefcase className="w-5 h-5" />
+        <span className={`flex h-7 w-11 items-center justify-center rounded-xl transition-all ${isSlot3Active ? 'tone-chip-solid' : ''}`}>
+          <FutureNavIcon tab={slot3Target} fallback={Briefcase} size={18} active={isSlot3Active} />
+        </span>
         <span>{slot3Label}</span>
       </button>
 
       <button
         type="button"
         onClick={onOpenProfileModal}
-        className="tone-7 min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-medium transition text-[var(--color-text-muted)] hover:text-[var(--tone)] cursor-pointer"
+        className="tone-7 min-h-[46px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition text-[var(--color-text-muted)] hover:text-[var(--tone)] cursor-pointer"
       >
-        <User className="w-5 h-5" />
+        <span className="flex h-7 w-11 items-center justify-center rounded-xl">
+          <User className="w-[18px] h-[18px]" strokeWidth={1.9} />
+        </span>
         <span>บัญชี</span>
       </button>
     </nav>

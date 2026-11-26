@@ -40,6 +40,7 @@ import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions'
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -312,8 +313,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
       {/* Compact Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-1.5 px-3 py-1.5 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <FileCheck2 className="w-4 h-4 shrink-0" />
+          <span className="tone-chip w-8 h-8 rounded-xl">
+            <FutureNavIcon tab="homework" size={18} active />
           </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'การบ้าน & ติดตามการส่งงาน' : 'Homework & Submissions'}

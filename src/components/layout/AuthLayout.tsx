@@ -50,6 +50,7 @@ import {
 } from '../../lib/webAuthn';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
+import { FutureIconBadge, FutureNavIcon } from '../common/FutureIcon';
 import { THAI_PROVINCES } from '../../data/thaiProvinces';
 import heroClassroomImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
@@ -748,9 +749,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             className="modal-enter w-full max-w-md max-h-[90vh] overflow-y-auto space-y-5 rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 sm:p-8 shadow-2xl"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              <FutureIconBadge tone="tone-3" size="md" variant="solid">
                 <Lock className="h-5 w-5" />
-              </div>
+              </FutureIconBadge>
               <div>
                 <h2 id="student-first-password-title" className="font-bold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'ตั้งรหัสผ่านส่วนตัวก่อนเข้าใช้งานครั้งแรก' : 'Set a personal password for first sign-in'}
@@ -804,7 +805,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <button
               type="submit"
               disabled={isSettingFirstPassword}
-              className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
+              className="w-full btn-action-primary rounded-xl px-4 py-3 text-sm font-bold min-h-12 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSettingFirstPassword
                 ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
@@ -904,18 +905,24 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 </div>
               </div>
 
-              {/* Clean Minimal Unboxed Capability Line */}
-              <div className="flex flex-wrap items-center gap-x-7 gap-y-2.5 px-1 text-xs font-semibold text-[var(--color-text-body)]">
+              {/* Clean Minimal Unboxed Capability Line with Futuristic Icon Badges */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 px-1 text-xs font-semibold text-[var(--color-text-body)]">
                 <span className="inline-flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-[var(--tone-1)] shrink-0" />
+                  <FutureIconBadge tone="tone-1" size="xs" variant="glass">
+                    <FutureNavIcon tab="gradebook" size={14} active />
+                  </FutureIconBadge>
                   <span>{lang === 'th' ? 'วิชาการ & ปพ.5 อัตโนมัติ' : 'Academics & Grading'}</span>
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <QrCode className="h-4 w-4 text-[var(--tone-2)] shrink-0" />
+                  <FutureIconBadge tone="tone-2" size="xs" variant="glass">
+                    <FutureNavIcon tab="attendance" size={14} active />
+                  </FutureIconBadge>
                   <span>{lang === 'th' ? 'เช็คชื่อ QR · NFC · GPS' : 'QR · NFC · GPS Check-In'}</span>
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[var(--tone-6)] shrink-0" />
+                  <FutureIconBadge tone="tone-6" size="xs" variant="glass">
+                    <FutureNavIcon tab="students" size={14} active />
+                  </FutureIconBadge>
                   <span>{lang === 'th' ? 'ดูแลผู้เรียน SDQ & ผู้ปกครอง' : 'Student Care & Family'}</span>
                 </span>
               </div>
@@ -923,15 +930,15 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
             {/* RIGHT COLUMN: Calm Auth Card */}
             <div className="order-1 lg:order-2 w-full max-w-[29rem] mx-auto lg:ml-auto lg:mr-0">
-              <div className="overflow-hidden rounded-[1.75rem] border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_24px_72px_-32px_rgba(15,23,42,0.26)]">
+              <div className="overflow-hidden rounded-[1.75rem] border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_24px_72px_-32px_rgba(37,99,235,0.22)]">
                   {inviteIdParam ? (
                     <>
                       <div className="p-6 sm:p-7 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] space-y-4">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
-                              <GraduationCap className="h-5 w-5" />
-                            </div>
+                            <FutureIconBadge tone="tone-1" size="md" variant="solid">
+                              <FutureNavIcon tab="teachers" size={20} active />
+                            </FutureIconBadge>
                             <div className="min-w-0">
                               <h2 className="text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
                                 {lang === 'th' ? 'ตอบรับคำเชิญเข้าสู่ระบบ' : 'Accept Invitation'}
@@ -1079,7 +1086,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             <button
                               type="submit"
                               disabled={inviteAcceptSubmitting}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer min-h-12 hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
+                              className="w-full btn-action-primary flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold disabled:opacity-50 min-h-12 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                             >
                               <span>
                                 {inviteAcceptSubmitting
@@ -1147,9 +1154,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                           {mode === 'login' ? (
                             <BaanPakKruLogo size={40} />
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shrink-0">
+                            <FutureIconBadge tone="tone-2" size="md" variant="solid">
                               <Building2 className="h-5 w-5" />
-                            </div>
+                            </FutureIconBadge>
                           )}
                           <div className="min-w-0">
                             <h2 className="text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
@@ -1196,7 +1203,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             }}
                             className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition cursor-pointer ${
                               mode === 'login'
-                                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                                ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-2nd)] text-white shadow-sm'
                                 : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                             }`}
                           >
@@ -1212,7 +1219,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                             }}
                             className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition cursor-pointer ${
                               mode === 'register'
-                                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                                ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-2nd)] text-white shadow-sm'
                                 : 'text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                             }`}
                           >
@@ -1310,9 +1317,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                         {mode === 'login' && primaryPasskey && (
                           <div className="p-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-primary-light)]/75 space-y-2.5">
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-9 h-9 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center shrink-0">
-                                <Fingerprint className="w-5 h-5" />
-                              </div>
+                              <FutureIconBadge tone="tone-1" size="sm" variant="solid">
+                                <Fingerprint className="w-4.5 h-4.5" />
+                              </FutureIconBadge>
                               <div className="min-w-0">
                                 <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                                   {primaryPasskey.fullNameTh || primaryPasskey.email}
@@ -1327,7 +1334,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               type="button"
                               disabled={isBiometricLoading || webAuthnSupport?.supported === false}
                               onClick={handleBiometricSignIn}
-                              className="w-full min-h-[42px] rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-xs"
+                              className="w-full btn-action-primary min-h-[42px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                               <Fingerprint className="w-4 h-4" />
                               <span>
@@ -1588,7 +1595,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                               <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50 cursor-pointer mt-1 min-h-12 hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
+                                className="w-full btn-action-primary flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold disabled:opacity-50 mt-1 min-h-12 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
                               >
                                 {isLoading
                                   ? lang === 'th'
@@ -1637,9 +1644,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           <div className="modal-enter relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-6 sm:p-8">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 mb-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
-                  <KeyRound className="w-5 h-5" />
-                </div>
+                <FutureIconBadge tone="tone-1" size="sm" variant="solid">
+                  <KeyRound className="w-4.5 h-4.5" />
+                </FutureIconBadge>
                 <div>
                   <h3 className="font-bold text-sm text-[var(--color-text-title)]">
                     {lang === 'th' ? 'ขอเปลี่ยนรหัสผ่าน / ลืมรหัสผ่าน' : 'Reset Password Request'}
@@ -1736,9 +1743,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="modal-enter w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 sm:p-8 shadow-2xl">
             <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+              <FutureIconBadge tone="tone-1" size="md" variant="solid">
                 <KeyRound className="h-5 w-5" />
-              </div>
+              </FutureIconBadge>
               <div>
                 <h2 className="font-bold text-[var(--color-text-title)]">
                   {lang === 'th' ? 'ตั้งรหัสผ่านใหม่' : 'Set a new password'}

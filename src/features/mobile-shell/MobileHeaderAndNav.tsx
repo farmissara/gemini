@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { AppLanguage, AuthUser, School, ThemePalette, UserRole } from '../../types';
 import { BaanPakKruLogo } from '../../components/common/BaanPakKruLogo';
+import { FutureNavIcon } from '../../components/common/FutureIcon';
 import type { ActiveGameView, MobileTab } from './types';
 
 interface MobileHeaderProps {
@@ -90,10 +91,10 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   }, [isHeaderMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md transition-colors">
+    <header className="app-topbar sticky top-0 z-40 transition-colors">
       <div className="px-3.5 h-12 sm:h-14 flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
-          <BaanPakKruLogo size={24} />
+          <BaanPakKruLogo size={26} />
           {onOpenSchoolSwitcher && currentRole === 'super_admin' ? (
             <button
               type="button"
@@ -274,24 +275,66 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenAllModules,
   allModulesActive = false,
 }) => {
+  const slot1Active = activeTab === 'home';
+  const slot2Active = canSelfCheckin
+    ? activeTab === 'checkin' ||
+      activeTab === 'student_attendance' ||
+      activeTab === 'leave' ||
+      activeTab === 'attendance_history'
+    : canViewTimetable
+      ? activeTab === 'timetable'
+      : activeTab === 'announcements';
+  const slot3Active =
+    currentRole === 'admin'
+      ? activeTab === 'admin_quick'
+      : currentRole === 'super_admin'
+        ? activeTab === 'super_schools'
+        : currentRole === 'teacher'
+          ? canViewTimetable
+            ? activeTab === 'timetable'
+            : canOpenAnnouncements
+              ? activeTab === 'announcements'
+              : activeTab === 'executive'
+          : currentRole === 'parent'
+            ? canOpenAnnouncements
+              ? activeTab === 'announcements'
+              : canViewTimetable
+                ? activeTab === 'timetable'
+                : false
+            : canPlayGames
+              ? activeTab === 'games'
+              : canAccessHomework
+                ? activeTab === 'homework'
+                : canViewGradesStudent
+                  ? activeTab === 'student_grades'
+                  : canOpenPortfolio
+                    ? activeTab === 'portfolio'
+                    : false;
+
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-0.5 safe-area-bottom">
+    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/92 backdrop-blur-xl shadow-[0_-8px_28px_-14px_rgba(37,99,235,0.18)] px-2 py-1 safe-area-bottom">
       <div className={`max-w-md mx-auto grid ${onOpenAllModules ? 'grid-cols-4' : 'grid-cols-3'} gap-1`}>
         {/* SLOT 1: HOME */}
         <button
           type="button"
           onClick={() => setActiveTab('home')}
-          className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-            activeTab === 'home'
-              ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+          className={`tone-1 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            slot1Active
+              ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
         >
-          {currentRole === 'super_admin' ? (
-            <ShieldCheck className="w-5 h-5 mb-0.5" />
-          ) : (
-            <Home className="w-5 h-5 mb-0.5" />
-          )}
+          <span
+            className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+              slot1Active ? 'tone-chip-solid shadow-xs' : ''
+            }`}
+          >
+            <FutureNavIcon
+              tab={currentRole === 'super_admin' ? 'super_admin_console' : 'dashboard'}
+              size={18}
+              active={slot1Active}
+            />
+          </span>
           <span className="text-[11px] truncate max-w-full">
             {currentRole === 'super_admin'
               ? lang === 'th'
@@ -320,26 +363,29 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               setActiveTab('home');
             }
           }}
-          className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-            (canSelfCheckin
-              ? activeTab === 'checkin' ||
-                activeTab === 'student_attendance' ||
-                activeTab === 'leave' ||
-                activeTab === 'attendance_history'
-              : canViewTimetable
-                ? activeTab === 'timetable'
-                : activeTab === 'announcements')
-              ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+          className={`tone-2 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            slot2Active
+              ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
           }`}
         >
-          {canSelfCheckin ? (
-            <Clock className="w-5 h-5 mb-0.5" />
-          ) : currentRole === 'super_admin' ? (
-            <LayoutGrid className="w-5 h-5 mb-0.5" />
-          ) : (
-            <Calendar className="w-5 h-5 mb-0.5" />
-          )}
+          <span
+            className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+              slot2Active ? 'tone-chip-solid shadow-xs' : ''
+            }`}
+          >
+            <FutureNavIcon
+              tab={
+                canSelfCheckin
+                  ? 'attendance'
+                  : currentRole === 'super_admin'
+                    ? 'executive_monitor'
+                    : 'timetable'
+              }
+              size={18}
+              active={slot2Active}
+            />
+          </span>
           <span className="text-[11px] truncate max-w-full">
             {!canSelfCheckin
               ? currentRole === 'super_admin'
@@ -372,29 +418,41 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('admin_quick')}
-            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
-              activeTab === 'admin_quick'
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+            className={`tone-8 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer relative ${
+              slot3Active
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
             {pendingLeavesCount > 0 && (
               <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-rose-600" />
             )}
-            <Edit3 className="w-5 h-5 mb-0.5" />
+            <span
+              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+                slot3Active ? 'tone-chip-solid shadow-xs' : ''
+              }`}
+            >
+              <FutureNavIcon tab="system_settings" size={18} active={slot3Active} />
+            </span>
             <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'จัดการด่วน' : 'Manage'}</span>
           </button>
         ) : currentRole === 'super_admin' ? (
           <button
             type="button"
             onClick={() => setActiveTab('super_schools')}
-            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              activeTab === 'super_schools'
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+            className={`tone-8 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              slot3Active
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <Building2 className="w-5 h-5 mb-0.5" />
+            <span
+              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+                slot3Active ? 'tone-chip-solid shadow-xs' : ''
+              }`}
+            >
+              <Building2 className="w-4.5 h-4.5" />
+            </span>
             <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'โรงเรียน' : 'Schools'}</span>
           </button>
         ) : currentRole === 'teacher' ? (
@@ -405,17 +463,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               else if (canOpenAnnouncements) setActiveTab('announcements');
               else setActiveTab('executive');
             }}
-            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              (canViewTimetable
-                ? activeTab === 'timetable'
-                : canOpenAnnouncements
-                  ? activeTab === 'announcements'
-                  : activeTab === 'executive')
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+            className={`tone-4 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              slot3Active
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <Calendar className="w-5 h-5 mb-0.5" />
+            <span
+              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+                slot3Active ? 'tone-chip-solid shadow-xs' : ''
+              }`}
+            >
+              <FutureNavIcon tab="timetable" size={18} active={slot3Active} />
+            </span>
             <span className="text-[11px] truncate max-w-full">
               {canViewTimetable
                 ? lang === 'th'
@@ -438,17 +498,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               else if (canViewTimetable) setActiveTab('timetable');
               else setActiveTab('profile');
             }}
-            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              (canOpenAnnouncements
-                ? activeTab === 'announcements'
-                : canViewTimetable
-                  ? activeTab === 'timetable'
-                  : false)
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+            className={`tone-6 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              slot3Active
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <BellRing className="w-5 h-5 mb-0.5" />
+            <span
+              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+                slot3Active ? 'tone-chip-solid shadow-xs' : ''
+              }`}
+            >
+              <FutureNavIcon tab="announcements" size={18} active={slot3Active} />
+            </span>
             <span className="text-[11px] truncate max-w-full">
               {canOpenAnnouncements
                 ? lang === 'th'
@@ -480,21 +542,23 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 setActiveTab('profile');
               }
             }}
-            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
-              (canPlayGames
-                ? activeTab === 'games'
-                : canAccessHomework
-                  ? activeTab === 'homework'
-                  : canViewGradesStudent
-                    ? activeTab === 'student_grades'
-                    : canOpenPortfolio
-                      ? activeTab === 'portfolio'
-                      : false)
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+            className={`tone-5 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              slot3Active
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            {canPlayGames ? <Gamepad2 className="w-5 h-5 mb-0.5" /> : <BookOpen className="w-5 h-5 mb-0.5" />}
+            <span
+              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+                slot3Active ? 'tone-chip-solid shadow-xs' : ''
+              }`}
+            >
+              <FutureNavIcon
+                tab={canPlayGames ? 'games' : canAccessHomework ? 'homework' : 'gradebook'}
+                size={18}
+                active={slot3Active}
+              />
+            </span>
             <span className="text-[11px] truncate max-w-full">
               {canPlayGames
                 ? lang === 'th'
@@ -521,13 +585,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={onOpenAllModules}
             aria-label={lang === 'th' ? 'เปิดเมนูทุกฟังก์ชัน' : 'Open all modules'}
             aria-pressed={allModulesActive}
-            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            className={`tone-7 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
               allModulesActive
-                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
             }`}
           >
-            <LayoutGrid className="w-5 h-5 mb-0.5" />
+            <span
+              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+                allModulesActive ? 'tone-chip-solid shadow-xs' : ''
+              }`}
+            >
+              <FutureNavIcon tab="dashboard" size={18} active={allModulesActive} />
+            </span>
             <span className="text-[11px] truncate max-w-full">
               {lang === 'th' ? 'ทุกฟังก์ชัน' : 'Modules'}
             </span>

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Award,
-  BookOpen,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +21,7 @@ import {
 } from 'lucide-react';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import {
   AppLanguage,
   AttendanceRecord,
@@ -805,8 +805,8 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
       {/* Compact Header */}
       <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <BookOpen className="w-4 h-4" />
+          <span className="tone-chip w-8 h-8 rounded-xl">
+            <FutureNavIcon tab="student_development_book" size={18} active />
           </span>
           <div className="min-w-0 flex items-baseline gap-2">
             <h1 className="text-sm font-bold text-[var(--color-text-title)] truncate">

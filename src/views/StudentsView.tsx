@@ -55,6 +55,7 @@ import {
   BookMarked,
   Printer,
 } from 'lucide-react';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import { loadStaffInviteRpcSql } from '../lib/supabase';
 import { findHomeroomTeachersForRoom } from '../lib/timetableRoomMatch';
 import {
@@ -1311,8 +1312,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       <div className="shrink-0 app-page-header overflow-hidden print:hidden">
         <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="tone-chip w-9 h-9 rounded-xl">
-              <Users className="w-4 h-4" />
+            <span className="tone-chip w-10 h-10 rounded-xl">
+              <FutureNavIcon tab="students" size={20} active />
             </span>
             <div className="min-w-0">
               <div className="module-category-kicker">01 · ทะเบียน &amp; ตารางเรียน</div>

@@ -22,6 +22,7 @@ import {
 } from '../types';
 import { calculateGrade, formatSemesterLabel, getGradingScaleLegend } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import {
   Award,
   FileText,
@@ -1516,8 +1517,8 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
           {!embeddedInStudentManagement && (
             <div className="flex items-center gap-3 min-w-0">
-              <span className="tone-chip w-9 h-9 rounded-xl shrink-0">
-                <Award className="w-4 h-4" />
+              <span className="tone-chip w-10 h-10 rounded-xl shrink-0">
+                <FutureNavIcon tab="gradebook" size={20} active />
               </span>
               <div className="min-w-0">
                 <div className="module-category-kicker">02 · วัดผล สพฐ. &amp; การสอน</div>

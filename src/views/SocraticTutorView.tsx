@@ -30,6 +30,7 @@ import {
 import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
 import { postLearningAi } from '../lib/learningAiClient';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface BrowserSpeechRecognition {
   lang: string;
@@ -299,7 +300,7 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 max-w-xl">
             <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-              <BrainCircuit className="w-5 h-5" />
+              <FutureNavIcon tab="socratic_tutor" size={20} active />
             </div>
             <div className="space-y-1 min-w-0">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">

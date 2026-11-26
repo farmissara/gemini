@@ -39,6 +39,7 @@ import {
 import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
 import { getLocalDateString } from '../lib/date';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import {
   CAMPUS_DATA_UPDATED_EVENT,
   loadStudyStreakPassState,
@@ -321,11 +322,11 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       <div className="shrink-0 app-page-header p-4 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5 min-w-0 max-w-xl">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-              <Flame className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-xl tone-chip flex items-center justify-center shrink-0 mt-0.5">
+              <FutureNavIcon tab="study_streak" size={22} active />
             </div>
             <div className="space-y-1 min-w-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-indigo-600 dark:text-indigo-400">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-[var(--tone-text)]">
                 <Sparkles className="w-3.5 h-3.5 shrink-0" />
                 <span>{lang === 'th' ? 'ระบบสตรีคความต่อเนื่อง & ร้านค้าสิทธิพิเศษในห้องเรียน' : 'Daily Study Streak & Season Battle Pass'}</span>
               </p>

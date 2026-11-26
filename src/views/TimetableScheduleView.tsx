@@ -14,6 +14,7 @@ import { DayOfWeek, SchoolPeriodTime, Teacher, TimetableSlot } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getCourseType, inferCourseLearningArea } from '../lib/courseClassification';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import {
   addCalendarDays,
   formatCalendarDate,
@@ -1882,8 +1883,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="tone-chip w-8 h-8 rounded-lg shrink-0">
-              <Calendar className="w-4 h-4 shrink-0" />
+            <span className="tone-chip w-9 h-9 rounded-xl shrink-0">
+              <FutureNavIcon tab="timetable" size={18} active />
             </span>
             <h1 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
               ตารางเรียนและตารางสอน

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  ShieldCheck, 
   User, 
   GraduationCap, 
   Users, 
@@ -21,6 +20,7 @@ import {
   saveSchoolRolePolicies,
   type SchoolRolePolicy,
 } from '../lib/schoolPermissions';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface SchoolPermissionSettingsViewProps {
   activeSchool: School;
@@ -73,7 +73,7 @@ export const SchoolPermissionSettingsView: React.FC<SchoolPermissionSettingsView
       <div className="app-page-header p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-            <ShieldCheck className="w-5 h-5" />
+            <FutureNavIcon tab="school_permissions" size={20} active />
           </div>
           <div className="space-y-1 min-w-0">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-bold border border-[var(--color-border)]">

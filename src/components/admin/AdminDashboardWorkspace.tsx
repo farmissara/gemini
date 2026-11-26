@@ -30,6 +30,7 @@ import type { SystemSettingsTab } from '../../views/SystemSettingsView';
 import type { SchoolPolicyId } from '../../lib/schoolPermissions';
 import type { ThaiHoliday } from '../../lib/thaiHolidays';
 import { getModuleTone } from '../../lib/moduleTheme';
+import { FutureIconBadge, FutureNavIcon } from '../common/FutureIcon';
 
 export interface AdminCategoryActionItem {
   id: string;
@@ -465,8 +466,10 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             className="tone-2 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
-                <QrCode className="w-3.5 h-3.5 shrink-0" />
+              <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                <FutureIconBadge tone="tone-2" size="xs" variant="glass">
+                  <FutureNavIcon tab="attendance" size={14} active />
+                </FutureIconBadge>
                 <span>{lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}</span>
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
@@ -489,8 +492,10 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             className="tone-3 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                <FutureIconBadge tone="tone-3" size="xs" variant="glass">
+                  <FutureNavIcon tab="executive_warning" size={14} active />
+                </FutureIconBadge>
                 <span>{lang === 'th' ? 'รอดำเนินการ & อนุมัติ' : 'Pending Actions'}</span>
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
@@ -516,8 +521,10 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
-                <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                <FutureIconBadge tone="tone-1" size="xs" variant="glass">
+                  <FutureNavIcon tab="students" size={14} active />
+                </FutureIconBadge>
                 <span>{lang === 'th' ? 'ผู้เรียน & วิชาการ' : 'Students & Academics'}</span>
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
@@ -536,11 +543,13 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
             onClick={() => {
               if (isModuleEnabled('courses')) onNavigate('courses');
             }}
-            className="tone-1 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
+            className="tone-4 saas-kpi-cell saas-kpi-cell-interactive p-5 flex flex-col justify-between gap-2.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--tone)]">
-                <Calendar className="w-3.5 h-3.5 shrink-0" />
+              <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                <FutureIconBadge tone="tone-4" size="xs" variant="glass">
+                  <FutureNavIcon tab="timetable" size={14} active />
+                </FutureIconBadge>
                 <span>{lang === 'th' ? 'รายวิชา & ตารางสอน' : 'Courses & Schedule'}</span>
               </span>
               <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-70 shrink-0" />
@@ -566,8 +575,8 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
           <div>
             <div className="saas-card-header">
               <div className="ui-section-heading min-w-0">
-                <span className="ui-icon-tile w-7 h-7 rounded-lg" aria-hidden="true">
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                <span className="tone-chip w-8 h-8 rounded-xl" aria-hidden="true">
+                  <FutureNavIcon tab="executive_warning" size={16} active />
                 </span>
                 <h2 className="type-section-title truncate">
                   {lang === 'th' ? 'คิวงานด่วนที่ต้องจัดการ' : 'Priority Action Queue'}
@@ -641,8 +650,8 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
           <div>
             <div className="saas-card-header">
               <div className="ui-section-heading min-w-0">
-                <span className="ui-icon-tile w-7 h-7 rounded-lg" aria-hidden="true">
-                  <QrCode className="w-3.5 h-3.5" />
+                <span className="tone-chip w-8 h-8 rounded-xl" aria-hidden="true">
+                  <FutureNavIcon tab="attendance" size={16} active />
                 </span>
                 <h2 className="type-section-title truncate">
                   {lang === 'th' ? 'เช็คชื่อเข้า-ออกล่าสุด' : 'Recent Check-ins'}
@@ -754,24 +763,25 @@ export const AdminDashboardWorkspace: React.FC<AdminDashboardWorkspaceProps> = (
           </span>
           {quickDepartments.map((item) => {
             const Icon = item.icon;
-            const itemTone = getModuleTone(
-              (item.id === 'gps'
-                ? 'school_gps'
-                : item.id === 'permissions'
-                  ? 'school_permissions'
-                  : item.id) as NavTab
-            );
+            const navKey = (item.id === 'gps'
+              ? 'school_gps'
+              : item.id === 'permissions'
+                ? 'school_permissions'
+                : item.id) as NavTab;
+            const itemTone = getModuleTone(navKey);
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={item.onClick}
                 title={item.meta}
-                className={`${itemTone} btn-tool-neutral h-8 px-2.5 text-xs whitespace-nowrap shrink-0 ${
+                className={`${itemTone} btn-tool-neutral h-8 pl-1.5 pr-2.5 text-xs whitespace-nowrap shrink-0 gap-1.5 ${
                   item.urgent ? 'border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200' : ''
                 }`}
               >
-                <Icon className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <span className="tone-chip w-5 h-5 rounded-md" aria-hidden="true">
+                  <FutureNavIcon tab={navKey} fallback={Icon} size={12} active />
+                </span>
                 <span>{item.label}</span>
               </button>
             );

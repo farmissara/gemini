@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import {
   AdminCoordinationAttachment,
@@ -434,7 +435,7 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
       <div className="app-page-header p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-            <Mail className="w-5 h-5" />
+            <FutureNavIcon tab="super_admin_console" size={20} active />
           </div>
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

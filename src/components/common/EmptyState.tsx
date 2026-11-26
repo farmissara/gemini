@@ -38,12 +38,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       } ${className}`}
     >
       <div
-        className={`flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--tone-soft)] text-[var(--tone)] ${
-          compact ? 'h-10 w-10 mb-2.5' : 'h-12 w-12 mb-3.5'
+        className={`tone-chip ${
+          compact ? 'h-11 w-11 rounded-xl mb-3' : 'h-14 w-14 rounded-2xl mb-4'
         }`}
         aria-hidden="true"
       >
-        <Icon className={compact ? 'h-5 w-5' : 'h-6 w-6'} />
+        <Icon className={compact ? 'h-5 w-5' : 'h-6 w-6'} strokeWidth={2} />
       </div>
 
       <h3 className="text-sm font-bold text-[var(--color-text-title)] text-balance max-w-md">

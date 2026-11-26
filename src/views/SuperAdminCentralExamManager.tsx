@@ -25,6 +25,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
 import { LEARNING_STRANDS } from '../data/examQuestionBanks';
 import {
@@ -663,7 +664,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
       <div className="app-page-header p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-            <BookOpen className="w-5 h-5" />
+            <FutureNavIcon tab="super_admin_central_exams" size={20} active />
           </div>
           <div className="space-y-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--tone)]">

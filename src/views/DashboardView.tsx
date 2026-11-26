@@ -43,6 +43,7 @@ import {
   SlidersHorizontal,
   Focus,
 } from 'lucide-react';
+import { FutureIconBadge, FutureNavIcon } from '../components/common/FutureIcon';
 import { slotHasTeacher } from '../lib/timetableTeachers';
 import { 
   UserRole,
@@ -893,7 +894,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="no-print shrink-0 app-page-header px-4 py-3 sm:px-5 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="tone-chip w-10 h-10 rounded-xl shrink-0" aria-hidden="true">
-            <LayoutGrid className="w-5 h-5" />
+            <FutureNavIcon tab="dashboard" size={20} active />
           </div>
           <div className="min-w-0">
             <div className="module-category-kicker">
@@ -942,7 +943,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={() => setDashboardTab('overview')}
               className="tone-1 seg-tab-btn"
             >
-              <LayoutGrid className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+              <FutureNavIcon tab="dashboard" size={14} active={dashboardTab === 'overview'} className="text-[var(--tone)]" />
               <span>
                 {(currentRole === 'admin' || currentRole === 'super_admin')
                   ? (lang === 'th' ? 'ภาพรวม' : 'Overview')
@@ -957,7 +958,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => setDashboardTab('realtime_daily')}
                 className="tone-4 seg-tab-btn"
               >
-                <Activity className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <FutureNavIcon tab="realtime_daily" size={14} active={dashboardTab === 'realtime_daily'} className="text-[var(--tone)]" />
                 <span>{lang === 'th' ? 'เรียลไทม์วันนี้' : 'Live Daily'}</span>
               </button>
             )}
@@ -969,7 +970,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={() => setDashboardTab('insights')}
               className="tone-8 seg-tab-btn whitespace-nowrap shrink-0"
             >
-              <BarChart3 className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+              <FutureNavIcon tab="report_insights" size={14} active={dashboardTab === 'insights'} className="text-[var(--tone)]" />
               <span>
                 {currentRole === 'student'
                   ? (lang === 'th' ? 'พัฒนาการของฉัน' : 'My Progress')
@@ -996,7 +997,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 }}
                 className="tone-8 seg-tab-btn whitespace-nowrap shrink-0"
               >
-                <Monitor className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <FutureNavIcon
+                  tab="executive_monitor"
+                  size={14}
+                  active={
+                    dashboardTab === 'executive_monitor' ||
+                    dashboardTab === 'obec_learning_areas' ||
+                    dashboardTab === 'pp6_quality_overview'
+                  }
+                  className="text-[var(--tone)]"
+                />
                 <span>{lang === 'th' ? 'รายงานผู้บริหาร' : 'Executive Reports'}</span>
               </button>
             )}
@@ -1008,7 +1018,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => setDashboardTab('early_warning')}
                 className="tone-3 seg-tab-btn whitespace-nowrap shrink-0"
               >
-                <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <FutureNavIcon tab="executive_warning" size={14} active={dashboardTab === 'early_warning'} className="text-[var(--tone)]" />
                 <span>{lang === 'th' ? 'ติดตามกลุ่มเสี่ยง' : 'At-Risk Students'}</span>
               </button>
             )}
@@ -1020,7 +1030,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => setDashboardTab('announcements')}
                 className="tone-6 seg-tab-btn whitespace-nowrap shrink-0"
               >
-                <BellRing className="w-3.5 h-3.5 shrink-0 text-[var(--tone)]" />
+                <FutureNavIcon tab="announcements" size={14} active={dashboardTab === 'announcements'} className="text-[var(--tone)]" />
                 <span>{lang === 'th' ? 'ประกาศ' : 'Announcements'}</span>
               </button>
             )}
@@ -1260,11 +1270,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onNavigate('timetable')}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      className="tone-1 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">{lang === 'th' ? 'คาบสอนวันนี้ของฉัน' : 'My Classes Today'}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-1" size="xs" variant="glass">
+                            <FutureNavIcon tab="timetable" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'คาบสอนวันนี้ของฉัน' : 'My Classes Today'}</span>
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">{todayScheduledSlots.length}</span>
@@ -1281,11 +1296,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       type="button"
                       onClick={() => teacherAttendanceTab && onNavigate(teacherAttendanceTab)}
                       disabled={!teacherAttendanceTab}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="tone-2 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">{lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-2" size="xs" variant="glass">
+                            <FutureNavIcon tab="attendance" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}</span>
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">{onTimePercent}%</span>
@@ -1300,11 +1320,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       type="button"
                       onClick={() => teacherPendingActionTab && onNavigate(teacherPendingActionTab)}
                       disabled={!teacherPendingActionTab}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="tone-3 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">{lang === 'th' ? 'งานรอตรวจ & ใบลา' : 'Pending Review'}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-3" size="xs" variant="glass">
+                            <FutureNavIcon tab="homework" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'งานรอตรวจ & ใบลา' : 'Pending Review'}</span>
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className={`type-kpi tabular-nums ${(pendingLeaveCount + ungradedHomeworkCount) > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
@@ -1324,11 +1349,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setDashboardTab('live_attendance')}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      className="tone-2 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">{lang === 'th' ? 'การมาเรียนบุตรหลาน' : 'Child Attendance'}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-2" size="xs" variant="glass">
+                            <FutureNavIcon tab="attendance" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'การมาเรียนบุตรหลาน' : 'Child Attendance'}</span>
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">{scopedAttendanceRate}%</span>
@@ -1345,11 +1375,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onNavigate('gradebook')}
-                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                        className="tone-1 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="type-meta">{lang === 'th' ? 'ผลการเรียนเฉลี่ย' : 'Academic Standing'}</span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                          <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                            <FutureIconBadge tone="tone-1" size="xs" variant="glass">
+                              <FutureNavIcon tab="gradebook" size={14} active />
+                            </FutureIconBadge>
+                            <span>{lang === 'th' ? 'ผลการเรียนเฉลี่ย' : 'Academic Standing'}</span>
+                          </span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                         </div>
                         <div className="flex items-baseline gap-2.5">
                           <span className="type-kpi tabular-nums">
@@ -1364,11 +1399,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onNavigate('timetable')}
-                        className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                        className="tone-4 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="type-meta">{lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s Schedule'}</span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                          <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                            <FutureIconBadge tone="tone-4" size="xs" variant="glass">
+                              <FutureNavIcon tab="timetable" size={14} active />
+                            </FutureIconBadge>
+                            <span>{lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s Schedule'}</span>
+                          </span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                         </div>
                         <div className="flex items-baseline gap-2.5">
                           <span className="type-kpi tabular-nums">{todayScheduledSlots.length}</span>
@@ -1381,11 +1421,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setDashboardTab('announcements')}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      className="tone-6 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'Announcements'}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-6" size="xs" variant="glass">
+                            <FutureNavIcon tab="announcements" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'Announcements'}</span>
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">{scopedAnnouncements.length}</span>
@@ -1401,13 +1446,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       onClick={() => {
                         if (isModuleEnabled('attendance')) onNavigate('attendance');
                       }}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      className="tone-2 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">
-                          {lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-2" size="xs" variant="glass">
+                            <FutureNavIcon tab="attendance" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'มาตรงเวลาวันนี้' : 'On-Time Today'}</span>
                         </span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">{onTimePercent}%</span>
@@ -1425,13 +1473,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         if (isModuleEnabled(target)) onNavigate(target);
                         else if (isModuleEnabled('gradebook')) onNavigate('gradebook');
                       }}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      className="tone-3 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">
-                          {lang === 'th' ? 'รอดำเนินการ' : 'Pending Actions'}
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-3" size="xs" variant="glass">
+                            <FutureNavIcon tab="executive_warning" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'รอดำเนินการ' : 'Pending Actions'}</span>
                         </span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className={`type-kpi tabular-nums ${(pendingLeaveCount + ungradedHomeworkCount) > 0 ? 'text-amber-700 dark:text-amber-300' : ''}`}>
@@ -1452,13 +1503,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         if (isModuleEnabled('timetable')) onNavigate('timetable');
                         else if (isModuleEnabled('courses')) onNavigate('courses');
                       }}
-                      className="saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2"
+                      className="tone-1 saas-kpi-cell saas-kpi-cell-interactive flex flex-col justify-between gap-2 text-left"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="type-meta">
-                          {lang === 'th' ? 'คาบสอนวันนี้' : 'Classes Today'}
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--tone)]">
+                          <FutureIconBadge tone="tone-1" size="xs" variant="glass">
+                            <FutureNavIcon tab="timetable" size={14} active />
+                          </FutureIconBadge>
+                          <span>{lang === 'th' ? 'คาบสอนวันนี้' : 'Classes Today'}</span>
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                        <ChevronRight className="w-3.5 h-3.5 text-[var(--tone)] opacity-75 shrink-0" />
                       </div>
                       <div className="flex items-baseline gap-2.5">
                         <span className="type-kpi tabular-nums">

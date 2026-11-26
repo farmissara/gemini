@@ -43,6 +43,7 @@ import {
   type BangkokClockSnapshot,
 } from '../../lib/timetableCalendar';
 import { isWeekendDate, type ThaiHoliday } from '../../lib/thaiHolidays';
+import { FutureIconBadge, FutureNavIcon } from '../common/FutureIcon';
 
 interface StudentMobileHomeProps {
   currentUser: AuthUser | null;
@@ -416,19 +417,19 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               className="w-full min-h-[46px] px-3.5 rounded-xl bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-900 font-bold text-sm flex items-center justify-between gap-2.5 shadow ring-1 ring-black/5 transition cursor-pointer"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    todayCheckin ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-600 text-white'
-                  }`}
+                <FutureIconBadge
+                  tone={todayCheckin ? 'tone-2' : 'tone-1'}
+                  size="sm"
+                  variant="solid"
                 >
                   {todayCheckin ? (
                     <CheckCircle2 className="w-4 h-4" />
                   ) : canSelfCheckin ? (
-                    <Camera className="w-4 h-4" />
+                    <FutureNavIcon tab="attendance" size={16} active />
                   ) : (
-                    <Calendar className="w-4 h-4" />
+                    <FutureNavIcon tab="timetable" size={16} active />
                   )}
-                </div>
+                </FutureIconBadge>
                 <div className="text-left min-w-0">
                   <span className="block truncate leading-tight">
                     {!canSelfCheckin
@@ -598,9 +599,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3.5 text-left flex items-center justify-between gap-3 hover:border-[var(--color-primary)] transition cursor-pointer"
             >
               <div className="min-w-0 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
+                  <FutureNavIcon tab="timetable" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
                     {isWeekend
@@ -905,11 +906,11 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenTimetable('day')}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-blue-400 dark:hover:border-blue-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
+                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-cyan-400 dark:hover:border-cyan-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
+                  <FutureNavIcon tab="timetable" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
@@ -933,9 +934,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={onOpenGrades}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-400 dark:hover:border-emerald-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                  <GraduationCap className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-2" size="sm" variant="glass">
+                  <FutureNavIcon tab="gradebook" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'ผลการเรียน' : 'Grades'}
@@ -953,9 +954,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={onOpenPortfolio}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-amber-400 dark:hover:border-amber-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                  <Award className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-3" size="sm" variant="glass">
+                  <FutureNavIcon tab="portfolio" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'ผลงานของฉัน' : 'Portfolio'}
@@ -979,9 +980,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={onOpenHomework}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-indigo-400 dark:hover:border-indigo-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-1" size="sm" variant="glass">
+                  <FutureNavIcon tab="homework" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'การบ้าน' : 'Homework'}
@@ -1005,9 +1006,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={onOpenLeave}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-rose-400 dark:hover:border-rose-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <FutureIconBadge tone="tone-6" size="sm" variant="glass">
                   <FileText className="w-4 h-4" />
-                </div>
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'ยื่นใบลา' : 'Leave'}
@@ -1031,9 +1032,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={onOpenGames}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-violet-400 dark:hover:border-violet-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
-                  <Gamepad2 className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-5" size="sm" variant="glass">
+                  <FutureNavIcon tab="games" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'เกม & แล็บ' : 'Games & Labs'}
@@ -1049,9 +1050,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={() => onOpenAnnouncements()}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-teal-400 dark:hover:border-teal-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
-                  <Megaphone className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
+                  <FutureNavIcon tab="announcements" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'ประกาศ' : 'News'}
@@ -1069,9 +1070,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={onOpenLms}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-sky-400 dark:hover:border-sky-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                  <Library className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-1" size="sm" variant="glass">
+                  <FutureNavIcon tab="courses" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Lessons'}
@@ -1091,9 +1092,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                 onClick={onOpenDigitalId}
                 className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-cyan-400 dark:hover:border-cyan-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
+                  <FutureNavIcon tab="student_id_cards" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
                     {lang === 'th' ? 'บัตรนักเรียน' : 'Digital ID'}
@@ -1110,12 +1111,12 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             <button
               type="button"
               onClick={onOpenCareerQuest}
-              className="w-full min-h-[56px] px-3.5 py-2.5 rounded-xl bg-[var(--color-card)] border border-violet-300/70 dark:border-violet-800/80 hover:border-violet-500 text-left flex items-center justify-between gap-2.5 transition active:scale-[0.99] cursor-pointer"
+              className="tone-5 frosted-purple w-full min-h-[56px] px-3.5 py-2.5 rounded-xl text-left flex items-center justify-between gap-2.5 transition active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-950/70 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
-                  <Compass className="w-4 h-4" />
-                </div>
+                <FutureIconBadge tone="tone-5" size="sm" variant="solid">
+                  <FutureNavIcon tab="career_quest" size={16} active />
+                </FutureIconBadge>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1">
                     <span className="truncate">{lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}</span>

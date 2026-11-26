@@ -27,6 +27,7 @@ import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TableActionMenu } from '../components/common/TableActionMenu';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface AnnouncementsViewProps {
   schoolId?: string;
@@ -113,8 +114,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
     <div className={`${getModuleTone('announcements')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <BellRing className="w-4 h-4 shrink-0" />
+          <span className="tone-chip w-8 h-8 rounded-xl">
+            <FutureNavIcon tab="announcements" size={18} active />
           </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             ประกาศและข่าวสารโรงเรียน

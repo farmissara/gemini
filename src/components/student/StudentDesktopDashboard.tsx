@@ -37,6 +37,7 @@ import { getBangkokClockSnapshot, getTimetableSlotActivityStatus } from '../../l
 import { type ThaiHoliday } from '../../lib/thaiHolidays';
 import { readLocalCareerQuestState } from '../../lib/careerQuestStore';
 import { POPULAR_CAREERS } from '../../data/careerQuestData';
+import { FutureIconBadge, FutureNavIcon } from '../common/FutureIcon';
 
 interface StudentDesktopDashboardProps {
   currentUser?: AuthUser | null;
@@ -340,11 +341,11 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       {/* ==================================================================== */}
       <section
         aria-label={lang === 'th' ? 'ภาพรวมประจำวันของนักเรียน' : 'Student daily summary'}
-        className="rounded-2xl border border-[var(--color-border)] bg-gradient-to-br from-[var(--color-primary-light)] via-[var(--color-card)] to-[var(--color-card)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-5 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6"
+        className="tone-1 app-hero rounded-2xl p-5 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6"
       >
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)] tabular-nums">
-            <span className="font-medium text-[var(--color-primary-text)]">{timeGreeting}</span>
+            <span className="font-bold text-[var(--tone)]">{timeGreeting}</span>
             <span aria-hidden="true">·</span>
             <span>{formattedTodayDate}</span>
             <span aria-hidden="true">·</span>
@@ -355,7 +356,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             </span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-title)] text-balance truncate">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--color-text-title)] text-balance truncate">
             {userDisplayName}
           </h2>
 
@@ -386,12 +387,12 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             <button
               type="button"
               onClick={() => onNavigate('mobile_checkin')}
-              className="min-h-12 w-full sm:w-auto justify-center px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-sm font-semibold inline-flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25"
+              className="btn-action-primary min-h-12 w-full sm:w-auto justify-center px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25"
             >
               {attendanceStats.todayRecord ? (
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
               ) : (
-                <Camera className="w-4 h-4 shrink-0" />
+                <FutureNavIcon tab="attendance" size={16} active />
               )}
               <span>
                 {attendanceStats.todayRecord
@@ -407,9 +408,9 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             <button
               type="button"
               onClick={() => onNavigate('timetable')}
-              className="min-h-12 w-full sm:w-auto justify-center px-5 py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-sm font-semibold inline-flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25"
+              className="btn-action-primary min-h-12 w-full sm:w-auto justify-center px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25"
             >
-              <Calendar className="w-4 h-4 shrink-0" />
+              <FutureNavIcon tab="timetable" size={16} active />
               <span>{lang === 'th' ? 'ดูตารางเรียนวันนี้' : 'View Today’s Schedule'}</span>
             </button>
           ) : null}
@@ -418,8 +419,9 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
             <button
               type="button"
               onClick={() => onNavigate('timetable')}
-              className="min-h-12 w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] hover:border-[var(--color-primary)]/40 shadow-xs text-[var(--color-text-title)] text-sm font-medium inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+              className="btn-tool-neutral min-h-12 w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
+              <FutureNavIcon tab="timetable" size={15} className="text-[var(--color-primary-text)]" />
               <span>{lang === 'th' ? 'ตารางเรียน' : 'Timetable'}</span>
               <ArrowUpRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
             </button>
@@ -437,24 +439,29 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         {/* CARD A: ATTENDANCE VISUAL PROGRESS */}
         <section
           aria-label={lang === 'th' ? 'ความสม่ำเสมอในการมาเรียน' : 'Attendance progress'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-6"
+          className="tone-2 saas-card p-5 sm:p-6 flex flex-col justify-between gap-6"
         >
           <div className="space-y-5">
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
-              <div className="space-y-0.5">
-                <h3 className="text-base font-semibold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'การมาเรียนของคุณ' : 'Attendance'}
-                </h3>
-                <p className={`text-xs font-medium ${attendanceStanding.tone}`}>
-                  {attendanceStanding.label}
-                </p>
+              <div className="flex items-center gap-3 min-w-0">
+                <FutureIconBadge tone="tone-2" size="md" variant="glass">
+                  <FutureNavIcon tab="attendance" size={19} active />
+                </FutureIconBadge>
+                <div className="space-y-0.5 min-w-0">
+                  <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'การมาเรียนของคุณ' : 'Attendance'}
+                  </h3>
+                  <p className={`text-xs font-semibold ${attendanceStanding.tone}`}>
+                    {attendanceStanding.label}
+                  </p>
+                </div>
               </div>
               {(studentCanSelfCheckin || canViewTimetable) && (
                 <button
                   type="button"
                   onClick={() => onNavigate(studentCanSelfCheckin ? 'mobile_checkin' : 'timetable')}
-                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-[13px] font-semibold text-[var(--tone)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--tone-soft)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{lang === 'th' ? 'รายละเอียด' : 'Details'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -598,31 +605,36 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         {/* CARD B: GRADES & SUBJECT MASTERY VISUAL PROGRESS */}
         <section
           aria-label={lang === 'th' ? 'ผลการเรียนและความก้าวหน้ารายวิชา' : 'Grades and subject progress'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-6"
+          className="tone-1 saas-card p-5 sm:p-6 flex flex-col justify-between gap-6"
         >
           {studentCanViewGrades ? (
             <>
               <div className="space-y-5">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <h3 className="text-base font-semibold text-[var(--color-text-title)]">
-                      {gpaxDisplay.isRawScore
-                        ? lang === 'th'
-                          ? 'คะแนนเฉลี่ยสะสม'
-                          : 'Average Score'
-                        : lang === 'th'
-                          ? 'ผลการเรียนเฉลี่ย (GPAX)'
-                          : 'Academic Standing (GPAX)'}
-                    </h3>
-                    <p className="text-xs font-medium text-[var(--color-primary-text)]">
-                      {gpaxDisplay.standingLabel}
-                    </p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FutureIconBadge tone="tone-1" size="md" variant="glass">
+                      <FutureNavIcon tab="gradebook" size={19} active />
+                    </FutureIconBadge>
+                    <div className="space-y-0.5 min-w-0">
+                      <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                        {gpaxDisplay.isRawScore
+                          ? lang === 'th'
+                            ? 'คะแนนเฉลี่ยสะสม'
+                            : 'Average Score'
+                          : lang === 'th'
+                            ? 'ผลการเรียนเฉลี่ย (GPAX)'
+                            : 'Academic Standing (GPAX)'}
+                      </h3>
+                      <p className="text-xs font-semibold text-[var(--tone)]">
+                        {gpaxDisplay.standingLabel}
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => onNavigate('gradebook')}
-                    className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                    className="text-[13px] font-semibold text-[var(--tone)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--tone-soft)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                   >
                     <span>{lang === 'th' ? 'เปิดสมุดพก' : 'Report card'}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -770,31 +782,36 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         <section
           data-guide-id="dashboard-today-desk"
           aria-label={lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s schedule'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-4"
+          className="tone-4 saas-card p-5 sm:p-6 flex flex-col justify-between gap-4"
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <div>
-                <h3 className="text-base font-semibold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s Schedule'}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
-                  {todayHoliday
-                    ? todayHoliday.nameTh
-                    : isTodayWeekend
-                      ? lang === 'th'
-                        ? 'วันหยุดสุดสัปดาห์'
-                        : 'Weekend'
-                      : lang === 'th'
-                        ? `${todayScheduledSlots.length} คาบเรียน`
-                        : `${todayScheduledSlots.length} periods scheduled`}
-                </p>
+              <div className="flex items-center gap-3 min-w-0">
+                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
+                  <FutureNavIcon tab="timetable" size={17} active />
+                </FutureIconBadge>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ตารางเรียนวันนี้' : 'Today’s Schedule'}
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
+                    {todayHoliday
+                      ? todayHoliday.nameTh
+                      : isTodayWeekend
+                        ? lang === 'th'
+                          ? 'วันหยุดสุดสัปดาห์'
+                          : 'Weekend'
+                        : lang === 'th'
+                          ? `${todayScheduledSlots.length} คาบเรียน`
+                          : `${todayScheduledSlots.length} periods scheduled`}
+                  </p>
+                </div>
               </div>
               {canViewTimetable && (
                 <button
                   type="button"
                   onClick={() => onNavigate('timetable')}
-                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-[13px] font-semibold text-[var(--tone)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--tone-soft)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{lang === 'th' ? 'ดูตารางทั้งหมด' : 'Full timetable'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -888,14 +905,16 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         {/* CARD D: HOMEWORK PROGRESS & LATEST UPDATES */}
         <section
           aria-label={lang === 'th' ? 'การบ้านและประกาศโรงเรียน' : 'Homework and updates'}
-          className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col justify-between gap-5"
+          className="tone-3 saas-card p-5 sm:p-6 flex flex-col justify-between gap-5"
         >
           {/* Student lesson entry point: resume an unfinished lesson or open the latest available course. */}
           {canAccessLessons && <div className="space-y-3 border-b border-[var(--color-border)] pb-4">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="text-base font-semibold text-[var(--color-text-title)] inline-flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-[var(--color-primary-text)]" aria-hidden="true" />
+                <h3 className="text-base font-bold text-[var(--color-text-title)] inline-flex items-center gap-2">
+                  <FutureIconBadge tone="tone-1" size="xs" variant="glass">
+                    <FutureNavIcon tab="courses" size={14} active />
+                  </FutureIconBadge>
                   {lang === 'th' ? 'บทเรียนของฉัน' : 'My lessons'}
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
@@ -957,25 +976,30 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
           {/* Homework Progress Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <div>
-                <h3 className="text-base font-semibold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'การบ้านและงานที่ได้รับมอบหมาย' : 'Homework & Tasks'}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
-                  {homeworkStats.total > 0
-                    ? lang === 'th'
-                      ? `ส่งแล้ว ${homeworkStats.completed} จาก ${homeworkStats.total} งาน (${homeworkStats.percent}%)`
-                      : `${homeworkStats.completed} of ${homeworkStats.total} submitted (${homeworkStats.percent}%)`
-                    : lang === 'th'
-                      ? 'ยังไม่มีงานค้างในระบบ'
-                      : 'No assignments yet'}
-                </p>
+              <div className="flex items-center gap-3 min-w-0">
+                <FutureIconBadge tone="tone-3" size="sm" variant="glass">
+                  <FutureNavIcon tab="homework" size={17} active />
+                </FutureIconBadge>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'การบ้านและงานที่ได้รับมอบหมาย' : 'Homework & Tasks'}
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
+                    {homeworkStats.total > 0
+                      ? lang === 'th'
+                        ? `ส่งแล้ว ${homeworkStats.completed} จาก ${homeworkStats.total} งาน (${homeworkStats.percent}%)`
+                        : `${homeworkStats.completed} of ${homeworkStats.total} submitted (${homeworkStats.percent}%)`
+                      : lang === 'th'
+                        ? 'ยังไม่มีงานค้างในระบบ'
+                        : 'No assignments yet'}
+                  </p>
+                </div>
               </div>
               {canAccessHomework && (
                 <button
                   type="button"
                   onClick={() => onNavigate('homework')}
-                  className="text-[13px] font-medium text-[var(--color-primary-text)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--color-primary-light)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-[13px] font-semibold text-[var(--tone)] rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-[var(--tone-soft)] transition inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{lang === 'th' ? 'เปิดหน้าการบ้าน' : 'All tasks'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -1096,19 +1120,19 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
       {canOpenCareerQuest && (
       <section
         aria-label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน Career Quest AI' : 'Career Quest AI'}
-        className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        className="tone-5 frosted-purple rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div className="flex items-start gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-2xl bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 flex items-center justify-center shrink-0">
-            <Compass className="w-5 h-5" />
-          </div>
+          <FutureIconBadge tone="tone-5" size="lg" variant="solid">
+            <FutureNavIcon tab="career_quest" size={22} active />
+          </FutureIconBadge>
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-bold text-[var(--color-text-title)]">
                 {lang === 'th' ? 'Career Quest AI · เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}
               </h3>
               {careerQuestSnapshot?.career && (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 dark:text-violet-300 tabular-nums">
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--tone)] tabular-nums">
                   <span>
                     {lang === 'th'
                       ? careerQuestSnapshot.career.titleTh
@@ -1134,7 +1158,7 @@ export const StudentDesktopDashboard: React.FC<StudentDesktopDashboardProps> = (
         <button
           type="button"
           onClick={() => onNavigate('career_quest')}
-          className="min-h-11 w-full sm:w-auto px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md active:scale-[0.99] transition cursor-pointer whitespace-nowrap shrink-0"
+          className="min-h-11 w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:brightness-105 text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md active:scale-[0.99] transition cursor-pointer whitespace-nowrap shrink-0"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>

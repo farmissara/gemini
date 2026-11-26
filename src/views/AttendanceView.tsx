@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
 import { getModuleTone } from '../lib/moduleTheme';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -772,8 +773,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* Compact SaaS Top Header */}
       <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3 text-[var(--color-text-body)]">
         <div className="min-w-0 flex items-center gap-3">
-          <span className="tone-chip w-9 h-9 rounded-xl">
-            <QrCode className="w-4 h-4 shrink-0" />
+          <span className="tone-chip w-10 h-10 rounded-xl">
+            <FutureNavIcon tab="attendance" size={20} active />
           </span>
           <div className="min-w-0">
             <div className="module-category-kicker">04 · เช็กชื่อ กิจการ &amp; สุขภาพ</div>

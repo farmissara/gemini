@@ -37,6 +37,7 @@ import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface InfirmaryHealthViewProps {
   schoolId?: string;
@@ -181,8 +182,8 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
       {/* Compact Top Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-7 h-7 rounded-lg">
-            <HeartPulse className="w-4 h-4 shrink-0" />
+          <span className="tone-chip w-8 h-8 rounded-xl">
+            <FutureNavIcon tab="infirmary" size={18} active />
           </span>
           <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'ห้องพยาบาล & สุขภาพนักเรียน' : 'School Infirmary & Health'}

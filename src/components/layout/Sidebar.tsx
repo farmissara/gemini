@@ -52,6 +52,7 @@ import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone, getCategoryTone, getCategoryGroupMeta } from '../../lib/moduleTheme';
 import { SchoolPolicyId } from '../../lib/schoolPermissions';
+import { FutureNavIcon } from '../common/FutureIcon';
 import type { SuperAdminSubTab } from '../../features/navigation/useTabNavigation';
 
 export type NavTab =
@@ -1065,13 +1066,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <span className="flex items-center gap-2.5 min-w-0">
           <span
-            className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-150 ${
               isActive
-                ? 'bg-[var(--color-card)] text-[var(--tone)] shadow-2xs'
-                : 'bg-[var(--tone-soft)]/70 text-[var(--tone)] group-hover:bg-[var(--tone-soft)]'
+                ? 'tone-chip-solid scale-[1.03]'
+                : 'tone-chip group-hover:scale-[1.04]'
             }`}
           >
-            <Icon className="w-3.5 h-3.5 shrink-0" />
+            <FutureNavIcon tab={item.id} fallback={Icon} size={14} active={isActive} />
           </span>
           <span className="truncate">{lang === 'th' ? item.labelTh : item.labelEn}</span>
         </span>
@@ -1136,11 +1137,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-label={lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}
             className={`${getModuleTone(dashboardItem.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
               resolvedSidebarActiveTab === dashboardItem.id || (isDeveloperPlatformMode && currentTab === 'super_admin_console')
-                ? 'bg-[var(--tone-soft)] text-[var(--tone)] shadow-xs'
-                : 'text-[var(--tone)]/80 hover:bg-[var(--tone-soft)]/60 hover:text-[var(--tone)]'
+                ? 'tone-chip-solid scale-[1.04]'
+                : 'tone-chip opacity-90 hover:opacity-100 hover:scale-[1.04]'
             }`}
           >
-            {isDeveloperPlatformMode ? <ShieldCheck className="w-[18px] h-[18px]" /> : <LayoutDashboard className="w-[18px] h-[18px]" />}
+            <FutureNavIcon
+              tab={dashboardItem.id}
+              fallback={isDeveloperPlatformMode ? ShieldCheck : LayoutDashboard}
+              size={19}
+              active={resolvedSidebarActiveTab === dashboardItem.id || (isDeveloperPlatformMode && currentTab === 'super_admin_console')}
+            />
           </button>
 
           {visibleCategories.map((cat) => (
@@ -1159,13 +1165,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     aria-label={lang === 'th' ? item.labelTh : item.labelEn}
                     className={`${getModuleTone(item.id)} relative w-11 h-11 rounded-xl flex items-center justify-center transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 ${
                       isActive
-                        ? 'bg-[var(--tone-soft)] text-[var(--tone)] border border-[color-mix(in_srgb,var(--tone)_28%,transparent)] shadow-xs'
-                        : 'text-[var(--tone)]/80 hover:bg-[var(--tone-soft)]/70 hover:text-[var(--tone)]'
+                        ? 'tone-chip-solid scale-[1.04]'
+                        : 'tone-chip opacity-90 hover:opacity-100 hover:scale-[1.04]'
                     }`}
                   >
-                    <Icon className="w-[18px] h-[18px]" />
+                    <FutureNavIcon tab={item.id} fallback={Icon} size={18} active={isActive} />
                     {item.badge && !/^\d+$/.test(String(item.badge)) && item.badge !== 'AI' && (
-                      <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[var(--color-card)]" />
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[var(--color-card)]" />
                     )}
                   </button>
                 );
@@ -1243,13 +1249,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <span
-                  className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-150 ${
                     resolvedSidebarActiveTab === dashboardItem.id || (isDeveloperPlatformMode && currentTab === 'super_admin_console' && activeSuperAdminSubTab === 'approvals')
-                      ? 'bg-[var(--color-card)] text-[var(--tone)] shadow-2xs'
-                      : 'bg-[var(--tone-soft)] text-[var(--tone)]'
+                      ? 'tone-chip-solid scale-[1.03]'
+                      : 'tone-chip'
                   }`}
                 >
-                  {isDeveloperPlatformMode ? <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> : <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />}
+                  <FutureNavIcon
+                    tab={dashboardItem.id}
+                    fallback={isDeveloperPlatformMode ? ShieldCheck : LayoutDashboard}
+                    size={14}
+                    active={resolvedSidebarActiveTab === dashboardItem.id || (isDeveloperPlatformMode && currentTab === 'super_admin_console' && activeSuperAdminSubTab === 'approvals')}
+                  />
                 </span>
                 <span className="truncate">{lang === 'th' ? dashboardItem.labelTh : dashboardItem.labelEn}</span>
               </button>
@@ -1312,10 +1323,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         <span
-                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 bg-[var(--tone-soft)] text-[var(--tone)] border border-[color-mix(in_srgb,var(--tone)_24%,transparent)]"
+                          className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 tone-chip"
                           aria-hidden="true"
                         >
-                          <CategoryIcon className="h-3 w-3 shrink-0" />
+                          <CategoryIcon className="h-3 w-3 shrink-0" strokeWidth={2.1} />
                         </span>
                         <span
                           className={`truncate text-[11.5px] leading-5 font-bold ${

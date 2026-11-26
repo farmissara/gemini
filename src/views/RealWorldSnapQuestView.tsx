@@ -15,6 +15,7 @@ import { INITIAL_REAL_WORLD_QUESTS } from '../data/innovativeFeaturesData';
 import { getModuleTone } from '../lib/moduleTheme';
 import { compressImageFileToDataUrl } from '../lib/imageCompression';
 import { postLearningAi } from '../lib/learningAiClient';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface RealWorldSnapQuestViewProps {
   lang?: AppLanguage;
@@ -185,7 +186,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5 min-w-0 max-w-2xl">
             <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
-              <Camera className="w-5 h-5" />
+              <FutureNavIcon tab="realworld_quests" size={22} active />
             </div>
             <div className="space-y-1 min-w-0">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">

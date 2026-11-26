@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 
-  BrainCircuit, 
   Sparkles, 
   CheckCircle2, 
   AlertTriangle, 
@@ -34,6 +33,7 @@ import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
 import { postLearningAi } from '../lib/learningAiClient';
 import { resolveOwnStudent } from '../lib/attendanceScope';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface AiDiagnosticLearningViewProps {
   lang?: AppLanguage;
@@ -535,7 +535,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="flex items-start gap-3.5 min-w-0 max-w-2xl">
             <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
-              <BrainCircuit className="w-6 h-6" />
+              <FutureNavIcon tab="ai_diagnostic" size={24} active />
             </div>
             <div className="space-y-1.5 min-w-0">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">
@@ -567,7 +567,7 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                 {lang === 'th' ? `สูงกว่าเกณฑ์ +${avgScore - avgBenchmark} คะแนน` : `+${avgScore - avgBenchmark} above benchmark`}
               </p>
             </div>
-            <div className="w-11 h-11 rounded-xl tone-chip shrink-0">
+            <div className="w-11 h-11 rounded-xl tone-chip-solid shrink-0">
               <Zap className="w-5 h-5" />
             </div>
           </div>

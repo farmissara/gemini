@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Teacher, AppLanguage, UserRole, TeacherPortfolioWork } from '../types';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import { 
   GraduationCap, 
   Search, 
@@ -671,8 +672,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* Compact Header and Controls */}
       <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-wrap min-w-0">
-          <span className="tone-chip w-9 h-9 rounded-xl">
-            <GraduationCap className="w-4 h-4" />
+          <span className="tone-chip w-10 h-10 rounded-xl">
+            <FutureNavIcon tab="teachers" size={20} active />
           </span>
           <div className="min-w-0">
             <div className="module-category-kicker">

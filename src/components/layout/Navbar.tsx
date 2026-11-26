@@ -274,7 +274,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     Boolean(onToggleFocusMode);
 
   return (
-    <header className="app-topbar h-14 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-2 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-4 w-full max-w-full">
+    <header className="app-topbar h-14 border-b text-[var(--color-text-body)] sticky top-0 z-30 px-2 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-4 w-full max-w-full">
       {/* Zone 1: Brand + School Context / Developer Mode Switcher */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {onToggleMobileMenu && (
@@ -356,9 +356,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setIsToolsMenuOpen(false);
                 setIsAccountMenuOpen(false);
               }}
-              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[var(--tone-soft)]/75 hover:bg-[var(--tone-soft)] border border-[color-mix(in_srgb,var(--tone)_22%,var(--color-border))] text-[13px] font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40"
+              className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-[linear-gradient(135deg,color-mix(in_srgb,var(--tone)_14%,var(--color-card)),color-mix(in_srgb,var(--tone-2nd)_12%,var(--color-card)))] hover:brightness-[1.03] border border-[color-mix(in_srgb,var(--tone)_28%,var(--color-border))] text-[13px] font-semibold text-[var(--color-text-title)] transition cursor-pointer whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tone)]/40 shadow-2xs"
             >
-              <ActiveWorkspaceIcon className="w-4 h-4 text-[var(--tone)] shrink-0" />
+              <span className="tone-chip-solid w-5 h-5 rounded-md flex items-center justify-center shrink-0">
+                <ActiveWorkspaceIcon className="w-3 h-3 shrink-0" strokeWidth={2.2} />
+              </span>
               <span className="hidden xs:inline sm:inline">
                 {lang === 'th' ? activeWorkspaceMode.th : activeWorkspaceMode.en}
               </span>
@@ -398,11 +400,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }`}
                     >
                       <span
-                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                          active ? 'bg-[var(--color-card)] text-[var(--tone)] shadow-2xs' : 'bg-[var(--tone-soft)]/70 text-[var(--tone)]'
+                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all ${
+                          active ? 'tone-chip-solid' : 'tone-chip'
                         }`}
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
+                        <Icon className="w-4 h-4 shrink-0" strokeWidth={2} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
@@ -427,7 +429,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {!focusMode && programMode === 'school_erp' && activeGroupMeta && (
           <div
             title={lang === 'th' ? activeGroupMeta.meaningTh : activeGroupMeta.meaningEn}
-            className={`${activeModuleTone} hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--tone-soft)]/75 border border-[color-mix(in_srgb,var(--tone)_22%,transparent)] text-[11px] font-bold text-[var(--tone)] whitespace-nowrap shrink-0`}
+            className={`${activeModuleTone} hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[linear-gradient(135deg,color-mix(in_srgb,var(--tone)_14%,var(--color-card)),color-mix(in_srgb,var(--tone-2nd)_12%,var(--color-card)))] border border-[color-mix(in_srgb,var(--tone)_28%,transparent)] text-[11px] font-bold text-[var(--tone)] whitespace-nowrap shrink-0`}
           >
             <span className="font-mono opacity-80">{activeGroupMeta.code}</span>
             <span>·</span>
@@ -807,7 +809,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }}
                       className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 font-bold cursor-pointer transition ${
                         currentRole === 'admin'
-                          ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
                           : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
                       }`}
                     >
@@ -822,7 +824,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }}
                       className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 font-bold cursor-pointer transition ${
                         currentRole === 'teacher'
-                          ? 'bg-emerald-600 text-white shadow-xs'
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
                           : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
                       }`}
                     >

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   BellRing, 
   MessageSquare, 
-  Settings, 
   CheckCircle2, 
   QrCode, 
   Clock, 
@@ -45,6 +44,7 @@ import {
   CheckSquare,
   Square,
 } from 'lucide-react';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import { AttendanceRecord, Course, GradeRecord, SystemConfig, Student, Teacher, TimetableSlot, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
 import type { NavTab } from '../components/layout/Sidebar';
@@ -848,8 +848,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       {/* Slim Single-Row Header */}
       <div className="shrink-0 app-page-header px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl tone-chip shrink-0">
-            <Settings className="w-4 h-4" />
+          <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
+            <FutureNavIcon tab="system_settings" size={20} active />
           </div>
           <div className="min-w-0">
             <div className="module-category-kicker">

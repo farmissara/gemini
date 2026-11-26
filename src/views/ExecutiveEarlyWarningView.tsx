@@ -43,6 +43,7 @@ import {
   RiskInterventionRecord
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import { getModuleTone } from '../lib/moduleTheme';
 import { calculateGrade } from '../lib/schoolSettings';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
@@ -617,8 +618,10 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
 
       {/* 1. COMPACT UNBOXED TITLE + THRESHOLD BAR */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <div className="min-w-0 flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 tone-text shrink-0" />
+        <div className="min-w-0 flex items-center gap-2.5">
+          <span className="tone-chip w-8 h-8 rounded-xl shrink-0">
+            <FutureNavIcon tab="executive_warning" size={18} active />
+          </span>
           <h2 className="text-sm sm:text-base font-bold tracking-tight text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'ศูนย์เฝ้าระวังกลุ่มเสี่ยง (มส./ร./0)' : 'Executive Early Warning Radar'}
           </h2>

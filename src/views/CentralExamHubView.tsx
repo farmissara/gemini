@@ -45,6 +45,7 @@ import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/co
 import { compressImageFileToDataUrl } from '../lib/imageCompression';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TableActionMenu } from '../components/common/TableActionMenu';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface CentralExamPurchaseModalProps {
   pack: CentralExamPack;
@@ -997,7 +998,7 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
       <div className="app-page-header p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5 min-w-0">
           <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-            <BookOpen className="w-5 h-5" />
+            <FutureNavIcon tab="central_exam_hub" size={20} active />
           </div>
           <div className="space-y-1 min-w-0">
             <div className="text-xs font-medium text-[var(--color-text-muted)] truncate">

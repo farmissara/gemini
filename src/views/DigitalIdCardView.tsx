@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CreditCard,
   Printer,
   RotateCw,
   User,
@@ -42,6 +41,7 @@ import {
   type IdCardBackMode,
 } from '../lib/idCardBackLayout';
 import { emitAppToast } from '../components/common/ToastProvider';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 
 interface DigitalIdCardViewProps {
   students: Student[];
@@ -317,8 +317,8 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
       {/* Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header text-[var(--color-text-title)] no-print">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-lg shrink-0">
-            <CreditCard className="w-4 h-4" />
+          <span className="tone-chip w-9 h-9 rounded-xl shrink-0">
+            <FutureNavIcon tab="student_id_cards" size={19} active />
           </span>
           <div className="min-w-0">
             <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">

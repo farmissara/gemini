@@ -29,6 +29,7 @@ import {
   DatabaseBackup,
   AlertTriangle,
 } from 'lucide-react';
+import { FutureNavIcon } from '../components/common/FutureIcon';
 import { SuperAdminCentralExamManager } from './SuperAdminCentralExamManager';
 import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
 import { SuperAdminPackagesPanel } from '../components/admin/SuperAdminPackagesPanel';
@@ -541,7 +542,7 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       <div className="app-page-header px-4 py-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="tone-chip w-10 h-10 rounded-xl shrink-0">
-            <ShieldCheck className="w-5 h-5" />
+            <FutureNavIcon tab="super_admin_console" size={20} active />
           </div>
           <div className="min-w-0 space-y-0.5">
             <div className="module-category-kicker">
