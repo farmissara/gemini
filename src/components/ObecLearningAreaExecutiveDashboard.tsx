@@ -39,6 +39,7 @@ import {
   TimetableSlot,
 } from '../types';
 import { MOE_LEARNING_AREAS, resolveMoeLearningArea } from '../data/moeCurriculumStandards';
+import { StatusBadge, type StatusBadgeStatus } from './common/StatusBadge';
 import {
   detectEducationStage,
   isActivityCourse,
@@ -535,33 +536,18 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
     );
   };
 
-  const getQualityTextAndClass = (tier: LearningAreaSummary['qualityTier']) => {
+  const getQualityStatus = (tier: LearningAreaSummary['qualityTier']): StatusBadgeStatus => {
     switch (tier) {
       case 'excellent':
-        return {
-          textClass: 'text-emerald-700 dark:text-emerald-300 font-semibold',
-          icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />,
-        };
+        return 'complete';
       case 'good':
-        return {
-          textClass: 'text-sky-700 dark:text-sky-300 font-semibold',
-          icon: <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />,
-        };
+        return 'info';
       case 'fair':
-        return {
-          textClass: 'text-amber-700 dark:text-amber-300 font-semibold',
-          icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />,
-        };
+        return 'pending';
       case 'needs_improvement':
-        return {
-          textClass: 'text-rose-700 dark:text-rose-300 font-semibold',
-          icon: <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />,
-        };
+        return 'delayed';
       default:
-        return {
-          textClass: 'text-[var(--color-text-muted)]',
-          icon: null,
-        };
+        return 'neutral';
     }
   };
 
@@ -980,7 +966,7 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
               <tbody className="divide-y divide-[var(--color-border)] tabular-nums">
                 {areaSummaries.map((area) => {
                   const isExpanded = expandedAreaId === area.areaId;
-                  const statusMeta = getQualityTextAndClass(area.qualityTier);
+                  const qualityStatus = getQualityStatus(area.qualityTier);
                   return (
                     <React.Fragment key={area.areaId}>
                       <tr
@@ -1055,10 +1041,12 @@ export const ObecLearningAreaExecutiveDashboard: React.FC<ObecLearningAreaExecut
                           {area.gradedCount > 0 ? `${area.passPct.toFixed(1)}%` : '—'}
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className={`inline-flex items-center gap-1.5 ${statusMeta.textClass}`}>
-                            {statusMeta.icon}
-                            <span>{area.qualityLabelTh}</span>
-                          </span>
+                          <StatusBadge
+                            size="xs"
+                            status={qualityStatus}
+                            label={area.qualityLabelTh}
+                            title={area.qualityNoteTh}
+                          />
                         </td>
                       </tr>
 

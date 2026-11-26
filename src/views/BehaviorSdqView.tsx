@@ -41,7 +41,7 @@ import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
+import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 
 interface BehaviorSdqViewProps {
   schoolId?: string;
@@ -212,28 +212,34 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
     setSdqNotes('');
   };
 
-  const getStatusBadge = (score: number): { label: string; tone: StatusTone } => {
+  const getStatusBadge = (
+    score: number
+  ): { label: string; title: string; status: StatusBadgeStatus } => {
     if (score >= 90) {
       return {
         label: lang === 'th' ? 'ดีเยี่ยม' : 'Excellent',
-        tone: 'success',
+        title: lang === 'th' ? 'ความประพฤติดีเยี่ยม' : 'Excellent behavior',
+        status: 'complete',
       };
     }
     if (score >= 75) {
       return {
         label: lang === 'th' ? 'ปกติ' : 'Good',
-        tone: 'info',
+        title: lang === 'th' ? 'ความประพฤติอยู่ในเกณฑ์ปกติ' : 'Normal behavior',
+        status: 'info',
       };
     }
     if (score >= 60) {
       return {
-        label: lang === 'th' ? 'เฝ้าระวัง/ตักเตือน' : 'Warning',
-        tone: 'warning',
+        label: lang === 'th' ? 'เฝ้าระวัง' : 'Warning',
+        title: lang === 'th' ? 'เฝ้าระวัง / ตักเตือน' : 'Warning',
+        status: 'pending',
       };
     }
     return {
       label: lang === 'th' ? 'ทัณฑ์บน' : 'Probation',
-      tone: 'danger',
+      title: lang === 'th' ? 'อยู่ในเกณฑ์ทัณฑ์บน / เร่งติดตาม' : 'Probation',
+      status: 'delayed',
     };
   };
 
@@ -568,7 +574,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                             <span className="text-[10px] text-[var(--color-text-muted)]"> / 100</span>
                           </td>
                           <td className="p-2.5 text-center">
-                            <StatusIndicator size="xs" tone={badge.tone} label={badge.label} />
+                            <StatusBadge size="xs" status={badge.status} label={badge.label} title={badge.title} />
                           </td>
                           <td className="p-2.5 text-right">
                             <TableActionMenu
@@ -834,10 +840,13 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                       />
                     )}
                     renderRow={(sdq) => {
-                    const statusMap: Record<'normal' | 'risk' | 'problem', { label: string; tone: StatusTone }> = {
-                      normal: { label: 'กลุ่มปกติ', tone: 'success' },
-                      risk: { label: 'กลุ่มเสี่ยง', tone: 'warning' },
-                      problem: { label: 'กลุ่มมีปัญหา', tone: 'danger' },
+                    const statusMap: Record<
+                      'normal' | 'risk' | 'problem',
+                      { label: string; title: string; status: StatusBadgeStatus }
+                    > = {
+                      normal: { label: 'ปกติ', title: 'กลุ่มปกติ', status: 'complete' },
+                      risk: { label: 'เสี่ยง', title: 'กลุ่มเสี่ยง', status: 'pending' },
+                      problem: { label: 'มีปัญหา', title: 'กลุ่มมีปัญหา', status: 'delayed' },
                     };
                     const statusConfig = statusMap[sdq.overallStatus];
                     const interpretation = interpretSdqAssessment(sdq);
@@ -857,7 +866,12 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                           {sdq.totalDifficultiesScore}/40
                         </td>
                         <td className="p-3 text-center">
-                          <StatusIndicator size="xs" tone={statusConfig.tone} label={statusConfig.label} />
+                          <StatusBadge
+                            size="xs"
+                            status={statusConfig.status}
+                            label={statusConfig.label}
+                            title={statusConfig.title}
+                          />
                         </td>
                         <td className="p-2.5 text-[11px] leading-snug">
                           <p className="font-semibold text-[var(--color-text-title)]">{interpretation.focusSummary}</p>
@@ -960,17 +974,15 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                         {income.toLocaleString()} บาท
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <StatusIndicator
+                        <StatusBadge
                           size="xs"
-                          tone={isSpecialPoor ? 'danger' : isNormalPoor ? 'warning' : 'neutral'}
-                          label={isSpecialPoor ? 'ยากจนพิเศษ (CCT)' : isNormalPoor ? 'ยากจน (สพฐ.)' : 'ทั่วไป'}
+                          status={isSpecialPoor ? 'delayed' : isNormalPoor ? 'pending' : 'neutral'}
+                          label={isSpecialPoor ? 'ยากจนพิเศษ' : isNormalPoor ? 'ยากจน' : 'ทั่วไป'}
+                          title={isSpecialPoor ? 'ยากจนพิเศษ (CCT กสศ.)' : isNormalPoor ? 'ยากจน (สพฐ.)' : 'ครัวเรือนทั่วไป'}
                         />
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>รับรองแล้ว</span>
-                        </span>
+                        <StatusBadge size="xs" status="complete" label="รับรองแล้ว" />
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         {isSpecialPoor ? (

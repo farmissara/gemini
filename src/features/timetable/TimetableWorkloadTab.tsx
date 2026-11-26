@@ -7,7 +7,7 @@ import {
   Users,
 } from 'lucide-react';
 import { normalizeTeacherName } from '../../lib/timetableTeachers';
-import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import { TeacherWorkloadRow, WorkloadStatusFilter } from './types';
 
 interface TimetableWorkloadTabProps {
@@ -295,13 +295,13 @@ export const TimetableWorkloadTab: React.FC<TimetableWorkloadTabProps> = ({
                   </div>
 
                   {teacher.status === 'unassigned' ? (
-                    <StatusIndicator size="xs" tone="neutral" label="ยังไม่มีคาบ" />
+                    <StatusBadge size="xs" status="neutral" label="ยังไม่มีคาบ" />
                   ) : teacher.status === 'low' ? (
-                    <StatusIndicator size="xs" tone="warning" label={`ต่ำกว่า ${workloadMinPeriods}`} />
+                    <StatusBadge size="xs" status="pending" label={`ต่ำกว่า ${workloadMinPeriods}`} />
                   ) : teacher.status === 'high' ? (
-                    <StatusIndicator size="xs" tone="danger" label={`เกิน ${workloadMaxPeriods}`} />
+                    <StatusBadge size="xs" status="delayed" label={`เกิน ${workloadMaxPeriods}`} />
                   ) : (
-                    <StatusIndicator size="xs" tone="success" label={`${workloadMinPeriods}–${workloadMaxPeriods}`} />
+                    <StatusBadge size="xs" status="complete" label={`${workloadMinPeriods}–${workloadMaxPeriods}`} />
                   )}
 
                   <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap text-[10px] font-semibold text-[var(--color-primary-text)]">

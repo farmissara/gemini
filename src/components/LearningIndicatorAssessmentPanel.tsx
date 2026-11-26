@@ -17,6 +17,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { StatusBadge } from './common/StatusBadge';
 import type {
   GradeRecord,
   GradingSystem,
@@ -1881,15 +1882,19 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                           <td className="px-2.5 py-2 text-center font-mono">
                             {row.passedIndicators}/{row.totalIndicators}
                           </td>
-                          <td className="px-2.5 py-2 text-center font-semibold">
+                          <td className="px-2.5 py-2 text-center">
                             {row.meetsObecSummativeRule ? (
-                              <span className="text-emerald-700 dark:text-emerald-300">
-                                ผ่าน ({row.feedback.labelTh})
-                              </span>
+                              <StatusBadge
+                                size="xs"
+                                status="complete"
+                                label={`ผ่าน (${row.feedback.labelTh})`}
+                              />
                             ) : (
-                              <span className="text-amber-700 dark:text-amber-300">
-                                {row.missingSummativeCount > 0 ? 'รอผลปลายทาง' : 'ซ่อมเสริม'}
-                              </span>
+                              <StatusBadge
+                                size="xs"
+                                status={row.missingSummativeCount > 0 ? 'pending' : 'delayed'}
+                                label={row.missingSummativeCount > 0 ? 'รอผลปลายทาง' : 'ซ่อมเสริม'}
+                              />
                             )}
                           </td>
                         </tr>
@@ -2014,15 +2019,17 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                         <td className="px-3 py-2 text-center font-mono font-bold bg-amber-50/40 dark:bg-amber-950/20">
                           {hasAny ? `${unitSum}/${unitMax}` : '—'}
                         </td>
-                        <td className="px-3 py-2 text-center font-semibold">
+                        <td className="px-3 py-2 text-center">
                           {!hasAny ? (
-                            <span className="text-[var(--color-text-muted)]">รอประเมิน</span>
+                            <StatusBadge size="xs" status="pending" label="รอประเมิน" />
                           ) : !failedAnySummative && pct >= 50 ? (
-                            <span className="text-emerald-700 dark:text-emerald-300">ผ่าน ({pct}%)</span>
+                            <StatusBadge size="xs" status="complete" label={`ผ่าน (${pct}%)`} />
                           ) : (
-                            <span className="text-amber-700 dark:text-amber-300">
-                              {failedAnySummative ? `ซ่อมปลายทาง (${pct}%)` : `ไม่ผ่าน (${pct}%)`}
-                            </span>
+                            <StatusBadge
+                              size="xs"
+                              status="delayed"
+                              label={failedAnySummative ? `ซ่อมปลายทาง (${pct}%)` : `ไม่ผ่าน (${pct}%)`}
+                            />
                           )}
                         </td>
                       </tr>

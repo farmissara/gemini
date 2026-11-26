@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
-import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import type {
   AppLanguage,
   AttendanceRecord,
@@ -526,9 +526,9 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {(status.hasCheckIn || status.hasCheckOut) && slot.dayOfWeek === todayDayKey && (
-                            <StatusIndicator
+                            <StatusBadge
                               size="xs"
-                              tone="success"
+                              status="complete"
                               label={status.hasCheckOut ? 'เข้า+ออกแล้ว' : 'เช็คอินแล้ว'}
                             />
                           )}
@@ -562,22 +562,22 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                             <div className="space-y-2 pt-1.5 border-t border-[var(--color-border)]">
                               <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                                 {leavingTeacher ? (
-                                  <StatusIndicator
+                                  <StatusBadge
                                     size="xs"
-                                    tone="info"
+                                    status="info"
                                     label={`ครูลา${leavingTeacher.substituteTeacherName ? ` · แทน ${leavingTeacher.substituteTeacherName}` : ''}`}
                                   />
                                 ) : selectedTimetableDay === todayDayKey && primaryTeacher ? (
                                   primaryTeacher.status === 'checked_in' ? (
-                                    <StatusIndicator
+                                    <StatusBadge
                                       size="xs"
-                                      tone="success"
+                                      status="complete"
                                       label={`ครูเข้า รร.${primaryTeacher.checkInTime ? ` ${primaryTeacher.checkInTime}` : ''}`}
                                     />
                                   ) : primaryTeacher.status === 'late' ? (
-                                    <StatusIndicator size="xs" tone="warning" label="ครูสาย รร." />
+                                    <StatusBadge size="xs" status="pending" label="ครูสาย รร." />
                                   ) : (
-                                    <StatusIndicator size="xs" tone="warning" label="ครูยังไม่เช็คอิน รร." />
+                                    <StatusBadge size="xs" status="pending" label="ครูยังไม่เช็คอิน รร." />
                                   )
                                 ) : null}
                                 {slotSummary.periodCheckedTotal > 0 ? (

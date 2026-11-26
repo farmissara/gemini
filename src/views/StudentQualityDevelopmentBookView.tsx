@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { TableActionMenu } from '../components/common/TableActionMenu';
+import { StatusBadge } from '../components/common/StatusBadge';
 import {
   AppLanguage,
   AttendanceRecord,
@@ -1338,18 +1339,25 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
                               {courseAtt.attendancePercent}%
                             </span>
                           </td>
-                          <td className="py-2 px-3">
-                            {needsRemedial ? (
-                              <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-semibold">
-                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                <span>{courseAtt.isAtRiskMs ? 'เสี่ยง มส. / ติดตามเวลาเรียน' : 'ควรจัดซ่อมเสริม'}</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-medium">
-                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                                <span>ผ่านเกณฑ์</span>
-                              </span>
-                            )}
+                          <td className="py-2 px-3 whitespace-nowrap">
+                            <StatusBadge
+                              size="xs"
+                              status={needsRemedial ? 'delayed' : 'complete'}
+                              label={
+                                needsRemedial
+                                  ? courseAtt.isAtRiskMs
+                                    ? 'เสี่ยง มส.'
+                                    : 'ซ่อมเสริม'
+                                  : 'ผ่านเกณฑ์'
+                              }
+                              title={
+                                needsRemedial
+                                  ? courseAtt.isAtRiskMs
+                                    ? 'เสี่ยง มส. / ติดตามเวลาเรียน'
+                                    : 'ควรจัดซ่อมเสริม'
+                                  : 'ผ่านเกณฑ์การประเมินรายวิชา'
+                              }
+                            />
                           </td>
                         </tr>
                       );

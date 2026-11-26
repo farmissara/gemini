@@ -36,7 +36,7 @@ import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
-import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
+import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 
 interface InfirmaryHealthViewProps {
   schoolId?: string;
@@ -161,16 +161,18 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
     setSymptoms('');
   };
 
-  const getStatusBadge = (status: InfirmaryStatus): { label: string; tone: StatusTone } => {
+  const getStatusBadge = (
+    status: InfirmaryStatus
+  ): { label: string; title: string; status: StatusBadgeStatus } => {
     switch (status) {
       case 'resting':
-        return { label: 'กำลังนอนพักเตียง', tone: 'warning' };
+        return { label: 'นอนพักเตียง', title: 'กำลังนอนพักเตียง', status: 'pending' };
       case 'discharged':
-        return { label: 'กลับเข้าชั้นเรียนแล้ว', tone: 'success' };
+        return { label: 'กลับเข้าเรียน', title: 'กลับเข้าชั้นเรียนแล้ว', status: 'complete' };
       case 'sent_home':
-        return { label: 'ผู้ปกครองรับกลับบ้าน', tone: 'info' };
+        return { label: 'รับกลับบ้าน', title: 'ผู้ปกครองรับกลับบ้าน', status: 'info' };
       case 'hospital':
-        return { label: 'นำส่งโรงพยาบาล', tone: 'danger' };
+        return { label: 'ส่ง รพ.', title: 'นำส่งโรงพยาบาล', status: 'delayed' };
     }
   };
 
@@ -357,7 +359,7 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                         )}
                       </td>
                       <td className="p-2.5 text-center">
-                        <StatusIndicator size="xs" tone={status.tone} label={status.label} />
+                        <StatusBadge size="xs" status={status.status} label={status.label} title={status.title} />
                       </td>
                       <td className="p-2.5 text-right">
                         <p className="text-[var(--color-text-body)] text-[11px]">{visit.recordedByNurse}</p>
@@ -438,10 +440,11 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                         <Bed className={`w-3.5 h-3.5 ${restingPatient ? 'text-amber-800 dark:text-amber-300' : 'text-[var(--color-text-muted)]'}`} />
                         <span>{bedLabel}</span>
                       </span>
-                      <StatusIndicator
+                      <StatusBadge
                         size="xs"
-                        tone={restingPatient ? 'warning' : 'success'}
-                        label={restingPatient ? 'มีผู้ป่วยนอนพัก' : 'ว่าง (พร้อมใช้งาน)'}
+                        status={restingPatient ? 'pending' : 'complete'}
+                        label={restingPatient ? 'มีผู้ป่วยนอนพัก' : 'ว่าง'}
+                        title={restingPatient ? 'มีผู้ป่วยนอนพักเตียง' : 'ว่าง (พร้อมใช้งาน)'}
                       />
                     </div>
 

@@ -98,7 +98,7 @@ import { MoeDocViewSelection, MoeStudentDocumentCenter } from '../components/Moe
 import { GradeAlertRecord } from '../lib/gradeNotifications';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
-import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
+import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 
 const StudentAvatar: React.FC<{
   src?: string;
@@ -1294,14 +1294,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const hasActiveRosterFilters =
     searchTerm.trim() !== '' || gradeFilter !== 'all' || roomFilter !== 'all' || statusFilter !== 'all' || sortBy !== 'default';
 
-  const statusToneMap: Record<StudentStatus, StatusTone> = {
-    active: 'success',
+  const statusBadgeMap: Record<StudentStatus, StatusBadgeStatus> = {
+    active: 'complete',
     transferred_in: 'info',
-    transferred_out: 'warning',
-    transferred: 'warning',
+    transferred_out: 'pending',
+    transferred: 'pending',
     graduated: 'info',
-    suspended: 'warning',
-    resigned: 'danger',
+    suspended: 'pending',
+    resigned: 'delayed',
     dropped: 'neutral',
   };
 
@@ -1809,8 +1809,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         </td>
 
                         <td className="py-2.5 px-3 align-middle whitespace-nowrap">
-                          <StatusIndicator
-                            tone={statusToneMap[statusKey] || 'neutral'}
+                          <StatusBadge
+                            size="xs"
+                            status={statusBadgeMap[statusKey] || 'neutral'}
                             label={statusCfg.labelTh}
                             title={statusCfg.descriptionTh}
                           />
@@ -1876,7 +1877,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                                   title={student.lineLinked ? 'คลิกเพื่อยกเลิกสถานะเชื่อมต่อ LINE' : 'คลิกเพื่อเชื่อม LINE'}
                                 >
                                   {student.lineLinked ? (
-                                    <StatusIndicator tone="success" size="xs" label="LINE เชื่อมแล้ว" />
+                                    <StatusBadge status="complete" size="xs" label="LINE เชื่อมแล้ว" />
                                   ) : (
                                     <span className="font-medium text-[var(--tone)]">เชื่อม LINE</span>
                                   )}
@@ -1886,7 +1887,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                               student.lineLinked && (
                                 <>
                                   <span aria-hidden="true">·</span>
-                                  <StatusIndicator tone="success" size="xs" label="LINE เชื่อมแล้ว" />
+                                  <StatusBadge status="complete" size="xs" label="LINE เชื่อมแล้ว" />
                                 </>
                               )
                             ))}
@@ -2067,8 +2068,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2 text-xs">
-                          <StatusIndicator
-                            tone={statusToneMap[st.value] || 'neutral'}
+                          <StatusBadge
+                            size="xs"
+                            status={statusBadgeMap[st.value] || 'neutral'}
                             label={st.labelTh}
                           />
                           <span className="font-mono font-semibold text-[var(--color-text-title)] tabular-nums">
@@ -2274,20 +2276,21 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             </div>
                           </td>
                           <td className="py-3 px-3 text-center whitespace-nowrap">
-                            <StatusIndicator
-                              tone={
+                            <StatusBadge
+                              size="xs"
+                              status={
                                 acc.status === 'active'
-                                  ? 'success'
+                                  ? 'complete'
                                   : acc.status === 'suspended'
-                                  ? 'danger'
-                                  : 'warning'
+                                    ? 'delayed'
+                                    : 'pending'
                               }
                               label={
                                 acc.status === 'active'
                                   ? 'อนุมัติแล้ว'
                                   : acc.status === 'suspended'
-                                  ? 'ระงับสิทธิ์'
-                                  : 'รออนุมัติ'
+                                    ? 'ระงับสิทธิ์'
+                                    : 'รออนุมัติ'
                               }
                             />
                           </td>
@@ -2358,8 +2361,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             {parent.full_name_th || parent.full_name_en || 'ผู้ปกครอง'}
                           </span>
                           <span aria-hidden="true" className="text-[var(--color-text-muted)]">·</span>
-                          <StatusIndicator
-                            tone={parent.status === 'active' ? 'success' : 'warning'}
+                          <StatusBadge
+                            size="xs"
+                            status={parent.status === 'active' ? 'complete' : 'pending'}
                             label={parent.status === 'active' ? 'ใช้งานได้' : parent.status}
                           />
                         </div>
@@ -3188,7 +3192,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                                 ผู้ปกครองคนที่ {idx + 1}
                               </span>
                               {g.isPrimary ? (
-                                <StatusIndicator tone="success" size="xs" label="ผู้ปกครองหลัก" />
+                                <StatusBadge status="complete" size="xs" label="ผู้ปกครองหลัก" />
                               ) : (
                                 <button
                                   type="button"

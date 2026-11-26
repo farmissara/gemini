@@ -77,7 +77,7 @@ import {
 } from '../lib/moeGrading';
 import { dispatchGradeAlert, GradeAlertRecord } from '../lib/gradeNotifications';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import {
   buildCourseTeacherOptions,
   courseMatchesTeacherFilter,
@@ -2633,17 +2633,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
                         <td className="py-3 px-3 text-center tabular-nums">
                           {eligibility.isAtRiskMs ? (
-                            <StatusIndicator
+                            <StatusBadge
                               size="xs"
-                              tone="danger"
+                              status="delayed"
                               title={`เข้าเรียน ${eligibility.attendedHours}/${eligibility.totalScheduledHours} ชม. (ต่ำกว่า 80% เสี่ยง มส.)`}
                               label={`มส. (${eligibility.attendancePercent}%)`}
                             />
                           ) : (
-                            <StatusIndicator
+                            <StatusBadge
                               size="xs"
-                              tone="success"
-                              label={`${eligibility.attendancePercent}% (${eligibility.attendedHours}/${eligibility.totalScheduledHours} ชม.)`}
+                              status="complete"
+                              title={`เข้าเรียน ${eligibility.attendedHours}/${eligibility.totalScheduledHours} ชม. (มีสิทธิ์สอบตามเกณฑ์)`}
+                              label={`ปกติ (${eligibility.attendancePercent}%)`}
                             />
                           )}
                         </td>
@@ -3399,9 +3400,28 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         )}
                       </td>
                       <td className="py-2 px-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold ${pp3Meta.toneClass}`}>
-                          {pp3Meta.labelTh}
-                        </span>
+                        <StatusBadge
+                          size="xs"
+                          status={
+                            reg.pp3ApprovalStatus === 'approved'
+                              ? 'complete'
+                              : reg.pp3ApprovalStatus === 'not_eligible'
+                                ? 'delayed'
+                                : reg.pp3ApprovalStatus === 'verified'
+                                  ? 'info'
+                                  : 'pending'
+                          }
+                          label={
+                            reg.pp3ApprovalStatus === 'approved'
+                              ? 'อนุมัติจบ'
+                              : reg.pp3ApprovalStatus === 'not_eligible'
+                                ? 'ไม่ผ่านเกณฑ์'
+                                : reg.pp3ApprovalStatus === 'verified'
+                                  ? 'รอลงนาม'
+                                  : 'รอตรวจ'
+                          }
+                          title={pp3Meta.labelTh}
+                        />
                       </td>
                       <td className="py-2 px-3 text-right">
                         <TableActionMenu
@@ -3571,10 +3591,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                         {avgNumber.toFixed(1)}%
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[10px] font-bold">
-                          <CheckCircle2 className="w-3 h-3 text-[var(--color-primary-text)]" />
-                          นำส่ง สทศ. แล้ว
-                        </span>
+                        <StatusBadge
+                          size="xs"
+                          status="complete"
+                          label="นำส่งแล้ว"
+                          title="นำส่งข้อมูลเข้าสอบ สทศ. O-NET แล้ว"
+                        />
                       </td>
                     </tr>
                   ))

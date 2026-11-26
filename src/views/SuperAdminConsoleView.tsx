@@ -57,7 +57,7 @@ import {
 } from '../lib/schoolFeatureFlags';
 import { loadPackageCatalog, saveSchoolFeatureFlagsToDb } from '../lib/schoolPackageStore';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { getModuleTone } from '../lib/moduleTheme';
 import { 
   School, 
@@ -826,12 +826,12 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                             {new Date(registration.registration_created_at).toLocaleString('th-TH')}
                           </td>
                           <td className="py-3 px-3">
-                            <span
-                              className="ui-status"
-                              data-state={registration.email_confirmed ? 'success' : 'warning'}
-                            >
-                              {registration.email_confirmed ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}
-                            </span>
+                            <StatusBadge
+                              size="xs"
+                              status={registration.email_confirmed ? 'complete' : 'pending'}
+                              label={registration.email_confirmed ? 'ยืนยันแล้ว' : 'รอยืนยัน'}
+                              title={registration.email_confirmed ? 'ยืนยันอีเมลแล้ว' : 'ยังไม่ยืนยันอีเมล'}
+                            />
                           </td>
                           <td className="py-3 px-3 text-right whitespace-nowrap">
                             <TableActionMenu
@@ -1032,14 +1032,14 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                         </td>
                         <td className="py-2.5 px-3 text-[var(--color-text-body)]">{sch?.nameTh || u.school_id || '—'}</td>
                         <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                          <StatusIndicator
+                          <StatusBadge
                             size="xs"
-                            tone={
+                            status={
                               u.status === 'active'
-                                ? 'success'
+                                ? 'complete'
                                 : u.status === 'pending'
-                                  ? 'warning'
-                                  : 'danger'
+                                  ? 'pending'
+                                  : 'delayed'
                             }
                             label={
                               u.status === 'active'
@@ -1146,12 +1146,11 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       </td>
                       <td className="py-3 px-3 text-[var(--color-text-muted)] tabular-nums">{p.validUntil}</td>
                       <td className="py-3 px-3 text-right">
-                        <span
-                          className="ui-status"
-                          data-state={p.status === 'active' ? 'success' : 'neutral'}
-                        >
-                          {p.status === 'active' ? 'เปิดใช้งาน' : 'หมดอายุ'}
-                        </span>
+                        <StatusBadge
+                          size="xs"
+                          status={p.status === 'active' ? 'complete' : 'neutral'}
+                          label={p.status === 'active' ? 'เปิดใช้งาน' : 'หมดอายุ'}
+                        />
                       </td>
                       <td className="py-3 px-3 text-right">
                         <TableActionMenu
@@ -1337,22 +1336,23 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right">
-                      <span
-                        className="ui-status"
-                        data-state={
+                      <StatusBadge
+                        size="xs"
+                        status={
                           s.status === 'active'
-                            ? 'success'
+                            ? 'complete'
                             : s.status === 'pending'
-                              ? 'warning'
-                              : 'danger'
+                              ? 'pending'
+                              : 'delayed'
                         }
-                      >
-                        {s.status === 'active'
-                          ? 'เปิดใช้งาน'
-                          : s.status === 'pending'
-                            ? 'รออนุมัติ'
-                            : 'ระงับชั่วคราว'}
-                      </span>
+                        label={
+                          s.status === 'active'
+                            ? 'เปิดใช้งาน'
+                            : s.status === 'pending'
+                              ? 'รออนุมัติ'
+                              : 'ระงับชั่วคราว'
+                        }
+                      />
                     </td>
                     <td className="py-3 px-3 text-right whitespace-nowrap">
                       {(() => {

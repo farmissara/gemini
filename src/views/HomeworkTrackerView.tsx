@@ -39,7 +39,7 @@ import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
-import { StatusIndicator, type StatusTone } from '../components/common/StatusIndicator';
+import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -292,16 +292,18 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
     }
   };
 
-  const getStatusBadge = (status: HomeworkSubmission['status']): { label: string; tone: StatusTone } => {
+  const getStatusBadge = (
+    status: HomeworkSubmission['status']
+  ): { label: string; title: string; status: StatusBadgeStatus } => {
     switch (status) {
       case 'graded':
-        return { label: 'ตรวจและให้คะแนนแล้ว', tone: 'success' };
+        return { label: 'ตรวจแล้ว', title: 'ตรวจและให้คะแนนแล้ว', status: 'complete' };
       case 'submitted':
-        return { label: 'ส่งตรงเวลา (รอตรวจ)', tone: 'info' };
+        return { label: 'รอตรวจ', title: 'ส่งตรงเวลา (รอตรวจ)', status: 'info' };
       case 'late':
-        return { label: 'ส่งช้ากว่ากำหนด', tone: 'warning' };
+        return { label: 'ส่งช้า', title: 'ส่งช้ากว่ากำหนด', status: 'pending' };
       case 'pending':
-        return { label: 'ยังไม่ส่ง (ค้างส่ง)', tone: 'danger' };
+        return { label: 'ค้างส่ง', title: 'ยังไม่ส่ง (ค้างส่ง)', status: 'delayed' };
     }
   };
 
@@ -574,7 +576,7 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                       </td>
 
                       <td className="p-2.5 text-center">
-                        <StatusIndicator size="xs" tone={status.tone} label={status.label} />
+                        <StatusBadge size="xs" status={status.status} label={status.label} title={status.title} />
                       </td>
 
                       <td className="p-2.5 text-right">

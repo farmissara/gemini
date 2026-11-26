@@ -81,7 +81,7 @@ import { normalizeSelfieRetentionMinutes } from '../lib/selfieCleanupLogic';
 import { getSchoolRolePolicies, saveSchoolRolePolicies, type SchoolPolicyId } from '../lib/schoolPermissions';
 import { useSchoolCustomPresets } from '../lib/schoolCustomPresets';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 export type SystemSettingsTab =
@@ -1632,10 +1632,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   <h3 className="font-bold text-sm text-[var(--color-text-title)]">
                     เปิด-ปิดระบบแจ้งเตือนผ่าน LINE OA (ทั้งโรงเรียน)
                   </h3>
-                  <StatusIndicator
+                  <StatusBadge
                     size="xs"
-                    tone={isLineEnabled ? 'success' : 'neutral'}
-                    label={isLineEnabled ? 'เปิดใช้งานอยู่ (ON)' : 'ปิดใช้งานอยู่ (OFF)'}
+                    status={isLineEnabled ? 'complete' : 'neutral'}
+                    label={isLineEnabled ? 'เปิดใช้งาน (ON)' : 'ปิดใช้งาน (OFF)'}
                   />
                 </div>
                 <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
@@ -1761,9 +1761,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-xs text-[var(--color-text-title)]">{evt.titleTh}</span>
                               {isEnabled ? (
-                                <StatusIndicator tone="success" size="xs" label="เปิดใช้งาน (Active)" />
+                                <StatusBadge status="complete" size="xs" label="เปิดใช้งาน" />
                               ) : (
-                                <StatusIndicator tone="neutral" size="xs" label="ปิดการส่ง (Disabled)" />
+                                <StatusBadge status="neutral" size="xs" label="ปิดการส่ง" />
                               )}
                             </div>
                             <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">{evt.descTh}</p>
@@ -2227,10 +2227,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <StatusIndicator
+                  <StatusBadge
                     size="xs"
-                    tone={isLineEnabled ? 'success' : 'neutral'}
-                    label={isLineEnabled ? 'เปิดใช้งาน LINE' : 'ปิดใช้งาน LINE อยู่'}
+                    status={isLineEnabled ? 'complete' : 'neutral'}
+                    label={isLineEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
                   />
                   <button
                     type="button"
@@ -2437,7 +2437,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <StatusIndicator tone="success" label={`ผูกแล้ว ${connectedPct}%`} />
+              <StatusBadge status="complete" size="sm" label={`ผูกแล้ว ${connectedPct}%`} />
             </div>
           </div>
 
@@ -2481,9 +2481,9 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {stu.lineLinked ? (
-                          <StatusIndicator tone="success" size="xs" label="ผูก LINE แล้ว" />
+                          <StatusBadge status="complete" size="xs" label="ผูก LINE แล้ว" />
                         ) : (
-                          <StatusIndicator tone="neutral" size="xs" label="ยังไม่ผูก" />
+                          <StatusBadge status="neutral" size="xs" label="ยังไม่ผูก" />
                         )}
                       </td>
                       <td className="px-4 py-3 font-mono text-[11px] text-[var(--color-text-muted)]">
@@ -3798,21 +3798,21 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                               )}
                             </td>
                             <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                              <StatusIndicator
+                              <StatusBadge
                                 size="xs"
-                                tone={
+                                status={
                                   account.status === 'active'
-                                    ? 'success'
+                                    ? 'complete'
                                     : account.status === 'suspended'
-                                    ? 'danger'
-                                    : 'warning'
+                                      ? 'delayed'
+                                      : 'pending'
                                 }
                                 label={
                                   account.status === 'active'
                                     ? 'ใช้งานได้'
                                     : account.status === 'suspended'
-                                    ? 'ระงับสิทธิ์'
-                                    : 'รออนุมัติ'
+                                      ? 'ระงับสิทธิ์'
+                                      : 'รออนุมัติ'
                                 }
                               />
                             </td>

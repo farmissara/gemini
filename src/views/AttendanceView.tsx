@@ -72,6 +72,7 @@ import { loadAttendanceCorrections } from '../lib/attendanceCorrections';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -1963,17 +1964,16 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           <td className="p-3 text-center text-rose-700 dark:text-rose-300 font-bold tabular-nums">{m.absentDays}</td>
                           <td className="p-3 text-center font-mono font-bold text-[var(--color-text-title)] tabular-nums">{m.rate}%</td>
                           <td className="p-3 text-center">
-                            {m.isQualified ? (
-                              <span className="inline-flex items-center gap-1 type-label text-emerald-700 dark:text-emerald-300">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>ผ่านเกณฑ์</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 type-label text-rose-700 dark:text-rose-300">
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                <span>เสี่ยง มส.</span>
-                              </span>
-                            )}
+                            <StatusBadge
+                              size="xs"
+                              status={m.isQualified ? 'complete' : 'delayed'}
+                              label={m.isQualified ? 'ผ่านเกณฑ์' : 'เสี่ยง มส.'}
+                              title={
+                                m.isQualified
+                                  ? `อัตราเข้าเรียน ${m.rate}% (ผ่านเกณฑ์ 80%)`
+                                  : `อัตราเข้าเรียน ${m.rate}% (ต่ำกว่า 80% เสี่ยง มส.)`
+                              }
+                            />
                           </td>
                         </tr>
                       )} />

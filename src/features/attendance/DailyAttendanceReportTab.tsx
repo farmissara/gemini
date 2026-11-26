@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { CalendarDays, ClipboardCheck, Search } from 'lucide-react';
 import { PagedList } from '../../components/PagedList';
 import { TableActionMenu } from '../../components/common/TableActionMenu';
-import { StatusIndicator, type StatusTone } from '../../components/common/StatusIndicator';
+import { StatusBadge, type StatusBadgeStatus } from '../../components/common/StatusBadge';
 import type {
   AttendanceCheckType,
   AttendanceRecord,
@@ -75,8 +75,8 @@ function AttendanceBadge({
 }) {
   if (!record) {
     return (
-      <StatusIndicator
-        tone="danger"
+      <StatusBadge
+        status="delayed"
         size="xs"
         label={`${label ? `${label}: ` : ''}${lang === 'th' ? 'ตกหล่น' : 'Missing'}`}
       />
@@ -87,17 +87,17 @@ function AttendanceBadge({
     ? (lang === 'th' ? 'มีเหตุผล' : 'Excused')
     : attendanceLabel(record.status, lang);
   const time = 'time' in record ? record.time : record.actualCheckInTime;
-  const tone: StatusTone = record.status === 'present'
-    ? 'success'
+  const status: StatusBadgeStatus = record.status === 'present'
+    ? 'complete'
     : record.status === 'late'
-      ? 'warning'
+      ? 'pending'
       : record.status === 'absent'
-        ? 'danger'
+        ? 'delayed'
         : 'info';
 
   return (
-    <StatusIndicator
-      tone={tone}
+    <StatusBadge
+      status={status}
       size="xs"
       label={`${label ? `${label}: ` : ''}${statusLabel}${time ? ` · ${time.slice(0, 5)}` : ''}`}
     />
@@ -211,8 +211,9 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
                 : `Arrivals ${gateRows.filter((row) => row.checkIn).length}/${gateRows.length} · Departures ${gateRows.filter((row) => row.checkOut).length}/${gateRows.length}`}
             </p>
           </div>
-          <StatusIndicator
-            tone={gateRows.some((row) => !row.checkIn || !row.checkOut) ? 'warning' : 'success'}
+          <StatusBadge
+            size="sm"
+            status={gateRows.some((row) => !row.checkIn || !row.checkOut) ? 'pending' : 'complete'}
             label={lang === 'th' ? `ตกหล่น ${gateRows.filter((row) => !row.checkIn || !row.checkOut).length} คน` : `${gateRows.filter((row) => !row.checkIn || !row.checkOut).length} incomplete`}
           />
         </div>
@@ -291,8 +292,9 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
                 : `${periodRecordedCount}/${periodExpectedCount} records entered`}
             </p>
           </div>
-          <StatusIndicator
-            tone={periodExpectedCount - periodRecordedCount > 0 ? 'warning' : 'success'}
+          <StatusBadge
+            size="sm"
+            status={periodExpectedCount - periodRecordedCount > 0 ? 'pending' : 'complete'}
             label={lang === 'th' ? `ตกหล่น ${periodExpectedCount - periodRecordedCount} รายการ` : `${periodExpectedCount - periodRecordedCount} missing`}
           />
         </div>
@@ -362,8 +364,8 @@ export const DailyAttendanceReportTab: React.FC<DailyAttendanceReportTabProps> =
                           {session.courseCode} · {session.classRoom} · {session.startTime}–{session.endTime}
                         </p>
                       </div>
-                      <StatusIndicator
-                        tone={recordedCount === session.students.length ? 'success' : 'warning'}
+                      <StatusBadge
+                        status={recordedCount === session.students.length ? 'complete' : 'pending'}
                         size="xs"
                         label={`${recordedCount}/${session.students.length}`}
                       />

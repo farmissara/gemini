@@ -44,7 +44,7 @@ import {
 } from '../lib/centralExamBank';
 import { CentralExamPack, LearningStrandId, QuizQuestion, SchoolExamEntitlement } from '../types';
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 
@@ -1361,11 +1361,11 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                         </td>
                         <td className="p-3 whitespace-nowrap">
                           {status === 'pending_audit' && (
-                            <StatusIndicator tone="warning" size="xs" label="รอตรวจสอบย้อนหลัง" />
+                            <StatusBadge status="pending" size="xs" label="รอตรวจสอบ" title="รอตรวจสอบย้อนหลัง" />
                           )}
                           {status === 'verified' && (
                             <div className="space-y-0.5">
-                              <StatusIndicator tone="success" size="xs" label="สลิปถูกต้องแล้ว" />
+                              <StatusBadge status="complete" size="xs" label="สลิปถูกต้อง" title="สลิปถูกต้องแล้ว" />
                               {item.verifiedBy && (
                                 <span className="text-[10px] text-[var(--color-text-muted)] block">โดย {item.verifiedBy}</span>
                               )}
@@ -1373,7 +1373,7 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                           )}
                           {status === 'revoked' && (
                             <div className="space-y-0.5">
-                              <StatusIndicator tone="danger" size="xs" label="เพิกถอนสิทธิ์แล้ว" />
+                              <StatusBadge status="delayed" size="xs" label="เพิกถอนแล้ว" title="เพิกถอนสิทธิ์แล้ว" />
                               {item.revocationReason && (
                                 <span className="text-[10px] text-rose-600 font-medium block truncate max-w-xs">
                                   เหตุผล: {item.revocationReason}

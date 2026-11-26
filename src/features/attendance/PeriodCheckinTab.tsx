@@ -31,7 +31,7 @@ import { checkDistanceToClassroomGps } from '../../lib/classroomGps';
 import type { PeriodFlexConfig } from '../../lib/attendanceCorrections';
 import { QrCodeMatrix } from '../../components/QrCodeMatrix';
 import { PagedList } from '../../components/PagedList';
-import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import { TableActionMenu } from '../../components/common/TableActionMenu';
 import type { PeriodRosterFilter } from './types';
 
@@ -769,16 +769,16 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                             {rec.date} ({rec.timeSlot}) · {rec.checkMethod === 'qr_code' ? 'QR/ลิงก์' : 'อาจารย์เช็คชื่อ'}
                           </p>
                         </div>
-                        <StatusIndicator
+                        <StatusBadge
                           size="xs"
-                          tone={
+                          status={
                             rec.status === 'present'
-                              ? 'success'
+                              ? 'complete'
                               : rec.status === 'late'
-                                ? 'warning'
+                                ? 'pending'
                                 : rec.status === 'excused'
                                   ? 'info'
-                                  : 'danger'
+                                  : 'delayed'
                           }
                           label={
                             rec.status === 'present'
@@ -925,10 +925,10 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                     {st.firstNameTh} {st.lastNameTh}
                                   </p>
                                   {savedRecord?.checkMethod === 'qr_code' && (
-                                    <StatusIndicator size="xs" tone="info" label="สแกนมือถือแล้ว" />
+                                    <StatusBadge size="xs" status="info" label="สแกนมือถือแล้ว" />
                                   )}
                                   {savedRecord?.checkMethod === 'teacher_proxy' && (
-                                    <StatusIndicator size="xs" tone="warning" label="ครูกดรับแทน" />
+                                    <StatusBadge size="xs" status="pending" label="ครูกดรับแทน" />
                                   )}
                                   {(displayIn || displayOut) && (
                                     <span className="px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] text-[10px] font-mono font-semibold text-[var(--color-primary-text)] tabular-nums">
@@ -937,18 +937,18 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                       {displayOut ? `ออก ${displayOut}` : ''}
                                     </span>
                                   )}
-                                  <StatusIndicator
+                                  <StatusBadge
                                     size="xs"
-                                    tone={
+                                    status={
                                       !recordedStatus
                                         ? 'neutral'
                                         : recordedStatus === 'present'
-                                          ? 'success'
+                                          ? 'complete'
                                           : recordedStatus === 'late'
-                                            ? 'warning'
+                                            ? 'pending'
                                             : recordedStatus === 'excused'
                                               ? 'info'
-                                              : 'danger'
+                                              : 'delayed'
                                     }
                                     label={
                                       !recordedStatus

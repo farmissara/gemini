@@ -1,7 +1,8 @@
 import React from 'react';
-import { AlertCircle, CheckCircle, Info, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { CourseTeacherOption } from '../../lib/courseTeacherFilter';
 import { shouldShowCourseCredits } from '../../lib/moeGrading';
+import { StatusBadge } from '../../components/common/StatusBadge';
 import { ClassroomCourseSummary } from './types';
 
 interface TimetableHoursCriteriaTabProps {
@@ -136,20 +137,26 @@ export const TimetableHoursCriteriaTab: React.FC<TimetableHoursCriteriaTabProps>
                     </td>
                     <td className="p-3 text-center">
                       {isComplete ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>ครบตามเกณฑ์</span>
-                        </span>
+                        <StatusBadge
+                          size="xs"
+                          status="complete"
+                          label="ครบเกณฑ์"
+                          title="จัดคาบสอนครบตามเกณฑ์ชั่วโมงเรียน 80% ปพ.5"
+                        />
                       ) : isUnder ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          <span>ขาดอีก {requiredWeeklyPeriods - item.scheduledPeriods} คาบ</span>
-                        </span>
+                        <StatusBadge
+                          size="xs"
+                          status="pending"
+                          label={`ขาด ${requiredWeeklyPeriods - item.scheduledPeriods} คาบ`}
+                          title={`ยังจัดไม่ครบเกณฑ์ ขาดอีก ${requiredWeeklyPeriods - item.scheduledPeriods} คาบ`}
+                        />
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300">
-                          <Info className="w-3.5 h-3.5" />
-                          <span>จัดเสริม +{item.scheduledPeriods - requiredWeeklyPeriods} คาบ</span>
-                        </span>
+                        <StatusBadge
+                          size="xs"
+                          status="info"
+                          label={`เสริม +${item.scheduledPeriods - requiredWeeklyPeriods} คาบ`}
+                          title={`จัดคาบเสริมเพิ่ม +${item.scheduledPeriods - requiredWeeklyPeriods} คาบ`}
+                        />
                       )}
                     </td>
                   </tr>

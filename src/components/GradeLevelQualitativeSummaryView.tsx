@@ -38,6 +38,7 @@ import {
 } from '../lib/moeQualitativeStore';
 import { getStudentShortPrefixTh } from '../lib/moeGrading';
 import { formatSemesterLabel } from '../lib/schoolSettings';
+import { StatusBadge } from './common/StatusBadge';
 import { printHtmlElementInIsolatedFrame } from '../lib/moeReportPdf';
 
 interface GradeLevelQualitativeSummaryViewProps {
@@ -910,7 +911,17 @@ export const GradeLevelQualitativeSummaryView: React.FC<GradeLevelQualitativeSum
                             <option value={0}>ไม่ผ่าน (๐)</option>
                           </select>
                         ) : (
-                          <span className="font-semibold">{summary.attrLabel}</span>
+                          <StatusBadge
+                            size="xs"
+                            status={
+                              summary.attrLevel >= 2
+                                ? 'complete'
+                                : summary.attrLevel === 1
+                                  ? 'pending'
+                                  : 'delayed'
+                            }
+                            label={summary.attrLabel}
+                          />
                         )}
                       </td>
                       <td className="py-2 px-2 text-center font-mono text-[11px]">
@@ -962,9 +973,17 @@ export const GradeLevelQualitativeSummaryView: React.FC<GradeLevelQualitativeSum
                             </span>
                           </div>
                         ) : (
-                          <span>
-                            {summary.readingLabel} ({summary.readingPercent}%)
-                          </span>
+                          <StatusBadge
+                            size="xs"
+                            status={
+                              summary.readingLevel >= 2
+                                ? 'complete'
+                                : summary.readingLevel === 1
+                                  ? 'pending'
+                                  : 'delayed'
+                            }
+                            label={`${summary.readingLabel} (${summary.readingPercent}%)`}
+                          />
                         )}
                       </td>
                       <td className="py-2 px-3 text-right print:hidden">

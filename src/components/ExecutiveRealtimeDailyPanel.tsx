@@ -53,6 +53,7 @@ import {
   resolveStudentLeaveForSlotDate,
 } from '../lib/timetableAttendanceStatus';
 import { getSlotTeachers } from '../lib/timetableTeachers';
+import { StatusBadge } from './common/StatusBadge';
 
 type DailyRadarMode = 'auto_full' | 'morning_gate' | 'classrooms';
 type FaceWallFilter = 'all' | 'window_08_09' | 'present' | 'late' | 'with_photo' | 'teachers';
@@ -1447,13 +1448,13 @@ export const ExecutiveRealtimeDailyPanel: React.FC<ExecutiveRealtimeDailyPanelPr
                       <td className="py-2.5 px-3 text-right font-mono">
                         {item.summary.gatePresentCount}/{item.summary.expectedTotal} คน
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         {item.isClassroomReady ? (
-                          <span className="text-emerald-700 dark:text-emerald-300">เปิดเช็กแล้ว</span>
+                          <StatusBadge size="xs" status="complete" label="เปิดเช็กแล้ว" />
                         ) : item.activityStatus === 'active' || item.activityStatus === 'past' ? (
-                          <span className="text-amber-700 dark:text-amber-300">ยังไม่เปิดเช็ก</span>
+                          <StatusBadge size="xs" status="pending" label="ยังไม่เปิดเช็ก" />
                         ) : (
-                          <span className={mutedCls}>รอถึงเวลา</span>
+                          <StatusBadge size="xs" status="neutral" label="รอถึงเวลา" />
                         )}
                       </td>
                     </tr>

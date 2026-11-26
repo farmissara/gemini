@@ -32,7 +32,7 @@ import {
 } from '../lib/classroomGps';
 import { isValidCoordinatePair } from '../lib/schoolGps';
 import { BaseModal } from './common/BaseModal';
-import { StatusIndicator } from './common/StatusIndicator';
+import { StatusBadge } from './common/StatusBadge';
 import {
   resolveMatchedCourseForSlot,
   resolveSlotStudents,
@@ -680,13 +680,13 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
         {/* Summary Strip + Search + Filter */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold tabular-nums">
-            <StatusIndicator size="xs" tone="neutral" label={`ทั้งหมด ${stats.total}`} />
-            <StatusIndicator size="xs" tone="success" label={`มาเรียน ${stats.present}`} />
-            <StatusIndicator size="xs" tone="warning" label={`สาย ${stats.late}`} />
-            <StatusIndicator size="xs" tone="info" label={`ลา ${stats.excused}`} />
-            <StatusIndicator size="xs" tone="danger" label={`ขาดเรียน ${stats.absent}`} />
-            <StatusIndicator size="xs" tone="info" label={`รับแทน ${stats.proxyCount}`} />
-            <StatusIndicator size="xs" tone="warning" label={`รอเช็ค ${stats.unchecked}`} />
+            <StatusBadge size="xs" status="neutral" label={`ทั้งหมด ${stats.total}`} />
+            <StatusBadge size="xs" status="complete" label={`มาเรียน ${stats.present}`} />
+            <StatusBadge size="xs" status="pending" label={`สาย ${stats.late}`} />
+            <StatusBadge size="xs" status="info" label={`ลา ${stats.excused}`} />
+            <StatusBadge size="xs" status="delayed" label={`ขาดเรียน ${stats.absent}`} />
+            <StatusBadge size="xs" status="info" label={`รับแทน ${stats.proxyCount}`} />
+            <StatusBadge size="xs" status="pending" label={`รอเช็ค ${stats.unchecked}`} />
           </div>
 
           <div className="relative w-full sm:w-56">
@@ -803,30 +803,30 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
                       <div className="flex flex-wrap items-center gap-1.5">
                         {/* 1. School gate check-in status */}
                         {gate?.status === 'present' ? (
-                          <StatusIndicator
+                          <StatusBadge
                             size="xs"
-                            tone="success"
+                            status="complete"
                             className="tabular-nums"
                             label={`เข้า รร.${gate.time ? ` ${gate.time}` : ''}`}
                           />
                         ) : gate?.status === 'late' ? (
-                          <StatusIndicator
+                          <StatusBadge
                             size="xs"
-                            tone="warning"
+                            status="pending"
                             className="tabular-nums"
                             label={`สาย รร.${gate.time ? ` ${gate.time}` : ''}`}
                           />
                         ) : gate?.status === 'absent' ? (
-                          <StatusIndicator size="xs" tone="danger" label="ขาด รร." />
+                          <StatusBadge size="xs" status="delayed" label="ขาด รร." />
                         ) : (
-                          <StatusIndicator size="xs" tone="neutral" label="รอเช็คอิน รร." />
+                          <StatusBadge size="xs" status="neutral" label="รอเช็คอิน รร." />
                         )}
 
                         {/* 2. Leave system status */}
                         {leave && (
-                          <StatusIndicator
+                          <StatusBadge
                             size="xs"
-                            tone={leave.status === 'approved' ? 'info' : 'warning'}
+                            status={leave.status === 'approved' ? 'info' : 'pending'}
                             title={leave.reason}
                             label={`${LEAVE_TYPE_LABELS[leave.leaveType] || 'ลา'} (${leave.status === 'approved' ? 'อนุมัติ' : 'รออนุมัติ'})`}
                           />
@@ -834,22 +834,22 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
 
                         {/* 3. Period check-in method / current status */}
                         {isPhoneChecked && (
-                          <StatusIndicator size="xs" tone="success" label="สแกน QR" />
+                          <StatusBadge size="xs" status="complete" label="สแกน QR" />
                         )}
                         {isTeacherProxy && (
-                          <StatusIndicator size="xs" tone="info" label="ครูบันทึก" />
+                          <StatusBadge size="xs" status="info" label="ครูบันทึก" />
                         )}
                         {currentStatus && !isPhoneChecked && !isTeacherProxy && (
-                          <StatusIndicator
+                          <StatusBadge
                             size="xs"
-                            tone={
+                            status={
                               currentStatus === 'present'
-                                ? 'success'
+                                ? 'complete'
                                 : currentStatus === 'late'
-                                  ? 'warning'
+                                  ? 'pending'
                                   : currentStatus === 'excused'
                                     ? 'info'
-                                    : 'danger'
+                                    : 'delayed'
                             }
                             label={
                               currentStatus === 'present'

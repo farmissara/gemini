@@ -59,6 +59,7 @@ import { NavTab } from '../components/layout/Sidebar';
 import { getLocalDateString } from '../lib/date';
 import { calculateGrade } from '../lib/schoolSettings';
 import { TableActionMenu } from '../components/common/TableActionMenu';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
@@ -1848,14 +1849,24 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                           {row.sdqWatch}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap font-bold">
-                        {row.statusTier === 'critical' ? (
-                          <span className="text-rose-600 dark:text-rose-400">เร่งดูแล</span>
-                        ) : row.statusTier === 'watch' ? (
-                          <span className="text-amber-600 dark:text-amber-400">เฝ้าระวัง</span>
-                        ) : (
-                          <span className="text-emerald-600 dark:text-emerald-400">ปกติ</span>
-                        )}
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                        <StatusBadge
+                          size="xs"
+                          status={
+                            row.statusTier === 'critical'
+                              ? 'delayed'
+                              : row.statusTier === 'watch'
+                                ? 'pending'
+                                : 'complete'
+                          }
+                          label={
+                            row.statusTier === 'critical'
+                              ? 'เร่งดูแล'
+                              : row.statusTier === 'watch'
+                                ? 'เฝ้าระวัง'
+                                : 'ปกติ'
+                          }
+                        />
                       </td>
                     </tr>
                   ))}
@@ -1949,12 +1960,13 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                         <td className="py-2 px-3 text-right font-mono">
                           {row.isSubmitted ? `${row.presentOrLate}/${row.submittedCount} คน` : '-'}
                         </td>
-                        <td className="py-2 px-3 text-right font-bold whitespace-nowrap">
-                          {row.isSubmitted ? (
-                            <span className="text-emerald-600 dark:text-emerald-400">บันทึกแล้ว</span>
-                          ) : (
-                            <span className="text-amber-600 dark:text-amber-400">ยังไม่เช็กชื่อ</span>
-                          )}
+                        <td className="py-2 px-3 text-right whitespace-nowrap">
+                          <StatusBadge
+                            size="xs"
+                            status={row.isSubmitted ? 'complete' : 'pending'}
+                            label={row.isSubmitted ? 'เช็กแล้ว' : 'รอเช็ก'}
+                            title={row.isSubmitted ? 'บันทึกเช็กชื่อเข้าสอนคาบนี้แล้ว' : 'ยังไม่เช็กชื่อเข้าสอนคาบนี้'}
+                          />
                         </td>
                       </tr>
                     ))}

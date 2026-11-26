@@ -62,7 +62,7 @@ import {
 import { TableActionMenu, TableActionItem } from '../components/common/TableActionMenu';
 import { PaginatedTableRows } from '../components/common/PaginatedTableRows';
 import { EmptyState } from '../components/common/EmptyState';
-import { StatusIndicator } from '../components/common/StatusIndicator';
+import { StatusBadge } from '../components/common/StatusBadge';
 
 interface TeachersViewProps {
   teachers: Teacher[];
@@ -880,9 +880,9 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                     <p className="text-[11px] font-mono text-[var(--color-text-muted)] truncate">{acc.email || '—'}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <StatusIndicator
+                    <StatusBadge
                       size="xs"
-                      tone={acc.status === 'active' ? 'success' : acc.status === 'pending' ? 'warning' : 'danger'}
+                      status={acc.status === 'active' ? 'complete' : acc.status === 'pending' ? 'pending' : 'delayed'}
                       label={acc.status === 'active' ? 'ใช้งานได้' : acc.status === 'pending' ? 'รออนุมัติ' : acc.status}
                     />
                     {acc.status === 'pending' && (
@@ -1635,7 +1635,7 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                               </h5>
                             </div>
 
-                            <StatusIndicator tone="success" size="xs" label="รับรองผลงานแล้ว" />
+                            <StatusBadge status="complete" size="xs" label="รับรองแล้ว" title="รับรองผลงานแล้ว" />
                           </div>
 
                           <p className="text-[var(--color-text-body)] text-xs">

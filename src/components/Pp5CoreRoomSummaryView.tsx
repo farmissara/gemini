@@ -39,6 +39,7 @@ import {
 } from '../lib/learningIndicatorStore';
 import { formatSemesterLabel } from '../lib/schoolSettings';
 import { printHtmlElementInIsolatedFrame } from '../lib/moeReportPdf';
+import { StatusBadge } from './common/StatusBadge';
 
 interface Pp5CoreRoomSummaryViewProps {
   students: Student[];
@@ -1243,18 +1244,12 @@ export const Pp5CoreRoomSummaryView: React.FC<Pp5CoreRoomSummaryViewProps> = ({
                           </span>
                         </td>
                         <td className="py-2 px-2.5 font-sans">
-                          <span
-                            className={`font-semibold ${
-                              item.indicatorPassed
-                                ? 'text-emerald-700 dark:text-emerald-300'
-                                : 'text-rose-600 dark:text-rose-400'
-                            }`}
-                          >
-                            {item.indicatorPassed ? 'ผ่านตัวชี้วัด' : 'ไม่ผ่านตัวชี้วัด'}
-                          </span>
-                          <span className="block text-[10px] text-[var(--color-text-muted)]">
-                            {item.indicatorReason}
-                          </span>
+                          <StatusBadge
+                            size="xs"
+                            status={item.indicatorPassed ? 'complete' : 'delayed'}
+                            label={item.indicatorPassed ? 'ผ่านตัวชี้วัด' : 'ไม่ผ่านตัวชี้วัด'}
+                            title={item.indicatorReason}
+                          />
                         </td>
                       </tr>
                     ))}
