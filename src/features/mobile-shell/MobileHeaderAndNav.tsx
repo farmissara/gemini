@@ -13,6 +13,7 @@ import {
   Globe,
   Home,
   Laptop,
+  LayoutGrid,
   LogOut,
   Moon,
   ShieldCheck,
@@ -242,6 +243,8 @@ interface MobileBottomNavProps {
   pendingLeavesCount: number;
   invoices: TuitionInvoice[];
   onResetCheckinToSelfie: () => void;
+  onOpenAllModules?: () => void;
+  allModulesActive?: boolean;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -261,10 +264,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   pendingLeavesCount,
   invoices,
   onResetCheckinToSelfie,
+  onOpenAllModules,
+  allModulesActive = false,
 }) => {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-md px-2 py-0.5 safe-area-bottom">
-      <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
+      <div className={`max-w-md mx-auto grid ${onOpenAllModules ? 'grid-cols-5' : 'grid-cols-4'} gap-1`}>
         {/* SLOT 1: HOME */}
         <button
           type="button"
@@ -504,6 +509,25 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <User className="w-5 h-5 mb-0.5" />
           <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'บัญชี' : 'Account'}</span>
         </button>
+
+        {onOpenAllModules && (
+          <button
+            type="button"
+            onClick={onOpenAllModules}
+            aria-label={lang === 'th' ? 'เปิดเมนูทุกฟังก์ชัน' : 'Open all modules'}
+            aria-pressed={allModulesActive}
+            className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              allModulesActive
+                ? 'bg-blue-50/90 dark:bg-blue-950/60 text-[var(--color-primary-text)] font-bold'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <LayoutGrid className="w-5 h-5 mb-0.5" />
+            <span className="text-[11px] truncate max-w-full">
+              {lang === 'th' ? 'ทุกฟังก์ชัน' : 'Modules'}
+            </span>
+          </button>
+        )}
       </div>
     </nav>
   );

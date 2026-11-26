@@ -173,8 +173,6 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
       resendFromEmail: '',
       supabaseConnected: false,
       thaiPdfFontEnabled: true,
-      backupBucket: '',
-      lastBackupDate: '',
     };
   }, [activeSchool, systemConfig]);
 
@@ -1669,7 +1667,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
               </div>
 
               {canViewFinancials && (
-                <div className="grid grid-cols-3 gap-2 tabular-nums text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 tabular-nums text-center">
                   <div className={`rounded-lg p-2 ${subtleSurface}`}>
                     <div className={`text-[10px] ${mutedText}`}>รับแล้ว</div>
                     <div className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
@@ -2224,7 +2222,7 @@ export const ExecutiveMonitorView: React.FC<ExecutiveMonitorViewProps> = ({
                 <span>สไลด์ 4: การเงินค่าเทอม &amp; ประกาศสำคัญโรงเรียน</span>
               </h2>
               {canViewFinancials && (
-                <div className="grid grid-cols-3 gap-3 tabular-nums">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 tabular-nums">
                   <div className="rounded-lg border border-emerald-800 bg-emerald-950/60 p-3 text-emerald-200">
                     <div className="text-xs">ชำระแล้ว ({metrics.collectionRate}%)</div>
                     <div className="text-xl font-extrabold">฿{metrics.totalPaid.toLocaleString()}</div>

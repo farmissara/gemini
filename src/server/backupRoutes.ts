@@ -1,7 +1,6 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
-import { getBangkokClockParts } from '../lib/selfieCleanupLogic.ts';
 
 type EnvReader = (name: string) => string;
 type Access = {
@@ -51,23 +50,33 @@ const OMITTED_TABLES: Record<string, string> = {
 const STORAGE_BUCKETS = ['school-logos', 'school-attachments', 'attendance-selfies'] as const;
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
 const PAGE_SIZE = 500;
-const DEFAULT_RETENTION_DAYS = 14;
-const SNAPSHOT_CHECK_INTERVAL_MS = 60 * 1000;
-const DRIVE_FILES_API = 'https://www.googleapis.com/drive/v3/files';
-const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files';
-const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 const BACKUP_TABLE_MIGRATIONS: Record<string, string> = {
   school_campus_records: '20261129000001_campus_moe_persistence.sql',
   school_moe_qualitative: '20261129000001_campus_moe_persistence.sql',
 };
 
-let lastServerSnapshotDate: string | null = null;
-let lastServerSnapshotAt: string | null = null;
-let lastServerSnapshotError: string | null = null;
-let lastServerSnapshotFiles = 0;
-let cachedDriveToken: { value: string; expiresAt: number } | null = null;
-let driveTokenRequest: Promise<string> | null = null;
-let cachedDriveFolderId: string | null = null;
+export function getSupabaseProjectRef(url: string): string {
+  return new URL(url).hostname.split('.')[0];
+}
+
+export function getBackupDrillTargetError(
+  environment: string,
+  sourceProject: unknown,
+  targetProject: string,
+): string | null {
+  if (environment !== 'staging') {
+    return 'โหมดซ้อมกู้คืนเปิดได้เฉพาะเซิร์ฟเวอร์ที่กำหนด BACKUP_RESTORE_ENVIRONMENT=staging';
+  }
+  if (typeof sourceProject !== 'string' || !sourceProject.trim()) {
+    return 'ไฟล์สำรองไม่มีรหัสโปรเจกต์ต้นทาง จึงยืนยันการซ้อมกู้คืนบน Staging ไม่ได้';
+  }
+  if (!targetProject.trim()) return 'ไม่พบรหัสโปรเจกต์ Supabase ปลายทาง';
+  if (sourceProject.trim().toLowerCase() === targetProject.trim().toLowerCase()) {
+    return 'โปรเจกต์ต้นทางและปลายทางเป็นโปรเจกต์เดียวกัน ยกเลิกการซ้อมเพื่อป้องกันการเขียนทับข้อมูลต้นทาง';
+  }
+  return null;
+}
+
 
 export function formatBackupSchemaError(table: string, error: { code?: string; message: string }): string {
   const missingTable = error.code === 'PGRST205' ||
@@ -285,7 +294,7 @@ async function buildBackupWithAdmin(admin: SupabaseClient, scope: { type: 'syste
     const profile = (tables.user_profiles || []).find((row: any) => row.id === user.id) as any;
     return safeAccount(user, profile?.role);
   });
-  const projectRef = new URL(url).hostname.split('.')[0];
+  const projectRef = getSupabaseProjectRef(url);
   const storageFiles = await listStorageFiles(admin, scope);
   const tableChecksums = Object.fromEntries(Object.entries(tables).map(([table, rows]) => [
     table, createHash('sha256').update(JSON.stringify(rows)).digest('hex'),
@@ -463,508 +472,48 @@ async function validateRestore(backup: any, access: Access, res: Response) {
   return { type: scope.type as 'school' | 'system', schoolId: allowedSchoolId };
 }
 
-function getRetentionDays(env: EnvReader): number {
-  const parsed = Number(env('BACKUP_RETENTION_DAYS'));
-  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 365) return DEFAULT_RETENTION_DAYS;
-  return Math.floor(parsed);
-}
-
-function getServiceAdmin(env: EnvReader): { url: string; admin: SupabaseClient } | null {
-  const url = env('SUPABASE_URL') || env('VITE_SUPABASE_URL');
-  const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !serviceKey) return null;
-  const admin = createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return { url, admin };
-}
-
-type DriveBackupMetadata = {
-  id: string;
-  name: string;
-  size?: string;
-  createdTime?: string;
-  appProperties?: Record<string, string>;
-};
-
-function isGoogleDriveBackupConfigured(env: EnvReader): boolean {
-  return Boolean(env('GOOGLE_DRIVE_CLIENT_ID') && env('GOOGLE_DRIVE_CLIENT_SECRET') && env('GOOGLE_DRIVE_REFRESH_TOKEN'));
-}
-
-async function getGoogleDriveAccessToken(env: EnvReader): Promise<string> {
-  if (!isGoogleDriveBackupConfigured(env)) {
-    throw new Error('Google Drive backup is not configured. Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.');
-  }
-  if (cachedDriveToken && cachedDriveToken.expiresAt > Date.now() + 60_000) {
-    return cachedDriveToken.value;
-  }
-  if (driveTokenRequest) return driveTokenRequest;
-
-  driveTokenRequest = (async () => {
-    const body = new URLSearchParams({
-      client_id: env('GOOGLE_DRIVE_CLIENT_ID'),
-      client_secret: env('GOOGLE_DRIVE_CLIENT_SECRET'),
-      refresh_token: env('GOOGLE_DRIVE_REFRESH_TOKEN'),
-      grant_type: 'refresh_token',
-    });
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-    const payload = await response.json().catch(() => null) as {
-      access_token?: string;
-      expires_in?: number;
-      error_description?: string;
-      error?: string;
-    } | null;
-    if (!response.ok || !payload?.access_token) {
-      throw new Error(payload?.error_description || payload?.error || `Google OAuth token request failed (${response.status})`);
-    }
-    cachedDriveToken = {
-      value: payload.access_token,
-      expiresAt: Date.now() + Math.max(60, Number(payload.expires_in) || 3600) * 1000,
-    };
-    return payload.access_token;
-  })();
-
-  try {
-    return await driveTokenRequest;
-  } finally {
-    driveTokenRequest = null;
-  }
-}
-
-async function googleDriveRequest(
-  env: EnvReader,
-  url: string,
-  init: RequestInit = {},
-): Promise<globalThis.Response> {
-  const token = await getGoogleDriveAccessToken(env);
-  const headers = new Headers(init.headers);
-  headers.set('Authorization', `Bearer ${token}`);
-  const response = await fetch(url, { ...init, headers });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-    throw new Error(payload?.error?.message || `Google Drive API request failed (${response.status})`);
-  }
-  return response;
-}
-
-function escapeDriveQueryValue(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
-
-async function getDriveBackupFolderId(env: EnvReader): Promise<string> {
-  if (cachedDriveFolderId) return cachedDriveFolderId;
-  const query = new URLSearchParams({
-    q: `mimeType = '${DRIVE_FOLDER_MIME}' and trashed = false and appProperties has { key='baanpakkruFolderRole' and value='backup_root' }`,
-    fields: 'files(id)',
-    pageSize: '1',
-    spaces: 'drive',
-  });
-  const response = await googleDriveRequest(env, `${DRIVE_FILES_API}?${query}`);
-  const data = await response.json() as { files?: Array<{ id?: string }> };
-  const existing = data.files?.[0]?.id;
-  if (existing) {
-    cachedDriveFolderId = existing;
-    return existing;
-  }
-
-  const create = await googleDriveRequest(env, `${DRIVE_FILES_API}?fields=id`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: 'BaanPakKru-Backups',
-      mimeType: DRIVE_FOLDER_MIME,
-      appProperties: { baanpakkruFolderRole: 'backup_root' },
-    }),
-  });
-  const created = await create.json() as { id?: string };
-  if (!created.id) throw new Error('Google Drive backup folder creation returned no file ID');
-  cachedDriveFolderId = created.id;
-  return created.id;
-}
-
-async function listDriveBackupFiles(env: EnvReader): Promise<DriveBackupMetadata[]> {
-  const folderId = await getDriveBackupFolderId(env);
-  const files: DriveBackupMetadata[] = [];
-  let pageToken: string | undefined;
-  do {
-    const params = new URLSearchParams({
-      q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false and appProperties has { key='baanpakkruBackup' and value='true' }`,
-      fields: 'nextPageToken,files(id,name,size,createdTime,appProperties)',
-      orderBy: 'createdTime desc',
-      pageSize: '100',
-      spaces: 'drive',
-    });
-    if (pageToken) params.set('pageToken', pageToken);
-    const response = await googleDriveRequest(env, `${DRIVE_FILES_API}?${params}`);
-    const data = await response.json() as { files?: DriveBackupMetadata[]; nextPageToken?: string };
-    files.push(...(data.files || []));
-    pageToken = data.nextPageToken;
-  } while (pageToken);
-  return files;
-}
-
-async function uploadDriveBackup(
-  env: EnvReader,
-  options: {
-    name: string;
-    content: string;
-    appProperties: Record<string, string>;
-  },
-): Promise<DriveBackupMetadata> {
-  const folderId = await getDriveBackupFolderId(env);
-  const identityProperties = ['scopeType', 'snapshotDate', 'schoolId']
-    .filter((key) => options.appProperties[key])
-    .map((key) => `appProperties has { key='${key}' and value='${escapeDriveQueryValue(options.appProperties[key])}' }`);
-  const lookup = new URLSearchParams({
-    q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false and appProperties has { key='baanpakkruBackup' and value='true' } and ${identityProperties.join(' and ')}`,
-    fields: 'files(id)',
-    pageSize: '1',
-    spaces: 'drive',
-  });
-  const lookupResponse = await googleDriveRequest(env, `${DRIVE_FILES_API}?${lookup}`);
-  const lookupData = await lookupResponse.json() as { files?: Array<{ id?: string }> };
-  const existingId = lookupData.files?.[0]?.id;
-  const metadata = {
-    name: options.name,
-    mimeType: 'application/json',
-    ...(existingId ? {} : { parents: [folderId] }),
-    appProperties: { baanpakkruBackup: 'true', ...options.appProperties },
-  };
-  const boundary = `baanpakkru_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const body = [
-    `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
-    '',
-    JSON.stringify(metadata),
-    `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
-    '',
-    options.content,
-    `--${boundary}--`,
-  ].join('\r\n');
-  const params = new URLSearchParams({
-    uploadType: 'multipart',
-    fields: 'id,name,size,createdTime,appProperties',
-  });
-  const url = existingId
-    ? `${DRIVE_UPLOAD_API}/${encodeURIComponent(existingId)}?${params}`
-    : `${DRIVE_UPLOAD_API}?${params}`;
-  const response = await googleDriveRequest(env, url, {
-    method: existingId ? 'PATCH' : 'POST',
-    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
-    body,
-  });
-  return await response.json() as DriveBackupMetadata;
-}
-
-async function pruneOldDriveBackups(env: EnvReader, retentionDays: number): Promise<void> {
-  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
-  const files = await listDriveBackupFiles(env);
-  for (const file of files) {
-    const createdAt = Date.parse(file.createdTime || '');
-    if (Number.isFinite(createdAt) && createdAt < cutoff) {
-      await googleDriveRequest(env, `${DRIVE_FILES_API}/${encodeURIComponent(file.id)}`, { method: 'DELETE' });
-    }
-  }
-}
-
-export async function runServerMidnightSnapshots(
-  env: EnvReader,
-  options?: { onlySchoolId?: string | null; includeSystem?: boolean }
-): Promise<{
-  dateStr: string;
-  bucket: string;
-  saved: Array<{ path: string; scope: string; schoolId?: string; size: number }>;
-  errors: Array<{ target: string; error: string }>;
-}> {
-  const service = getServiceAdmin(env);
-  if (!service) {
-    throw new Error('Server Supabase service role key is not configured.');
-  }
-  if (!isGoogleDriveBackupConfigured(env)) {
-    throw new Error('Google Drive backup is not configured. Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.');
-  }
-
-  const { dateStr } = getBangkokClockParts();
-  const saved: Array<{ path: string; scope: string; schoolId?: string; size: number }> = [];
-  const errors: Array<{ target: string; error: string }> = [];
-
-  let schoolQuery = service.admin.from('schools').select('id, code, name_th, name_en, status').order('name_th');
-  if (options?.onlySchoolId) {
-    schoolQuery = schoolQuery.eq('id', options.onlySchoolId);
-  } else {
-    schoolQuery = schoolQuery.eq('status', 'active');
-  }
-  const { data: schools, error: schoolError } = await schoolQuery;
-  if (schoolError) throw new Error(`โหลดรายชื่อโรงเรียนไม่สำเร็จ: ${schoolError.message}`);
-
-  for (const school of schools || []) {
-    const cleanId = String(school.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
-    if (!cleanId) continue;
-    try {
-      const backup = await buildBackupWithAdmin(service.admin, { type: 'school', schoolId: String(school.id) }, service.url);
-      const serialized = JSON.stringify(backup);
-      const bytes = Buffer.from(serialized, 'utf8');
-      if (bytes.byteLength > MAX_BACKUP_BYTES) {
-        throw new Error('ขนาดข้อมูลโรงเรียนเกิน 50 MB');
-      }
-      const uploaded = await uploadDriveBackup(env, {
-        name: `baanpakkru-${dateStr}-school-${cleanId}.json`,
-        content: serialized,
-        appProperties: {
-          scopeType: 'school',
-          schoolId: String(school.id).slice(0, 110),
-          schoolName: String(school.name_th || school.name_en || school.code || school.id).slice(0, 110),
-          snapshotDate: dateStr,
-        },
-      });
-      saved.push({
-        path: uploaded.id,
-        scope: 'school',
-        schoolId: String(school.id),
-        size: Number(uploaded.size || bytes.byteLength),
-      });
-    } catch (err) {
-      errors.push({ target: String(school.name_th || school.name_en || school.id), error: err instanceof Error ? err.message : String(err) });
-    }
-  }
-
-  if (!options?.onlySchoolId && options?.includeSystem !== false) {
-    try {
-      const systemBackup = await buildBackupWithAdmin(service.admin, { type: 'system', schoolId: null }, service.url);
-      const serialized = JSON.stringify(systemBackup);
-      const bytes = Buffer.from(serialized, 'utf8');
-      if (bytes.byteLength > MAX_BACKUP_BYTES) throw new Error('ขนาดข้อมูลทั้งระบบเกิน 50 MB');
-      const uploaded = await uploadDriveBackup(env, {
-        name: `baanpakkru-${dateStr}-system-all.json`,
-        content: serialized,
-        appProperties: { scopeType: 'system', schoolName: 'System (All Schools)', snapshotDate: dateStr },
-      });
-      saved.push({ path: uploaded.id, scope: 'system', size: Number(uploaded.size || bytes.byteLength) });
-    } catch (err) {
-      errors.push({ target: 'system-all', error: err instanceof Error ? err.message : String(err) });
-    }
-  }
-
-  await pruneOldDriveBackups(env, getRetentionDays(env));
-  lastServerSnapshotDate = dateStr;
-  lastServerSnapshotAt = new Date().toISOString();
-  lastServerSnapshotFiles = saved.length;
-  lastServerSnapshotError = errors.length > 0 ? errors.map((e) => `${e.target}: ${e.error}`).join('; ') : null;
-
-  return { dateStr, bucket: 'Google Drive', saved, errors };
-}
-
-export function startAutoBackupScheduler(getEnv: EnvReader): () => void {
-  let isRunning = false;
-  let midnightTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const runMidnightSnapshot = () => {
-    if (isRunning) return;
-    if (!getServiceAdmin(getEnv) || !isGoogleDriveBackupConfigured(getEnv)) return;
-    const { dateStr, minutes } = getBangkokClockParts();
-    if (lastServerSnapshotDate === dateStr) return;
-
-    isRunning = true;
-    void runServerMidnightSnapshots(getEnv)
-      .then((result) => {
-        console.log(`[Auto Backup] Midnight snapshot (${result.dateStr}) saved ${result.saved.length} file(s) to bucket "${result.bucket}".`);
-      })
-      .catch((err) => {
-        lastServerSnapshotError = err instanceof Error ? err.message : String(err);
-        console.error('[Auto Backup] Midnight snapshot failed:', lastServerSnapshotError);
-      })
-      .finally(() => {
-        isRunning = false;
-      });
-  };
-
-  const scheduleNextMidnight = () => {
-    if (midnightTimer) clearTimeout(midnightTimer);
-    const now = new Date();
-    const bangkok = getBangkokClockParts(now);
-    const [year, month, day] = bangkok.dateStr.split('-').map(Number);
-    if (!year || !month || !day) return;
-
-    // Asia/Bangkok is UTC+7. Schedule the next local 00:00 directly.
-    const nextMidnightUtcMs = Date.UTC(year, month - 1, day + 1, 0, 0, 0) - (7 * 60 * 60 * 1000);
-    const delayMs = Math.max(1000, nextMidnightUtcMs - now.getTime());
-
-    midnightTimer = setTimeout(() => {
-      runMidnightSnapshot();
-      scheduleNextMidnight();
-    }, delayMs);
-    midnightTimer.unref?.();
-  };
-
-  scheduleNextMidnight();
-
-  // Watchdog: recover if the runtime slept or the exact timer was delayed.
-  const timer = setInterval(() => {
-    const { dateStr, minutes } = getBangkokClockParts();
-    if (minutes <= 10 && lastServerSnapshotDate !== dateStr) {
-      runMidnightSnapshot();
-      scheduleNextMidnight();
-    }
-  }, SNAPSHOT_CHECK_INTERVAL_MS);
-  timer.unref?.();
-
-  return () => {
-    if (midnightTimer) clearTimeout(midnightTimer);
-    clearInterval(timer);
-  };
-}
-
-function timingSafeBearerMatch(headerValue: string, expectedSecret: string): boolean {
-  const match = headerValue.match(/^Bearer\s+(.+)$/i);
-  if (!match || !expectedSecret) return false;
-  const actual = Buffer.from(match[1], 'utf8');
-  const expected = Buffer.from(expectedSecret, 'utf8');
-  if (actual.byteLength !== expected.byteLength) return false;
-  return timingSafeEqual(actual, expected);
-}
-
 export function createBackupRouter(getEnv: EnvReader) {
   const router = Router();
-  router.get('/status', async (req: Request, res: Response) => {
+  const getProjectRef = () => {
+    const url = getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL');
+    return url ? getSupabaseProjectRef(url) : '';
+  };
+  const requireDrillTarget = (
+    access: Access,
+    backup: { sourceProject?: unknown },
+    res: Response,
+  ) => {
+    if (access.role !== 'super_admin') {
+      res.status(403).json({ error: 'DRILL_FORBIDDEN', message: 'โหมดซ้อมกู้คืน Staging ใช้ได้เฉพาะ Super Admin' });
+      return null;
+    }
+    const targetProject = getProjectRef();
+    const message = getBackupDrillTargetError(
+      getEnv('BACKUP_RESTORE_ENVIRONMENT'),
+      backup.sourceProject,
+      targetProject,
+    );
+    if (message) {
+      res.status(409).json({ error: 'DRILL_TARGET_UNSAFE', message });
+      return null;
+    }
+    return targetProject;
+  };
+
+  router.get('/drill-status', async (req: Request, res: Response) => {
     const access = await resolveAccess(req, res, getEnv);
     if (!access) return;
-    res.setHeader('Cache-Control', 'no-store');
+    if (access.role !== 'super_admin') {
+      res.status(403).json({ error: 'DRILL_FORBIDDEN', message: 'ตรวจสอบโหมดซ้อมกู้คืนได้เฉพาะ Super Admin' });
+      return;
+    }
+    const targetProject = getProjectRef();
+    const environment = getEnv('BACKUP_RESTORE_ENVIRONMENT');
     res.json({
-      ok: true,
-      supabaseServiceRoleConfigured: true,
-      backupBucket: 'Google Drive',
-      googleDriveConfigured: isGoogleDriveBackupConfigured(getEnv),
-      retentionDays: getRetentionDays(getEnv),
-      cronSecretConfigured: Boolean(getEnv('BACKUP_CRON_SECRET')),
-      midnightTimeBangkok: '00:00',
-      lastServerSnapshotDate,
-      lastServerSnapshotAt,
-      lastServerSnapshotFiles,
-      lastServerSnapshotError,
+      enabled: environment === 'staging' && Boolean(targetProject),
+      environment: environment || 'unspecified',
+      targetProject: targetProject || null,
     });
-  });
-
-  router.get('/snapshots', async (req: Request, res: Response) => {
-    const access = await resolveAccess(req, res, getEnv);
-    if (!access) return;
-    try {
-      const files = await listDriveBackupFiles(getEnv);
-      const items = files.flatMap((file) => {
-        const scopeType = file.appProperties?.scopeType;
-        const schoolId = file.appProperties?.schoolId;
-        if (scopeType !== 'school' && scopeType !== 'system') return [];
-        if (access.role !== 'super_admin' &&
-            (scopeType !== 'school' || schoolId !== access.schoolId)) return [];
-        const createdAt = file.createdTime || '';
-        return [{
-          path: file.id,
-          date: file.appProperties?.snapshotDate || createdAt.slice(0, 10),
-          name: file.name,
-          scope: scopeType,
-          schoolId,
-          size: Number(file.size || 0),
-          createdAt,
-        }];
-      });
-      res.setHeader('Cache-Control', 'no-store');
-      res.json({ bucket: 'Google Drive', snapshots: items });
-    } catch (error) {
-      res.status(502).json({ error: 'SNAPSHOT_LIST_FAILED', message: error instanceof Error ? error.message : 'โหลดรายการ Snapshot ไม่สำเร็จ' });
-    }
-  });
-
-  router.get('/snapshots/download', async (req: Request, res: Response) => {
-    const access = await resolveAccess(req, res, getEnv);
-    if (!access) return;
-    const fileId = typeof req.query.path === 'string' ? req.query.path.trim() : '';
-    if (!/^[a-zA-Z0-9_-]{10,200}$/.test(fileId)) {
-      res.status(400).json({ error: 'INVALID_SNAPSHOT_ID', message: 'รหัสไฟล์ Snapshot ไม่ถูกต้อง' });
-      return;
-    }
-    try {
-      const params = new URLSearchParams({ fields: 'id,name,appProperties' });
-      const metadataResponse = await googleDriveRequest(
-        getEnv,
-        `${DRIVE_FILES_API}/${encodeURIComponent(fileId)}?${params}`,
-      );
-      const metadata = await metadataResponse.json() as DriveBackupMetadata;
-      const properties = metadata.appProperties || {};
-      if (properties.baanpakkruBackup !== 'true' ||
-          !['school', 'system'].includes(properties.scopeType || '')) {
-        res.status(404).json({ error: 'SNAPSHOT_NOT_FOUND', message: 'ไม่พบไฟล์ Snapshot' });
-        return;
-      }
-      if (access.role !== 'super_admin' &&
-          (properties.scopeType !== 'school' || properties.schoolId !== access.schoolId)) {
-        res.status(403).json({ error: 'SCOPE_FORBIDDEN', message: 'Admin โรงเรียนเข้าถึง Snapshot ได้เฉพาะโรงเรียนของตนเอง' });
-        return;
-      }
-      const mediaResponse = await googleDriveRequest(
-        getEnv,
-        `${DRIVE_FILES_API}/${encodeURIComponent(fileId)}?alt=media`,
-      );
-      const text = await mediaResponse.text();
-      const filename = metadata.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Cache-Control', 'no-store');
-      res.send(text);
-    } catch (error) {
-      res.status(502).json({ error: 'SNAPSHOT_DOWNLOAD_FAILED', message: error instanceof Error ? error.message : 'ดาวน์โหลด Snapshot ไม่สำเร็จ' });
-    }
-  });
-
-  router.post('/snapshots/run-now', async (req: Request, res: Response) => {
-    const access = await resolveAccess(req, res, getEnv);
-    if (!access) return;
-    try {
-      const result = await runServerMidnightSnapshots(getEnv, {
-        onlySchoolId: access.role === 'super_admin' ? null : access.schoolId,
-        includeSystem: access.role === 'super_admin',
-      });
-      if (result.saved.length === 0 && result.errors.length > 0) {
-        res.status(502).json({
-          error: 'SNAPSHOT_RUN_FAILED',
-          message: result.errors.map((item) => `${item.target}: ${item.error}`).join('; '),
-          ...result,
-        });
-        return;
-      }
-      res.status(result.errors.length > 0 ? 207 : 200).json({ ok: true, ...result });
-    } catch (error) {
-      res.status(502).json({ error: 'SNAPSHOT_RUN_FAILED', message: error instanceof Error ? error.message : 'สร้าง Snapshot ไม่สำเร็จ' });
-    }
-  });
-
-  router.post('/cron', async (req: Request, res: Response) => {
-    const secret = getEnv('BACKUP_CRON_SECRET');
-    if (!secret) {
-      res.status(503).json({ error: 'CRON_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า BACKUP_CRON_SECRET' });
-      return;
-    }
-    if (!timingSafeBearerMatch(req.get('authorization') || '', secret)) {
-      res.status(401).json({ error: 'UNAUTHORIZED', message: 'Cron secret ไม่ถูกต้อง' });
-      return;
-    }
-    try {
-      const result = await runServerMidnightSnapshots(getEnv);
-      if (result.saved.length === 0 && result.errors.length > 0) {
-        res.status(502).json({
-          error: 'CRON_BACKUP_FAILED',
-          message: result.errors.map((item) => `${item.target}: ${item.error}`).join('; '),
-          ...result,
-        });
-        return;
-      }
-      res.status(result.errors.length > 0 ? 207 : 200).json({ ok: true, ...result });
-    } catch (error) {
-      res.status(502).json({ error: 'CRON_BACKUP_FAILED', message: error instanceof Error ? error.message : 'สำรองข้อมูลอัตโนมัติไม่สำเร็จ' });
-    }
   });
 
   router.get('/', async (req: Request, res: Response) => {
@@ -997,10 +546,65 @@ export function createBackupRouter(getEnv: EnvReader) {
     const scope = await validateRestore(backup, access, res);
     if (!scope) return;
     const counts = Object.fromEntries(Object.entries(backup.tables).map(([table, rows]) => [table, (rows as unknown[]).length]));
-    res.json({ valid: true, scope, exportedAt: backup.exportedAt, sourceProject: backup.sourceProject, counts,
+    const storageFilesByBucket = Object.fromEntries(
+      STORAGE_BUCKETS.map((bucket) => [
+        bucket,
+        (backup.storageFiles || []).filter((file: { bucket: string }) => file.bucket === bucket).length,
+      ]),
+    );
+    const targetProject = getProjectRef();
+    res.json({
+      valid: true,
+      scope,
+      exportedAt: backup.exportedAt,
+      sourceProject: backup.sourceProject,
+      targetProject: targetProject || null,
+      sameProject: Boolean(
+        backup.sourceProject &&
+          String(backup.sourceProject).toLowerCase() === targetProject.toLowerCase(),
+      ),
+      counts,
+      storageFilesByBucket,
+      exclusions: OMITTED_TABLES,
       loginAccounts: Array.isArray(backup.accounts) ? backup.accounts.length : 0,
-      passwordsIncluded: false, mergeOnly: true });
+      passwordsIncluded: false,
+      mergeOnly: true,
+    });
   });
+
+  router.post('/drill/validate', async (req: Request, res: Response) => {
+    const access = await resolveAccess(req, res, getEnv);
+    if (!access) return;
+    const backup = parseBackup(req, res);
+    if (!backup) return;
+    const targetProject = requireDrillTarget(access, backup, res);
+    if (!targetProject) return;
+    const scope = await validateRestore(backup, access, res);
+    if (!scope) return;
+    const counts = Object.fromEntries(Object.entries(backup.tables).map(([table, rows]) => [table, (rows as unknown[]).length]));
+    const storageFilesByBucket = Object.fromEntries(
+      STORAGE_BUCKETS.map((bucket) => [
+        bucket,
+        (backup.storageFiles || []).filter((file: { bucket: string }) => file.bucket === bucket).length,
+      ]),
+    );
+    res.json({
+      valid: true,
+      drill: true,
+      environment: 'staging',
+      scope,
+      exportedAt: backup.exportedAt,
+      sourceProject: backup.sourceProject,
+      targetProject,
+      counts,
+      storageFilesByBucket,
+      exclusions: OMITTED_TABLES,
+      loginAccounts: Array.isArray(backup.accounts) ? backup.accounts.length : 0,
+      passwordsIncluded: false,
+      mergeOnly: true,
+    });
+  });
+
   router.post('/restore', async (req: Request, res: Response) => {
     const access = await resolveAccess(req, res, getEnv);
     if (!access) return;
@@ -1008,60 +612,96 @@ export function createBackupRouter(getEnv: EnvReader) {
     if (!backup) return;
     const scope = await validateRestore(backup, access, res);
     if (!scope) return;
-    const imported: Record<string, number> = {};
-    const skipped: Record<string, number> = {};
-    let cachedAuthUsers: User[] | null = null;
-    const getCachedAuthUsers = async () => {
-      if (!cachedAuthUsers) cachedAuthUsers = await listAuthUsers(access.admin);
-      return cachedAuthUsers;
-    };
-    try {
-      for (const table of RESTORE_ORDER) {
-        const sourceRows = backup.tables[table] as any[] | undefined;
-        if (!sourceRows?.length) continue;
-        let rows = sourceRows;
-        if (table === 'user_profiles') {
-          const authUsers = await getCachedAuthUsers();
-          const existingIds = new Set(authUsers.map((user) => user.id));
-          rows = sourceRows.filter((row) => existingIds.has(String(row.id)));
-          if (rows.length !== sourceRows.length) skipped[table] = sourceRows.length - rows.length;
-        }
-        let tableImported = 0;
-        for (let i = 0; i < rows.length; i += 100) {
-          const chunk = rows.slice(i, i + 100);
-          const { error } = await access.admin.from(table).upsert(chunk);
-          if (error) throw new Error(`${table} (${tableImported}/${rows.length}): ${error.message}`);
-          tableImported += chunk.length;
-        }
-        imported[table] = tableImported;
-      }
-      const restoredFiles: string[] = [];
-      for (const file of backup.storageFiles || []) {
-        const bytes = Buffer.from(String(file.contentBase64), 'base64');
-        const digest = createHash('sha256').update(bytes).digest('hex');
-        if (digest !== String(file.sha256).toLowerCase() || bytes.byteLength !== Number(file.size)) {
-          throw new Error(`ไฟล์ Storage ${file.bucket}/${file.path} ไม่ผ่านการตรวจสอบ checksum`);
-        }
-        const { error } = await access.admin.storage.from(file.bucket).upload(file.path, bytes, {
-          contentType: file.contentType || 'application/octet-stream', upsert: true,
-        });
-        if (error) throw new Error(`Storage ${file.bucket}/${file.path}: ${error.message}`);
-        restoredFiles.push(`${file.bucket}/${file.path}`);
-      }
-      const sourceAccounts = Array.isArray(backup.accounts) ? backup.accounts : [];
-      const existingAuth = await getCachedAuthUsers();
-      const existingEmails = new Set(existingAuth.map((user) => (user.email || '').toLowerCase()).filter(Boolean));
-      const missingAccounts = sourceAccounts.filter((account: any) => account.email && !existingEmails.has(String(account.email).toLowerCase())).map((account: any) => ({
-        email: account.email, role: account.role || null,
-      }));
-      res.json({ ok: true, imported, skipped, restoredStorageFiles: restoredFiles.length, missingAccounts, passwordsIncluded: false,
-        message: 'นำเข้าด้วยการเพิ่ม/ปรับปรุงข้อมูล ไม่ลบแถวเดิม หากมีบัญชีล็อกอินหายไปต้องเชิญหรือสร้างบัญชีใหม่และตั้งรหัสผ่านใหม่' });
-    } catch (error) {
-      res.status(207).json({ ok: false, partial: true, imported, skipped,
-        error: error instanceof Error ? error.message : 'นำเข้าข้อมูลได้บางส่วน กรุณาตรวจรายงานและนำเข้าไฟล์เดิมซ้ำได้' });
-    }
+    await restoreBackup(backup, access, res);
   });
+
+  router.post('/drill/restore', async (req: Request, res: Response) => {
+    const access = await resolveAccess(req, res, getEnv);
+    if (!access) return;
+    const backup = parseBackup(req, res);
+    if (!backup) return;
+    const targetProject = requireDrillTarget(access, backup, res);
+    if (!targetProject) return;
+    const scope = await validateRestore(backup, access, res);
+    if (!scope) return;
+    await restoreBackup(backup, access, res, { environment: 'staging', targetProject });
+  });
+
   return router;
+}
+
+async function restoreBackup(
+  backup: any,
+  access: Access,
+  res: Response,
+  target: { environment?: string; targetProject?: string } = {},
+) {
+  const imported: Record<string, number> = {};
+  const skipped: Record<string, number> = {};
+  let cachedAuthUsers: User[] | null = null;
+  const getCachedAuthUsers = async () => {
+    if (!cachedAuthUsers) cachedAuthUsers = await listAuthUsers(access.admin);
+    return cachedAuthUsers;
+  };
+  try {
+    for (const table of RESTORE_ORDER) {
+      const sourceRows = backup.tables[table] as any[] | undefined;
+      if (!sourceRows?.length) continue;
+      let rows = sourceRows;
+      if (table === 'user_profiles') {
+        const authUsers = await getCachedAuthUsers();
+        const existingIds = new Set(authUsers.map((user) => user.id));
+        rows = sourceRows.filter((row) => existingIds.has(String(row.id)));
+        if (rows.length !== sourceRows.length) skipped[table] = sourceRows.length - rows.length;
+      }
+      let tableImported = 0;
+      for (let i = 0; i < rows.length; i += 100) {
+        const chunk = rows.slice(i, i + 100);
+        const { error } = await access.admin.from(table).upsert(chunk);
+        if (error) throw new Error(`${table} (${tableImported}/${rows.length}): ${error.message}`);
+        tableImported += chunk.length;
+      }
+      imported[table] = tableImported;
+    }
+    const restoredFiles: string[] = [];
+    for (const file of backup.storageFiles || []) {
+      const bytes = Buffer.from(String(file.contentBase64), 'base64');
+      const digest = createHash('sha256').update(bytes).digest('hex');
+      if (digest !== String(file.sha256).toLowerCase() || bytes.byteLength !== Number(file.size)) {
+        throw new Error(`ไฟล์ Storage ${file.bucket}/${file.path} ไม่ผ่านการตรวจสอบ checksum`);
+      }
+      const { error } = await access.admin.storage.from(file.bucket).upload(file.path, bytes, {
+        contentType: file.contentType || 'application/octet-stream', upsert: true,
+      });
+      if (error) throw new Error(`Storage ${file.bucket}/${file.path}: ${error.message}`);
+      restoredFiles.push(`${file.bucket}/${file.path}`);
+    }
+    const sourceAccounts = Array.isArray(backup.accounts) ? backup.accounts : [];
+    const existingAuth = await getCachedAuthUsers();
+    const existingEmails = new Set(existingAuth.map((user) => (user.email || '').toLowerCase()).filter(Boolean));
+    const missingAccounts = sourceAccounts
+      .filter((account: any) => account.email && !existingEmails.has(String(account.email).toLowerCase()))
+      .map((account: any) => ({ email: account.email, role: account.role || null }));
+    res.json({
+      ok: true,
+      imported,
+      skipped,
+      restoredStorageFiles: restoredFiles.length,
+      missingAccounts,
+      passwordsIncluded: false,
+      ...target,
+      message: 'นำเข้าด้วยการเพิ่ม/ปรับปรุงข้อมูล ไม่ลบแถวเดิม หากมีบัญชีล็อกอินหายไปต้องเชิญหรือสร้างบัญชีใหม่และตั้งรหัสผ่านใหม่',
+    });
+  } catch (error) {
+    res.status(207).json({
+      ok: false,
+      partial: true,
+      imported,
+      skipped,
+      ...target,
+      error: error instanceof Error ? error.message : 'นำเข้าข้อมูลได้บางส่วน กรุณาตรวจรายงานและนำเข้าไฟล์เดิมซ้ำได้',
+    });
+  }
 }
 
 export function backupRawParser() {

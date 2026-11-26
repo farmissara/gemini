@@ -12,6 +12,13 @@ import {
   X,
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabase';
+import {
+  decryptBackup,
+  encryptBackup,
+  MAX_BACKUP_PASSPHRASE_LENGTH,
+  MAX_ENCRYPTED_BACKUP_BYTES,
+  MIN_BACKUP_PASSPHRASE_LENGTH,
+} from '../../lib/backupEncryption';
 import type { School } from '../../types';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { emitAppToast } from '../common/ToastProvider';
@@ -19,15 +26,22 @@ import { emitAppToast } from '../common/ToastProvider';
 type Props = { isSuperAdmin: boolean; schools: School[]; activeSchoolId: string; onClose: () => void };
 type BackupScopeChoice = 'school' | 'all';
 type ModalTab = 'backup' | 'restore';
+type RestoreMode = 'restore' | 'drill';
+type DrillStatus = { enabled: boolean; environment: string; targetProject: string | null };
 
 type Report = {
   valid?: boolean;
   ok?: boolean;
   partial?: boolean;
+  drill?: boolean;
+  environment?: string;
   scope?: { type: string; schoolId?: string };
   exportedAt?: string;
   sourceProject?: string;
+  targetProject?: string | null;
   counts?: Record<string, number>;
+  storageFilesByBucket?: Record<string, number>;
+  exclusions?: Record<string, string>;
   loginAccounts?: number;
   restoredStorageFiles?: number;
   imported?: Record<string, number>;
@@ -51,6 +65,13 @@ export const BackupCenterModal: React.FC<Props> = ({
   const [schoolId, setSchoolId] = useState(activeSchoolId);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
+  const [backupPassphrase, setBackupPassphrase] = useState('');
+  const [backupPassphraseConfirmation, setBackupPassphraseConfirmation] = useState('');
+  const [restorePassphrase, setRestorePassphrase] = useState('');
+  const [restoreMode, setRestoreMode] = useState<RestoreMode>('restore');
+  const [drillStatus, setDrillStatus] = useState<DrillStatus | null>(null);
+  const [drillStatusError, setDrillStatusError] = useState('');
+  const [drillStatusLoading, setDrillStatusLoading] = useState(false);
 
   // Local restore file state
   const [file, setFile] = useState<File | null>(null);
@@ -99,6 +120,32 @@ export const BackupCenterModal: React.FC<Props> = ({
     return response;
   }, []);
 
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let active = true;
+    setDrillStatusLoading(true);
+    setDrillStatusError('');
+    void request('/api/backup/drill-status')
+      .then(async (response) => {
+        const status = (await response.json()) as DrillStatus;
+        if (typeof status.enabled !== 'boolean' || typeof status.environment !== 'string') {
+          throw new Error('ข้อมูลสถานะ Staging ไม่ถูกต้อง');
+        }
+        if (active) setDrillStatus(status);
+      })
+      .catch((error) => {
+        if (active) {
+          setDrillStatusError(error instanceof Error ? error.message : 'ตรวจสอบสถานะ Staging ไม่สำเร็จ');
+        }
+      })
+      .finally(() => {
+        if (active) setDrillStatusLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isSuperAdmin, request]);
+
   const exportLocalBackup = async () => {
     setBusy(true);
     setReport(null);
@@ -109,18 +156,19 @@ export const BackupCenterModal: React.FC<Props> = ({
           ? '?scope=all'
           : `?scope=school&schoolId=${encodeURIComponent(schoolId)}`;
       const response = await request(`/api/backup${query}`);
-      const blob = await response.blob();
+      const encryptedContent = await encryptBackup(await response.text(), backupPassphrase);
+      const blob = new Blob([encryptedContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `baanpakkru-${effectiveScope === 'all' ? 'system' : 'school'}-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `baanpakkru-${effectiveScope === 'all' ? 'system' : 'school'}-backup-${new Date().toISOString().slice(0, 10)}.encrypted.json`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setReport({ ok: true, message: 'ดาวน์โหลดไฟล์สำรองลงเครื่องเรียบร้อยแล้ว' });
+      setReport({ ok: true, message: 'เข้ารหัสและดาวน์โหลดไฟล์สำรองลงเครื่องเรียบร้อยแล้ว' });
       emitAppToast({
         tone: 'success',
         title: 'สำรองข้อมูลสำเร็จ',
-        message: 'ดาวน์โหลดไฟล์สำรอง JSON เรียบร้อยแล้ว',
+        message: 'เข้ารหัสและดาวน์โหลดไฟล์สำรองเรียบร้อยแล้ว',
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'ส่งออกไม่สำเร็จ';
@@ -128,6 +176,8 @@ export const BackupCenterModal: React.FC<Props> = ({
       emitAppToast({ tone: 'error', title: 'ส่งออกข้อมูลไม่สำเร็จ', message: msg });
     } finally {
       setBusy(false);
+      setBackupPassphrase('');
+      setBackupPassphraseConfirmation('');
     }
   };
 
@@ -135,11 +185,21 @@ export const BackupCenterModal: React.FC<Props> = ({
     setBusy(true);
     setReport(null);
     try {
-      const validation = await request('/api/backup/validate', targetFile);
+      if (targetFile.size > MAX_ENCRYPTED_BACKUP_BYTES) {
+        throw new Error('ไฟล์สำรองมีขนาดเกิน 70 MB');
+      }
+      const decrypted = await decryptBackup(await targetFile.text(), restorePassphrase);
+      const backupFile = new File([decrypted.content], targetFile.name, {
+        type: 'application/json',
+      });
+      const validation = await request(
+        restoreMode === 'drill' ? '/api/backup/drill/validate' : '/api/backup/validate',
+        backupFile,
+      );
       const checked = (await validation.json()) as Report;
       setReport(checked);
       if (!checked.valid) return;
-      setPendingRestoreFile(targetFile);
+      setPendingRestoreFile(backupFile);
       setPendingRestoreCheck(checked);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'ตรวจสอบไฟล์สำรองไม่สำเร็จ';
@@ -147,6 +207,7 @@ export const BackupCenterModal: React.FC<Props> = ({
       emitAppToast({ tone: 'error', title: 'ตรวจสอบไฟล์สำรองไม่สำเร็จ', message: msg });
     } finally {
       setBusy(false);
+      setRestorePassphrase('');
     }
   };
 
@@ -154,18 +215,26 @@ export const BackupCenterModal: React.FC<Props> = ({
     if (!pendingRestoreFile) return;
     setBusy(true);
     try {
-      const restored = await request('/api/backup/restore', pendingRestoreFile);
+      const restored = await request(
+        restoreMode === 'drill' ? '/api/backup/drill/restore' : '/api/backup/restore',
+        pendingRestoreFile,
+      );
       const result = (await restored.json()) as Report;
+      const isDrill = restoreMode === 'drill';
       setReport(result);
       setPendingRestoreCheck(null);
       setPendingRestoreFile(null);
       const partial = result.ok === false || result.partial === true;
       emitAppToast({
         tone: partial ? 'warning' : 'success',
-        title: partial ? 'กู้คืนข้อมูลได้บางส่วน' : 'กู้คืนข้อมูลสำเร็จ',
+        title: partial
+          ? isDrill ? 'ซ้อมกู้คืน Staging ได้บางส่วน' : 'กู้คืนข้อมูลได้บางส่วน'
+          : isDrill ? 'ซ้อมกู้คืน Staging สำเร็จ' : 'กู้คืนข้อมูลสำเร็จ',
         message: partial
           ? result.error || 'นำเข้าข้อมูลได้บางส่วน โปรดตรวจรายงานก่อนดำเนินการต่อ'
-          : 'นำเข้าข้อมูลจากไฟล์สำรองเรียบร้อยแล้ว',
+          : isDrill
+            ? 'นำเข้าข้อมูลใน Staging แล้ว โปรดตรวจข้อมูลปลายทางให้ครบก่อนถือว่าการซ้อมผ่าน'
+            : 'นำเข้าข้อมูลจากไฟล์สำรองเรียบร้อยแล้ว',
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'นำเข้าไม่สำเร็จ';
@@ -187,6 +256,11 @@ export const BackupCenterModal: React.FC<Props> = ({
               pendingRestoreCheck.scope.schoolId
             : 'ที่ระบุในไฟล์'
         }`;
+  const restoreTargetLabel = pendingRestoreCheck?.drill
+    ? `ซ้อมกู้คืนบน Staging (${pendingRestoreCheck.sourceProject || 'ไม่ทราบต้นทาง'} → ${
+        pendingRestoreCheck.targetProject || 'ไม่ทราบปลายทาง'
+      })`
+    : 'กู้คืนในโปรเจกต์ปัจจุบัน';
 
   return (
     <>
@@ -328,9 +402,50 @@ export const BackupCenterModal: React.FC<Props> = ({
                         : 'ดาวน์โหลดไฟล์ .json ของระบบทั้งหมดเก็บสำรองบนอุปกรณ์นี้'}
                     </p>
                   </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                      รหัสผ่านเข้ารหัสไฟล์ ({MIN_BACKUP_PASSPHRASE_LENGTH}–{MAX_BACKUP_PASSPHRASE_LENGTH} ตัวอักษร)
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={MIN_BACKUP_PASSPHRASE_LENGTH}
+                        maxLength={MAX_BACKUP_PASSPHRASE_LENGTH}
+                        value={backupPassphrase}
+                        onChange={(event) => setBackupPassphrase(event.target.value)}
+                        className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-sm text-[var(--color-text-title)]"
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold text-[var(--color-text-body)]">
+                      ยืนยันรหัสผ่าน
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={MIN_BACKUP_PASSPHRASE_LENGTH}
+                        maxLength={MAX_BACKUP_PASSPHRASE_LENGTH}
+                        value={backupPassphraseConfirmation}
+                        onChange={(event) => setBackupPassphraseConfirmation(event.target.value)}
+                        className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-sm text-[var(--color-text-title)]"
+                      />
+                    </label>
+                  </div>
+                  {backupPassphraseConfirmation &&
+                    backupPassphrase !== backupPassphraseConfirmation && (
+                      <p className="mt-2 text-xs text-rose-700 dark:text-rose-300" role="alert">
+                        รหัสผ่านทั้งสองช่องไม่ตรงกัน
+                      </p>
+                    )}
+                  <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                    กรุณาเก็บรหัสผ่านไว้ให้ปลอดภัย ระบบไม่ได้เก็บรหัสผ่านนี้ และไม่สามารถกู้ไฟล์ได้หากลืม
+                  </p>
                   <button
                     type="button"
-                    disabled={busy || (scopeChoice === 'school' && !schoolId)}
+                    disabled={
+                      busy ||
+                      Array.from(backupPassphrase).length < MIN_BACKUP_PASSPHRASE_LENGTH ||
+                      Array.from(backupPassphrase).length > MAX_BACKUP_PASSPHRASE_LENGTH ||
+                      backupPassphrase !== backupPassphraseConfirmation ||
+                      (scopeChoice === 'school' && !schoolId)
+                    }
                     onClick={() => void exportLocalBackup()}
                     className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] px-3 py-2.5 text-sm font-semibold text-[var(--color-text-title)] disabled:opacity-50 cursor-pointer transition"
                   >
@@ -354,6 +469,73 @@ export const BackupCenterModal: React.FC<Props> = ({
                     <FileUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <span>กู้คืนจากไฟล์ JSON ในเครื่อง</span>
                   </h3>
+                  {isSuperAdmin && (
+                    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3">
+                      <p className="text-xs font-semibold text-[var(--color-text-title)]">
+                        เลือกปลายทางก่อนตรวจไฟล์
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          aria-pressed={restoreMode === 'restore'}
+                          onClick={() => {
+                            setRestoreMode('restore');
+                            setPendingRestoreCheck(null);
+                            setPendingRestoreFile(null);
+                            setReport(null);
+                          }}
+                          className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                            restoreMode === 'restore'
+                              ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                              : 'border-[var(--color-border)] text-[var(--color-text-body)]'
+                          }`}
+                        >
+                          กู้คืนระบบนี้
+                        </button>
+                        {drillStatus?.enabled && (
+                          <button
+                            type="button"
+                            aria-pressed={restoreMode === 'drill'}
+                            onClick={() => {
+                              setRestoreMode('drill');
+                              setPendingRestoreCheck(null);
+                              setPendingRestoreFile(null);
+                              setReport(null);
+                            }}
+                            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                              restoreMode === 'drill'
+                                ? 'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100'
+                                : 'border-[var(--color-border)] text-[var(--color-text-body)]'
+                            }`}
+                          >
+                            ซ้อมกู้คืนบน Staging
+                          </button>
+                        )}
+                      </div>
+                      {drillStatusLoading && (
+                        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                          <LoaderCircle className="mr-1 inline h-3.5 w-3.5 animate-spin" />
+                          กำลังตรวจสอบปลายทาง Staging
+                        </p>
+                      )}
+                      {drillStatusError && (
+                        <p className="mt-2 text-xs text-rose-700 dark:text-rose-300" role="alert">
+                          ตรวจสอบ Staging ไม่สำเร็จ: {drillStatusError}
+                        </p>
+                      )}
+                      {!drillStatusLoading && !drillStatusError && drillStatus?.enabled && (
+                        <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">
+                          Staging project: {drillStatus.targetProject}. ระบบจะปฏิเสธไฟล์ที่มีโปรเจกต์ต้นทางเดียวกับปลายทาง
+                        </p>
+                      )}
+                      {!drillStatusLoading && !drillStatusError && !drillStatus?.enabled && (
+                        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                          โหมดซ้อมจะเปิดเฉพาะเมื่อเซิร์ฟเวอร์ Staging ตั้งค่า{' '}
+                          <code>BACKUP_RESTORE_ENVIRONMENT=staging</code>
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-3">
                     <input
                       ref={inputRef}
@@ -361,10 +543,25 @@ export const BackupCenterModal: React.FC<Props> = ({
                       accept=".json,application/json"
                       onChange={(event) => {
                         setFile(event.target.files?.[0] || null);
+                        setRestorePassphrase('');
                         setReport(null);
                       }}
                       className="flex-1 text-xs text-[var(--color-text-muted)] file:mr-2 file:rounded-md file:border file:border-[var(--color-border)] file:bg-[var(--color-card-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--color-text-title)]"
                     />
+                    <label className="block w-full text-xs font-semibold text-[var(--color-text-body)]">
+                      รหัสผ่านไฟล์สำรอง (เฉพาะไฟล์ที่เข้ารหัส)
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        maxLength={256}
+                        value={restorePassphrase}
+                        onChange={(event) => setRestorePassphrase(event.target.value)}
+                        className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-sm text-[var(--color-text-title)]"
+                      />
+                    </label>
+                    <p className="w-full text-xs text-[var(--color-text-muted)]">
+                      ไฟล์สำรองใหม่ต้องใช้รหัสผ่านที่ตั้งไว้ตอนดาวน์โหลด ไฟล์สำรองรุ่นเก่าที่ยังไม่เข้ารหัสนำเข้าได้ตามปกติ
+                    </p>
                     <button
                       type="button"
                       disabled={busy || !file}
@@ -372,7 +569,7 @@ export const BackupCenterModal: React.FC<Props> = ({
                       className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 dark:border-emerald-500 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50 cursor-pointer transition"
                     >
                       <FileUp className="h-4 w-4" />
-                      <span>ตรวจสอบและกู้คืน</span>
+                      <span>{restoreMode === 'drill' ? 'ตรวจสอบและซ้อมกู้คืน' : 'ตรวจสอบไฟล์สำรอง'}</span>
                     </button>
                   </div>
                 </section>
@@ -382,7 +579,7 @@ export const BackupCenterModal: React.FC<Props> = ({
             <div className="flex gap-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm text-amber-950 dark:text-amber-100">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <p className="text-xs leading-relaxed">
-                ไฟล์สำรองรวมข้อมูลตารางฐานข้อมูลและไฟล์ Storage (โลโก้ เอกสาร ภาพเช็คชื่อ) พร้อม SHA-256 checksum จำกัดขนาด 50 MB/ไฟล์ การกู้คืนเป็นแบบ merge (เพิ่ม/อัปเดตไม่ลบข้อมูลปัจจุบัน) รายชื่อบัญชีไม่รวมรหัสผ่านและไม่รวมคีย์ลับ AI
+                ไฟล์สำรองที่ดาวน์โหลดใหม่เข้ารหัส AES-256-GCM และต้องใช้รหัสผ่านเดิมเพื่อกู้คืน (รหัสผ่านไม่ถูกจัดเก็บ) จำกัดขนาดข้อมูล 50 MB/ไฟล์ การกู้คืนเป็นแบบ merge (เพิ่ม/อัปเดตไม่ลบข้อมูลปัจจุบัน) รายชื่อบัญชีไม่รวมรหัสผ่านและไม่รวมคีย์ลับ AI
               </p>
             </div>
 
@@ -399,13 +596,57 @@ export const BackupCenterModal: React.FC<Props> = ({
                   report.message ||
                   (report.valid ? 'ไฟล์ผ่านการตรวจสอบ' : report.ok ? 'เสร็จเรียบร้อย' : '')}
                 {report.valid && (
-                  <div className="mt-2 text-xs text-[var(--color-text-muted)]">
-                    {report.sourceProject && `ต้นทาง ${report.sourceProject} · `}
-                    {report.exportedAt &&
-                      new Date(report.exportedAt).toLocaleString('th-TH')}{' '}
-                    · {report.loginAccounts || 0} บัญชี ·{' '}
-                    {Object.keys(report.counts || {}).length} ตาราง
-                  </div>
+                    <div className="mt-2 space-y-2 text-xs text-[var(--color-text-muted)]">
+                      <p>
+                        {report.sourceProject && `ต้นทาง ${report.sourceProject} · `}
+                        {report.targetProject && `ปลายทาง ${report.targetProject} · `}
+                        {report.exportedAt && `${new Date(report.exportedAt).toLocaleString('th-TH')} · `}
+                        {report.loginAccounts || 0} บัญชี · {Object.keys(report.counts || {}).length} ตาราง
+                      </p>
+                      <details open className="rounded-lg border border-[var(--color-border)] p-2">
+                        <summary className="cursor-pointer font-semibold text-[var(--color-text-body)]">
+                          ข้อมูลในไฟล์สำรอง
+                        </summary>
+                        <ul className="mt-2 grid max-h-36 grid-cols-1 gap-x-4 gap-y-1 overflow-y-auto sm:grid-cols-2">
+                          {Object.entries(report.counts || {}).map(([table, count]) => (
+                            <li key={table} className="flex justify-between gap-2">
+                              <span className="break-all">{table}</span>
+                              <span className="shrink-0">{count} แถว</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {report.storageFilesByBucket && (
+                          <div className="mt-2 border-t border-[var(--color-border)] pt-2">
+                            <p className="font-semibold text-[var(--color-text-body)]">ไฟล์ Storage</p>
+                            <ul className="mt-1 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                              {Object.entries(report.storageFilesByBucket).map(([bucket, count]) => (
+                                <li key={bucket} className="flex justify-between gap-2">
+                                  <span>{bucket}</span>
+                                  <span>{count} ไฟล์</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {!!Object.keys(report.exclusions || {}).length && (
+                          <div className="mt-2 border-t border-[var(--color-border)] pt-2">
+                            <p className="font-semibold text-amber-800 dark:text-amber-200">
+                              ข้อมูลที่ไม่รวมในไฟล์
+                            </p>
+                            <ul className="mt-1 space-y-1">
+                              {Object.entries(report.exclusions || {}).map(([item, reason]) => (
+                                <li key={item}>
+                                  <span className="font-medium">{item}:</span> {reason}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <p className="mt-2 border-t border-[var(--color-border)] pt-2">
+                          รหัสผ่านบัญชีไม่รวมในไฟล์สำรอง
+                        </p>
+                      </details>
+                    </div>
                 )}
                 {report.imported && (
                   <div className="mt-2 text-xs">
@@ -450,12 +691,16 @@ export const BackupCenterModal: React.FC<Props> = ({
 
       <ConfirmActionModal
         isOpen={Boolean(pendingRestoreCheck)}
-        title="ยืนยันการกู้คืนข้อมูลจากไฟล์สำรอง"
+        title={pendingRestoreCheck?.drill ? 'ยืนยันการซ้อมกู้คืนบน Staging' : 'ยืนยันการกู้คืนข้อมูลจากไฟล์สำรอง'}
         description={`ตรวจไฟล์ผ่าน (${restoreScopeLabel}): ข้อมูลตาราง ${
           Object.keys(pendingRestoreCheck?.counts || {}).length
-        } รายการ และบัญชี ${pendingRestoreCheck?.loginAccounts || 0} บัญชี`}
-        detailNote="การกู้คืนเป็นแบบเพิ่ม/ปรับปรุงข้อมูล ไม่ลบข้อมูลปัจจุบัน และรหัสผ่านไม่อยู่ในไฟล์สำรอง"
-        confirmLabel="ยืนยันกู้คืนข้อมูล"
+        } รายการ และบัญชี ${pendingRestoreCheck?.loginAccounts || 0} บัญชี — ${restoreTargetLabel}`}
+        detailNote={
+          pendingRestoreCheck?.drill
+            ? 'ปลายทางถูกกำหนดเป็น Staging ฝั่งเซิร์ฟเวอร์ และต้องเป็นคนละ Supabase project กับต้นทาง การซ้อมจะเพิ่ม/ปรับปรุงข้อมูลบน Staging โดยไม่ลบข้อมูลเดิม'
+            : 'การกู้คืนเป็นแบบเพิ่ม/ปรับปรุงข้อมูล ไม่ลบข้อมูลปัจจุบัน และรหัสผ่านไม่อยู่ในไฟล์สำรอง'
+        }
+        confirmLabel={pendingRestoreCheck?.drill ? 'ยืนยันซ้อมกู้คืนบน Staging' : 'ยืนยันกู้คืนข้อมูล'}
         tone="warning"
         isBusy={busy}
         onCancel={() => {

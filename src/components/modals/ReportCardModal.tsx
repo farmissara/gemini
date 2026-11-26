@@ -532,6 +532,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               )}
             </div>
 
+            <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 border-y border-slate-300">
@@ -653,6 +654,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                 )}
               </tbody>
             </table>
+            </div>
             {gradePageCount > 1 && (
               <div className="flex items-center justify-between gap-3 text-xs text-slate-700 print:hidden">
                 <button type="button" onClick={() => setGradePage(page => Math.max(0, page - 1))} disabled={gradePage === 0} className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold disabled:opacity-40 cursor-pointer">ก่อนหน้า</button>
@@ -662,7 +664,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             )}
 
             {/* Summary Statistics */}
-            <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 grid grid-cols-3 gap-4 text-center">
+            <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-4 text-center">
               {hideGpa ? (
                 <>
                   <div>
@@ -718,6 +720,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 border-l-4 border-emerald-700 pl-2">
                 ๒. สรุปผลการประเมินตามเกณฑ์มาตรฐานหลักสูตรแกนกลางฯ (ศธ.)
               </h4>
+              <div className="overflow-x-auto print:overflow-visible">
               <table className="w-full text-left text-xs border-collapse border border-slate-300">
                 <tbody>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -738,6 +741,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
                   </tr>
                 </tbody>
               </table>
+              </div>
               {homeroomRemark.trim() && (
                 <p className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                   <span className="font-bold">ความเห็นครูที่ปรึกษา:</span> {homeroomRemark.trim()}
@@ -746,7 +750,7 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             </div>
 
             {/* Official Signatures & Seal */}
-            <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-3 gap-6 text-center text-xs">
+            <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-6 text-center text-xs">
               <div className="space-y-1">
                 <div className="h-12 border-b border-dashed border-slate-400 mx-4"></div>
                 <input

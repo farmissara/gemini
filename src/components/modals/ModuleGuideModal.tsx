@@ -145,7 +145,7 @@ export const MODULE_GUIDES: GuideItem[] = [
     ],
     tipsEn: [
       'Switch between 4 visual palettes (Sapphire, Emerald, Amethyst, Light) from the top navbar palette switcher.',
-      'The Backup shortcut button on the navbar allows downloading encrypted database snapshots anytime.'
+      'Use Backup & Restore to download an encrypted backup to this device. Keep its passphrase safe; it is not stored by the app.'
     ]
   },
   {

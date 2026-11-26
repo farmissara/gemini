@@ -22,6 +22,7 @@ interface PWAInstallButtonProps {
   variant?: 'nav' | 'hero' | 'banner' | 'mobile_card' | 'sidebar' | 'top_mobile_banner';
   className?: string;
   defaultTab?: 'android' | 'ios' | 'qr';
+  compactOnMobile?: boolean;
 }
 
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
@@ -29,6 +30,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   variant = 'nav',
   className = '',
   defaultTab,
+  compactOnMobile = false,
 }) => {
   const { isInstallable, isInstalled, isIOS, isAndroid, install } = usePWAInstall();
   const [showModal, setShowModal] = useState(false);
@@ -306,10 +308,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         type="button"
         onClick={handleInstallClick}
         className={`inline-flex h-9 items-center justify-center gap-2 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-medium transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0 ${className}`}
+        aria-label={lang === 'th' ? 'ติดตั้งแอป BaanPakKru' : 'Install BaanPakKru app'}
         title={lang === 'th' ? 'ติดตั้งแอป BaanPakKru ลงมือถือ (รองรับ iOS & Android)' : 'Install BaanPakKru App (iOS & Android)'}
       >
         <Smartphone className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-        <span className="sm:hidden font-semibold">{lang === 'th' ? 'ติดตั้ง iOS / Android' : 'Install App'}</span>
+        <span className={`${compactOnMobile ? 'hidden' : 'sm:hidden'} font-semibold`}>{lang === 'th' ? 'ติดตั้ง iOS / Android' : 'Install App'}</span>
         <span className="hidden sm:inline font-semibold">
           {lang === 'th' ? 'ติดตั้งลงมือถือ' : 'Install App'}
         </span>

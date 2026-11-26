@@ -14,43 +14,31 @@
 4. รอระบบสร้างฐานข้อมูลประมาณ 1-2 นาที
 
 ### 1.2 ติดตั้งโครงสร้างฐานข้อมูลและสิทธิ์ (SQL Schema & RLS)
-1. ในแถบเมนูด้านซ้ายของ Supabase Dashboard ให้คลิกที่ **SQL Editor** (ไอคอนรูป Terminal/Query)
-2. คลิกปุ่ม **"+ New query"**
-3. คัดลอกโค้ดจากไฟล์ `supabase/schema.sql` ในโปรเจกต์นี้ทั้งหมด
-4. วางลงในช่องแก้ไขโค้ด แล้วกดปุ่มสีเขียว **"Run"**
-5. Schema จะสร้างตารางหลัก, โปรไฟล์บัญชี, ความสัมพันธ์ผู้ปกครอง-นักเรียน, trigger สมัครโรงเรียน/นักเรียน และ Row Level Security (RLS) แบบแยกโรงเรียน/บทบาท
+ใช้ไฟล์ใน `supabase/migrations/` เป็นแหล่ง schema ที่เรียงลำดับและตรวจสอบใน CI แล้ว อย่ารัน `supabase/schema.sql` ซ้ำกับ migrations บนฐานข้อมูลเดียวกัน
 
-หากติดตั้ง schema รุ่นก่อนหน้านี้ไปแล้ว ให้นำ `supabase/register_school_signup_migration.sql` ไปรันเพื่ออัปเดตเฉพาะ trigger สมัครโรงเรียนและการเปิดใช้งานหลังยืนยันอีเมล ไม่จำเป็นต้องรัน schema ทั้งไฟล์ซ้ำ
+**ฐานข้อมูลใหม่:** ติดตั้ง Supabase CLI และ Docker แล้วทดสอบ migration ชุดเต็มในเครื่องก่อน:
 
-หลังติดตั้ง schema ให้รัน migration ที่ต้องใช้กับระบบสอบและตารางเรียนตามลำดับ:
+```bash
+npx supabase start
+npx supabase db reset --no-seed
+npx supabase stop
+```
 
-1. `supabase/migrations/20261111_central_exam_marketplace.sql`
-2. `supabase/migrations/20261112_exam_audit_timetable.sql`
-3. รัน `supabase/migrations/20261113_timetable_term_scope.sql` เพื่อแยกตารางสอนตามปีการศึกษา/ภาคเรียน โดยกำหนดข้อมูลเดิมให้ตรงกับปีและภาคเรียนปัจจุบันของโรงเรียน และรองรับคาบเรียนได้สูงสุด 12 คาบ
+เมื่อ migration ผ่านและโปรเจกต์ปลายทางยังเป็นฐานข้อมูลใหม่ที่ไม่มีประวัติ SQL Editor ให้ link โปรเจกต์ ตรวจแผน แล้วจึง apply:
 
-Migration ตารางเรียน/ตรวจสลิปสร้าง `school_exam_entitlements` ให้หากยังไม่มี แต่ควรรันหลัง schema หลักเพื่อให้ตารางโรงเรียน รายวิชา และฟังก์ชันตรวจ role พร้อมใช้งาน
+```bash
+npx supabase link --project-ref <project-ref>
+npx supabase db push --dry-run
+npx supabase db push
+```
 
-4. รัน `supabase/migrations/20261112_school_logo_storage.sql` เพื่อให้ผู้ดูแลโรงเรียนอัปโหลดโลโก้ PNG, JPEG หรือ WebP (ไม่เกิน 2 MB) ไปยัง Supabase Storage ได้
-5. สำหรับทั้งโปรเจกต์ใหม่และโปรเจกต์ที่มีอยู่ ให้นำ `supabase/migrations/20261113_secure_student_invites.sql` ไปรันใน SQL Editor หลัง schema เพื่อบังคับการสร้างบัญชีนักเรียนผ่านคำเชิญจากผู้ดูแลเท่านั้น
-6. รัน `supabase/migrations/20261114_parent_private_push.sql` เพื่อเปิดกล่องแจ้งเตือนส่วนตัวและบันทึกอุปกรณ์ Push ของผู้ปกครอง
-7. รัน `supabase/migrations/20261114_timetable_period_management.sql` เพื่ออนุญาตให้ผู้ดูแลลบคาบที่ไม่มีตารางสอนใช้งานได้
-8. รัน `supabase/migrations/20261113_school_admin_flexibility.sql` เพื่อบันทึกค่าปีการศึกษา/ภาคเรียน ระบบเกรด รายการตำแหน่งบุคลากร และรายการห้องเรียนที่โรงเรียนกำหนดเอง
-9. รัน `supabase/migrations/20261113_teacher_org_structure.sql` เพื่อเพิ่มการเชื่อมโยงผู้บังคับบัญชาในทะเบียนบุคลากร และเปิดใช้หน้าโครงสร้างองค์กร
-10. รัน `supabase/migrations/20261116_production_readiness.sql` เพื่อเปิดใช้การเก็บข้อมูลใบลาออนไลน์, เช็คชื่อรายคาบ, หลักฐานสลิปโอนเงิน (`school-attachments` bucket), การล็อกอินด้วยรหัสนักเรียนผ่านลิงก์โรงเรียน และคำเชิญบัญชีครู/ผู้ปกครองจากหน้าเว็บ
-11. รัน `supabase/migrations/20261116_primary_course_credit_display.sql` เพื่อบันทึกการตั้งค่าแสดง/ซ่อนหน่วยกิตสำหรับรายวิชาที่รหัสขึ้นต้นด้วย 1 แยกตามโรงเรียน
-12. รัน `supabase/migrations/20261117_teacher_workload_thresholds.sql` เพื่อให้ผู้ดูแลกำหนดเกณฑ์ขั้นต่ำ/สูงสุดภาระงานครูแยกตามโรงเรียนได้ (ค่าเริ่มต้น 12–22 คาบ/สัปดาห์, กำหนดได้ 0–60 คาบ)
-13. รัน `supabase/migrations/20261119_short_school_login_codes.sql` เพื่อเปิดใช้รหัสย่อโรงเรียนที่ไม่ซ้ำกัน
-14. รัน `supabase/migrations/20261120_student_temporary_credentials.sql` เพื่อเพิ่มบัญชีนักเรียนแบบรหัสชั่วคราวและบังคับเปลี่ยนรหัสผ่านครั้งแรก
-15. รัน `supabase/migrations/20261120_teacher_homework_workflow.sql` เพื่อบันทึกงานที่สั่งและการส่ง/ตรวจการบ้านลง Supabase
-16. รัน `supabase/migrations/20261120_school_student_records.sql` เพื่อบันทึกแฟ้มผลงาน ข้อมูลพฤติกรรม SDQ และการเข้าห้องพยาบาล พร้อม RLS แยกโรงเรียนและนักเรียน
-17. รัน `supabase/migrations/20261120_school_lms_lessons.sql` เพื่อบันทึกบทเรียน LMS และสถานะเรียนจบรายบท พร้อม RLS แยกโรงเรียน/นักเรียน
-18. รัน `supabase/migrations/20261120_school_lms_teacher_course_rls.sql` เพื่อจำกัดการเพิ่ม/แก้ไขบทเรียนของครูให้ทำได้เฉพาะรายวิชาที่ได้รับมอบหมาย (ผู้ดูแลยังจัดการได้ทุกวิชา)
-19. รัน `supabase/migrations/20261123000005_school_ai_key_vault_and_quotas.sql` เพื่อเปิดคลัง Gemini API key แบบเข้ารหัสแยกโรงเรียนและโควตาคำขอรายเดือน
-20. เปิด `supabase/migrations/20261129000001_campus_moe_persistence.sql` คัดลอก SQL ทั้งหมดไปวางใน Supabase Dashboard → SQL Editor ของโปรเจกต์ที่แอปเชื่อมต่อ แล้วกด **Run** เพื่อสร้างตารางข้อมูลวิทยาเขตและข้อมูลเชิงคุณภาพ MOE ซึ่งรวมอยู่ในไฟล์สำรอง ไฟล์นี้มีคำสั่ง reload schema cache อยู่แล้ว; วันที่ในชื่อไฟล์เป็นเพียงชื่อ migration ไม่ต้องรอถึงวันนั้นเมื่อรันด้วยตนเอง
+**ฐานข้อมูลที่ใช้งานอยู่แล้ว:** สำรองฐานข้อมูลก่อนทุกครั้ง และตรวจ `supabase migration list --linked` เทียบกับ SQL ที่เคยรันจริงก่อน deploy ห้าม `db push` หรือรัน `schema.sql` แบบเหมารวมจนกว่าจะ reconcile ประวัติ migration โดยเฉพาะโปรเจกต์ที่เคยติดตั้งผ่าน SQL Editor ให้ทดลองกับ staging/สำเนาฐานข้อมูลก่อน แล้ว apply เฉพาะ migration ที่ตรวจสอบแล้วว่ายังขาด
 
-หากต้องการเปิดใช้คิวอนุมัติการสมัครโรงเรียนในหน้า Super Admin ให้รัน `supabase/super_admin_registration_approval_migration.sql` เพิ่มใน SQL Editor ด้วย Migration นี้จำกัดสิทธิ์แก้ไขโปรไฟล์ไม่ให้ผู้ใช้เปลี่ยน role/สถานะของตนเอง และสร้าง RPC ที่ตรวจ role `super_admin` ฝั่งฐานข้อมูลก่อนอ่านหรืออนุมัติคำขอ
+CI จะเริ่ม Supabase local แบบว่างและรัน `db reset` ทุก migrations ใน pull request ถ้าขั้นตอนนี้ล้มเหลว ห้ามนำ migration ชุดนั้นขึ้น production
 
-> สำรองฐานข้อมูลก่อนรันกับโปรเจกต์ที่มีข้อมูลอยู่แล้ว Schema นี้จะลบนโยบาย `Public ... access` แบบเดิม และแทนด้วยนโยบายที่ต้องมีบัญชี Supabase Auth และโปรไฟล์ที่กำหนดโรงเรียน/บทบาทไว้ การเข้าถึงข้อมูลเดิมผ่าน anon key จะถูกปฏิเสธจนกว่าจะ provision บัญชี
+ไฟล์ `supabase/register_school_signup_migration.sql` และ `supabase/super_admin_registration_approval_migration.sql` เป็น SQL เสริมที่อยู่นอกชุด migrations อัตโนมัติ ให้ตรวจประวัติฐานข้อมูลและทดสอบกับ staging ก่อนใช้ หากเปิดคิวอนุมัติโรงเรียน migration ดังกล่าวจะจำกัดการแก้ role/status ผ่าน RLS และเพิ่ม RPC ที่ตรวจ role `super_admin`
+
+> สำรองฐานข้อมูลก่อนเปลี่ยน RLS บนโปรเจกต์ที่มีข้อมูลอยู่แล้ว และตรวจว่ามีบัญชี/โปรไฟล์ผู้ดูแลที่ใช้งานได้หลัง apply ทุกครั้ง
 
 ### 1.3 เปิดสมัครโรงเรียนและบัญชีผู้ใช้
 1. ใน Supabase ไปที่ **Authentication → Providers → Email** และเปิดการยืนยันอีเมล (Confirm email) เพื่อให้ระบบเปิดใช้งานโรงเรียนใหม่หลังยืนยันแล้ว ตรวจสอบ **Authentication → URL Configuration** ให้ Site URL และ Redirect URLs อนุญาต URL ของแอป
@@ -187,19 +175,24 @@ Migration ตารางเรียน/ตรวจสลิปสร้าง
 
 หลัง migration และ deploy แล้ว ผู้ดูแลโรงเรียนไปที่ **System Settings → Packages and AI** เพื่อใส่ Gemini API key จาก Google AI Studio และกำหนดโควตาคำขอต่อเดือน ระบบแสดงจำนวนคำขอและ token ที่ใช้ แต่โควตาคำขอไม่ใช่วงเงินเป็นบาท และ Google เรียกเก็บเงินกับ Google project ที่เป็นเจ้าของ API key โดยตรง API keys จะไม่ถูกรวมในไฟล์สำรอง ต้องตั้งใหม่หลัง restore
 
-### สำรองข้อมูลอัตโนมัติไป Google Drive
+### สำรองและกู้คืนไฟล์ในเครื่อง
 
-Snapshot อัตโนมัติถูกส่งตรงจากเซิร์ฟเวอร์ไปยังโฟลเดอร์ `BaanPakKru-Backups` ใน Google Drive ของ `baanpakkru@gmail.com` ไม่ใช้ Supabase Storage เก็บไฟล์ Snapshot โดยค่าเริ่มต้นเก็บย้อนหลัง 14 วัน (`BACKUP_RETENTION_DAYS`) แล้วลบไฟล์ที่เก่ากว่าระยะเวลานี้ ไฟล์ยังอ่านข้อมูลจาก Supabase และรวมไฟล์ Storage ของโรงเรียนตามเดิม การเชื่อมต่อนี้ใช้ OAuth ของเซิร์ฟเวอร์แยกจาก Firebase Login และไม่ต้องมีสิทธิ์แก้ Firebase project
+ศูนย์สำรองข้อมูลดาวน์โหลดไฟล์ JSON ที่เข้ารหัสในเบราว์เซอร์ด้วย AES-256-GCM โดยผู้ดูแลตั้ง passphrase เอง (อย่างน้อย 12 ตัวอักษร) ระบบไม่ส่งหรือบันทึก passphrase; หากลืมจะกู้ไฟล์ไม่ได้ เก็บ passphrase แยกจากไฟล์สำรองและอย่าแนบไฟล์ที่มีข้อมูลนักเรียนในช่องทางสาธารณะ ไฟล์ JSON รุ่นเก่าที่ยังไม่เข้ารหัสยังนำเข้าผ่านหน้ากู้คืนได้
 
-ใช้ Google Cloud project ที่ `baanpakkru@gmail.com` มีสิทธิ์จัดการ (ไม่จำเป็นต้องเป็นโปรเจกต์เดียวกับ Firebase) เปิด Google Drive API และสร้าง OAuth Web Client สำหรับงานสำรอง จากนั้นตั้ง OAuth consent screen ให้บัญชีนี้ใช้แอปได้ แล้วลงชื่อเข้า OAuth Playground ด้วย `baanpakkru@gmail.com` และใช้ OAuth Client ใหม่นี้เพื่อขอ refresh token สำหรับ scope `https://www.googleapis.com/auth/drive.file` (ต้องใช้ offline access) ตั้ง OAuth consent screen เป็น Production เพื่อไม่ให้ refresh token หมดอายุหลังช่วงทดสอบ แล้วเพิ่มค่าต่อไปนี้ใน **Render → Environment** เป็น Secret:
+การสำรอง/กู้คืนเป็นแบบสั่งเอง ไม่มีการอัปโหลดไฟล์ไปยัง Google Drive และไม่มี scheduled backup บน Render การสำรองรวมได้เฉพาะตารางและ Storage ที่ backup API รองรับ; รหัสผ่านบัญชีและคีย์ AI ไม่รวมอยู่ในไฟล์ ดูข้อจำกัดรายโมดูลได้ใน [`docs/data-persistence.md`](./docs/data-persistence.md) และทดสอบการกู้คืนกับ Supabase staging ก่อนใช้ไฟล์กับ production
 
-- `GOOGLE_DRIVE_CLIENT_ID`
-- `GOOGLE_DRIVE_CLIENT_SECRET`
-- `GOOGLE_DRIVE_REFRESH_TOKEN`
+### ซ้อมกู้คืนบน Staging
 
-ระบบจะสร้างโฟลเดอร์สำรองเองด้วยบัญชีนี้ ส่วนปุ่ม Sign in with Google ในหน้าเว็บเป็นอีกการเชื่อมต่อหนึ่ง และการเพิ่มโดเมนใน Firebase/OAuth client ฝั่งหน้าเว็บจำเป็นเฉพาะการสำรอง/กู้คืนแบบสั่งเอง ไม่ใช่เงื่อนไขของงานสำรองอัตโนมัติฝั่งเซิร์ฟเวอร์
+1. สร้าง Render service และ Supabase project สำหรับ Staging แยกจาก Production แล้วติดตั้ง migrations ให้ครบ ห้ามใช้ Supabase URL หรือ service-role key ของ Production
+2. ตั้ง `BACKUP_RESTORE_ENVIRONMENT=staging` เฉพาะ environment variables ของ Render Staging เท่านั้น หากไม่ตั้ง โหมดซ้อมจะถูกปิด
+3. ตรวจว่า Staging มีบัญชี Auth และ `user_profiles` ที่ตรงกับข้อมูลต้นทาง (โดยเฉพาะ user ID/UUID และ role) เพราะไฟล์สำรองไม่มีรหัสผ่านและระบบซ้อมจะไม่สร้างบัญชีให้อัตโนมัติ
+4. เข้าระบบ Staging ด้วย Super Admin เปิดศูนย์สำรอง เลือก **ซ้อมกู้คืนบน Staging** แล้วเลือกไฟล์จาก Production
+5. ตรวจโปรเจกต์ต้นทาง/ปลายทาง จำนวนแถวแต่ละตาราง จำนวนไฟล์ใน Storage และรายการที่ไม่รวม ก่อนยืนยัน
+6. ตรวจผลนำเข้าและข้อมูลจริงใน Staging การซ้อมเป็นแบบเพิ่ม/ปรับปรุง ไม่ลบแถวที่ไม่อยู่ในไฟล์ และไม่ใช่ transaction rollback จึงควรใช้ Staging ที่แยกและทิ้งได้
 
-**สำคัญ:** ตัวตั้งเวลาภายในเซิร์ฟเวอร์ทำงานเมื่อ Render instance กำลังทำงานเท่านั้น และ Render Free อาจพักบริการเมื่อไม่มีการใช้งาน จึงไม่รับประกันการทำงานตรงเที่ยงคืนด้วย timer อย่างเดียว หากต้องการให้รันทุกวันแม้ instance พัก ให้ตั้ง Scheduled Job ภายนอกเรียก `POST https://<โดเมนแอป>/api/backup/cron` ทุกวันเวลา `17:00 UTC` (00:00 น. ประเทศไทย) พร้อม Header `Authorization: Bearer <BACKUP_CRON_SECRET>` และตั้งค่า `BACKUP_CRON_SECRET` เป็น Secret บน Render ด้วย ปลายทางนี้จะสร้างไฟล์รายโรงเรียนและไฟล์ระบบกลางใน Google Drive
+เซิร์ฟเวอร์ปฏิเสธโหมดซ้อมหากไม่ได้ระบุ environment เป็น `staging`, ผู้ใช้ไม่ใช่ Super Admin, ไฟล์ไม่มีรหัสโปรเจกต์ต้นทาง หรือโปรเจกต์ต้นทางตรงกับปลายทาง การตั้งตัวแปรนี้บน Production ไม่ได้ทำให้ Production ปลอดภัยขึ้น—อย่าตั้งค่านี้บน Production
+
+หากเคยตั้งค่า Google Drive backup ด้วยตนเองใน Render ให้ลบ `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, `BACKUP_CRON_SECRET` และ `BACKUP_RETENTION_DAYS` ออกจาก Environment และยกเลิก Scheduled Job ภายนอกที่เคยเรียก `/api/backup/cron` โค้ดนี้จะไม่ลบไฟล์สำรองเดิมที่อยู่ใน Google Drive
 
 หลังเข้าสู่ระบบ แอปจะโหลดและบันทึกข้อมูลนักเรียน รายวิชา คะแนน การเข้าเรียน ใบแจ้งหนี้ และประกาศของโรงเรียนที่บัญชีมีสิทธิ์ใช้งานโดยอัตโนมัติ หากตั้งค่า RLS หรือโปรไฟล์ไม่ครบ แอปจะแสดงข้อผิดพลาดและไม่ใช้ข้อมูลจำลองแทน
 

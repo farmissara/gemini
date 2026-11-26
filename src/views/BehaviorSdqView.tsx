@@ -497,7 +497,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-hidden">
             {/* Left 2 Cols: Student List with Scores */}
             <div className="lg:col-span-2 bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] shadow-xs flex flex-col min-h-0 overflow-hidden">
-              <div className="shrink-0 p-3 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="shrink-0 p-3 border-b border-[var(--color-border)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
                   <span>{lang === 'th' ? 'บัญชีคะแนนความประพฤตินักเรียน' : 'Student Behavior Ledger'}</span>
@@ -509,7 +509,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={lang === 'th' ? 'ค้นหาชื่อ / รหัสนักเรียน...' : 'Search student...'}
-                    className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs pl-7 pr-2.5 py-1 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] w-44"
+                    className="bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs pl-7 pr-2.5 py-1 rounded-lg border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] w-full sm:w-44"
                   />
                 </div>
               </div>
@@ -617,7 +617,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 <span>{lang === 'th' ? 'ประวัติพฤติกรรมล่าสุด' : 'Recent Activity'}</span>
               </h3>
 
-              <div className="flex-1 min-h-0 overflow-hidden space-y-2 pt-2 pr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pt-2 pr-1">
               <PagedList
                 items={records}
                 pageSize={2}

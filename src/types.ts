@@ -725,8 +725,6 @@ export interface SystemConfig {
   replyToEmail?: string;
   supabaseConnected: boolean;
   thaiPdfFontEnabled: boolean;
-  backupBucket: string;
-  lastBackupDate: string;
   lineNotificationSettings?: LineNotificationSettings;
   latitude?: number;
   longitude?: number;

@@ -963,7 +963,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2.5 text-center text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-center text-xs">
                     <div className="p-2.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)]">
                       <div className="text-[11px] text-[var(--color-text-muted)]">ชั่วโมง/สัปดาห์</div>
                       <div className="font-bold text-[var(--color-text-title)] tabular-nums mt-0.5">

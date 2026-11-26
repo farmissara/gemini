@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { X } from 'lucide-react';
 import type { PlayerScore, TimetableSlot } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
@@ -6,6 +7,7 @@ import { resolveMatchedTeacherForUser, slotMatchesLoggedInTeacher } from '../../
 import { isTabEnabledByFeatureFlags } from '../../lib/schoolFeatureFlags';
 import { getModuleTone } from '../../lib/moduleTheme';
 import { CALENDAR_NOTES_UPDATED_EVENT } from '../../lib/calendarNotes';
+import { getMobileTabForNavTab } from '../../lib/mobileNavigation';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -36,7 +38,7 @@ import { StudentMobileHome } from '../student/StudentMobileHome';
 import { ViewErrorBoundary } from '../common/ViewErrorBoundary';
 import { MobileAdminQuickHub, MobileSuperAdminHub } from './MobileRoleWorkspace';
 import { AdminDailyDashboardView } from '../../views/AdminDailyDashboardView';
-import type { NavTab } from './Sidebar';
+import { Sidebar, type NavTab } from './Sidebar';
 import {
   MOBILE_TONE_TARGET,
   MobileAnnouncementsTab,
@@ -69,6 +71,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   currentUser,
   activeSchool,
   currentRole,
+  isSuperAdminSchoolView = false,
   lang,
   setLang,
   themePalette,
@@ -120,6 +123,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   schools = [],
   isDemoMode = false,
   coordinationUnreadCount = 0,
+  unclaimedCentralPacksCount = 0,
   onOpenSchoolSwitcher,
   onUpdateSchool,
   onAddAnnouncement,
@@ -161,6 +165,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onSwitchOperationalRole,
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
+  const [showModuleDrawer, setShowModuleDrawer] = useState(false);
   const [activeGameView, setActiveGameView] = useState<ActiveGameView>('hub');
   const [arcadeInitialSubTab, setArcadeInitialSubTab] = useState<EduGameSubTab>('hub');
   const [profilePage, setProfilePage] = useState(0);
@@ -1184,7 +1189,68 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           setMobilePeriodDate(undefined);
           setMobilePeriodCheckType(undefined);
         }}
+        onOpenAllModules={onJumpToDesktopTab ? () => setShowModuleDrawer(true) : undefined}
+        allModulesActive={showModuleDrawer}
       />
+
+      {showModuleDrawer && onJumpToDesktopTab && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/55">
+          <button
+            type="button"
+            className="absolute inset-0 h-full w-full cursor-default"
+            aria-label={lang === 'th' ? 'ปิดเมนูทุกฟังก์ชัน' : 'Close all modules'}
+            onClick={() => setShowModuleDrawer(false)}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-module-drawer-title"
+            className="absolute inset-y-0 left-0 flex w-[min(20rem,90vw)] flex-col border-r border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl"
+          >
+            <header className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--color-border)] px-4">
+              <h2
+                id="mobile-module-drawer-title"
+                className="truncate text-sm font-bold text-[var(--color-text-title)]"
+              >
+                {lang === 'th' ? 'ทุกฟังก์ชัน' : 'All modules'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowModuleDrawer(false)}
+                aria-label={lang === 'th' ? 'ปิดเมนู' : 'Close menu'}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <Sidebar
+                currentTab={MOBILE_TONE_TARGET[activeTab]}
+                setCurrentTab={(tab) => {
+                  setShowModuleDrawer(false);
+                  const mobileTab = getMobileTabForNavTab(tab, currentRole);
+                  if (mobileTab) {
+                    setActiveTab(mobileTab);
+                  } else {
+                    onJumpToDesktopTab(tab);
+                  }
+                }}
+                currentRole={currentRole}
+                isSuperAdminSchoolView={isSuperAdminSchoolView}
+                studentsCount={students.length}
+                teachersCount={teachers.length}
+                coursesCount={courses.length}
+                coordinationUnreadCount={coordinationUnreadCount}
+                unclaimedCentralPacksCount={unclaimedCentralPacksCount}
+                featureFlags={featureFlags}
+                schoolPermissions={schoolPermissions}
+                lang={lang}
+                showAllModulesByDefault
+              />
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* IMMERSIVE FULLSCREEN GAME TAKEOVER */}
       {activeGameView !== 'hub' && (

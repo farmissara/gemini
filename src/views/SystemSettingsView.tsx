@@ -619,7 +619,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     resendApiKeyConfigured: systemConfig.resendApiKeyConfigured,
     masterEmail: systemConfig.masterEmail || 'baanpakkru@gmail.com',
     replyToEmail: systemConfig.replyToEmail || 'baanpakkru@gmail.com',
-    backupBucket: systemConfig.backupBucket,
   });
 
   useEffect(() => {
@@ -826,7 +825,6 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
       resendApiKeyConfigured: generalConfig.resendApiKeyConfigured,
       masterEmail: generalConfig.masterEmail,
       replyToEmail: generalConfig.replyToEmail,
-      backupBucket: generalConfig.backupBucket,
       lineChannelId: lineSettings.channelId,
       lineOaAddFriendUrl: lineSettings.addFriendUrl,
       lineMessagingConfigured: isLineEnabled,
@@ -2745,27 +2743,16 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[var(--color-text-body)]">Cloud Backup Storage Bucket</label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="text"
-                    value={generalConfig.backupBucket}
-                    onChange={(e) => setGeneralConfig(prev => ({ ...prev, backupBucket: e.target.value }))}
-                    className="flex-1 min-w-[200px] px-3 py-2 text-xs rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)] focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono text-[11px]"
-                  />
-                  {onOpenBackupCenter && (
-                    <button
-                      type="button"
-                      onClick={onOpenBackupCenter}
-                      className="px-3 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shrink-0"
-                    >
-                      <Database className="w-3.5 h-3.5" />
-                      <span>สำรองข้อมูล Google Drive / อัตโนมัติเที่ยงคืน</span>
-                    </button>
-                  )}
-                </div>
-              </div>
+              {onOpenBackupCenter && (
+                <button
+                  type="button"
+                  onClick={onOpenBackupCenter}
+                  className="px-3 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  <span>สำรองและกู้คืนไฟล์ในเครื่อง</span>
+                </button>
+              )}
             </div>
 
             {/* Master Authority Banner */}
@@ -2803,12 +2790,12 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
               <div className="flex items-center gap-3">
                 <Database className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
                 <div>
-                  <div className="font-bold text-xs text-[var(--color-text-title)]">การสำรองข้อมูลอัตโนมัติ (Automated Database Backup)</div>
-                  <div className="text-[11px] text-[var(--color-text-muted)]">สำรองล่าสุด: {systemConfig.lastBackupDate}</div>
+                  <div className="font-bold text-xs text-[var(--color-text-title)]">ไฟล์สำรองลงเครื่องแบบเข้ารหัส</div>
+                  <div className="text-[11px] text-[var(--color-text-muted)]">ระบบไม่เก็บรหัสผ่านเข้ารหัส กรุณาจดจำไว้เพื่อกู้คืนไฟล์</div>
                 </div>
               </div>
               <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold">
-                ✓ เข้ารหัส AES-256
+                ✓ AES-256-GCM
               </span>
             </div>
 

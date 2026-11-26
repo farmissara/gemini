@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatBackupSchemaError } from './backupRoutes.ts';
+import {
+  formatBackupSchemaError,
+  getBackupDrillTargetError,
+  getSupabaseProjectRef,
+} from './backupRoutes.ts';
+
+test('only allows restore drills on a different explicitly marked staging project', () => {
+  assert.equal(getBackupDrillTargetError('production', 'source-ref', 'target-ref')?.includes('staging'), true);
+  assert.equal(getBackupDrillTargetError('staging', null, 'target-ref')?.includes('รหัสโปรเจกต์ต้นทาง'), true);
+  assert.equal(getBackupDrillTargetError('staging', 'same-ref', 'SAME-REF')?.includes('โปรเจกต์เดียวกัน'), true);
+  assert.equal(getBackupDrillTargetError('staging', 'source-ref', 'target-ref'), null);
+});
+
+test('extracts the Supabase project reference from its URL', () => {
+  assert.equal(getSupabaseProjectRef('https://school-project.supabase.co'), 'school-project');
+});
 
 test('formats missing campus backup tables with the migration needed to restore schema readiness', () => {
   const message = formatBackupSchemaError('school_campus_records', {

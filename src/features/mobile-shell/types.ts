@@ -122,6 +122,7 @@ export interface MobileAppShellProps {
   currentUser: AuthUser | null;
   activeSchool: School;
   currentRole: UserRole;
+  isSuperAdminSchoolView?: boolean;
   lang: AppLanguage;
   setLang: (lang: AppLanguage) => void;
   themePalette: ThemePalette;
@@ -200,6 +201,7 @@ export interface MobileAppShellProps {
   schools?: School[];
   isDemoMode?: boolean;
   coordinationUnreadCount?: number;
+  unclaimedCentralPacksCount?: number;
   onOpenSchoolSwitcher?: () => void;
   onUpdateSchool?: (updates: Partial<School>) => Promise<void>;
   onAddAnnouncement?: (announcement: Announcement) => void;

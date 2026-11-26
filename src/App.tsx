@@ -392,6 +392,7 @@ export const App: React.FC = () => {
               currentUser={data.currentUser}
               activeSchool={data.activeSchool}
               currentRole={data.currentRole}
+              isSuperAdminSchoolView={data.isSuperAdminSchoolView}
               lang={prefs.lang}
               setLang={prefs.setLang}
               themePalette={prefs.themePalette}
@@ -447,6 +448,7 @@ export const App: React.FC = () => {
               schools={data.currentRole === 'super_admin' ? data.schools : (data.activeSchool.id ? [data.activeSchool] : [])}
               isDemoMode={data.isDemoMode}
               coordinationUnreadCount={scope.coordinationUnreadCount}
+              unclaimedCentralPacksCount={scope.unclaimedCentralPacks.length}
               onOpenSchoolSwitcher={data.currentRole === 'super_admin' ? () => setShowSchoolSwitcher(true) : undefined}
               onUpdateSchool={data.currentRole === 'teacher' ? undefined : data.handleUpdateSchool}
               onAddAnnouncement={data.handleAddAnnouncement}
@@ -674,7 +676,7 @@ export const App: React.FC = () => {
           className={`flex-1 flex min-w-0 min-h-0 ${nav.useImmersiveGameLayout ? 'fixed inset-0 z-50 bg-slate-950 overflow-hidden' : 'overflow-hidden'}`}
         >
           {!nav.useImmersiveGameLayout && !prefs.focusMode && nav.programMode === 'school_erp' && (
-            <div className={`${prefs.isMobileInDesktopView ? 'flex shrink-0' : 'hidden lg:flex shrink-0'}`}>
+            <div className="hidden shrink-0 lg:flex">
               <Sidebar
                 currentTab={nav.currentTab}
                 setCurrentTab={nav.navigateToAppTab}

@@ -146,8 +146,6 @@ export const MobileTeacherGradebookTab: React.FC<MobileTeacherGradebookTabProps>
         resendFromEmail: '',
         supabaseConnected: false,
         thaiPdfFontEnabled: true,
-        backupBucket: '',
-        lastBackupDate: '',
       },
     [systemConfig, activeSchool, gradingSystem]
   );

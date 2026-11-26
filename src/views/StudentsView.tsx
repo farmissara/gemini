@@ -340,8 +340,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       resendFromEmail: '',
       supabaseConnected: false,
       thaiPdfFontEnabled: false,
-      backupBucket: '',
-      lastBackupDate: '',
     }
   ), [systemConfig, activeSchool, gradingSystem]);
 

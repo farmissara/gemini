@@ -1646,8 +1646,6 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   replyToEmail: 'baanpakkru@gmail.com',
   supabaseConnected: true,
   thaiPdfFontEnabled: true,
-  backupBucket: 'eduverse-production-backups-sg',
-  lastBackupDate: '2026-11-04 02:00:15 UTC'
 };
 
 export const INITIAL_QUESTIONS: QuizQuestion[] = [

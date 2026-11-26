@@ -25,8 +25,6 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   replyToEmail: 'baanpakkru@gmail.com',
   supabaseConnected: true,
   thaiPdfFontEnabled: true,
-  backupBucket: 'eduverse-production-backups-sg',
-  lastBackupDate: '',
 };
 
 export const INITIAL_ROLE_PERMISSIONS: RolePermissionConfig[] = [

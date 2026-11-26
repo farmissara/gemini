@@ -747,7 +747,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <label className="block font-semibold mb-1">จำนวนเงิน (บาท)</label>
                   <input

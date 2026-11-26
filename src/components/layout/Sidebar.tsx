@@ -142,6 +142,7 @@ interface SidebarProps {
   onToggleDesktopCollapse?: () => void;
   adminSimplifiedView?: boolean;
   onToggleAdminSimplifiedView?: () => void;
+  showAllModulesByDefault?: boolean;
 }
 
 export interface NavItemDef {
@@ -257,6 +258,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleDesktopCollapse,
   adminSimplifiedView = false,
   onToggleAdminSimplifiedView,
+  showAllModulesByDefault = false,
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -274,6 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (!supportsFocusMode) return false;
+    if (showAllModulesByDefault) return false;
     if (typeof window !== 'undefined') {
       const saved = window.localStorage.getItem(focusStorageKey);
       if (saved === '1') return true;
@@ -287,13 +290,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       setFocusMode(false);
       return;
     }
+    if (showAllModulesByDefault) {
+      setFocusMode(false);
+      return;
+    }
     if (typeof window !== 'undefined') {
       const saved = window.localStorage.getItem(focusStorageKey);
       if (saved === '1') setFocusMode(true);
       else if (saved === '0') setFocusMode(false);
       else setFocusMode(true);
     }
-  }, [focusStorageKey, supportsFocusMode]);
+  }, [focusStorageKey, supportsFocusMode, showAllModulesByDefault]);
 
   const setFocusModeState = (next: boolean) => {
     setFocusMode(next);
@@ -436,16 +443,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         id: 'dev_infra',
         labelTh: 'โครงสร้างพื้นฐาน & ประสานงาน',
         labelEn: 'Infrastructure & Support',
-        helperTh: 'สำรอง/กู้คืนฐานข้อมูล Google Drive และตอบกลับโรงเรียน',
-        helperEn: 'Database backups, Google Drive & school desk',
+        helperTh: 'สำรอง/กู้คืนข้อมูลในเครื่องและตอบกลับโรงเรียน',
+        helperEn: 'Local data backups & school desk',
         shortLabelTh: 'ระบบ/ดูแล',
         shortLabelEn: 'Infra',
         icon: DatabaseBackup,
         items: [
           {
             id: 'super_admin_backup',
-            labelTh: 'สำรอง & กู้คืนระบบ (Google Drive)',
-            labelEn: 'System Backup & Drive',
+            labelTh: 'สำรองและกู้คืนไฟล์ในเครื่อง',
+            labelEn: 'Local Backup & Restore',
             shortLabelTh: 'Backup',
             shortLabelEn: 'Backup',
             icon: DatabaseBackup,

@@ -1315,11 +1315,15 @@ textarea::placeholder {
 
   .app-workspace .app-page-header {
     align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.625rem;
     padding-block: 0.625rem;
     padding-inline: 0.75rem;
   }
 
   .app-workspace :is(.app-filter-bar, .toolbar-filter-zone) {
+    align-items: stretch;
+    flex-wrap: wrap;
     gap: 0.375rem;
     padding: 0.5rem;
   }

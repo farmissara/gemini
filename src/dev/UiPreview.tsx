@@ -40,8 +40,6 @@ const previewSystemConfig: SystemConfig = {
   resendFromEmail: '',
   supabaseConnected: false,
   thaiPdfFontEnabled: false,
-  backupBucket: '',
-  lastBackupDate: '',
 };
 
 const previewStudents: Student[] = [

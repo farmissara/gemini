@@ -699,17 +699,17 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
     <div className="min-h-screen flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-200">
       {/* Quiet Minimal Top Bar */}
       <header className="sticky top-0 z-30 border-b border-[var(--color-border)]/80 bg-[var(--color-card)]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 sm:gap-4 px-2 sm:px-6 lg:px-10">
           <a
             href="#portal-auth"
             className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0"
           >
             <BaanPakKruLogo size={32} />
-            <span>BaanPakKru</span>
+            <span className="hidden sm:inline">BaanPakKru</span>
           </a>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <PWAInstallButton lang={lang} variant="nav" />
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <PWAInstallButton lang={lang} variant="nav" compactOnMobile />
 
             <div className="inline-flex h-9 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] divide-x divide-[var(--color-border)] overflow-hidden shadow-2xs">
               <button

@@ -321,11 +321,11 @@ export const QUICK_NAV_CATALOG: QuickNavEntry[] = [
   },
   {
     tab: 'super_admin_backup',
-    labelTh: 'สำรอง & กู้คืนระบบ (Google Drive)',
-    labelEn: 'System Backup & Google Drive',
+    labelTh: 'สำรองและกู้คืนไฟล์ในเครื่อง',
+    labelEn: 'Local Backup & Restore',
     categoryTh: 'ผู้พัฒนาระบบ',
     categoryEn: 'Developer',
-    keywords: ['backup', 'restore', 'drive', 'สำรองข้อมูล', 'กู้คืน'],
+    keywords: ['backup', 'restore', 'สำรองข้อมูล', 'กู้คืน'],
     roles: ['super_admin'],
   },
 ];

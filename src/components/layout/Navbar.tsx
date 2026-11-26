@@ -264,10 +264,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     !focusMode;
 
   return (
-    <header className="app-topbar h-14 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-4 w-full max-w-full">
+    <header className="app-topbar h-14 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] sticky top-0 z-30 px-2 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-4 w-full max-w-full">
       {/* Zone 1: Brand + School Context / Developer Mode Switcher */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        {!focusMode && onToggleMobileMenu && (
+        {onToggleMobileMenu && (
           <button
             type="button"
             onClick={onToggleMobileMenu}
@@ -280,7 +280,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <div className="flex items-center gap-2 shrink-0">
           <BaanPakKruLogo size={26} />
-          <span className="font-bold text-[15px] sm:text-base tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
+          <span className="hidden sm:inline font-bold text-[15px] sm:text-base tracking-tight text-[var(--color-text-title)] whitespace-nowrap shrink-0">
             BaanPakKru
           </span>
         </div>
@@ -426,7 +426,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Zone 2: Compact Search + Direct Focus Mode Toggle + Alerts + Account Menu */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
         {!focusMode && canAccessSchoolOperations && (
           <div className="hidden md:block">
             <UnifiedNavbarSearch

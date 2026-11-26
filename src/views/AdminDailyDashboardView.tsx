@@ -384,7 +384,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
         <div
           role="tablist"
           aria-label={lang === 'th' ? 'หมวดงานรายวัน' : 'Daily Sections'}
-          className="saas-kpi-strip grid grid-cols-4 divide-x divide-[var(--color-border)]"
+          className="saas-kpi-strip grid grid-cols-2 sm:grid-cols-4 divide-x divide-[var(--color-border)]"
         >
           <button
             type="button"

@@ -817,15 +817,17 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+        <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
           {canEdit && onAddBehaviorRecord && (
             <button
               type="button"
               onClick={() => setShowQuickBehaviorForm((prev) => !prev)}
+              aria-label="บันทึกพฤติกรรม"
+              title="บันทึกพฤติกรรม"
               className="btn-tool-tone px-2.5 py-1.5 text-xs whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 tone-text" />
-              <span>บันทึกพฤติกรรม</span>
+              <span className="hidden sm:inline">บันทึกพฤติกรรม</span>
             </button>
           )}
           <details className="relative">
@@ -888,17 +890,19 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
           <button
             type="button"
             onClick={handlePrint}
-            className="btn-action-primary px-3 py-1.5 text-xs whitespace-nowrap"
+            aria-label="พิมพ์สมุดพัฒนาการ (A4)"
+            title="พิมพ์สมุดพัฒนาการ (A4)"
+            className="btn-action-primary min-h-10 px-3 py-1.5 text-xs whitespace-nowrap"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>พิมพ์สมุดพัฒนาการ (A4)</span>
+            <span className="hidden sm:inline">พิมพ์สมุดพัฒนาการ (A4)</span>
           </button>
         </div>
       </div>
 
       {/* Student Selector & Filter Bar */}
       <div className="shrink-0 toolbar-filter-zone print:hidden flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative min-w-0 flex-[1_1_100%] sm:min-w-[200px] sm:flex-1">
           <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
@@ -923,7 +927,7 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
           aria-label="กรองห้องเรียน"
           value={roomFilter}
           onChange={(e) => setRoomFilter(e.target.value)}
-          className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)]"
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] sm:w-auto"
         >
           <option value="all">ทุกห้อง ({students.length} คน)</option>
           {roomOptions.map((room) => (
@@ -933,7 +937,7 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
           ))}
         </select>
 
-        <div className="seg-tab-group shrink-0">
+        <div className="seg-tab-group w-full sm:w-auto sm:shrink-0">
           <button
             type="button"
             data-active={priorityFilter === 'all'}
@@ -956,7 +960,7 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
           aria-label="เลือกนักเรียน"
           value={selectedStudent.id}
           onChange={(e) => setSelectedStudentId(e.target.value)}
-          className="flex-1 min-w-[220px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)]"
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-text-title)] sm:min-w-[220px] sm:flex-1"
         >
           {filteredStudents.length === 0 ? (
             <option value={selectedStudent.id}>ไม่พบนักเรียนที่ตรงเงื่อนไข</option>
