@@ -283,6 +283,9 @@ export interface SchoolFarmState {
   totalHarvested: number;
   totalOrdersCompleted: number;
   soundMuted: boolean;
+  musicMuted: boolean;
+  lastSpinWheelDate?: string;
+  claimedAchievements?: string[];
   updatedAt: string;
 }
 
@@ -1063,6 +1066,9 @@ export const createInitialFarmState = (params: {
     totalHarvested: 0,
     totalOrdersCompleted: 0,
     soundMuted: false,
+    musicMuted: false,
+    lastSpinWheelDate: '',
+    claimedAchievements: [],
     updatedAt: new Date().toISOString(),
   };
 };
@@ -1145,6 +1151,9 @@ export const normalizeFarmState = (
     resolvedDemeritIds: Array.isArray(raw.resolvedDemeritIds) ? raw.resolvedDemeritIds : [],
     helpedNeighborDates: raw.helpedNeighborDates && typeof raw.helpedNeighborDates === 'object' ? raw.helpedNeighborDates : {},
     helpReceivedDates: Array.isArray(raw.helpReceivedDates) ? raw.helpReceivedDates : [],
+    musicMuted: Boolean(raw.musicMuted),
+    lastSpinWheelDate: typeof raw.lastSpinWheelDate === 'string' ? raw.lastSpinWheelDate : '',
+    claimedAchievements: Array.isArray(raw.claimedAchievements) ? raw.claimedAchievements : [],
   };
 };
 
@@ -2636,3 +2645,311 @@ export const updateFarmOwnerCharacter = (
     updatedAt: new Date().toISOString(),
   };
 };
+
+export interface LuckyWheelSlot {
+  id: string;
+  labelTh: string;
+  color: string;
+  rewardKind: 'coins' | 'water' | 'fertilizer' | 'seed' | 'stars' | 'xp';
+  cropId?: CropId;
+  amount: number;
+}
+
+export const LUCKY_WHEEL_REWARDS: LuckyWheelSlot[] = [
+  { id: 'w-coins-80', labelTh: '+80 เหรียญ', color: '#facc15', rewardKind: 'coins', amount: 80 },
+  { id: 'w-water-3', labelTh: '+3 บัวรดน้ำ', color: '#38bdf8', rewardKind: 'water', amount: 3 },
+  { id: 'w-fert-2', labelTh: '+2 ปุ๋ยทอง', color: '#f59e0b', rewardKind: 'fertilizer', amount: 2 },
+  { id: 'w-corn-4', labelTh: '+4 เมล็ดข้าวโพด', color: '#84cc16', rewardKind: 'seed', cropId: 'corn', amount: 4 },
+  { id: 'w-stars-2', labelTh: '+2 ดาวเมือง', color: '#a855f7', rewardKind: 'stars', amount: 2 },
+  { id: 'w-coins-150', labelTh: 'แจ็กพอต +150🪙', color: '#ef4444', rewardKind: 'coins', amount: 150 },
+  { id: 'w-straw-2', labelTh: '+2 สตรอว์เบอร์รี', color: '#fb7185', rewardKind: 'seed', cropId: 'strawberry', amount: 2 },
+  { id: 'w-xp-40', labelTh: '+40 XP ฟาร์ม', color: '#10b981', rewardKind: 'xp', amount: 40 },
+];
+
+export const spinDailyLuckyWheel = (
+  state: SchoolFarmState,
+  todayDate: string = getTodayBangkokDate(),
+  forcedSlotIndex?: number
+): { state: SchoolFarmState; ok: boolean; slotIndex: number; slot?: LuckyWheelSlot; errorTh?: string } => {
+  if (state.lastSpinWheelDate === todayDate) {
+    return {
+      state,
+      ok: false,
+      slotIndex: 0,
+      errorTh: 'วันนี้คุณหมุนวงล้อนำโชคไปแล้ว กลับมาหมุนใหม่พรุ่งนี้นะ!',
+    };
+  }
+  const slotIndex =
+    forcedSlotIndex !== undefined
+      ? ((forcedSlotIndex % LUCKY_WHEEL_REWARDS.length) + LUCKY_WHEEL_REWARDS.length) % LUCKY_WHEEL_REWARDS.length
+      : Math.floor(Math.random() * LUCKY_WHEEL_REWARDS.length);
+  const slot = LUCKY_WHEEL_REWARDS[slotIndex];
+
+  const nextState: SchoolFarmState = {
+    ...state,
+    lastSpinWheelDate: todayDate,
+    coins: state.coins + (slot.rewardKind === 'coins' ? slot.amount : 0),
+    water: state.water + (slot.rewardKind === 'water' ? slot.amount : 0),
+    fertilizer: state.fertilizer + (slot.rewardKind === 'fertilizer' ? slot.amount : 0),
+    townStars: state.townStars + (slot.rewardKind === 'stars' ? slot.amount : 0),
+    farmXp: state.farmXp + (slot.rewardKind === 'xp' ? slot.amount : 15),
+    seeds:
+      slot.rewardKind === 'seed' && slot.cropId
+        ? { ...state.seeds, [slot.cropId]: (state.seeds[slot.cropId] || 0) + slot.amount }
+        : state.seeds,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return { ok: true, state: nextState, slotIndex, slot };
+};
+
+export interface FarmAchievementDef {
+  id: string;
+  titleTh: string;
+  descTh: string;
+  target: number;
+  rewardCoins: number;
+  rewardStars: number;
+  rewardXp: number;
+  metric: 'harvested' | 'orders' | 'buildings' | 'helped' | 'unlocked' | 'level';
+}
+
+export const FARM_ACHIEVEMENTS: FarmAchievementDef[] = [
+  {
+    id: 'ach-harvest-5',
+    titleTh: 'ชาวนาขยันเก็บเกี่ยว',
+    descTh: 'เก็บเกี่ยวพืชผลเข้ายุ้งฉางครบ 5 ครั้ง',
+    target: 5,
+    rewardCoins: 90,
+    rewardStars: 1,
+    rewardXp: 30,
+    metric: 'harvested',
+  },
+  {
+    id: 'ach-orders-3',
+    titleTh: 'สิงห์รถบรรทุกส่งไว',
+    descTh: 'ส่งออเดอร์ตลาดด้วยรถบรรทุกครบ 3 เที่ยว',
+    target: 3,
+    rewardCoins: 140,
+    rewardStars: 2,
+    rewardXp: 45,
+    metric: 'orders',
+  },
+  {
+    id: 'ach-buildings-4',
+    titleTh: 'สถาปนิกเมืองเกษตร',
+    descTh: 'ก่อสร้างอาคารหรือคอกสัตว์ในฟาร์มครบ 4 แห่ง',
+    target: 4,
+    rewardCoins: 160,
+    rewardStars: 2,
+    rewardXp: 50,
+    metric: 'buildings',
+  },
+  {
+    id: 'ach-help-2',
+    titleTh: 'เพื่อนบ้านน้ำใจงาม',
+    descTh: 'แวะช่วยรดน้ำฟาร์มเพื่อนร่วมโรงเรียนครบ 2 คน',
+    target: 2,
+    rewardCoins: 110,
+    rewardStars: 2,
+    rewardXp: 35,
+    metric: 'helped',
+  },
+  {
+    id: 'ach-land-20',
+    titleTh: 'เจ้าสัวที่ดินอุดมสมบูรณ์',
+    descTh: 'ปลดล็อกพื้นที่ทำกินในฟาร์มครบ 20 ช่อง',
+    target: 20,
+    rewardCoins: 180,
+    rewardStars: 2,
+    rewardXp: 60,
+    metric: 'unlocked',
+  },
+  {
+    id: 'ach-level-3',
+    titleTh: 'ฟาร์มตัวอย่างระดับโรงเรียน',
+    descTh: 'พัฒนาฟาร์มจนถึงเลเวล 3',
+    target: 3,
+    rewardCoins: 240,
+    rewardStars: 3,
+    rewardXp: 80,
+    metric: 'level',
+  },
+];
+
+export const getFarmAchievementProgress = (
+  state: SchoolFarmState
+): Array<FarmAchievementDef & { current: number; completed: boolean; claimed: boolean }> => {
+  const claimedSet = new Set(state.claimedAchievements || []);
+  const buildingsCount = state.tiles.filter((t) => t.kind === 'building').length;
+  const unlockedCount = state.tiles.filter((t) => t.unlocked).length;
+  const helpedCount = Object.keys(state.helpedNeighborDates || {}).length;
+  const townLevel = getTownLevelFromXp(state.farmXp).level;
+
+  return FARM_ACHIEVEMENTS.map((ach) => {
+    const current =
+      ach.metric === 'harvested'
+        ? state.totalHarvested
+        : ach.metric === 'orders'
+          ? state.totalOrdersCompleted
+          : ach.metric === 'buildings'
+            ? buildingsCount
+            : ach.metric === 'helped'
+              ? helpedCount
+              : ach.metric === 'unlocked'
+                ? unlockedCount
+                : townLevel;
+    return {
+      ...ach,
+      current,
+      completed: current >= ach.target,
+      claimed: claimedSet.has(ach.id),
+    };
+  });
+};
+
+export const claimFarmAchievement = (
+  state: SchoolFarmState,
+  achievementId: string
+): { state: SchoolFarmState; ok: boolean; achievement?: FarmAchievementDef; errorTh?: string } => {
+  const list = getFarmAchievementProgress(state);
+  const found = list.find((a) => a.id === achievementId);
+  if (!found) return { state, ok: false, errorTh: 'ไม่พบภารกิจความสำเร็จนี้' };
+  if (found.claimed) return { state, ok: false, errorTh: 'รับรางวัลความสำเร็จนี้ไปแล้ว' };
+  if (!found.completed) return { state, ok: false, errorTh: 'ยังไม่ผ่านเงื่อนไขภารกิจนี้' };
+
+  return {
+    ok: true,
+    achievement: found,
+    state: {
+      ...state,
+      coins: state.coins + found.rewardCoins,
+      townStars: state.townStars + found.rewardStars,
+      farmXp: state.farmXp + found.rewardXp,
+      claimedAchievements: [...(state.claimedAchievements || []), achievementId],
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+export interface DailyDirtAd {
+  id: string;
+  sellerUserId: string;
+  sellerName: string;
+  farmName: string;
+  itemKind: 'crop' | 'product';
+  itemId: CropId | ProductId;
+  quantity: number;
+  priceCoins: number;
+  isNeighborListing: boolean;
+  listingId?: string;
+}
+
+export const generateDailyDirtListings = (
+  myUserId: string,
+  neighbors: SchoolFarmState[],
+  todayDate: string = getTodayBangkokDate()
+): DailyDirtAd[] => {
+  const ads: DailyDirtAd[] = [];
+
+  for (const n of neighbors) {
+    if (n.userId === myUserId) continue;
+    for (const listing of n.roadsideShop || []) {
+      if (listing.sold) continue;
+      ads.push({
+        id: `dirt-n-${n.userId}-${listing.id}`,
+        sellerUserId: n.userId,
+        sellerName: n.ownerName,
+        farmName: n.farmName,
+        itemKind: listing.itemKind,
+        itemId: listing.itemId,
+        quantity: listing.quantity,
+        priceCoins: listing.priceCoins,
+        isNeighborListing: true,
+        listingId: listing.id,
+      });
+    }
+  }
+
+  // Country NPC farm bargain ads so the Daily Dirt Newspaper is always lively like Hay Day
+  const countryStalls: Array<Omit<DailyDirtAd, 'id' | 'isNeighborListing'>> = [
+    {
+      sellerUserId: 'npc-greg',
+      sellerName: 'ลุงเกร็กเพื่อนบ้าน',
+      farmName: 'ไร่ข้าวโพดลุงเกร็ก',
+      itemKind: 'crop',
+      itemId: 'corn',
+      quantity: 3,
+      priceCoins: 35,
+    },
+    {
+      sellerUserId: 'npc-suda',
+      sellerName: 'ฟาร์มน้องสุดา',
+      farmName: 'สวนแครอทแสนสุข',
+      itemKind: 'crop',
+      itemId: 'carrot',
+      quantity: 3,
+      priceCoins: 45,
+    },
+    {
+      sellerUserId: 'npc-dairy',
+      sellerName: 'สหกรณ์โคนมโรงเรียน',
+      farmName: 'ฟาร์มนมสดอารมณ์ดี',
+      itemKind: 'product',
+      itemId: 'egg',
+      quantity: 2,
+      priceCoins: 78,
+    },
+    {
+      sellerUserId: 'npc-berry',
+      sellerName: 'สวนเบอร์รีครูดาว',
+      farmName: 'ไร่สตรอว์เบอร์รี',
+      itemKind: 'crop',
+      itemId: 'strawberry',
+      quantity: 2,
+      priceCoins: 95,
+    },
+  ];
+
+  for (const stall of countryStalls) {
+    if (ads.length >= 6) break;
+    ads.push({
+      ...stall,
+      id: `dirt-npc-${todayDate}-${stall.sellerUserId}`,
+      isNeighborListing: false,
+    });
+  }
+
+  return ads.slice(0, 6);
+};
+
+export const buyDailyDirtBargain = (
+  buyerState: SchoolFarmState,
+  ad: DailyDirtAd
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  if (buyerState.coins < ad.priceCoins) {
+    return { state: buyerState, ok: false, errorTh: 'เหรียญไม่พอซื้อสินค้าจากหนังสือพิมพ์' };
+  }
+  const nextBarn = { ...buyerState.barn };
+  const nextGoods = { ...buyerState.goods };
+  if (ad.itemKind === 'crop') {
+    const cid = ad.itemId as CropId;
+    nextBarn[cid] = (nextBarn[cid] || 0) + ad.quantity;
+  } else {
+    const pid = ad.itemId as ProductId;
+    nextGoods[pid] = (nextGoods[pid] || 0) + ad.quantity;
+  }
+
+  return {
+    ok: true,
+    state: {
+      ...buyerState,
+      coins: buyerState.coins - ad.priceCoins,
+      farmXp: buyerState.farmXp + 6,
+      barn: nextBarn,
+      goods: nextGoods,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+

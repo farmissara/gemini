@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   BUILDING_MAP,
   CROP_MAP,
@@ -6,6 +6,7 @@ import {
   PRODUCT_MAP,
   getFarmGridSize,
   getPlotUnlockStarCost,
+  type BuildingId,
   type CropId,
   type FarmOwnerCharacter,
   type FarmTile,
@@ -40,11 +41,17 @@ interface IsometricFarmBoardProps {
   roadsideCount?: number;
   visitors?: VisitorRequest[];
   truckAnimating?: boolean;
+  spinAvailable?: boolean;
   onTileActivate: (tileIndex: number) => void;
   onOpenMarket?: () => void;
   onOpenShop?: () => void;
   onOpenVisitors?: () => void;
   onOpenCharacter?: () => void;
+  onOpenWheel?: () => void;
+  onOpenBarn?: () => void;
+  onOpenMail?: () => void;
+  onAnimalTap?: (kind: 'chicken' | 'cow' | 'sheep' | 'duck') => void;
+  onTileAnimalInfo?: (buildingId: BuildingId) => void;
 }
 
 const VIEWBOX_W = 800;
@@ -270,6 +277,11 @@ const renderBuildingArt = (
           {/* Classic dark slate-blue Hay Day roof */}
           <polygon points="-24,-23 0,-39 24,-23 0,-11" fill="#1e3a5f" stroke={roofTrim || '#0f172a'} strokeWidth={roofTrim ? 2 : 1.4} />
           <polygon points="-10,-28 0,-36 10,-28 0,-21" fill="#334155" opacity="0.65" />
+          {/* Gentle chimney smoke puffs */}
+          <g className="farm-smoke-rise">
+            <circle cx="11" cy="-41" r="2.8" fill="#ffffff" opacity="0.65" />
+            <circle cx="14" cy="-47" r="3.6" fill="#ffffff" opacity="0.45" />
+          </g>
         </g>
       );
     case 'town_fountain':
@@ -408,11 +420,16 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   roadsideCount = 0,
   visitors = [],
   truckAnimating = false,
+  spinAvailable = false,
   onTileActivate,
   onOpenMarket,
   onOpenShop,
   onOpenVisitors,
   onOpenCharacter,
+  onOpenWheel,
+  onOpenBarn,
+  onOpenMail,
+  onAnimalTap,
 }) => {
   const geom = getBoardGeometry(getFarmGridSize(tiles));
   const { gridSize, tileH, halfW, halfH, blockDepth, originX, originY } = geom;
@@ -422,6 +439,92 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   const nextUnlockCost = getPlotUnlockStarCost(unlockedCount);
 
   const orderedTiles = [...tiles].sort((a, b) => a.row + a.col - (b.row + b.col) || a.row - b.row);
+
+  // Camera Pan & Zoom state (for lush Hay Day valley exploration)
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [pondRipple, setPondRipple] = useState(false);
+  const dragStateRef = useRef<{
+    active: boolean;
+    mode: 'pan' | 'swipe';
+    startX: number;
+    startY: number;
+    origPanX: number;
+    origPanY: number;
+    moved: boolean;
+    visitedTiles: Set<number>;
+  }>({
+    active: false,
+    mode: 'pan',
+    startX: 0,
+    startY: 0,
+    origPanX: 0,
+    origPanY: 0,
+    moved: false,
+    visitedTiles: new Set(),
+  });
+
+  const isFieldSwipeTool =
+    !readOnly &&
+    (activeTool === 'harvest' ||
+      activeTool === 'water' ||
+      activeTool === 'plant' ||
+      activeTool === 'till' ||
+      activeTool === 'daily_fertilize' ||
+      activeTool === 'fertilize' ||
+      activeTool === 'clear_weed');
+
+  const handleContainerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    dragStateRef.current = {
+      active: true,
+      mode: isFieldSwipeTool ? 'swipe' : 'pan',
+      startX: e.clientX,
+      startY: e.clientY,
+      origPanX: pan.x,
+      origPanY: pan.y,
+      moved: false,
+      visitedTiles: new Set(),
+    };
+  };
+
+  const handleContainerPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const st = dragStateRef.current;
+    if (!st.active) return;
+    const dx = e.clientX - st.startX;
+    const dy = e.clientY - st.startY;
+    if (Math.hypot(dx, dy) > 6) {
+      st.moved = true;
+    }
+    if (st.mode === 'pan' && st.moved) {
+      const limitX = 180 * zoom;
+      const limitY = 120 * zoom;
+      setPan({
+        x: Math.max(-limitX, Math.min(limitX, st.origPanX + dx)),
+        y: Math.max(-limitY, Math.min(limitY, st.origPanY + dy)),
+      });
+    } else if (st.mode === 'swipe') {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const tileAttr = el?.closest('[data-farm-tile-index]')?.getAttribute('data-farm-tile-index');
+      if (tileAttr !== null && tileAttr !== undefined) {
+        const idx = Number(tileAttr);
+        if (!Number.isNaN(idx) && !st.visitedTiles.has(idx)) {
+          st.visitedTiles.add(idx);
+          onTileActivate(idx);
+        }
+      }
+    }
+  };
+
+  const handleContainerPointerUp = () => {
+    dragStateRef.current.active = false;
+  };
+
+  const handleWheelZoom = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!fullscreenLandscape) return;
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    setZoom((prev) => Number(Math.max(0.85, Math.min(1.75, prev + delta)).toFixed(2)));
+  };
 
   // Compute Farm Owner Character standing/walking position
   const activeOwnerChar = ownerCharacter || DEFAULT_FARM_OWNER_CHARACTER;
@@ -441,10 +544,15 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
 
   return (
     <div
+      onPointerDown={handleContainerPointerDown}
+      onPointerMove={handleContainerPointerMove}
+      onPointerUp={handleContainerPointerUp}
+      onPointerCancel={handleContainerPointerUp}
+      onWheel={handleWheelZoom}
       className={
         fullscreenLandscape
-          ? 'relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-gradient-to-br from-[#84db24] via-[#6dc519] to-[#57ac12]'
-          : 'relative w-full select-none overflow-hidden rounded-2xl border-2 border-[#65a30d] bg-gradient-to-br from-[#84db24] via-[#6dc519] to-[#57ac12] shadow-inner'
+          ? 'relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-gradient-to-br from-[#8be028] via-[#6dc519] to-[#52a610] touch-none'
+          : 'relative w-full select-none overflow-hidden rounded-2xl border-2 border-[#65a30d] bg-gradient-to-br from-[#8be028] via-[#6dc519] to-[#52a610] shadow-inner'
       }
     >
       <style>{`
@@ -459,7 +567,16 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             animation: farmFloatUp 1.15s ease-out forwards;
           }
           .farm-truck-drive {
-            animation: farmTruckDrive 1.1s ease-in-out;
+            animation: farmTruckDrive 1.15s ease-in-out;
+          }
+          .farm-smoke-rise {
+            animation: farmSmokeRise 3.4s ease-in-out infinite;
+          }
+          .farm-butterfly-flutter {
+            animation: farmButterfly 4.5s ease-in-out infinite;
+          }
+          .farm-cloud-drift {
+            animation: farmCloudDrift 26s linear infinite;
           }
         }
         @keyframes farmBounce {
@@ -473,130 +590,326 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
         @keyframes farmFloatUp {
           0% { opacity: 0; transform: translateY(4px) scale(0.92); }
           20% { opacity: 1; transform: translateY(-4px) scale(1); }
-          100% { opacity: 0; transform: translateY(-28px) scale(1); }
+          100% { opacity: 0; transform: translateY(-32px) scale(1.04); }
         }
         @keyframes farmTruckDrive {
           0% { transform: translate(0, 0); }
-          45% { transform: translate(38px, -14px); opacity: 0.7; }
-          55% { transform: translate(-18px, 6px); opacity: 0.9; }
+          45% { transform: translate(55px, -22px); opacity: 0.72; }
+          55% { transform: translate(-24px, 10px); opacity: 0.9; }
           100% { transform: translate(0, 0); opacity: 1; }
+        }
+        @keyframes farmSmokeRise {
+          0% { opacity: 0.25; transform: translateY(0) scale(0.9); }
+          50% { opacity: 0.7; transform: translateY(-6px) scale(1.1); }
+          100% { opacity: 0.15; transform: translateY(-12px) scale(1.25); }
+        }
+        @keyframes farmButterfly {
+          0%, 100% { transform: translate(0, 0) rotate(-4deg); }
+          25% { transform: translate(10px, -7px) rotate(6deg); }
+          50% { transform: translate(18px, 2px) rotate(-3deg); }
+          75% { transform: translate(7px, 6px) rotate(5deg); }
+        }
+        @keyframes farmCloudDrift {
+          0% { transform: translateX(-30px); }
+          50% { transform: translateX(30px); }
+          100% { transform: translateX(-30px); }
         }
       `}</style>
 
+      {/* Camera Zoom Controls (Fullscreen Mode) */}
+      {fullscreenLandscape && !readOnly && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute right-2.5 top-24 z-20 hidden sm:flex flex-col gap-1 rounded-2xl border-2 border-[#78350f] bg-[#fffbeb]/90 p-1 shadow-[0_3px_0_#78350f]"
+        >
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Number(Math.min(1.75, z + 0.15).toFixed(2)))}
+            aria-label="Zoom In"
+            className="w-7 h-7 rounded-xl bg-amber-100 hover:bg-amber-200 text-[#451a03] font-black text-sm flex items-center justify-center cursor-pointer"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setZoom(1);
+              setPan({ x: 0, y: 0 });
+            }}
+            aria-label="Reset Camera"
+            className="w-7 h-7 rounded-xl bg-white hover:bg-amber-100 text-[#78350f] font-black text-[10px] flex items-center justify-center cursor-pointer"
+          >
+            1×
+          </button>
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Number(Math.max(0.85, z - 0.15).toFixed(2)))}
+            aria-label="Zoom Out"
+            className="w-7 h-7 rounded-xl bg-amber-100 hover:bg-amber-200 text-[#451a03] font-black text-sm flex items-center justify-center cursor-pointer"
+          >
+            −
+          </button>
+        </div>
+      )}
+
+      <div
+        className="w-full h-full flex items-center justify-center"
+        style={{
+          transform: fullscreenLandscape ? `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})` : undefined,
+          transition: dragStateRef.current.active ? 'none' : 'transform 160ms ease-out',
+        }}
+      >
       <svg
         viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-        preserveAspectRatio={fullscreenLandscape ? 'xMidYMid meet' : 'xMidYMid meet'}
+        preserveAspectRatio="xMidYMid meet"
         className={fullscreenLandscape ? 'w-full h-full block touch-manipulation' : 'w-full h-auto max-h-[560px] block touch-manipulation'}
         role="img"
         aria-label={lang === 'th' ? 'แผนที่ฟาร์มและเมืองโรงเรียนแบบ Hay Day' : 'Hay Day style school farm map'}
       >
         <defs>
           <radialGradient id="haydayMeadow" cx="50%" cy="48%" r="65%">
-            <stop offset="0%" stopColor="#94e635" />
+            <stop offset="0%" stopColor="#9bec3b" />
             <stop offset="65%" stopColor="#72cb1a" />
-            <stop offset="100%" stopColor="#58ab11" />
+            <stop offset="100%" stopColor="#52a50f" />
           </radialGradient>
           <linearGradient id="haydayDirtRoad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#bd6d2c" />
-            <stop offset="50%" stopColor="#cc7a34" />
-            <stop offset="100%" stopColor="#a85c1f" />
+            <stop offset="0%" stopColor="#b86624" />
+            <stop offset="50%" stopColor="#cf7c34" />
+            <stop offset="100%" stopColor="#a65a1c" />
           </linearGradient>
         </defs>
 
         {/* Full Sunlit Hay Day Spring Meadow Backdrop */}
-        <rect x="-100" y="-60" width="1000" height="620" fill="url(#haydayMeadow)" />
+        <rect x="-140" y="-80" width="1080" height="660" fill="url(#haydayMeadow)" />
 
-        {/* Soft Sunlit Grass Patches */}
-        <ellipse cx="145" cy="145" rx="95" ry="46" fill="#a3e635" opacity="0.35" />
-        <ellipse cx="660" cy="180" rx="100" ry="52" fill="#a3e635" opacity="0.3" />
-        <ellipse cx="320" cy="430" rx="135" ry="50" fill="#84cc16" opacity="0.38" />
+        {/* Soft Sunlit Grass Patches & Golden Meadow Highlights */}
+        <ellipse cx="145" cy="145" rx="105" ry="48" fill="#bef264" opacity="0.32" />
+        <ellipse cx="660" cy="180" rx="110" ry="56" fill="#bef264" opacity="0.28" />
+        <ellipse cx="320" cy="430" rx="145" ry="52" fill="#a3e635" opacity="0.35" />
 
-        {/* Upper-Left Fruit Orchard Trees & Lavender Flower Beds */}
-        <g transform="translate(88, 108)">
+        {/* Soft Drifting Cloud Shadows over the Valley */}
+        <g className="farm-cloud-drift" opacity="0.14" pointerEvents="none">
+          <ellipse cx="180" cy="48" rx="70" ry="18" fill="#ffffff" />
+          <ellipse cx="620" cy="64" rx="85" ry="20" fill="#ffffff" />
+        </g>
+
+        {/* Upper-Left Fruit Orchard (Lemon & Apple Trees matching Hay Day screenshot) */}
+        <g transform="translate(68, 108)">
+          <ellipse cx="0" cy="20" rx="22" ry="8" fill="#3f6212" opacity="0.26" />
           <rect x="-4" y="8" width="8" height="16" rx="2" fill="#78350f" />
-          <circle cx="0" cy="-6" r="18" fill="#22c55e" stroke="#14532d" strokeWidth="1.5" />
-          <circle cx="-10" cy="-1" r="11" fill="#4ade80" />
-          <circle cx="10" cy="-2" r="11" fill="#16a34a" />
-          <circle cx="-6" cy="-10" r="2.5" fill="#fde047" />
-          <circle cx="6" cy="-7" r="2.5" fill="#fde047" />
-          <circle cx="0" cy="-2" r="2.5" fill="#fde047" />
+          <circle cx="0" cy="-6" r="19" fill="#22c55e" stroke="#14532d" strokeWidth="1.5" />
+          <circle cx="-11" cy="-1" r="12" fill="#4ade80" />
+          <circle cx="11" cy="-2" r="12" fill="#16a34a" />
+          <circle cx="-7" cy="-10" r="2.8" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" />
+          <circle cx="6" cy="-7" r="2.8" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" />
+          <circle cx="0" cy="-1" r="2.8" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" />
+          <circle cx="-4" cy="4" r="2.5" fill="#fde047" />
         </g>
-        <g transform="translate(152, 86)">
+        <g transform="translate(132, 82)">
+          <ellipse cx="0" cy="16" rx="18" ry="6" fill="#3f6212" opacity="0.24" />
           <rect x="-3" y="6" width="6" height="12" rx="2" fill="#78350f" />
-          <circle cx="0" cy="-4" r="14" fill="#16a34a" stroke="#14532d" strokeWidth="1.4" />
-          <circle cx="5" cy="-6" r="2.2" fill="#ef4444" />
-          <circle cx="-5" cy="-3" r="2.2" fill="#ef4444" />
+          <circle cx="0" cy="-4" r="15" fill="#16a34a" stroke="#14532d" strokeWidth="1.4" />
+          <circle cx="-6" cy="-7" r="7" fill="#4ade80" opacity="0.7" />
+          <circle cx="5" cy="-6" r="2.4" fill="#ef4444" />
+          <circle cx="-5" cy="-3" r="2.4" fill="#ef4444" />
+          <circle cx="2" cy="1" r="2.4" fill="#ef4444" />
+        </g>
+        <g transform="translate(54, 178)">
+          <ellipse cx="0" cy="16" rx="18" ry="6" fill="#3f6212" opacity="0.24" />
+          <rect x="-3" y="6" width="6" height="12" rx="2" fill="#78350f" />
+          <circle cx="0" cy="-4" r="15" fill="#22c55e" stroke="#14532d" strokeWidth="1.4" />
+          <circle cx="5" cy="-6" r="2.6" fill="#fde047" />
+          <circle cx="-5" cy="-2" r="2.6" fill="#fde047" />
         </g>
 
-        {/* Hobbit-Style Farm Pantry / Root Cellar (Left Meadow like Hay Day Screenshot) */}
-        <g transform="translate(84, 245)">
-          <ellipse cx="0" cy="16" rx="34" ry="12" fill="#4d7c0f" opacity="0.3" />
-          <path d="M-28 10 C-28 -18 28 -18 28 10 Z" fill="#65a30d" stroke="#365314" strokeWidth="1.5" />
-          <path d="M-22 10 C-22 -12 22 -12 22 10 Z" fill="#a16207" stroke="#78350f" strokeWidth="1.2" />
+        {/* Purple Lavender Rows & Rustic Wooden Split-Rail Fence (Left Slope like Hay Day!) */}
+        <g transform="translate(160, 154)" opacity="0.92">
+          <path d="M-28 0 L34 -28" stroke="#7c3aed" strokeWidth="7" strokeLinecap="round" />
+          <path d="M-28 0 L34 -28" stroke="#c084fc" strokeWidth="3.5" strokeDasharray="3 5" strokeLinecap="round" />
+          <path d="M-18 11 L44 -17" stroke="#6d28d9" strokeWidth="7" strokeLinecap="round" />
+          <path d="M-18 11 L44 -17" stroke="#d8b4fe" strokeWidth="3.5" strokeDasharray="3 5" strokeLinecap="round" />
+        </g>
+
+        {/* Clickable Hobbit-Style Farm Pantry / Barn Root Cellar (Left Meadow) */}
+        <g
+          transform="translate(86, 260)"
+          role={!readOnly && onOpenBarn ? 'button' : undefined}
+          tabIndex={!readOnly && onOpenBarn ? 0 : -1}
+          aria-label={lang === 'th' ? 'เปิดโรงนาและคลังเก็บพืชผล' : 'Open Barn & Pantry Storage'}
+          onClick={() => {
+            if (!readOnly) onOpenBarn?.();
+          }}
+          className={!readOnly && onOpenBarn ? 'cursor-pointer group' : ''}
+        >
+          <ellipse cx="0" cy="18" rx="38" ry="13" fill="#3f6212" opacity="0.3" />
+          {/* Stone pavers leading out */}
+          <ellipse cx="-26" cy="24" rx="7" ry="3.5" fill="#cbd5e1" stroke="#64748b" strokeWidth="0.9" />
+          <ellipse cx="-10" cy="28" rx="7" ry="3.5" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.9" />
+          {/* Sod roof mound */}
+          <path d="M-30 10 C-30 -20 30 -20 30 10 Z" fill="#65a30d" stroke="#365314" strokeWidth="1.5" />
+          <path d="M-24 10 C-24 -13 24 -13 24 10 Z" fill="#a16207" stroke="#78350f" strokeWidth="1.2" />
           {/* Pink heart door */}
-          <path d="M5 10 V-3 C5 -11 19 -11 19 -3 V10 Z" fill="#ec4899" stroke="#831843" strokeWidth="1.3" />
-          <circle cx="12" cy="-1" r="2" fill="#fbcfe8" />
-          {/* Crate & watering can */}
-          <rect x="-24" y="4" width="16" height="10" rx="2" fill="#d97706" stroke="#78350f" strokeWidth="1.2" />
-          <circle cx="-19" cy="3" r="3" fill="#ef4444" />
-          <circle cx="-13" cy="3" r="3" fill="#f97316" />
-          {/* Tiny grass roof daisies */}
-          <circle cx="-10" cy="-12" r="2.4" fill="#ffffff" />
-          <circle cx="4" cy="-15" r="2.4" fill="#fef08a" />
-          <circle cx="14" cy="-11" r="2.2" fill="#ffffff" />
+          <path d="M5 10 V-4 C5 -12 20 -12 20 -4 V10 Z" fill="#ec4899" stroke="#831843" strokeWidth="1.3" />
+          <circle cx="12.5" cy="-1" r="2.2" fill="#fbcfe8" />
+          {/* Crates & blue watering can */}
+          <rect x="-26" y="3" width="18" height="11" rx="2" fill="#d97706" stroke="#78350f" strokeWidth="1.2" />
+          <circle cx="-21" cy="2" r="3.2" fill="#ef4444" />
+          <circle cx="-14" cy="2" r="3.2" fill="#f97316" />
+          <rect x="23" y="4" width="7" height="7" rx="2" fill="#0284c7" stroke="#0c4a6e" strokeWidth="1" />
+          {/* Tiny roof daisies */}
+          <circle cx="-11" cy="-13" r="2.6" fill="#ffffff" />
+          <circle cx="4" cy="-16" r="2.6" fill="#fef08a" />
+          <circle cx="15" cy="-11" r="2.4" fill="#ffffff" />
+          {!readOnly && (
+            <g transform="translate(0, -25)">
+              <rect x="-24" y="-8" width="48" height="14" rx="7" fill="#78350f" fillOpacity="0.88" stroke="#fde68a" strokeWidth="1" />
+              <text x="0" y="1.5" textAnchor="middle" fontSize="8" fontWeight="900" fill="#fef3c7">
+                โรงนา/คลัง
+              </text>
+            </g>
+          )}
         </g>
 
-        {/* Diagonal Hay Day Amber Dirt Road Across Foreground */}
+        {/* Diagonal Hay Day Amber Dirt Road Across Foreground + Wheel Ruts */}
         <path
-          d="M -40 468 Q 220 442 465 360 T 850 185"
+          d="M -50 474 Q 220 444 465 360 T 860 182"
           fill="none"
           stroke="#e7c68e"
-          strokeWidth="44"
+          strokeWidth="46"
           strokeLinecap="round"
-          opacity="0.7"
+          opacity="0.72"
         />
         <path
-          d="M -40 468 Q 220 442 465 360 T 850 185"
+          d="M -50 474 Q 220 444 465 360 T 860 182"
           fill="none"
           stroke="url(#haydayDirtRoad)"
-          strokeWidth="34"
+          strokeWidth="36"
           strokeLinecap="round"
         />
-        {/* Side branch road toward Order Board */}
         <path
-          d="M 555 96 Q 665 130 785 215"
+          d="M -30 472 Q 220 442 465 358 T 840 182"
+          fill="none"
+          stroke="#92400e"
+          strokeWidth="2"
+          strokeDasharray="10 12"
+          opacity="0.35"
+        />
+        {/* Side branch road toward Upper Order Board & Farmhouse */}
+        <path
+          d="M 550 92 Q 665 130 795 215"
           fill="none"
           stroke="#d99a5b"
-          strokeWidth="20"
+          strokeWidth="22"
           strokeLinecap="round"
-          opacity="0.78"
+          opacity="0.82"
         />
 
-        {/* Duck Pond with Wooden Footbridge (Bottom Center Foreground like Hay Day Screenshot) */}
-        <g transform="translate(362, 438)">
-          <ellipse cx="0" cy="0" rx="52" ry="22" fill="#38bdf8" stroke="#65a30d" strokeWidth="3.5" />
-          <ellipse cx="-6" cy="-2" rx="40" ry="14" fill="#0ea5e9" opacity="0.55" />
+        {/* Golden Wheat Sheaves & Brick Dome Bakery Area (Right Meadow) */}
+        <g transform="translate(716, 265)" opacity="0.95">
+          <ellipse cx="0" cy="8" rx="34" ry="12" fill="#a16207" opacity="0.25" />
+          <path d="M-24 6 Q-22 -14 -18 -18 M-16 6 Q-14 -16 -10 -20 M-8 6 Q-6 -14 -2 -18" stroke="#facc15" strokeWidth="3.2" strokeLinecap="round" fill="none" />
+          <path d="M4 8 Q6 -12 10 -16 M12 8 Q14 -14 18 -18 M20 8 Q22 -12 26 -16" stroke="#eab308" strokeWidth="3.2" strokeLinecap="round" fill="none" />
+        </g>
+
+        {/* Blooming Rose & Cobble Paver Garden (Bottom-Right Foreground like Hay Day Screenshot) */}
+        <g transform="translate(560, 424)">
+          <ellipse cx="-24" cy="6" rx="8" ry="4" fill="#e2e8f0" stroke="#64748b" strokeWidth="1" />
+          <ellipse cx="0" cy="14" rx="8" ry="4" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" />
+          <ellipse cx="26" cy="4" rx="8" ry="4" fill="#e2e8f0" stroke="#64748b" strokeWidth="1" />
+          <ellipse cx="-6" cy="-4" rx="14" ry="8" fill="#16a34a" stroke="#14532d" strokeWidth="1.2" />
+          <circle cx="-11" cy="-6" r="3.4" fill="#fb7185" />
+          <circle cx="-2" cy="-8" r="3.4" fill="#f43f5e" />
+          <circle cx="4" cy="-3" r="3.2" fill="#fda4af" />
+          <ellipse cx="32" cy="-10" rx="13" ry="7.5" fill="#15803d" stroke="#14532d" strokeWidth="1.2" />
+          <circle cx="28" cy="-12" r="3.2" fill="#f43f5e" />
+          <circle cx="37" cy="-9" r="3.2" fill="#fb7185" />
+        </g>
+
+        {/* Animated Butterflies Fluttering Above Flowers */}
+        <g transform="translate(555, 395)" className="farm-butterfly-flutter pointer-events-none">
+          <ellipse cx="-2" cy="0" rx="2.8" ry="1.8" fill="#fef08a" stroke="#ca8a04" strokeWidth="0.6" />
+          <ellipse cx="2" cy="0" rx="2.8" ry="1.8" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" />
+        </g>
+        <g transform="translate(172, 130)" className="farm-butterfly-flutter pointer-events-none" style={{ animationDelay: '1.6s' }}>
+          <ellipse cx="-2" cy="0" rx="2.6" ry="1.6" fill="#fbcfe8" stroke="#be185d" strokeWidth="0.6" />
+          <ellipse cx="2" cy="0" rx="2.6" ry="1.6" fill="#f472b6" stroke="#be185d" strokeWidth="0.6" />
+        </g>
+
+        {/* Interactive Duck Pond with Wooden Arched Footbridge (Bottom Center Foreground) */}
+        <g
+          transform="translate(362, 442)"
+          role={onAnimalTap ? 'button' : undefined}
+          tabIndex={onAnimalTap ? 0 : -1}
+          aria-label={lang === 'th' ? 'บ่อเป็ดและสะพานไม้' : 'Duck Pond'}
+          onClick={() => {
+            setPondRipple(true);
+            setTimeout(() => setPondRipple(false), 750);
+            onAnimalTap?.('duck');
+          }}
+          className={onAnimalTap ? 'cursor-pointer' : ''}
+        >
+          <ellipse cx="0" cy="0" rx="56" ry="23" fill="#38bdf8" stroke="#65a30d" strokeWidth="3.5" />
+          <ellipse cx="-6" cy="-2" rx="42" ry="15" fill="#0ea5e9" opacity="0.58" />
+          {pondRipple && (
+            <ellipse cx="-12" cy="4" rx="18" ry="7" fill="none" stroke="#ffffff" strokeWidth="1.8" opacity="0.85" />
+          )}
           {/* Wooden bridge */}
-          <path d="M-24 -6 Q0 -18 24 4" fill="none" stroke="#92400e" strokeWidth="10" strokeLinecap="round" />
-          <path d="M-24 -6 Q0 -18 24 4" fill="none" stroke="#d97706" strokeWidth="7" strokeLinecap="round" />
-          {/* Cute ducks */}
+          <path d="M-25 -6 Q0 -19 25 4" fill="none" stroke="#78350f" strokeWidth="11" strokeLinecap="round" />
+          <path d="M-25 -6 Q0 -19 25 4" fill="none" stroke="#d97706" strokeWidth="7.5" strokeLinecap="round" />
+          {/* Cute swimming ducks */}
           <g className="farm-animal-bob">
-            <ellipse cx="-24" cy="4" rx="5" ry="3.2" fill="#15803d" />
-            <circle cx="-20" cy="1" r="2.4" fill="#166534" />
-            <ellipse cx="26" cy="-5" rx="4.5" ry="2.8" fill="#15803d" />
+            <ellipse cx="-25" cy="4" rx="5.5" ry="3.4" fill="#15803d" />
+            <circle cx="-20.5" cy="0.5" r="2.6" fill="#166534" />
+            <polygon points="-18,0.5 -15,1.2 -18,2" fill="#facc15" />
+            <ellipse cx="26" cy="-5" rx="4.8" ry="3" fill="#15803d" />
+            <circle cx="29.5" cy="-7.5" r="2.2" fill="#166534" />
           </g>
-          {/* Cattails & pink flowers */}
-          <circle cx="-46" cy="-4" r="3" fill="#f472b6" />
-          <circle cx="44" cy="6" r="3" fill="#f472b6" />
+          {/* Cattails & pink lotus blossoms */}
+          <circle cx="-48" cy="-4" r="3.4" fill="#f472b6" />
+          <circle cx="46" cy="6" r="3.4" fill="#f472b6" />
+          <circle cx="14" cy="11" r="2.8" fill="#fbcfe8" />
         </g>
 
         {/* Ornamental Berry Hedge Row */}
-        <g transform="translate(650, 290)">
-          <ellipse cx="0" cy="0" rx="28" ry="12" fill="#15803d" stroke="#14532d" strokeWidth="1.3" />
-          <circle cx="-12" cy="-2" r="2.3" fill="#be123c" />
-          <circle cx="0" cy="-4" r="2.3" fill="#be123c" />
-          <circle cx="12" cy="1" r="2.3" fill="#be123c" />
+        <g transform="translate(650, 294)">
+          <ellipse cx="0" cy="0" rx="30" ry="13" fill="#15803d" stroke="#14532d" strokeWidth="1.3" />
+          <circle cx="-12" cy="-2" r="2.5" fill="#be123c" />
+          <circle cx="0" cy="-4" r="2.5" fill="#be123c" />
+          <circle cx="12" cy="1" r="2.5" fill="#be123c" />
         </g>
+
+        {/* Hay Day Clickable Lucky Spin Wheel Wagon (Beside the Upper Road) */}
+        {!readOnly && onOpenWheel && (
+          <g
+            transform="translate(558, 102)"
+            role="button"
+            tabIndex={0}
+            aria-label={lang === 'th' ? 'วงล้อนำโชคประจำวัน' : 'Daily Lucky Spin Wheel'}
+            onClick={() => onOpenWheel()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpenWheel();
+              }
+            }}
+            className="cursor-pointer group"
+          >
+            <ellipse cx="0" cy="16" rx="22" ry="7" fill="#3f6212" opacity="0.28" />
+            <rect x="-14" y="2" width="28" height="12" rx="3" fill="#92400e" stroke="#451a03" strokeWidth="1.2" />
+            <circle cx="-10" cy="14" r="4.5" fill="#1e293b" stroke="#cbd5e1" strokeWidth="1.2" />
+            <circle cx="10" cy="14" r="4.5" fill="#1e293b" stroke="#cbd5e1" strokeWidth="1.2" />
+            <circle cx="0" cy="-11" r="14" fill="#facc15" stroke="#78350f" strokeWidth="1.6" />
+            <path d="M0 -11 L0 -25 A14 14 0 0 1 14 -11 Z" fill="#ef4444" />
+            <path d="M0 -11 L14 -11 A14 14 0 0 1 0 3 Z" fill="#38bdf8" />
+            <path d="M0 -11 L0 3 A14 14 0 0 1 -14 -11 Z" fill="#22c55e" />
+            <circle cx="0" cy="-11" r="4" fill="#ffffff" stroke="#78350f" strokeWidth="1.2" />
+            <polygon points="0,-28 -3,-22 3,-22" fill="#f97316" stroke="#7c2d12" strokeWidth="1" />
+            <rect x="-24" y="-42" width="48" height="14" rx="7" fill={spinAvailable ? '#e11d48' : '#78350f'} stroke="#ffffff" strokeWidth="1.1" />
+            <text x="0" y="-32.5" textAnchor="middle" fontSize="8" fontWeight="900" fill="#ffffff">
+              {spinAvailable ? 'หมุนฟรี!' : 'วงล้อ'}
+            </text>
+          </g>
+        )}
 
         {/* Hay Day Clickable Delivery Truck + Order Board (Upper-Right Road) */}
         {!readOnly && (
@@ -618,7 +931,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             <g transform="translate(-48, 0)">
               <rect x="-2" y="-4" width="4" height="22" fill="#78350f" />
               <rect x="-18" y="-26" width="36" height="24" rx="3" fill="#fef3c7" stroke="#92400e" strokeWidth="1.6" />
-              {/* Mini pinned orders */}
               <rect x="-13" y="-22" width="7" height="7" fill="#ffffff" stroke="#d97706" strokeWidth="0.8" />
               <rect x="-3" y="-22" width="7" height="7" fill="#ffffff" stroke="#16a34a" strokeWidth="0.8" />
               <rect x="7" y="-22" width="7" height="7" fill="#ffffff" stroke="#d97706" strokeWidth="0.8" />
@@ -741,10 +1053,12 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
           return (
             <g
               key={tile.index}
+              data-farm-tile-index={tile.index}
               role={canInteract ? 'button' : undefined}
               tabIndex={canInteract ? 0 : -1}
               aria-label={ariaTileLabel}
               onClick={() => {
+                if (dragStateRef.current.moved) return;
                 if (canInteract) onTileActivate(tile.index);
               }}
               onKeyDown={(e) => {
@@ -907,8 +1221,17 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             }}
             className={onOpenShop ? 'cursor-pointer group' : ''}
           >
-            {/* Silver farm mailbox */}
-            <g transform="translate(58, 12)">
+            {/* Silver farm mailbox (click opens Study Mail Quiz!) */}
+            <g
+              transform="translate(58, 12)"
+              onClick={(e) => {
+                if (onOpenMail) {
+                  e.stopPropagation();
+                  onOpenMail();
+                }
+              }}
+              className={onOpenMail ? 'cursor-pointer' : ''}
+            >
               <rect x="-1.5" y="0" width="3" height="12" fill="#78350f" />
               <rect x="-6" y="-8" width="12" height="8" rx="3" fill="#94a3b8" stroke="#334155" strokeWidth="1" />
               <rect x="3" y="-12" width="2" height="6" fill="#ef4444" />
@@ -1175,6 +1498,8 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                   : '#0284c7';
           return (
             <g key={fb.id} transform={`translate(${x}, ${y - 12})`} className="farm-float-up pointer-events-none">
+              <circle cx="-20" cy="-16" r="3" fill="#fde047" opacity="0.9" />
+              <circle cx="22" cy="-14" r="2.5" fill="#7dd3fc" opacity="0.9" />
               <rect x="-54" y="-12" width="108" height="22" rx="11" fill={bg} stroke="#ffffff" strokeWidth="1.2" />
               <text x="0" y="2" textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#ffffff">
                 {fb.text}
@@ -1183,6 +1508,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
           );
         })}
       </svg>
+      </div>
     </div>
   );
 };

@@ -4,10 +4,12 @@ import {
   applyAttendanceStreakGoldenBonus,
   applyDailyFertilizerTile,
   applyQuizBoostReward,
+  buyDailyDirtBargain,
   buyFromNeighborRoadsideShop,
   buySeedPack,
   calculateTownProsperity,
   claimDisciplineSupplies,
+  claimFarmAchievement,
   clearWeedOnTile,
   collectBuildingYield,
   computeDisciplineChestSummary,
@@ -22,6 +24,8 @@ import {
   fertilizeTile,
   fulfillMarketOrder,
   fulfillVisitorRequest,
+  generateDailyDirtListings,
+  getFarmAchievementProgress,
   getFarmGridSize,
   getNpcDailyQuotaStatus,
   harvestTile,
@@ -30,6 +34,7 @@ import {
   normalizeFarmState,
   plantCropOnTile,
   sellCropFromBarn,
+  spinDailyLuckyWheel,
   syncBehaviorWeedsOntoFarm,
   tillPlotTile,
   unlockPlotTile,
@@ -694,5 +699,79 @@ describe('schoolFarmEngine', () => {
     });
     assert.deepEqual(rehydrated.ownerCharacter, customized.ownerCharacter);
   });
+
+  it('supports Daily Lucky Spin Wheel, Farmhouse Achievements, and Daily Dirt Newspaper bargains', () => {
+    let state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-hayday',
+      ownerName: 'ใบเตย',
+    });
+    const today = '2026-11-27';
+
+    // 1. Daily Lucky Wheel (slot 5 = Jackpot +150 coins)
+    const spin1 = spinDailyLuckyWheel(state, today, 5);
+    assert.equal(spin1.ok, true);
+    assert.equal(spin1.slotIndex, 5);
+    assert.equal(spin1.state.coins, state.coins + 150);
+    assert.equal(spin1.state.lastSpinWheelDate, today);
+    state = spin1.state;
+
+    // Duplicate same-day spin is blocked
+    const spinDup = spinDailyLuckyWheel(state, today, 0);
+    assert.equal(spinDup.ok, false);
+
+    // Next day spin succeeds (slot 2 = +2 fertilizer)
+    const spinNext = spinDailyLuckyWheel(state, '2026-11-28', 2);
+    assert.equal(spinNext.ok, true);
+    assert.equal(spinNext.state.fertilizer, state.fertilizer + 2);
+    state = spinNext.state;
+
+    // 2. Farmhouse Achievements
+    const unfinishedClaim = claimFarmAchievement(state, 'ach-harvest-5');
+    assert.equal(unfinishedClaim.ok, false);
+
+    state = { ...state, totalHarvested: 5 };
+    const progressList = getFarmAchievementProgress(state);
+    const harvestAch = progressList.find((a) => a.id === 'ach-harvest-5');
+    assert.ok(harvestAch);
+    assert.equal(harvestAch.completed, true);
+    assert.equal(harvestAch.claimed, false);
+
+    const coinsBeforeAch = state.coins;
+    const starsBeforeAch = state.townStars;
+    const achClaim = claimFarmAchievement(state, 'ach-harvest-5');
+    assert.equal(achClaim.ok, true);
+    assert.equal(achClaim.state.coins, coinsBeforeAch + 90);
+    assert.equal(achClaim.state.townStars, starsBeforeAch + 1);
+    state = achClaim.state;
+
+    // Duplicate achievement claim blocked
+    const achDup = claimFarmAchievement(state, 'ach-harvest-5');
+    assert.equal(achDup.ok, false);
+
+    // 3. Daily Dirt Newspaper listings & purchase
+    let neighbor = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-neighbor',
+      ownerName: 'ปอปอ',
+    });
+    const listed = listItemInRoadsideShop(neighbor, 'product', 'egg', 1, 55);
+    assert.equal(listed.ok, true);
+    neighbor = listed.state;
+
+    const ads = generateDailyDirtListings(state.userId, [state, neighbor], today);
+    assert.ok(ads.length >= 2);
+    assert.equal(ads.some((a) => a.sellerUserId === state.userId), false);
+    const neighborAd = ads.find((a) => a.isNeighborListing && a.sellerUserId === neighbor.userId);
+    assert.ok(neighborAd);
+
+    const npcAd = ads.find((a) => !a.isNeighborListing);
+    assert.ok(npcAd);
+    const coinsBeforeBuy = state.coins;
+    const boughtNpc = buyDailyDirtBargain(state, npcAd);
+    assert.equal(boughtNpc.ok, true);
+    assert.equal(boughtNpc.state.coins, coinsBeforeBuy - npcAd.priceCoins);
+  });
 });
+
 

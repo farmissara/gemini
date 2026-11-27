@@ -1,5 +1,5 @@
 import React from 'react';
-import type { FarmOwnerCharacter, FarmTool } from '../../lib/schoolFarmEngine';
+import type { CropId, FarmOwnerCharacter, FarmTool, ProductId } from '../../lib/schoolFarmEngine';
 
 export const HayDayLevelStarBadge: React.FC<{
   level: number;
@@ -282,6 +282,13 @@ export const HayDayToolSprite: React.FC<{ tool: FarmTool; className?: string }> 
           <polygon points="16,14 17.5,17.5 21,18 18.5,20.5 19,24 16,22.2 13,24 13.5,20.5 11,18 14.5,17.5" fill="#ffffff" stroke="#b45309" strokeWidth="0.9" />
         </svg>
       );
+    case 'harvest':
+      return (
+        <svg viewBox="0 0 32 32" className={className}>
+          <path d="M7 25 L14 18" stroke="#92400e" strokeWidth="3.2" strokeLinecap="round" />
+          <path d="M13 19 C10 9 19 4 27 9 C21 9 18 14 16 20 Z" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.6" strokeLinejoin="round" />
+        </svg>
+      );
     case 'clear_weed':
       return (
         <svg viewBox="0 0 32 32" className={className}>
@@ -430,3 +437,162 @@ export const FarmOwnerPortraitSvg: React.FC<{
     </svg>
   );
 };
+
+export const HayDaySpinWheelIcon: React.FC<{ className?: string }> = ({ className = 'w-8 h-8' }) => (
+  <svg viewBox="0 0 40 40" className={className}>
+    <circle cx="20" cy="20" r="15" fill="#facc15" stroke="#78350f" strokeWidth="2" />
+    <path d="M20 20 L20 5 A15 15 0 0 1 35 20 Z" fill="#ef4444" />
+    <path d="M20 20 L35 20 A15 15 0 0 1 20 35 Z" fill="#38bdf8" />
+    <path d="M20 20 L20 35 A15 15 0 0 1 5 20 Z" fill="#22c55e" />
+    <path d="M20 20 L5 20 A15 15 0 0 1 20 5 Z" fill="#facc15" />
+    <circle cx="20" cy="20" r="15" fill="none" stroke="#78350f" strokeWidth="2" />
+    <circle cx="20" cy="20" r="4.5" fill="#ffffff" stroke="#78350f" strokeWidth="1.5" />
+    <polygon points="20,2 17,9 23,9" fill="#f97316" stroke="#7c2d12" strokeWidth="1.2" />
+  </svg>
+);
+
+export const HayDayAchievementIcon: React.FC<{ className?: string }> = ({ className = 'w-8 h-8' }) => (
+  <svg viewBox="0 0 40 40" className={className}>
+    <polygon points="14,22 10,36 16,33 20,37 20,22" fill="#e11d48" stroke="#881337" strokeWidth="1.3" />
+    <polygon points="26,22 30,36 24,33 20,37 20,22" fill="#be123c" stroke="#881337" strokeWidth="1.3" />
+    <circle cx="20" cy="15" r="10.5" fill="#facc15" stroke="#92400e" strokeWidth="1.8" />
+    <polygon points="20,8 22.3,12.8 27.5,13.5 23.8,17 24.6,22 20,19.5 15.4,22 16.2,17 12.5,13.5 17.7,12.8" fill="#ffffff" stroke="#b45309" strokeWidth="1" />
+  </svg>
+);
+
+export const HayDayMusicIcon: React.FC<{ muted?: boolean; className?: string }> = ({
+  muted = false,
+  className = 'w-5 h-5',
+}) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none">
+    <path
+      d="M9 18V5l10-2v13"
+      stroke="#78350f"
+      strokeWidth="2.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="6.5" cy="18" r="2.6" fill="#d97706" stroke="#78350f" strokeWidth="1.8" />
+    <circle cx="16.5" cy="16" r="2.6" fill="#d97706" stroke="#78350f" strokeWidth="1.8" />
+    {muted && (
+      <line x1="3" y1="3" x2="21" y2="21" stroke="#dc2626" strokeWidth="2.6" strokeLinecap="round" />
+    )}
+  </svg>
+);
+
+export const HayDayItemSprite: React.FC<{
+  kind: 'crop' | 'product';
+  id: CropId | ProductId;
+  className?: string;
+}> = ({ kind, id, className = 'w-6 h-6' }) => {
+  if (kind === 'crop') {
+    switch (id as CropId) {
+      case 'corn':
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <ellipse cx="16" cy="15" rx="6.5" ry="11" fill="#facc15" stroke="#a16207" strokeWidth="1.5" />
+            <path d="M9 18 C11 26 21 26 23 18 C19 21 13 21 9 18 Z" fill="#22c55e" stroke="#14532d" strokeWidth="1.3" />
+          </svg>
+        );
+      case 'carrot':
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <path d="M16 7 C13 2 11 4 14 9 M16 7 C19 2 21 4 18 9" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M10 10 H22 L16 27 Z" fill="#f97316" stroke="#9a3412" strokeWidth="1.5" strokeLinejoin="round" />
+          </svg>
+        );
+      case 'tomato':
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <circle cx="16" cy="17" r="9.5" fill="#ef4444" stroke="#991b1b" strokeWidth="1.5" />
+            <path d="M12 9 L16 6 L20 9 L16 11 Z" fill="#16a34a" stroke="#14532d" strokeWidth="1.1" />
+          </svg>
+        );
+      case 'strawberry':
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <path d="M8 13 C8 8 24 8 24 13 C24 21 16 27 16 27 C16 27 8 21 8 13 Z" fill="#f43f5e" stroke="#9f1239" strokeWidth="1.5" />
+            <path d="M11 9 L16 6 L21 9 L16 11 Z" fill="#22c55e" stroke="#14532d" strokeWidth="1.1" />
+            <circle cx="13" cy="15" r="1" fill="#fef08a" />
+            <circle cx="19" cy="16" r="1" fill="#fef08a" />
+            <circle cx="16" cy="20" r="1" fill="#fef08a" />
+          </svg>
+        );
+      case 'sunflower':
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <circle cx="16" cy="15" r="10.5" fill="#facc15" stroke="#ca8a04" strokeWidth="1.5" />
+            <circle cx="16" cy="15" r="5" fill="#78350f" />
+          </svg>
+        );
+      case 'jasmine_rice':
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <path d="M10 26 Q12 14 8 7 M16 26 Q18 12 16 5 M22 26 Q22 14 25 8" stroke="#eab308" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+          </svg>
+        );
+      case 'pumpkin':
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <ellipse cx="16" cy="18" rx="11" ry="8.5" fill="#f97316" stroke="#9a3412" strokeWidth="1.5" />
+            <path d="M16 9 L18 5" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        );
+      default:
+        return (
+          <svg viewBox="0 0 32 32" className={className}>
+            <circle cx="16" cy="17" r="10" fill="#fbbf24" stroke="#b45309" strokeWidth="1.5" />
+            <path d="M16 7 L19 4" stroke="#15803d" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        );
+    }
+  }
+
+  switch (id as ProductId) {
+    case 'egg':
+      return (
+        <svg viewBox="0 0 32 32" className={className}>
+          <path d="M16 5 C21 5 24 14 24 20 C24 25 20.5 27 16 27 C11.5 27 8 25 8 20 C8 14 11 5 16 5 Z" fill="#fef3c7" stroke="#92400e" strokeWidth="1.5" />
+          <ellipse cx="13" cy="13" rx="2" ry="3.5" fill="#ffffff" opacity="0.7" />
+        </svg>
+      );
+    case 'milk':
+      return (
+        <svg viewBox="0 0 32 32" className={className}>
+          <path d="M11 7 H21 L23 12 V26 H9 V12 Z" fill="#e0f2fe" stroke="#0369a1" strokeWidth="1.5" strokeLinejoin="round" />
+          <rect x="11" y="5" width="10" height="3" rx="1" fill="#38bdf8" stroke="#0369a1" strokeWidth="1" />
+        </svg>
+      );
+    case 'wool':
+      return (
+        <svg viewBox="0 0 32 32" className={className}>
+          <circle cx="16" cy="16" r="10" fill="#f8fafc" stroke="#64748b" strokeWidth="1.5" />
+          <path d="M10 13 Q16 17 22 13 M11 19 Q16 22 21 19" stroke="#94a3b8" strokeWidth="1.4" fill="none" />
+        </svg>
+      );
+    case 'bread':
+      return (
+        <svg viewBox="0 0 32 32" className={className}>
+          <ellipse cx="16" cy="18" rx="11" ry="7.5" fill="#f59e0b" stroke="#78350f" strokeWidth="1.5" />
+          <line x1="11" y1="14" x2="14" y2="20" stroke="#fef3c7" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="17" y1="14" x2="20" y2="20" stroke="#fef3c7" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      );
+    case 'berry_smoothie':
+      return (
+        <svg viewBox="0 0 32 32" className={className}>
+          <polygon points="10,11 22,11 20,27 12,27" fill="#fb7185" stroke="#9f1239" strokeWidth="1.5" strokeLinejoin="round" />
+          <line x1="18" y1="11" x2="22" y2="5" stroke="#facc15" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 32 32" className={className}>
+          <rect x="7" y="13" width="18" height="12" rx="3" fill="#fda4af" stroke="#9f1239" strokeWidth="1.5" />
+          <path d="M7 14 Q16 19 25 14" stroke="#ffffff" strokeWidth="2.5" fill="none" />
+          <circle cx="16" cy="10" r="3" fill="#e11d48" />
+        </svg>
+      );
+  }
+};
+
