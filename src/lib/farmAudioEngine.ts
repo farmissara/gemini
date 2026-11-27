@@ -21,20 +21,61 @@ export type FarmSfxType =
   | 'wheelTick'
   | 'gift';
 
-// Cheerful G-major acoustic country-farm melody (frequencies in Hz, null = rest)
-// 16th-note / 8th-note steps at ~112 BPM (268ms per 8th note)
-const MELODY_NOTES: Array<number | null> = [
-  392.0, 493.88, 587.33, 659.25, 783.99, 659.25, 587.33, 493.88,
-  523.25, 659.25, 783.99, 659.25, 587.33, null, 493.88, 392.0,
-  440.0, 523.25, 659.25, 587.33, 523.25, 493.88, 440.0, 392.0,
-  329.63, 392.0, 493.88, 587.33, 659.25, 587.33, 493.88, null,
-];
+// Rustic Country Barn Progression in G Major (G - C - G - D7 - G)
+// 32 eighth-note steps (~118 BPM, 254ms/step) with authentic country banjo rolls & blue-note slides
+interface CountryStep {
+  banjo?: number;
+  slideFrom?: number;
+  rollFreq?: number; // crisp 16th-note bluegrass pickup/roll inside the step
+  bass?: number;
+  chord?: [number, number, number]; // off-beat acoustic guitar "chick"
+  fiddle?: number;
+}
 
-const BASS_NOTES: Array<number | null> = [
-  196.0, null, 146.83, null, 196.0, null, 146.83, null, // G - D
-  130.81, null, 196.0, null, 196.0, null, 146.83, null, // C - G
-  220.0, null, 164.81, null, 146.83, null, 196.0, null, // Am - D - G
-  164.81, null, 196.0, null, 146.83, null, 196.0, null, // Em - D - G
+const G_CHORD: [number, number, number] = [196.0, 246.94, 293.66];
+const C_CHORD: [number, number, number] = [261.63, 329.63, 392.0];
+const D7_CHORD: [number, number, number] = [293.66, 369.99, 440.0];
+
+const COUNTRY_BARN_SEQUENCE: CountryStep[] = [
+  // Bar 1: G Major — Porch-picking banjo theme + G-D alternating bass
+  { banjo: 392.0, bass: 98.0 }, // G2 bass + G4 banjo
+  { banjo: 440.0, chord: G_CHORD }, // off-beat guitar chick
+  { banjo: 493.88, slideFrom: 466.16, bass: 146.83 }, // Bb4 -> B4 country slide + D3 fifth
+  { banjo: 587.33, rollFreq: 493.88, chord: G_CHORD }, // D5 -> B4 roll
+  { banjo: 493.88, bass: 98.0 },
+  { banjo: 392.0, chord: G_CHORD },
+  { banjo: 329.63, bass: 146.83 }, // E4
+  { banjo: 293.66, rollFreq: 392.0, chord: G_CHORD }, // D4 -> G4 pickup
+
+  // Bar 2: C Major -> G Major — Bright country fiddle lift
+  { banjo: 329.63, bass: 130.81, fiddle: 523.25 }, // C3 bass + C5 fiddle
+  { banjo: 392.0, chord: C_CHORD },
+  { banjo: 523.25, bass: 196.0 }, // G3 fifth
+  { banjo: 659.25, rollFreq: 587.33, chord: C_CHORD }, // E5 -> D5 roll
+  { banjo: 587.33, bass: 98.0, fiddle: 493.88 }, // back to G
+  { banjo: 493.88, chord: G_CHORD },
+  { banjo: 392.0, bass: 146.83 },
+  { rollFreq: 440.0, chord: G_CHORD },
+
+  // Bar 3: G Major walk-up -> A minor rustic bounce
+  { banjo: 392.0, bass: 98.0 },
+  { banjo: 493.88, chord: G_CHORD },
+  { banjo: 587.33, bass: 146.83 },
+  { banjo: 659.25, rollFreq: 587.33, chord: G_CHORD },
+  { banjo: 493.88, slideFrom: 466.16, bass: 110.0 }, // Am bass + country slide
+  { banjo: 440.0, chord: G_CHORD },
+  { banjo: 392.0, bass: 164.81 },
+  { banjo: 329.63, rollFreq: 392.0, chord: G_CHORD },
+
+  // Bar 4: D7 Country Turnaround -> Home to G
+  { banjo: 369.99, bass: 146.83, fiddle: 587.33 }, // F#4 over D3 + D5 fiddle
+  { banjo: 440.0, chord: D7_CHORD },
+  { banjo: 587.33, bass: 110.0 }, // A2 fifth
+  { banjo: 523.25, rollFreq: 440.0, chord: D7_CHORD }, // C5 -> A4
+  { banjo: 493.88, slideFrom: 466.16, bass: 98.0, fiddle: 392.0 }, // resolve G!
+  { banjo: 440.0, chord: G_CHORD },
+  { banjo: 392.0, bass: 146.83 },
+  { rollFreq: 293.66, chord: G_CHORD },
 ];
 
 class FarmAudioEngine {
@@ -99,6 +140,100 @@ class FarmAudioEngine {
     osc.stop(startTime + duration + 0.02);
   }
 
+  // Twangy plucked acoustic banjo / steel-string country pick with resonant lowpass sweep
+  private playBanjoPluck(
+    ctx: AudioContext,
+    freq: number,
+    startTime: number,
+    duration: number,
+    peakGain: number,
+    slideFromFreq?: number
+  ) {
+    const oscSaw = ctx.createOscillator();
+    const oscTri = ctx.createOscillator();
+    oscSaw.type = 'sawtooth';
+    oscTri.type = 'triangle';
+
+    if (slideFromFreq && slideFromFreq > 0) {
+      oscSaw.frequency.setValueAtTime(slideFromFreq, startTime);
+      oscSaw.frequency.exponentialRampToValueAtTime(freq, startTime + 0.048);
+      oscTri.frequency.setValueAtTime(slideFromFreq, startTime);
+      oscTri.frequency.exponentialRampToValueAtTime(freq, startTime + 0.048);
+    } else {
+      oscSaw.frequency.setValueAtTime(freq, startTime);
+      oscTri.frequency.setValueAtTime(freq, startTime);
+    }
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.setValueAtTime(2.8, startTime);
+    filter.frequency.setValueAtTime(Math.min(4800, freq * 5.2), startTime);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(360, freq * 1.45), startTime + Math.min(0.16, duration));
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.007);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+    oscSaw.connect(filter);
+    oscTri.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    oscSaw.start(startTime);
+    oscTri.start(startTime);
+    oscSaw.stop(startTime + duration + 0.02);
+    oscTri.stop(startTime + duration + 0.02);
+  }
+
+  // Warm plucked upright country bass (Root-Fifth boom)
+  private playCountryBass(ctx: AudioContext, freq: number, startTime: number) {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq * 1.02, startTime);
+    osc.frequency.exponentialRampToValueAtTime(freq, startTime + 0.035);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(340, startTime);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(0.05, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.23);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + 0.25);
+  }
+
+  // Rustic acoustic guitar off-beat "chick" + soft washboard brush
+  private playCountryChick(ctx: AudioContext, chord: [number, number, number], startTime: number) {
+    this.playFilteredNoise(ctx, startTime, 0.055, 'bandpass', 2400, 1700, 0.016);
+    chord.forEach((f, idx) => {
+      this.playTone(ctx, f, startTime + idx * 0.008, 0.09, 'triangle', 0.009);
+    });
+  }
+
+  // Cozy country fiddle sustained phrase note
+  private playFiddleNote(ctx: AudioContext, freq: number, startTime: number, duration: number) {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(0.014, startTime + 0.07);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.02);
+  }
+
   private playFilteredNoise(
     ctx: AudioContext,
     startTime: number,
@@ -154,38 +289,41 @@ class FarmAudioEngine {
     if (!ctx) return;
     this.musicRunning = true;
 
-    const stepMs = 265;
+    const stepMs = 250; // ~120 BPM rustic country boom-chick eighth-note pulse
     const tick = () => {
       if (!this.musicRunning || this.musicMuted) return;
       const audio = this.ensureContext();
       if (!audio || audio.state !== 'running') return;
 
-      const idx = this.stepIndex % MELODY_NOTES.length;
+      const idx = this.stepIndex % COUNTRY_BARN_SEQUENCE.length;
+      const step = COUNTRY_BARN_SEQUENCE[idx];
       const now = audio.currentTime + 0.02;
-      const mel = MELODY_NOTES[idx];
-      const bass = BASS_NOTES[idx];
 
-      // Acoustic plucked banjo/guitar melody
-      if (mel) {
-        this.playTone(audio, mel, now, 0.22, 'triangle', 0.032);
-        this.playTone(audio, mel * 2, now, 0.09, 'sine', 0.009);
+      if (step.bass) {
+        this.playCountryBass(audio, step.bass, now);
       }
 
-      // Warm upright bass bounce
-      if (bass) {
-        this.playTone(audio, bass, now, 0.28, 'sine', 0.035);
+      if (step.chord) {
+        this.playCountryChick(audio, step.chord, now);
       }
 
-      // Soft chord strum on beat 0 & 4 of each bar
-      if (idx % 4 === 0) {
-        const root = idx < 8 ? 392 : idx < 16 ? 329.63 : idx < 24 ? 349.23 : 392;
-        this.playTone(audio, root, now, 0.24, 'sine', 0.011);
+      if (step.banjo) {
+        this.playBanjoPluck(audio, step.banjo, now, 0.21, 0.024, step.slideFrom);
       }
 
-      // Gentle country bird chirp accent occasionally
-      if (idx === 15 || idx === 31) {
-        this.playTone(audio, 1760, now + 0.04, 0.06, 'sine', 0.008, 2240);
-        this.playTone(audio, 1980, now + 0.12, 0.07, 'sine', 0.007, 2420);
+      if (step.rollFreq) {
+        // Syncopated 16th-note country banjo roll
+        this.playBanjoPluck(audio, step.rollFreq, now + 0.125, 0.15, 0.018);
+      }
+
+      if (step.fiddle) {
+        this.playFiddleNote(audio, step.fiddle, now, 0.44);
+      }
+
+      // Gentle country farm bird chirp at end of 4-bar turnaround
+      if (idx === 31) {
+        this.playTone(audio, 1680, now + 0.05, 0.055, 'sine', 0.006, 2120);
+        this.playTone(audio, 1920, now + 0.12, 0.06, 'sine', 0.005, 2320);
       }
 
       this.stepIndex += 1;
