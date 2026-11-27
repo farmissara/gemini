@@ -25,7 +25,6 @@ import { loadSavedPeriodQrSessions, validatePeriodQrTokenState } from '../lib/pe
 import {
   filterLeaveRequestsForUser,
   filterPeriodAttendanceForUser,
-  filterPeriodAttendanceForCourses,
   getAllowedStudentScope,
   getCourseRosterStudentIds,
   getTeacherHomeroomStudents,
@@ -33,6 +32,7 @@ import {
   resolveCurrentUserAttendanceProfile,
   resolveOwnStudent,
   resolveOwnTeacher,
+  studentMatchesClassLabel,
 } from '../lib/attendanceScope';
 import type {
   AttendanceCheckType,
@@ -42,6 +42,7 @@ import type {
   CampusGateGeofence,
   ClassroomGpsConfig,
   Course,
+  DayOfWeek,
   LeaveRequest,
   LeaveType,
   PeriodAttendanceRecord,
@@ -450,29 +451,172 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const [periodTeacherFilter, setPeriodTeacherFilter] = useState<string>('all');
   const periodFilteredCourses = useMemo(() => {
     if (effectiveRole === 'teacher') {
-      return courses.filter((course) => userMatchesCourse(currentUser, ownTeacher, course));
+      const byKey = new Map<string, Course>();
+      const registerCourse = (course: Course) => {
+        const key = (course.id || course.code || '').trim().toLowerCase();
+        if (key && !byKey.has(key)) {
+          byKey.set(key, course);
+        }
+      };
+
+      const teacherSlots = timetableSlots.filter((slot) =>
+        slotMatchesLoggedInTeacher(slot, currentUser, ownTeacher, courses)
+      );
+
+      for (const course of courses) {
+        if (userMatchesCourse(currentUser, ownTeacher, course)) {
+          registerCourse(course);
+          continue;
+        }
+        const linkedBySlot = teacherSlots.some(
+          (slot) =>
+            (slot.courseId && slot.courseId === course.id) ||
+            (Boolean(slot.courseCode && course.code) &&
+              slot.courseCode.trim().toLowerCase() === course.code.trim().toLowerCase())
+        );
+        if (linkedBySlot) {
+          registerCourse(course);
+        }
+      }
+
+      for (const slot of teacherSlots) {
+        const alreadyHas = Array.from(byKey.values()).some(
+          (c) =>
+            (slot.courseId && c.id === slot.courseId) ||
+            (Boolean(slot.courseCode && c.code) &&
+              c.code.trim().toLowerCase() === slot.courseCode.trim().toLowerCase())
+        );
+        if (!alreadyHas) {
+          const existingCatalog = courses.find(
+            (c) =>
+              (slot.courseId && c.id === slot.courseId) ||
+              (Boolean(slot.courseCode && c.code) &&
+                c.code.trim().toLowerCase() === slot.courseCode.trim().toLowerCase())
+          );
+          if (existingCatalog) {
+            registerCourse(existingCatalog);
+          } else {
+            registerCourse({
+              id: slot.courseId || slot.courseCode || slot.id,
+              schoolId: slot.schoolId || activeSchoolId,
+              code: slot.courseCode || 'GEN-101',
+              titleTh: slot.courseTitleTh || slot.courseTitleEn || slot.courseCode || 'รายวิชาตามตารางสอน',
+              titleEn: slot.courseTitleEn || slot.courseTitleTh || slot.courseCode || 'Scheduled Course',
+              category: 'core',
+              credits: 1,
+              department: 'วิชาการ',
+              semester: slot.semester || _school?.currentSemester || '1',
+              academicYear: slot.academicYear || _school?.academicYear || '2569',
+              room: slot.classRoom || slot.room || '',
+              schedule: `${slot.dayOfWeek} คาบ ${slot.periodNumber}`,
+              teacherName: slot.teacherName || currentUser?.fullNameTh || ownTeacher?.fullNameTh || 'ครูผู้สอน',
+              teacherEmail: currentUser?.email || ownTeacher?.email || '',
+              description: `ตารางสอนห้อง ${slot.classRoom || slot.room || '-'}`,
+              enrolledStudentIds: [],
+            });
+          }
+        }
+      }
+
+      if (initialPeriodCourseId) {
+        const targetNorm = initialPeriodCourseId.trim().toLowerCase();
+        const alreadyMatched = Array.from(byKey.values()).some(
+          (c) =>
+            c.id.trim().toLowerCase() === targetNorm ||
+            (c.code || '').trim().toLowerCase() === targetNorm
+        );
+        if (!alreadyMatched) {
+          const fromCourses = courses.find(
+            (c) =>
+              c.id.trim().toLowerCase() === targetNorm ||
+              (c.code || '').trim().toLowerCase() === targetNorm
+          );
+          if (fromCourses) {
+            registerCourse(fromCourses);
+          } else {
+            const fromSlot = timetableSlots.find(
+              (s) =>
+                (s.courseId || '').trim().toLowerCase() === targetNorm ||
+                (s.courseCode || '').trim().toLowerCase() === targetNorm
+            );
+            if (fromSlot) {
+              registerCourse({
+                id: fromSlot.courseId || fromSlot.courseCode || fromSlot.id,
+                schoolId: fromSlot.schoolId || activeSchoolId,
+                code: fromSlot.courseCode || 'GEN-101',
+                titleTh: fromSlot.courseTitleTh || fromSlot.courseTitleEn || fromSlot.courseCode || 'รายวิชาตามตารางสอน',
+                titleEn: fromSlot.courseTitleEn || fromSlot.courseTitleTh || fromSlot.courseCode || 'Scheduled Course',
+                category: 'core',
+                credits: 1,
+                department: 'วิชาการ',
+                semester: fromSlot.semester || _school?.currentSemester || '1',
+                academicYear: fromSlot.academicYear || _school?.academicYear || '2569',
+                room: fromSlot.classRoom || fromSlot.room || '',
+                schedule: `${fromSlot.dayOfWeek} คาบ ${fromSlot.periodNumber}`,
+                teacherName: fromSlot.teacherName || currentUser?.fullNameTh || 'ครูผู้สอน',
+                teacherEmail: currentUser?.email || '',
+                description: `ตารางสอนห้อง ${fromSlot.classRoom || fromSlot.room || '-'}`,
+                enrolledStudentIds: [],
+              });
+            }
+          }
+        }
+      }
+
+      return Array.from(byKey.values());
     }
     const base = courses.length > 0 ? courses : [fallbackCourse];
     const filtered = base.filter((c) =>
       courseMatchesTeacherFilter(c, periodTeacherFilter, courseTeacherOptions)
     );
     return filtered.length > 0 ? filtered : base;
-  }, [courses, fallbackCourse, periodTeacherFilter, courseTeacherOptions, effectiveRole, currentUser, ownTeacher]);
+  }, [
+    courses,
+    timetableSlots,
+    fallbackCourse,
+    periodTeacherFilter,
+    courseTeacherOptions,
+    effectiveRole,
+    currentUser,
+    ownTeacher,
+    activeSchoolId,
+    _school?.currentSemester,
+    _school?.academicYear,
+    initialPeriodCourseId,
+  ]);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>(
     initialPeriodCourseId || courses[0]?.id || fallbackCourse.id
   );
+  const normSelectedCourseId = selectedCourseId.trim().toLowerCase();
   const selectedCourse: Course =
-    periodFilteredCourses.find((c) => c.id === selectedCourseId) ||
-    (effectiveRole === 'teacher' ? undefined : courses.find((c) => c.id === selectedCourseId)) ||
+    periodFilteredCourses.find(
+      (c) =>
+        c.id.trim().toLowerCase() === normSelectedCourseId ||
+        (c.code || '').trim().toLowerCase() === normSelectedCourseId
+    ) ||
+    (effectiveRole === 'teacher'
+      ? undefined
+      : courses.find(
+          (c) =>
+            c.id.trim().toLowerCase() === normSelectedCourseId ||
+            (c.code || '').trim().toLowerCase() === normSelectedCourseId
+        )) ||
     periodFilteredCourses[0] ||
     fallbackCourse;
   const visiblePeriodAttendance = useMemo(
     () =>
       effectiveRole === 'teacher'
-        ? filterPeriodAttendanceForCourses(periodAttendance, periodFilteredCourses, students)
+        ? periodAttendance.filter((rec) =>
+            periodFilteredCourses.some(
+              (c) =>
+                c.id === rec.courseId ||
+                (Boolean(c.code && rec.courseCode) &&
+                  c.code.trim().toLowerCase() === rec.courseCode.trim().toLowerCase())
+            )
+          )
         : scopedPeriodAttendance,
-    [effectiveRole, periodAttendance, periodFilteredCourses, students, scopedPeriodAttendance]
+    [effectiveRole, periodAttendance, periodFilteredCourses, scopedPeriodAttendance]
   );
   const [selectedPeriod, setSelectedPeriod] = useState<number>(initialPeriodNumber || 1);
   const [periodDate, setPeriodDate] = useState<string>(initialPeriodDate || getLocalDateString());
@@ -691,36 +835,96 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     initialPeriodCheckType,
   ]);
 
-  const periodStudentIds: string[] = useMemo(() => {
-    const resolveFromSlot = () => {
-      const matchedSlot = timetableSlots.find(
-        (slot) =>
-          slot.periodNumber === selectedPeriod &&
-          ((slot.courseId && slot.courseId === selectedCourse.id) ||
-            (Boolean(slot.courseCode && selectedCourse.code) &&
-              slot.courseCode.trim().toLowerCase() === selectedCourse.code.trim().toLowerCase()))
-      );
-      if (!matchedSlot) return [];
-      return resolveSlotStudents(matchedSlot, courses, students).map((s) => s.id);
-    };
+  const activePeriodMatchedSlot = useMemo(() => {
+    const courseSlots = timetableSlots.filter(
+      (slot) =>
+        (slot.courseId && slot.courseId === selectedCourse.id) ||
+        (Boolean(slot.courseCode && selectedCourse.code) &&
+          slot.courseCode.trim().toLowerCase() === selectedCourse.code.trim().toLowerCase())
+    );
+    if (courseSlots.length === 0) return undefined;
 
-    if (effectiveRole === 'teacher') {
-      if (!periodFilteredCourses.some((course) => course.id === selectedCourse.id)) return [];
-      const rosterIds = getCourseRosterStudentIds(selectedCourse, students);
-      if (rosterIds.length > 0) return rosterIds;
-      return resolveFromSlot();
+    const parsedDate = new Date(`${periodDate}T12:00:00`);
+    const weekdayMap: Record<number, DayOfWeek> = {
+      1: 'mon',
+      2: 'tue',
+      3: 'wed',
+      4: 'thu',
+      5: 'fri',
+    };
+    const targetDayKey: DayOfWeek | null = Number.isNaN(parsedDate.getTime())
+      ? null
+      : weekdayMap[parsedDate.getDay()] || null;
+
+    const isTeacherSlot = (slot: TimetableSlot) =>
+      effectiveRole !== 'teacher' || slotMatchesLoggedInTeacher(slot, currentUser, ownTeacher, courses);
+
+    return (
+      (targetDayKey &&
+        courseSlots.find(
+          (s) => s.dayOfWeek === targetDayKey && s.periodNumber === selectedPeriod && isTeacherSlot(s)
+        )) ||
+      (targetDayKey &&
+        courseSlots.find((s) => s.dayOfWeek === targetDayKey && s.periodNumber === selectedPeriod)) ||
+      courseSlots.find((s) => s.periodNumber === selectedPeriod && isTeacherSlot(s)) ||
+      courseSlots.find((s) => s.periodNumber === selectedPeriod) ||
+      (targetDayKey && courseSlots.find((s) => s.dayOfWeek === targetDayKey && isTeacherSlot(s))) ||
+      (targetDayKey && courseSlots.find((s) => s.dayOfWeek === targetDayKey)) ||
+      courseSlots.find((s) => isTeacherSlot(s)) ||
+      courseSlots[0]
+    );
+  }, [
+    timetableSlots,
+    selectedCourse.id,
+    selectedCourse.code,
+    periodDate,
+    selectedPeriod,
+    effectiveRole,
+    currentUser,
+    ownTeacher,
+    courses,
+  ]);
+
+  const periodStudentIds: string[] = useMemo(() => {
+    const schoolScopedIds = students
+      .filter((s) => !activeSchoolId || !s.schoolId || s.schoolId === activeSchoolId)
+      .map((s) => s.id);
+    const schoolFallbackIds = schoolScopedIds.length > 0 ? schoolScopedIds : students.map((s) => s.id);
+
+    if (activePeriodMatchedSlot) {
+      const slotStudentIds = resolveSlotStudents(activePeriodMatchedSlot, courses, students).map((s) => s.id);
+      if (slotStudentIds.length > 0) return slotStudentIds;
     }
+
+    const courseRosterIds = getCourseRosterStudentIds(selectedCourse, students);
+    if (courseRosterIds.length > 0) return courseRosterIds;
+
     if (selectedCourse.enrolledStudentIds && selectedCourse.enrolledStudentIds.length > 0) {
-      return selectedCourse.enrolledStudentIds;
+      const existingIds = new Set(students.map((s) => s.id));
+      const directEnrolled = selectedCourse.enrolledStudentIds.filter((id) => existingIds.has(id));
+      if (directEnrolled.length > 0) return directEnrolled;
     }
+
     if (selectedCourse.room) {
-      const targetRoom = selectedCourse.room.trim().toLowerCase();
-      const roomStudents = students.filter((s) => (s.room || '').trim().toLowerCase() === targetRoom);
+      const roomStudents = students.filter((s) => studentMatchesClassLabel(s, selectedCourse.room));
       if (roomStudents.length > 0) return roomStudents.map((s) => s.id);
     }
-    const slotIds = resolveFromSlot();
-    return slotIds.length > 0 ? slotIds : students.map((s) => s.id);
-  }, [effectiveRole, periodFilteredCourses, selectedCourse, selectedPeriod, timetableSlots, courses, students]);
+
+    if (effectiveRole === 'teacher') {
+      const courseOwned = periodFilteredCourses.some((course) => course.id === selectedCourse.id);
+      if (!courseOwned) return [];
+    }
+
+    return schoolFallbackIds;
+  }, [
+    activePeriodMatchedSlot,
+    courses,
+    students,
+    activeSchoolId,
+    selectedCourse,
+    effectiveRole,
+    periodFilteredCourses,
+  ]);
 
   const [teacherPeriodTick, setTeacherPeriodTick] = useState(0);
   useEffect(() => {
@@ -2393,7 +2597,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       onRecordAttendance(
         st.id,
         status,
-        `เช็คชื่อด่วนด้วยมือเดียว (${statusLabel}) โดย ${currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครู/ผู้ดูแล'}`,
+        `เช็คชื่อด่วน (${statusLabel}) โดย ${currentUser?.fullNameTh || currentUser?.fullNameEn || 'ครู/ผู้ดูแล'}`,
         'teacher_proxy',
         {
           recordType: 'check_in',
@@ -2539,6 +2743,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
   const hideFloatingToolbar =
     subTab === 'selfie_mobile' ||
+    (embeddedMobile &&
+      (subTab === 'period_checkin' ||
+        subTab === 'daily_report' ||
+        subTab === 'leave_request' ||
+        subTab === 'corrections')) ||
     showRapidScanner ||
     showPeriodQrModal ||
     showGpsAdminModal ||
@@ -2755,154 +2964,173 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       )}
 
-      {/* Mobile Sub-Navigation & Compact Action Buttons (Embedded Mobile Only) */}
+      {/* Mobile Sub-Navigation & Compact Action Controls (Embedded Mobile Only) */}
       {embeddedMobile && (
         <div className="shrink-0 flex flex-col gap-1.5">
           {showAttendanceAudienceSwitch && onAttendanceAudienceChange && (
-            <div className="flex justify-center">
+            <div className="flex items-center justify-between gap-2">
               <AttendanceAudienceSwitch
                 active={activeAttendanceAudience}
                 lang={lang}
                 onChange={handleAttendanceAudienceChange}
               />
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
+                  title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+                  aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
+                  ) : (
+                    <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                  )}
+                </button>
+
+                {isStaffUser && userPasskey?.protectQuickAttendance && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isQuickAttendanceLocked) {
+                        void handleBiometricVerify();
+                      } else {
+                        handleLockQuickAttendanceNow();
+                      }
+                    }}
+                    disabled={biometricBusy}
+                    className={`h-8 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition active:scale-95 shrink-0 shadow-2xs ${
+                      isQuickAttendanceLocked
+                        ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                        : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400'
+                    }`}
+                    title={
+                      isQuickAttendanceLocked
+                        ? lang === 'th'
+                          ? 'แตะเพื่อปลดล็อกด้วย FaceID / TouchID'
+                          : 'Unlock with FaceID / TouchID'
+                        : lang === 'th'
+                          ? 'แตะเพื่อล็อกเช็คชื่อด่วน'
+                          : 'Lock quick attendance'
+                    }
+                  >
+                    {isQuickAttendanceLocked ? (
+                      <Lock className="w-3 h-3 shrink-0" />
+                    ) : (
+                      <Fingerprint className="w-3 h-3 shrink-0" />
+                    )}
+                    <span className="tabular-nums">
+                      {isQuickAttendanceLocked
+                        ? lang === 'th'
+                          ? 'ล็อก'
+                          : 'Locked'
+                        : `${biometricUnlockMinutes}${lang === 'th' ? 'น.' : 'm'}`}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
+
           <div className="flex items-center justify-between gap-1.5">
-          <nav
-            data-guide-id="mobile-checkin-tabs"
-            aria-label="Attendance sub-navigation"
-            className="flex-1 min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
-          >
-            {[
-              { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่ รร.', labelEn: 'Selfie', staffOnly: false },
-              { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC รร.', labelEn: 'NFC', staffOnly: false },
-              {
-                id: 'leave_request',
-                icon: FileText,
-                labelTh: 'ใบลา',
-                labelEn: 'Leave',
-                badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
-                staffOnly: false,
-              },
-              { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เข้า/ออก รร.', labelEn: 'School Proxy', staffOnly: true },
-              { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
-              { id: 'period_checkin', icon: Users, labelTh: 'เข้า/ออกคาบ', labelEn: 'Periods', staffOnly: false },
-              {
-                id: 'corrections',
-                icon: FileEdit,
-                labelTh: 'แก้เวลา',
-                labelEn: 'Adjust',
-                badge: pendingCorrectionCount,
-                staffOnly: false,
-              },
-            ]
-              .filter((tab) => {
-                if (
-                  filterTabsByAudience &&
-                  showAttendanceAudienceSwitch &&
-                  isStaffUser &&
-                  !(
-                    activeAttendanceAudience === 'students'
-                      ? ['teacher_proxy', 'daily_report', 'period_checkin', 'corrections'].includes(tab.id)
-                      : ['selfie_mobile', 'nfc_tap', 'leave_request'].includes(tab.id)
-                  )
-                ) {
-                  return false;
-                }
-                if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
-                  return false;
-                }
-                return tab.id === 'daily_report'
-                  ? canViewDailyReport
-                  : isStaffUser || !tab.staffOnly;
-              })
-              .map((tab) => {
-                const isActive = subTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    data-active={isActive}
-                    onClick={() => {
-                      setSubTab(tab.id as AttendanceSubTab);
-                      if (tab.id === 'leave_request') setLeaveFormStep(1);
-                    }}
-                    className={`inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
-                      isActive
-                        ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
-                    }`}
-                  >
-                    <tab.icon className="w-3 h-3 shrink-0" />
-                    <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
-                    {tab.badge ? (
-                      <span
-                        className={`text-[10px] font-bold tabular-nums ${
-                          isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
-                        }`}
-                      >
-                        ({tab.badge})
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-          </nav>
-
-          <button
-            type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
-            title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-            aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-            )}
-          </button>
-
-          {isStaffUser && userPasskey?.protectQuickAttendance && (
-            <button
-              type="button"
-              onClick={() => {
-                if (isQuickAttendanceLocked) {
-                  void handleBiometricVerify();
-                } else {
-                  handleLockQuickAttendanceNow();
-                }
-              }}
-              disabled={biometricBusy}
-              className={`h-8 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition active:scale-95 shrink-0 shadow-2xs ${
-                isQuickAttendanceLocked
-                  ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                  : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400'
-              }`}
-              title={
-                isQuickAttendanceLocked
-                  ? lang === 'th'
-                    ? 'แตะเพื่อปลดล็อกด้วย FaceID / TouchID'
-                    : 'Unlock with FaceID / TouchID'
-                  : lang === 'th'
-                    ? 'แตะเพื่อล็อกเช็คชื่อด่วน'
-                    : 'Lock quick attendance'
-              }
+            <nav
+              data-guide-id="mobile-checkin-tabs"
+              aria-label="Attendance sub-navigation"
+              className="flex-1 min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
             >
-              {isQuickAttendanceLocked ? (
-                <Lock className="w-3 h-3 shrink-0" />
-              ) : (
-                <Fingerprint className="w-3 h-3 shrink-0" />
-              )}
-              <span className="tabular-nums">
-                {isQuickAttendanceLocked
-                  ? lang === 'th'
-                    ? 'ล็อก'
-                    : 'Locked'
-                  : `${biometricUnlockMinutes}${lang === 'th' ? 'น.' : 'm'}`}
-              </span>
-            </button>
-          )}
+              {[
+                { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่ รร.', labelEn: 'Selfie', staffOnly: false },
+                { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC รร.', labelEn: 'NFC', staffOnly: false },
+                {
+                  id: 'leave_request',
+                  icon: FileText,
+                  labelTh: 'ใบลา',
+                  labelEn: 'Leave',
+                  badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
+                  staffOnly: false,
+                },
+                { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เข้า/ออก รร.', labelEn: 'School Proxy', staffOnly: true },
+                { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
+                { id: 'period_checkin', icon: Users, labelTh: 'เข้า/ออกคาบ', labelEn: 'Periods', staffOnly: false },
+                {
+                  id: 'corrections',
+                  icon: FileEdit,
+                  labelTh: 'แก้เวลา',
+                  labelEn: 'Adjust',
+                  badge: pendingCorrectionCount,
+                  staffOnly: false,
+                },
+              ]
+                .filter((tab) => {
+                  if (
+                    filterTabsByAudience &&
+                    showAttendanceAudienceSwitch &&
+                    isStaffUser &&
+                    !(
+                      activeAttendanceAudience === 'students'
+                        ? ['teacher_proxy', 'daily_report', 'period_checkin', 'corrections'].includes(tab.id)
+                        : ['selfie_mobile', 'nfc_tap', 'leave_request'].includes(tab.id)
+                    )
+                  ) {
+                    return false;
+                  }
+                  if (hideStaffOverviewTabs && isStaffUser && (tab.id === 'daily_report' || tab.id === 'corrections')) {
+                    return false;
+                  }
+                  return tab.id === 'daily_report'
+                    ? canViewDailyReport
+                    : isStaffUser || !tab.staffOnly;
+                })
+                .map((tab) => {
+                  const isActive = subTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      data-active={isActive}
+                      onClick={() => {
+                        setSubTab(tab.id as AttendanceSubTab);
+                        if (tab.id === 'leave_request') setLeaveFormStep(1);
+                      }}
+                      className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
+                        isActive
+                          ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
+                          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
+                      }`}
+                    >
+                      <tab.icon className="w-3 h-3 shrink-0" />
+                      <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+                      {tab.badge ? (
+                        <span
+                          className={`text-[10px] font-bold tabular-nums ${
+                            isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
+                          }`}
+                        >
+                          ({tab.badge})
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+            </nav>
+
+            {!(showAttendanceAudienceSwitch && onAttendanceAudienceChange) && (
+              <button
+                type="button"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
+                title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+                aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
+                ) : (
+                  <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                )}
+              </button>
+            )}
           </div>
 
           {!hideFloatingToolbar && (

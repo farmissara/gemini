@@ -465,8 +465,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     dateValue: string,
     checkType: 'check_in' | 'check_out'
   ) => {
-    const resolvedCourseId =
-      slot.courseId || scopedCourses.find((c) => c.code === slot.courseCode)?.id || slot.courseCode;
+    const matchedCourse = timetableScopeCourses.find(
+      (c) =>
+        (slot.courseId && c.id === slot.courseId) ||
+        (Boolean(slot.courseCode && c.code) &&
+          c.code.trim().toLowerCase() === slot.courseCode.trim().toLowerCase())
+    );
+    const resolvedCourseId = slot.courseId || matchedCourse?.id || slot.courseCode;
     if (currentRole === 'teacher') {
       const teacherKey = matchedTeacher?.id || currentUser?.id || 'usr-teacher';
       const teacherDisplay =
@@ -912,9 +917,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 initialPeriodDate={mobilePeriodDate}
                 initialPeriodCode={initialPeriodCode}
                 initialPeriodCheckType={mobilePeriodCheckType}
-                students={students}
-                teachers={isRestrictedViewer ? [] : teachers}
-                courses={scopedCourses}
+                students={isRestrictedViewer ? students : timetableScopeStudents}
+                teachers={isRestrictedViewer ? [] : timetableScopeTeachers}
+                courses={isRestrictedViewer ? scopedCourses : timetableScopeCourses}
                 attendance={attendance}
                 periodAttendance={periodAttendance}
                 currentUser={currentUser}
@@ -922,7 +927,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                 school={activeSchool}
                 campusGates={campusGates}
                 schoolPeriods={schoolPeriods}
-                timetableSlots={timetableSlots}
+                timetableSlots={timetableScopeSlots}
                 leaveRequests={leaveRequests}
                 lang={lang}
                 onRecordAttendance={onRecordAttendance}

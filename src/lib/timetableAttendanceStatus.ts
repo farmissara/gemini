@@ -8,6 +8,7 @@ import {
   TimetableSlot,
 } from '../types';
 import { getSlotTeachers, normalizeTeacherName } from './timetableTeachers';
+import { extractShortThaiGradePrefix, normalizeTimetableRoomKey } from './timetableRoomMatch';
 
 export function normalizeRoomToken(value?: string | null): string {
   return (value || '')
@@ -16,6 +17,41 @@ export function normalizeRoomToken(value?: string | null): string {
     .replace(/^ห้อง\s*/i, '')
     .replace(/^room\s*/i, '')
     .replace(/\s+/g, '');
+}
+
+function studentMatchesNormalizedRoom(student: Student, rawTarget: string): boolean {
+  const targetClean = normalizeTimetableRoomKey(rawTarget.replace(/\s*\([^)]*\)\s*$/, '').trim());
+  const targetLegacy = normalizeRoomToken(rawTarget);
+  if (!targetClean && !targetLegacy) return false;
+
+  const shortGrade = extractShortThaiGradePrefix(student.gradeLevel || '');
+  const rawRoom = (student.room || '').trim();
+  const strippedRoom = rawRoom
+    .replace(/^(?:ห้องเรียน|ห้อง|room|class)\s*/i, '')
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .trim();
+
+  const candidateLabels = [
+    rawRoom,
+    strippedRoom,
+    student.gradeLevel ? `${student.gradeLevel}/${rawRoom}` : '',
+    shortGrade && rawRoom ? `${shortGrade}/${rawRoom}` : '',
+    shortGrade && strippedRoom ? `${shortGrade}/${strippedRoom}` : '',
+    shortGrade && strippedRoom ? `${shortGrade} ${strippedRoom}` : '',
+    ...(student.enrolledRooms || []),
+  ].filter(Boolean);
+
+  return candidateLabels.some((label) => {
+    const cleanKey = normalizeTimetableRoomKey(label.replace(/\s*\([^)]*\)\s*$/, '').trim());
+    if (targetClean && cleanKey && cleanKey === targetClean) return true;
+    const legacyKey = normalizeRoomToken(label);
+    return Boolean(
+      targetLegacy &&
+        legacyKey &&
+        (legacyKey === targetLegacy ||
+          (legacyKey.length >= 2 && targetLegacy.length >= 2 && (legacyKey.includes(targetLegacy) || targetLegacy.includes(legacyKey))))
+    );
+  });
 }
 
 export function resolveMatchedCourseForSlot(
@@ -37,36 +73,36 @@ export function resolveSlotStudents(
   courses: Course[],
   students: Student[]
 ): Student[] {
+  const schoolScopedStudents = slot.schoolId
+    ? students.filter((s) => !s.schoolId || s.schoolId === slot.schoolId)
+    : students;
+  const candidatePool = schoolScopedStudents.length > 0 ? schoolScopedStudents : students;
   const matchedCourse = resolveMatchedCourseForSlot(slot, courses);
 
-  // 1. Enrolled students in linked course
+  // 1. Enrolled students in linked course (narrowed to slot.classRoom if both exist and match)
   if (matchedCourse?.enrolledStudentIds && matchedCourse.enrolledStudentIds.length > 0) {
     const idSet = new Set(matchedCourse.enrolledStudentIds);
-    const enrolled = students.filter((s) => idSet.has(s.id));
-    if (enrolled.length > 0) return enrolled;
+    const enrolled = candidatePool.filter((s) => idSet.has(s.id));
+    if (enrolled.length > 0) {
+      if (slot.classRoom) {
+        const roomSubset = enrolled.filter((s) => studentMatchesNormalizedRoom(s, slot.classRoom));
+        if (roomSubset.length > 0) return roomSubset;
+      }
+      return enrolled;
+    }
   }
 
-  // 2. Match by classroom / room token
-  const slotRoomTokens = [slot.classRoom, slot.room, matchedCourse?.room]
-    .map((r) => normalizeRoomToken(r))
-    .filter(Boolean);
-  if (slotRoomTokens.length > 0) {
-    const byRoom = students.filter((s) => {
-      const stuRoom = normalizeRoomToken(s.room);
-      const stuGradeRoom = normalizeRoomToken(`${s.gradeLevel}${s.room}`);
-      const enrolledRooms = (s.enrolledRooms || []).map((r) => normalizeRoomToken(r));
-      return slotRoomTokens.some(
-        (tok) =>
-          (stuRoom && (tok === stuRoom || tok.includes(stuRoom) || stuRoom.includes(tok))) ||
-          (stuGradeRoom && (tok.includes(stuGradeRoom) || stuGradeRoom.includes(tok))) ||
-          enrolledRooms.some((er) => er && (tok.includes(er) || er.includes(tok)))
-      );
-    });
+  // 2. Match by timetable slot classRoom first, then physical room / linked course room
+  const slotRoomCandidates = [slot.classRoom, slot.room, matchedCourse?.room].filter(
+    (r): r is string => Boolean(r && r.trim())
+  );
+  for (const roomLabel of slotRoomCandidates) {
+    const byRoom = candidatePool.filter((s) => studentMatchesNormalizedRoom(s, roomLabel));
     if (byRoom.length > 0) return byRoom;
   }
 
   // 3. Fallback to all students in school so staff can always take roll
-  return students;
+  return candidatePool;
 }
 
 export interface StudentGateStatus {

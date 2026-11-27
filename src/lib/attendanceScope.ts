@@ -68,19 +68,30 @@ function normalizeAssignedRoom(value: string): string {
   return normalizeTimetableRoomKey(value.replace(/\s*\([^)]*\)\s*$/, '').trim());
 }
 
-function studentMatchesClassLabel(student: Student, classLabel: string): boolean {
+export function studentMatchesClassLabel(student: Student, classLabel: string): boolean {
   const target = normalizeAssignedRoom(classLabel);
   if (!target) return false;
 
   const room = (student.room || '').trim();
-  const labels = [room];
+  const shortGrade = extractShortThaiGradePrefix(student.gradeLevel || '');
+  const labels = [room, ...(student.enrolledRooms || [])];
   if (room && student.gradeLevel) {
     labels.push(`${student.gradeLevel}/${room}`);
-    const shortGrade = extractShortThaiGradePrefix(student.gradeLevel);
-    if (shortGrade) labels.push(`${shortGrade}/${room}`);
+    if (shortGrade) {
+      labels.push(`${shortGrade}/${room}`);
+      const strippedRoom = room.replace(/^(?:ห้องเรียน|ห้อง|room|class)\s*/i, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+      if (strippedRoom) {
+        labels.push(strippedRoom);
+        labels.push(`${shortGrade}/${strippedRoom}`);
+        labels.push(`${shortGrade} ${strippedRoom}`);
+      }
+    }
   }
 
-  return labels.some((label) => normalizeAssignedRoom(label) === target);
+  return labels.some((label) => {
+    const normalized = normalizeAssignedRoom(label);
+    return Boolean(normalized && normalized === target);
+  });
 }
 
 export function getTeacherHomeroomStudents(

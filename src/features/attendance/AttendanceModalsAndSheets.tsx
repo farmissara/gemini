@@ -321,7 +321,7 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
 
       {/* Quick action toolbar rendered in-flow via AttendanceQuickActionBar so it never overlaps pagination */}
 
-      {/* ONE-HANDED STUDENT ROSTER & QUICK CHECK-IN BOTTOM SHEET */}
+      {/* STUDENT ROSTER & QUICK CHECK-IN BOTTOM SHEET */}
       <MobileBottomSheet
         isOpen={showQuickRosterSheet}
         onClose={() => setShowQuickRosterSheet(false)}
@@ -331,8 +331,8 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
               ? 'รายชื่อและสถานะเช็คชื่อของคุณ'
               : 'Your Attendance Status'
             : lang === 'th'
-              ? 'รายชื่อนักเรียน & เช็คชื่อมือเดียว'
-              : 'Student Roster & 1-Tap Check-in'
+              ? 'รายชื่อนักเรียน & เช็คชื่อ'
+              : 'Student Roster & Check-in'
         }
         subtitle={
           lang === 'th'

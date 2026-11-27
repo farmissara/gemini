@@ -15,6 +15,7 @@ import {
   QrCode,
   ScanLine,
   Search,
+  SlidersHorizontal,
   Smartphone,
   UserCheck,
   X,
@@ -201,6 +202,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
   const [editingTimeStudentId, setEditingTimeStudentId] = React.useState<string | null>(null);
   const [showGpsConfigPanel, setShowGpsConfigPanel] = React.useState(false);
   const [showFlexConfigPanel, setShowFlexConfigPanel] = React.useState(false);
+  const [showMobileRosterFilters, setShowMobileRosterFilters] = React.useState(false);
   const isTeacherPeriodCheckedIn = Boolean(teacherPeriodCheckStatus?.hasCheckIn);
   const canShowStaffRoster = isStaffUser && (!isTeacher || !onTeacherPeriodCheck || isTeacherPeriodCheckedIn);
   const periodRoomOptions = Array.from(
@@ -217,27 +219,31 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
       className={`${embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto space-y-3 p-0.5 pb-24' : 'space-y-4 pb-12'}`}
     >
       <div className="saas-card">
-        <div className="saas-card-header">
-          <div>
-            <h3 className="type-section-title flex items-center gap-1.5">
+        <div className={embeddedMobile ? 'px-3 py-2 border-b border-[var(--color-border)] flex items-center justify-between gap-2' : 'saas-card-header'}>
+          <div className="min-w-0">
+            <h3 className={`${embeddedMobile ? 'text-sm font-bold text-[var(--color-text-title)]' : 'type-section-title'} flex items-center gap-1.5`}>
               <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-              <span>เช็คชื่อเข้า/ออกคาบเรียน</span>
+              <span className="truncate">{embeddedMobile ? 'เข้า/ออกคาบเรียน' : 'เช็คชื่อเข้า/ออกคาบเรียน'}</span>
             </h3>
-            <p className="type-meta mt-0.5">
+            <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 truncate tabular-nums">
               {isRestrictedViewer
-                ? 'สแกน QR Code หรือเปิดลิงก์เพื่อเช็คชื่อเข้า/ออกคาบเรียน'
-                : `${selectedCourse.code} · คาบที่ ${selectedPeriod} · ${periodStudentIds.length} คน`}
+                ? `${selectedCourse.code} · คาบที่ ${selectedPeriod} · ${periodDate}`
+                : `${selectedCourse.code} · คาบที่ ${selectedPeriod} · ${periodStudentIds.length} คน${
+                    embeddedMobile && isTeacherPeriodCheckedIn && teacherPeriodCheckStatus?.checkInTime
+                      ? ` · เข้าสอน ${teacherPeriodCheckStatus.checkInTime} น.`
+                      : ''
+                  }`}
             </p>
           </div>
           {isStaffUser && (
-            <div className="flex items-center gap-1.5 self-start sm:self-auto">
+            <div className="flex items-center gap-1.5 shrink-0">
               {canShowStaffRoster && (
                 <button
                   type="button"
                   onClick={() => runWithBiometricGuard(() => handleSavePeriodAttendance())}
-                  className="btn-action-primary px-3.5 py-1.5"
+                  className={`btn-action-primary whitespace-nowrap ${embeddedMobile ? 'min-h-[36px] px-3 py-1 text-xs' : 'px-3.5 py-1.5'}`}
                 >
-                  บันทึกเช็คชื่อทั้งคาบ
+                  {embeddedMobile ? 'บันทึกคาบ' : 'บันทึกเช็คชื่อทั้งคาบ'}
                 </button>
               )}
               <TableActionMenu
@@ -283,11 +289,10 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
           )}
         </div>
 
-        <div className="saas-card-body space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {!isRestrictedViewer && !isTeacher && courseTeacherOptions.length > 0 && (
-              <div>
-                <label className="type-meta font-semibold">ครูผู้สอน</label>
+        <div className={embeddedMobile ? 'p-2.5 space-y-2' : 'saas-card-body space-y-3'}>
+          {embeddedMobile ? (
+            <div className="space-y-1.5">
+              {!isRestrictedViewer && !isTeacher && courseTeacherOptions.length > 0 && (
                 <select
                   aria-label="กรองวิชาตามรายชื่อครู"
                   value={periodTeacherFilter}
@@ -301,24 +306,22 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                       setSelectedCourseId(matching[0].id);
                     }
                   }}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                  className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-medium"
                 >
-                  <option value="all">ทุกคน ({courseTeacherOptions.length})</option>
+                  <option value="all">ครูผู้สอน: ทุกคน ({courseTeacherOptions.length})</option>
                   {courseTeacherOptions.map((opt) => (
                     <option key={opt.key} value={opt.key}>
                       {opt.label} ({opt.count} วิชา)
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              )}
 
-            <div className={!isRestrictedViewer && !isTeacher && courseTeacherOptions.length > 0 ? '' : 'sm:col-span-2 lg:col-span-2'}>
-              <label className="type-meta font-semibold">รายวิชา</label>
               <select
+                aria-label="เลือกรายวิชา"
                 value={selectedCourse.id}
                 onChange={(e) => setSelectedCourseId(e.target.value)}
-                className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold"
               >
                 {periodFilteredCourses.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -326,103 +329,214 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                   </option>
                 ))}
               </select>
-            </div>
 
-            <div>
-              <label className="type-meta font-semibold">คาบเรียน (ตามตารางโรงเรียน)</label>
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-                className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
-              >
-                {periodsList.map((p) => (
-                  <option key={p.period} value={p.period}>
-                    {p.label} ({p.time})
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="flex items-center gap-1.5">
+                <select
+                  aria-label="เลือกคาบเรียน"
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(Number(e.target.value))}
+                  className="flex-1 min-w-0 h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-medium"
+                >
+                  {periodsList.map((p) => (
+                    <option key={p.period} value={p.period}>
+                      {p.label} ({p.time})
+                    </option>
+                  ))}
+                </select>
 
-            <div>
-              <label className="type-meta font-semibold">วันที่</label>
-              {isRestrictedViewer ? (
-                <div className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums font-medium">
-                  {periodDate} (วันนี้)
-                </div>
-              ) : (
-                <input
-                  type="date"
-                  value={periodDate}
-                  onChange={(e) => setPeriodDate(e.target.value)}
-                  className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums"
-                />
-              )}
-            </div>
-          </div>
-
-          {isStaffUser && onTeacherPeriodCheck && (
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div className="min-w-0 space-y-0.5">
-                <p className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                  <span>
-                    {isTeacherPeriodCheckedIn
-                      ? teacherPeriodCheckStatus?.hasCheckOut
-                        ? `เช็คชื่อเข้าคาบ ${teacherPeriodCheckStatus.checkInTime || ''} น. · ออกคาบ ${teacherPeriodCheckStatus.checkOutTime || ''} น.`
-                        : `ครูเช็คอินเข้าคาบแล้ว${teacherPeriodCheckStatus?.checkInTime ? ` (${teacherPeriodCheckStatus.checkInTime} น.)` : ''} — แสดงนักเรียนในคาบ ${periodStudentIds.length} คน`
-                      : `ยังไม่ได้เช็คอินเข้าสอนคาบที่ ${selectedPeriod}`}
-                  </span>
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  {isTeacherPeriodCheckedIn
-                    ? 'เลือกโหมดเข้าคาบ/ออกคาบ หรือกดปุ่มเช็คชื่อออกคาบเมื่อสอนเสร็จ'
-                    : 'กดเช็คชื่อเข้าคาบเรียนเพื่อแสดงรายชื่อนักเรียนในคาบนี้'}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <div className="seg-tab-group">
-                  <button
-                    type="button"
-                    data-active={periodCheckType === 'check_in'}
-                    onClick={() => setPeriodCheckType('check_in')}
-                    className="seg-tab-btn flex items-center gap-1"
-                  >
-                    <LogIn className="w-3.5 h-3.5" />
-                    <span>เข้าคาบเรียน</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-active={periodCheckType === 'check_out'}
-                    onClick={() => setPeriodCheckType('check_out')}
-                    className="seg-tab-btn flex items-center gap-1"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>ออกคาบเรียน</span>
-                  </button>
-                </div>
-                {!isTeacherPeriodCheckedIn ? (
-                  <button
-                    type="button"
-                    onClick={() => onTeacherPeriodCheck('check_in')}
-                    className="min-h-[44px] px-3.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <LogIn className="w-4 h-4 shrink-0" />
-                    <span>เช็คชื่อเข้าคาบเรียน</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onTeacherPeriodCheck('check_out')}
-                    className="min-h-[44px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4 shrink-0" />
-                    <span>
-                      {teacherPeriodCheckStatus?.hasCheckOut ? 'อัปเดตออกคาบเรียน' : 'เช็คชื่อออกคาบเรียน'}
-                    </span>
-                  </button>
+                {!isRestrictedViewer && (
+                  <input
+                    type="date"
+                    aria-label="เลือกวันที่"
+                    value={periodDate}
+                    onChange={(e) => setPeriodDate(e.target.value)}
+                    className="w-[132px] shrink-0 h-9 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums"
+                  />
                 )}
               </div>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              {!isRestrictedViewer && !isTeacher && courseTeacherOptions.length > 0 && (
+                <div>
+                  <label className="type-meta font-semibold">ครูผู้สอน</label>
+                  <select
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={periodTeacherFilter}
+                    onChange={(e) => {
+                      const nextTeacher = e.target.value;
+                      setPeriodTeacherFilter(nextTeacher);
+                      const matching = (courses.length > 0 ? courses : [fallbackCourse]).filter((c) =>
+                        courseMatchesTeacherFilter(c, nextTeacher, courseTeacherOptions)
+                      );
+                      if (matching.length > 0 && !matching.some((c) => c.id === selectedCourseId)) {
+                        setSelectedCourseId(matching[0].id);
+                      }
+                    }}
+                    className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                  >
+                    <option value="all">ทุกคน ({courseTeacherOptions.length})</option>
+                    {courseTeacherOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count} วิชา)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className={!isRestrictedViewer && !isTeacher && courseTeacherOptions.length > 0 ? '' : 'sm:col-span-2 lg:col-span-2'}>
+                <label className="type-meta font-semibold">รายวิชา</label>
+                <select
+                  value={selectedCourse.id}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                >
+                  {periodFilteredCourses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} {c.titleTh}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="type-meta font-semibold">คาบเรียน (ตามตารางโรงเรียน)</label>
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(Number(e.target.value))}
+                  className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs"
+                >
+                  {periodsList.map((p) => (
+                    <option key={p.period} value={p.period}>
+                      {p.label} ({p.time})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="type-meta font-semibold">วันที่</label>
+                {isRestrictedViewer ? (
+                  <div className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums font-medium">
+                    {periodDate} (วันนี้)
+                  </div>
+                ) : (
+                  <input
+                    type="date"
+                    value={periodDate}
+                    onChange={(e) => setPeriodDate(e.target.value)}
+                    className="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs tabular-nums"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {isStaffUser && onTeacherPeriodCheck && (
+            embeddedMobile ? (
+              (isTeacherPeriodCheckedIn || !isTeacher) && (
+                <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                  <div className="seg-tab-group">
+                    <button
+                      type="button"
+                      data-active={periodCheckType === 'check_in'}
+                      onClick={() => setPeriodCheckType('check_in')}
+                      className="seg-tab-btn flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <LogIn className="w-3 h-3" />
+                      <span>เข้าคาบ</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-active={periodCheckType === 'check_out'}
+                      onClick={() => setPeriodCheckType('check_out')}
+                      className="seg-tab-btn flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      <span>ออกคาบ</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onTeacherPeriodCheck(isTeacherPeriodCheckedIn ? 'check_out' : 'check_in')}
+                    className="min-h-[36px] px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {!isTeacherPeriodCheckedIn
+                        ? 'ครูเข้าคาบ'
+                        : teacherPeriodCheckStatus?.hasCheckOut
+                          ? `ออกแล้ว ${teacherPeriodCheckStatus.checkOutTime || ''}`
+                          : 'ครูออกคาบ'}
+                    </span>
+                  </button>
+                </div>
+              )
+            ) : (
+              <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                    <span>
+                      {isTeacherPeriodCheckedIn
+                        ? teacherPeriodCheckStatus?.hasCheckOut
+                          ? `เช็คชื่อเข้าคาบ ${teacherPeriodCheckStatus.checkInTime || ''} น. · ออกคาบ ${teacherPeriodCheckStatus.checkOutTime || ''} น.`
+                          : `ครูเช็คอินเข้าคาบแล้ว${teacherPeriodCheckStatus?.checkInTime ? ` (${teacherPeriodCheckStatus.checkInTime} น.)` : ''} — แสดงนักเรียนในคาบ ${periodStudentIds.length} คน`
+                        : `ยังไม่ได้เช็คอินเข้าสอนคาบที่ ${selectedPeriod}`}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {isTeacherPeriodCheckedIn
+                      ? 'เลือกโหมดเข้าคาบ/ออกคาบ หรือกดปุ่มเช็คชื่อออกคาบเมื่อสอนเสร็จ'
+                      : 'กดเช็คชื่อเข้าคาบเรียนเพื่อแสดงรายชื่อนักเรียนในคาบนี้'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <div className="seg-tab-group">
+                    <button
+                      type="button"
+                      data-active={periodCheckType === 'check_in'}
+                      onClick={() => setPeriodCheckType('check_in')}
+                      className="seg-tab-btn flex items-center gap-1"
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>เข้าคาบเรียน</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-active={periodCheckType === 'check_out'}
+                      onClick={() => setPeriodCheckType('check_out')}
+                      className="seg-tab-btn flex items-center gap-1"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>ออกคาบเรียน</span>
+                    </button>
+                  </div>
+                  {!isTeacherPeriodCheckedIn ? (
+                    <button
+                      type="button"
+                      onClick={() => onTeacherPeriodCheck('check_in')}
+                      className="min-h-[44px] px-3.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <LogIn className="w-4 h-4 shrink-0" />
+                      <span>เช็คชื่อเข้าคาบเรียน</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onTeacherPeriodCheck('check_out')}
+                      className="min-h-[44px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      <span>
+                        {teacherPeriodCheckStatus?.hasCheckOut ? 'อัปเดตออกคาบเรียน' : 'เช็คชื่อออกคาบเรียน'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
           )}
 
           {periodSavedNotification && (
@@ -682,54 +796,80 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                 );
               });
 
+              const hasActiveRosterFilter = Boolean(
+                periodRosterSearch.trim() || periodRosterFilter !== 'all' || periodRosterRoomFilter !== 'all'
+              );
+              const showRosterFilterInputs = !embeddedMobile || showMobileRosterFilters || hasActiveRosterFilter;
+
               return (
                 <>
-                  <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold tabular-nums">
+                  <div className="px-3 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 font-semibold tabular-nums min-w-0">
                         <span className="font-bold text-[var(--color-text-title)]">
-                          รายชื่อนักเรียนในคาบที่ {selectedPeriod} ({periodStudentIds.length} คน)
+                          รายชื่อ ({filteredIds.length}/{periodStudentIds.length} คน)
                         </span>
                         <span className="text-[var(--color-text-muted)]">รอเช็ค {uncheckedCount}</span>
-                        <span className="text-[var(--color-primary-text)]">รับแทน {proxyCount}</span>
-                        <span className="text-emerald-700 dark:text-emerald-300">สแกน QR {mobileCount}</span>
+                        {!embeddedMobile && (
+                          <>
+                            <span className="text-[var(--color-primary-text)]">รับแทน {proxyCount}</span>
+                            <span className="text-emerald-700 dark:text-emerald-300">สแกน QR {mobileCount}</span>
+                          </>
+                        )}
                       </div>
+                      {embeddedMobile && (
+                        <button
+                          type="button"
+                          onClick={() => setShowMobileRosterFilters((prev) => !prev)}
+                          aria-expanded={showRosterFilterInputs}
+                          className={`min-h-[34px] px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 ${
+                            showRosterFilterInputs
+                              ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)]/40 text-[var(--color-primary-text)]'
+                              : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text-title)]'
+                          }`}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+                          <span>{hasActiveRosterFilter ? 'กรองอยู่' : 'ค้นหา/กรอง'}</span>
+                        </button>
+                      )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-2.5" />
-                        <input
-                          type="search"
-                          value={periodRosterSearch}
-                          onChange={(e) => setPeriodRosterSearch(e.target.value)}
-                          placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
-                          aria-label="ค้นหานักเรียนในรายวิชา"
-                          className="w-full h-9 pl-8 pr-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
-                        />
+                    {showRosterFilterInputs && (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-2.5" />
+                          <input
+                            type="search"
+                            value={periodRosterSearch}
+                            onChange={(e) => setPeriodRosterSearch(e.target.value)}
+                            placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                            aria-label="ค้นหานักเรียนในรายวิชา"
+                            className="w-full h-9 pl-8 pr-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                          />
+                        </div>
+                        <select
+                          aria-label="กรองตามสถานะเช็คชื่อ"
+                          value={periodRosterFilter}
+                          onChange={(e) => setPeriodRosterFilter(e.target.value as PeriodRosterFilter)}
+                          className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)]"
+                        >
+                          <option value="all">ทุกสถานะ ({periodStudentIds.length})</option>
+                          <option value="unchecked">ยังไม่เช็ค ({uncheckedCount})</option>
+                          <option value="proxy">ครูรับแทน ({proxyCount})</option>
+                          <option value="mobile">สแกนมือถือ ({mobileCount})</option>
+                        </select>
+                        <select
+                          aria-label="กรองตามห้องเรียนในรายวิชา"
+                          value={periodRosterRoomFilter}
+                          onChange={(e) => setPeriodRosterRoomFilter(e.target.value)}
+                          className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)]"
+                        >
+                          <option value="all">ทุกห้องในรายวิชา</option>
+                          {periodRoomOptions.map((room) => (
+                            <option key={room} value={room}>{room}</option>
+                          ))}
+                        </select>
                       </div>
-                      <select
-                        aria-label="กรองตามสถานะเช็คชื่อ"
-                        value={periodRosterFilter}
-                        onChange={(e) => setPeriodRosterFilter(e.target.value as PeriodRosterFilter)}
-                        className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)]"
-                      >
-                        <option value="all">ทุกสถานะ ({periodStudentIds.length})</option>
-                        <option value="unchecked">ยังไม่เช็ค ({uncheckedCount})</option>
-                        <option value="proxy">ครูรับแทน ({proxyCount})</option>
-                        <option value="mobile">สแกนมือถือ ({mobileCount})</option>
-                      </select>
-                      <select
-                        aria-label="กรองตามห้องเรียนในรายวิชา"
-                        value={periodRosterRoomFilter}
-                        onChange={(e) => setPeriodRosterRoomFilter(e.target.value)}
-                        className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)]"
-                      >
-                        <option value="all">ทุกห้องในรายวิชา</option>
-                        {periodRoomOptions.map((room) => (
-                          <option key={room} value={room}>{room}</option>
-                        ))}
-                      </select>
-                    </div>
+                    )}
                   </div>
 
                   <div className="divide-y divide-[var(--color-border)]">
@@ -750,13 +890,13 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                         const displayOut = customTime.checkOut || savedRecord?.actualCheckOutTime;
 
                         return (
-                          <div key={st.id} className="px-3 py-3 space-y-2 hover:bg-[var(--color-card-subtle)]/50 transition">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                          <div key={st.id} className={`px-3 ${embeddedMobile ? 'py-2.5' : 'py-3'} space-y-2 hover:bg-[var(--color-card-subtle)]/50 transition`}>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 <img
                                   src={st.avatarUrl}
                                   alt={`${st.firstNameTh} ${st.lastNameTh}`}
-                                  className="w-10 h-10 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
+                                  className={`${embeddedMobile ? 'w-8 h-8 rounded-lg' : 'w-10 h-10 rounded-xl'} object-cover border border-[var(--color-border)] shrink-0`}
                                 />
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -764,11 +904,11 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                       {st.firstNameTh} {st.lastNameTh}
                                     </span>
                                     <span className="text-[11px] font-mono text-[var(--color-text-muted)] shrink-0">
-                                      {st.studentIdNumber} · {st.gradeLevel} {st.room}
+                                      {st.studentIdNumber} · {st.room}
                                     </span>
                                   </div>
 
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px]">
+                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
                                     {savedRecord?.checkMethod === 'qr_code' && (
                                       <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300">
                                         <Smartphone className="w-3 h-3 shrink-0" />
@@ -777,7 +917,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                     )}
                                     {savedRecord?.checkMethod === 'teacher_proxy' && (
                                       <span className="font-semibold text-[var(--color-primary-text)]">
-                                        ครูรับแทน
+                                        ครูเช็คให้
                                       </span>
                                     )}
                                     {!recordedStatus && (
@@ -797,11 +937,11 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-end gap-1.5 shrink-0 pl-12 sm:pl-0">
+                              <div className={`flex items-center gap-1.5 shrink-0 ${embeddedMobile ? 'w-full' : 'justify-end pl-12 sm:pl-0'}`}>
                                 <div
                                   role="group"
                                   aria-label={`สถานะคาบ ${st.firstNameTh} ${st.lastNameTh}`}
-                                  className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 gap-0.5"
+                                  className={`${embeddedMobile ? 'flex-1 grid grid-cols-4' : 'inline-flex items-center'} rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 gap-0.5`}
                                 >
                                   {(
                                     [
@@ -819,7 +959,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                         onClick={() => handleTeacherProxyPeriodCheckin(st, opt.id, false)}
                                         aria-pressed={isActive}
                                         title={opt.fullLabel}
-                                        className={`min-h-[34px] min-w-[44px] sm:min-w-[50px] px-2.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1 transition cursor-pointer ${
+                                        className={`${embeddedMobile ? 'min-h-[38px]' : 'min-h-[34px] min-w-[44px] sm:min-w-[50px]'} px-2 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
                                           isActive
                                             ? opt.id === 'present'
                                               ? 'bg-emerald-700 text-white shadow-xs'
