@@ -438,8 +438,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* Zone 2: Compact Search + Direct Focus Mode Toggle + Alerts + Account Menu */}
-      <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+      {/* Zone 2: Compact Search + Alerts + System Tools Menu + Account Menu */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {!focusMode && canAccessSchoolOperations && (
           <div className="hidden md:block">
             <UnifiedNavbarSearch
@@ -475,7 +475,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Bell className="w-[18px] h-[18px]" />
             {(unreadCount > 0 || coordinationUnreadCount > 0) && (
-              <span className="absolute top-2 right-2.5 sm:top-1.5 sm:right-2 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-[var(--color-card)]" />
+              <span className="absolute top-2 right-2 sm:top-1.5 sm:right-1.5 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-[var(--color-card)]" />
             )}
           </button>
         )}
@@ -493,7 +493,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               setIsWorkspaceMenuOpen(false);
               setIsAccountMenuOpen(false);
             }}
-            className={`relative w-9 h-9 rounded-xl flex items-center justify-center border transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${
+            className={`relative w-10 h-10 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center border transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 ${
               isToolsMenuOpen
                 ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
                 : 'border-transparent hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
@@ -501,7 +501,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <MoreVertical className="w-[18px] h-[18px]" />
             {coordinationUnreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-[var(--color-card)]" />
+              <span className="absolute top-2 right-2 sm:top-1.5 sm:right-1.5 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-[var(--color-card)]" />
             )}
           </button>
 

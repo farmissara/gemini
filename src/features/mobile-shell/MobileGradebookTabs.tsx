@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -25,6 +24,7 @@ import { loadQualitativeAssessments, summarizeStudentQualitative } from '../../l
 import { LearningIndicatorAssessmentPanel } from '../../components/LearningIndicatorAssessmentPanel';
 import { PagedList } from '../../components/PagedList';
 import { MobileBottomSheet } from '../../components/layout/MobileRoleWorkspace';
+import { MobileSubPageHeader } from './MobileHeaderAndNav';
 
 interface CourseScoreWeights {
   midterm: number;
@@ -239,19 +239,12 @@ export const MobileTeacherGradebookTab: React.FC<MobileTeacherGradebookTabProps>
 
   return (
     <div className="space-y-3 pb-6 animate-in fade-in duration-150">
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[36px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <h2 className="text-sm font-bold text-[var(--color-text-title)]">
-          {lang === 'th' ? 'สมุดคะแนน ปพ.5' : 'Gradebook (PP.5)'}
-        </h2>
-      </div>
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'สมุดคะแนน ปพ.5' : 'Gradebook (PP.5)'}
+        iconTab="gradebook"
+        backLabel={lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}
+        onBack={onBackHome}
+      />
 
       {/* 3-Tab Switcher */}
       <div
@@ -648,21 +641,17 @@ export const MobileStudentGradesTab: React.FC<MobileStudentGradesTabProps> = ({
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-200">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <span className="text-xs font-semibold text-[var(--color-text-muted)] tabular-nums">
-          {lang === 'th'
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'ผลการเรียนของฉัน' : 'My Grades'}
+        subtitle={
+          lang === 'th'
             ? `ปีการศึกษา ${activeSchool.academicYear || '2569'} · เทอม ${activeSchool.currentSemester || '1'}`
-            : `AY ${activeSchool.academicYear || '2569'} · S${activeSchool.currentSemester || '1'}`}
-        </span>
-      </div>
+            : `AY ${activeSchool.academicYear || '2569'} · S${activeSchool.currentSemester || '1'}`
+        }
+        iconTab="gradebook"
+        backLabel={lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}
+        onBack={onBackHome}
+      />
 
       {/* Real GPAX Summary Card */}
       <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white p-5 shadow-md flex items-center justify-between gap-4">

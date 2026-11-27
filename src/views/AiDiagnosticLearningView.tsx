@@ -9,8 +9,7 @@ import {
   Award,
   Zap,
   TrendingUp,
-  User,
-  X
+  User
 } from 'lucide-react';
 import { 
   AdaptivePracticeTopic,
@@ -34,6 +33,8 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { postLearningAi } from '../lib/learningAiClient';
 import { resolveOwnStudent } from '../lib/attendanceScope';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 
 interface AiDiagnosticLearningViewProps {
   lang?: AppLanguage;
@@ -531,35 +532,28 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
   return (
     <div className={`space-y-6 pb-12 ${getModuleTone('ai_diagnostic')}`}>
       {/* Top Banner / Header */}
-      <div className="app-page-header p-5 sm:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="flex items-start gap-3.5 min-w-0 max-w-2xl">
-            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
-              <FutureNavIcon tab="ai_diagnostic" size={24} active />
-            </div>
-            <div className="space-y-1.5 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ระบบ AI วิเคราะห์สมรรถนะรายบุคคล & ภารกิจซ่อมเสริม' : 'AI Adaptive Competency & Remedial Engine'}</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--color-text-title)]">
-                {lang === 'th' ? 'AI Diagnostic & Adaptive Learning 8 มิติ' : '8-Dimension AI Competency Radar'}
-              </h1>
-              <p className="text-[var(--color-text-body)] text-xs sm:text-sm leading-relaxed">
-                {lang === 'th' 
-                  ? 'ระบบประเมินสมรรถนะผู้เรียนรอบด้าน ตรวจจับจุดอ่อนที่ทำคะแนนตกต่ำ วิเคราะห์สาเหตุความเข้าใจคลาดเคลื่อน (Misconceptions) พร้อมจ่ายแบบฝึกหัดซ่อมเสริมอัตโนมัติรายบุคคล'
-                  : 'Comprehensive competency assessment across 8 dimensions. Detects learning weaknesses, identifies cognitive misconceptions, and dispenses adaptive remedial quests.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] p-4 rounded-xl flex items-center gap-4 shrink-0">
+      <PageHeader
+        kicker={
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'ระบบ AI วิเคราะห์สมรรถนะรายบุคคล & ภารกิจซ่อมเสริม' : 'AI Adaptive Competency & Remedial Engine'}</span>
+          </span>
+        }
+        title={lang === 'th' ? 'AI Diagnostic & Adaptive Learning 8 มิติ' : '8-Dimension AI Competency Radar'}
+        description={
+          lang === 'th'
+            ? 'ระบบประเมินสมรรถนะผู้เรียนรอบด้าน ตรวจจับจุดอ่อนที่ทำคะแนนตกต่ำ วิเคราะห์สาเหตุความเข้าใจคลาดเคลื่อน (Misconceptions) พร้อมจ่ายแบบฝึกหัดซ่อมเสริมอัตโนมัติรายบุคคล'
+            : 'Comprehensive competency assessment across 8 dimensions. Detects learning weaknesses, identifies cognitive misconceptions, and dispenses adaptive remedial quests.'
+        }
+        icon={<FutureNavIcon tab="ai_diagnostic" size={22} active />}
+        actions={
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] px-3.5 py-2.5 rounded-xl flex items-center gap-3.5 shrink-0">
             <div className="text-right">
-              <p className="text-xs text-[var(--color-text-muted)] font-medium">
+              <p className="text-[11px] text-[var(--color-text-muted)] font-medium">
                 {lang === 'th' ? 'คะแนนสมรรถนะเฉลี่ย' : 'Average Competency'}
               </p>
               <div className="flex items-baseline gap-1 justify-end tabular-nums">
-                <span className="text-3xl font-black text-[var(--tone)]">{avgScore}</span>
+                <span className="text-2xl font-black text-[var(--tone)]">{avgScore}</span>
                 <span className="text-xs text-[var(--color-text-muted)]">/ 100</span>
               </div>
               <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center justify-end gap-1 mt-0.5 tabular-nums">
@@ -567,12 +561,12 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
                 {lang === 'th' ? `สูงกว่าเกณฑ์ +${avgScore - avgBenchmark} คะแนน` : `+${avgScore - avgBenchmark} above benchmark`}
               </p>
             </div>
-            <div className="w-11 h-11 rounded-xl tone-chip-solid shrink-0">
+            <div className="w-10 h-10 rounded-xl tone-chip-solid shrink-0">
               <Zap className="w-5 h-5" />
             </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {initialFocusTopic && (
         <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -966,97 +960,85 @@ export const AiDiagnosticLearningView: React.FC<AiDiagnosticLearningViewProps> =
       </div>
 
       {/* Adaptive Micro-Quest Modal */}
-      {activeQuestDiag && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
+      <BaseModal
+        isOpen={Boolean(activeQuestDiag)}
+        onClose={() => setActiveQuestDiag(null)}
+        title={lang === 'th' ? 'ภารกิจซ่อมเสริมเฉพาะจุด (Remedial Micro-Quest)' : 'Remedial Micro-Quest'}
+        subtitle={activeQuestDiag?.subject}
+        icon={<Zap className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[92vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        {activeQuestDiag && (
+          <div>
+            {!showQuestResult ? (
               <div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700">
-                  {activeQuestDiag.subject}
-                </span>
-                <h3 className="text-base font-bold text-[var(--color-text-title)] mt-1">
-                  {lang === 'th' ? 'ภารกิจซ่อมเสริมเฉพาะจุด (Remedial Micro-Quest)' : 'Remedial Micro-Quest'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveQuestDiag(null)}
-                className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="mt-4">
-              {!showQuestResult ? (
-                <div>
-                  {/* Progress Indicator */}
-                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-2 font-medium">
-                    <span>
-                      {lang === 'th' ? `คำถามข้อที่ ${questStep + 1} จาก ${activeQuestDiag.microQuests.length}` : `Question ${questStep + 1} of ${activeQuestDiag.microQuests.length}`}
-                    </span>
-                    <span>
-                      {lang === 'th' ? 'หัวข้อ:' : 'Topic:'} {activeQuestDiag.topicTh.slice(0, 25)}...
-                    </span>
-                  </div>
-
-                  <div className="w-full h-1.5 bg-[var(--color-card-subtle)] rounded-full overflow-hidden mb-4">
-                    <div 
-                      className="h-full bg-indigo-700 transition-all duration-300"
-                      style={{ width: `${((questStep + 1) / activeQuestDiag.microQuests.length) * 100}%` }}
-                    />
-                  </div>
-
-                  {/* Question Box */}
-                  <div className="p-4 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-primary)] text-[var(--color-text-title)] font-bold text-sm leading-relaxed mb-4">
-                    {activeQuestDiag.microQuests[questStep].questionTh}
-                  </div>
-
-                  {/* Options */}
-                  <div className="space-y-2">
-                    {activeQuestDiag.microQuests[questStep].options.map((opt, optIdx) => (
-                      <button
-                        key={optIdx}
-                        type="button"
-                        onClick={() => handleSelectAnswer(optIdx)}
-                        className="w-full text-left p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-xs sm:text-sm font-medium text-[var(--color-text-title)] transition flex items-center justify-between cursor-pointer"
-                      >
-                        <span>{opt}</span>
-                        <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-                      </button>
-                    ))}
-                  </div>
+                {/* Progress Indicator */}
+                <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-2 font-medium">
+                  <span>
+                    {lang === 'th' ? `คำถามข้อที่ ${questStep + 1} จาก ${activeQuestDiag.microQuests.length}` : `Question ${questStep + 1} of ${activeQuestDiag.microQuests.length}`}
+                  </span>
+                  <span>
+                    {lang === 'th' ? 'หัวข้อ:' : 'Topic:'} {activeQuestDiag.topicTh.slice(0, 25)}...
+                  </span>
                 </div>
-              ) : (
-                /* Result Screen */
-                <div className="text-center py-4 space-y-4">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center">
-                    <Award className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-lg font-black text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'ผลการทำภารกิจซ่อมเสริม' : 'Remedial Quest Result'}
-                  </h4>
-                  <p className="text-sm text-[var(--color-text-body)] max-w-sm mx-auto">
-                    {questFeedback}
-                  </p>
 
-                  <div className="pt-2">
+                <div className="w-full h-1.5 bg-[var(--color-card-subtle)] rounded-full overflow-hidden mb-4">
+                  <div
+                    className="h-full bg-indigo-700 transition-all duration-300"
+                    style={{ width: `${((questStep + 1) / activeQuestDiag.microQuests.length) * 100}%` }}
+                  />
+                </div>
+
+                {/* Question Box */}
+                <div className="p-4 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-primary)] text-[var(--color-text-title)] font-bold text-sm leading-relaxed mb-4">
+                  {activeQuestDiag.microQuests[questStep].questionTh}
+                </div>
+
+                {/* Options */}
+                <div className="space-y-2">
+                  {activeQuestDiag.microQuests[questStep].options.map((opt, optIdx) => (
                     <button
+                      key={optIdx}
                       type="button"
-                      onClick={() => setActiveQuestDiag(null)}
-                      className="px-6 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                      onClick={() => handleSelectAnswer(optIdx)}
+                      className="w-full text-left p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-xs sm:text-sm font-medium text-[var(--color-text-title)] transition flex items-center justify-between cursor-pointer"
                     >
-                      {lang === 'th' ? 'ปิดและบันทึกคะแนน' : 'Save & Close'}
+                      <span>{opt}</span>
+                      <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
                     </button>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              /* Result Screen */
+              <div className="text-center py-4 space-y-4">
+                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center">
+                  <Award className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-black text-[var(--color-text-title)]">
+                  {lang === 'th' ? 'ผลการทำภารกิจซ่อมเสริม' : 'Remedial Quest Result'}
+                </h4>
+                <p className="text-sm text-[var(--color-text-body)] max-w-sm mx-auto">
+                  {questFeedback}
+                </p>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveQuestDiag(null)}
+                    className="px-6 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                  >
+                    {lang === 'th' ? 'ปิดและบันทึกคะแนน' : 'Save & Close'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
     </div>
   );
 };

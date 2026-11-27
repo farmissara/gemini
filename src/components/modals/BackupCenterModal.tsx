@@ -9,7 +9,6 @@ import {
   LoaderCircle,
   RotateCcw,
   ShieldCheck,
-  X,
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
@@ -22,6 +21,7 @@ import {
 import type { School } from '../../types';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { emitAppToast } from '../common/ToastProvider';
+import { BaseModal } from '../common/BaseModal';
 
 type Props = { isSuperAdmin: boolean; schools: School[]; activeSchoolId: string; onClose: () => void };
 type BackupScopeChoice = 'school' | 'all';
@@ -264,69 +264,55 @@ export const BackupCenterModal: React.FC<Props> = ({
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 backdrop-blur-[2px] p-3 sm:p-6"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="backup-center-title"
-      >
-        <section className="modal-enter flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl">
-          <header className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] px-5 py-4">
-            <div className="flex items-center gap-3">
-              <span className="rounded-xl bg-[var(--color-primary-light)] p-2 text-[var(--color-primary-text)]">
-                <DatabaseBackup className="h-5 w-5" />
-              </span>
-              <div>
-                <h2
-                  id="backup-center-title"
-                  className="font-bold text-[var(--color-text-title)]"
-                >
-                  ศูนย์สำรองและกู้คืนข้อมูล
-                </h2>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  ดาวน์โหลดไฟล์สำรองลงเครื่อง และกู้คืนจากไฟล์สำรองในเครื่อง
-                </p>
-              </div>
-            </div>
+      <BaseModal
+        isOpen={true}
+        onClose={onClose}
+        maxWidthClass="max-w-4xl"
+        title="ศูนย์สำรองและกู้คืนข้อมูล"
+        subtitle="ดาวน์โหลดไฟล์สำรองลงเครื่อง และกู้คืนจากไฟล์สำรองในเครื่อง"
+        icon={<DatabaseBackup className="h-5 w-5" />}
+        bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden"
+        footer={
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="btn-icon-tool"
-              aria-label="ปิด"
+              className="btn-tool-neutral px-4 py-2 text-sm"
             >
-              <X className="h-5 w-5" />
-            </button>
-          </header>
-
-          {/* Navigation Tabs */}
-          <div className="flex flex-wrap gap-1.5 border-b border-[var(--color-border)] bg-[var(--color-card)] px-5 py-2.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('backup')}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold cursor-pointer transition ${
-                activeTab === 'backup'
-                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <CloudUpload className="h-3.5 w-3.5" />
-              <span>สำรองข้อมูล</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('restore')}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold cursor-pointer transition ${
-                activeTab === 'restore'
-                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)]'
-              }`}
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>กู้คืนข้อมูลทันที</span>
+              ปิด
             </button>
           </div>
+        }
+      >
+        {/* Navigation Tabs */}
+        <div className="shrink-0 flex flex-wrap gap-1.5 border-b border-[var(--color-border)] bg-[var(--color-card)] px-5 py-2.5">
+          <button
+            type="button"
+            onClick={() => setActiveTab('backup')}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold cursor-pointer transition ${
+              activeTab === 'backup'
+                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)]'
+            }`}
+          >
+            <CloudUpload className="h-3.5 w-3.5" />
+            <span>สำรองข้อมูล</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('restore')}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold cursor-pointer transition ${
+              activeTab === 'restore'
+                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)]'
+            }`}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>กู้คืนข้อมูลทันที</span>
+          </button>
+        </div>
 
-          <div className="space-y-4 overflow-y-auto p-5">
+        <div className="flex-1 min-h-0 space-y-4 overflow-y-auto p-5">
             {/* TAB 1: BACKUP */}
             {activeTab === 'backup' && (
               <div className="space-y-4">
@@ -675,19 +661,8 @@ export const BackupCenterModal: React.FC<Props> = ({
               <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               ไฟล์สำรองจะถูกดาวน์โหลดลงอุปกรณ์นี้ ส่วนการกู้คืนจะตรวจสอบสิทธิ์และขอบเขตโรงเรียนก่อนนำเข้าข้อมูล
             </p>
-          </div>
-
-          <footer className="flex justify-end border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] p-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-tool-neutral px-4 py-2 text-sm"
-            >
-              ปิด
-            </button>
-          </footer>
-        </section>
-      </div>
+        </div>
+      </BaseModal>
 
       <ConfirmActionModal
         isOpen={Boolean(pendingRestoreCheck)}

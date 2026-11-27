@@ -18,8 +18,8 @@ import {
   ShieldCheck,
   Smartphone,
   Users,
-  X,
 } from 'lucide-react';
+import { BaseModal } from './common/BaseModal';
 import { Assignment, Course, SchoolPeriodTime, TimetableSlot } from '../types';
 import { buildTimetableIcs } from '../lib/timetableCalendar';
 import { parseSlotTeachersFromRaw } from '../lib/timetableTeachers';
@@ -409,34 +409,17 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[var(--color-card)] text-[var(--color-text-body)] rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-[var(--color-border)] overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-card-subtle)]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center border border-[var(--color-border)]">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-[var(--color-text-title)]">
-                เชื่อมต่อปฏิทินแจ้งเตือน &amp; ภาพหน้าจอมือถือ
-              </h3>
-              <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
-                {filterLabel} · {slots.length} คาบ{coTaughtCount > 0 ? ` (สอนคู่ ${coTaughtCount})` : ''} · {activeAssignments.length} งาน · {holidaysInRange.length} วันหยุด
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-10 h-10 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer"
-            aria-label="ปิดหน้าต่าง"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto space-y-5 flex-1">
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      title="เชื่อมต่อปฏิทินแจ้งเตือน & ภาพหน้าจอมือถือ"
+      subtitle={`${filterLabel} · ${slots.length} คาบ${coTaughtCount > 0 ? ` (สอนคู่ ${coTaughtCount})` : ''} · ${activeAssignments.length} งาน · ${holidaysInRange.length} วันหยุด`}
+      icon={<Calendar className="w-5 h-5 text-[var(--color-primary-text)]" />}
+      maxWidthClass="max-w-2xl"
+      heightClass="max-h-[90dvh]"
+      showMobileHandle
+      bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5"
+    >
           {errorMsg && (
             <div className="space-y-2 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-700 dark:text-rose-200">
               <div className="flex items-start gap-2.5">
@@ -1128,8 +1111,6 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
               )}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

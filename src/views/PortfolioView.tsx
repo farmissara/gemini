@@ -30,6 +30,7 @@ import { resolveOwnStudent, resolveOwnTeacher } from '../lib/attendanceScope';
 import { calculateStudentAcademicSummary } from '../lib/moeGrading';
 import { getModuleTone } from '../lib/moduleTheme';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
+import { BaseModal } from '../components/common/BaseModal';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 
 interface PortfolioViewProps {
@@ -47,6 +48,7 @@ interface PortfolioViewProps {
   onDeletePortfolioItem?: (itemId: string) => void;
   onOpenProfile?: () => void;
   academicYear?: string;
+  embeddedMobile?: boolean;
 }
 
 const CATEGORY_LABELS_TH: Record<PortfolioItem['category'], string> = {
@@ -82,6 +84,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   onDeletePortfolioItem,
   onOpenProfile,
   academicYear = '2569',
+  embeddedMobile = false,
 }) => {
   const isStudentUser = currentUser?.role === 'student';
   const isTeacherOrStaff =
@@ -255,8 +258,44 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
 
   return (
     <div className={`h-full flex flex-col min-h-0 overflow-hidden gap-4 ${getModuleTone('portfolio')}`}>
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pr-0.5 pb-6">
-        {/* 1. EDITORIAL HERO HEADER WITH REAL PROFILE DATA */}
+      <div className={`flex-1 min-h-0 overflow-y-auto ${embeddedMobile ? 'space-y-3.5 pb-4' : 'space-y-5 pr-0.5 pb-6'}`}>
+        {/* 1. COMPACT MOBILE SUMMARY BAR OR DESKTOP EDITORIAL HERO */}
+        {embeddedMobile ? (
+          <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3.5 flex items-center justify-between gap-2.5">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[var(--color-text-title)] truncate tabular-nums">
+                {effectiveRoleTab === 'student'
+                  ? studentDisplayName || (lang === 'th' ? 'แฟ้มสะสมผลงาน' : 'Portfolio')
+                  : teacherDisplayName || (lang === 'th' ? 'ผลงาน ว.PA' : 'Teacher Portfolio')}
+              </p>
+              <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
+                {lang === 'th'
+                  ? `${filteredItems.length} รายการ`
+                  : `${filteredItems.length} items`}
+                {effectiveRoleTab === 'student' && studentGpax !== null ? ` · GPAX ${studentGpax.toFixed(2)}` : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleOpenAddModal}
+                className="h-9 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'เพิ่มผลงาน' : 'Add'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                aria-label={lang === 'th' ? 'พิมพ์ PDF' : 'Print'}
+                title={lang === 'th' ? 'พิมพ์ PDF' : 'Print'}
+                className="h-9 w-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] inline-flex items-center justify-center cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+              </button>
+            </div>
+          </section>
+        ) : (
         <section className="relative rounded-3xl overflow-hidden bg-slate-900 shadow-sm">
           <img
             src={portfolioBannerImg}
@@ -407,6 +446,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
           </div>
         </section>
+        )}
 
         {/* 2. ROLE & CATEGORY FILTER BAR */}
         <div data-guide-id="portfolio-role-filter" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -604,31 +644,24 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
       </div>
 
       {/* ADD NEW REAL PORTFOLIO ITEM MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-5 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>
-                  {effectiveRoleTab === 'student'
-                    ? lang === 'th'
-                      ? 'เพิ่มผลงานลงแฟ้มสะสมผลงาน'
-                      : 'Add Student Portfolio Item'
-                    : lang === 'th'
-                      ? 'เพิ่มผลงานแฟ้ม ว.PA'
-                      : 'Add Teacher Portfolio Item'}
-                </span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="w-9 h-9 rounded-xl bg-[var(--color-card-subtle)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] flex items-center justify-center cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[90vh]"
+        icon={<BookOpen className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        title={
+          effectiveRoleTab === 'student'
+            ? lang === 'th'
+              ? 'เพิ่มผลงานลงแฟ้มสะสมผลงาน'
+              : 'Add Student Portfolio Item'
+            : lang === 'th'
+              ? 'เพิ่มผลงานแฟ้ม ว.PA'
+              : 'Add Teacher Portfolio Item'
+        }
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
 
             <form onSubmit={handleSaveItem} className="space-y-4">
               <div>
@@ -777,9 +810,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       <ImageCaptureUploadModal
         isOpen={showImagePicker}

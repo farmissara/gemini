@@ -5,7 +5,6 @@ import {
   CheckCircle2, 
   Upload, 
   Plus, 
-  X, 
   RotateCw,
   AlertTriangle
 } from 'lucide-react';
@@ -16,6 +15,8 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { compressImageFileToDataUrl } from '../lib/imageCompression';
 import { postLearningAi } from '../lib/learningAiClient';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 
 interface RealWorldSnapQuestViewProps {
   lang?: AppLanguage;
@@ -182,43 +183,33 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
   return (
     <div className={`space-y-5 pb-12 ${getModuleTone('realworld_quests')}`}>
       {/* Top Banner Header */}
-      <div className="app-page-header p-5 sm:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5 min-w-0 max-w-2xl">
-            <div className="w-11 h-11 rounded-xl tone-chip shrink-0 mt-0.5">
-              <FutureNavIcon tab="realworld_quests" size={22} active />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • ตรวจภาพด้วย Gemini Vision' : 'Real-World Vision Quest'}</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--color-text-title)]">
-                {lang === 'th' ? 'ภารกิจแปลงบทเรียนสู่ชีวิตจริง' : 'Real-World Missions'}
-              </h1>
-              <p className="text-[var(--color-text-body)] text-xs sm:text-sm leading-relaxed">
-                {lang === 'th'
-                  ? 'ถ่ายภาพสิ่งของรอบตัวที่เชื่อมโยงกับบทเรียน แล้วให้ Gemini Vision ช่วยประเมินความสอดคล้องเบื้องต้นก่อนส่งครูยืนยันผล'
-                  : 'Capture real-world examples around you and let Gemini Vision provide initial academic feedback before teacher review.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Teacher Add Quest Button */}
-            {(currentRole === 'teacher' || currentRole === 'admin') && (
-              <button
-                type="button"
-                onClick={() => setShowTeacherAddQuest(true)}
-                className="btn-action-primary"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{lang === 'th' ? 'ครูสั่งเควสต์ใหม่' : 'Teacher Add Quest'}</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        icon={<FutureNavIcon tab="realworld_quests" size={20} active />}
+        kicker={
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'เควสต์สำรวจชีวิตจริง • ตรวจภาพด้วย Gemini Vision' : 'Real-World Vision Quest'}</span>
+          </span>
+        }
+        title={lang === 'th' ? 'ภารกิจแปลงบทเรียนสู่ชีวิตจริง' : 'Real-World Missions'}
+        description={
+          lang === 'th'
+            ? 'ถ่ายภาพสิ่งของรอบตัวที่เชื่อมโยงกับบทเรียน แล้วให้ Gemini Vision ช่วยประเมินความสอดคล้องเบื้องต้นก่อนส่งครูยืนยันผล'
+            : 'Capture real-world examples around you and let Gemini Vision provide initial academic feedback before teacher review.'
+        }
+        actions={
+          (currentRole === 'teacher' || currentRole === 'admin') ? (
+            <button
+              type="button"
+              onClick={() => setShowTeacherAddQuest(true)}
+              className="btn-action-primary"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{lang === 'th' ? 'ครูสั่งเควสต์ใหม่' : 'Teacher Add Quest'}</span>
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Filter Bar */}
       <div className="toolbar-filter-zone flex flex-wrap items-center justify-between gap-3">
@@ -374,27 +365,40 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
       </div>
 
       {/* Real Camera & Gemini Vision Upload Modal */}
-      {activeQuestForUpload && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <div>
-                <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                  <span>{lang === 'th' ? 'ถ่ายภาพ / อัปโหลดส่งตรวจด้วย AI' : 'Capture / Upload for Gemini Check'}</span>
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)] truncate max-w-xs">
-                  {activeQuestForUpload.titleTh}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveQuestForUpload(null)}
-                className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={Boolean(activeQuestForUpload)}
+        onClose={() => setActiveQuestForUpload(null)}
+        closeDisabled={isAiAnalyzing}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-lg"
+        title={lang === 'th' ? 'ถ่ายภาพ / อัปโหลดส่งตรวจด้วย AI' : 'Capture / Upload for Gemini Check'}
+        subtitle={activeQuestForUpload?.titleTh}
+        icon={<Camera className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />}
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-4"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isAiAnalyzing}
+              onClick={() => setActiveQuestForUpload(null)}
+              className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-bold text-xs cursor-pointer disabled:opacity-50"
+            >
+              {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+            </button>
+            <button
+              type="button"
+              disabled={isAiAnalyzing || !uploadedPhotoDataUrl}
+              onClick={() => void handleVerifyWithGemini()}
+              className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-yellow-300" />
+              <span>{lang === 'th' ? 'ส่งตรวจด้วย Gemini AI' : 'Verify with Gemini AI'}</span>
+            </button>
+          </>
+        }
+      >
+        {activeQuestForUpload && (
+          <>
 
             <input
               ref={fileInputRef}
@@ -480,46 +484,19 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="pt-2 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                disabled={isAiAnalyzing}
-                onClick={() => setActiveQuestForUpload(null)}
-                className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] font-bold text-xs cursor-pointer disabled:opacity-50"
-              >
-                {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
-              </button>
-              <button
-                type="button"
-                disabled={isAiAnalyzing || !uploadedPhotoDataUrl}
-                onClick={() => void handleVerifyWithGemini()}
-                className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-yellow-300" />
-                <span>{lang === 'th' ? 'ส่งตรวจด้วย Gemini AI' : 'Verify with Gemini AI'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
 
       {/* Teacher Custom Quest Modal */}
-      {showTeacherAddQuest && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl max-w-md w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative text-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'ครูสร้างเควสต์สำรวจชีวิตจริงใหม่' : 'Create Real-World Quest'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowTeacherAddQuest(false)}
-                className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={showTeacherAddQuest}
+        onClose={() => setShowTeacherAddQuest(false)}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-md"
+        title={lang === 'th' ? 'ครูสร้างเควสต์สำรวจชีวิตจริงใหม่' : 'Create Real-World Quest'}
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 text-xs"
+      >
 
             <form onSubmit={handleCreateQuestByTeacher} className="space-y-3">
               <div>
@@ -594,9 +571,7 @@ export const RealWorldSnapQuestView: React.FC<RealWorldSnapQuestViewProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

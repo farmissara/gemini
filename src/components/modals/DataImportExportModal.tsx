@@ -31,6 +31,7 @@ import {
   TimetableSlot,
 } from '../../types';
 import { SmartEntityMapperPanel } from './SmartEntityMapperPanel';
+import { BaseModal } from '../common/BaseModal';
 
 export type ImportExportTab =
   | 'students' // DMC ทะเบียนนักเรียน
@@ -412,51 +413,62 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl max-h-[92vh] bg-[var(--color-card)] text-[var(--color-text-body)] rounded-3xl shadow-2xl border border-[var(--color-border)] flex flex-col overflow-hidden">
-        {/* Toast Alert */}
-        {toastMessage && (
-          <div className="absolute top-4 right-4 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-xl border border-slate-700 flex items-center gap-2 animate-in slide-in-from-top">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{toastMessage}</span>
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      title="ศูนย์นำเข้าและส่งออกข้อมูล (Data Import & Export Center)"
+      subtitle="รองรับไฟล์ Excel (.xlsx/.xls) และ CSV พร้อมระบบจับคู่หัวคอลัมน์อัจฉริยะและรายงานแถวผิดพลาดรายบรรทัด"
+      icon={<FileSpreadsheet className="w-5 h-5 text-[var(--color-primary-text)]" />}
+      maxWidthClass="max-w-5xl"
+      heightClass="max-h-[92dvh]"
+      showMobileHandle
+      bodyClassName="relative flex-1 min-h-0 flex flex-col overflow-hidden p-0"
+      headerActions={
+        <div className="flex items-center gap-1.5">
+          <span className="hidden md:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+            มาตรฐาน สพฐ. / ศธ.
+          </span>
+          {onOpenBackupCenter && (
+            <button
+              type="button"
+              onClick={onOpenBackupCenter}
+              aria-label={lang === 'th' ? 'สำรองทั้งโรงเรียน' : 'Back up entire school'}
+              title={lang === 'th' ? 'สำรองทั้งโรงเรียน' : 'Back up entire school'}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1.5 text-xs font-semibold text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/60 cursor-pointer"
+            >
+              <DatabaseBackup className="h-4 w-4" />
+              <span className="hidden sm:inline">สำรองทั้งโรงเรียน</span>
+            </button>
+          )}
+        </div>
+      }
+      footerClassName="!justify-between"
+      footer={
+        <>
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <HelpCircle className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+            <span>รองรับไฟล์ .xlsx, .xls และ .csv พร้อมระบบจับคู่คอลัมน์และรายงานแถวผิดพลาดรายบรรทัด</span>
           </div>
-        )}
-
-        {/* Header */}
-        <div className="p-3 sm:p-5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-start sm:items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 items-start sm:items-center gap-2 sm:gap-3">
-            <div className="w-10 h-10 shrink-0 rounded-2xl bg-[var(--color-primary)] text-white flex items-center justify-center shadow-md">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="break-words font-bold text-xs sm:text-base text-[var(--color-text-title)]">
-                  ศูนย์นำเข้าและส่งออกข้อมูล (Data Import &amp; Export Center)
-                </h3>
-                <span className="hidden sm:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                  มาตรฐาน สพฐ. / ศธ.
-                </span>
-              </div>
-              <p className="mt-0.5 break-words text-[11px] sm:text-xs text-[var(--color-text-muted)]">
-                รองรับไฟล์ Excel (.xlsx/.xls) และ CSV พร้อมระบบจับคู่หัวคอลัมน์อัจฉริยะและรายงานแถวผิดพลาดรายบรรทัด
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-          {onOpenBackupCenter && <button type="button" onClick={onOpenBackupCenter} aria-label={lang === 'th' ? 'สำรองทั้งโรงเรียน' : 'Back up entire school'} title={lang === 'th' ? 'สำรองทั้งโรงเรียน' : 'Back up entire school'} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100"><DatabaseBackup className="h-4 w-4"/><span className="hidden sm:inline">สำรองทั้งโรงเรียน</span></button>}
           <button
             type="button"
             onClick={onClose}
-            aria-label={lang === 'th' ? 'ปิด' : 'Close'}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card)] transition cursor-pointer"
+            className="px-5 py-2 rounded-xl bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-xs font-bold cursor-pointer transition"
           >
-            <X className="w-5 h-5" />
+            ปิดหน้าต่าง
           </button>
-          </div>
+        </>
+      }
+    >
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="absolute top-4 right-4 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-xl border border-slate-700 flex items-center gap-2 animate-in slide-in-from-top">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
+      )}
 
-        {/* Navigation Tabs Bar */}
-        <div className="flex items-center border-b border-[var(--color-border)] px-4 bg-[var(--color-card-subtle)] gap-1 overflow-x-auto no-scrollbar text-xs font-bold">
+      {/* Navigation Tabs Bar */}
+      <div className="flex items-center border-b border-[var(--color-border)] px-4 bg-[var(--color-card-subtle)] gap-1 overflow-x-auto no-scrollbar text-xs font-bold shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('students')}
@@ -938,22 +950,6 @@ export const DataImportExportModal: React.FC<DataImportExportModalProps> = ({
             />
           )}
         </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            <HelpCircle className="w-4 h-4 text-[var(--color-primary-text)]" />
-            <span>รองรับไฟล์ .xlsx, .xls และ .csv พร้อมระบบจับคู่คอลัมน์และรายงานแถวผิดพลาดรายบรรทัด</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-xs font-bold cursor-pointer transition"
-          >
-            ปิดหน้าต่าง
-          </button>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from './common/StatusBadge';
 import { PaginatedTableRows } from './common/PaginatedTableRows';
+import { BaseModal } from './common/BaseModal';
 import type {
   GradeRecord,
   GradingSystem,
@@ -1546,26 +1547,15 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
       )}
 
       {/* School / OBEC Standard Catalog Manager Modal */}
-      {showCatalogManager && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="w-full max-w-4xl max-h-[90vh] bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-2xl flex flex-col overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  คลังมาตรฐานตัวชี้วัด สพฐ. / หลักสูตรสถานศึกษา (ครู &amp; Admin เพิ่ม ลบ แก้ไข ได้)
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  กำหนดตัวชี้วัดระหว่างทาง–ปลายทาง คะแนนเต็ม และเกณฑ์ผ่านขั้นต่ำ (%) แล้วดึงใช้กับรายวิชาได้ทันที
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCatalogManager(false)}
-                className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={showCatalogManager}
+        onClose={() => setShowCatalogManager(false)}
+        title="คลังมาตรฐานตัวชี้วัด สพฐ. / หลักสูตรสถานศึกษา (ครู & Admin เพิ่ม ลบ แก้ไข ได้)"
+        subtitle="กำหนดตัวชี้วัดระหว่างทาง–ปลายทาง คะแนนเต็ม และเกณฑ์ผ่านขั้นต่ำ (%) แล้วดึงใช้กับรายวิชาได้ทันที"
+        icon={<BookOpen className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-4xl"
+        bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0"
+      >
 
             <div className="p-4 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex flex-wrap items-center gap-2">
@@ -1755,9 +1745,7 @@ export const LearningIndicatorAssessmentPanel: React.FC<Props> = ({
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       {/* Printable Body */}
       <div ref={printAreaRef} className="space-y-3">

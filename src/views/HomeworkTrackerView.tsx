@@ -41,6 +41,8 @@ import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 
 interface HomeworkTrackerViewProps {
   submissions: HomeworkSubmission[];
@@ -311,99 +313,95 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
   return (
     <div className={`${getModuleTone('homework')} h-full flex flex-col min-h-0 overflow-hidden space-y-1.5`}>
       {/* Compact Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-1.5 px-3 py-1.5 app-page-header">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-xl">
-            <FutureNavIcon tab="homework" size={18} active />
-          </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            {lang === 'th' ? 'การบ้าน & ติดตามการส่งงาน' : 'Homework & Submissions'}
-          </h1>
-          <ModuleTourTrigger moduleId="homework" lang={lang} />
-        </div>
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="homework" size={20} active />}
+        title={lang === 'th' ? 'การบ้าน & ติดตามการส่งงาน' : 'Homework & Submissions'}
+        actions={
+          <>
+            <ModuleTourTrigger moduleId="homework" lang={lang} />
+            {/* Subtabs Navigation */}
+            <div data-guide-id="homework-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                data-active={hwTab === 'submissions'}
+                onClick={() => setHwTab('submissions')}
+                className="seg-tab-btn"
+              >
+                1. ส่งงาน ({submissions.length})
+              </button>
+              <button
+                type="button"
+                data-active={hwTab === 'assignments'}
+                onClick={() => setHwTab('assignments')}
+                className="seg-tab-btn"
+              >
+                2. งานที่สั่ง ({assignments.length})
+              </button>
+              <button
+                type="button"
+                data-active={hwTab === 'pending'}
+                onClick={() => setHwTab('pending')}
+                className="seg-tab-btn"
+              >
+                3. ค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
+              </button>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Subtabs Navigation */}
-          <div data-guide-id="homework-subtabs" className="seg-tab-group overflow-x-auto no-scrollbar">
-            <button
-              type="button"
-              data-active={hwTab === 'submissions'}
-              onClick={() => setHwTab('submissions')}
-              className="seg-tab-btn"
-            >
-              1. ส่งงาน ({submissions.length})
-            </button>
-            <button
-              type="button"
-              data-active={hwTab === 'assignments'}
-              onClick={() => setHwTab('assignments')}
-              className="seg-tab-btn"
-            >
-              2. งานที่สั่ง ({assignments.length})
-            </button>
-            <button
-              type="button"
-              data-active={hwTab === 'pending'}
-              onClick={() => setHwTab('pending')}
-              className="seg-tab-btn"
-            >
-              3. ค้างส่ง ({submissions.filter(s => s.status === 'pending').length})
-            </button>
-          </div>
+            {canManageAssignments ? (
+              <button
+                type="button"
+                data-guide-id="homework-create-assignment-btn"
+                onClick={() => {
+                  const selectedCourse = courses.find((course) => course.id === courseFilter || course.code === courseFilter);
+                  setAssignmentCourseId(selectedCourse?.id || teacherFilteredCourses[0]?.id || '');
+                  setAssignmentError(null);
+                  setShowAssignmentModal(true);
+                }}
+                className="btn-action-primary px-3 py-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'สร้างงานใหม่' : 'Create Assignment'}</span>
+              </button>
+            ) : currentRole === 'student' ? (
+              <button
+                type="button"
+                data-guide-id="homework-submit-btn"
+                onClick={() => {
+                  setSubmitStudentId(students[0]?.id || '');
+                  setSubmitAssignmentId(activeAssignments[0]?.id || '');
+                  setSubmitError(null);
+                  setAllowDuplicateConfirm(false);
+                  setShowSubmitModal(true);
+                }}
+                disabled={!canStudentSubmit || activeAssignments.length === 0 || students.length === 0}
+                className="btn-action-primary px-3 py-1.5 disabled:opacity-50"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>{canStudentSubmit
+                  ? (lang === 'th' ? 'ส่งการบ้าน' : 'Submit Homework')
+                  : (lang === 'th' ? 'ปิดรับส่งงานออนไลน์' : 'Online submission paused')}</span>
+              </button>
+            ) : null}
 
-          {canManageAssignments ? (
-            <button
-              type="button"
-              data-guide-id="homework-create-assignment-btn"
-              onClick={() => {
-                const selectedCourse = courses.find((course) => course.id === courseFilter || course.code === courseFilter);
-                setAssignmentCourseId(selectedCourse?.id || teacherFilteredCourses[0]?.id || '');
-                setAssignmentError(null);
-                setShowAssignmentModal(true);
-              }}
-              className="btn-action-primary px-3 py-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'สร้างงานใหม่' : 'Create Assignment'}</span>
-            </button>
-          ) : currentRole === 'student' ? (
-            <button
-              type="button"
-              data-guide-id="homework-submit-btn"
-              onClick={() => {
-                setSubmitStudentId(students[0]?.id || '');
-                setSubmitAssignmentId(activeAssignments[0]?.id || '');
-                setSubmitError(null);
-                setAllowDuplicateConfirm(false);
-                setShowSubmitModal(true);
-              }}
-              disabled={!canStudentSubmit || activeAssignments.length === 0 || students.length === 0}
-              className="btn-action-primary px-3 py-1.5 disabled:opacity-50"
-            >
-              <UploadCloud className="w-3.5 h-3.5" />
-              <span>{canStudentSubmit
-                ? (lang === 'th' ? 'ส่งการบ้าน' : 'Submit Homework')
-                : (lang === 'th' ? 'ปิดรับส่งงานออนไลน์' : 'Online submission paused')}</span>
-            </button>
-          ) : null}
-
-          <TableActionMenu
-            size="md"
-            dataGuideId="homework-gcal-sync"
-            ariaLabel={lang === 'th' ? 'เครื่องมือเพิ่มเติม' : 'More tools'}
-            menuWidth={220}
-            items={[
-              {
-                id: 'calendar_sync',
-                label: lang === 'th' ? 'ซิงค์ Google Calendar' : 'Sync Google Calendar',
-                icon: <Calendar className="w-3.5 h-3.5 tone-text" />,
-                variant: 'primary',
-                onClick: () => setShowGoogleCalendarModal(true),
-              },
-            ]}
-          />
-        </div>
-      </div>
+            <TableActionMenu
+              size="md"
+              dataGuideId="homework-gcal-sync"
+              ariaLabel={lang === 'th' ? 'เครื่องมือเพิ่มเติม' : 'More tools'}
+              menuWidth={220}
+              items={[
+                {
+                  id: 'calendar_sync',
+                  label: lang === 'th' ? 'ซิงค์ Google Calendar' : 'Sync Google Calendar',
+                  icon: <Calendar className="w-3.5 h-3.5 tone-text" />,
+                  variant: 'primary',
+                  onClick: () => setShowGoogleCalendarModal(true),
+                },
+              ]}
+            />
+          </>
+        }
+      />
 
       {/* Shared Course & Teacher Filter Bar across all Homework tabs */}
       <div className="shrink-0 toolbar-filter-zone flex flex-wrap items-center gap-2">
@@ -754,25 +752,17 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
       )}
 
       {/* Teacher Assignment Modal */}
-      {showAssignmentModal && canManageAssignments && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-amber-700 dark:text-amber-300" />
-                {lang === 'th' ? 'สร้างและมอบหมายงาน' : 'Create Assignment'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAssignmentModal(false)}
-                aria-label={lang === 'th' ? 'ปิดฟอร์ม' : 'Close form'}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateAssignment} className="space-y-3 text-xs">
+      <BaseModal
+        isOpen={showAssignmentModal && canManageAssignments}
+        onClose={() => setShowAssignmentModal(false)}
+        closeDisabled={isSavingAssignment}
+        title={lang === 'th' ? 'สร้างและมอบหมายงาน' : 'Create Assignment'}
+        icon={<BookOpen className="w-4 h-4 text-amber-700 dark:text-amber-300" />}
+        maxWidthClass="max-w-xl"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleCreateAssignment} className="space-y-3 text-xs">
               <div>
                 <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
                   {lang === 'th' ? 'รายวิชา' : 'Course'}
@@ -887,23 +877,22 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                     : (lang === 'th' ? 'บันทึกและมอบหมาย' : 'Save Assignment')}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Teacher Grading Modal */}
-      {selectedSubForGrading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-700 dark:text-amber-300" />
-                {lang === 'th' ? 'ตรวจและให้คะแนนการบ้าน' : 'Grade Assignment'}
-              </h3>
-              <button onClick={() => setSelectedSubForGrading(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
-            </div>
-
+      <BaseModal
+        isOpen={Boolean(selectedSubForGrading)}
+        onClose={() => setSelectedSubForGrading(null)}
+        closeDisabled={isSavingGrade}
+        title={lang === 'th' ? 'ตรวจและให้คะแนนการบ้าน' : 'Grade Assignment'}
+        icon={<Award className="w-4 h-4 text-amber-700 dark:text-amber-300" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-4"
+      >
+        {selectedSubForGrading && (
+          <>
             <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1 text-xs">
               <p className="font-bold text-[var(--color-text-title)]">{selectedSubForGrading.assignmentTitle}</p>
               <p className="text-[var(--color-text-body)]">
@@ -972,30 +961,22 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
 
       {/* Student Submit Modal */}
-      {showSubmitModal && canStudentSubmit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <UploadCloud className="w-5 h-5 text-amber-700 dark:text-amber-300" />
-                {lang === 'th' ? 'ส่งการบ้านออนไลน์' : 'Submit Homework'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowSubmitModal(false)}
-                aria-label={lang === 'th' ? 'ปิดฟอร์ม' : 'Close form'}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitHomework} className="space-y-4 text-xs">
+      <BaseModal
+        isOpen={showSubmitModal && canStudentSubmit}
+        onClose={() => setShowSubmitModal(false)}
+        closeDisabled={isSubmittingHomework}
+        title={lang === 'th' ? 'ส่งการบ้านออนไลน์' : 'Submit Homework'}
+        icon={<UploadCloud className="w-4 h-4 text-amber-700 dark:text-amber-300" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleSubmitHomework} className="space-y-4 text-xs">
               <div>
                 <label className="block text-[var(--color-text-body)] mb-1 font-semibold">
                   {lang === 'th' ? 'งานที่ต้องการส่ง' : 'Assignment'}
@@ -1075,10 +1056,8 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                     : (lang === 'th' ? 'ยืนยันการส่งการบ้าน' : 'Submit Now')}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {showGoogleCalendarModal && (
         <GoogleCalendarSyncModal

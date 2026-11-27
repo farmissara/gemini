@@ -31,6 +31,7 @@ import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
 import { postLearningAi } from '../lib/learningAiClient';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 
 interface BrowserSpeechRecognition {
   lang: string;
@@ -296,29 +297,22 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
   return (
     <div className={`h-full flex flex-col min-h-0 overflow-hidden space-y-2.5 ${getModuleTone('socratic_tutor')}`}>
       {/* Top Banner Header */}
-      <div className="shrink-0 app-page-header p-3.5 sm:p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 max-w-xl">
-            <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-              <FutureNavIcon tab="socratic_tutor" size={20} active />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] border border-[var(--color-border)] text-[var(--tone)] text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--color-text-title)]">
-                <span>{lang === 'th' ? 'AI Socratic Tutor & Teacher Insights' : 'AI Socratic Tutor'}</span>
-              </h1>
-              <p className="text-[var(--color-text-body)] text-xs leading-relaxed">
-                {lang === 'th'
-                  ? 'ถาม-ตอบชวนคิดทีละขั้นด้วย Gemini ระดับโรงเรียน พร้อมสคริปต์สอนซ้ำ 2 นาทีสำหรับครูผู้สอน'
-                  : 'Step-by-step Socratic tutoring powered by your school Gemini AI key with 2-minute micro-recap generation.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Mode Switcher Tabs */}
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="socratic_tutor" size={20} active />}
+        kicker={
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'ติวเตอร์พี่รหัส AI ชวนคิด (Socratic Tutor) & แดชบอร์ดวิเคราะห์ครู' : 'Socratic AI Tutor & Teacher Insight'}</span>
+          </span>
+        }
+        title={lang === 'th' ? 'AI Socratic Tutor & Teacher Insights' : 'AI Socratic Tutor'}
+        description={
+          lang === 'th'
+            ? 'ถาม-ตอบชวนคิดทีละขั้นด้วย Gemini ระดับโรงเรียน พร้อมสคริปต์สอนซ้ำ 2 นาทีสำหรับครูผู้สอน'
+            : 'Step-by-step Socratic tutoring powered by your school Gemini AI key with 2-minute micro-recap generation.'
+        }
+        actions={
           <div className="seg-tab-group shrink-0">
             <button
               type="button"
@@ -342,8 +336,8 @@ export const SocraticTutorView: React.FC<SocraticTutorViewProps> = ({
               </button>
             )}
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Mode 1: Student Socratic Voice & Chat Tutor */}
       {activeTab === 'tutor_chat' && (

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { BaseModal } from '../common/BaseModal';
 import {
   Search,
   X,
@@ -758,299 +758,267 @@ export const UnifiedNavbarSearch: React.FC<UnifiedNavbarSearchProps> = ({
       )}
 
       {/* Quick-Inspect Modal for Teacher (In-Place Overlay Without Leaving Current Page) */}
-      {inspectedTeacher &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[95] bg-slate-950/65 backdrop-blur-xs flex items-center justify-center p-4"
-            onClick={() => setInspectedTeacher(null)}
-          >
-            <div
-              className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden text-xs"
-              onClick={(e) => e.stopPropagation()}
+      <BaseModal
+        isOpen={Boolean(inspectedTeacher)}
+        onClose={() => setInspectedTeacher(null)}
+        title={inspectedTeacher?.fullNameTh || ''}
+        subtitle={inspectedTeacher ? `${inspectedTeacher.teacherIdNumber} · ${inspectedTeacher.academicStanding}` : undefined}
+        icon={
+          inspectedTeacher ? (
+            <img
+              src={inspectedTeacher.avatarUrl}
+              alt={inspectedTeacher.fullNameTh}
+              className="w-9 h-9 rounded-xl object-cover"
+            />
+          ) : undefined
+        }
+        maxWidthClass="max-w-lg"
+        headerClassName="!bg-[var(--color-primary)] !text-white [&_h2]:!text-white [&_p]:!text-white/90 [&_button]:!text-white [&_button]:hover:!bg-white/20"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 text-xs"
+        footerClassName="justify-between"
+        footer={
+          <>
+            {onNavigateTab ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setInspectedTeacher(null);
+                  onNavigateTab('teachers');
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              >
+                <span>ไปที่โมดูลทะเบียนครู</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              onClick={() => setInspectedTeacher(null)}
+              className="px-3.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-semibold cursor-pointer"
             >
-              <div className="px-5 py-3.5 bg-[var(--color-primary)] text-white flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    src={inspectedTeacher.avatarUrl}
-                    alt={inspectedTeacher.fullNameTh}
-                    className="w-11 h-11 rounded-xl object-cover border-2 border-white/40 shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold truncate">{inspectedTeacher.fullNameTh}</h3>
-                    <p className="text-[11px] opacity-90 truncate">
-                      {inspectedTeacher.teacherIdNumber} · {inspectedTeacher.academicStanding}
-                    </p>
-                  </div>
+              ปิดหน้าต่าง
+            </button>
+          </>
+        }
+      >
+        {inspectedTeacher && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <div className="text-[10px] text-[var(--color-text-muted)]">กลุ่มสาระ / ตำแหน่ง</div>
+                <div className="font-bold text-[var(--color-text-title)] mt-0.5">
+                  {inspectedTeacher.department}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setInspectedTeacher(null)}
-                  className="p-1.5 rounded-lg hover:bg-white/20 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-4 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                    <div className="text-[10px] text-[var(--color-text-muted)]">กลุ่มสาระ / ตำแหน่ง</div>
-                    <div className="font-bold text-[var(--color-text-title)] mt-0.5">
-                      {inspectedTeacher.department}
-                    </div>
-                    <div className="text-[11px] text-[var(--color-text-body)]">
-                      {inspectedTeacher.positionTitle || 'ครูผู้สอน'}
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                    <div className="text-[10px] text-[var(--color-text-muted)]">วุฒิการศึกษา & วิชาเอก</div>
-                    <div className="font-bold text-[var(--color-text-title)] mt-0.5">
-                      {inspectedTeacher.major}
-                    </div>
-                    <div className="text-[11px] text-[var(--color-text-body)] truncate">
-                      {inspectedTeacher.academicDegree}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3 text-[11px] text-[var(--color-text-body)] px-1">
-                  <span className="flex items-center gap-1">
-                    <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                    {inspectedTeacher.email}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                    {inspectedTeacher.phone}
-                  </span>
-                  {inspectedTeacher.homeroomClasses?.length > 0 && (
-                    <span className="flex items-center gap-1">
-                      <Briefcase className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
-                      ที่ปรึกษา: {inspectedTeacher.homeroomClasses.join(', ')}
-                    </span>
-                  )}
-                </div>
-
-                {/* Courses taught */}
-                <div className="space-y-1.5">
-                  <div className="text-[11px] font-bold text-[var(--color-text-title)]">
-                    รายวิชาที่รับผิดชอบในโรงเรียน
-                  </div>
-                  <div className="max-h-36 overflow-y-auto space-y-1">
-                    {courses.filter((c) => teacherMatchesCourse(inspectedTeacher, c)).length === 0 ? (
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        {inspectedTeacher.teachingSubjects?.join(', ') || 'ยังไม่มีรายวิชาผูกในภาคเรียนนี้'}
-                      </p>
-                    ) : (
-                      courses
-                        .filter((c) => teacherMatchesCourse(inspectedTeacher, c))
-                        .map((c) => (
-                          <div
-                            key={c.id}
-                            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
-                          >
-                            <div>
-                              <span className="font-mono font-bold text-[var(--color-primary-text)] mr-1.5">
-                                {c.code}
-                              </span>
-                              <span className="font-semibold text-[var(--color-text-title)]">{c.titleTh}</span>
-                            </div>
-                            <span className="text-[10px] text-[var(--color-text-muted)]">
-                              {c.room} · {c.enrolledStudentIds?.length || 0} คน
-                            </span>
-                          </div>
-                        ))
-                    )}
-                  </div>
+                <div className="text-[11px] text-[var(--color-text-body)]">
+                  {inspectedTeacher.positionTitle || 'ครูผู้สอน'}
                 </div>
               </div>
-
-              <div className="px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
-                {onNavigateTab ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInspectedTeacher(null);
-                      onNavigateTab('teachers');
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                  >
-                    <span>ไปที่โมดูลทะเบียนครู</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <span />
-                )}
-                <button
-                  type="button"
-                  onClick={() => setInspectedTeacher(null)}
-                  className="px-3.5 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-semibold cursor-pointer"
-                >
-                  ปิดหน้าต่าง
-                </button>
+              <div className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <div className="text-[10px] text-[var(--color-text-muted)]">วุฒิการศึกษา & วิชาเอก</div>
+                <div className="font-bold text-[var(--color-text-title)] mt-0.5">
+                  {inspectedTeacher.major}
+                </div>
+                <div className="text-[11px] text-[var(--color-text-body)] truncate">
+                  {inspectedTeacher.academicDegree}
+                </div>
               </div>
             </div>
-          </div>,
-          document.body
+
+            <div className="flex flex-wrap gap-3 text-[11px] text-[var(--color-text-body)] px-1">
+              <span className="flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                {inspectedTeacher.email}
+              </span>
+              <span className="flex items-center gap-1">
+                <Phone className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+                {inspectedTeacher.phone}
+              </span>
+              {inspectedTeacher.homeroomClasses?.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <Briefcase className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
+                  ที่ปรึกษา: {inspectedTeacher.homeroomClasses.join(', ')}
+                </span>
+              )}
+            </div>
+
+            {/* Courses taught */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-[var(--color-text-title)]">
+                รายวิชาที่รับผิดชอบในโรงเรียน
+              </div>
+              <div className="max-h-36 overflow-y-auto space-y-1">
+                {courses.filter((c) => teacherMatchesCourse(inspectedTeacher, c)).length === 0 ? (
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {inspectedTeacher.teachingSubjects?.join(', ') || 'ยังไม่มีรายวิชาผูกในภาคเรียนนี้'}
+                  </p>
+                ) : (
+                  courses
+                    .filter((c) => teacherMatchesCourse(inspectedTeacher, c))
+                    .map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
+                      >
+                        <div>
+                          <span className="font-mono font-bold text-[var(--color-primary-text)] mr-1.5">
+                            {c.code}
+                          </span>
+                          <span className="font-semibold text-[var(--color-text-title)]">{c.titleTh}</span>
+                        </div>
+                        <span className="text-[10px] text-[var(--color-text-muted)]">
+                          {c.room} · {c.enrolledStudentIds?.length || 0} คน
+                        </span>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+          </>
         )}
+      </BaseModal>
 
       {/* Quick-Inspect Modal for Course (In-Place Overlay Without Leaving Current Page) */}
-      {inspectedCourse &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[95] bg-slate-950/65 backdrop-blur-xs flex items-center justify-center p-4"
-            onClick={() => setInspectedCourse(null)}
-          >
-            <div
-              className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden text-xs"
-              onClick={(e) => e.stopPropagation()}
+      <BaseModal
+        isOpen={Boolean(inspectedCourse)}
+        onClose={() => setInspectedCourse(null)}
+        title={inspectedCourse ? `${inspectedCourse.code} · ${inspectedCourse.titleTh}` : ''}
+        subtitle={
+          inspectedCourse && shouldShowCourseCredits(inspectedCourse.code, activeSchool.showPrimaryCourseCredits ?? false)
+            ? (inspectedCourse.credits === 0 ? 'ไม่มีหน่วยกิต' : `${inspectedCourse.credits} หน่วยกิต`)
+            : undefined
+        }
+        icon={<BookOpen className="w-4 h-4 text-white" />}
+        maxWidthClass="max-w-lg"
+        headerClassName="!bg-[var(--tone-solid)] !text-white [&_h2]:!text-white [&_p]:!text-white/90 [&_button]:!text-white [&_button]:hover:!bg-white/20"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 text-xs"
+        footerClassName="justify-between gap-2"
+        footer={
+          <>
+            {onNavigateTab && isStaff ? (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInspectedCourse(null);
+                    onNavigateTab('courses');
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+                >
+                  <span>ไปที่รายวิชา</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInspectedCourse(null);
+                    onNavigateTab('gradebook');
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline cursor-pointer"
+                >
+                  <span>เปิด ปพ.5 วิชานี้</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              onClick={() => setInspectedCourse(null)}
+              className="px-3.5 py-1.5 rounded-lg bg-indigo-700 text-white text-xs font-semibold cursor-pointer"
             >
-              <div className="px-5 py-3.5 bg-[var(--tone-solid)] text-white flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold px-2 py-0.5 rounded bg-white/20 text-[11px]">
-                      {inspectedCourse.code}
-                    </span>
-                    {shouldShowCourseCredits(inspectedCourse.code, activeSchool.showPrimaryCourseCredits ?? false) && (
-                      <span className="text-[11px] opacity-90">
-                        {inspectedCourse.credits === 0 ? 'ไม่มีหน่วยกิต' : `${inspectedCourse.credits} หน่วยกิต`}
-                      </span>
-                    )}
+              ปิดหน้าต่าง
+            </button>
+          </>
+        }
+      >
+        {inspectedCourse && (
+          <>
+            <div className={`grid ${isStaff ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
+              {isStaff && (
+                <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                  <div className="text-[10px] text-[var(--color-text-muted)]">ผู้ลงทะเบียน</div>
+                  <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
+                    {inspectedCourse.enrolledStudentIds?.length || 0} คน
                   </div>
-                  <h3 className="text-sm font-bold mt-1 truncate">{inspectedCourse.titleTh}</h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setInspectedCourse(null)}
-                  className="p-1.5 rounded-lg hover:bg-white/20 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              )}
+              <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
+                <div className="text-[10px] text-[var(--color-text-muted)]">ชม./สัปดาห์</div>
+                <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
+                  {inspectedCourse.weeklyHours ?? (inspectedCourse.credits > 0 ? Math.round(inspectedCourse.credits * 2) : 1)} ชม.
+                </div>
               </div>
-
-              <div className="p-4 space-y-3">
-                <div className={`grid ${isStaff ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
-                  {isStaff && (
-                    <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                      <div className="text-[10px] text-[var(--color-text-muted)]">ผู้ลงทะเบียน</div>
-                      <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
-                        {inspectedCourse.enrolledStudentIds?.length || 0} คน
-                      </div>
-                    </div>
-                  )}
-                  <div className="p-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                    <div className="text-[10px] text-[var(--color-text-muted)]">ชม./สัปดาห์</div>
-                    <div className="font-bold text-sm text-[var(--color-text-title)] tabular-nums">
-                      {inspectedCourse.weeklyHours ?? (inspectedCourse.credits > 0 ? Math.round(inspectedCourse.credits * 2) : 1)} ชม.
-                    </div>
-                  </div>
-                  <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800">
-                    <div className="text-[10px] text-emerald-800 dark:text-emerald-200">เกณฑ์ 80%</div>
-                    <div className="font-bold text-sm text-emerald-900 dark:text-emerald-100 tabular-nums">
-                      {inspectedCourse.minAttendanceHours ?? Math.round((inspectedCourse.totalHours ?? (inspectedCourse.credits > 0 ? inspectedCourse.credits * 40 : 20)) * 0.8)} ชม.
-                    </div>
-                  </div>
+              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800">
+                <div className="text-[10px] text-emerald-800 dark:text-emerald-200">เกณฑ์ 80%</div>
+                <div className="font-bold text-sm text-emerald-900 dark:text-emerald-100 tabular-nums">
+                  {inspectedCourse.minAttendanceHours ?? Math.round((inspectedCourse.totalHours ?? (inspectedCourse.credits > 0 ? inspectedCourse.credits * 40 : 20)) * 0.8)} ชม.
                 </div>
-
-                <div className="space-y-1.5 text-[11px] text-[var(--color-text-body)]">
-                  <div className="flex items-center gap-1.5">
-                    <UserCheck className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
-                    <strong>ครูผู้สอน:</strong> {inspectedCourse.teacherName}{isStaff && inspectedCourse.teacherEmail ? ` (${inspectedCourse.teacherEmail})` : ''}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
-                    <strong>เวลาเรียน:</strong> {inspectedCourse.schedule}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
-                    <strong>ห้องเรียน / กลุ่มสาระ:</strong> {inspectedCourse.room} · {inspectedCourse.department}
-                  </div>
-                </div>
-
-                {inspectedCourse.description && (
-                  <p className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[11px] text-[var(--color-text-body)] leading-relaxed">
-                    {inspectedCourse.description}
-                  </p>
-                )}
-
-                {/* Enrolled Students Preview (Staff only) */}
-                {isStaff && (
-                  <div className="space-y-1.5">
-                    <div className="text-[11px] font-bold text-[var(--color-text-title)]">
-                      รายชื่อนักเรียนในวิชา (ตัวอย่าง)
-                    </div>
-                    <div className="max-h-32 overflow-y-auto space-y-1">
-                      {(inspectedCourse.enrolledStudentIds || []).length === 0 ? (
-                        <p className="text-[11px] text-[var(--color-text-muted)]">ยังไม่มีนักเรียนลงทะเบียน</p>
-                      ) : (
-                        (inspectedCourse.enrolledStudentIds || []).slice(0, 10).map((sid) => {
-                          const stu = students.find((s) => s.id === sid);
-                          if (!stu) return null;
-                          return (
-                            <button
-                              key={sid}
-                              type="button"
-                              onClick={() => {
-                                setInspectedCourse(null);
-                                onOpenStudentProfile?.(stu);
-                              }}
-                              className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-left cursor-pointer"
-                            >
-                              <span className="font-semibold text-[var(--color-text-title)]">
-                                {stu.firstNameTh} {stu.lastNameTh}
-                              </span>
-                              <span className="text-[10px] font-mono text-[var(--color-text-muted)]">
-                                {stu.studentIdNumber} · {stu.room}
-                              </span>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
-                {onNavigateTab && isStaff ? (
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setInspectedCourse(null);
-                        onNavigateTab('courses');
-                      }}
-                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                    >
-                      <span>ไปที่รายวิชา</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setInspectedCourse(null);
-                        onNavigateTab('gradebook');
-                      }}
-                      className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline cursor-pointer"
-                    >
-                      <span>เปิด ปพ.5 วิชานี้</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <span />
-                )}
-                <button
-                  type="button"
-                  onClick={() => setInspectedCourse(null)}
-                  className="px-3.5 py-1.5 rounded-lg bg-indigo-700 text-white font-semibold cursor-pointer"
-                >
-                  ปิดหน้าต่าง
-                </button>
               </div>
             </div>
-          </div>,
-          document.body
+
+            <div className="space-y-1.5 text-[11px] text-[var(--color-text-body)]">
+              <div className="flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
+                <strong>ครูผู้สอน:</strong> {inspectedCourse.teacherName}{isStaff && inspectedCourse.teacherEmail ? ` (${inspectedCourse.teacherEmail})` : ''}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+                <strong>เวลาเรียน:</strong> {inspectedCourse.schedule}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
+                <strong>ห้องเรียน / กลุ่มสาระ:</strong> {inspectedCourse.room} · {inspectedCourse.department}
+              </div>
+            </div>
+
+            {inspectedCourse.description && (
+              <p className="p-2.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[11px] text-[var(--color-text-body)] leading-relaxed">
+                {inspectedCourse.description}
+              </p>
+            )}
+
+            {/* Enrolled Students Preview (Staff only) */}
+            {isStaff && (
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-bold text-[var(--color-text-title)]">
+                  รายชื่อนักเรียนในวิชา (ตัวอย่าง)
+                </div>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {(inspectedCourse.enrolledStudentIds || []).length === 0 ? (
+                    <p className="text-[11px] text-[var(--color-text-muted)]">ยังไม่มีนักเรียนลงทะเบียน</p>
+                  ) : (
+                    (inspectedCourse.enrolledStudentIds || []).slice(0, 10).map((sid) => {
+                      const stu = students.find((s) => s.id === sid);
+                      if (!stu) return null;
+                      return (
+                        <button
+                          key={sid}
+                          type="button"
+                          onClick={() => {
+                            setInspectedCourse(null);
+                            onOpenStudentProfile?.(stu);
+                          }}
+                          className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-left cursor-pointer"
+                        >
+                          <span className="font-semibold text-[var(--color-text-title)]">
+                            {stu.firstNameTh} {stu.lastNameTh}
+                          </span>
+                          <span className="text-[10px] font-mono text-[var(--color-text-muted)]">
+                            {stu.studentIdNumber} · {stu.room}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
+      </BaseModal>
     </div>
   );
 };

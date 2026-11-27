@@ -33,6 +33,7 @@ import type { EnrolledBiometricPasskey } from '../../lib/webAuthn';
 import { ContinuousRapidScannerModal } from '../../components/modals/ContinuousRapidScannerModal';
 import { SchoolGpsSettingsCard } from '../../components/SchoolGpsSettingsCard';
 import { MobileBottomSheet } from '../../components/layout/MobileRoleWorkspace';
+import { BaseModal } from '../../components/common/BaseModal';
 import type { AttendanceSubTab, CheckinSuccessFeedback } from './types';
 
 interface AttendanceModalsAndSheetsProps {
@@ -210,9 +211,21 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
   return (
     <>
       {/* SUCCESS CONFIRMATION MODAL & LINE FLEX MESSAGE PREVIEW POPUP */}
-      {checkinSuccessFeedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[var(--color-card)] text-[var(--color-text-title)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-[var(--color-border)] text-center">
+      <BaseModal
+        isOpen={Boolean(checkinSuccessFeedback)}
+        onClose={() => setCheckinSuccessFeedback(null)}
+        hideHeader
+        title={
+          checkinSuccessFeedback?.checkType === 'check_in'
+            ? 'เช็คชื่อเข้าโรงเรียนสำเร็จ'
+            : 'เช็คชื่อออกจากโรงเรียนสำเร็จ'
+        }
+        maxWidthClass="max-w-md"
+        showMobileHandle
+        bodyClassName="p-6 space-y-4 text-center text-[var(--color-text-title)]"
+      >
+        {checkinSuccessFeedback && (
+          <>
             <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 mx-auto flex items-center justify-center shadow-inner">
               <Check className="w-8 h-8 stroke-[3]" />
             </div>
@@ -253,9 +266,9 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
             >
               ตกลงและปิดหน้าต่าง
             </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
 
       {/* Continuous Rapid Scanner Modal */}
       <ContinuousRapidScannerModal
@@ -270,38 +283,28 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
       />
 
       {/* Admin GPS & Gates Management Modal — Strictly School Admin Only */}
-      {isSchoolAdmin && showGpsAdminModal && school && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm overflow-y-auto animate-fade-in">
-          <div className="bg-[var(--color-card)] rounded-3xl p-4 sm:p-6 max-w-4xl w-full border border-[var(--color-border)] shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-[var(--color-primary)]" />
-                <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                  ตั้งค่าและแก้ไขพิกัดจุดเช็คชื่อโรงเรียน (School GPS &amp; Gates Management)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGpsAdminModal(false)}
-                className="p-1.5 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)] cursor-pointer"
-                aria-label="ปิดหน้าต่างตั้งค่าพิกัด"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <SchoolGpsSettingsCard
-              activeSchool={school}
-              campusGates={campusGates}
-              currentRole={effectiveRole}
-              lang={lang}
-              onUpdateCampusGates={onUpdateCampusGates || (() => {})}
-              onSaveCampusGates={onSaveCampusGates}
-              onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
-            />
-          </div>
-        </div>
-      )}
+      <BaseModal
+        isOpen={Boolean(isSchoolAdmin && showGpsAdminModal && school)}
+        onClose={() => setShowGpsAdminModal(false)}
+        title="ตั้งค่าและแก้ไขพิกัดจุดเช็คชื่อโรงเรียน (School GPS & Gates Management)"
+        icon={<MapPin className="w-5 h-5 text-[var(--color-primary)]" />}
+        maxWidthClass="max-w-4xl"
+        heightClass="max-h-[92dvh]"
+        showMobileHandle
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4"
+      >
+        {school && (
+          <SchoolGpsSettingsCard
+            activeSchool={school}
+            campusGates={campusGates}
+            currentRole={effectiveRole}
+            lang={lang}
+            onUpdateCampusGates={onUpdateCampusGates || (() => {})}
+            onSaveCampusGates={onSaveCampusGates}
+            onUpdateSchoolCoordinates={onUpdateSchoolCoordinates}
+          />
+        )}
+      </BaseModal>
 
       {/* Quick action toolbar rendered in-flow via AttendanceQuickActionBar so it never overlaps pagination */}
 
@@ -705,9 +708,15 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
       </MobileBottomSheet>
 
       {/* Biometric Verification Modal for Quick-Action Attendance */}
-      {showBiometricUnlockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+      <BaseModal
+        isOpen={showBiometricUnlockModal}
+        onClose={handleCancelBiometricModal}
+        hideHeader
+        title={lang === 'th' ? 'ยืนยันตัวตนก่อนเช็คชื่อด่วน' : 'Biometric Verification Required'}
+        maxWidthClass="max-w-sm"
+        showMobileHandle
+        bodyClassName="p-6 text-center space-y-4"
+      >
             <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 mx-auto flex items-center justify-center">
               <Fingerprint className="w-7 h-7" />
             </div>
@@ -757,9 +766,7 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
                 {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </>
   );
 };

@@ -12,9 +12,9 @@ import {
   ShieldCheck,
   Smartphone,
   UserCheck,
-  X,
 } from 'lucide-react';
 import { AppLanguage } from '../../types';
+import { BaseModal } from '../common/BaseModal';
 import studentInviteImg from '../../assets/images/login_guide_student_invite_1794551973156.jpg';
 import studentSigninImg from '../../assets/images/login_guide_student_signin_1794551974303.jpg';
 import teacherSigninImg from '../../assets/images/login_guide_teacher_signin_1794551974875.jpg';
@@ -265,19 +265,6 @@ export const LoginGuideModal: React.FC<LoginGuideModalProps> = ({
     }
   }, [isOpen, initialRoleTab]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   const steps = roleTab === 'student' ? STUDENT_STEPS : TEACHER_STEPS;
   const safeIndex = Math.min(activeStepIndex, steps.length - 1);
   const activeStep = steps[safeIndex];
@@ -294,56 +281,56 @@ export const LoginGuideModal: React.FC<LoginGuideModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-3 sm:p-5"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="login-guide-modal-title"
-        className="modal-enter relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl"
-      >
-        {/* Header */}
-        <div className="flex flex-col gap-4 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] px-5 py-4 sm:px-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-xs">
-                <HelpCircle className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <h2
-                  id="login-guide-modal-title"
-                  className="text-base font-extrabold tracking-tight text-[var(--color-text-title)] text-balance sm:text-lg"
-                >
-                  {lang === 'th'
-                    ? 'คู่มือขั้นตอนการเข้าสู่ระบบสำหรับนักเรียนและครู'
-                    : 'Student & Teacher Sign-In Guide'}
-                </h2>
-                <p className="mt-0.5 text-xs text-[var(--color-text-muted)] leading-relaxed">
-                  {lang === 'th'
-                    ? 'ภาพประกอบและคำแนะนำทีละขั้นตอน ลดปัญหาการสอบถามระหว่างเริ่มต้นใช้งาน'
-                    : 'Step-by-step illustrated guide for activating and signing into your school account.'}
-                </p>
-              </div>
-            </div>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={lang === 'th' ? 'คู่มือขั้นตอนการเข้าสู่ระบบสำหรับนักเรียนและครู' : 'Student & Teacher Sign-In Guide'}
+      subtitle={
+        lang === 'th'
+          ? 'ภาพประกอบและคำแนะนำทีละขั้นตอน ลดปัญหาการสอบถามระหว่างเริ่มต้นใช้งาน'
+          : 'Step-by-step illustrated guide for activating and signing into your school account.'
+      }
+      icon={<HelpCircle className="h-5 w-5 text-[var(--color-primary-text)]" aria-hidden="true" />}
+      maxWidthClass="max-w-4xl"
+      heightClass="max-h-[92dvh]"
+      showMobileHandle
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0"
+      footerClassName="!justify-between"
+      footer={
+        <>
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            <span>
+              {lang === 'th'
+                ? 'ระบบแยกข้อมูลเฉพาะโรงเรียนและตรวจสอบสิทธิ์ตามบทบาท'
+                : 'School-isolated access with role-based permissions'}
+            </span>
+          </div>
 
+          <div className="flex items-center gap-2 ml-auto">
+            {onActionFocusLogin && (
+              <button
+                type="button"
+                onClick={handleGoToLogin}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 text-xs font-bold text-white whitespace-nowrap shrink-0 transition hover:bg-[var(--color-primary-hover)] cursor-pointer"
+              >
+                <LogIn className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>{lang === 'th' ? 'ไปยังช่องเข้าสู่ระบบ' : 'Go to Sign In'}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
-              aria-label={lang === 'th' ? 'ปิดคู่มือ' : 'Close guide'}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)] transition hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] cursor-pointer"
+              className="inline-flex h-10 items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 text-xs font-bold text-[var(--color-text-body)] whitespace-nowrap shrink-0 transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
             </button>
           </div>
-
-          {/* Role Switcher Segmented Control */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        </>
+      }
+    >
+        {/* Role Switcher Segmented Control */}
+        <div className="flex flex-col gap-2 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] px-5 py-3 sm:px-6 sm:flex-row sm:items-center sm:justify-between shrink-0">
             <div
               role="tablist"
               aria-label={lang === 'th' ? 'เลือกบทบาทผู้ใช้งาน' : 'Select user role'}
@@ -390,7 +377,6 @@ export const LoginGuideModal: React.FC<LoginGuideModalProps> = ({
               </span>
             </div>
           </div>
-        </div>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6 space-y-6">
@@ -619,38 +605,6 @@ export const LoginGuideModal: React.FC<LoginGuideModalProps> = ({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] px-5 py-3.5 sm:px-6">
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-            <span>
-              {lang === 'th'
-                ? 'ระบบแยกข้อมูลเฉพาะโรงเรียนและตรวจสอบสิทธิ์ตามบทบาท'
-                : 'School-isolated access with role-based permissions'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 ml-auto">
-            {onActionFocusLogin && (
-              <button
-                type="button"
-                onClick={handleGoToLogin}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 text-xs font-bold text-white whitespace-nowrap shrink-0 transition hover:bg-[var(--color-primary-hover)] cursor-pointer"
-              >
-                <LogIn className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>{lang === 'th' ? 'ไปยังช่องเข้าสู่ระบบ' : 'Go to Sign In'}</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-10 items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 text-xs font-bold text-[var(--color-text-body)] whitespace-nowrap shrink-0 transition hover:bg-[var(--color-card-subtle)] cursor-pointer"
-            >
-              {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

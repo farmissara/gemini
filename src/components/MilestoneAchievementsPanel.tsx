@@ -33,6 +33,7 @@ import {
   selectDefaultPlayerScore,
 } from '../lib/milestoneAchievements';
 import { playPowerupChimeSound } from '../lib/labSoundEffects';
+import { BaseModal } from './common/BaseModal';
 
 interface MilestoneAchievementsPanelProps {
   playerScores: PlayerScore[];
@@ -577,158 +578,155 @@ export const MilestoneAchievementsPanel: React.FC<MilestoneAchievementsPanelProp
       </div>
 
       {/* Milestone Detail Inspector Modal */}
-      <AnimatePresence>
-        {inspectedMilestone && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.94 }}
-              transition={{ duration: 0.16 }}
-              role="dialog"
-              aria-modal="true"
-              aria-label={
+      <BaseModal
+        isOpen={Boolean(inspectedMilestone)}
+        onClose={() => setInspectedMilestone(null)}
+        title={
+          inspectedMilestone
+            ? lang === 'th'
+              ? inspectedMilestone.def.titleTh
+              : inspectedMilestone.def.titleEn
+            : ''
+        }
+        subtitle={
+          inspectedMilestone
+            ? `${categoryLabel(inspectedMilestone.def.category)} · ${
                 lang === 'th'
-                  ? inspectedMilestone.def.titleTh
-                  : inspectedMilestone.def.titleEn
-              }
-              className="w-full max-w-md rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4 shadow-xl"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center overflow-hidden ${
-                      inspectedMilestone.unlocked
-                        ? `bg-gradient-to-br ${
-                            TIER_VISUALS[inspectedMilestone.def.tier].crestBg
-                          } ${
-                            TIER_VISUALS[inspectedMilestone.def.tier].crestBorder
-                          } milestone-badge-float`
-                        : 'bg-slate-200 dark:bg-slate-800 border-[var(--color-border)]'
-                    }`}
-                  >
-                    {inspectedMilestone.unlocked && (
-                      <span
-                        aria-hidden="true"
-                        className="milestone-badge-sweep absolute inset-y-0 w-7 bg-white/40 blur-[1px] pointer-events-none"
-                      />
-                    )}
-                    {renderMilestoneIcon(
-                      inspectedMilestone.def.iconKey,
-                      `w-6 h-6 relative z-10 ${
-                        inspectedMilestone.unlocked
-                          ? TIER_VISUALS[inspectedMilestone.def.tier].crestIcon
-                          : 'text-[var(--color-text-muted)]'
-                      }`
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-xs text-[var(--color-text-muted)]">
-                      {categoryLabel(inspectedMilestone.def.category)} ·{' '}
-                      {lang === 'th'
-                        ? TIER_VISUALS[inspectedMilestone.def.tier].labelTh
-                        : TIER_VISUALS[inspectedMilestone.def.tier].labelEn}
-                    </div>
-                    <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                      {lang === 'th'
-                        ? inspectedMilestone.def.titleTh
-                        : inspectedMilestone.def.titleEn}
-                    </h3>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setInspectedMilestone(null)}
-                  className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                  ? TIER_VISUALS[inspectedMilestone.def.tier].labelTh
+                  : TIER_VISUALS[inspectedMilestone.def.tier].labelEn
+              }`
+            : undefined
+        }
+        icon={
+          inspectedMilestone
+            ? renderMilestoneIcon(
+                inspectedMilestone.def.iconKey,
+                `w-4 h-4 ${
+                  inspectedMilestone.unlocked
+                    ? TIER_VISUALS[inspectedMilestone.def.tier].crestIcon
+                    : 'text-[var(--color-text-muted)]'
+                }`
+              )
+            : undefined
+        }
+        maxWidthClass="max-w-md"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
+        footerClassName="justify-between gap-2"
+        footer={
+          inspectedMilestone ? (
+            <>
+              <div className="flex items-center gap-1.5 text-xs font-semibold">
+                <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />
+                <span className="text-[var(--color-text-body)]">
+                  {inspectedMilestone.unlocked
+                    ? lang === 'th'
+                      ? 'ผ่านเกณฑ์ครบถ้วนแล้ว'
+                      : 'Threshold Completed'
+                    : lang === 'th'
+                    ? `ความคืบหน้า ${inspectedMilestone.progressPct}%`
+                    : `${inspectedMilestone.progressPct}% Complete`}
+                </span>
               </div>
-
+              <button
+                type="button"
+                onClick={() => setInspectedMilestone(null)}
+                className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer"
+              >
+                {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
+              </button>
+            </>
+          ) : undefined
+        }
+      >
+        {inspectedMilestone && (
+          <>
+            <div className="flex items-center gap-3">
+              <div
+                className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center overflow-hidden shrink-0 ${
+                  inspectedMilestone.unlocked
+                    ? `bg-gradient-to-br ${
+                        TIER_VISUALS[inspectedMilestone.def.tier].crestBg
+                      } ${
+                        TIER_VISUALS[inspectedMilestone.def.tier].crestBorder
+                      } milestone-badge-float`
+                    : 'bg-slate-200 dark:bg-slate-800 border-[var(--color-border)]'
+                }`}
+              >
+                {inspectedMilestone.unlocked && (
+                  <span
+                    aria-hidden="true"
+                    className="milestone-badge-sweep absolute inset-y-0 w-7 bg-white/40 blur-[1px] pointer-events-none"
+                  />
+                )}
+                {renderMilestoneIcon(
+                  inspectedMilestone.def.iconKey,
+                  `w-6 h-6 relative z-10 ${
+                    inspectedMilestone.unlocked
+                      ? TIER_VISUALS[inspectedMilestone.def.tier].crestIcon
+                      : 'text-[var(--color-text-muted)]'
+                  }`
+                )}
+              </div>
               <p className="text-xs text-[var(--color-text-body)] leading-relaxed">
                 {lang === 'th'
                   ? inspectedMilestone.def.descriptionTh
                   : inspectedMilestone.def.descriptionEn}
               </p>
+            </div>
 
-              <div className="rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-3.5 space-y-2 text-xs">
+            <div className="rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--color-text-muted)]">
+                  {lang === 'th'
+                    ? inspectedMilestone.def.metricLabelTh
+                    : inspectedMilestone.def.metricLabelEn}
+                </span>
+                <span className="font-mono tabular-nums font-bold text-[var(--color-text-title)]">
+                  {inspectedMilestone.def.unitEn === 'GPA'
+                    ? `${inspectedMilestone.currentValue.toFixed(2)} / ${inspectedMilestone.def.thresholdValue.toFixed(2)}`
+                    : `${inspectedMilestone.currentValue} / ${inspectedMilestone.def.thresholdValue} ${
+                        lang === 'th'
+                          ? inspectedMilestone.def.unitTh
+                          : inspectedMilestone.def.unitEn
+                      }`}
+                </span>
+              </div>
+
+              {inspectedMilestone.def.expThreshold && (
                 <div className="flex items-center justify-between">
                   <span className="text-[var(--color-text-muted)]">
-                    {lang === 'th'
-                      ? inspectedMilestone.def.metricLabelTh
-                      : inspectedMilestone.def.metricLabelEn}
+                    {lang === 'th' ? 'เกณฑ์คะแนน PlayerScores EXP' : 'PlayerScores EXP Threshold'}
                   </span>
                   <span className="font-mono tabular-nums font-bold text-[var(--color-text-title)]">
-                    {inspectedMilestone.def.unitEn === 'GPA'
-                      ? `${inspectedMilestone.currentValue.toFixed(2)} / ${inspectedMilestone.def.thresholdValue.toFixed(2)}`
-                      : `${inspectedMilestone.currentValue} / ${inspectedMilestone.def.thresholdValue} ${
-                          lang === 'th'
-                            ? inspectedMilestone.def.unitTh
-                            : inspectedMilestone.def.unitEn
-                        }`}
+                    {inspectedMilestone.currentExp.toLocaleString()} /{' '}
+                    {inspectedMilestone.def.expThreshold.toLocaleString()} EXP
                   </span>
                 </div>
+              )}
 
-                {inspectedMilestone.def.expThreshold && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-muted)]">
-                      {lang === 'th' ? 'เกณฑ์คะแนน PlayerScores EXP' : 'PlayerScores EXP Threshold'}
-                    </span>
-                    <span className="font-mono tabular-nums font-bold text-[var(--color-text-title)]">
-                      {inspectedMilestone.currentExp.toLocaleString()} /{' '}
-                      {inspectedMilestone.def.expThreshold.toLocaleString()} EXP
-                    </span>
-                  </div>
-                )}
-
-                {inspectedMilestone.def.winsThreshold && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-muted)]">
-                      {lang === 'th' ? 'เกณฑ์ชัยชนะประลองความรู้' : 'Knowledge Duel Wins'}
-                    </span>
-                    <span className="font-mono tabular-nums font-bold text-[var(--color-text-title)]">
-                      {inspectedMilestone.currentWins} / {inspectedMilestone.def.winsThreshold}
-                    </span>
-                  </div>
-                )}
-
-                <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+              {inspectedMilestone.def.winsThreshold && (
+                <div className="flex items-center justify-between">
                   <span className="text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'รางวัลเกียรติยศ' : 'Milestone Reward'}
+                    {lang === 'th' ? 'เกณฑ์ชัยชนะประลองความรู้' : 'Knowledge Duel Wins'}
                   </span>
-                  <span className="font-mono tabular-nums font-bold text-[var(--color-primary-text)]">
-                    +{inspectedMilestone.def.rewardExp} EXP · +{inspectedMilestone.def.rewardGems} Gems
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <div className="flex items-center gap-1.5 text-xs font-semibold">
-                  <GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span className="text-[var(--color-text-body)]">
-                    {inspectedMilestone.unlocked
-                      ? lang === 'th'
-                        ? 'ผ่านเกณฑ์ครบถ้วนแล้ว'
-                        : 'Threshold Completed'
-                      : lang === 'th'
-                      ? `ความคืบหน้า ${inspectedMilestone.progressPct}%`
-                      : `${inspectedMilestone.progressPct}% Complete`}
+                  <span className="font-mono tabular-nums font-bold text-[var(--color-text-title)]">
+                    {inspectedMilestone.currentWins} / {inspectedMilestone.def.winsThreshold}
                   </span>
                 </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={() => setInspectedMilestone(null)}
-                  className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer"
-                >
-                  {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
-                </button>
+              <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+                <span className="text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'รางวัลเกียรติยศ' : 'Milestone Reward'}
+                </span>
+                <span className="font-mono tabular-nums font-bold text-[var(--color-primary-text)]">
+                  +{inspectedMilestone.def.rewardExp} EXP · +{inspectedMilestone.def.rewardGems} Gems
+                </span>
               </div>
-            </motion.div>
-          </div>
+            </div>
+          </>
         )}
-      </AnimatePresence>
+      </BaseModal>
     </section>
   );
 };

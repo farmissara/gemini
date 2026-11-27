@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Clock, X } from 'lucide-react';
+import { Check, Clock } from 'lucide-react';
 import {
   AppLanguage,
   AttendanceRecord,
@@ -14,6 +14,7 @@ import {
 } from '../../types';
 import { resolveMatchedCourseForSlot } from '../../lib/timetableAttendanceStatus';
 import { TimetablePeriodRosterTable } from '../TimetablePeriodRosterTable';
+import { BaseModal } from '../common/BaseModal';
 
 interface TimetablePeriodAttendanceModalProps {
   isOpen: boolean;
@@ -72,58 +73,59 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
     };
   }, [schoolPeriods, slot]);
 
-  if (!isOpen || !slot) return null;
-
-  const resolvedRoomLabel = (slot.room || slot.classRoom || matchedCourse?.room || 'ห้องเรียน').trim();
+  const resolvedRoomLabel = slot
+    ? (slot.room || slot.classRoom || matchedCourse?.room || 'ห้องเรียน').trim()
+    : '';
   const timeSlotText = periodMeta ? `${periodMeta.startTime} - ${periodMeta.endTime}` : '08:30 - 09:20';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/75 backdrop-blur-xs">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="timetable-period-roster-title"
-        className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden"
-      >
-        {/* Header */}
-        <div className="px-4 sm:px-5 py-3.5 border-b border-[var(--color-border)] flex items-start justify-between gap-3 shrink-0 bg-[var(--color-card)]">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
-                {slot.courseCode}
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold">
-                <Clock className="w-3 h-3" />
-                <span>
-                  {lang === 'th'
-                    ? `คาบที่ ${slot.periodNumber} (${timeSlotText})`
-                    : `Period ${slot.periodNumber} (${timeSlotText})`}
-                </span>
-              </span>
-              <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                · {slot.classRoom} · {resolvedRoomLabel}
-              </span>
-            </div>
-            <h3
-              id="timetable-period-roster-title"
-              className="text-base font-bold text-[var(--color-text-title)] truncate"
-            >
+    <BaseModal
+      isOpen={Boolean(isOpen && slot)}
+      onClose={onClose}
+      maxWidthClass="max-w-5xl"
+      icon={<Clock className="w-5 h-5" />}
+      title={
+        slot
+          ? lang === 'th'
+            ? `รายชื่อและเช็คชื่อนักเรียน — ${slot.courseTitleTh}`
+            : `Period Roster & Attendance — ${slot.courseTitleEn || slot.courseTitleTh}`
+          : ''
+      }
+      subtitle={
+        slot ? (
+          <span className="inline-flex flex-wrap items-center gap-1.5 mt-0.5">
+            <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
+              {slot.courseCode}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-[11px] font-bold">
               {lang === 'th'
-                ? `รายชื่อและเช็คชื่อนักเรียน — ${slot.courseTitleTh}`
-                : `Period Roster & Attendance — ${slot.courseTitleEn || slot.courseTitleTh}`}
-            </h3>
-          </div>
+                ? `คาบที่ ${slot.periodNumber} (${timeSlotText})`
+                : `Period ${slot.periodNumber} (${timeSlotText})`}
+            </span>
+            <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+              · {slot.classRoom} · {resolvedRoomLabel}
+            </span>
+          </span>
+        ) : undefined
+      }
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden"
+      footer={
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-[var(--color-text-muted)] flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>บันทึกข้อมูลรายคาบลงฐานข้อมูลทันที เพื่อใช้คำนวณ ปพ.5 / มส. และ Report / Monitor</span>
+          </span>
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิดหน้าต่างเช็คชื่อรายคาบ"
-            className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer shrink-0"
+            className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold cursor-pointer ml-auto"
           >
-            <X className="w-4 h-4" />
+            เสร็จสิ้น
           </button>
         </div>
-
-        {/* Reusable Structured Roster Table */}
+      }
+    >
+      {slot && (
         <TimetablePeriodRosterTable
           slot={slot}
           selectedDate={selectedDate}
@@ -140,22 +142,8 @@ export const TimetablePeriodAttendanceModal: React.FC<TimetablePeriodAttendanceM
           lang={lang}
           onRecordPeriodAttendance={onRecordPeriodAttendance}
         />
-
-        {/* Footer */}
-        <div className="px-4 sm:px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
-          <span className="text-[var(--color-text-muted)] flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>บันทึกข้อมูลรายคาบลงฐานข้อมูลทันที เพื่อใช้คำนวณ ปพ.5 / มส. และ Report / Monitor</span>
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold cursor-pointer ml-auto"
-          >
-            เสร็จสิ้น
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </BaseModal>
   );
 };
+

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { 
   Download, 
   Smartphone, 
-  X, 
   CheckCircle2, 
   Share, 
   PlusSquare, 
@@ -16,6 +15,7 @@ import {
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { AppLanguage } from '../types';
 import { QrCodeMatrix } from './QrCodeMatrix';
+import { BaseModal } from './common/BaseModal';
 
 interface PWAInstallButtonProps {
   lang?: AppLanguage;
@@ -328,47 +328,37 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       {renderTriggerButton()}
 
       {/* Guided Multi-Platform Modal (Android, iOS & QR Code) */}
-      {showModal &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setShowModal(false);
-            }}
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label={lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนมือถือ' : 'Install BaanPakKru on Mobile'}
-              className="modal-enter w-full max-w-lg rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 sm:p-6 shadow-2xl relative text-[var(--color-text-body)] max-h-[90dvh] overflow-y-auto"
+      <BaseModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนมือถือ' : 'Install BaanPakKru on Mobile'}
+        subtitle={
+          lang === 'th'
+            ? 'รองรับทั้ง Android (Chrome/Samsung) และ iOS (iPhone & iPad Safari)'
+            : 'Progressive Web App installation for Android & iOS'
+        }
+        icon={<Smartphone className="w-5 h-5 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[90dvh]"
+        zIndexClass="z-[110]"
+        showMobileHandle
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+        footerClassName="!justify-between"
+        footer={
+          <>
+            <span className="text-[11px] text-[var(--color-text-muted)]">
+              {lang === 'th' ? 'รองรับ iPhone / iPad (Safari) และ Android (Chrome)' : 'Supports iOS Safari & Android Chrome'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] transition cursor-pointer"
             >
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
-                <Smartphone className="w-6 h-6" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] leading-tight">
-                  {lang === 'th' ? 'ติดตั้งแอป BaanPakKru บนมือถือ' : 'Install BaanPakKru on Mobile'}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  {lang === 'th'
-                    ? 'รองรับทั้ง Android (Chrome/Samsung) และ iOS (iPhone & iPad Safari)'
-                    : 'Progressive Web App installation for Android & iOS'}
-                </p>
-              </div>
-            </div>
+              {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
+            </button>
+          </>
+        }
+      >
 
             {/* Platform Selector Tabs */}
             <div className="flex rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] p-1 gap-1 mb-4 text-xs font-bold">
@@ -578,24 +568,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               </div>
             )}
 
-            {/* Footer Buttons */}
-            <div className="mt-5 pt-4 border-t border-[var(--color-border)] flex items-center justify-between gap-3">
-              <span className="text-[11px] text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'รองรับ iPhone / iPad (Safari) และ Android (Chrome)' : 'Supports iOS Safari & Android Chrome'}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] transition cursor-pointer"
-              >
-                {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
-              </button>
-            </div>
-          </div>
-        </div>,
-          document.body
-        )}
+      </BaseModal>
 
       {/* Success Notification */}
       {installSuccess &&

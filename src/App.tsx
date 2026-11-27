@@ -695,7 +695,9 @@ export const App: React.FC = () => {
         {!nav.useImmersiveGameLayout && data.dataSyncError && (
           <div role="alert" className="ui-alert shrink-0 mx-4 sm:mx-6 mt-2 items-center justify-between" data-state="danger">
             <span className="truncate">{prefs.lang === 'th' ? 'ซิงก์ข้อมูลไม่สำเร็จ:' : 'Sync error:'} {data.dataSyncError}</span>
-            <button type="button" onClick={() => data.setDataSyncError(null)} aria-label="Close error" className="font-bold ml-2 shrink-0 cursor-pointer">✕</button>
+            <button type="button" onClick={() => data.setDataSyncError(null)} aria-label="Close error" className="p-1 rounded-md hover:bg-black/10 ml-2 shrink-0 cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 

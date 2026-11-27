@@ -38,6 +38,7 @@ import {
   ArrowLeft,
   Smartphone,
   Heart,
+  X,
 } from 'lucide-react';
 import { QuizQuestion, AuthUser, RewardItem, AppLanguage, CharacterSkin, RoomClassmate } from '../types';
 import { enterLandscapeGameMode, exitLandscapeGameMode, isMobileViewport } from '../lib/screenOrientation';
@@ -2466,9 +2467,10 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowGameMenuDrawer(false)}
-                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer"
+                aria-label="ปิดเมนู"
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer inline-flex items-center justify-center"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -2943,12 +2945,13 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                   <p className="text-xs text-slate-300">เลือกข้อสอบที่ต้องการใช้เปิดหีบสมบัติในเกม (เลือกได้ทุกกลุ่มสาระการเรียนรู้)</p>
                 </div>
               </div>
-              <button 
+              <button
                 type="button"
-                onClick={() => setShowBankModal(false)} 
-                className="text-slate-300 hover:text-white p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer text-sm"
+                onClick={() => setShowBankModal(false)}
+                aria-label="ปิดหน้าต่าง"
+                className="text-slate-300 hover:text-white p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 cursor-pointer inline-flex items-center justify-center"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -3116,8 +3119,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 <ShoppingBag className="w-5 h-5 text-indigo-400" />
                 <h3 className="font-bold text-white text-base">เลือกลุคตัวละคร 3D & อาวุธปัญญา</h3>
               </div>
-              <button onClick={() => setShowSkinShop(false)} className="text-slate-300 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-slate-800">
-                ✕
+              <button type="button" onClick={() => setShowSkinShop(false)} aria-label="ปิดหน้าต่าง" className="text-slate-300 hover:text-white cursor-pointer p-1.5 rounded-lg hover:bg-slate-800 inline-flex items-center justify-center">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -3166,8 +3169,8 @@ export const EduBattleRoyale3DView: React.FC<EduBattleRoyale3DViewProps> = ({
                 <HelpCircle className="w-5 h-5 text-cyan-400" />
                 คู่มือการเล่นเกมล่าสมบัติ 3D
               </h3>
-              <button onClick={() => setShowHowToPlay(false)} className="text-slate-300 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-slate-800">
-                ✕
+              <button type="button" onClick={() => setShowHowToPlay(false)} aria-label="ปิดหน้าต่าง" className="text-slate-300 hover:text-white cursor-pointer p-1.5 rounded-lg hover:bg-slate-800 inline-flex items-center justify-center">
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="mt-4 space-y-3 text-xs text-slate-200 leading-relaxed">

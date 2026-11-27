@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Teacher, AppLanguage, UserRole, TeacherPortfolioWork } from '../types';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 import { 
   GraduationCap, 
   Search, 
@@ -670,130 +672,125 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
   return (
     <div className={`${getModuleTone('teachers')} h-full flex flex-col min-h-0 overflow-hidden space-y-4`}>
       {/* Compact Header and Controls */}
-      <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 flex-wrap min-w-0">
-          <span className="tone-chip w-10 h-10 rounded-xl">
-            <FutureNavIcon tab="teachers" size={20} active />
-          </span>
-          <div className="min-w-0">
-            <div className="module-category-kicker">
-              01 · {lang === 'th' ? 'ทะเบียน & ตารางเรียน' : 'Directory & Schedule'}
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="teachers" size={20} active />}
+        kicker={`01 · ${lang === 'th' ? 'ทะเบียน & ตารางเรียน' : 'Directory & Schedule'}`}
+        title={
+          <>
+            {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
+            <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
+              · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
+            </span>
+          </>
+        }
+        actions={
+          <div data-guide-id="teachers-tools" className="flex flex-wrap items-center gap-2">
+            <div data-guide-id="teachers-tabs" role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group">
+              <button
+                type="button"
+                aria-pressed={staffPage === 'directory'}
+                data-active={staffPage === 'directory'}
+                onClick={() => setStaffPage('directory')}
+                className="seg-tab-btn"
+              >
+                <span>ทำเนียบบุคลากร</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={staffPage === 'organization'}
+                data-active={staffPage === 'organization'}
+                onClick={() => setStaffPage('organization')}
+                className="seg-tab-btn"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                <span>ผังองค์กร</span>
+              </button>
             </div>
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
-              {lang === 'th' ? 'บุคลากรและครู' : 'Faculty & Staff'}
-              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
-                · {filteredTeachers.length} {lang === 'th' ? 'คน' : 'staff'}
-              </span>
-            </h1>
-          </div>
-
-          <div data-guide-id="teachers-tabs" role="group" aria-label="มุมมองข้อมูลบุคลากร" className="seg-tab-group ml-1">
-            <button
-              type="button"
-              aria-pressed={staffPage === 'directory'}
-              data-active={staffPage === 'directory'}
-              onClick={() => setStaffPage('directory')}
-              className="seg-tab-btn"
-            >
-              <span>ทำเนียบบุคลากร</span>
-            </button>
-            <button
-              type="button"
-              aria-pressed={staffPage === 'organization'}
-              data-active={staffPage === 'organization'}
-              onClick={() => setStaffPage('organization')}
-              className="seg-tab-btn"
-            >
-              <Building2 className="h-3.5 w-3.5" />
-              <span>ผังองค์กร</span>
-            </button>
-          </div>
-        </div>
-
-        <div data-guide-id="teachers-tools" className="flex flex-wrap items-center gap-1.5">
-          <ModuleTourTrigger moduleId="teachers" lang={lang} />
-          {canManage && (
-            <button
-              type="button"
-              onClick={handleOpenAdd}
-              className="btn-action-primary h-9 px-3"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>
-            </button>
-          )}
-          <TableActionMenu
-            size="md"
-            ariaLabel={lang === 'th' ? 'เครื่องมือจัดการบุคลากร' : 'Manage staff tools'}
-            menuWidth={240}
-            items={[
-              ...(onOpenImportExport
-                ? [
-                    {
-                      id: 'import_export_excel',
-                      label: lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel',
-                      icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
-                      variant: 'success' as const,
-                      onClick: () => onOpenImportExport(),
-                    },
-                  ]
-                : []),
-              {
-                id: 'export_csv',
-                label: lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV',
-                icon: <Download className="h-3.5 w-3.5" />,
-                variant: 'success',
-                onClick: () => handleExportCSV(),
-              },
-              ...(canManage
-                ? [
-                    {
-                      id: 'teacher_accounts',
-                      label:
-                        lang === 'th'
-                          ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})`
-                          : `Teacher accounts (${teacherAccounts.length})`,
-                      icon: <Mail className="h-3.5 w-3.5" />,
-                      variant: 'primary' as const,
-                      dividerBefore: true,
-                      onClick: () => {
-                        setShowAccountsPanel((prev) => !prev);
-                        void refreshTeacherAccounts();
+            <ModuleTourTrigger moduleId="teachers" lang={lang} />
+            {canManage && (
+              <button
+                type="button"
+                onClick={handleOpenAdd}
+                className="btn-action-primary h-9 px-3"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>
+              </button>
+            )}
+            <TableActionMenu
+              size="md"
+              ariaLabel={lang === 'th' ? 'เครื่องมือจัดการบุคลากร' : 'Manage staff tools'}
+              menuWidth={240}
+              items={[
+                ...(onOpenImportExport
+                  ? [
+                      {
+                        id: 'import_export_excel',
+                        label: lang === 'th' ? 'นำเข้า/ส่งออก Excel' : 'Import / Export Excel',
+                        icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
+                        variant: 'success' as const,
+                        onClick: () => onOpenImportExport(),
                       },
-                    },
-                    {
-                      id: 'staff_positions',
-                      label:
-                        lang === 'th'
-                          ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})`
-                          : `Staff positions (${configuredPositionOptions.length})`,
-                      icon: <Briefcase className="h-3.5 w-3.5" />,
-                      onClick: () => setShowPositionConfigPanel((prev) => !prev),
-                    },
-                    {
-                      id: 'staff_meta',
-                      label: lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings',
-                      icon: <Tag className="h-3.5 w-3.5" />,
-                      onClick: () => setShowStaffMetaModal(true),
-                    },
-                  ]
-                : []),
-              ...(canPurgeSampleTeachers && onPurgeSampleTeachers
-                ? [
-                    {
-                      id: 'purge_sample_teachers',
-                      label: lang === 'th' ? 'ล้างข้อมูลตัวอย่าง' : 'Remove sample data',
-                      icon: <Trash2 className="h-3.5 w-3.5" />,
-                      variant: 'danger' as const,
-                      dividerBefore: true,
-                      onClick: () => onPurgeSampleTeachers(),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        </div>
-      </div>
+                    ]
+                  : []),
+                {
+                  id: 'export_csv',
+                  label: lang === 'th' ? 'ดาวน์โหลด CSV' : 'Export CSV',
+                  icon: <Download className="h-3.5 w-3.5" />,
+                  variant: 'success',
+                  onClick: () => handleExportCSV(),
+                },
+                ...(canManage
+                  ? [
+                      {
+                        id: 'teacher_accounts',
+                        label:
+                          lang === 'th'
+                            ? `บัญชีเข้าสู่ระบบครู (${teacherAccounts.length})`
+                            : `Teacher accounts (${teacherAccounts.length})`,
+                        icon: <Mail className="h-3.5 w-3.5" />,
+                        variant: 'primary' as const,
+                        dividerBefore: true,
+                        onClick: () => {
+                          setShowAccountsPanel((prev) => !prev);
+                          void refreshTeacherAccounts();
+                        },
+                      },
+                      {
+                        id: 'staff_positions',
+                        label:
+                          lang === 'th'
+                            ? `ตั้งค่าตำแหน่งบุคลากร (${configuredPositionOptions.length})`
+                            : `Staff positions (${configuredPositionOptions.length})`,
+                        icon: <Briefcase className="h-3.5 w-3.5" />,
+                        onClick: () => setShowPositionConfigPanel((prev) => !prev),
+                      },
+                      {
+                        id: 'staff_meta',
+                        label: lang === 'th' ? 'จัดการฝ่าย/วิทยฐานะ' : 'Departments & standings',
+                        icon: <Tag className="h-3.5 w-3.5" />,
+                        onClick: () => setShowStaffMetaModal(true),
+                      },
+                    ]
+                  : []),
+                ...(canPurgeSampleTeachers && onPurgeSampleTeachers
+                  ? [
+                      {
+                        id: 'purge_sample_teachers',
+                        label: lang === 'th' ? 'ล้างข้อมูลตัวอย่าง' : 'Remove sample data',
+                        icon: <Trash2 className="h-3.5 w-3.5" />,
+                        variant: 'danger' as const,
+                        dividerBefore: true,
+                        onClick: () => onPurgeSampleTeachers(),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </div>
+        }
+      />
 
       {staffPage === 'organization' ? (
         <div className="flex min-h-0 flex-1" role="region" aria-label="ผังองค์กรบุคลากร">
@@ -832,9 +829,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
           <button
             type="button"
             onClick={() => setInviteFeedback(null)}
-            className="text-xs font-bold opacity-75 hover:opacity-100 cursor-pointer"
+            aria-label="ปิดการแจ้งเตือน"
+            className="opacity-75 hover:opacity-100 cursor-pointer inline-flex items-center justify-center p-0.5"
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -1318,9 +1316,18 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       {/* ======================================================== */}
       {/* 1. TEACHER DETAIL & PA PORTFOLIO & TEACHING ANALYTICS MODAL */}
       {/* ======================================================== */}
-      {selectedTeacherForDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="relative w-full max-w-4xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh]">
+      <BaseModal
+        isOpen={Boolean(selectedTeacherForDetail)}
+        onClose={() => setSelectedTeacherForDetail(null)}
+        hideHeader
+        maxWidthClass="max-w-4xl"
+        heightClass="max-h-[92vh]"
+        zIndexClass="z-50"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0"
+      >
+        {selectedTeacherForDetail && (
+          <>
             
             {/* Modal Header */}
             <div className="px-6 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
@@ -1753,33 +1760,26 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 ปิดหน้าต่าง
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
 
       {/* ======================================================== */}
       {/* 2. ADD / EDIT TEACHER MODAL (With Major, Minor, Skills, Photo) */}
       {/* ======================================================== */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="px-6 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-base text-white">
-                  {editingTeacher ? 'แก้ไขข้อมูลบุคลากร' : 'เพิ่มบุคลากร'}
-                </h3>
-                <p className="text-xs text-blue-100">เริ่มจากข้อมูลพื้นฐาน ส่วนข้อมูลการสอนและวิชาชีพเป็นข้อมูลเพิ่มเติม</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="p-1.5 rounded-xl hover:bg-white/20 text-white transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveTeacher} className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto text-xs">
+      <BaseModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={editingTeacher ? 'แก้ไขข้อมูลบุคลากร' : 'เพิ่มบุคลากร'}
+        subtitle="เริ่มจากข้อมูลพื้นฐาน ส่วนข้อมูลการสอนและวิชาชีพเป็นข้อมูลเพิ่มเติม"
+        icon={<UserCheck className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-2xl"
+        heightClass="max-h-[92vh]"
+        zIndexClass="z-50"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleSaveTeacher} className="space-y-4 text-xs">
               {formError && (
                 <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
                   {formError}
@@ -2470,32 +2470,23 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   </div>
                 </div>
               )}
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* ======================================================== */}
       {/* 3. ADD PA PORTFOLIO ITEM MODAL */}
       {/* ======================================================== */}
-      {showAddPaModal && selectedTeacherForDetail && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-2">
-                <FileCheck2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                <h4 className="font-semibold text-sm text-[var(--color-text-title)]">เพิ่มชิ้นงานข้อตกลงพัฒนางาน (ว.PA)</h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddPaModal(false)}
-                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddPaItem} className="space-y-3 text-xs">
+      <BaseModal
+        isOpen={Boolean(showAddPaModal && selectedTeacherForDetail)}
+        onClose={() => setShowAddPaModal(false)}
+        title="เพิ่มชิ้นงานข้อตกลงพัฒนางาน (ว.PA)"
+        icon={<FileCheck2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-[60]"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleAddPaItem} className="space-y-3 text-xs">
               <div>
                 <label className="block text-[var(--color-text-title)] font-bold mb-1">
                   ชื่อผลงาน / นวัตกรรมการสอน *
@@ -2577,10 +2568,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                   บันทึกผลงาน PA
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Reusable Image Capture & Upload Modal */}
       <ImageCaptureUploadModal
@@ -2592,42 +2581,37 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
       />
 
       {/* Dedicated Staff Position Configuration Modal (when opened from inside profile modal) */}
-      {canManage && showPositionConfigModal && (
-        <div className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl">
-            <StaffPositionConfigPanel
-              positions={configuredPositionOptions}
-              teachers={teachers}
-              lang={lang}
-              onSavePositions={(next) => onUpdateStaffPositionOptions?.(next)}
-              onRenamePositionAcrossTeachers={handleRenamePositionAcrossTeachers}
-              onClose={() => setShowPositionConfigModal(false)}
-            />
-          </div>
-        </div>
-      )}
+      <BaseModal
+        isOpen={canManage && showPositionConfigModal}
+        onClose={() => setShowPositionConfigModal(false)}
+        hideHeader
+        maxWidthClass="max-w-2xl"
+        zIndexClass="z-[60]"
+        surfaceClassName="bg-transparent border-0 shadow-none"
+        bodyClassName="p-0"
+      >
+        <StaffPositionConfigPanel
+          positions={configuredPositionOptions}
+          teachers={teachers}
+          lang={lang}
+          onSavePositions={(next) => onUpdateStaffPositionOptions?.(next)}
+          onRenamePositionAcrossTeachers={handleRenamePositionAcrossTeachers}
+          onClose={() => setShowPositionConfigModal(false)}
+        />
+      </BaseModal>
 
       {/* Admin Departments & Standings Manager Modal */}
-      {showStaffMetaModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 space-y-5 shadow-2xl text-xs">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  จัดการกลุ่มสาระ ฝ่ายงาน และวิทยฐานะ (Admin กำหนดเองได้)
-                </h3>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  เพิ่มหรือลบรายชื่อกลุ่มสาระ ฝ่ายงาน และวิทยฐานะที่ใช้ในโรงเรียน (สำหรับตำแหน่งบุคลากร จัดการได้ที่ปุ่ม "ตั้งค่าตำแหน่งบุคลากร")
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowStaffMetaModal(false)}
-                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
+      <BaseModal
+        isOpen={showStaffMetaModal}
+        onClose={() => setShowStaffMetaModal(false)}
+        title="จัดการกลุ่มสาระ ฝ่ายงาน และวิทยฐานะ (Admin กำหนดเองได้)"
+        subtitle='เพิ่มหรือลบรายชื่อกลุ่มสาระ ฝ่ายงาน และวิทยฐานะที่ใช้ในโรงเรียน (สำหรับตำแหน่งบุคลากร จัดการได้ที่ปุ่ม "ตั้งค่าตำแหน่งบุคลากร")'
+        icon={<Building2 className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-2xl"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-5 text-xs"
+      >
 
             {/* Departments */}
             <div className="space-y-2">
@@ -2661,9 +2645,10 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <button
                         type="button"
                         onClick={() => updatePresets({ departments: departments.filter((d) => d !== dept) })}
-                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
+                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer inline-flex items-center"
+                        aria-label={`ลบ ${dept}`}
                       >
-                        ×
+                        <X className="w-3 h-3" />
                       </button>
                     )}
                   </span>
@@ -2703,36 +2688,30 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                       <button
                         type="button"
                         onClick={() => updatePresets({ academicStandings: academicStandings.filter((x) => x !== st) })}
-                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
+                        className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer inline-flex items-center"
+                        aria-label={`ลบ ${st}`}
                       >
-                        ×
+                        <X className="w-3 h-3" />
                       </button>
                     )}
                   </span>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
-      {inviteModalTeacher && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <h3 className="text-sm font-bold">เชิญครู / บุคลากรเข้าสู่ระบบ</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInviteModalTeacher(null)}
-                className="p-1 rounded-lg hover:bg-white/15 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={(e) => void handleSubmitTeacherInvite(e)} className="p-5 space-y-4 overflow-y-auto">
+      <BaseModal
+        isOpen={Boolean(inviteModalTeacher)}
+        onClose={() => setInviteModalTeacher(null)}
+        title="เชิญครู / บุคลากรเข้าสู่ระบบ"
+        icon={<Mail className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5"
+      >
+        {inviteModalTeacher && (
+          <form onSubmit={(e) => void handleSubmitTeacherInvite(e)} className="space-y-4">
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 text-xs space-y-1">
                 <p className="font-bold text-[var(--color-text-title)]">{inviteModalTeacher.fullNameTh}</p>
                 <p className="text-[11px] text-[var(--color-text-muted)]">
@@ -2893,9 +2872,8 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 </>
               )}
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
       </>
       )}
 

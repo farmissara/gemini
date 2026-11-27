@@ -36,6 +36,7 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
+import { BaseModal } from './common/BaseModal';
 import {
   buildMoeDocumentHtml,
   buildStudentMoeDossier,
@@ -1914,30 +1915,39 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
       )}
 
       {/* Quick Add Student Modal */}
-      {showAddStudentModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <form
-            onSubmit={handleCreateQuickStudent}
-            className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 space-y-4 shadow-2xl text-xs"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                  <UserPlus className="w-4 h-4 text-[var(--color-primary-text)]" />
-                  <span>เพิ่มนักเรียนใหม่เข้างานทะเบียน</span>
-                </h3>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  กรอกข้อมูลเบื้องต้นเพื่อสร้างระเบียนนักเรียน จากนั้นสามารถกรอกคะแนนและพิมพ์เอกสาร ปพ.1–8 ได้ทันที
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddStudentModal(false)}
-                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={showAddStudentModal}
+        onClose={() => setShowAddStudentModal(false)}
+        title="เพิ่มนักเรียนใหม่เข้างานทะเบียน"
+        subtitle="กรอกข้อมูลเบื้องต้นเพื่อสร้างระเบียนนักเรียน จากนั้นสามารถกรอกคะแนนและพิมพ์เอกสาร ปพ.1–8 ได้ทันที"
+        icon={<UserPlus className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 text-xs"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowAddStudentModal(false)}
+              className="btn-tool-neutral px-3 py-1.5 text-xs"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              form="moe-quick-add-student-form"
+              className="btn-action-primary px-4 py-1.5 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>เพิ่มนักเรียนเข้าทะเบียน</span>
+            </button>
+          </>
+        }
+      >
+        <form
+          id="moe-quick-add-student-form"
+          onSubmit={handleCreateQuickStudent}
+          className="space-y-4"
+        >
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label className="space-y-1">
@@ -2068,44 +2078,39 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
               </label>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-              <button
-                type="button"
-                onClick={() => setShowAddStudentModal(false)}
-                className="btn-tool-neutral px-3 py-1.5"
-              >
-                ยกเลิก
-              </button>
-              <button type="submit" className="btn-action-primary px-4 py-1.5">
-                <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มนักเรียนเข้าทะเบียน</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Bundle Print Selector Modal */}
-      {showBundleModal && selectedStudent && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 space-y-4 shadow-2xl text-xs">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  พิมพ์ชุดเอกสาร สพฐ. รวม ({selectedStudent.firstNameTh} {selectedStudent.lastNameTh})
-                </h3>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  เลือกเอกสารที่ต้องการพิมพ์ต่อกันเป็นชุด A4 ในครั้งเดียว
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowBundleModal(false)}
-                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={Boolean(showBundleModal && selectedStudent)}
+        onClose={() => setShowBundleModal(false)}
+        title={selectedStudent ? `พิมพ์ชุดเอกสาร สพฐ. รวม (${selectedStudent.firstNameTh} ${selectedStudent.lastNameTh})` : ''}
+        subtitle="เลือกเอกสารที่ต้องการพิมพ์ต่อกันเป็นชุด A4 ในครั้งเดียว"
+        icon={<Printer className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-md"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 text-xs"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowBundleModal(false)}
+              className="btn-tool-neutral px-3 py-1.5 text-xs"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              disabled={bundleDocsSelected.length === 0}
+              onClick={handlePrintBundle}
+              className="btn-action-primary px-4 py-1.5 text-xs disabled:opacity-40"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>สั่งพิมพ์ {bundleDocsSelected.length} เอกสาร (A4)</span>
+            </button>
+          </>
+        }
+      >
 
             <div className="space-y-1.5">
               {MOE_OFFICIAL_DOCUMENTS.map((doc) => {
@@ -2136,28 +2141,7 @@ export const MoeStudentDocumentCenter: React.FC<MoeStudentDocumentCenterProps> =
                 );
               })}
             </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-              <button
-                type="button"
-                onClick={() => setShowBundleModal(false)}
-                className="btn-tool-neutral px-3 py-1.5"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                disabled={bundleDocsSelected.length === 0}
-                onClick={handlePrintBundle}
-                className="btn-action-primary px-4 py-1.5 disabled:opacity-40"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>สั่งพิมพ์ {bundleDocsSelected.length} เอกสาร (A4)</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       {/* Delete Student Confirmation Modal */}
       {confirmDeleteStudent && (

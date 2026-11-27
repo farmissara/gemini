@@ -23,6 +23,7 @@ import {
   downloadMoeGradeSummaryPdf,
   printHtmlElementInIsolatedFrame,
 } from '../../lib/moeReportPdf';
+import { BaseModal } from '../common/BaseModal';
 import { resolveMoeLearningArea } from '../../data/moeCurriculumStandards';
 import {
   getStudentQualitativeRecord,
@@ -247,8 +248,16 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
   const moeActivityOptions = ['ผ (ผ่าน)', 'มผ (ไม่ผ่าน)'];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      hideHeader
+      title={summary.isPrimary ? 'แบบรายงานผลการพัฒนาคุณภาพผู้เรียน' : 'Official Bilingual Transcript (ปพ.1)'}
+      maxWidthClass="max-w-4xl"
+      heightClass="max-h-[95dvh]"
+      zIndexClass="z-[105]"
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0"
+    >
         {/* Action Toolbar */}
         <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div className="flex items-center gap-2 text-white">
@@ -798,7 +807,6 @@ export const ReportCardModal: React.FC<ReportCardModalProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

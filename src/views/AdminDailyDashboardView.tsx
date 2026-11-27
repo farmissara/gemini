@@ -2,28 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
-  Award,
-  BellRing,
-  Calendar,
   Check,
   CheckCircle2,
   Clock,
-  Edit3,
   ExternalLink,
   FileCheck2,
-  GraduationCap,
-  MapPin,
-  MessageSquare,
-  Monitor,
   Phone,
-  QrCode,
   RefreshCw,
   Search,
-  ShieldAlert,
-  ShieldCheck,
-  SlidersHorizontal,
   UserPlus,
-  Users,
   X,
 } from 'lucide-react';
 import type {
@@ -87,7 +74,7 @@ interface AdminDailyDashboardViewProps {
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
 }
 
-type DailySection = 'attendance' | 'leaves' | 'approvals' | 'menus';
+type DailySection = 'attendance' | 'leaves' | 'approvals';
 type AttendanceFilter = 'all' | 'present' | 'late' | 'unchecked';
 
 export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = ({
@@ -100,12 +87,12 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
   coordinationUnreadCount = 0,
   onRecordAttendance,
   onUpdateLeaveStatus,
-  onOpenQuickHub,
-  onOpenCheckin,
-  onOpenExecutive,
+  onOpenQuickHub: _onOpenQuickHub,
+  onOpenCheckin: _onOpenCheckin,
+  onOpenExecutive: _onOpenExecutive,
   onJumpToDesktopTab,
-  canSwitchAdminTeacherMode = false,
-  onSwitchOperationalRole,
+  canSwitchAdminTeacherMode: _canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole: _onSwitchOperationalRole,
 }) => {
   const todayStr = getLocalDateString();
   const [section, setSection] = useState<DailySection>('attendance');
@@ -330,44 +317,27 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
         </div>
       )}
 
-      {/* 1. COMPACT MOBILE HEADER + PRIMARY CTA */}
-      <section className="space-y-2">
+      {/* 1. COMPACT MOBILE HEADER + FOCUSED 3-CELL KPI SWITCHER */}
+      <section className="space-y-2.5">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-base font-bold tracking-tight text-[var(--color-text-title)] truncate">
             {lang === 'th' ? 'งานวันนี้' : "Today's Tasks"}
           </h1>
-
-          {onOpenQuickHub && (
+          {coordinationUnreadCount > 0 && onJumpToDesktopTab && (
             <button
               type="button"
-              onClick={onOpenQuickHub}
-              aria-label={lang === 'th' ? 'แก้ไขด่วน' : 'Quick Edit'}
-              className="h-9 w-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-center cursor-pointer shadow-2xs transition active:scale-95 shrink-0"
+              onClick={() => onJumpToDesktopTab('admin_superadmin_desk')}
+              className="text-xs font-semibold tabular-nums text-amber-700 dark:text-amber-300 hover:underline cursor-pointer shrink-0"
             >
-              <Edit3 className="w-4 h-4" />
+              {lang === 'th' ? `เรื่องประสานงาน ${coordinationUnreadCount} →` : `${coordinationUnreadCount} coord →`}
             </button>
           )}
         </div>
 
-        {onOpenCheckin && (
-          <button
-            type="button"
-            onClick={onOpenCheckin}
-            className="w-full min-h-[40px] h-10 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold flex items-center justify-between cursor-pointer transition active:scale-[0.99] shadow-xs"
-          >
-            <span className="flex items-center gap-2">
-              <QrCode className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in / Out'}</span>
-            </span>
-            <ArrowRight className="w-4 h-4 shrink-0" />
-          </button>
-        )}
-
-        {/* 2. UNIFIED 4-CELL TAB SWITCHER */}
         <div
           role="tablist"
           aria-label={lang === 'th' ? 'หมวดงานรายวัน' : 'Daily Sections'}
-          className="saas-kpi-strip grid grid-cols-2 sm:grid-cols-4 divide-x divide-[var(--color-border)]"
+          className="saas-kpi-strip grid grid-cols-3 divide-x divide-[var(--color-border)]"
         >
           <button
             type="button"
@@ -375,14 +345,14 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             aria-selected={section === 'attendance'}
             data-active={section === 'attendance'}
             onClick={() => setSection('attendance')}
-            className="min-h-[54px] px-2 py-2 text-left flex flex-col justify-between saas-kpi-cell-interactive whitespace-nowrap"
+            className="min-h-[54px] px-2.5 py-2 text-left flex flex-col justify-between saas-kpi-cell-interactive whitespace-nowrap"
           >
             <span
               className={`text-[11px] font-semibold truncate ${
                 section === 'attendance' ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'
               }`}
             >
-              {lang === 'th' ? 'เช็คชื่อ' : 'Attend'}
+              {lang === 'th' ? 'เช็คชื่อวันนี้' : 'Attendance'}
             </span>
             <span className="text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-300 mt-0.5">
               {attendanceMetrics.rate}%
@@ -395,7 +365,7 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             aria-selected={section === 'leaves'}
             data-active={section === 'leaves'}
             onClick={() => setSection('leaves')}
-            className="min-h-[54px] px-2 py-2 text-left flex flex-col justify-between saas-kpi-cell-interactive whitespace-nowrap"
+            className="min-h-[54px] px-2.5 py-2 text-left flex flex-col justify-between saas-kpi-cell-interactive whitespace-nowrap"
           >
             <span
               className={`text-[11px] font-semibold truncate ${
@@ -419,14 +389,14 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
             aria-selected={section === 'approvals'}
             data-active={section === 'approvals'}
             onClick={() => setSection('approvals')}
-            className="min-h-[54px] px-2 py-2 text-left flex flex-col justify-between saas-kpi-cell-interactive whitespace-nowrap"
+            className="min-h-[54px] px-2.5 py-2 text-left flex flex-col justify-between saas-kpi-cell-interactive whitespace-nowrap"
           >
             <span
               className={`text-[11px] font-semibold truncate ${
                 section === 'approvals' ? 'text-blue-700 dark:text-blue-300' : 'text-[var(--color-text-muted)]'
               }`}
             >
-              {lang === 'th' ? 'อนุมัติ' : 'Approve'}
+              {lang === 'th' ? 'อนุมัติบัญชี' : 'Approvals'}
             </span>
             <span
               className={`text-base font-bold tabular-nums mt-0.5 ${
@@ -434,31 +404,6 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
               }`}
             >
               {totalPendingApprovals}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={section === 'menus'}
-            data-active={section === 'menus'}
-            onClick={() => setSection('menus')}
-            className="min-h-[54px] px-2 py-2 text-left flex flex-col justify-between saas-kpi-cell-interactive whitespace-nowrap"
-          >
-            <span
-              className={`text-[11px] font-semibold truncate ${
-                section === 'menus' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)]'
-              }`}
-            >
-              {lang === 'th' ? 'ทางลัด' : 'Tools'}
-            </span>
-            <span className="mt-1 text-[var(--color-text-title)] flex items-center gap-1">
-              <SlidersHorizontal className="w-4 h-4 shrink-0" />
-              {coordinationUnreadCount > 0 && (
-                <span className="text-[11px] font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                  +{coordinationUnreadCount}
-                </span>
-              )}
             </span>
           </button>
         </div>
@@ -847,155 +792,6 @@ export const AdminDailyDashboardView: React.FC<AdminDailyDashboardViewProps> = (
               </div>
             )}
           </section>
-        </div>
-      )}
-
-      {/* ===================================================================== */}
-      {/* TAB 4: COMPACT ADMIN SHORTCUTS (ALIGNED WITH DESKTOP OVERVIEW)        */}
-      {/* ===================================================================== */}
-      {section === 'menus' && (onJumpToDesktopTab || onOpenExecutive || onOpenCheckin) && (
-        <section
-          aria-label={lang === 'th' ? 'ทางลัดงานบริหาร' : 'Admin Shortcuts'}
-          className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2.5 animate-in fade-in duration-150"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-              {lang === 'th' ? 'ทางลัดงานบริหาร' : 'Quick Shortcuts'}
-            </h2>
-            {coordinationUnreadCount > 0 && onJumpToDesktopTab && (
-              <button
-                type="button"
-                onClick={() => onJumpToDesktopTab('admin_superadmin_desk')}
-                className="text-[11px] font-bold tabular-nums text-amber-700 dark:text-amber-300 hover:underline cursor-pointer"
-              >
-                {lang === 'th' ? `เรื่องประสานงานใหม่ ${coordinationUnreadCount} →` : `${coordinationUnreadCount} unread →`}
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            {onOpenExecutive && (
-              <button
-                type="button"
-                onClick={onOpenExecutive}
-                className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-              >
-                <Monitor className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'รายงานผู้บริหาร MIS' : 'MIS Monitor'}
-                </span>
-              </button>
-            )}
-            {onJumpToDesktopTab && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('executive_warning')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ติดตามกลุ่มเสี่ยง' : 'Early Warning'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('timetable')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ตารางสอน' : 'Timetable'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('students')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ทะเบียนนักเรียน' : 'Students'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('teachers')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <GraduationCap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'บุคลากร / ครู' : 'Teachers'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('gradebook')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'เกรด ปพ.5' : 'Gradebook'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('announcements')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <BellRing className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ข่าวประกาศ' : 'Announcements'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('admin_superadmin_desk')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ศูนย์ประสานงาน' : 'Coord Desk'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('school_gps')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'พิกัด GPS ประตู' : 'GPS Gates'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('school_permissions')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'กำหนดสิทธิ์' : 'Permissions'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onJumpToDesktopTab('system_settings')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:border-[var(--color-primary)] text-left flex items-center gap-2 cursor-pointer transition"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                  <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ตั้งค่าระบบ' : 'System Settings'}
-                  </span>
-                </button>
-              </>
-            )}
-          </div>
-        </section>
-      )}
-      {section === 'menus' && !(onJumpToDesktopTab || onOpenExecutive || onOpenCheckin) && (
-        <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-center text-xs text-[var(--color-text-muted)]">
-          {lang === 'th' ? 'ไม่มีเมนูเพิ่มเติมในมุมมองนี้' : 'No additional menus available.'}
         </div>
       )}
 

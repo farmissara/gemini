@@ -23,6 +23,7 @@ import {
 import { calculateGrade, formatSemesterLabel, getGradingScaleLegend } from '../lib/schoolSettings';
 import { calculateStudentCourseEligibility } from '../lib/examEligibility';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 import {
   Award,
   FileText,
@@ -1506,258 +1507,263 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     setActiveTab('moe_student_hub');
   };
 
+  const headerGradingAndTabControls = (
+    <>
+      {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
+        <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-xs shrink-0">
+          <button
+            type="button"
+            disabled={isUpdatingGradingMode}
+            data-active={systemConfig.gradingSystem !== 'international'}
+            onClick={async () => {
+              if (systemConfig.gradingSystem === 'thai') return;
+              setIsUpdatingGradingMode(true);
+              try { await onChangeGradingSystem('thai'); } finally { setIsUpdatingGradingMode(false); }
+            }}
+            className="seg-tab-btn px-2 py-0.5 text-[11px]"
+          >
+            0–4
+          </button>
+          <button
+            type="button"
+            disabled={isUpdatingGradingMode}
+            data-active={systemConfig.gradingSystem === 'international'}
+            onClick={async () => {
+              if (systemConfig.gradingSystem === 'international') return;
+              setIsUpdatingGradingMode(true);
+              try { await onChangeGradingSystem('international'); } finally { setIsUpdatingGradingMode(false); }
+            }}
+            className="seg-tab-btn px-2 py-0.5 text-[11px]"
+          >
+            A–F
+          </button>
+        </div>
+      ) : (
+        <span className="text-xs font-semibold text-[var(--color-text-muted)] shrink-0">
+          ระบบ {systemConfig.gradingSystem === 'international' ? 'A–F' : '0–4'}
+        </span>
+      )}
+
+      {/* Clean Inline Tabs */}
+      {isPersonalGradeViewer ? (
+        <div data-guide-id="gradebook-tabs" className="seg-tab-group text-[11px]">
+          <button
+            type="button"
+            data-active={activeTab === 'pp6'}
+            onClick={() => setActiveTab('pp6')}
+            className="seg-tab-btn py-0.5"
+          >
+            ใบรายงานผล (ปพ.6)
+          </button>
+          <button
+            type="button"
+            data-active={activeTab === 'gradebook'}
+            onClick={() => setActiveTab('gradebook')}
+            className="seg-tab-btn py-0.5"
+          >
+            คะแนนรายวิชา
+          </button>
+        </div>
+      ) : (
+        <div
+          data-guide-id="gradebook-tabs"
+          className="flex flex-wrap items-center gap-2"
+        >
+          <div className="seg-tab-group overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              data-active={primarySection === 'scores'}
+              onClick={() => {
+                if (primarySection !== 'scores') setActiveTab('gradebook');
+              }}
+              className="seg-tab-btn whitespace-nowrap"
+            >
+              {lang === 'th' ? 'บันทึกคะแนน' : 'Course Grading'}
+            </button>
+            {!embeddedInStudentManagement && (
+              <button
+                type="button"
+                data-active={primarySection === 'registry'}
+                onClick={() => setActiveTab('moe_student_hub')}
+                className="seg-tab-btn whitespace-nowrap"
+              >
+                {lang === 'th' ? 'ทะเบียน ปพ.1–8' : 'Registry & Docs'}
+              </button>
+            )}
+            <button
+              type="button"
+              data-active={primarySection === 'reports'}
+              onClick={() => {
+                if (primarySection !== 'reports') setActiveTab('pp5');
+              }}
+              className="seg-tab-btn whitespace-nowrap"
+            >
+              {lang === 'th' ? 'รายงาน สพฐ.' : 'OBEC Reports'}
+            </button>
+          </div>
+
+          {primarySection === 'reports' && (
+            <select
+              aria-label={lang === 'th' ? 'เลือกแบบรายงาน' : 'Select report'}
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
+              className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
+            >
+              {REPORT_VIEW_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {lang === 'th' ? opt.labelTh : opt.labelEn}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  const headerToolActions = (
+    <div className="shrink-0 flex items-center justify-end gap-1.5 flex-wrap">
+      {!embeddedInStudentManagement && <ModuleTourTrigger moduleId="gradebook" lang={lang} />}
+
+      {activeTab === 'pp3_online' && (
+        <button
+          type="button"
+          onClick={handleExportPp3CSV}
+          className="btn-action-success px-2.5 py-1.5"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>ส่งออก ปพ.3</span>
+        </button>
+      )}
+
+      {activeTab === 'onet_niets' && (
+        <button
+          type="button"
+          onClick={handleExportOnetCSV}
+          className="btn-action-success px-2.5 py-1.5"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>ส่งออก สทศ.</span>
+        </button>
+      )}
+
+      {/* Consolidated Export, Import & Notification Tools 3-Dot Menu (Staff only) */}
+      {!isPersonalGradeViewer && (
+        <TableActionMenu
+          size="md"
+          dataGuideId="gradebook-tools-menu"
+          ariaLabel="ส่งออกและเครื่องมือสมุดคะแนน"
+          menuWidth={245}
+          items={[
+            ...((activeTab === 'pp3_online' || activeTab === 'onet_niets')
+              ? [
+                  {
+                    id: 'print_official_doc',
+                    label: 'พิมพ์เอกสาร / PDF',
+                    icon: <Printer className="w-3.5 h-3.5 tone-text" />,
+                    variant: 'primary' as const,
+                    onClick: handlePrint,
+                  },
+                ]
+              : []),
+            ...(activeTab === 'gradebook'
+              ? [
+                  {
+                    id: 'gradebook_autonotify',
+                    label: `แจ้งเตือนคะแนนอัตโนมัติ: ${autoNotifyEnabled ? 'เปิดอยู่' : 'ปิดอยู่'}`,
+                    icon: autoNotifyEnabled ? (
+                      <BellRing className="w-3.5 h-3.5 tone-text" />
+                    ) : (
+                      <BellOff className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                    ),
+                    variant: (autoNotifyEnabled ? 'primary' : 'default') as 'primary' | 'default',
+                    onClick: () => setAutoNotifyEnabled((prev) => !prev),
+                  },
+                  ...(onOpenImportExport
+                    ? [
+                        {
+                          id: 'gradebook_import_csv',
+                          label: 'นำเข้าคะแนน CSV / Excel',
+                          icon: <Upload className="w-3.5 h-3.5 tone-text" />,
+                          onClick: onOpenImportExport,
+                        },
+                      ]
+                    : []),
+                  {
+                    id: 'gradebook_pdf_export',
+                    label: 'Download PDF (สรุปผลเกรด)',
+                    icon: <FileDown className="w-3.5 h-3.5" />,
+                    variant: 'danger' as const,
+                    onClick: handleDownloadGradeDistributionPdf,
+                  },
+                ]
+              : []),
+            {
+              id: 'export_pp5_csv',
+              label: 'ส่งออก ปพ.5 (CSV)',
+              icon: <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />,
+              dividerBefore: activeTab === 'gradebook',
+              onClick: handleExportCSV,
+            },
+            {
+              id: 'export_dmc_csv',
+              label: 'ส่งออก DMC สพฐ.',
+              icon: <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600 dark:text-sky-300" />,
+              onClick: handleExportDmcCsv,
+            },
+            {
+              id: 'export_schoolmis_csv',
+              label: 'ส่งออก SchoolMIS',
+              icon: <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" />,
+              onClick: handleExportSchoolMisCsv,
+            },
+          ]}
+        />
+      )}
+
+      {effectiveCanEditGrades && activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setShowAddGradeForm((prev) => !prev);
+            if (!newGradeStudentId && studentsWithoutGradeInCourse[0]) {
+              setNewGradeStudentId(studentsWithoutGradeInCourse[0].id);
+            }
+          }}
+          className="btn-action-primary px-3 py-1.5"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>บันทึกคะแนน</span>
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className={`${getModuleTone('gradebook')} h-full flex flex-col min-h-0 overflow-hidden ${embeddedInStudentManagement ? 'space-y-2' : 'space-y-4'}`}>
       {/* Gradebook Header: Slim sub-toolbar when embedded inside StudentsView; clean single header standalone */}
-      <div className={`shrink-0 flex flex-wrap items-center justify-between gap-2.5 print:hidden ${
-        embeddedInStudentManagement
-          ? 'px-1 py-1.5 border-b border-[var(--color-border)]'
-          : 'app-page-header px-5 py-3'
-      }`}>
-        <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
-          {!embeddedInStudentManagement && (
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="tone-chip w-10 h-10 rounded-xl shrink-0">
-                <FutureNavIcon tab="gradebook" size={20} active />
-              </span>
-              <div className="min-w-0">
-                <div className="module-category-kicker">02 · วัดผล สพฐ. &amp; การสอน</div>
-                <h1 className="text-base md:text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
-                  {isPersonalGradeViewer
-                    ? 'ผลการเรียน & ใบ ปพ.6'
-                    : 'บันทึกคะแนน & งานทะเบียน'}
-                </h1>
-              </div>
-            </div>
-          )}
-
-          {onChangeGradingSystem && (currentRole === 'admin' || currentRole === 'super_admin') ? (
-            <div data-guide-id="gradebook-grading-mode" className="seg-tab-group text-xs shrink-0">
-              <button
-                type="button"
-                disabled={isUpdatingGradingMode}
-                data-active={systemConfig.gradingSystem !== 'international'}
-                onClick={async () => {
-                  if (systemConfig.gradingSystem === 'thai') return;
-                  setIsUpdatingGradingMode(true);
-                  try { await onChangeGradingSystem('thai'); } finally { setIsUpdatingGradingMode(false); }
-                }}
-                className="seg-tab-btn px-2 py-0.5 text-[11px]"
-              >
-                0–4
-              </button>
-              <button
-                type="button"
-                disabled={isUpdatingGradingMode}
-                data-active={systemConfig.gradingSystem === 'international'}
-                onClick={async () => {
-                  if (systemConfig.gradingSystem === 'international') return;
-                  setIsUpdatingGradingMode(true);
-                  try { await onChangeGradingSystem('international'); } finally { setIsUpdatingGradingMode(false); }
-                }}
-                className="seg-tab-btn px-2 py-0.5 text-[11px]"
-              >
-                A–F
-              </button>
-            </div>
-          ) : (
-            <span className="text-xs font-semibold text-[var(--color-text-muted)] shrink-0">
-              ระบบ {systemConfig.gradingSystem === 'international' ? 'A–F' : '0–4'}
-            </span>
-          )}
-
-          {/* Clean Inline Tabs */}
-          {isPersonalGradeViewer ? (
-            <div data-guide-id="gradebook-tabs" className="seg-tab-group text-[11px]">
-              <button
-                type="button"
-                data-active={activeTab === 'pp6'}
-                onClick={() => setActiveTab('pp6')}
-                className="seg-tab-btn py-0.5"
-              >
-                ใบรายงานผล (ปพ.6)
-              </button>
-              <button
-                type="button"
-                data-active={activeTab === 'gradebook'}
-                onClick={() => setActiveTab('gradebook')}
-                className="seg-tab-btn py-0.5"
-              >
-                คะแนนรายวิชา
-              </button>
-            </div>
-          ) : (
-            <div
-              data-guide-id="gradebook-tabs"
-              className="flex flex-wrap items-center gap-2"
-            >
-              <div className="seg-tab-group overflow-x-auto no-scrollbar">
-                <button
-                  type="button"
-                  data-active={primarySection === 'scores'}
-                  onClick={() => {
-                    if (primarySection !== 'scores') setActiveTab('gradebook');
-                  }}
-                  className="seg-tab-btn whitespace-nowrap"
-                >
-                  {lang === 'th' ? 'บันทึกคะแนน' : 'Course Grading'}
-                </button>
-                {!embeddedInStudentManagement && (
-                  <button
-                    type="button"
-                    data-active={primarySection === 'registry'}
-                    onClick={() => setActiveTab('moe_student_hub')}
-                    className="seg-tab-btn whitespace-nowrap"
-                  >
-                    {lang === 'th' ? 'ทะเบียน ปพ.1–8' : 'Registry & Docs'}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  data-active={primarySection === 'reports'}
-                  onClick={() => {
-                    if (primarySection !== 'reports') setActiveTab('pp5');
-                  }}
-                  className="seg-tab-btn whitespace-nowrap"
-                >
-                  {lang === 'th' ? 'รายงาน สพฐ.' : 'OBEC Reports'}
-                </button>
-              </div>
-
-              {primarySection === 'reports' && (
-                <select
-                  aria-label={lang === 'th' ? 'เลือกแบบรายงาน' : 'Select report'}
-                  value={activeTab}
-                  onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
-                  className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-title)] outline-none focus:border-[var(--tone)] cursor-pointer"
-                >
-                  {REPORT_VIEW_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {lang === 'th' ? opt.labelTh : opt.labelEn}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
+      {embeddedInStudentManagement ? (
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 print:hidden px-1 py-1.5 border-b border-[var(--color-border)]">
+          <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
+            {headerGradingAndTabControls}
+          </div>
+          {headerToolActions}
         </div>
-
-        <div className="shrink-0 flex items-center justify-end gap-1.5 flex-wrap">
-          {!embeddedInStudentManagement && <ModuleTourTrigger moduleId="gradebook" lang={lang} />}
-
-          {activeTab === 'pp3_online' && (
-            <button
-              type="button"
-              onClick={handleExportPp3CSV}
-              className="btn-action-success px-2.5 py-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>ส่งออก ปพ.3</span>
-            </button>
-          )}
-
-          {activeTab === 'onet_niets' && (
-            <button
-              type="button"
-              onClick={handleExportOnetCSV}
-              className="btn-action-success px-2.5 py-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>ส่งออก สทศ.</span>
-            </button>
-          )}
-
-          {/* Consolidated Export, Import & Notification Tools 3-Dot Menu (Staff only) */}
-          {!isPersonalGradeViewer && (
-            <TableActionMenu
-              size="md"
-              dataGuideId="gradebook-tools-menu"
-              ariaLabel="ส่งออกและเครื่องมือสมุดคะแนน"
-              menuWidth={245}
-              items={[
-                ...((activeTab === 'pp3_online' || activeTab === 'onet_niets')
-                  ? [
-                      {
-                        id: 'print_official_doc',
-                        label: 'พิมพ์เอกสาร / PDF',
-                        icon: <Printer className="w-3.5 h-3.5 tone-text" />,
-                        variant: 'primary' as const,
-                        onClick: handlePrint,
-                      },
-                    ]
-                  : []),
-                ...(activeTab === 'gradebook'
-                  ? [
-                      {
-                        id: 'gradebook_autonotify',
-                        label: `แจ้งเตือนคะแนนอัตโนมัติ: ${autoNotifyEnabled ? 'เปิดอยู่' : 'ปิดอยู่'}`,
-                        icon: autoNotifyEnabled ? (
-                          <BellRing className="w-3.5 h-3.5 tone-text" />
-                        ) : (
-                          <BellOff className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                        ),
-                        variant: (autoNotifyEnabled ? 'primary' : 'default') as 'primary' | 'default',
-                        onClick: () => setAutoNotifyEnabled((prev) => !prev),
-                      },
-                      ...(onOpenImportExport
-                        ? [
-                            {
-                              id: 'gradebook_import_csv',
-                              label: 'นำเข้าคะแนน CSV / Excel',
-                              icon: <Upload className="w-3.5 h-3.5 tone-text" />,
-                              onClick: onOpenImportExport,
-                            },
-                          ]
-                        : []),
-                      {
-                        id: 'gradebook_pdf_export',
-                        label: 'Download PDF (สรุปผลเกรด)',
-                        icon: <FileDown className="w-3.5 h-3.5" />,
-                        variant: 'danger' as const,
-                        onClick: handleDownloadGradeDistributionPdf,
-                      },
-                    ]
-                  : []),
-                {
-                  id: 'export_pp5_csv',
-                  label: 'ส่งออก ปพ.5 (CSV)',
-                  icon: <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />,
-                  dividerBefore: activeTab === 'gradebook',
-                  onClick: handleExportCSV,
-                },
-                {
-                  id: 'export_dmc_csv',
-                  label: 'ส่งออก DMC สพฐ.',
-                  icon: <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600 dark:text-sky-300" />,
-                  onClick: handleExportDmcCsv,
-                },
-                {
-                  id: 'export_schoolmis_csv',
-                  label: 'ส่งออก SchoolMIS',
-                  icon: <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" />,
-                  onClick: handleExportSchoolMisCsv,
-                },
-              ]}
-            />
-          )}
-
-          {effectiveCanEditGrades && activeTab === 'gradebook' && onAddGrade && studentsWithoutGradeInCourse.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddGradeForm((prev) => !prev);
-                if (!newGradeStudentId && studentsWithoutGradeInCourse[0]) {
-                  setNewGradeStudentId(studentsWithoutGradeInCourse[0].id);
-                }
-              }}
-              className="btn-action-primary px-3 py-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>บันทึกคะแนน</span>
-            </button>
-          )}
-        </div>
-      </div>
+      ) : (
+        <PageHeader
+          compact
+          noPrint
+          icon={<FutureNavIcon tab="gradebook" size={20} active />}
+          kicker="02 · วัดผล สพฐ. & การสอน"
+          title={isPersonalGradeViewer ? 'ผลการเรียน & ใบ ปพ.6' : 'บันทึกคะแนน & งานทะเบียน'}
+          actions={
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {headerGradingAndTabControls}
+              {headerToolActions}
+            </div>
+          }
+        />
+      )}
 
       {/* Single-Row Slim Course & Student Search / Collapsible Filter Toolbar */}
       {(activeTab === 'gradebook' || activeTab === 'indicators' || activeTab === 'pp5') && (() => {

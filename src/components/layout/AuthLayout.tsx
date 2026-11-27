@@ -51,6 +51,7 @@ import {
 import { PWAInstallButton } from '../PWAInstallButton';
 import { BaanPakKruLogo } from '../common/BaanPakKruLogo';
 import { FutureIconBadge, FutureNavIcon } from '../common/FutureIcon';
+import { BaseModal } from '../common/BaseModal';
 import { THAI_PROVINCES } from '../../data/thaiProvinces';
 import heroClassroomImage from '../../assets/images/hero_classroom_teacher_students_1793958712620.jpg';
 
@@ -737,83 +738,83 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </div>
       </header>
 
-      {mustChangePasswordContext && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="student-first-password-title"
-        >
-          <form
-            onSubmit={handleSetFirstStudentPassword}
-            className="modal-enter w-full max-w-md max-h-[90vh] overflow-y-auto space-y-5 rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 sm:p-8 shadow-2xl"
-          >
-            <div className="flex items-center gap-3">
-              <FutureIconBadge tone="tone-3" size="md" variant="solid">
-                <Lock className="h-5 w-5" />
-              </FutureIconBadge>
-              <div>
-                <h2 id="student-first-password-title" className="font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'ตั้งรหัสผ่านส่วนตัวก่อนเข้าใช้งานครั้งแรก' : 'Set a personal password for first sign-in'}
-                </h2>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {lang === 'th'
-                    ? 'ระบบบังคับเปลี่ยนรหัสผ่านเริ่มต้น (รหัสนักเรียน) เป็นรหัสผ่านส่วนตัวก่อนใช้งาน'
-                    : 'You must replace your initial Student ID password before accessing school data.'}
-                </p>
-              </div>
-            </div>
-
-            <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
-              {lang === 'th'
-                ? 'กรุณาตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษร และห้ามใช้รหัสนักเรียนซ้ำเป็นรหัสผ่าน หลังจากบันทึกแล้วให้ใช้รหัสผ่านใหม่นี้ในครั้งถัดไป'
-                : 'Set a personal password of at least 8 characters. Do not reuse your Student ID as your password. Use this new password on future sign-ins.'}
-            </p>
-
-            {firstPasswordError && (
-              <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                {firstPasswordError}
+      <BaseModal
+        isOpen={Boolean(mustChangePasswordContext)}
+        onClose={() => {}}
+        closeDisabled
+        hideHeader
+        maxWidthClass="max-w-md"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-[70]"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-6 sm:p-8"
+      >
+        <form onSubmit={handleSetFirstStudentPassword} className="space-y-5">
+          <div className="flex items-center gap-3">
+            <FutureIconBadge tone="tone-3" size="md" variant="solid">
+              <Lock className="h-5 w-5" />
+            </FutureIconBadge>
+            <div>
+              <h2 id="student-first-password-title" className="font-bold text-[var(--color-text-title)]">
+                {lang === 'th' ? 'ตั้งรหัสผ่านส่วนตัวก่อนเข้าใช้งานครั้งแรก' : 'Set a personal password for first sign-in'}
+              </h2>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {lang === 'th'
+                  ? 'ระบบบังคับเปลี่ยนรหัสผ่านเริ่มต้น (รหัสนักเรียน) เป็นรหัสผ่านส่วนตัวก่อนใช้งาน'
+                  : 'You must replace your initial Student ID password before accessing school data.'}
               </p>
-            )}
+            </div>
+          </div>
 
-            <label className="block space-y-1.5 text-[13px] font-medium text-[var(--color-text-body)]">
-              <span>{lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
-              />
-            </label>
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+            {lang === 'th'
+              ? 'กรุณาตั้งรหัสผ่านใหม่ส่วนตัวอย่างน้อย 8 ตัวอักษร และห้ามใช้รหัสนักเรียนซ้ำเป็นรหัสผ่าน หลังจากบันทึกแล้วให้ใช้รหัสผ่านใหม่นี้ในครั้งถัดไป'
+              : 'Set a personal password of at least 8 characters. Do not reuse your Student ID as your password. Use this new password on future sign-ins.'}
+          </p>
 
-            <label className="block space-y-1.5 text-[13px] font-medium text-[var(--color-text-body)]">
-              <span>{lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
-                value={confirmNewPassword}
-                onChange={(event) => setConfirmNewPassword(event.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
-              />
-            </label>
+          {firstPasswordError && (
+            <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+              {firstPasswordError}
+            </p>
+          )}
 
-            <button
-              type="submit"
-              disabled={isSettingFirstPassword}
-              className="w-full btn-action-primary rounded-xl px-4 py-3 text-sm font-bold min-h-12 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSettingFirstPassword
-                ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
-                : (lang === 'th' ? 'บันทึกรหัสผ่านและเข้าสู่ระบบ' : 'Save password and continue')}
-            </button>
-          </form>
-        </div>
-      )}
+          <label className="block space-y-1.5 text-[13px] font-medium text-[var(--color-text-body)]">
+            <span>{lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <label className="block space-y-1.5 text-[13px] font-medium text-[var(--color-text-body)]">
+            <span>{lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={confirmNewPassword}
+              onChange={(event) => setConfirmNewPassword(event.target.value)}
+              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={isSettingFirstPassword}
+            className="w-full btn-action-primary rounded-xl px-4 py-3 text-sm font-bold min-h-12 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSettingFirstPassword
+              ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
+              : (lang === 'th' ? 'บันทึกรหัสผ่านและเข้าสู่ระบบ' : 'Save password and continue')}
+          </button>
+        </form>
+      </BaseModal>
 
       {/* Calm Single-Screen Split Hero & Sign-In Workspace */}
       <main
@@ -1639,186 +1640,176 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       </footer>
 
       {/* Modal: Forgot / Reset Password (Privacy-Safe, No Personal Admin Email Leak) */}
-      {showForgotPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="modal-enter relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-6 sm:p-8">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3 mb-4">
-              <div className="flex items-center gap-2.5">
-                <FutureIconBadge tone="tone-1" size="sm" variant="solid">
-                  <KeyRound className="w-4.5 h-4.5" />
-                </FutureIconBadge>
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'ขอเปลี่ยนรหัสผ่าน / ลืมรหัสผ่าน' : 'Reset Password Request'}
-                  </h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'รับลิงก์รีเซ็ตรหัสผ่านทางอีเมลบัญชี' : 'Receive a reset link at your account email'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForgotPasswordModal(false);
-                  setResetStatus(null);
-                }}
-                className="rounded-lg p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => {
+          setShowForgotPasswordModal(false);
+          setResetStatus(null);
+        }}
+        title={lang === 'th' ? 'ขอเปลี่ยนรหัสผ่าน / ลืมรหัสผ่าน' : 'Reset Password Request'}
+        subtitle={lang === 'th' ? 'รับลิงก์รีเซ็ตรหัสผ่านทางอีเมลบัญชี' : 'Receive a reset link at your account email'}
+        icon={<KeyRound className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-md"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <div className="p-3 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[13px] leading-relaxed text-blue-900 dark:text-blue-200 space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
+            <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>{lang === 'th' ? 'วิธีรีเซ็ตรหัสผ่าน' : 'How password reset works'}</span>
+          </div>
+          <p className="text-[11px] text-blue-800/90 dark:text-blue-300/90 pl-5 leading-relaxed">
+            {lang === 'th'
+              ? 'ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมลบัญชีของคุณโดยตรง หากเป็นบัญชีรหัสนักเรียนที่ไม่ผูกอีเมล กรุณาติดต่อฝ่ายทะเบียนหรือครูประจำชั้นเพื่อรีเซ็ตรหัสผ่านเริ่มต้นกลับเป็นรหัสนักเรียน'
+              : 'A password reset link will be emailed directly to your registered account. For Student ID accounts without email, please contact your school office to reset your password back to your Student ID.'}
+          </p>
+        </div>
 
-            <div className="p-3 mb-4 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[13px] leading-relaxed text-blue-900 dark:text-blue-200 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold text-blue-950 dark:text-blue-100">
-                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <span>{lang === 'th' ? 'วิธีรีเซ็ตรหัสผ่าน' : 'How password reset works'}</span>
-              </div>
-              <p className="text-[11px] text-blue-800/90 dark:text-blue-300/90 pl-5 leading-relaxed">
-                {lang === 'th'
-                  ? 'ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมลบัญชีของคุณโดยตรง หากเป็นบัญชีรหัสนักเรียนที่ไม่ผูกอีเมล กรุณาติดต่อฝ่ายทะเบียนหรือครูประจำชั้นเพื่อรีเซ็ตรหัสผ่านเริ่มต้นกลับเป็นรหัสนักเรียน'
-                  : 'A password reset link will be emailed directly to your registered account. For Student ID accounts without email, please contact your school office to reset your password back to your Student ID.'}
-              </p>
-            </div>
+        {resetStatus && (
+          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-[13px] leading-relaxed text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="text-[11px] leading-relaxed">{resetStatus}</div>
+          </div>
+        )}
 
-            {resetStatus && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-[13px] leading-relaxed text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="text-[11px] leading-relaxed">{resetStatus}</div>
-              </div>
-            )}
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-[13px] leading-relaxed text-rose-800 dark:text-rose-200 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="text-[11px] leading-relaxed">{error}</div>
+          </div>
+        )}
 
-            {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-[13px] leading-relaxed text-rose-800 dark:text-rose-200 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                <div className="text-[11px] leading-relaxed">{error}</div>
-              </div>
-            )}
+        <form onSubmit={handleRequestPasswordReset} className="space-y-3">
+          <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
+            {lang === 'th' ? 'กรอกอีเมลบัญชีผู้ใช้ของคุณ' : 'Enter your registered email address'}
+            <input
+              type="email"
+              required
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="user@school.ac.th"
+              className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
+            />
+          </label>
 
-            <form onSubmit={handleRequestPasswordReset} className="space-y-3">
-              <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
-                {lang === 'th' ? 'กรอกอีเมลบัญชีผู้ใช้ของคุณ' : 'Enter your registered email address'}
-                <input
-                  type="email"
-                  required
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="user@school.ac.th"
-                  className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
-                />
-              </label>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForgotPasswordModal(false);
+                setResetStatus(null);
+              }}
+              className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
+            >
+              {lang === 'th' ? 'ปิด' : 'Cancel'}
+            </button>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForgotPasswordModal(false);
-                    setResetStatus(null);
-                  }}
-                  className="px-3.5 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer"
-                >
-                  {lang === 'th' ? 'ปิด' : 'Cancel'}
-                </button>
+            <button
+              type="submit"
+              disabled={isResetting || !resetEmail.trim()}
+              className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-xs font-bold text-white shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+            >
+              {isResetting ? (
+                <span>{lang === 'th' ? 'กำลังส่งคำขอ...' : 'Sending...'}</span>
+              ) : (
+                <>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'ส่งลิงก์รีเซ็ต' : 'Send Reset Link'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </BaseModal>
 
-                <button
-                  type="submit"
-                  disabled={isResetting || !resetEmail.trim()}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-xs font-bold text-white shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                >
-                  {isResetting ? (
-                    <span>{lang === 'th' ? 'กำลังส่งคำขอ...' : 'Sending...'}</span>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{lang === 'th' ? 'ส่งลิงก์รีเซ็ต' : 'Send Reset Link'}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+      <BaseModal
+        isOpen={isPasswordRecovery}
+        onClose={() => {}}
+        closeDisabled
+        hideHeader
+        maxWidthClass="max-w-md"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-[60]"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-6 sm:p-8"
+      >
+        <div className="mb-5 flex items-center gap-3">
+          <FutureIconBadge tone="tone-1" size="md" variant="solid">
+            <KeyRound className="h-5 w-5" />
+          </FutureIconBadge>
+          <div>
+            <h2 className="font-bold text-[var(--color-text-title)]">
+              {lang === 'th' ? 'ตั้งรหัสผ่านใหม่' : 'Set a new password'}
+            </h2>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {lang === 'th' ? 'กรอกรหัสผ่านใหม่สำหรับบัญชีของคุณ' : 'Choose a new password for your account.'}
+            </p>
           </div>
         </div>
-      )}
 
-      {isPasswordRecovery && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="modal-enter w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 sm:p-8 shadow-2xl">
-            <div className="mb-5 flex items-center gap-3">
-              <FutureIconBadge tone="tone-1" size="md" variant="solid">
-                <KeyRound className="h-5 w-5" />
-              </FutureIconBadge>
-              <div>
-                <h2 className="font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'ตั้งรหัสผ่านใหม่' : 'Set a new password'}
-                </h2>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'กรอกรหัสผ่านใหม่สำหรับบัญชีของคุณ' : 'Choose a new password for your account.'}
-                </p>
-              </div>
+        {passwordResetComplete ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+              {lang === 'th' ? 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' : 'Your password has been changed.'}
             </div>
-
-            {passwordResetComplete ? (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-                  {lang === 'th' ? 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' : 'Your password has been changed.'}
-                </div>
-                {passwordResetError && (
-                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                    {passwordResetError}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={onPasswordResetComplete}
-                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
-                >
-                  {lang === 'th' ? 'กลับเข้าสู่ระบบ' : 'Return to sign in'}
-                </button>
+            {passwordResetError && (
+              <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                {passwordResetError}
               </div>
-            ) : (
-              <form onSubmit={handleUpdatePassword} className="space-y-3">
-                {passwordResetError && (
-                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                    {passwordResetError}
-                  </div>
-                )}
-                <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
-                  {lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    required
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
-                  />
-                </label>
-                <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
-                  {lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    required
-                    value={confirmNewPassword}
-                    onChange={(event) => setConfirmNewPassword(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={isUpdatingPassword}
-                  className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
-                >
-                  {isUpdatingPassword
-                    ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
-                    : (lang === 'th' ? 'บันทึกรหัสผ่านใหม่' : 'Save new password')}
-                </button>
-              </form>
             )}
+            <button
+              type="button"
+              onClick={onPasswordResetComplete}
+              className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
+            >
+              {lang === 'th' ? 'กลับเข้าสู่ระบบ' : 'Return to sign in'}
+            </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <form onSubmit={handleUpdatePassword} className="space-y-3">
+            {passwordResetError && (
+              <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[13px] leading-relaxed text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                {passwordResetError}
+              </div>
+            )}
+            <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
+              {lang === 'th' ? 'รหัสผ่านใหม่' : 'New password'}
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
+              />
+            </label>
+            <label className="block text-[13px] font-medium text-[var(--color-text-body)]">
+              {lang === 'th' ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm new password'}
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                value={confirmNewPassword}
+                onChange={(event) => setConfirmNewPassword(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs px-3.5 py-3 text-base sm:text-sm text-[var(--color-text-title)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)]"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={isUpdatingPassword}
+              className="w-full rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition cursor-pointer min-h-12 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--color-primary)]/25 disabled:cursor-not-allowed"
+            >
+              {isUpdatingPassword
+                ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...')
+                : (lang === 'th' ? 'บันทึกรหัสผ่านใหม่' : 'Save new password')}
+            </button>
+          </form>
+        )}
+      </BaseModal>
     </div>
   );
 };

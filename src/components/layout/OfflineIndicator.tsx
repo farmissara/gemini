@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { WifiOff, Wifi, RefreshCw, CheckCircle2, Clock, Trash2, X, Database } from 'lucide-react';
+import { WifiOff, Wifi, RefreshCw, CheckCircle2, Trash2, Database } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { getOfflineQueueForUser, flushOfflineQueue, clearOfflineQueue, OfflineQueueItem } from '../../lib/offlineSync';
 import { AppLanguage } from '../../types';
+import { BaseModal } from '../common/BaseModal';
 
 interface OfflineIndicatorProps {
   lang?: AppLanguage;
@@ -132,26 +133,54 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
       )}
 
       {/* Queue Inspector Modal */}
-      {showQueueModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl p-5 text-[var(--color-text-body)] flex flex-col max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] shrink-0">
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-amber-500" />
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'คิวข้อมูลออฟไลน์ที่รอซิงค์' : 'Offline Pending Queue'}
-                </h3>
-              </div>
+      <BaseModal
+        isOpen={showQueueModal}
+        onClose={() => setShowQueueModal(false)}
+        title={lang === 'th' ? 'คิวข้อมูลออฟไลน์ที่รอซิงค์' : 'Offline Pending Queue'}
+        icon={<Database className="w-5 h-5 text-amber-500" />}
+        maxWidthClass="max-w-md"
+        heightClass="max-h-[80dvh]"
+        showMobileHandle
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-2"
+        footerClassName="!justify-between text-xs"
+        footer={
+          <>
+            {queue.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearOfflineQueue(currentUserId);
+                  setQueue([]);
+                }}
+                className="text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ล้างคิวทั้งหมด' : 'Clear Queue'}</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-2 ml-auto">
+              {isOnline && queue.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSyncNow}
+                  disabled={isSyncing}
+                  className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold transition cursor-pointer"
+                >
+                  {isSyncing ? (lang === 'th' ? 'กำลังซิงค์...' : 'Syncing...') : (lang === 'th' ? 'ซิงค์ทันที' : 'Sync All')}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setShowQueueModal(false)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] font-semibold hover:bg-[var(--color-card-subtle)] cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                {lang === 'th' ? 'ปิด' : 'Close'}
               </button>
             </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto py-3 space-y-2">
+          </>
+        }
+      >
               {queue.length === 0 ? (
                 <p className="text-center py-8 text-xs text-[var(--color-text-muted)]">
                   {lang === 'th' ? 'ไม่มีข้อมูลค้างซิงค์ ข้อมูลทั้งหมดเป็นปัจจุบันแล้ว' : 'Queue is empty. Everything is up to date.'}
@@ -181,46 +210,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
                   </div>
                 ))
               )}
-            </div>
-
-            <div className="pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2 shrink-0 text-xs">
-              {queue.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-              clearOfflineQueue(currentUserId);
-                    setQueue([]);
-                  }}
-                  className="text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? 'ล้างคิวทั้งหมด' : 'Clear Queue'}</span>
-                </button>
-              )}
-
-              <div className="flex items-center gap-2 ml-auto">
-                {isOnline && queue.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleSyncNow}
-                    disabled={isSyncing}
-                    className="px-4 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold transition cursor-pointer"
-                  >
-                    {isSyncing ? (lang === 'th' ? 'กำลังซิงค์...' : 'Syncing...') : (lang === 'th' ? 'ซิงค์ทันที' : 'Sync All')}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowQueueModal(false)}
-                  className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] font-semibold hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                >
-                  {lang === 'th' ? 'ปิด' : 'Close'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </>
   );
 };

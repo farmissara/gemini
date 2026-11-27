@@ -36,6 +36,7 @@ import { GoogleCalendarSyncModal } from '../../components/GoogleCalendarSyncModa
 import { TimetableImportExportModal } from '../../components/modals/TimetableImportExportModal';
 import { ConfirmActionModal } from '../../components/modals/ConfirmActionModal';
 import { TimetablePeriodAttendanceModal } from '../../components/modals/TimetablePeriodAttendanceModal';
+import { BaseModal } from '../../components/common/BaseModal';
 import {
   ALL_CLASSROOMS,
   DAYS,
@@ -400,150 +401,273 @@ export const TimetableModals: React.FC<TimetableModalsProps> = ({
         </div>
       )}
 
-      {isAdmin && showPeriodSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs">
-          <div className="w-full max-w-xl max-h-[92vh] overflow-hidden rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] shadow-2xl flex flex-col">
-            <div className="p-4 border-b border-[var(--color-border)] shrink-0">
-              <h3 className="font-bold text-base text-[var(--color-text-title)] flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[var(--color-primary-text)]" />
-                ตั้งเวลาเรียนมาตรฐานของโรงเรียน
-              </h3>
-              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-                เฉพาะผู้ดูแลระบบโรงเรียนเท่านั้นที่กำหนดได้ การเปลี่ยนแปลงจะมีผลกับตารางเรียนและการเช็คชื่อรายคาบของทุกคนในโรงเรียนนี้
-              </p>
+      <BaseModal
+        isOpen={Boolean(isAdmin && showPeriodSettings)}
+        onClose={() => { if (!isSavingPeriods) setShowPeriodSettings(false); }}
+        closeDisabled={isSavingPeriods}
+        title="ตั้งเวลาเรียนมาตรฐานของโรงเรียน"
+        subtitle="เฉพาะผู้ดูแลระบบโรงเรียนเท่านั้นที่กำหนดได้ มีผลกับตารางเรียนและการเช็คชื่อรายคาบ"
+        icon={<Clock className="w-5 h-5 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowPeriodSettings(false)}
+              disabled={isSavingPeriods}
+              className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-xs font-semibold hover:bg-[var(--color-card-subtle)] disabled:opacity-50"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              form="timetable-period-settings-form"
+              disabled={isSavingPeriods}
+              className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {isSavingPeriods ? 'กำลังบันทึก...' : 'บันทึกเวลาเรียน'}
+            </button>
+          </>
+        }
+      >
+        <form id="timetable-period-settings-form" onSubmit={handleSavePeriodSettings} className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-[var(--color-text-muted)]">
+              เพิ่ม/ลบและเปลี่ยนชื่อได้ทั้งคาบเรียน (สูงสุด {MAX_LESSON_PERIODS} คาบ) และช่วงพัก
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleAddBreakPeriod}
+                disabled={isSavingPeriods}
+                className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-200 disabled:opacity-50 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                เพิ่มช่วงพัก
+              </button>
+              <button
+                type="button"
+                onClick={handleAddPeriod}
+                disabled={isSavingPeriods || periodDraft.filter((p) => !p.isBreak).length >= MAX_LESSON_PERIODS}
+                className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-50 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                เพิ่มคาบเรียน
+              </button>
             </div>
-            <form onSubmit={handleSavePeriodSettings} className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  เพิ่ม/ลบและเปลี่ยนชื่อได้ทั้งคาบเรียน (สูงสุด {MAX_LESSON_PERIODS} คาบ) และช่วงพัก
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleAddBreakPeriod}
-                    disabled={isSavingPeriods}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-200 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    เพิ่มช่วงพัก
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddPeriod}
-                    disabled={isSavingPeriods || periodDraft.filter((p) => !p.isBreak).length >= MAX_LESSON_PERIODS}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-50 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    เพิ่มคาบเรียน
-                  </button>
-                </div>
-              </div>
-              {periodDraft.slice().sort(
-                (a, b) => a.startTime.localeCompare(b.startTime)
-              ).map((period) => (
-                <div key={period.periodNumber} className={`grid grid-cols-[minmax(110px,1.2fr)_1fr_1fr_auto] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
-                  <label className="text-[10px] text-[var(--color-text-muted)]">
-                    {period.isBreak ? 'ชื่อช่วงพัก' : `ชื่อคาบ (${period.periodNumber})`}
-                    <input
-                      type="text"
-                      value={period.labelTh ?? (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
-                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, labelTh: event.target.value } : item))}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-bold text-[var(--color-text-title)]"
-                    />
-                  </label>
-                  <label className="text-[10px] text-[var(--color-text-muted)]">
-                    เริ่ม
-                    <input
-                      type="time"
-                      required
-                      value={period.startTime}
-                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, startTime: event.target.value } : item))}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
-                    />
-                  </label>
-                  <label className="text-[10px] text-[var(--color-text-muted)]">
-                    เลิก
-                    <input
-                      type="time"
-                      required
-                      value={period.endTime}
-                      onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, endTime: event.target.value } : item))}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePeriod(period.periodNumber)}
-                    disabled={isSavingPeriods}
-                    aria-label={`ลบ ${period.labelTh || `คาบที่ ${period.periodNumber}`}`}
-                    className="rounded-lg p-2 mt-4 text-rose-600 hover:bg-rose-100 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              {periodSettingsError && (
-                <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-2.5 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-                  {periodSettingsError}
-                </p>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
+          </div>
+          {periodDraft.slice().sort(
+            (a, b) => a.startTime.localeCompare(b.startTime)
+          ).map((period) => (
+            <div key={period.periodNumber} className={`grid grid-cols-[minmax(110px,1.2fr)_1fr_1fr_auto] items-center gap-2 rounded-xl border p-2.5 ${period.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-[var(--color-card-subtle)] border-[var(--color-border)]'}`}>
+              <label className="text-[10px] text-[var(--color-text-muted)]">
+                {period.isBreak ? 'ชื่อช่วงพัก' : `ชื่อคาบ (${period.periodNumber})`}
+                <input
+                  type="text"
+                  value={period.labelTh ?? (period.isBreak ? 'พักกลางวัน' : `คาบ ${period.periodNumber}`)}
+                  onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, labelTh: event.target.value } : item))}
+                  className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-1.5 text-xs font-bold text-[var(--color-text-title)]"
+                />
+              </label>
+              <label className="text-[10px] text-[var(--color-text-muted)]">
+                เริ่ม
+                <input
+                  type="time"
+                  required
+                  value={period.startTime}
+                  onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, startTime: event.target.value } : item))}
+                  className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
+                />
+              </label>
+              <label className="text-[10px] text-[var(--color-text-muted)]">
+                เลิก
+                <input
+                  type="time"
+                  required
+                  value={period.endTime}
+                  onChange={(event) => setPeriodDraft((prev) => prev.map((item) => item.periodNumber === period.periodNumber ? { ...item, endTime: event.target.value } : item))}
+                  className="mt-1 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2 text-xs text-[var(--color-text-title)]"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => handleRemovePeriod(period.periodNumber)}
+                disabled={isSavingPeriods}
+                aria-label={`ลบ ${period.labelTh || `คาบที่ ${period.periodNumber}`}`}
+                className="rounded-lg p-2 mt-4 text-rose-600 hover:bg-rose-100 disabled:opacity-50 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+          {periodSettingsError && (
+            <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-2.5 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+              {periodSettingsError}
+            </p>
+          )}
+        </form>
+      </BaseModal>
+
+      {/* Detail Popover Modal for Clicked Slot */}
+      <BaseModal
+        isOpen={Boolean(selectedSlotForDetail)}
+        onClose={closeSlotDetails}
+        title={selectedSlotForDetail ? `${selectedSlotForDetail.courseCode} · ${selectedSlotForDetail.courseTitleTh}` : ''}
+        subtitle={
+          selectedSlotForDetail
+            ? `คาบที่ ${selectedSlotForDetail.periodNumber} (${getPeriodTime(selectedSlotForDetail.periodNumber)?.startTime || selectedSlotForDetail.startTime} - ${getPeriodTime(selectedSlotForDetail.periodNumber)?.endTime || selectedSlotForDetail.endTime})`
+            : undefined
+        }
+        icon={<Clock className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-md"
+        showMobileHandle
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-2 text-xs"
+        footerClassName="justify-between"
+        footer={
+          selectedSlotForDetail ? (
+            isEditingSelectedSlot ? (
+              <>
                 <button
                   type="button"
-                  onClick={() => setShowPeriodSettings(false)}
-                  disabled={isSavingPeriods}
-                  className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-xs font-semibold hover:bg-[var(--color-card-subtle)] disabled:opacity-50"
+                  onClick={() => {
+                    setIsEditingSelectedSlot(false);
+                    setEditSlotDraft(null);
+                    setSlotActionError(null);
+                  }}
+                  disabled={isSavingSlot}
+                  className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] disabled:opacity-50"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingPeriods}
-                  className="rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50"
+                  form="edit-timetable-slot-form"
+                  disabled={isSavingSlot}
+                  className="ml-auto rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                 >
-                  {isSavingPeriods ? 'กำลังบันทึก...' : 'บันทึกเวลาเรียน'}
+                  {isSavingSlot ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}
                 </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Detail Popover Modal for Clicked Slot */}
-      {selectedSlotForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="timetable-slot-detail-title"
-            className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
-                  {selectedSlotForDetail.courseCode}
-                </span>
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  คาบที่ {selectedSlotForDetail.periodNumber} ({getPeriodTime(selectedSlotForDetail.periodNumber)?.startTime || selectedSlotForDetail.startTime} - {getPeriodTime(selectedSlotForDetail.periodNumber)?.endTime || selectedSlotForDetail.endTime})
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={closeSlotDetails}
-                aria-label="ปิดรายละเอียดคาบเรียน"
-                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2 py-3 text-xs">
-              <h3 id="timetable-slot-detail-title" className="text-base font-bold text-[var(--color-text-title)]">
-                {selectedSlotForDetail.courseTitleTh}
-              </h3>
+              </>
+            ) : (
+              <>
+                {canOpenPeriodRoster && (
+                  <div className="w-full pb-2 mb-1 border-b border-[var(--color-border)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = selectedSlotForDetail;
+                        closeSlotDetails();
+                        setPeriodRosterTarget({ slot: target, date: todayBangkokDate });
+                      }}
+                      className="w-full min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-2 text-xs font-bold text-white cursor-pointer transition"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>ดูรายชื่อนักเรียน &amp; เช็กชื่อคาบนี้ทันที</span>
+                    </button>
+                  </div>
+                )}
+                {canUsePeriodCheckin && (() => {
+                  const detailActivity = getTimetableSlotActivityStatus({
+                    slot: selectedSlotForDetail,
+                    schoolPeriods,
+                    now: bangkokClock,
+                    schoolId,
+                  });
+                  if (!detailActivity.isActive && (!detailActivity.isTodayWeekday || detailActivity.isHolidayOff)) {
+                    return null;
+                  }
+                  return (
+                    <div className="w-full flex flex-wrap items-center gap-2 pb-2 mb-1 border-b border-[var(--color-border)]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = selectedSlotForDetail;
+                          closeSlotDetails();
+                          triggerSlotCheckin(target, todayBangkokDate, 'check_in');
+                        }}
+                        className={`flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer ${
+                          detailActivity.isActive
+                            ? 'bg-rose-600 hover:bg-rose-700'
+                            : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
+                        }`}
+                      >
+                        <LogIn className="w-4 h-4" />
+                        <span>
+                          {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckIn
+                            ? 'เช็คอินเข้าคาบ (บันทึกแล้ว)'
+                            : detailActivity.isActive
+                              ? 'เช็คอินเข้าคาบตอนนี้'
+                              : 'เช็คอินเข้าคาบ'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = selectedSlotForDetail;
+                          closeSlotDetails();
+                          triggerSlotCheckin(target, todayBangkokDate, 'check_out');
+                        }}
+                        className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>
+                          {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckOut
+                            ? 'เช็คเอาท์คาบ (บันทึกแล้ว)'
+                            : 'เช็คเอาท์ออกคาบ'}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })()}
+                {canEditTimetableSlots && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditSlotDraft({ ...selectedSlotForDetail });
+                      setIsEditingSelectedSlot(true);
+                      setSlotActionError(null);
+                    }}
+                    className="rounded-lg border border-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)]"
+                  >
+                    แก้ไขคาบนี้
+                  </button>
+                )}
+                {isViewingCurrentTerm && canManageTimetable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSlotActionError(null);
+                      void onDeleteSlot(selectedSlotForDetail.id)
+                        .then(closeSlotDetails)
+                        .catch((error: unknown) => {
+                          setSlotActionError(error instanceof Error ? error.message : String(error));
+                        });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs font-semibold hover:bg-rose-200 cursor-pointer"
+                  >
+                    ลบคาบนี้ออกจากตาราง
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={closeSlotDetails}
+                  className="ml-auto rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white"
+                >
+                  ปิด
+                </button>
+              </>
+            )
+          ) : undefined
+        }
+      >
+        {selectedSlotForDetail && (
+          <>
+            {selectedSlotForDetail.courseTitleEn && (
               <p className="text-xs text-[var(--color-text-muted)]">
                 {selectedSlotForDetail.courseTitleEn}
               </p>
+            )}
 
               {isEditingSelectedSlot && editSlotDraft ? (
                 <form id="edit-timetable-slot-form" onSubmit={handleSaveEditedSlot} className="space-y-3">
@@ -726,165 +850,39 @@ export const TimetableModals: React.FC<TimetableModalsProps> = ({
                   {slotActionError}
                 </p>
               )}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border)] pt-3">
-              {isEditingSelectedSlot ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingSelectedSlot(false);
-                      setEditSlotDraft(null);
-                      setSlotActionError(null);
-                    }}
-                    disabled={isSavingSlot}
-                    className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] disabled:opacity-50"
-                  >
-                    ยกเลิก
-                  </button>
-                  <button
-                    type="submit"
-                    form="edit-timetable-slot-form"
-                    disabled={isSavingSlot}
-                    className="ml-auto rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                  >
-                    {isSavingSlot ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {canOpenPeriodRoster && (
-                    <div className="w-full pb-2 mb-1 border-b border-[var(--color-border)]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const target = selectedSlotForDetail;
-                          closeSlotDetails();
-                          setPeriodRosterTarget({ slot: target, date: todayBangkokDate });
-                        }}
-                        className="w-full min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-3 py-2 text-xs font-bold text-white cursor-pointer transition"
-                      >
-                        <UserCheck className="w-4 h-4" />
-                        <span>ดูรายชื่อนักเรียน &amp; เช็กชื่อคาบนี้ทันที</span>
-                      </button>
-                    </div>
-                  )}
-                  {canUsePeriodCheckin && (() => {
-                    const detailActivity = getTimetableSlotActivityStatus({
-                      slot: selectedSlotForDetail,
-                      schoolPeriods,
-                      now: bangkokClock,
-                      schoolId,
-                    });
-                    if (!detailActivity.isActive && (!detailActivity.isTodayWeekday || detailActivity.isHolidayOff)) {
-                      return null;
-                    }
-                    return (
-                      <div className="w-full flex flex-wrap items-center gap-2 pb-2 mb-1 border-b border-[var(--color-border)]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const target = selectedSlotForDetail;
-                            closeSlotDetails();
-                            triggerSlotCheckin(target, todayBangkokDate, 'check_in');
-                          }}
-                          className={`flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white cursor-pointer ${
-                            detailActivity.isActive
-                              ? 'bg-rose-600 hover:bg-rose-700'
-                              : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                          }`}
-                        >
-                          <LogIn className="w-4 h-4" />
-                          <span>
-                            {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckIn
-                              ? 'เช็คอินเข้าคาบ (บันทึกแล้ว)'
-                              : detailActivity.isActive
-                                ? 'เช็คอินเข้าคาบตอนนี้'
-                                : 'เช็คอินเข้าคาบ'}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const target = selectedSlotForDetail;
-                            closeSlotDetails();
-                            triggerSlotCheckin(target, todayBangkokDate, 'check_out');
-                          }}
-                          className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 px-3 py-1.5 text-xs font-bold text-white cursor-pointer"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span>
-                            {getSlotCheckStatusForDate(selectedSlotForDetail, todayBangkokDate).hasCheckOut
-                              ? 'เช็คเอาท์คาบ (บันทึกแล้ว)'
-                              : 'เช็คเอาท์ออกคาบ'}
-                          </span>
-                        </button>
-                      </div>
-                    );
-                  })()}
-                  {canEditTimetableSlots && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditSlotDraft({ ...selectedSlotForDetail });
-                        setIsEditingSelectedSlot(true);
-                        setSlotActionError(null);
-                      }}
-                      className="rounded-lg border border-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)]"
-                    >
-                      แก้ไขคาบนี้
-                    </button>
-                  )}
-                  {isViewingCurrentTerm && canManageTimetable && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSlotActionError(null);
-                        void onDeleteSlot(selectedSlotForDetail.id)
-                          .then(closeSlotDetails)
-                          .catch((error: unknown) => {
-                            setSlotActionError(error instanceof Error ? error.message : String(error));
-                          });
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700 text-xs font-semibold hover:bg-rose-200 cursor-pointer"
-                    >
-                      ลบคาบนี้ออกจากตาราง
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={closeSlotDetails}
-                    className="ml-auto rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white"
-                  >
-                    ปิด
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
 
       {/* Add Slot Modal with Course Catalog Selector */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Plus className="w-5 h-5 text-[var(--color-primary-text)]" />
-                <span>เพิ่มคาบเรียนลงตาราง (Add Class Slot)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSlot} className="space-y-4 text-xs">
+      <BaseModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="เพิ่มคาบเรียนลงตาราง (Add Class Slot)"
+        icon={<Plus className="w-5 h-5 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] text-xs font-medium cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              form="add-timetable-slot-form"
+              disabled={isSavingSlot}
+              className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white text-xs font-semibold cursor-pointer shadow-sm"
+            >
+              {isSavingSlot ? 'กำลังบันทึก...' : 'บันทึกคาบเรียนลงตาราง'}
+            </button>
+          </>
+        }
+      >
+        <form id="add-timetable-slot-form" onSubmit={handleCreateSlot} className="space-y-4 text-xs">
               {slotActionError && (
                 <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-rose-800">
                   {slotActionError}
@@ -1113,27 +1111,8 @@ export const TimetableModals: React.FC<TimetableModalsProps> = ({
                 <TimetableColorPicker value={newColor || 'sky'} onChange={(nextColor) => setNewColor(nextColor)} />
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-primary-light)] font-medium cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingSlot}
-                  className="px-5 py-2 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 text-white font-semibold cursor-pointer shadow-sm"
-                >
-                  {isSavingSlot ? 'กำลังบันทึก...' : 'บันทึกคาบเรียนลงตาราง'}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       {showGoogleCalendarModal && (
         <GoogleCalendarSyncModal
@@ -1191,147 +1170,151 @@ export const TimetableModals: React.FC<TimetableModalsProps> = ({
         />
       )}
 
-      {showScheduleSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="timetable-schedule-settings-title"
-            className="w-full max-w-lg space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-text-body)] shadow-2xl"
-          >
-            <div>
-              <h2 id="timetable-schedule-settings-title" className="text-sm font-bold text-[var(--color-text-title)]">
-                ตั้งค่าการแสดงและพิมพ์ตารางสอน
-              </h2>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                เลือกกรองได้หลายเงื่อนไขพร้อมกัน แล้วแสดงบนหน้าจอหรือพิมพ์เฉพาะตารางที่เลือก
-              </p>
-            </div>
+      <BaseModal
+        isOpen={showScheduleSettingsModal}
+        onClose={() => setShowScheduleSettingsModal(false)}
+        title="ตั้งค่าการแสดงและพิมพ์ตารางสอน"
+        subtitle="เลือกกรองได้หลายเงื่อนไขพร้อมกัน แล้วแสดงบนหน้าจอหรือพิมพ์เฉพาะตารางที่เลือก"
+        icon={<Printer className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowScheduleSettingsModal(false)}
+              className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              disabled={filterSlotsByScheduleSettings(scheduleFilterDraft).length === 0}
+              onClick={() => {
+                setActiveScheduleFilters({ ...scheduleFilterDraft });
+                setShowScheduleSettingsModal(false);
+              }}
+              className="rounded-lg border border-[var(--color-primary)] px-3.5 py-2 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              แสดงตาราง
+            </button>
+            <button
+              type="button"
+              disabled={filterSlotsByScheduleSettings(scheduleFilterDraft).length === 0}
+              onClick={() => {
+                setActiveScheduleFilters({ ...scheduleFilterDraft });
+                setShowScheduleSettingsModal(false);
+                window.setTimeout(() => window.print(), 0);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              พิมพ์ A4
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-xs font-semibold">
+            <span>ระดับชั้น</span>
+            <select
+              value={scheduleFilterDraft.gradeLevel}
+              onChange={(event) => setScheduleFilterDraft((previous) => ({
+                ...previous,
+                gradeLevel: event.target.value,
+                classRoom: '',
+              }))}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
+            >
+              <option value="">ทุกระดับชั้น</option>
+              {gradeLevels.map((gradeLevel) => (
+                <option key={gradeLevel} value={gradeLevel}>
+                  {gradeLevel === UNASSIGNED_GRADE_LEVEL ? 'ไม่ระบุระดับชั้น' : gradeLevel}
+                </option>
+              ))}
+            </select>
+            <span className="block text-[10px] font-normal text-[var(--color-text-muted)]">
+              ห้องที่ไม่มีนักเรียนผูกระดับชั้นจะแสดงเป็น “ไม่ระบุระดับชั้น”
+            </span>
+          </label>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1 text-xs font-semibold">
-                <span>ระดับชั้น</span>
-                <select
-                  value={scheduleFilterDraft.gradeLevel}
-                  onChange={(event) => setScheduleFilterDraft((previous) => ({
-                    ...previous,
-                    gradeLevel: event.target.value,
-                    classRoom: '',
-                  }))}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
-                >
-                  <option value="">ทุกระดับชั้น</option>
-                  {gradeLevels.map((gradeLevel) => (
-                    <option key={gradeLevel} value={gradeLevel}>
-                      {gradeLevel === UNASSIGNED_GRADE_LEVEL ? 'ไม่ระบุระดับชั้น' : gradeLevel}
-                    </option>
-                  ))}
-                </select>
-                <span className="block text-[10px] font-normal text-[var(--color-text-muted)]">
-                  ห้องที่ไม่มีนักเรียนผูกระดับชั้นจะแสดงเป็น “ไม่ระบุระดับชั้น”
-                </span>
-              </label>
+          <label className="space-y-1 text-xs font-semibold">
+            <span>ห้องเรียน</span>
+            <select
+              value={scheduleFilterDraft.classRoom}
+              onChange={(event) => setScheduleFilterDraft((previous) => ({
+                ...previous,
+                classRoom: event.target.value,
+              }))}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
+            >
+              <option value="">
+                {scheduleFilterDraft.gradeLevel ? 'ทุกห้องในระดับชั้น' : 'ทุกห้อง'}
+              </option>
+              {(scheduleFilterDraft.gradeLevel
+                ? uniqueClassRooms.filter((room) => gradeRooms.get(scheduleFilterDraft.gradeLevel)?.has(normalizeTeacherName(room)))
+                : uniqueClassRooms
+              ).map((room) => (
+                <option key={room} value={room}>{room}</option>
+              ))}
+            </select>
+          </label>
 
-              <label className="space-y-1 text-xs font-semibold">
-                <span>ห้องเรียน</span>
-                <select
-                  value={scheduleFilterDraft.classRoom}
-                  onChange={(event) => setScheduleFilterDraft((previous) => ({
-                    ...previous,
-                    classRoom: event.target.value,
-                  }))}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
-                >
-                  <option value="">
-                    {scheduleFilterDraft.gradeLevel ? 'ทุกห้องในระดับชั้น' : 'ทุกห้อง'}
-                  </option>
-                  {(scheduleFilterDraft.gradeLevel
-                    ? uniqueClassRooms.filter((room) => gradeRooms.get(scheduleFilterDraft.gradeLevel)?.has(normalizeTeacherName(room)))
-                    : uniqueClassRooms
-                  ).map((room) => (
-                    <option key={room} value={room}>{room}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1 text-xs font-semibold sm:col-span-2">
-                <span>ครูผู้สอน</span>
-                <select
-                  value={scheduleFilterDraft.teacherName}
-                  onChange={(event) => setScheduleFilterDraft((previous) => ({
-                    ...previous,
-                    teacherName: event.target.value,
-                  }))}
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
-                >
-                  <option value="">ครูทุกคน</option>
-                  {scheduledTeacherNames.map((teacherName) => (
-                    <option key={normalizeTeacherName(teacherName)} value={teacherName}>{teacherName}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <p className="rounded-lg bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-body)]">
-              ตรงตามเงื่อนไข <strong className="text-[var(--color-primary-text)]">{filterSlotsByScheduleSettings(scheduleFilterDraft).length}</strong>
-              {' '}จาก {slots.length} คาบ/สัปดาห์
-            </p>
-
-            <div className="flex justify-end gap-2 border-t border-[var(--color-border)] pt-3">
-              <button
-                type="button"
-                onClick={() => setShowScheduleSettingsModal(false)}
-                className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                disabled={filterSlotsByScheduleSettings(scheduleFilterDraft).length === 0}
-                onClick={() => {
-                  setActiveScheduleFilters({ ...scheduleFilterDraft });
-                  setShowScheduleSettingsModal(false);
-                }}
-                className="rounded-lg border border-[var(--color-primary)] px-3.5 py-2 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                แสดงตาราง
-              </button>
-              <button
-                type="button"
-                disabled={filterSlotsByScheduleSettings(scheduleFilterDraft).length === 0}
-                onClick={() => {
-                  setActiveScheduleFilters({ ...scheduleFilterDraft });
-                  setShowScheduleSettingsModal(false);
-                  window.setTimeout(() => window.print(), 0);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                พิมพ์ A4
-              </button>
-            </div>
-          </section>
+          <label className="space-y-1 text-xs font-semibold sm:col-span-2">
+            <span>ครูผู้สอน</span>
+            <select
+              value={scheduleFilterDraft.teacherName}
+              onChange={(event) => setScheduleFilterDraft((previous) => ({
+                ...previous,
+                teacherName: event.target.value,
+              }))}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 py-2 text-[var(--color-text-title)]"
+            >
+              <option value="">ครูทุกคน</option>
+              {scheduledTeacherNames.map((teacherName) => (
+                <option key={normalizeTeacherName(teacherName)} value={teacherName}>{teacherName}</option>
+              ))}
+            </select>
+          </label>
         </div>
-      )}
+
+        <p className="rounded-lg bg-[var(--color-card-subtle)] px-3 py-2 text-xs text-[var(--color-text-body)]">
+          ตรงตามเงื่อนไข <strong className="text-[var(--color-primary-text)]">{filterSlotsByScheduleSettings(scheduleFilterDraft).length}</strong>
+          {' '}จาก {slots.length} คาบ/สัปดาห์
+        </p>
+      </BaseModal>
 
       {/* Academic Year & Semester Quick Edit Modal */}
-      {showPeriodEditor && onUpdateAcademicPeriod && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>แก้ไขภาคเรียนและปีการศึกษา</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowPeriodEditor(false)}
-                className="text-base font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-            <form
+      <BaseModal
+        isOpen={Boolean(showPeriodEditor && onUpdateAcademicPeriod)}
+        onClose={() => setShowPeriodEditor(false)}
+        title="แก้ไขภาคเรียนและปีการศึกษา"
+        icon={<Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-md"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowPeriodEditor(false)}
+              className="px-3.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              form="timetable-academic-period-form"
+              disabled={isSavingAcademicPeriod}
+              className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-semibold disabled:opacity-50 cursor-pointer"
+            >
+              {isSavingAcademicPeriod ? 'กำลังบันทึก...' : 'บันทึกภาคเรียน'}
+            </button>
+          </>
+        }
+      >
+        {onUpdateAcademicPeriod && (
+          <form
+            id="timetable-academic-period-form"
               onSubmit={async (e) => {
                 e.preventDefault();
                 if (!draftAcademicYear.trim() || !draftSemester.trim()) return;
@@ -1389,10 +1372,11 @@ export const TimetableModals: React.FC<TimetableModalsProps> = ({
                               setDraftSemester(remaining[0]);
                             }
                           }}
-                          className="pr-2 py-1 text-[10px] opacity-80 hover:opacity-100 cursor-pointer"
+                          className="pr-2 py-1 opacity-80 hover:opacity-100 cursor-pointer inline-flex items-center"
                           title="ลบตัวเลือกภาคเรียนนี้"
+                          aria-label="ลบตัวเลือกภาคเรียนนี้"
                         >
-                          ✕
+                          <X className="h-3 w-3" />
                         </button>
                       )}
                     </div>
@@ -1434,26 +1418,9 @@ export const TimetableModals: React.FC<TimetableModalsProps> = ({
               <p className="text-[11px] text-[var(--color-text-muted)]">
                 การเปลี่ยนแปลงนี้จะอัปเดตหัวตารางเรียน ปพ.5/ปพ.6 รายวิชา และตัวเลือกภาคเรียนของโรงเรียน {schoolName} ทันที
               </p>
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setShowPeriodEditor(false)}
-                  className="px-3.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] font-semibold cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingAcademicPeriod}
-                  className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-semibold disabled:opacity-50 cursor-pointer"
-                >
-                  {isSavingAcademicPeriod ? 'กำลังบันทึก...' : 'บันทึกภาคเรียน'}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
 
       <ConfirmActionModal
         isOpen={Boolean(pendingSlotConfirm)}

@@ -56,6 +56,8 @@ import {
   Printer,
 } from 'lucide-react';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 import { loadStaffInviteRpcSql } from '../lib/supabase';
 import { findHomeroomTeachersForRoom } from '../lib/timetableRoomMatch';
 import {
@@ -1298,49 +1300,47 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {accountsError && (
         <div role="alert" className="ui-alert ui-alert-danger shrink-0 justify-between">
           <span>{accountsError}</span>
-          <button type="button" onClick={() => setAccountsError(null)} className="text-xs font-bold cursor-pointer">✕</button>
+          <button type="button" onClick={() => setAccountsError(null)} aria-label="ปิดข้อความ" className="p-0.5 rounded cursor-pointer inline-flex items-center justify-center">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
       {accountsSuccess && (
         <div role="status" className="ui-alert ui-alert-success shrink-0 justify-between">
           <span>{accountsSuccess}</span>
-          <button type="button" onClick={() => setAccountsSuccess(null)} className="text-xs font-bold cursor-pointer">✕</button>
+          <button type="button" onClick={() => setAccountsSuccess(null)} aria-label="ปิดข้อความ" className="p-0.5 rounded cursor-pointer inline-flex items-center justify-center">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
       {/* Clean Unified Workspace Header + Underline Tabs */}
-      <div className="shrink-0 app-page-header overflow-hidden print:hidden">
-        <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="tone-chip w-10 h-10 rounded-xl">
-              <FutureNavIcon tab="students" size={20} active />
-            </span>
-            <div className="min-w-0">
-              <div className="module-category-kicker">01 · ทะเบียน &amp; ตารางเรียน</div>
-              <h1 className="text-base sm:text-lg font-bold text-[var(--color-text-title)] leading-tight truncate">
-                ทะเบียนนักเรียน (DMC / SIS)
-              </h1>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-[var(--color-text-muted)] tabular-nums truncate">
-                <span>ทั้งหมด {students.length} คน</span>
+      <PageHeader
+        noPrint
+        icon={<FutureNavIcon tab="students" size={20} active />}
+        kicker="01 · ทะเบียน & ตารางเรียน"
+        title="ทะเบียนนักเรียน (DMC / SIS)"
+        description={
+          <div className="flex items-center gap-2 tabular-nums truncate">
+            <span>ทั้งหมด {students.length} คน</span>
+            <span aria-hidden="true">·</span>
+            <span>กำลังศึกษา {activeStudentsCount} คน</span>
+            {pendingAccountsCount > 0 && (
+              <>
                 <span aria-hidden="true">·</span>
-                <span>กำลังศึกษา {activeStudentsCount} คน</span>
-                {pendingAccountsCount > 0 && (
-                  <>
-                    <span aria-hidden="true">·</span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('approvals')}
-                      className="text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
-                    >
-                      รออนุมัติ {pendingAccountsCount} บัญชี
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('approvals')}
+                  className="text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer"
+                >
+                  รออนุมัติ {pendingAccountsCount} บัญชี
+                </button>
+              </>
+            )}
           </div>
-
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        }
+        actions={
+          <>
             <ModuleTourTrigger moduleId="students" lang="th" />
             {activeTab === 'roster' && (
               <>
@@ -1435,52 +1435,53 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 />
               </>
             )}
-          </div>
-        </div>
-
-        {/* Clean Underline Tabs */}
-        <nav
-          aria-label="หมวดหมู่งานทะเบียนนักเรียน"
-          data-guide-id="students-tabs"
-          className="border-t border-[var(--color-border)] px-3 sm:px-4 flex items-center gap-1 overflow-x-auto no-scrollbar"
-        >
-          {[
-            { id: 'roster' as const, label: 'รายชื่อนักเรียน', icon: Users },
-            { id: 'gradebook' as const, label: 'บันทึกคะแนน & ปพ.', icon: Award },
-            { id: 'moe_registry' as const, label: 'เอกสาร สพฐ. (ปพ.1–8)', icon: FileText },
-            { id: 'dev_book' as const, label: 'สมุดคุณภาพผู้เรียน', icon: BookMarked },
-            ...(canManageApprovals
-              ? [{ id: 'approvals' as const, label: 'อนุมัติบัญชี', icon: UserCheck, count: pendingAccountsCount }]
-              : []),
-            { id: 'analytics' as const, label: 'สถิติระดับชั้น', icon: GraduationCap },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                data-guide-id={tab.id === 'approvals' ? 'students-approvals-tab' : undefined}
-                data-active={isActive}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative inline-flex items-center gap-1.5 px-3 py-2.5 text-xs whitespace-nowrap shrink-0 border-b-2 transition-colors cursor-pointer ${
-                  isActive
-                    ? 'border-[var(--tone)] text-[var(--tone)] font-semibold'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span>{tab.label}</span>
-                {'count' in tab && typeof tab.count === 'number' && tab.count > 0 && (
-                  <span className="ml-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                    ({tab.count})
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+          </>
+        }
+        subHeaderClassName="!mt-2.5 !pt-0 px-1"
+        subHeader={
+          <nav
+            aria-label="หมวดหมู่งานทะเบียนนักเรียน"
+            data-guide-id="students-tabs"
+            className="flex items-center gap-1 overflow-x-auto no-scrollbar"
+          >
+            {[
+              { id: 'roster' as const, label: 'รายชื่อนักเรียน', icon: Users },
+              { id: 'gradebook' as const, label: 'บันทึกคะแนน & ปพ.', icon: Award },
+              { id: 'moe_registry' as const, label: 'เอกสาร สพฐ. (ปพ.1–8)', icon: FileText },
+              { id: 'dev_book' as const, label: 'สมุดคุณภาพผู้เรียน', icon: BookMarked },
+              ...(canManageApprovals
+                ? [{ id: 'approvals' as const, label: 'อนุมัติบัญชี', icon: UserCheck, count: pendingAccountsCount }]
+                : []),
+              { id: 'analytics' as const, label: 'สถิติระดับชั้น', icon: GraduationCap },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  data-guide-id={tab.id === 'approvals' ? 'students-approvals-tab' : undefined}
+                  data-active={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative inline-flex items-center gap-1.5 px-3 py-2.5 text-xs whitespace-nowrap shrink-0 border-b-2 transition-colors cursor-pointer ${
+                    isActive
+                      ? 'border-[var(--tone)] text-[var(--tone)] font-semibold'
+                      : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{tab.label}</span>
+                  {'count' in tab && typeof tab.count === 'number' && tab.count > 0 && (
+                    <span className="ml-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                      ({tab.count})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        }
+      />
 
       {activeTab === 'roster' && (() => {
         const extraRosterFilterCount =
@@ -2341,17 +2342,26 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       )}
 
-      {showBulkAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-base font-bold">เพิ่มนักเรียนทั้งห้อง (Batch Room Enrollment)</h3>
-                <p className="text-xs text-emerald-100 mt-0.5">เลือกห้องเรียน 1 ครั้ง แล้วกรอกตารางหรือวางรายชื่อจาก Excel ได้ทันที</p>
-              </div>
-              <button type="button" onClick={() => setShowBulkAddModal(false)} className="p-1.5 rounded-xl hover:bg-white/20 text-lg font-bold cursor-pointer">×</button>
-            </div>
-            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+      <BaseModal
+        isOpen={showBulkAddModal}
+        onClose={() => setShowBulkAddModal(false)}
+        title="เพิ่มนักเรียนทั้งห้อง (Batch Room Enrollment)"
+        subtitle="เลือกห้องเรียน 1 ครั้ง แล้วกรอกตารางหรือวางรายชื่อจาก Excel ได้ทันที"
+        icon={<Users className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />}
+        maxWidthClass="max-w-3xl"
+        heightClass="max-h-[92vh]"
+        zIndexClass="z-50"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-4"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowBulkAddModal(false)} className="px-4 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold cursor-pointer">ยกเลิก</button>
+            <button type="button" onClick={handleSaveBulkStudents} className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer">
+              บันทึกนักเรียนทั้งห้อง
+            </button>
+          </>
+        }
+      >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-xs font-semibold text-[var(--color-text-body)]">
                   ระดับชั้น
@@ -2509,10 +2519,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => setBulkTableRows((prev) => prev.filter((_, i) => i !== idx))}
-                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded cursor-pointer inline-flex items-center justify-center"
                                     title="ลบแถว"
+                                    aria-label="ลบแถว"
                                   >
-                                    ×
+                                    <X className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                               </td>
@@ -2541,24 +2552,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </>
               )}
               {bulkAddError && <p role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300">{bulkAddError}</p>}
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-                <button type="button" onClick={() => setShowBulkAddModal(false)} className="px-4 py-2 rounded-xl border border-[var(--color-border)] text-xs font-semibold cursor-pointer">ยกเลิก</button>
-                <button type="button" onClick={handleSaveBulkStudents} className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer">
-                  บันทึกนักเรียนทั้งห้อง
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
-      {showRoomPresetModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl text-xs">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)]">ตั้งค่าระดับชั้นและห้องเรียนของโรงเรียน</h3>
-              <button type="button" onClick={() => setShowRoomPresetModal(false)} className="text-lg font-bold text-[var(--color-text-muted)] px-2 cursor-pointer">×</button>
-            </div>
+      <BaseModal
+        isOpen={showRoomPresetModal}
+        onClose={() => setShowRoomPresetModal(false)}
+        title="ตั้งค่าระดับชั้นและห้องเรียนของโรงเรียน"
+        icon={<GraduationCap className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-xl"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 text-xs"
+      >
             <div className="space-y-2">
               <div className="font-bold text-[var(--color-text-title)]">ระดับชั้น ({presets.gradeLevels.length})</div>
               <div className="flex gap-2">
@@ -2587,7 +2592,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   <span key={lvl} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
                     <span>{lvl}</span>
                     {presets.gradeLevels.length > 1 && (
-                      <button type="button" onClick={() => updatePresets({ gradeLevels: presets.gradeLevels.filter((x) => x !== lvl) })} className="text-rose-600 font-bold cursor-pointer">×</button>
+                      <button type="button" onClick={() => updatePresets({ gradeLevels: presets.gradeLevels.filter((x) => x !== lvl) })} className="text-rose-600 font-bold cursor-pointer inline-flex items-center" aria-label={`ลบระดับชั้น ${lvl}`}><X className="w-3 h-3" /></button>
                     )}
                   </span>
                 ))}
@@ -2729,34 +2734,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               {roomPresetError && <p role="alert" className="text-xs font-semibold text-rose-700">{roomPresetError}</p>}
               {isSavingRoomOptions && <p role="status" className="text-xs text-[var(--color-text-muted)]">กำลังบันทึกรายการห้องเรียน...</p>}
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       {/* Add / Edit Student Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="px-6 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-blue-300" />
-                  {editingStudent ? 'แก้ไขข้อมูลนักเรียน (Edit Student Profile)' : 'เพิ่มนักเรียนใหม่ (Enroll New Student)'}
-                </h3>
-                <p className="text-xs text-blue-100/90 mt-0.5">
-                  ระบุข้อมูลนักเรียน ระดับชั้น (อนุบาล–ม.6) สถานะนักเรียน และข้อมูลผู้ปกครอง
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="p-1.5 rounded-xl hover:bg-white/20 text-white transition cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveStudent} className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto text-xs">
+      <BaseModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={editingStudent ? 'แก้ไขข้อมูลนักเรียน (Edit Student Profile)' : 'เพิ่มนักเรียนใหม่ (Enroll New Student)'}
+        subtitle="ระบุข้อมูลนักเรียน ระดับชั้น (อนุบาล–ม.6) สถานะนักเรียน และข้อมูลผู้ปกครอง"
+        icon={<UserCheck className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-2xl"
+        heightClass="max-h-[92vh]"
+        zIndexClass="z-50"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+            <form onSubmit={handleSaveStudent} className="space-y-4 text-xs">
               {studentFormError && (
                 <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
                   {studentFormError}
@@ -3236,9 +3229,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </div>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       {/* Student Photo Modal */}
       <ImageCaptureUploadModal
@@ -3258,27 +3249,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       />
 
       {/* Invite Student or Parent Modal */}
-      {inviteDialog && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                {inviteDialog.role === 'parent' ? <Send className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
-                <h3 className="text-sm font-bold">
-                  {inviteDialog.role === 'parent'
-                    ? 'เชิญผู้ปกครองเข้าใช้งานแอปและผูกกับนักเรียน'
-                    : 'เชิญนักเรียนตั้งค่าบัญชีเข้าสู่ระบบ'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInviteDialog(null)}
-                className="p-1 rounded-lg hover:bg-white/15 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={(e) => void handleSubmitInviteDialog(e)} className="p-5 space-y-4 overflow-y-auto">
+      <BaseModal
+        isOpen={Boolean(inviteDialog)}
+        onClose={() => setInviteDialog(null)}
+        title={
+          inviteDialog?.role === 'parent'
+            ? 'เชิญผู้ปกครองเข้าใช้งานแอปและผูกกับนักเรียน'
+            : 'เชิญนักเรียนตั้งค่าบัญชีเข้าสู่ระบบ'
+        }
+        icon={inviteDialog?.role === 'parent' ? <Send className="w-4 h-4 text-[var(--color-primary-text)]" /> : <Mail className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5"
+      >
+        {inviteDialog && (
+          <form onSubmit={(e) => void handleSubmitInviteDialog(e)} className="space-y-4">
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 text-xs space-y-1">
                 <p className="font-bold text-[var(--color-text-title)]">
                   นักเรียน: {inviteDialog.student.firstNameTh} {inviteDialog.student.lastNameTh}
@@ -3453,9 +3439,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 </>
               )}
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
 
       <ConfirmActionModal
         isOpen={Boolean(pendingConfirm)}

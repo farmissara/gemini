@@ -26,6 +26,8 @@ import {
   X,
 } from 'lucide-react';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
 import { LEARNING_STRANDS } from '../data/examQuestionBanks';
 import {
@@ -661,79 +663,72 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
   return (
     <div className={`space-y-5 ${getModuleTone('central_exam_hub')}`}>
       {/* Header & Action Buttons */}
-      <div className="app-page-header p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-            <FutureNavIcon tab="super_admin_central_exams" size={20} active />
-          </div>
-          <div className="space-y-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--tone)]">
-              <span>คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ (Central Exam Distribution)</span>
-              <span className="text-[var(--color-text-muted)] font-normal">
-                · {packs.length} ชุด · {totalQuestionsCount} ข้อ
-              </span>
-            </div>
-            <h3 className="text-base font-extrabold text-[var(--color-text-title)]">
-              สร้าง นำเข้า ตั้งราคา (ฟรี / แบบซื้อ) และเผยแพร่ข้อสอบกลางสู่ทุกโรงเรียน
-            </h3>
-            <p className="text-xs text-[var(--color-text-body)]">
-              เมื่อ Super Admin กดเผยแพร่ชุดข้อสอบ ระบบจะส่ง Pop-up แจ้งเตือนข้อสอบใหม่ไปที่หน้าแอดมินโรงเรียนเพื่อกดรับฟรีหรือสั่งซื้อเข้าคลังโรงเรียนทันที
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        icon={<FutureNavIcon tab="super_admin_central_exams" size={20} active />}
+        kicker={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span>คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ (Central Exam Distribution)</span>
+            <span className="text-[var(--color-text-muted)] font-normal">
+              · {packs.length} ชุด · {totalQuestionsCount} ข้อ
+            </span>
+          </span>
+        }
+        title="สร้าง นำเข้า ตั้งราคา (ฟรี / แบบซื้อ) และเผยแพร่ข้อสอบกลางสู่ทุกโรงเรียน"
+        description="เมื่อ Super Admin กดเผยแพร่ชุดข้อสอบ ระบบจะส่ง Pop-up แจ้งเตือนข้อสอบใหม่ไปที่หน้าแอดมินโรงเรียนเพื่อกดรับฟรีหรือสั่งซื้อเข้าคลังโรงเรียนทันที"
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowCreatePackModal(true)}
+              className="btn-action-primary"
+            >
+              <Plus className="w-4 h-4" />
+              <span>สร้างชุดข้อสอบกลางใหม่</span>
+            </button>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowCreatePackModal(true)}
-            className="btn-action-primary"
-          >
-            <Plus className="w-4 h-4" />
-            <span>สร้างชุดข้อสอบกลางใหม่</span>
-          </button>
-
-          <TableActionMenu
-            size="md"
-            ariaLabel="เครื่องมือคลังข้อสอบกลาง"
-            menuWidth={255}
-            items={[
-              ...(missingBuiltInCount > 0
-                ? [
-                    {
-                      id: 'sync-builtin',
-                      label: isSyncingDefaults
-                        ? 'กำลังซิงก์ข้อสอบ...'
-                        : `เติมข้อสอบกลาง (+${missingBuiltInCount} ชุด)`,
-                      icon: <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDefaults ? 'animate-spin' : ''}`} />,
-                      variant: 'primary' as const,
-                      disabled: isSyncingDefaults,
-                      onClick: () => void handleSyncBuiltInPacks(),
-                    },
-                  ]
-                : []),
-              {
-                id: 'import-packs',
-                label: 'นำเข้าข้อสอบ CSV / JSON',
-                icon: <Upload className="w-3.5 h-3.5 tone-text" />,
-                onClick: () => setShowImportModal(true),
-              },
-              {
-                id: 'csv-template',
-                label: 'ดาวน์โหลดเทมเพลต CSV',
-                icon: <Download className="w-3.5 h-3.5" />,
-                onClick: handleDownloadCsvTemplate,
-              },
-              {
-                id: 'promptpay-settings',
-                label: 'ตั้งค่า QR PromptPay รับเงิน',
-                icon: <CreditCard className="w-3.5 h-3.5" />,
-                dividerBefore: true,
-                onClick: () => setShowPaymentSettingsModal(true),
-              },
-            ]}
-          />
-        </div>
-      </div>
+            <TableActionMenu
+              size="md"
+              ariaLabel="เครื่องมือคลังข้อสอบกลาง"
+              menuWidth={255}
+              items={[
+                ...(missingBuiltInCount > 0
+                  ? [
+                      {
+                        id: 'sync-builtin',
+                        label: isSyncingDefaults
+                          ? 'กำลังซิงก์ข้อสอบ...'
+                          : `เติมข้อสอบกลาง (+${missingBuiltInCount} ชุด)`,
+                        icon: <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDefaults ? 'animate-spin' : ''}`} />,
+                        variant: 'primary' as const,
+                        disabled: isSyncingDefaults,
+                        onClick: () => void handleSyncBuiltInPacks(),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'import-packs',
+                  label: 'นำเข้าข้อสอบ CSV / JSON',
+                  icon: <Upload className="w-3.5 h-3.5 tone-text" />,
+                  onClick: () => setShowImportModal(true),
+                },
+                {
+                  id: 'csv-template',
+                  label: 'ดาวน์โหลดเทมเพลต CSV',
+                  icon: <Download className="w-3.5 h-3.5" />,
+                  onClick: handleDownloadCsvTemplate,
+                },
+                {
+                  id: 'promptpay-settings',
+                  label: 'ตั้งค่า QR PromptPay รับเงิน',
+                  icon: <CreditCard className="w-3.5 h-3.5" />,
+                  dividerBefore: true,
+                  onClick: () => setShowPaymentSettingsModal(true),
+                },
+              ]}
+            />
+          </>
+        }
+      />
 
       {feedbackMessage && (
         <div
@@ -1446,24 +1441,17 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
     )}
 
       {/* CREATE PACK MODAL */}
-      {showCreatePackModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <h3 className="text-base font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>สร้างชุดข้อสอบกลางใหม่</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowCreatePackModal(false)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePack} className="space-y-3 text-xs">
+      <BaseModal
+        isOpen={showCreatePackModal}
+        onClose={() => setShowCreatePackModal(false)}
+        title="สร้างชุดข้อสอบกลางใหม่"
+        icon={<Layers className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5"
+      >
+        <form onSubmit={handleCreatePack} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-[var(--color-text-title)] mb-1">
                   ชื่อชุดข้อสอบกลาง (ภาษาไทย) *
@@ -1594,30 +1582,21 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                   บันทึกชุดข้อสอบ (ฉบับร่าง)
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* ADD SINGLE QUESTION MODAL */}
-      {addQuestionTargetPackId && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <h3 className="text-base font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>เพิ่มข้อสอบรายข้อเข้าชุดกลาง</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setAddQuestionTargetPackId(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveQuestionToPack} className="space-y-3 text-xs">
+      <BaseModal
+        isOpen={Boolean(addQuestionTargetPackId)}
+        onClose={() => setAddQuestionTargetPackId(null)}
+        title="เพิ่มข้อสอบรายข้อเข้าชุดกลาง"
+        icon={<Plus className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-xl"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5"
+      >
+        <form onSubmit={handleSaveQuestionToPack} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-[var(--color-text-title)] mb-1">รายวิชา / สาระ</label>
@@ -1703,30 +1682,21 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                   บันทึกข้อสอบเข้าชุดกลาง
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* IMPORT CSV / JSON MODAL */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <h3 className="text-base font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>นำเข้าข้อสอบกลางจำนวนมาก (CSV / JSON)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowImportModal(false)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleConfirmImport} className="space-y-3.5 text-xs">
+      <BaseModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="นำเข้าข้อสอบกลางจำนวนมาก (CSV / JSON)"
+        icon={<FileSpreadsheet className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-2xl"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5"
+      >
+        <form onSubmit={handleConfirmImport} className="space-y-3.5 text-xs">
               {/* Target mode */}
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -1917,108 +1887,101 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                   ยืนยันนำเข้า ({parsedImportPreview.length} ข้อ)
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Modal: Super Admin PromptPay & Payment Settings */}
-      {showPaymentSettingsModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-5xl p-6 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="font-extrabold text-base text-[var(--color-text-title)]">
-                  ตั้งค่าระบบรับเงิน PromptPay &amp; อัปโหลด QR Code ขายข้อสอบ
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPaymentSettingsModal(false)}
-                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <CentralExamPaymentSettingsView
-              adminEmail={adminDisplayName}
-              onSaved={() => {
-                setFeedbackMessage({
-                  type: 'success',
-                  text: 'บันทึกการตั้งค่า QR PromptPay รับเงินขายข้อสอบเรียบร้อยแล้ว!',
-                });
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <BaseModal
+        isOpen={showPaymentSettingsModal}
+        onClose={() => setShowPaymentSettingsModal(false)}
+        title="ตั้งค่าระบบรับเงิน PromptPay & อัปโหลด QR Code ขายข้อสอบ"
+        icon={<CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+        maxWidthClass="max-w-5xl"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <CentralExamPaymentSettingsView
+          adminEmail={adminDisplayName}
+          onSaved={() => {
+            setFeedbackMessage({
+              type: 'success',
+              text: 'บันทึกการตั้งค่า QR PromptPay รับเงินขายข้อสอบเรียบร้อยแล้ว!',
+            });
+          }}
+        />
+      </BaseModal>
 
       {/* MODAL: Fullscreen Slip Lightbox Modal */}
-      {selectedSlipImage && (
-        <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-lg w-full p-5 space-y-3 shadow-2xl relative">
-            <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-amber-600" />
-                <h4 className="font-extrabold text-sm text-[var(--color-text-title)]">
-                  ภาพสลิปหลักฐานการโอนเงิน (ตรวจสอบย้อนหลัง 100%)
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedSlipImage(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-2 bg-slate-900 rounded-xl flex items-center justify-center max-h-[70vh] overflow-auto">
-              <img
-                src={selectedSlipImage}
-                alt="Full Slip"
-                className="max-h-[65vh] w-auto object-contain rounded-lg shadow-md"
-              />
-            </div>
-
-            <div className="flex justify-between items-center text-xs pt-1">
-              <span className="text-[11px] text-[var(--color-text-muted)]">
-                ตรวจสอบความถูกต้องของจำนวนเงิน, วันที่, และบัญชีผู้รับ
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedSlipImage(null)}
-                className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white font-bold cursor-pointer"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
+      <BaseModal
+        isOpen={Boolean(selectedSlipImage)}
+        onClose={() => setSelectedSlipImage(null)}
+        title="ภาพสลิปหลักฐานการโอนเงิน (ตรวจสอบย้อนหลัง 100%)"
+        icon={<CreditCard className="w-4 h-4 text-amber-600" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-[80]"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-3"
+        footerClassName="justify-between"
+        footer={
+          <>
+            <span className="text-[11px] text-[var(--color-text-muted)]">
+              ตรวจสอบความถูกต้องของจำนวนเงิน, วันที่, และบัญชีผู้รับ
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedSlipImage(null)}
+              className="px-4 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold cursor-pointer"
+            >
+              ปิดหน้าต่าง
+            </button>
+          </>
+        }
+      >
+        {selectedSlipImage && (
+          <div className="p-2 bg-slate-900 rounded-xl flex items-center justify-center max-h-[70vh] overflow-auto">
+            <img
+              src={selectedSlipImage}
+              alt="Full Slip"
+              className="max-h-[65vh] w-auto object-contain rounded-lg shadow-md"
+            />
           </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
 
       {/* MODAL: Revocation Confirmation Modal */}
-      {revokingEntitlement && (
-        <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-                <ShieldAlert className="w-5 h-5" />
-                <h4 className="font-extrabold text-base text-[var(--color-text-title)]">
-                  เพิกถอนสิทธิ์ / ดึงข้อสอบกลับ
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRevokingEntitlement(null)}
-                className="p-1 rounded hover:bg-black/10 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+      <BaseModal
+        isOpen={Boolean(revokingEntitlement)}
+        onClose={() => setRevokingEntitlement(null)}
+        closeDisabled={isProcessingAudit}
+        title="เพิกถอนสิทธิ์ / ดึงข้อสอบกลับ"
+        icon={<ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
+        maxWidthClass="max-w-md"
+        zIndexClass="z-[80]"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isProcessingAudit}
+              onClick={() => setRevokingEntitlement(null)}
+              className="px-4 py-2 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              disabled={isProcessingAudit}
+              onClick={() => void handleConfirmRevoke()}
+              className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>{isProcessingAudit ? 'กำลังดำเนินการ...' : 'ยืนยันเพิกถอนและดึงข้อสอบกลับ'}</span>
+            </button>
+          </>
+        }
+      >
+        {revokingEntitlement && (
+          <>
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700 text-xs text-rose-900 dark:text-rose-200 space-y-1">
               <div className="font-bold flex items-center gap-1">
                 <AlertTriangle className="w-4 h-4 text-rose-600" />
@@ -2042,29 +2005,9 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
                 className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)]"
               />
             </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-              <button
-                type="button"
-                disabled={isProcessingAudit}
-                onClick={() => setRevokingEntitlement(null)}
-                className="px-4 py-2 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-body)] cursor-pointer"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                disabled={isProcessingAudit}
-                onClick={() => void handleConfirmRevoke()}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <ShieldAlert className="w-4 h-4" />
-                <span>{isProcessingAudit ? 'กำลังดำเนินการ...' : 'ยืนยันเพิกถอนและดึงข้อสอบกลับ'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
       <ConfirmActionModal
         isOpen={Boolean(pendingPackDeletion)}
         tone="danger"

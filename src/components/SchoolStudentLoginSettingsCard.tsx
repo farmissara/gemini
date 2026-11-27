@@ -24,6 +24,7 @@ import { School, AppLanguage } from '../types';
 import { QrCodeMatrix } from './QrCodeMatrix';
 import { getSupabaseClient } from '../lib/supabase';
 import { normalizeSchoolStudentIdPolicy } from '../lib/studentIdPolicy';
+import { BaseModal } from './common/BaseModal';
 
 interface SchoolStudentLoginSettingsCardProps {
   activeSchool: School;
@@ -745,23 +746,34 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
       </div>
 
       {/* QR Code Printable Modal */}
-      {showQrPrintModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b pb-3 border-slate-200">
-              <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-blue-600" />
-                <h3 className="font-extrabold text-sm text-slate-900">แผ่นป้าย QR Code ประจำโรงเรียนสำหรับนักเรียน</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowQrPrintModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
+      <BaseModal
+        isOpen={showQrPrintModal}
+        onClose={() => setShowQrPrintModal(false)}
+        title="แผ่นป้าย QR Code ประจำโรงเรียนสำหรับนักเรียน"
+        icon={<Printer className="w-5 h-5 text-blue-600" />}
+        maxWidthClass="max-w-md"
+        showMobileHandle
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 bg-white text-slate-900"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowQrPrintModal(false)}
+              className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer"
+            >
+              ปิด
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Printer className="w-4 h-4" />
+              <span>พิมพ์แผ่นป้าย (Print)</span>
+            </button>
+          </>
+        }
+      >
             <div id="school-student-qr-poster" className="p-6 bg-slate-50 border-2 border-dashed border-blue-400 rounded-2xl flex flex-col items-center text-center space-y-3">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-extrabold">
                 <Building2 className="w-3.5 h-3.5" />
@@ -791,27 +803,7 @@ export const SchoolStudentLoginSettingsCard: React.FC<SchoolStudentLoginSettings
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setShowQrPrintModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 cursor-pointer"
-              >
-                ปิด
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                <Printer className="w-4 h-4" />
-                <span>พิมพ์แผ่นป้าย (Print)</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

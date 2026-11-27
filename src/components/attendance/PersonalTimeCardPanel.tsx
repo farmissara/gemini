@@ -6,10 +6,10 @@ import {
   FileEdit,
   FileText,
   MoreVertical,
-  X,
 } from 'lucide-react';
 import type { AppLanguage, AttendanceCheckType, AttendanceRecord } from '../../types';
 import AttendancePhoto from '../AttendancePhoto';
+import { BaseModal } from '../common/BaseModal';
 import {
   formatShortAttendanceTime,
   getStatusLabel,
@@ -426,156 +426,119 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
       )}
 
       {/* 3-Dots Action Sheet Modal for Selected Day */}
-      {actionRowMenu && (
-        <div className="fixed inset-0 z-[70] bg-slate-950/55 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <button
-            type="button"
-            className="absolute inset-0 w-full h-full cursor-default"
-            aria-label={lang === 'th' ? 'ปิดเมนู' : 'Close menu'}
-            onClick={() => setActionRowMenu(null)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="relative w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl p-4 space-y-3 safe-area-bottom"
-          >
-            <div className="flex items-start justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
-                  {lang === 'th' ? actionRowMenu.dateLabelTh : actionRowMenu.dateLabelEn} ·{' '}
-                  {getStatusLabel(actionRowMenu, lang)}
-                </p>
-                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
-                  {lang === 'th' ? 'เข้า' : 'In'}: {actionRowMenu.checkInTime || '-'} ·{' '}
-                  {lang === 'th' ? 'ออก' : 'Out'}: {actionRowMenu.checkOutTime || '-'}
-                  {actionRowMenu.durationLabel ? ` · ${actionRowMenu.durationLabel} ชม.` : ''}
-                </p>
-              </div>
+      <BaseModal
+        isOpen={Boolean(actionRowMenu)}
+        onClose={() => setActionRowMenu(null)}
+        title={
+          actionRowMenu
+            ? `${lang === 'th' ? actionRowMenu.dateLabelTh : actionRowMenu.dateLabelEn} · ${getStatusLabel(actionRowMenu, lang)}`
+            : ''
+        }
+        subtitle={
+          actionRowMenu
+            ? `${lang === 'th' ? 'เข้า' : 'In'}: ${actionRowMenu.checkInTime || '-'} · ${lang === 'th' ? 'ออก' : 'Out'}: ${actionRowMenu.checkOutTime || '-'}${actionRowMenu.durationLabel ? ` · ${actionRowMenu.durationLabel} ชม.` : ''}`
+            : undefined
+        }
+        showMobileHandle
+        zIndexClass="z-[70]"
+        maxWidthClass="max-w-md"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-1.5 safe-area-bottom"
+      >
+        {actionRowMenu && (
+          <>
+            {onOpenCorrectionFromHistory && (
               <button
                 type="button"
-                onClick={() => setActionRowMenu(null)}
-                className="min-h-[40px] min-w-[40px] rounded-xl hover:bg-[var(--color-card-subtle)] flex items-center justify-center text-[var(--color-text-muted)] cursor-pointer"
-                aria-label={lang === 'th' ? 'ปิด' : 'Close'}
+                onClick={() => {
+                  const row = actionRowMenu;
+                  setActionRowMenu(null);
+                  onOpenCorrectionFromHistory(row);
+                }}
+                className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center gap-3 text-left cursor-pointer transition"
               >
-                <X className="w-4 h-4" />
+                <FileEdit className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ขอแก้เวลา / ยืนยันเวลา' : 'Request Time Correction'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? 'กรณีลืมสแกนเข้า-ออก มาสาย หรือเวลาคลาดเคลื่อน'
+                      : 'Forgot scan, late arrival, or mismatch'}
+                  </p>
+                </div>
               </button>
-            </div>
+            )}
 
-            <div className="space-y-1.5">
-              {onOpenCorrectionFromHistory && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const row = actionRowMenu;
-                    setActionRowMenu(null);
-                    onOpenCorrectionFromHistory(row);
-                  }}
-                  className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center gap-3 text-left cursor-pointer transition"
-                >
-                  <FileEdit className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ขอแก้เวลา / ยืนยันเวลา' : 'Request Time Correction'}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      {lang === 'th'
-                        ? 'กรณีลืมสแกนเข้า-ออก มาสาย หรือเวลาคลาดเคลื่อน'
-                        : 'Forgot scan, late arrival, or mismatch'}
-                    </p>
-                  </div>
-                </button>
-              )}
+            {onOpenLeaveFromHistory && (
+              <button
+                type="button"
+                onClick={() => {
+                  const row = actionRowMenu;
+                  setActionRowMenu(null);
+                  onOpenLeaveFromHistory(row);
+                }}
+                className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center gap-3 text-left cursor-pointer transition"
+              >
+                <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ยื่นใบลา (ป่วย / กิจ / ราชการ)' : 'Submit Leave Request'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th'
+                      ? `ระบุวันที่ ${actionRowMenu.dateLabelTh} อัตโนมัติ`
+                      : `Pre-filled for ${actionRowMenu.dateLabelEn}`}
+                  </p>
+                </div>
+              </button>
+            )}
 
-              {onOpenLeaveFromHistory && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const row = actionRowMenu;
-                    setActionRowMenu(null);
-                    onOpenLeaveFromHistory(row);
-                  }}
-                  className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center gap-3 text-left cursor-pointer transition"
-                >
-                  <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ยื่นใบลา (ป่วย / กิจ / ราชการ)' : 'Submit Leave Request'}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      {lang === 'th'
-                        ? `ระบุวันที่ ${actionRowMenu.dateLabelTh} อัตโนมัติ`
-                        : `Pre-filled for ${actionRowMenu.dateLabelEn}`}
-                    </p>
-                  </div>
-                </button>
-              )}
-
-              {(resolveRecordPhotoSource(actionRowMenu.checkInRecord) ||
-                resolveRecordPhotoSource(actionRowMenu.checkOutRecord)) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const row = actionRowMenu;
-                    setActionRowMenu(null);
-                    setPhotoPreviewTarget({
-                      title:
-                        personName ||
-                        (lang === 'th' ? 'ภาพถ่ายและเวลาลงเวลา' : 'Attendance Photos & Times'),
-                      dateLabel: lang === 'th' ? row.dateLabelTh : row.dateLabelEn,
-                      checkInRecord: row.checkInRecord,
-                      checkOutRecord: row.checkOutRecord,
-                    });
-                  }}
-                  className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center gap-3 text-left cursor-pointer transition"
-                >
-                  <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[var(--color-text-title)]">
-                      {lang === 'th' ? 'ดูรูปถ่ายลงเวลา' : 'View Check-in / Out Photos'}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">
-                      {lang === 'th' ? 'ตรวจสอบภาพเซลฟี่และเวลาที่บันทึกจริง' : 'Inspect recorded photos & timestamps'}
-                    </p>
-                  </div>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+            {(resolveRecordPhotoSource(actionRowMenu.checkInRecord) ||
+              resolveRecordPhotoSource(actionRowMenu.checkOutRecord)) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const row = actionRowMenu;
+                  setActionRowMenu(null);
+                  setPhotoPreviewTarget({
+                    title:
+                      personName ||
+                      (lang === 'th' ? 'ภาพถ่ายและเวลาลงเวลา' : 'Attendance Photos & Times'),
+                    dateLabel: lang === 'th' ? row.dateLabelTh : row.dateLabelEn,
+                    checkInRecord: row.checkInRecord,
+                    checkOutRecord: row.checkOutRecord,
+                  });
+                }}
+                className="w-full min-h-[48px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center gap-3 text-left cursor-pointer transition"
+              >
+                <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[var(--color-text-title)]">
+                    {lang === 'th' ? 'ดูรูปถ่ายลงเวลา' : 'View Check-in / Out Photos'}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'ตรวจสอบภาพเซลฟี่และเวลาที่บันทึกจริง' : 'Inspect recorded photos & timestamps'}
+                  </p>
+                </div>
+              </button>
+            )}
+          </>
+        )}
+      </BaseModal>
 
       {/* Photo & Timestamp Preview Modal */}
-      {photoPreviewTarget && (
-        <div className="fixed inset-0 z-[75] bg-slate-950/70 flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="absolute inset-0 w-full h-full cursor-default"
-            aria-label={lang === 'th' ? 'ปิดภาพตัวอย่าง' : 'Close preview'}
-            onClick={() => setPhotoPreviewTarget(null)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="relative w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl p-4 space-y-3"
-          >
-            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                  {photoPreviewTarget.title}
-                </p>
-                <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
-                  {photoPreviewTarget.dateLabel}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPhotoPreviewTarget(null)}
-                className="min-h-[40px] min-w-[40px] rounded-xl hover:bg-[var(--color-card-subtle)] flex items-center justify-center text-[var(--color-text-muted)] cursor-pointer"
-                aria-label={lang === 'th' ? 'ปิด' : 'Close'}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <BaseModal
+        isOpen={Boolean(photoPreviewTarget)}
+        onClose={() => setPhotoPreviewTarget(null)}
+        title={photoPreviewTarget?.title || ''}
+        subtitle={photoPreviewTarget?.dateLabel}
+        icon={<Camera className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        zIndexClass="z-[75]"
+        maxWidthClass="max-w-md"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"
+      >
+        {photoPreviewTarget && (
 
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -623,9 +586,8 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
                 );
               })}
             </div>
-          </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
     </div>
   );
 };

@@ -33,6 +33,7 @@ import { QrCodeMatrix } from '../../components/QrCodeMatrix';
 import { PagedList } from '../../components/PagedList';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { TableActionMenu } from '../../components/common/TableActionMenu';
+import { BaseModal } from '../../components/common/BaseModal';
 import type { PeriodRosterFilter } from './types';
 
 interface PeriodCheckinTabProps {
@@ -1370,47 +1371,41 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
       )}
 
       {/* Fullscreen QR Code Modal for classroom display */}
-      {!isRestrictedViewer && showPeriodQrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] rounded-3xl p-6 max-w-sm w-full text-center space-y-4 border border-[var(--color-border)] shadow-2xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--color-primary-text)]">QR Code เช็คชื่อเข้า/ออกคาบเรียน</span>
-              <button
-                type="button"
-                onClick={() => setShowPeriodQrModal(false)}
-                className="p-1.5 rounded-full bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] cursor-pointer"
-                aria-label="ปิดหน้าต่าง QR"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex justify-center">
-              <QrCodeMatrix
-                value={periodCheckinUrl}
-                size={240}
-                label={`QR Code ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
-              />
-            </div>
-            <div className="space-y-1 text-xs">
-              <p className="font-bold text-[var(--color-text-title)] text-sm">
-                {selectedCourse.code} {selectedCourse.titleTh}
-              </p>
-              <p className="text-[var(--color-text-muted)]">
-                คาบที่ {selectedPeriod} • วันที่ {periodDate}
-              </p>
-              <p className="font-mono font-bold text-[var(--color-primary-text)]">รหัสคาบ: {expectedPeriodCode}</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopyPeriodLink}
-              className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              {periodQrCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              <span>{periodQrCopied ? 'คัดลอกลิงก์เช็คชื่อแล้ว ✓' : 'คัดลอกลิงก์ส่งให้นักเรียน'}</span>
-            </button>
-          </div>
+      <BaseModal
+        isOpen={!isRestrictedViewer && showPeriodQrModal}
+        onClose={() => setShowPeriodQrModal(false)}
+        title="QR Code เช็คชื่อเข้า/ออกคาบเรียน"
+        icon={<QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-sm"
+        zIndexClass="z-50"
+        surfaceClassName="rounded-3xl"
+        bodyClassName="p-5 sm:p-6 text-center space-y-4 overflow-y-auto"
+      >
+        <div className="flex justify-center">
+          <QrCodeMatrix
+            value={periodCheckinUrl}
+            size={240}
+            label={`QR Code ${selectedCourse.code} คาบที่ ${selectedPeriod}`}
+          />
         </div>
-      )}
+        <div className="space-y-1 text-xs">
+          <p className="font-bold text-[var(--color-text-title)] text-sm">
+            {selectedCourse.code} {selectedCourse.titleTh}
+          </p>
+          <p className="text-[var(--color-text-muted)]">
+            คาบที่ {selectedPeriod} • วันที่ {periodDate}
+          </p>
+          <p className="font-mono font-bold text-[var(--color-primary-text)]">รหัสคาบ: {expectedPeriodCode}</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopyPeriodLink}
+          className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          {periodQrCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          <span>{periodQrCopied ? 'คัดลอกลิงก์เช็คชื่อแล้ว ✓' : 'คัดลอกลิงก์ส่งให้นักเรียน'}</span>
+        </button>
+      </BaseModal>
     </div>
   );
 };

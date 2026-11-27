@@ -28,6 +28,7 @@ import { AuthUser, Course, CourseType, GradeRecord, GradingSystem, LearningStran
 import { PagedList } from '../components/PagedList';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 import {
   getCourseDuplicateExtraIds,
   getCourseDuplicateReasons,
@@ -47,6 +48,7 @@ import {
 import { EmptyState } from '../components/common/EmptyState';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { TableActionMenu } from '../components/common/TableActionMenu';
+import { BaseModal } from '../components/common/BaseModal';
 
 interface CoursesViewProps {
   courses: Course[];
@@ -543,55 +545,52 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
   return (
     <div className={`${getModuleTone('courses')} h-full flex flex-col min-h-0 overflow-hidden space-y-4`}>
       {/* Compact Single-Row Header */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 app-page-header">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="tone-chip w-10 h-10 rounded-xl">
-            <FutureNavIcon tab="courses" size={20} active />
-          </span>
-          <div className="min-w-0">
-            <div className="module-category-kicker">01 · ทะเบียน &amp; ตารางเรียน</div>
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
-              หลักสูตรและรายวิชา
-              <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
-                · {courses.length} วิชา
-              </span>
-            </h1>
-          </div>
-        </div>
+      <PageHeader
+        compact
+        kicker="01 · ทะเบียน & ตารางเรียน"
+        title={
+          <>
+            หลักสูตรและรายวิชา
+            <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)] tabular-nums">
+              · {courses.length} วิชา
+            </span>
+          </>
+        }
+        icon={<FutureNavIcon tab="courses" size={20} active />}
+        actions={
+          <>
+            <ModuleTourTrigger moduleId="courses" lang="th" />
+            {canManageCourses && (
+              <div data-guide-id="courses-header-actions" className="flex items-center gap-1.5 flex-wrap">
+                {selectedCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteSelectedCourses()}
+                    disabled={isDeletingCourses}
+                    className="btn-action-danger h-9 px-3"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isDeletingCourses ? 'กำลังลบ...' : `ลบที่เลือก (${selectedCourseIds.length})`}</span>
+                  </button>
+                )}
 
-        <div className="flex items-center gap-1.5 flex-wrap self-start sm:self-auto">
-          <ModuleTourTrigger moduleId="courses" lang="th" />
-          {canManageCourses && (
-            <div data-guide-id="courses-header-actions" className="flex items-center gap-1.5 flex-wrap">
-              {selectedCourseIds.length > 0 && (onDeleteCourses || onDeleteCourse) && (
                 <button
                   type="button"
-                  onClick={() => void handleDeleteSelectedCourses()}
-                  disabled={isDeletingCourses}
-                  className="btn-action-danger h-9 px-3"
+                  onClick={handleOpenAddCourse}
+                  className="btn-action-primary h-9 px-3"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isDeletingCourses ? 'กำลังลบ...' : `ลบที่เลือก (${selectedCourseIds.length})`}</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>เพิ่มรายวิชา</span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={handleOpenAddCourse}
-                className="btn-action-primary h-9 px-3"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มรายวิชา</span>
-              </button>
-
-              <TableActionMenu
-                size="md"
-                ariaLabel="เครื่องมือจัดการหลักสูตร"
-                menuWidth={230}
-                items={[
-                  ...(onOpenImportExport
-                    ? [
-                        {
+                <TableActionMenu
+                  size="md"
+                  ariaLabel="เครื่องมือจัดการหลักสูตร"
+                  menuWidth={230}
+                  items={[
+                    ...(onOpenImportExport
+                      ? [
+                          {
                           id: 'import-export',
                           label: 'นำเข้า/ส่งออกวิชาการ',
                           icon: <FileSpreadsheet className="w-3.5 h-3.5" />,
@@ -642,8 +641,9 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
               />
             </div>
           )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {courseDeleteError && (
         <p role="alert" className="shrink-0 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
@@ -1412,24 +1412,17 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       </div>
 
       {/* Add / Edit Course Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="modal-enter bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Plus className="w-5 h-5 text-[var(--color-primary-text)]" />
-                <span>{editingCourse ? 'แก้ไขข้อมูลหลักสูตรและรายวิชา (Edit Course)' : 'เพิ่มรายวิชาใหม่ลงหลักสูตร (Add New Course to Syllabus)'}</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-lg font-bold cursor-pointer px-2 py-0.5 rounded-lg hover:bg-[var(--color-card-subtle)]"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateOrUpdateCourse} className="space-y-4 text-xs">
+      <BaseModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={editingCourse ? 'แก้ไขข้อมูลหลักสูตรและรายวิชา (Edit Course)' : 'เพิ่มรายวิชาใหม่ลงหลักสูตร (Add New Course to Syllabus)'}
+        icon={<Plus className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-2xl"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleCreateOrUpdateCourse} className="space-y-4 text-xs">
               <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-primary-light)] text-[10px] font-bold text-[var(--color-primary-text)]">1</span>
                 <h4 className="font-bold text-[var(--color-text-title)]">ข้อมูลรายวิชา</h4>
@@ -1751,27 +1744,19 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                   {editingCourse ? 'บันทึกการแก้ไขวิชา' : 'บันทึกรายวิชาใหม่'}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Admin Department Preset Manager Modal */}
-      {showDeptPresetModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                จัดการรายชื่อกลุ่มสาระ / แผนกวิชา (สำหรับผู้ดูแลระบบ)
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowDeptPresetModal(false)}
-                className="text-lg font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
+      <BaseModal
+        isOpen={showDeptPresetModal}
+        onClose={() => setShowDeptPresetModal(false)}
+        title="จัดการรายชื่อกลุ่มสาระ / แผนกวิชา (สำหรับผู้ดูแลระบบ)"
+        icon={<Layers className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
+      >
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1809,9 +1794,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
       <ConfirmActionModal
         isOpen={Boolean(pendingConfirm)}
         title={pendingConfirm?.title || ''}

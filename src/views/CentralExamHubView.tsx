@@ -40,12 +40,14 @@ import {
   UserRole,
 } from '../types';
 import { QrCodeMatrix } from '../components/QrCodeMatrix';
+import { PageHeader } from '../components/common/PageShell';
 import { getModuleTone } from '../lib/moduleTheme';
 import { buildCourseTeacherOptions, courseMatchesTeacherFilter } from '../lib/courseTeacherFilter';
 import { compressImageFileToDataUrl } from '../lib/imageCompression';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
 
 interface CentralExamPurchaseModalProps {
   pack: CentralExamPack;
@@ -259,21 +261,41 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl my-8">
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-          <h3 className="text-base font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
-            <ShoppingBag className="w-4 h-4 text-amber-600" />
-            <span>สั่งซื้อลิขสิทธิ์ข้อสอบกลางสำหรับโรงเรียน</span>
-          </h3>
+    <BaseModal
+      isOpen
+      onClose={onClose}
+      closeDisabled={isProcessing}
+      title="สั่งซื้อลิขสิทธิ์ข้อสอบกลางสำหรับโรงเรียน"
+      icon={<ShoppingBag className="w-4 h-4 text-amber-600" />}
+      maxWidthClass="max-w-md"
+      zIndexClass="z-[70]"
+      bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4"
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
+            disabled={isProcessing}
+            className="px-4 py-2 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            ยกเลิก
           </button>
-        </div>
+          <button
+            type="button"
+            disabled={isProcessing || !slipFilePreview || Boolean(slipUploadError)}
+            onClick={() => void onConfirmPurchase(pack, method, slipFilePreview || undefined)}
+            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition active:scale-95"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>
+              {isProcessing
+                ? 'กำลังบันทึก...'
+                : 'ยืนยันสลิปและปลดล็อกทันที'}
+            </span>
+          </button>
+        </>
+      }
+    >
 
         <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1">
           <div className="text-[11px] font-bold text-[var(--color-primary-text)]">
@@ -435,32 +457,7 @@ const CentralExamPurchaseModal: React.FC<CentralExamPurchaseModalProps> = ({
               : 'ระบบจะปลดล็อกข้อสอบทันทีและออกใบแจ้งหนี้เพื่อดำเนินการเบิกจ่าย'}
           </span>
         </div>
-
-        <div className="flex items-center justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isProcessing}
-            className="px-4 py-2 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-title)] cursor-pointer"
-          >
-            ยกเลิก
-          </button>
-          <button
-            type="button"
-            disabled={isProcessing || !slipFilePreview || Boolean(slipUploadError)}
-            onClick={() => void onConfirmPurchase(pack, method, slipFilePreview || undefined)}
-            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition active:scale-95"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>
-              {isProcessing
-                ? 'กำลังบันทึก...'
-                : 'ยืนยันสลิปและปลดล็อกทันที'}
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };
 
@@ -542,32 +539,36 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
 
   return (
     <>
-      <div className="fixed inset-0 z-[65] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-        <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
-          {/* Header */}
-          <div className="p-5 border-b border-[var(--color-border)] flex items-start justify-between gap-3 bg-[var(--color-card-subtle)]">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)]">
-                <BellRing className="w-4 h-4" />
-                <span>แจ้งเตือนข้อสอบกลางชุดใหม่จากส่วนกลาง</span>
-              </div>
-              <h2 className="text-lg font-extrabold text-[var(--color-text-title)]">
-                มี {unclaimedPacks.length} ชุดข้อสอบใหม่ (รวม {totalNewQuestions.toLocaleString()} ข้อ) พร้อมใช้ใน {schoolName}
-              </h2>
-              <p className="text-xs text-[var(--color-text-body)]">
-                ครอบคลุมคลังข้อสอบ 8 กลุ่มสาระการเรียนรู้ กดรับชุดฟรีได้ทันที หรือสั่งซื้อชุดเสริมเพื่อปลดล็อกให้ครูและนักเรียนใช้งาน
-              </p>
-            </div>
+      <BaseModal
+        isOpen={isOpen}
+        onClose={onDismiss}
+        title={`มี ${unclaimedPacks.length} ชุดข้อสอบใหม่ (รวม ${totalNewQuestions.toLocaleString()} ข้อ) พร้อมใช้ใน ${schoolName}`}
+        subtitle="แจ้งเตือนข้อสอบกลางชุดใหม่ · ครอบคลุมคลังข้อสอบ 8 กลุ่มสาระการเรียนรู้"
+        icon={<BellRing className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-2xl"
+        heightClass="max-h-[88vh]"
+        zIndexClass="z-[65]"
+        bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0"
+        footerClassName="justify-between"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={onOpenHub}
+              className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] cursor-pointer"
+            >
+              เปิดหน้าคลังข้อสอบกลางทั้งหมด (8 สาระ)
+            </button>
             <button
               type="button"
               onClick={onDismiss}
-              className="p-1.5 rounded-lg hover:bg-[var(--color-card)] text-[var(--color-text-muted)] cursor-pointer"
-              aria-label="ปิดหน้าต่างแจ้งเตือนข้อสอบใหม่"
+              className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)] hover:bg-black/5 cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              ปิดหน้าต่างนี้ (ไว้รับภายหลัง)
             </button>
-          </div>
-
+          </>
+        }
+      >
           {/* Summary Strip + Claim All Free */}
           <div className="px-5 py-3 border-b border-[var(--color-border)] space-y-2.5 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -739,26 +740,7 @@ export const CentralExamNotificationPopup: React.FC<CentralExamNotificationPopup
               </div>
             )}
           </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={onOpenHub}
-              className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-primary-text)] hover:bg-[var(--color-primary-light)] cursor-pointer"
-            >
-              เปิดหน้าคลังข้อสอบกลางทั้งหมด (8 สาระ)
-            </button>
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)] hover:bg-black/5 cursor-pointer"
-            >
-              ปิดหน้าต่างนี้ (ไว้รับภายหลัง)
-            </button>
-          </div>
-        </div>
-      </div>
+      </BaseModal>
 
       {checkoutPack && (
         <CentralExamPurchaseModal
@@ -995,26 +977,13 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
   return (
     <div className={`space-y-5 ${getModuleTone('central_exam_hub')}`}>
       {/* Clean SaaS Header */}
-      <div className="app-page-header p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-            <FutureNavIcon tab="central_exam_hub" size={20} active />
-          </div>
-          <div className="space-y-1 min-w-0">
-            <div className="text-xs font-medium text-[var(--color-text-muted)] truncate">
-              คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ · {schoolName}
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text-title)] tracking-tight">
-              ศูนย์รับและสั่งซื้อชุดข้อสอบกลางเข้าโรงเรียน
-            </h2>
-            <p className="text-xs text-[var(--color-text-body)]">
-              ชุดข้อสอบที่กดรับฟรีหรือสั่งซื้อแล้ว จะถูกเพิ่มเข้าคลังข้อสอบของโรงเรียนทันที (ปัจจุบันมี {schoolQuestions.length} ข้อ)
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {onOpenQuestionBankInEduBattle && (
+      <PageHeader
+        kicker={`คลังข้อสอบกลาง 8 กลุ่มสาระการเรียนรู้ · ${schoolName}`}
+        title="ศูนย์รับและสั่งซื้อชุดข้อสอบกลางเข้าโรงเรียน"
+        description={`ชุดข้อสอบที่กดรับฟรีหรือสั่งซื้อแล้ว จะถูกเพิ่มเข้าคลังข้อสอบของโรงเรียนทันที (ปัจจุบันมี ${schoolQuestions.length} ข้อ)`}
+        icon={<FutureNavIcon tab="central_exam_hub" size={20} active />}
+        actions={
+          onOpenQuestionBankInEduBattle ? (
             <button
               type="button"
               onClick={onOpenQuestionBankInEduBattle}
@@ -1023,9 +992,9 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
               <Swords className="w-4 h-4" />
               <span>ไปที่คลังข้อสอบ &amp; เกม EduBattle</span>
             </button>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {toastMessage && (
         <div className="ui-alert ui-alert-success justify-between">
@@ -1357,51 +1326,44 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
       )}
 
       {/* Sample Questions Preview Modal */}
-      {previewPack && (
-        <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
-              <div>
-                <div className="text-[11px] font-bold text-[var(--color-primary-text)]">
-                  ตัวอย่างข้อสอบ · {getStrandMeta(previewPack.strand).nameTh}
-                </div>
-                <h3 className="text-sm font-extrabold text-[var(--color-text-title)]">{previewPack.titleTh}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewPack(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
+      <BaseModal
+        isOpen={Boolean(previewPack)}
+        onClose={() => setPreviewPack(null)}
+        title={previewPack?.titleTh ?? ''}
+        subtitle={previewPack ? `ตัวอย่างข้อสอบ · ${getStrandMeta(previewPack.strand).nameTh}` : undefined}
+        icon={<Eye className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-xl"
+        heightClass="max-h-[85vh]"
+        zIndexClass="z-[70]"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 text-xs"
+      >
+        {previewPack && (
+          <>
+            {previewPack.questions.slice(0, entitlementByPackId.has(previewPack.id) ? 50 : 3).map((q, idx) => (
+              <div
+                key={q.id}
+                className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1.5"
               >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
-              {previewPack.questions.slice(0, entitlementByPackId.has(previewPack.id) ? 50 : 3).map((q, idx) => (
-                <div
-                  key={q.id}
-                  className="p-3 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1.5"
-                >
-                  <div className="font-bold text-[var(--color-text-title)]">
-                    {idx + 1}. {q.questionTh}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-[var(--color-text-body)]">
-                    {q.options.map((opt, oIdx) => (
-                      <div key={oIdx}>
-                        {String.fromCharCode(65 + oIdx)}. {opt}
-                      </div>
-                    ))}
-                  </div>
+                <div className="font-bold text-[var(--color-text-title)]">
+                  {idx + 1}. {q.questionTh}
                 </div>
-              ))}
-              {!entitlementByPackId.has(previewPack.id) && getPackQuestionCount(previewPack) > 3 && (
-                <div className="p-3 rounded-xl border border-dashed border-[var(--color-border)] text-center text-xs text-[var(--color-text-muted)]">
-                  แสดงตัวอย่าง 3 ข้อแรก · กดรับ/สั่งซื้อเพื่อปลดล็อกครบทั้ง {getPackQuestionCount(previewPack)} ข้อ พร้อมเฉลยละเอียด
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-[var(--color-text-body)]">
+                  {q.options.map((opt, oIdx) => (
+                    <div key={oIdx}>
+                      {String.fromCharCode(65 + oIdx)}. {opt}
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+            ))}
+            {!entitlementByPackId.has(previewPack.id) && getPackQuestionCount(previewPack) > 3 && (
+              <div className="p-3 rounded-xl border border-dashed border-[var(--color-border)] text-center text-xs text-[var(--color-text-muted)]">
+                แสดงตัวอย่าง 3 ข้อแรก · กดรับ/สั่งซื้อเพื่อปลดล็อกครบทั้ง {getPackQuestionCount(previewPack)} ข้อ พร้อมเฉลยละเอียด
+              </div>
+            )}
+          </>
+        )}
+      </BaseModal>
 
       {checkoutPack && (
         <CentralExamPurchaseModal
@@ -1424,151 +1386,142 @@ export const CentralExamHubView: React.FC<CentralExamHubViewProps> = ({
         />
       )}
 
-      {quizSyncPack && (
-        <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
-              <div>
-                <div className="text-[11px] font-bold text-[var(--color-primary-text)]">
-                  ส่งคะแนนทดสอบย่อย (Quiz /10) เข้าสมุดคะแนน
-                </div>
-                <h3 className="text-sm font-extrabold text-[var(--color-text-title)]">
-                  {quizSyncPack.titleTh}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setQuizSyncPack(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-3 overflow-y-auto flex-1 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {quizSyncTeacherOptions.length > 0 && (
-                  <div>
-                    <label className="block font-bold text-[var(--color-text-title)] mb-1">
-                      กรองวิชาตามรายชื่อครู
-                    </label>
-                    <select
-                      aria-label="กรองวิชาตามรายชื่อครู"
-                      value={quizSyncTeacherFilter}
-                      onChange={(e) => {
-                        const nextTeacher = e.target.value;
-                        setQuizSyncTeacherFilter(nextTeacher);
-                        const matching = courses.filter((c) =>
-                          courseMatchesTeacherFilter(c, nextTeacher, quizSyncTeacherOptions)
-                        );
-                        if (matching.length > 0 && !matching.some((c) => c.id === quizSyncCourseId)) {
-                          handleSelectQuizCourse(matching[0].id);
-                        }
-                      }}
-                      className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
-                    >
-                      <option value="all">ครูผู้สอนทุกคน ({quizSyncTeacherOptions.length})</option>
-                      {quizSyncTeacherOptions.map((opt) => (
-                        <option key={opt.key} value={opt.key}>
-                          {opt.label} ({opt.count} วิชา)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className={quizSyncTeacherOptions.length > 0 ? '' : 'sm:col-span-2'}>
+      <BaseModal
+        isOpen={Boolean(quizSyncPack)}
+        onClose={() => setQuizSyncPack(null)}
+        title={quizSyncPack?.titleTh ?? ''}
+        subtitle="ส่งคะแนนทดสอบย่อย (Quiz /10) เข้าสมุดคะแนน"
+        icon={<CheckCircle2 className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-xl"
+        heightClass="max-h-[88vh]"
+        zIndexClass="z-[70]"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 text-xs"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setQuizSyncPack(null)}
+              className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              disabled={!quizSyncCourseId || Object.keys(quizScoreDrafts).length === 0}
+              onClick={() => {
+                if (!quizSyncPack || !quizSyncCourseId || !onSyncQuizScoresToGradebook) return;
+                const entries = Object.entries(quizScoreDrafts).map(([studentId, quizScore]) => ({
+                  studentId,
+                  quizScore,
+                }));
+                onSyncQuizScoresToGradebook(quizSyncCourseId, quizSyncPack.titleTh, entries);
+                setToastMessage(
+                  `บันทึกคะแนน Quiz จาก "${quizSyncPack.titleTh}" เข้าสมุดคะแนนจำนวน ${entries.length} คนเรียบร้อยแล้ว`
+                );
+                setQuizSyncPack(null);
+              }}
+              className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
+            >
+              บันทึกคะแนนเก็บเข้าสมุดคะแนน
+            </button>
+          </>
+        }
+      >
+        {quizSyncPack && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {quizSyncTeacherOptions.length > 0 && (
+                <div>
                   <label className="block font-bold text-[var(--color-text-title)] mb-1">
-                    เลือกรายวิชาปลายทางในสมุดคะแนน
+                    กรองวิชาตามรายชื่อครู
                   </label>
                   <select
-                    value={quizSyncCourseId}
-                    onChange={(e) => handleSelectQuizCourse(e.target.value)}
+                    aria-label="กรองวิชาตามรายชื่อครู"
+                    value={quizSyncTeacherFilter}
+                    onChange={(e) => {
+                      const nextTeacher = e.target.value;
+                      setQuizSyncTeacherFilter(nextTeacher);
+                      const matching = courses.filter((c) =>
+                        courseMatchesTeacherFilter(c, nextTeacher, quizSyncTeacherOptions)
+                      );
+                      if (matching.length > 0 && !matching.some((c) => c.id === quizSyncCourseId)) {
+                        handleSelectQuizCourse(matching[0].id);
+                      }
+                    }}
                     className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
                   >
-                    {quizSyncFilteredCourses.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.code} · {c.titleTh} ({c.room || c.semester})
+                    <option value="all">ครูผู้สอนทุกคน ({quizSyncTeacherOptions.length})</option>
+                    {quizSyncTeacherOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>
+                        {opt.label} ({opt.count} วิชา)
                       </option>
                     ))}
                   </select>
                 </div>
-              </div>
+              )}
 
-              <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
-                <table className="table-comfortable w-full text-left text-xs">
-                  <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-body)]">
-                    <tr>
-                      <th className="py-2 px-3">รหัส</th>
-                      <th className="py-2 px-3">ชื่อ-นามสกุล</th>
-                      <th className="py-2 px-3 text-right">คะแนน Quiz (/10)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-border)]">
-                    {Object.keys(quizScoreDrafts).map((stuId) => {
-                      const stu = students.find((s) => s.id === stuId);
-                      if (!stu) return null;
-                      return (
-                        <tr key={stu.id}>
-                          <td className="py-2 px-3 font-mono text-[var(--color-text-muted)]">
-                            {stu.studentIdNumber}
-                          </td>
-                          <td className="py-2 px-3 font-medium text-[var(--color-text-title)]">
-                            {stu.firstNameTh} {stu.lastNameTh}
-                          </td>
-                          <td className="py-2 px-3 text-right">
-                            <input
-                              type="number"
-                              min={0}
-                              max={10}
-                              step={0.5}
-                              value={quizScoreDrafts[stu.id] ?? 0}
-                              onChange={(e) => {
-                                const val = Math.max(0, Math.min(10, Number(e.target.value) || 0));
-                                setQuizScoreDrafts((prev) => ({ ...prev, [stu.id]: val }));
-                              }}
-                              className="w-20 px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-right font-mono font-bold tabular-nums"
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className={quizSyncTeacherOptions.length > 0 ? '' : 'sm:col-span-2'}>
+                <label className="block font-bold text-[var(--color-text-title)] mb-1">
+                  เลือกรายวิชาปลายทางในสมุดคะแนน
+                </label>
+                <select
+                  value={quizSyncCourseId}
+                  onChange={(e) => handleSelectQuizCourse(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-title)]"
+                >
+                  {quizSyncFilteredCourses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} · {c.titleTh} ({c.room || c.semester})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div className="p-4 border-t border-[var(--color-border)] flex items-center justify-end gap-2 bg-[var(--color-card-subtle)]">
-              <button
-                type="button"
-                onClick={() => setQuizSyncPack(null)}
-                className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold cursor-pointer"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                disabled={!quizSyncCourseId || Object.keys(quizScoreDrafts).length === 0}
-                onClick={() => {
-                  if (!quizSyncPack || !quizSyncCourseId || !onSyncQuizScoresToGradebook) return;
-                  const entries = Object.entries(quizScoreDrafts).map(([studentId, quizScore]) => ({
-                    studentId,
-                    quizScore,
-                  }));
-                  onSyncQuizScoresToGradebook(quizSyncCourseId, quizSyncPack.titleTh, entries);
-                  setToastMessage(
-                    `บันทึกคะแนน Quiz จาก "${quizSyncPack.titleTh}" เข้าสมุดคะแนนจำนวน ${entries.length} คนเรียบร้อยแล้ว`
-                  );
-                  setQuizSyncPack(null);
-                }}
-                className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
-              >
-                บันทึกคะแนนเก็บเข้าสมุดคะแนน
-              </button>
+            <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
+              <table className="table-comfortable w-full text-left text-xs">
+                <thead className="bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[var(--color-text-body)]">
+                  <tr>
+                    <th className="py-2 px-3">รหัส</th>
+                    <th className="py-2 px-3">ชื่อ-นามสกุล</th>
+                    <th className="py-2 px-3 text-right">คะแนน Quiz (/10)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {Object.keys(quizScoreDrafts).map((stuId) => {
+                    const stu = students.find((s) => s.id === stuId);
+                    if (!stu) return null;
+                    return (
+                      <tr key={stu.id}>
+                        <td className="py-2 px-3 font-mono text-[var(--color-text-muted)]">
+                          {stu.studentIdNumber}
+                        </td>
+                        <td className="py-2 px-3 font-medium text-[var(--color-text-title)]">
+                          {stu.firstNameTh} {stu.lastNameTh}
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          <input
+                            type="number"
+                            min={0}
+                            max={10}
+                            step={0.5}
+                            value={quizScoreDrafts[stu.id] ?? 0}
+                            onChange={(e) => {
+                              const val = Math.max(0, Math.min(10, Number(e.target.value) || 0));
+                              setQuizScoreDrafts((prev) => ({ ...prev, [stu.id]: val }));
+                            }}
+                            className="w-20 px-2 py-1 rounded border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-right font-mono font-bold tabular-nums"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
     </div>
   );
 };

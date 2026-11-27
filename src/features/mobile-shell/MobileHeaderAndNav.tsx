@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   Bell,
-  Building2,
   ChevronDown,
   Globe,
   GraduationCap,
@@ -28,6 +28,57 @@ export interface MobileQuickMenuItem {
   active?: boolean;
   onClick: () => void;
 }
+
+interface MobileSubPageHeaderProps {
+  title: string;
+  subtitle?: string;
+  iconTab?: string;
+  onBack?: () => void;
+  backLabel?: string;
+  actions?: React.ReactNode;
+}
+
+export const MobileSubPageHeader: React.FC<MobileSubPageHeaderProps> = ({
+  title,
+  subtitle,
+  iconTab,
+  onBack,
+  backLabel,
+  actions,
+}) => (
+  <div className="flex items-center justify-between gap-2 min-h-[42px]">
+    <div className="flex items-center gap-2 min-w-0">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label={backLabel || 'Back'}
+          title={backLabel}
+          className="h-9 px-2 -ml-1.5 rounded-xl inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] hover:bg-[var(--color-card-subtle)] transition cursor-pointer shrink-0"
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" />
+          {backLabel && <span className="hidden xs:inline">{backLabel}</span>}
+        </button>
+      )}
+      {iconTab && (
+        <span className="tone-chip w-7 h-7 rounded-lg flex items-center justify-center shrink-0" aria-hidden="true">
+          <FutureNavIcon tab={iconTab} size={15} active />
+        </span>
+      )}
+      <div className="min-w-0">
+        <h2 className="text-sm font-bold text-[var(--color-text-title)] truncate leading-tight">
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="text-[11px] text-[var(--color-text-muted)] truncate leading-tight tabular-nums">
+            {subtitle}
+          </p>
+        )}
+      </div>
+    </div>
+    {actions && <div className="flex items-center gap-1.5 shrink-0">{actions}</div>}
+  </div>
+);
 
 interface MobileHeaderProps {
   activeSchool: School;
@@ -680,7 +731,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 slot3Active ? 'tone-chip-solid shadow-xs' : ''
               }`}
             >
-              <Building2 className="w-4.5 h-4.5" />
+              <FutureNavIcon tab="super_admin_schools" size={18} active={slot3Active} />
             </span>
             <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'โรงเรียน' : 'Schools'}</span>
           </button>
@@ -773,7 +824,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             {slot4IsAnnouncements ? (
               <FutureNavIcon tab="announcements" size={18} active={slot4Active} />
             ) : (
-              <User className="w-4.5 h-4.5" />
+              <FutureNavIcon tab="profile" size={18} active={slot4Active} />
             )}
           </span>
           <span className="text-[11px] truncate max-w-full">

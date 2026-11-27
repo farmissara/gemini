@@ -21,6 +21,8 @@ import {
   X,
 } from 'lucide-react';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 import { ImageCaptureUploadModal } from '../components/modals/ImageCaptureUploadModal';
 import {
   AdminCoordinationAttachment,
@@ -432,56 +434,51 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
   return (
     <div className={`space-y-4 pb-8 ${getModuleTone('admin_superadmin_desk')}`}>
       {/* Header */}
-      <div className="app-page-header p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl tone-chip shrink-0 mt-0.5">
-            <FutureNavIcon tab="super_admin_console" size={20} active />
-          </div>
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[var(--tone-soft)] text-[var(--tone)] text-[11px] font-bold border border-[var(--color-border)]">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>ช่องทางประสานงานตรง Admin โรงเรียน ↔ Super Admin</span>
-              </span>
-              <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
-                Master: {MASTER_SYSTEM_EMAIL}
-              </span>
+      <PageHeader
+        icon={<FutureNavIcon tab="super_admin_console" size={20} active />}
+        kicker={
+          <span className="inline-flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>ช่องทางประสานงานตรง Admin โรงเรียน ↔ Super Admin</span>
+            </span>
+            <span className="text-[11px] font-mono text-[var(--color-text-muted)] font-normal">
+              · Master: {MASTER_SYSTEM_EMAIL}
+            </span>
+          </span>
+        }
+        title={
+          isSuperAdmin
+            ? 'ศูนย์รับเรื่อง & แชต/จดหมายประสานงานสถานศึกษา'
+            : `แชต & จดหมายประสานงานด่วนถึง Super Admin (${activeSchool.nameTh})`
+        }
+        description="ส่งข้อความแชตด่วน หรือจดหมายราชการพร้อมแนบไฟล์เอกสาร PDF / Excel / รูปภาพ (สูงสุด 4 MB ต่อไฟล์) พร้อมติดตามสถานะการดำเนินการ"
+        actions={
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <div className="px-3 py-1.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-center min-w-[78px]">
+              <div className="text-[10px] text-[var(--color-text-muted)] font-semibold">เรื่องใหม่</div>
+              <div className="text-base font-extrabold text-[var(--color-text-title)] tabular-nums">{openCount}</div>
             </div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-[var(--color-text-title)] tracking-tight">
-              {isSuperAdmin
-                ? 'ศูนย์รับเรื่อง & แชต/จดหมายประสานงานสถานศึกษา'
-                : `แชต & จดหมายประสานงานด่วนถึง Super Admin (${activeSchool.nameTh})`}
-            </h1>
-            <p className="text-xs text-[var(--color-text-body)]">
-              ส่งข้อความแชตด่วน หรือจดหมายราชการพร้อมแนบไฟล์เอกสาร PDF / Excel / รูปภาพ (สูงสุด 4 MB ต่อไฟล์) พร้อมติดตามสถานะการดำเนินการ
-            </p>
+            <div className="px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-center min-w-[78px]">
+              <div className="text-[10px] text-rose-800 dark:text-rose-200 font-semibold">เร่งด่วนค้างอยู่</div>
+              <div className="text-base font-extrabold text-rose-700 dark:text-rose-200 tabular-nums">{urgentCount}</div>
+            </div>
+            <div className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center min-w-[78px]">
+              <div className="text-[10px] text-emerald-800 dark:text-emerald-200 font-semibold">ปิดเรื่องแล้ว</div>
+              <div className="text-base font-extrabold text-emerald-700 dark:text-emerald-200 tabular-nums">{resolvedCount}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadMessages()}
+              disabled={loading}
+              className="btn-tool-neutral disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>รีเฟรช</span>
+            </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <div className="px-3 py-2 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-center min-w-[82px]">
-            <div className="text-[10px] text-[var(--color-text-muted)] font-semibold">เรื่องใหม่</div>
-            <div className="text-lg font-extrabold text-[var(--color-text-title)] tabular-nums">{openCount}</div>
-          </div>
-          <div className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-center min-w-[82px]">
-            <div className="text-[10px] text-rose-800 dark:text-rose-200 font-semibold">เร่งด่วนค้างอยู่</div>
-            <div className="text-lg font-extrabold text-rose-700 dark:text-rose-200 tabular-nums">{urgentCount}</div>
-          </div>
-          <div className="px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center min-w-[82px]">
-            <div className="text-[10px] text-emerald-800 dark:text-emerald-200 font-semibold">ปิดเรื่องแล้ว</div>
-            <div className="text-lg font-extrabold text-emerald-700 dark:text-emerald-200 tabular-nums">{resolvedCount}</div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadMessages()}
-            disabled={loading}
-            className="btn-tool-neutral disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>รีเฟรช</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Split Grid */}
       <div className={`grid gap-4 ${isSuperAdmin ? 'lg:grid-cols-[280px_1fr]' : 'lg:grid-cols-[1.15fr_0.85fr]'}`}>
@@ -1010,38 +1007,24 @@ export const AdminSuperAdminDeskView: React.FC<AdminSuperAdminDeskViewProps> = (
       />
 
       {/* Full-size Image Preview Modal */}
-      {previewImageAttachment && previewImageAttachment.dataUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs"
-          onClick={() => setPreviewImageAttachment(null)}
-        >
-          <div
-            className="max-w-3xl w-full rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                {previewImageAttachment.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPreviewImageAttachment(null)}
-                className="p-1.5 rounded-lg bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-                aria-label="ปิดตัวอย่างภาพ"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="max-h-[75vh] overflow-auto rounded-xl bg-black/90 flex items-center justify-center">
-              <img
-                src={previewImageAttachment.dataUrl}
-                alt={previewImageAttachment.name}
-                className="max-h-[72vh] w-auto object-contain"
-              />
-            </div>
+      <BaseModal
+        isOpen={Boolean(previewImageAttachment && previewImageAttachment.dataUrl)}
+        onClose={() => setPreviewImageAttachment(null)}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-3xl"
+        title={previewImageAttachment?.name || ''}
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4"
+      >
+        {previewImageAttachment?.dataUrl && (
+          <div className="max-h-[75vh] overflow-auto rounded-xl bg-black/90 flex items-center justify-center">
+            <img
+              src={previewImageAttachment.dataUrl}
+              alt={previewImageAttachment.name}
+              className="max-h-[72vh] w-auto object-contain"
+            />
           </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
     </div>
   );
 };

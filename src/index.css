@@ -1875,24 +1875,28 @@ textarea::placeholder {
   }
 
   /* Printable Student Attendance QR Pass Isolation */
-  body:has(.student-qr-print-area) #root,
-  body:has(.student-qr-print-area) #root :has(.student-qr-print-area) {
+  body:has(.student-qr-print-area) *:has(.student-qr-print-area) {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     position: static !important;
+    transform: none !important;
   }
 
-  body:has(.student-qr-print-area) #root * {
+  body:has(.student-qr-print-area) > *:not(:has(.student-qr-print-area)):not(.student-qr-print-area) {
+    display: none !important;
+  }
+
+  body:has(.student-qr-print-area) * {
     visibility: hidden !important;
   }
 
-  body:has(.student-qr-print-area) #root .student-qr-print-area,
-  body:has(.student-qr-print-area) #root .student-qr-print-area * {
+  body:has(.student-qr-print-area) .student-qr-print-area,
+  body:has(.student-qr-print-area) .student-qr-print-area * {
     visibility: visible !important;
   }
 
-  body:has(.student-qr-print-area) #root .student-qr-print-area {
+  body:has(.student-qr-print-area) .student-qr-print-area {
     position: absolute !important;
     top: 12mm !important;
     left: 50% !important;
@@ -1908,24 +1912,28 @@ textarea::placeholder {
   }
 
   /* Printable Batch Student QR Grid Isolation */
-  body:has(.batch-qr-print-area) #root,
-  body:has(.batch-qr-print-area) #root :has(.batch-qr-print-area) {
+  body:has(.batch-qr-print-area) *:has(.batch-qr-print-area) {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     position: static !important;
+    transform: none !important;
   }
 
-  body:has(.batch-qr-print-area) #root * {
+  body:has(.batch-qr-print-area) > *:not(:has(.batch-qr-print-area)):not(.batch-qr-print-area) {
+    display: none !important;
+  }
+
+  body:has(.batch-qr-print-area) * {
     visibility: hidden !important;
   }
 
-  body:has(.batch-qr-print-area) #root .batch-qr-print-area,
-  body:has(.batch-qr-print-area) #root .batch-qr-print-area * {
+  body:has(.batch-qr-print-area) .batch-qr-print-area,
+  body:has(.batch-qr-print-area) .batch-qr-print-area * {
     visibility: visible !important;
   }
 
-  body:has(.batch-qr-print-area) #root .batch-qr-print-area {
+  body:has(.batch-qr-print-area) .batch-qr-print-area {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
@@ -1950,7 +1958,6 @@ textarea::placeholder {
     print-color-adjust: exact !important;
   }
 
-  body:has(.id-card-print-area) #root,
   body:has(.id-card-print-area) *:has(.id-card-print-area) {
     display: block !important;
     position: static !important;

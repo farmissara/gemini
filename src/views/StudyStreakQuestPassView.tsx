@@ -16,7 +16,6 @@ import {
   Coins,
   ShieldCheck,
   Star,
-  X,
   FileCheck2,
   Armchair,
   HelpCircle,
@@ -40,6 +39,8 @@ import { PagedList } from '../components/PagedList';
 import { getModuleTone } from '../lib/moduleTheme';
 import { getLocalDateString } from '../lib/date';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 import {
   CAMPUS_DATA_UPDATED_EVENT,
   loadStudyStreakPassState,
@@ -319,30 +320,22 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       )}
 
       {/* Top Banner with Flame Streak & Knowledge Token HUD */}
-      <div className="shrink-0 app-page-header p-4 sm:p-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5 min-w-0 max-w-xl">
-            <div className="w-11 h-11 rounded-xl tone-chip flex items-center justify-center shrink-0 mt-0.5">
-              <FutureNavIcon tab="study_streak" size={22} active />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-[var(--tone-text)]">
-                <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'ระบบสตรีคความต่อเนื่อง & ร้านค้าสิทธิพิเศษในห้องเรียน' : 'Daily Study Streak & Season Battle Pass'}</span>
-              </p>
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text-title)]">
-                <span>{lang === 'th' ? 'Daily Streak & Classroom Quest Pass' : 'Daily Study Streak Pass'}</span>
-              </h1>
-              <p className="text-[var(--color-text-muted)] text-xs leading-relaxed">
-                {lang === 'th'
-                  ? 'กระตุ้นพฤติกรรมรักการเรียนรู้ทุกวันด้วยภารกิจสั้น 3 นาที รักษาไฟสตรีค และนำเหรียญมาแลกสิทธิพิเศษจริง'
-                  : 'Turn consistent learning into a habit with daily 3-minute micro-quests, flame streaks, and classroom perks.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Player Stats Strip */}
-          <div className="flex items-center gap-2.5 shrink-0">
+      <PageHeader
+        kicker={
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'ระบบสตรีคความต่อเนื่อง & ร้านค้าสิทธิพิเศษในห้องเรียน' : 'Daily Study Streak & Season Battle Pass'}</span>
+          </span>
+        }
+        title={lang === 'th' ? 'Daily Streak & Classroom Quest Pass' : 'Daily Study Streak Pass'}
+        description={
+          lang === 'th'
+            ? 'กระตุ้นพฤติกรรมรักการเรียนรู้ทุกวันด้วยภารกิจสั้น 3 นาที รักษาไฟสตรีค และนำเหรียญมาแลกสิทธิพิเศษจริง'
+            : 'Turn consistent learning into a habit with daily 3-minute micro-quests, flame streaks, and classroom perks.'
+        }
+        icon={<FutureNavIcon tab="study_streak" size={20} active />}
+        actions={
+          <>
             {/* Streak Counter */}
             <div className="bg-[var(--color-card)] border border-[var(--color-border)] px-3 py-2 rounded-xl flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
@@ -370,9 +363,9 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Sub-tabs Navigation */}
       <div className="shrink-0 seg-tab-group w-fit max-w-full">
@@ -729,23 +722,15 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
       </div>
 
       {/* Teacher Add Perk Modal */}
-      {showAddPerkModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl max-w-md w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl relative">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-              <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'สร้างสิทธิพิเศษใหม่ในห้องเรียน' : 'Create Custom Classroom Perk'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddPerkModal(false)}
-                className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePerk} className="mt-4 space-y-4 text-xs">
+      <BaseModal
+        isOpen={showAddPerkModal}
+        onClose={() => setShowAddPerkModal(false)}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-md"
+        title={lang === 'th' ? 'สร้างสิทธิพิเศษใหม่ในห้องเรียน' : 'Create Custom Classroom Perk'}
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+            <form onSubmit={handleCreatePerk} className="space-y-4 text-xs">
               <div>
                 <label className="block font-semibold text-[var(--color-text-title)] mb-1">
                   {lang === 'th' ? 'ชื่อสิทธิพิเศษ' : 'Perk Title'}
@@ -804,9 +789,7 @@ export const StudyStreakQuestPassView: React.FC<StudyStreakQuestPassViewProps> =
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

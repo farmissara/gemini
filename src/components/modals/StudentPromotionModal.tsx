@@ -21,6 +21,7 @@ import {
   Building2,
   Calendar
 } from 'lucide-react';
+import { BaseModal } from '../common/BaseModal';
 
 interface StudentPromotionModalProps {
   isOpen: boolean;
@@ -45,8 +46,6 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
   students,
   onPromoteStudents,
 }) => {
-  if (!isOpen) return null;
-
   // Extract distinct grade levels and rooms from existing students
   const availableGrades = useMemo(() => {
     const set = new Set<string>();
@@ -200,8 +199,13 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-      <div className="relative w-full max-w-4xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh]">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      hideHeader
+      maxWidthClass="max-w-4xl"
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden"
+    >
         {/* Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -554,7 +558,7 @@ export const StudentPromotionModal: React.FC<StudentPromotionModalProps> = ({
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };
+

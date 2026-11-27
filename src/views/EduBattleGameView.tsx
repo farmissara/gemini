@@ -45,8 +45,10 @@ import {
   Palette,
   ClipboardCheck,
   Compass,
+  X,
 } from 'lucide-react';
 import { QuizQuestion, PlayerScore, RewardItem, RewardRedemptionRequest, AuthUser, AppLanguage } from '../types';
+import { BaseModal } from '../components/common/BaseModal';
 import { COMPREHENSIVE_QUESTION_BANK } from '../data/examQuestionBanks';
 import { EduBattleRoyale3DView } from './EduBattleRoyale3DView';
 import { SubjectLabSimulationView } from './SubjectLabSimulationView';
@@ -2249,22 +2251,34 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
       })()}
 
       {/* Add New Question Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
-          <div className="bg-[#0C1220] border border-white/[0.12] rounded-2xl p-5 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto space-y-4 shadow-2xl">
+      <BaseModal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setQuestionFormStep(0);
+        }}
+        hideHeader
+        zIndexClass="z-50"
+        maxWidthClass="max-w-2xl"
+        surfaceClassName="!bg-[#0C1220] !border-white/[0.12] !text-white"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-4"
+        title="เพิ่มข้อสอบใหม่เข้าคลังข้อสอบโรงเรียน"
+      >
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
               <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-400" />
                 <span>เพิ่มข้อสอบใหม่เข้าคลังข้อสอบโรงเรียน</span>
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   setShowAddModal(false);
                   setQuestionFormStep(0);
                 }}
+                aria-label="ปิดหน้าต่าง"
                 className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -2394,9 +2408,7 @@ export const EduBattleGameView: React.FC<EduBattleGameViewProps> = ({
                 </button>}
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

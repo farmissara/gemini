@@ -11,6 +11,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import { BaseModal } from '../common/BaseModal';
 import {
   DEFAULT_PACKAGE_CATALOG,
   FEATURE_FLAG_LABELS,
@@ -550,33 +551,22 @@ export const SuperAdminPackagesPanel: React.FC<SuperAdminPackagesPanelProps> = (
         )}
       </div>
 
-      {previewSlipUrl && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={() => setPreviewSlipUrl(null)}
-        >
-          <div
-            className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-4 max-w-md w-full space-y-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-[var(--color-text-title)]">หลักฐานสลิปการโอนเงิน</h4>
-              <button
-                type="button"
-                onClick={() => setPreviewSlipUrl(null)}
-                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <img
-              src={previewSlipUrl}
-              alt="Payment Slip Preview"
-              className="w-full max-h-[65vh] object-contain rounded-xl border border-[var(--color-border)] bg-black/5"
-            />
-          </div>
-        </div>
-      )}
+      <BaseModal
+        isOpen={Boolean(previewSlipUrl)}
+        onClose={() => setPreviewSlipUrl(null)}
+        title="หลักฐานสลิปการโอนเงิน"
+        icon={<CreditCard className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-md"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4"
+      >
+        {previewSlipUrl && (
+          <img
+            src={previewSlipUrl}
+            alt="Payment Slip Preview"
+            className="w-full max-h-[65vh] object-contain rounded-xl border border-[var(--color-border)] bg-black/5"
+          />
+        )}
+      </BaseModal>
     </div>
   );
 };

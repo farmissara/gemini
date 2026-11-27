@@ -5,12 +5,11 @@ import {
   ChevronRight,
   GraduationCap,
   HeartPulse,
-  Laptop,
-  Monitor,
   Sparkles,
   Users,
 } from 'lucide-react';
 import type { AppLanguage, School } from '../../types';
+import { MobileSubPageHeader } from './MobileHeaderAndNav';
 import type { ExecMetrics, MobileTab } from './types';
 
 interface MobileExecutiveTabProps {
@@ -23,42 +22,21 @@ interface MobileExecutiveTabProps {
 }
 
 export const MobileExecutiveTab: React.FC<MobileExecutiveTabProps> = ({
-  activeSchool,
+  activeSchool: _activeSchool,
   lang,
   execMetrics,
   pendingLeavesCount,
-  onSwitchToDesktopMode,
+  onSwitchToDesktopMode: _onSwitchToDesktopMode,
   onSelectTab,
 }) => {
   return (
     <div className="flex flex-col gap-3 py-1 animate-in fade-in duration-200">
-      {/* Header Card (Clean semantic token surface) */}
-      <div className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] flex items-center justify-center font-bold shrink-0">
-              <Monitor className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                {lang === 'th' ? 'แดชบอร์ดสรุปผู้บริหาร · ผอ. / MIS' : 'Executive Summary · MIS'}
-              </h2>
-              <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                {activeSchool.nameTh || activeSchool.nameEn}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onSwitchToDesktopMode}
-            className="px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-text-title)] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
-            title="สลับไปมุมมองคอมพิวเตอร์"
-          >
-            <Laptop className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'จอใหญ่' : 'Desktop'}</span>
-          </button>
-        </div>
-      </div>
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'ภาพรวมผู้บริหาร (MIS)' : 'Executive Overview'}
+        iconTab="executive_monitor"
+        onBack={() => onSelectTab('home')}
+        backLabel={lang === 'th' ? 'หน้าหลัก' : 'Home'}
+      />
 
       {/* 4 Core Executive Metric Cards (Vertical, Clean, Space-optimized) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

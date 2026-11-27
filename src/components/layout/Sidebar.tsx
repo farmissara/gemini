@@ -46,6 +46,7 @@ import {
   MailCheck,
   Package,
   Tag,
+  X,
   LucideIcon,
 } from 'lucide-react';
 import { UserRole, AppLanguage, SchoolFeatureFlags } from '../../types';
@@ -1200,10 +1201,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={() => setSearchFilter('')}
-              aria-label="clear"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-border)]/60 hover:text-[var(--color-text-title)] cursor-pointer transition"
+              aria-label={lang === 'th' ? 'ล้างคำค้นหา' : 'Clear search'}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-border)]/60 hover:text-[var(--color-text-title)] cursor-pointer transition"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

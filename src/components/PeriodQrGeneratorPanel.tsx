@@ -17,7 +17,6 @@ import {
   Timer,
   UserCheck,
   Users,
-  X,
 } from 'lucide-react';
 import {
   AppLanguage,
@@ -34,6 +33,7 @@ import {
 import { DEFAULT_SCHOOL_PERIODS } from '../lib/schoolPeriods';
 import { getLocalDateString } from '../lib/date';
 import { QrCodeMatrix } from './QrCodeMatrix';
+import { BaseModal } from './common/BaseModal';
 import {
   buildExpiringPeriodQrSession,
   ExpiringPeriodQrSession,
@@ -1333,29 +1333,49 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
       )}
 
       {/* Fullscreen Projector Modal */}
-      {showFullscreenModal && activeSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 space-y-5 text-center shadow-2xl">
-            <div className="flex items-start justify-between gap-2 text-left">
-              <div>
-                <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                  {activeSession.courseCode} · {activeSession.courseTitle}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
-                  {lang === 'th'
-                    ? `คาบที่ ${activeSession.periodNumber} (${activeSession.timeSlot}) · วันที่ ${activeSession.date}`
-                    : `Period ${activeSession.periodNumber} (${activeSession.timeSlot}) · ${activeSession.date}`}
-                </p>
-              </div>
+      <BaseModal
+        isOpen={Boolean(showFullscreenModal && activeSession)}
+        onClose={() => setShowFullscreenModal(false)}
+        title={activeSession ? `${activeSession.courseCode} · ${activeSession.courseTitle}` : ''}
+        subtitle={
+          activeSession
+            ? lang === 'th'
+              ? `คาบที่ ${activeSession.periodNumber} (${activeSession.timeSlot}) · วันที่ ${activeSession.date}`
+              : `Period ${activeSession.periodNumber} (${activeSession.timeSlot}) · ${activeSession.date}`
+            : undefined
+        }
+        icon={<QrCode className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-6 space-y-5 text-center"
+        footerClassName="justify-center"
+        footer={
+          activeSession ? (
+            <>
+              <button
+                type="button"
+                onClick={() => handleCopy(activeSession.url, 'url')}
+                disabled={isExpired}
+                className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                {copiedField === 'url' ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                <span>{copiedField === 'url' ? (lang === 'th' ? 'คัดลอกลิงก์แล้ว' : 'Link Copied') : lang === 'th' ? 'คัดลอกลิงก์เช็คชื่อ' : 'Copy Link'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowFullscreenModal(false)}
-                aria-label="Close fullscreen QR"
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                {lang === 'th' ? 'ปิดหน้าจอขยาย' : 'Close'}
               </button>
-            </div>
+            </>
+          ) : undefined
+        }
+      >
+        {activeSession && (
 
             <div className="flex flex-col items-center justify-center space-y-3">
               <div
@@ -1411,32 +1431,8 @@ export const PeriodQrGeneratorPanel: React.FC<PeriodQrGeneratorPanelProps> = ({
                   : 'Students can scan this QR code on mobile to check in before the countdown ends.'}
               </p>
             </div>
-
-            <div className="flex items-center justify-center gap-2 pt-2 border-t border-[var(--color-border)]">
-              <button
-                type="button"
-                onClick={() => handleCopy(activeSession.url, 'url')}
-                disabled={isExpired}
-                className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-              >
-                {copiedField === 'url' ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-                <span>{copiedField === 'url' ? (lang === 'th' ? 'คัดลอกลิงก์แล้ว' : 'Link Copied') : lang === 'th' ? 'คัดลอกลิงก์เช็คชื่อ' : 'Copy Link'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowFullscreenModal(false)}
-                className="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white text-xs font-bold cursor-pointer"
-              >
-                {lang === 'th' ? 'ปิดหน้าจอขยาย' : 'Close'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
     </div>
   );
 };

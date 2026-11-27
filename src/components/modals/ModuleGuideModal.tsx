@@ -36,6 +36,7 @@ import { AppLanguage, UserRole } from '../../types';
 import { ROLE_WORKFLOW_STEPS } from '../../data/interactiveGuideTopics';
 import { GUIDED_PLAYBOOKS, MODULE_GUIDED_TOURS } from '../../data/moduleGuidedTours';
 import { useGuideTour } from '../guide/GuideTourContext';
+import { BaseModal } from '../common/BaseModal';
 
 export type GuideModuleId = 
   | 'dashboard'
@@ -761,43 +762,41 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden text-[var(--color-text-body)]">
-        
-        {/* Top Header */}
-        <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-[var(--color-primary-light)] border border-[var(--color-border)] flex items-center justify-center shrink-0 text-[var(--color-primary-text)]">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-bold text-[var(--color-text-title)]">
-                  {lang === 'th' ? 'คู่มือใช้งานในระบบ · คุณครูและนักเรียน' : 'In-Module Interactive Teacher & Student Guide'}
-                </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] tabular-nums">
-                  {MODULE_GUIDES.length} {lang === 'th' ? 'โมดูล' : 'Modules'}
-                </span>
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                {lang === 'th' 
-                  ? 'คู่มือภาพประกอบแยกสำหรับคุณครูและนักเรียน พร้อมขั้นตอนการทำงานแต่ละโมดูล'
-                  : 'Illustrated Teacher & Student guides and step-by-step workflows for every module.'}
-              </p>
-            </div>
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      title={lang === 'th' ? 'คู่มือใช้งานในระบบ · คุณครูและนักเรียน' : 'In-Module Interactive Teacher & Student Guide'}
+      subtitle={
+        lang === 'th'
+          ? 'คู่มือภาพประกอบแยกสำหรับคุณครูและนักเรียน พร้อมขั้นตอนการทำงานแต่ละโมดูล'
+          : 'Illustrated Teacher & Student guides and step-by-step workflows for every module.'
+      }
+      icon={<BookOpen className="w-6 h-6 text-[var(--color-primary-text)]" />}
+      headerActions={
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary-text)] border border-[var(--color-border)] tabular-nums">
+          {MODULE_GUIDES.length} {lang === 'th' ? 'โมดูล' : 'Modules'}
+        </span>
+      }
+      maxWidthClass="max-w-5xl"
+      heightClass="max-h-[92dvh]"
+      showMobileHandle
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0 text-[var(--color-text-body)]"
+      footerClassName="!justify-between text-xs text-[var(--color-text-muted)]"
+      footer={
+        <>
+          <div className="flex items-center gap-2">
+            <span>BaanPakKru · บ้านพักครู (Teacher Relief &amp; School System)</span>
           </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={lang === 'th' ? 'ปิดคู่มือ' : 'Close guide'}
-              className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] rounded-lg hover:bg-[var(--color-card)] transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold transition-colors cursor-pointer"
+          >
+            {lang === 'th' ? 'ปิดคู่มือ' : 'Close Guide'}
+          </button>
+        </>
+      }
+    >
 
         {/* Dedicated In-Module View Switcher: Hand-Holding Playbooks / Student / Teacher / All Modules */}
         <div className="px-5 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-card)] flex flex-wrap items-center justify-between gap-2 shrink-0">
@@ -1347,22 +1346,6 @@ export const ModuleGuideModal: React.FC<ModuleGuideModalProps> = ({
         </div>
         )}
 
-        {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between text-xs text-[var(--color-text-muted)] shrink-0">
-          <div className="flex items-center gap-2">
-            <span>BaanPakKru · บ้านพักครู (Teacher Relief &amp; School System)</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] font-semibold transition-colors cursor-pointer"
-          >
-            {lang === 'th' ? 'ปิดคู่มือ' : 'Close Guide'}
-          </button>
-        </div>
-
-      </div>
-    </div>
+    </BaseModal>
   );
 };

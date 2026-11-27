@@ -24,6 +24,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
+import { BaseModal } from '../common/BaseModal';
 import { StudentAcademicTrendChart } from '../StudentAcademicTrendChart';
 import { PagedList } from '../PagedList';
 import { QrCodeMatrix } from '../QrCodeMatrix';
@@ -248,8 +249,16 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-[var(--color-text-body)]">
+    <>
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      hideHeader
+      title={`${student.firstNameTh} ${student.lastNameTh}`}
+      maxWidthClass="max-w-2xl"
+      heightClass="max-h-[90dvh]"
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0 text-[var(--color-text-body)]"
+    >
         {/* Header (Intentional Dark High-Contrast Student Card Banner) */}
         <div className="p-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-b border-slate-800 flex items-start justify-between gap-4 shrink-0">
           <div className="flex items-center gap-4">
@@ -704,30 +713,18 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           </div>
           )}
         </div>
-      </div>
+    </BaseModal>
 
       {/* Printable Student QR Pass Modal */}
-      {showQrModal && (
-        <div className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-[var(--color-text-body)]">
-            <div className="no-print px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  บัตร QR เช็คชื่อนักเรียน (Printable QR Pass)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowQrModal(false)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-                aria-label="ปิดหน้าต่าง QR"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4">
+      <BaseModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        title="บัตร QR เช็คชื่อนักเรียน (Printable QR Pass)"
+        icon={<QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+        maxWidthClass="max-w-md"
+        zIndexClass="z-[105]"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
+      >
               {/* Printable Pass Card */}
               <div className="student-qr-print-area rounded-2xl border-2 border-slate-300 bg-white text-slate-900 p-5 shadow-sm flex flex-col items-center text-center space-y-3">
                 <div className="w-full rounded-xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 py-2.5">
@@ -827,10 +824,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       {/* Image Capture & Upload Modal */}
       <ImageCaptureUploadModal
@@ -840,6 +834,6 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         onSelectImage={handlePhotoUpdated}
         onClose={() => setShowPhotoModal(false)}
       />
-    </div>
+    </>
   );
 };

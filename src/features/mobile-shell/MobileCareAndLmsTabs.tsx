@@ -3,7 +3,6 @@ import {
   Activity,
   AlertCircle,
   AlertTriangle,
-  ArrowLeft,
   BookOpen,
   CheckCircle2,
   Clock,
@@ -18,8 +17,9 @@ import {
   ShieldAlert,
   Thermometer,
   Video,
-  X,
 } from 'lucide-react';
+import { BaseModal } from '../../components/common/BaseModal';
+import { MobileSubPageHeader } from './MobileHeaderAndNav';
 import type {
   AppLanguage,
   AttendanceRecord,
@@ -175,19 +175,12 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-150">
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
-          {lang === 'th' ? 'ประวัติการลงเวลาและมาเรียน' : 'Attendance History'}
-        </h2>
-      </div>
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'ประวัติการลงเวลาและมาเรียน' : 'Attendance History'}
+        iconTab="attendance"
+        backLabel={lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}
+        onBack={onBackHome}
+      />
 
       {/* Summary Banner */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 grid grid-cols-4 gap-2 text-center">
@@ -373,36 +366,22 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
       )}
 
       {/* Period Row Action Sheet (⋮) */}
-      {actionMenuTarget && (
-        <div
-          className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setActionMenuTarget(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 pb-6 space-y-2 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--color-border)]">
-              <div className="min-w-0">
-                <p className="text-sm font-extrabold text-[var(--color-text-title)] truncate">
-                  {actionMenuTarget.courseName} · คาบ {actionMenuTarget.record.periodNumber}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {formatThaiShortDateLabel(actionMenuTarget.record.date)} ({actionMenuTarget.record.timeSlot})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActionMenuTarget(null)}
-                className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                aria-label={lang === 'th' ? 'ปิดเมนู' : 'Close'}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+      <BaseModal
+        isOpen={Boolean(actionMenuTarget)}
+        onClose={() => setActionMenuTarget(null)}
+        title={actionMenuTarget ? `${actionMenuTarget.courseName} · คาบ ${actionMenuTarget.record.periodNumber}` : ''}
+        subtitle={
+          actionMenuTarget
+            ? `${formatThaiShortDateLabel(actionMenuTarget.record.date)} (${actionMenuTarget.record.timeSlot})`
+            : undefined
+        }
+        showMobileHandle
+        maxWidthClass="max-w-md"
+        surfaceClassName="rounded-t-3xl sm:rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 pb-6 space-y-2"
+      >
+        {actionMenuTarget && (
+          <>
             {onOpenCorrectionFromHistory && (
               <button
                 type="button"
@@ -465,9 +444,9 @@ export const MobileAttendanceHistoryTab: React.FC<MobileAttendanceHistoryTabProp
                 </div>
               </button>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
     </div>
   );
 };
@@ -595,17 +574,12 @@ export const MobileBehaviorSdqTab: React.FC<MobileBehaviorSdqTabProps> = ({
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-150">
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">พฤติกรรม &amp; คัดกรอง SDQ</h2>
-      </div>
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'พฤติกรรม & คัดกรอง SDQ' : 'Behavior & SDQ'}
+        iconTab="behavior_sdq"
+        backLabel={lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}
+        onBack={onBackHome}
+      />
 
       {toast && (
         <div role="status" className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">
@@ -944,17 +918,12 @@ export const MobileInfirmaryTab: React.FC<MobileInfirmaryTabProps> = ({
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-150">
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">ห้องพยาบาล &amp; เวชระเบียน</h2>
-      </div>
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'ห้องพยาบาล & เวชระเบียน' : 'Infirmary'}
+        iconTab="infirmary"
+        backLabel={lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}
+        onBack={onBackHome}
+      />
 
       {toast && (
         <div role="status" className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">
@@ -1270,19 +1239,12 @@ export const MobileLmsTab: React.FC<MobileLmsTabProps> = ({
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-150">
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => (selectedLesson ? setSelectedLessonId(null) : onBackHome())}
-          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{selectedLesson ? 'กลับรายการบทเรียน' : lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
-          {lang === 'th' ? 'ห้องเรียน & บทเรียน LMS' : 'LMS Classroom'}
-        </h2>
-      </div>
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'ห้องเรียน & บทเรียน LMS' : 'LMS Classroom'}
+        iconTab="lms_classroom"
+        backLabel={selectedLesson ? 'กลับรายการบทเรียน' : lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}
+        onBack={() => (selectedLesson ? setSelectedLessonId(null) : onBackHome())}
+      />
 
       {toast && (
         <div role="status" className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100 text-xs font-semibold flex items-center gap-2">

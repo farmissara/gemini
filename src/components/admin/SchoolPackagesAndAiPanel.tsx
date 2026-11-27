@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { QrCodeMatrix } from '../QrCodeMatrix';
+import { BaseModal } from '../common/BaseModal';
 import {
   fetchCentralExamPaymentSettings,
   generatePromptPayPayload,
@@ -509,8 +510,8 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{savingFlagsNotice}</span>
           </div>
-          <button type="button" onClick={() => setSavingFlagsNotice(null)} className="cursor-pointer font-bold">
-            ✕
+          <button type="button" onClick={() => setSavingFlagsNotice(null)} aria-label="ปิดข้อความแจ้งเตือน" className="cursor-pointer p-1">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -521,8 +522,8 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
             <CreditCard className="w-4 h-4 shrink-0" />
             <span>{orderNotice}</span>
           </div>
-          <button type="button" onClick={() => setOrderNotice(null)} className="cursor-pointer font-bold">
-            ✕
+          <button type="button" onClick={() => setOrderNotice(null)} aria-label="ปิดข้อความแจ้งเตือน" className="cursor-pointer p-1">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -739,34 +740,38 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
       </div>
 
       {/* Purchase / Upgrade Checkout Modal */}
-      {checkoutPkg && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={() => !submittingOrder && setCheckoutPkg(null)}
-        >
-          <div
-            className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto text-xs"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h4 className="text-sm font-bold text-[var(--color-text-title)]">
-                  สั่งซื้อ / อัปเกรดเป็น {checkoutPkg.nameTh}
-                </h4>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  {activeSchool.nameTh} · รอบชำระ{billingCycle === 'yearly' ? 'รายปี' : 'รายเดือน'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => !submittingOrder && setCheckoutPkg(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitPurchaseOrder} className="space-y-3.5">
+      <BaseModal
+        isOpen={Boolean(checkoutPkg)}
+        onClose={() => { if (!submittingOrder) setCheckoutPkg(null); }}
+        closeDisabled={submittingOrder}
+        title={checkoutPkg ? `สั่งซื้อ / อัปเกรดเป็น ${checkoutPkg.nameTh}` : ''}
+        subtitle={`${activeSchool.nameTh} · รอบชำระ${billingCycle === 'yearly' ? 'รายปี' : 'รายเดือน'}`}
+        icon={<CreditCard className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 text-xs"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={submittingOrder}
+              onClick={() => setCheckoutPkg(null)}
+              className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] text-xs cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              form="school-package-checkout-form"
+              disabled={submittingOrder}
+              className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+            >
+              {submittingOrder ? 'กำลังส่งคำขอ...' : 'ยืนยันส่งคำขออัปเกรดแพ็กเกจ'}
+            </button>
+          </>
+        }
+      >
+        {checkoutPkg && (
+          <form id="school-package-checkout-form" onSubmit={handleSubmitPurchaseOrder} className="space-y-3.5">
               <div className="p-3.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-1.5 tabular-nums">
                 <div className="flex justify-between">
                   <span className="text-[var(--color-text-muted)]">ค่าบริการแพ็กเกจ ({billingCycle === 'yearly' ? 'รายปี' : 'รายเดือน'})</span>
@@ -856,27 +861,9 @@ export const SchoolPackagesAndAiPanel: React.FC<SchoolPackagesAndAiPanelProps> =
                 />
               </label>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-                <button
-                  type="button"
-                  disabled={submittingOrder}
-                  onClick={() => setCheckoutPkg(null)}
-                  className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingOrder}
-                  className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold cursor-pointer"
-                >
-                  {submittingOrder ? 'กำลังส่งคำขอ...' : 'ยืนยันส่งคำขออัปเกรดแพ็กเกจ'}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
       <ConfirmActionModal
         isOpen={confirmRemoveAiKeyOpen}
         title="ลบ Gemini API key ของโรงเรียนนี้หรือไม่?"

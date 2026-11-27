@@ -35,6 +35,7 @@ import {
   saveIdCardBackMode,
   type IdCardBackMode,
 } from '../../lib/idCardBackLayout';
+import { BaseModal } from '../common/BaseModal';
 
 interface BatchIdCardPrintModalProps {
   isOpen: boolean;
@@ -330,8 +331,6 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
     }
   }, [printPages.length, previewPageIndex]);
 
-  if (!isOpen) return null;
-
   const toggleSinglePerson = (id: string) => {
     if (personType === 'student') {
       setStudentSelectionTouched(true);
@@ -409,8 +408,49 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-6xl rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl flex flex-col max-h-[95vh] overflow-hidden text-[var(--color-text-body)]">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      hideHeader
+      title={
+        personType === 'staff'
+          ? (lang === 'th' ? 'ระบบพิมพ์บัตรครูและบุคลากร CR80 (A4)' : 'Staff ID Card Print Sheet')
+          : (lang === 'th' ? 'ระบบพิมพ์บัตรนักเรียนมาตรฐาน CR80 (A4)' : 'Student ID Card Print Sheet')
+      }
+      maxWidthClass="max-w-6xl"
+      heightClass="max-h-[95dvh]"
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0 text-[var(--color-text-body)]"
+      footerClassName="!justify-between !py-2.5 text-xs"
+      footer={
+        <>
+          <div className="text-[11px] text-[var(--color-text-muted)]">
+            มาตรฐาน CR80 (85.60 × 53.98 มม.) · จัดหน้า A4 อัตโนมัติ (ตั้งค่า Margin: Default หรือ Minimum)
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              disabled={activePrintCount === 0}
+              className="btn-action-primary px-4 py-2"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>
+                {lang === 'th'
+                  ? `พิมพ์บัตรที่เลือกทั้งหมด (${activePrintCount} ใบ)`
+                  : `Print All Selected (${activePrintCount})`}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] font-semibold hover:bg-[var(--color-card-subtle)] cursor-pointer"
+            >
+              {lang === 'th' ? 'ปิด' : 'Close'}
+            </button>
+          </div>
+        </>
+      }
+    >
         {/* Top Modal Header */}
         <div className="p-3.5 sm:p-4 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[var(--color-card-subtle)] no-print">
           <div className="flex items-center gap-3 min-w-0">
@@ -1101,36 +1141,6 @@ export const BatchIdCardPrintModal: React.FC<BatchIdCardPrintModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Controls */}
-        <div className="px-4 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 no-print">
-          <div className="text-[11px] text-[var(--color-text-muted)]">
-            มาตรฐาน CR80 (85.60 × 53.98 มม.) · จัดหน้า A4 อัตโนมัติ (ตั้งค่า Margin: Default หรือ Minimum)
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              disabled={activePrintCount === 0}
-              className="btn-action-primary px-4 py-2"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>
-                {lang === 'th'
-                  ? `พิมพ์บัตรที่เลือกทั้งหมด (${activePrintCount} ใบ)`
-                  : `Print All Selected (${activePrintCount})`}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] font-semibold hover:bg-[var(--color-card-subtle)] cursor-pointer"
-            >
-              {lang === 'th' ? 'ปิด' : 'Close'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

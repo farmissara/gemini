@@ -2,15 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Camera, 
   Upload, 
-  X, 
   Check, 
   RefreshCw, 
   Sparkles, 
-  Image as ImageIcon, 
   SwitchCamera,
   Link as LinkIcon,
   AlertCircle
 } from 'lucide-react';
+import { BaseModal } from '../common/BaseModal';
 import {
   openCameraStream,
   stopCameraStream,
@@ -284,33 +283,61 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="px-5 py-4 bg-[var(--color-primary)] text-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-white/15 text-white border border-white/25">
-              <Camera className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-base tracking-tight">{title}</h3>
-              <p className="text-xs text-white/85">ถ่ายรูปสด อัปโหลดจากเครื่อง หรือเลือก Avatar</p>
-            </div>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      subtitle="ถ่ายรูปสด อัปโหลดจากเครื่อง หรือเลือก Avatar"
+      icon={<Camera className="w-5 h-5 text-[var(--color-primary-text)]" />}
+      maxWidthClass="max-w-lg"
+      heightClass="max-h-[90dvh]"
+      zIndexClass="z-[108]"
+      showMobileHandle
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0 select-none"
+      footerClassName="!justify-between"
+      footer={
+        <>
+          <div className="flex items-center gap-2">
+            {previewUrl && (
+              <div className="flex items-center gap-2">
+                <img
+                  src={previewUrl}
+                  alt="Current"
+                  className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shadow-sm"
+                />
+                <span className="text-xs font-bold text-[var(--color-text-title)] hidden sm:inline">รูปภาพที่เลือก</span>
+              </div>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-bold hover:bg-[var(--color-primary-light)] transition cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              disabled={!previewUrl}
+              onClick={handleConfirm}
+              className={`px-5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md transition ${
+                previewUrl
+                  ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white active:scale-95 cursor-pointer'
+                  : 'bg-[var(--color-card)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-60 cursor-not-allowed'
+              }`}
+            >
+              <Check className="w-4 h-4" />
+              <span>บันทึกรูปภาพ</span>
+            </button>
+          </div>
+        </>
+      }
+    >
         {/* Tab Navigation */}
-        <div className="flex border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 pt-2 gap-1 overflow-x-auto text-xs font-semibold">
+        <div className="flex border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] px-3 pt-2 gap-1 overflow-x-auto text-xs font-semibold shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('upload')}
@@ -609,45 +636,6 @@ export const ImageCaptureUploadModal: React.FC<ImageCaptureUploadModalProps> = (
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3.5 bg-[var(--color-card-subtle)] border-t border-[var(--color-border)] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {previewUrl && (
-              <div className="flex items-center gap-2">
-                <img
-                  src={previewUrl}
-                  alt="Current"
-                  className="w-8 h-8 rounded-full object-cover border border-[var(--color-border)] shadow-sm"
-                />
-                <span className="text-xs font-bold text-[var(--color-text-title)] hidden sm:inline">รูปภาพที่เลือก</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs font-bold hover:bg-[var(--color-primary-light)] transition cursor-pointer"
-            >
-              ยกเลิก
-            </button>
-            <button
-              type="button"
-              disabled={!previewUrl}
-              onClick={handleConfirm}
-              className={`px-5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md transition ${
-                previewUrl
-                  ? 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white active:scale-95 cursor-pointer'
-                  : 'bg-[var(--color-card)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-60 cursor-not-allowed'
-              }`}
-            >
-              <Check className="w-4 h-4" />
-              <span>บันทึกรูปภาพ</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

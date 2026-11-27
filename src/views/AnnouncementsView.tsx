@@ -28,6 +28,8 @@ import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 
 interface AnnouncementsViewProps {
   schoolId?: string;
@@ -112,52 +114,48 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
   return (
     <div className={`${getModuleTone('announcements')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 app-page-header">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-xl">
-            <FutureNavIcon tab="announcements" size={18} active />
-          </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            ประกาศและข่าวสารโรงเรียน
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <ModuleTourTrigger moduleId="announcements" lang="th" />
-          <button
-            type="button"
-            data-guide-id="announcements-compose-btn"
-            onClick={() => {
-              setAllowDuplicateConfirm(false);
-              setShowComposeModal(true);
-            }}
-            className="btn-action-primary px-3 py-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>สร้างประกาศใหม่</span>
-          </button>
-          <TableActionMenu
-            size="md"
-            ariaLabel="เครื่องมือจัดการประกาศ"
-            menuWidth={240}
-            items={[
-              {
-                id: 'categories',
-                label: 'จัดการหมวดประกาศ',
-                icon: <Sliders className="w-3.5 h-3.5" />,
-                onClick: () => setShowCategoryModal(true),
-              },
-              {
-                id: 'consent',
-                label: 'สร้างหนังสือขออนุญาตผู้ปกครอง',
-                icon: <CheckCircle2 className="w-3.5 h-3.5" />,
-                variant: 'success',
-                onClick: () => setShowConsentModal(true),
-              },
-            ]}
-          />
-        </div>
-      </div>
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="announcements" size={20} active />}
+        title="ประกาศและข่าวสารโรงเรียน"
+        actions={
+          <>
+            <ModuleTourTrigger moduleId="announcements" lang="th" />
+            <button
+              type="button"
+              data-guide-id="announcements-compose-btn"
+              onClick={() => {
+                setAllowDuplicateConfirm(false);
+                setShowComposeModal(true);
+              }}
+              className="btn-action-primary px-3 py-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>สร้างประกาศใหม่</span>
+            </button>
+            <TableActionMenu
+              size="md"
+              ariaLabel="เครื่องมือจัดการประกาศ"
+              menuWidth={240}
+              items={[
+                {
+                  id: 'categories',
+                  label: 'จัดการหมวดประกาศ',
+                  icon: <Sliders className="w-3.5 h-3.5" />,
+                  onClick: () => setShowCategoryModal(true),
+                },
+                {
+                  id: 'consent',
+                  label: 'สร้างหนังสือขออนุญาตผู้ปกครอง',
+                  icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+                  variant: 'success',
+                  onClick: () => setShowConsentModal(true),
+                },
+              ]}
+            />
+          </>
+        }
+      />
 
       {/* Filter Tabs */}
       <div className="shrink-0 p-2 toolbar-filter-zone flex flex-wrap items-center justify-between gap-2">
@@ -258,23 +256,16 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       </div>
 
       {/* Compose Announcement Modal */}
-      {showComposeModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="modal-enter bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 text-[var(--color-text-body)]">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>เผยแพร่ประกาศโรงเรียน</span>
-              </h3>
-              <button
-                onClick={() => setShowComposeModal(false)}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] text-lg font-bold px-2 py-0.5 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleCreate} className="space-y-3 text-xs">
+      <BaseModal
+        isOpen={showComposeModal}
+        onClose={() => setShowComposeModal(false)}
+        title="เผยแพร่ประกาศโรงเรียน"
+        icon={<Plus className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 text-[var(--color-text-body)]"
+      >
+        <form onSubmit={handleCreate} className="space-y-3 text-xs">
               <div>
                 <label className="block text-[var(--color-text-body)] font-semibold mb-1">Title</label>
                 <input
@@ -376,20 +367,20 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                   Publish &amp; Broadcast
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Consent Form Modal */}
-      {showConsentModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5">
-              <h3 className="font-bold text-sm text-[var(--color-text-title)]">สร้างหนังสือขออนุญาตผู้ปกครอง (Digital Consent)</h3>
-              <button type="button" onClick={() => setShowConsentModal(false)} className="text-sm font-bold text-[var(--color-text-muted)] px-2 cursor-pointer">✕</button>
-            </div>
-            <form
+      <BaseModal
+        isOpen={showConsentModal}
+        onClose={() => setShowConsentModal(false)}
+        title="สร้างหนังสือขออนุญาตผู้ปกครอง (Digital Consent)"
+        icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+        maxWidthClass="max-w-md"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5"
+      >
+        <form
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!consentTitle.trim() || !consentDesc.trim()) return;
@@ -448,22 +439,19 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 <button type="button" onClick={() => setShowConsentModal(false)} className="px-3.5 py-1.5 rounded-lg border border-[var(--color-border)] font-semibold cursor-pointer">ยกเลิก</button>
                 <button type="submit" className="px-4 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">ส่งให้ผู้ปกครองลงนาม</button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Custom Announcement Categories Modal */}
-      {showCategoryModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl text-xs">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5">
-              <h3 className="font-bold text-sm text-[var(--color-text-title)] flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>ตั้งค่าหมวดประกาศโรงเรียน (Admin)</span>
-              </h3>
-              <button type="button" onClick={() => setShowCategoryModal(false)} className="text-sm font-bold text-[var(--color-text-muted)] px-2 cursor-pointer">✕</button>
-            </div>
+      <BaseModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        title="ตั้งค่าหมวดประกาศโรงเรียน (Admin)"
+        icon={<Sliders className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-md"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 text-xs"
+      >
 
             <div className="flex gap-2">
               <input
@@ -505,10 +493,8 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                   )}
                 </div>
               ))}
-            </div>
-          </div>
         </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

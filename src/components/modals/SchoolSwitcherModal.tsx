@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { School, AppLanguage } from '../../types';
-import { 
-  Building2, 
-  X, 
-  Check, 
-  MapPin, 
-  Users, 
+import {
+  Building2,
+  Check,
+  MapPin,
+  Users,
   ExternalLink,
-  ShieldCheck
 } from 'lucide-react';
 import { PagedList } from '../PagedList';
+import { BaseModal } from '../common/BaseModal';
 
 interface SchoolSwitcherModalProps {
   schools: School[];
@@ -29,46 +28,40 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
   isInspectionPrompt = false,
 }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg shadow-xl p-5 sm:p-6 space-y-5 text-[var(--color-text-body)]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 shrink-0 rounded-lg bg-[var(--color-primary-light)] flex items-center justify-center text-[var(--color-primary-text)]">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-base font-semibold text-[var(--color-text-title)]">
-                {isInspectionPrompt
-                  ? lang === 'th'
-                    ? 'เลือกโรงเรียนเพื่อเข้าตรวจสอบข้อมูล (School Inspection)'
-                    : 'Select School to Inspect'
-                  : lang === 'th'
-                    ? 'ข้อมูลสถาบันการศึกษา (School Institution)'
-                    : 'School Institution Info'}
-              </h3>
-              <p className="text-sm text-[var(--color-text-muted)]">
-                {isInspectionPrompt
-                  ? lang === 'th'
-                    ? 'เข้าสู่ระบบภายในของโรงเรียนเพื่อตรวจสอบการทำงาน (สามารถกลับมาหน้าผู้พัฒนาได้ตลอด)'
-                    : 'Inspect a school workspace directly and exit back to Developer Mode anytime.'
-                  : lang === 'th'
-                    ? 'แสดงเฉพาะโรงเรียนที่บัญชีของคุณมีสิทธิ์เข้าถึง'
-                    : 'Only schools your account is authorized to access are shown.'}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="shrink-0 p-2 -m-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)] transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* List of Schools */}
-        <div className="space-y-2">
-          <PagedList items={schools} pageSize={3} renderItem={(sch) => {
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      maxWidthClass="max-w-lg"
+      title={
+        isInspectionPrompt
+          ? lang === 'th'
+            ? 'เลือกโรงเรียนเพื่อเข้าตรวจสอบข้อมูล (School Inspection)'
+            : 'Select School to Inspect'
+          : lang === 'th'
+            ? 'ข้อมูลสถาบันการศึกษา (School Institution)'
+            : 'School Institution Info'
+      }
+      subtitle={
+        isInspectionPrompt
+          ? lang === 'th'
+            ? 'เข้าสู่ระบบภายในของโรงเรียนเพื่อตรวจสอบการทำงาน (สามารถกลับมาหน้าผู้พัฒนาได้ตลอด)'
+            : 'Inspect a school workspace directly and exit back to Developer Mode anytime.'
+          : lang === 'th'
+            ? 'แสดงเฉพาะโรงเรียนที่บัญชีของคุณมีสิทธิ์เข้าถึง'
+            : 'Only schools your account is authorized to access are shown.'
+      }
+      icon={<Building2 className="w-5 h-5" />}
+      footer={
+        <span className="text-xs text-[var(--color-text-muted)]">
+          {lang === 'th' ? `ระบบมีทั้งหมด ${schools.length} โรงเรียน` : `Total ${schools.length} Schools`}
+        </span>
+      }
+    >
+      <div className="space-y-2">
+        <PagedList
+          items={schools}
+          pageSize={3}
+          renderItem={(sch) => {
             const isActive = !isInspectionPrompt && activeSchool.id === sch.id;
             return (
               <div
@@ -85,17 +78,11 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
               >
                 <div className="space-y-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span className="font-mono text-xs text-[var(--color-text-muted)]">
-                      {sch.code}
-                    </span>
-                    <span className="text-sm font-semibold text-[var(--color-text-title)]">
-                      {sch.nameTh}
-                    </span>
+                    <span className="font-mono text-xs text-[var(--color-text-muted)]">{sch.code}</span>
+                    <span className="text-sm font-semibold text-[var(--color-text-title)]">{sch.nameTh}</span>
                   </div>
 
-                  <p className="text-sm text-[var(--color-text-body)]">
-                    {sch.nameEn}
-                  </p>
+                  <p className="text-sm text-[var(--color-text-body)]">{sch.nameEn}</p>
 
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-[var(--color-text-muted)]">
                     <span className="flex items-center gap-1">
@@ -133,15 +120,10 @@ export const SchoolSwitcherModal: React.FC<SchoolSwitcherModalProps> = ({
                 </div>
               </div>
             );
-          }} />
-        </div>
-
-        <div>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {lang === 'th' ? `ระบบมีทั้งหมด ${schools.length} โรงเรียน` : `Total ${schools.length} Schools`}
-          </span>
-        </div>
+          }}
+        />
       </div>
-    </div>
+    </BaseModal>
   );
 };
+

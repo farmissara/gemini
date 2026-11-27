@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Send,
   UserCheck,
+  X,
 } from 'lucide-react';
 import { LeaveRequest, TimetableSlot } from '../../types';
 import { normalizeTeacherName } from '../../lib/timetableTeachers';
@@ -141,7 +142,7 @@ export const TimetableSubstituteTab: React.FC<TimetableSubstituteTabProps> = ({
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               {subNotice}
             </span>
-            <button type="button" onClick={() => setSubNotice(null)} className="text-xs font-bold px-1.5 cursor-pointer">✕</button>
+            <button type="button" onClick={() => setSubNotice(null)} aria-label="ปิดข้อความแจ้งเตือน" className="p-1 cursor-pointer"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
       </header>

@@ -33,6 +33,7 @@ import { getModuleTone } from '../lib/moduleTheme';
 import { ConfirmActionModal } from '../components/modals/ConfirmActionModal';
 import { compressImageFileToDataUrl } from '../lib/imageCompression';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 
 interface CentralExamPaymentSettingsViewProps {
   adminEmail?: string;
@@ -168,26 +169,17 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
   return (
     <div className={`${getModuleTone('central_exam_hub')} space-y-5`}>
       {/* Top Header */}
-      <div className="app-page-header px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5 min-w-0">
-          <div className="tone-chip w-11 h-11 rounded-xl flex items-center justify-center shrink-0">
-            <FutureNavIcon tab="super_admin_exam_payment" size={22} active />
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[var(--tone-text)]">
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>Super Admin Portal · Central Exam Marketplace Payments</span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-[var(--color-text-title)]">
-              ตั้งค่า QR PromptPay &amp; อัปโหลด QR รับเงินขายข้อสอบ
-            </h2>
-            <p className="text-xs text-[var(--color-text-muted)] max-w-2xl leading-relaxed">
-              กำหนดเบอร์พร้อมเพย์ บัญชีธนาคาร และอัปโหลดภาพ QR Code จากแอปธนาคาร แสดงผลในหน้าชำระเงินทุกโรงเรียนที่สั่งซื้อข้อสอบกลาง 8 กลุ่มสาระ
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
+      <PageHeader
+        kicker={
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>Super Admin Portal · Central Exam Marketplace Payments</span>
+          </span>
+        }
+        title="ตั้งค่า QR PromptPay & อัปโหลด QR รับเงินขายข้อสอบ"
+        description="กำหนดเบอร์พร้อมเพย์ บัญชีธนาคาร และอัปโหลดภาพ QR Code จากแอปธนาคาร แสดงผลในหน้าชำระเงินทุกโรงเรียนที่สั่งซื้อข้อสอบกลาง 8 กลุ่มสาระ"
+        icon={<FutureNavIcon tab="super_admin_exam_payment" size={20} active />}
+        actions={
           <button
             type="button"
             onClick={handleSave}
@@ -197,8 +189,8 @@ export const CentralExamPaymentSettingsView: React.FC<CentralExamPaymentSettings
             <Save className="w-4 h-4 shrink-0" />
             <span>บันทึกการตั้งค่า</span>
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Toast Notification */}
       {savedToast && (

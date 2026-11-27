@@ -18,6 +18,7 @@ import {
   LogOut,
   Heart,
 } from 'lucide-react';
+import { BaseModal } from '../components/common/BaseModal';
 import {
   AppLanguage,
   AuthUser,
@@ -1091,9 +1092,16 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
       </div>
 
       {/* Victory Modal */}
-      {victoryCelebration && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-amber-400/50 rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
+      <BaseModal
+        isOpen={victoryCelebration}
+        onClose={handleRestartBoss}
+        hideHeader
+        zIndexClass="z-50"
+        maxWidthClass="max-w-sm"
+        surfaceClassName="!bg-zinc-900 !border-amber-400/50 !text-white rounded-3xl"
+        bodyClassName="p-6 text-center space-y-4"
+        title={lang === 'th' ? 'พิชิตบอสสำเร็จ!' : 'BOSS DEFEATED'}
+      >
             <div className="w-12 h-12 mx-auto rounded-xl bg-amber-400 text-zinc-950 flex items-center justify-center">
               <Trophy className="w-6 h-6" />
             </div>
@@ -1154,9 +1162,7 @@ export const CoopBossRaidView: React.FC<CoopBossRaidViewProps> = ({
                 {lang === 'th' ? 'เล่นรอบใหม่' : 'Play Again'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

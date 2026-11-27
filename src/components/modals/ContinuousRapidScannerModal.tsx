@@ -30,6 +30,7 @@ import {
   formatCameraErrorTh,
   type CameraFacingMode,
 } from '../../lib/cameraStream';
+import { BaseModal } from '../common/BaseModal';
 
 interface ContinuousRapidScannerModalProps {
   isOpen: boolean;
@@ -228,8 +229,6 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
       streamRef.current = null;
     };
   }, [isOpen, facingMode, cameraRetry]);
-
-  if (!isOpen) return null;
 
   // Process a scanned student or teacher/staff barcode/QR code
   const processScannedCode = (rawCode: string) => {
@@ -455,10 +454,32 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs ${kioskMode ? 'p-0' : 'p-2 sm:p-4'} animate-in fade-in duration-150`}>
-      <div className={`w-full bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl flex flex-col overflow-hidden text-[var(--color-text-body)] ${
-        kioskMode ? 'h-screen max-w-none max-h-none rounded-none' : 'max-w-2xl rounded-3xl max-h-[95vh]'
-      }`}>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      hideHeader
+      fullscreen={kioskMode}
+      title={lang === 'th' ? 'สแกนเนอร์บาร์โค้ด & QR ต่อเนื่อง' : 'Continuous Rapid Scanner'}
+      maxWidthClass="max-w-2xl"
+      heightClass="max-h-[95dvh]"
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0 text-[var(--color-text-body)]"
+      footerClassName="!justify-between !py-3 text-xs"
+      footer={
+        <>
+          <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>EduVerse Continuous Scanner Engine</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] font-bold hover:bg-[var(--color-card-subtle)] cursor-pointer text-xs"
+          >
+            {lang === 'th' ? 'เสร็จสิ้น' : 'Done'}
+          </button>
+        </>
+      }
+    >
         
         {/* Header */}
         <div className="p-3.5 sm:p-4 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-[var(--color-card-subtle)]">
@@ -764,21 +785,6 @@ export const ContinuousRapidScannerModal: React.FC<ContinuousRapidScannerModalPr
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between text-xs shrink-0">
-          <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>EduVerse Continuous Scanner Engine</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] font-bold hover:bg-[var(--color-card-subtle)] cursor-pointer text-xs"
-          >
-            {lang === 'th' ? 'เสร็จสิ้น' : 'Done'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

@@ -7,7 +7,6 @@ import {
   Loader2,
   Upload,
   Users,
-  X,
 } from 'lucide-react';
 import { SchoolPeriodTime, TimetableSlot } from '../../types';
 import { getTimetableDuplicateReasons } from '../../lib/duplicateRecords';
@@ -18,6 +17,7 @@ import {
   exportTimetableXlsx,
   parseTimetableImportFile,
 } from '../../lib/timetableImportExport';
+import { BaseModal } from '../common/BaseModal';
 
 interface TimetableImportExportModalProps {
   schoolId: string;
@@ -129,32 +129,17 @@ export const TimetableImportExportModal: React.FC<TimetableImportExportModalProp
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">ส่งออก / นำเข้าข้อมูลตารางเรียนและตารางสอน</h3>
-              <p className="text-xs text-slate-500">
-                รองรับไฟล์ Excel (.xlsx) และ CSV (.csv) พร้อมคอลัมน์ครูผู้สอนหลักและครูสอนคู่
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center"
-            aria-label="ปิดหน้าต่าง"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      maxWidthClass="max-w-4xl"
+      heightClass="max-h-[90dvh]"
+      surfaceClassName="bg-white border border-slate-200 text-slate-900"
+      icon={<FileSpreadsheet className="w-5 h-5 text-emerald-600" />}
+      title="ส่งออก / นำเข้าข้อมูลตารางเรียนและตารางสอน"
+      subtitle="รองรับไฟล์ Excel (.xlsx) และ CSV (.csv) พร้อมคอลัมน์ครูผู้สอนหลักและครูสอนคู่"
+      bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-6"
+    >
           {errorMessage && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -384,8 +369,7 @@ export const TimetableImportExportModal: React.FC<TimetableImportExportModalProp
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };
+

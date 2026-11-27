@@ -32,6 +32,7 @@ import { PagedList } from '../components/PagedList';
 import { BatchIdCardPrintModal } from '../components/modals/BatchIdCardPrintModal';
 import { IdCardFrontContent } from '../components/id-card/IdCardFrontContent';
 import { IdCardBackContent } from '../components/id-card/IdCardBackContent';
+import { PageHeader } from '../components/common/PageShell';
 import { getModuleTone } from '../lib/moduleTheme';
 import { resolveLinkedStudentsForUser, resolveOwnStudent, resolveOwnTeacher } from '../lib/attendanceScope';
 import {
@@ -316,129 +317,127 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
   return (
     <div className={`${getModuleTone('student_id_cards')} lg:h-full flex flex-col min-h-0 lg:overflow-hidden space-y-2`}>
       {/* Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header text-[var(--color-text-title)] no-print">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="tone-chip w-9 h-9 rounded-xl shrink-0">
-            <FutureNavIcon tab="student_id_cards" size={19} active />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-              {isTeacherViewer
-                ? (lang === 'th' ? 'บัตรประจำตัวครู / บุคลากรของฉัน' : 'My Staff ID Card')
-                : isStudentViewer
-                  ? (lang === 'th' ? 'บัตรประจำตัวนักเรียนของฉัน' : 'My Student ID Card')
-                  : (lang === 'th' ? 'บัตรประจำตัวดิจิทัล' : 'Virtual ID Card')}
-            </h1>
-            <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-              {lang === 'th'
-                ? 'มาตรฐาน CR80 · Code 128 และ QR Code สแกนจริง'
-                : 'CR80 Standard · Scannable Code 128 & QR'}
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        compact
+        noPrint
+        className="no-print"
+        icon={<FutureNavIcon tab="student_id_cards" size={19} active />}
+        title={
+          isTeacherViewer
+            ? (lang === 'th' ? 'บัตรประจำตัวครู / บุคลากรของฉัน' : 'My Staff ID Card')
+            : isStudentViewer
+              ? (lang === 'th' ? 'บัตรประจำตัวนักเรียนของฉัน' : 'My Student ID Card')
+              : (lang === 'th' ? 'บัตรประจำตัวดิจิทัล' : 'Virtual ID Card')
+        }
+        description={
+          lang === 'th'
+            ? 'มาตรฐาน CR80 · Code 128 และ QR Code สแกนจริง'
+            : 'CR80 Standard · Scannable Code 128 & QR'
+        }
+        actions={
+          <>
+            {isAdminViewer && (
+              <>
+                <div className="seg-tab-group">
+                  <button
+                    type="button"
+                    data-active={activeCardType === 'student'}
+                    onClick={() => {
+                      setCardType('student');
+                      setSearchTerm('');
+                      setIsFlipped(false);
+                    }}
+                    className="seg-tab-btn"
+                  >
+                    {lang === 'th' ? `บัตรนักเรียน (${visibleStudents.length})` : `Students (${visibleStudents.length})`}
+                  </button>
+                  <button
+                    type="button"
+                    data-active={activeCardType === 'staff'}
+                    onClick={() => {
+                      setCardType('staff');
+                      setSearchTerm('');
+                      setIsFlipped(false);
+                    }}
+                    className="seg-tab-btn"
+                  >
+                    {lang === 'th' ? `บัตรครู/บุคลากร (${visibleTeachers.length})` : `Staff (${visibleTeachers.length})`}
+                  </button>
+                </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-          {isAdminViewer && (
-            <>
-              <div className="seg-tab-group">
                 <button
                   type="button"
-                  data-active={activeCardType === 'student'}
-                  onClick={() => {
-                    setCardType('student');
-                    setSearchTerm('');
-                    setIsFlipped(false);
-                  }}
-                  className="seg-tab-btn"
+                  onClick={() => setShowPrintModal(true)}
+                  disabled={
+                    activeCardType === 'staff'
+                      ? selectedBatchTeacherIds.size === 0
+                      : selectedBatchStudentIds.size === 0
+                  }
+                  className="btn-action-primary px-3 py-1.5"
                 >
-                  {lang === 'th' ? `บัตรนักเรียน (${visibleStudents.length})` : `Students (${visibleStudents.length})`}
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>
+                    {activeCardType === 'staff'
+                      ? (lang === 'th'
+                          ? `พิมพ์บัตรที่เลือกทั้งหมด (${selectedBatchTeacherIds.size} ใบ)`
+                          : `Print All Selected (${selectedBatchTeacherIds.size})`)
+                      : (lang === 'th'
+                          ? `พิมพ์บัตรที่เลือกทั้งหมด (${selectedBatchStudentIds.size} ใบ)`
+                          : `Print All Selected (${selectedBatchStudentIds.size})`)}
+                  </span>
                 </button>
+
+                {activePerson && (
+                  <TableActionMenu
+                    size="md"
+                    ariaLabel={lang === 'th' ? 'ตัวเลือกพิมพ์บัตร' : 'Card print options'}
+                    menuWidth={210}
+                    items={[
+                      {
+                        id: 'print-single-card',
+                        label: lang === 'th' ? 'พิมพ์บัตรหน้านี้ (เดี่ยว)' : 'Print This Card',
+                        icon: <Printer className="w-3.5 h-3.5" />,
+                        onClick: handlePrintSingleCard,
+                      },
+                    ]}
+                  />
+                )}
+              </>
+            )}
+
+            {!isAdminViewer && activePerson && (
+              <>
                 <button
                   type="button"
-                  data-active={activeCardType === 'staff'}
-                  onClick={() => {
-                    setCardType('staff');
-                    setSearchTerm('');
-                    setIsFlipped(false);
-                  }}
-                  className="seg-tab-btn"
+                  onClick={handlePrintSingleCard}
+                  className="btn-action-primary px-3 py-1.5"
                 >
-                  {lang === 'th' ? `บัตรครู/บุคลากร (${visibleTeachers.length})` : `Staff (${visibleTeachers.length})`}
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'พิมพ์บัตรหน้า-หลัง (A4)' : 'Print Front & Back'}</span>
                 </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowPrintModal(true)}
-                disabled={
-                  activeCardType === 'staff'
-                    ? selectedBatchTeacherIds.size === 0
-                    : selectedBatchStudentIds.size === 0
-                }
-                className="btn-action-primary px-3 py-1.5"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>
-                  {activeCardType === 'staff'
-                    ? (lang === 'th'
-                        ? `พิมพ์บัตรที่เลือกทั้งหมด (${selectedBatchTeacherIds.size} ใบ)`
-                        : `Print All Selected (${selectedBatchTeacherIds.size})`)
-                    : (lang === 'th'
-                        ? `พิมพ์บัตรที่เลือกทั้งหมด (${selectedBatchStudentIds.size} ใบ)`
-                        : `Print All Selected (${selectedBatchStudentIds.size})`)}
-                </span>
-              </button>
-
-              {activePerson && (
-                <TableActionMenu
-                  size="md"
-                  ariaLabel={lang === 'th' ? 'ตัวเลือกพิมพ์บัตร' : 'Card print options'}
-                  menuWidth={210}
-                  items={[
-                    {
-                      id: 'print-single-card',
-                      label: lang === 'th' ? 'พิมพ์บัตรหน้านี้ (เดี่ยว)' : 'Print This Card',
-                      icon: <Printer className="w-3.5 h-3.5" />,
-                      onClick: handlePrintSingleCard,
-                    },
-                  ]}
-                />
-              )}
-            </>
-          )}
-
-          {!isAdminViewer && activePerson && (
-            <>
-              <button
-                type="button"
-                onClick={handlePrintSingleCard}
-                className="btn-action-primary px-3 py-1.5"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'พิมพ์บัตรหน้า-หลัง (A4)' : 'Print Front & Back'}</span>
-              </button>
-              {canBatchPrint && (
-                <TableActionMenu
-                  size="md"
-                  ariaLabel={lang === 'th' ? 'ตัวเลือกพิมพ์บัตรชุด' : 'Batch print options'}
-                  menuWidth={230}
-                  items={[
-                    {
-                      id: 'print-batch-cards',
-                      label:
-                        lang === 'th'
-                          ? `พิมพ์บัตรที่เลือกทั้งหมด (${isParentViewer ? selectedBatchStudentIds.size : students.length} ใบ)`
-                          : `Print All Selected (${isParentViewer ? selectedBatchStudentIds.size : students.length})`,
-                      icon: <Printer className="w-3.5 h-3.5" />,
-                      onClick: () => setShowPrintModal(true),
-                    },
-                  ]}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                {canBatchPrint && (
+                  <TableActionMenu
+                    size="md"
+                    ariaLabel={lang === 'th' ? 'ตัวเลือกพิมพ์บัตรชุด' : 'Batch print options'}
+                    menuWidth={230}
+                    items={[
+                      {
+                        id: 'print-batch-cards',
+                        label:
+                          lang === 'th'
+                            ? `พิมพ์บัตรที่เลือกทั้งหมด (${isParentViewer ? selectedBatchStudentIds.size : students.length} ใบ)`
+                            : `Print All Selected (${isParentViewer ? selectedBatchStudentIds.size : students.length})`,
+                        icon: <Printer className="w-3.5 h-3.5" />,
+                        onClick: () => setShowPrintModal(true),
+                      },
+                    ]}
+                  />
+                )}
+              </>
+            )}
+          </>
+        }
+      />
 
       {/* Main Interactive Showcase */}
       <div

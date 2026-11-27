@@ -28,6 +28,7 @@ import {
   AuthUser,
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { BaseModal } from '../components/common/BaseModal';
 import { getModuleTone } from '../lib/moduleTheme';
 import { resolveOwnStudent } from '../lib/attendanceScope';
 import { triggerHaptic } from '../lib/arcadeStore';
@@ -764,14 +765,24 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
       </div>
 
       {/* Verifiable Digital Certificate Modal */}
-      {selectedCertForModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 overflow-y-auto">
-          <div className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-3 sm:p-4 shadow-2xl relative border-4 border-amber-400/40">
+      <BaseModal
+        isOpen={Boolean(selectedCertForModal)}
+        onClose={() => setSelectedCertForModal(null)}
+        hideHeader
+        zIndexClass="z-50"
+        maxWidthClass="max-w-2xl"
+        surfaceClassName="!bg-white !text-slate-900 !border-4 !border-amber-400/40"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 relative"
+        title={lang === 'th' ? 'เกียรติบัตรเชิดชูเกียรติ' : 'CERTIFICATE OF EXCELLENCE'}
+      >
+        {selectedCertForModal && (
+          <>
             {/* Close Button */}
             <button
               type="button"
               onClick={() => setSelectedCertForModal(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 hover:text-slate-950 transition cursor-pointer"
+              aria-label="ปิดเกียรติบัตร"
+              className="no-print absolute top-4 right-4 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 hover:text-slate-950 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -877,9 +888,9 @@ export const HallOfFame3DView: React.FC<HallOfFame3DViewProps> = ({
                   {lang === 'th' ? 'เกียรติบัตรเข้ารหัส SHA-256 ป้องกันการปลอมแปลง' : 'Cryptographically signed SHA-256'}
                 </span>
               </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
     </div>
   );
 };

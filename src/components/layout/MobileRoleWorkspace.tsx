@@ -21,9 +21,7 @@ import {
   Mail,
   MapPin,
   Megaphone,
-  Monitor,
   Plus,
-  QrCode,
   RefreshCw,
   Search,
   Settings,
@@ -68,6 +66,7 @@ import {
 } from '../../lib/schoolFeatureFlags';
 import { saveSchoolFeatureFlagsToDb } from '../../lib/schoolPackageStore';
 import { getLocalDateString } from '../../lib/date';
+import { BaseModal } from '../common/BaseModal';
 
 // Reusable Mobile Bottom Sheet (Thumb-zone friendly)
 interface MobileBottomSheetProps {
@@ -84,41 +83,20 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
   title,
   subtitle,
   children,
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div
-        className="fixed inset-0 bg-slate-950/55 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-      />
-      <div className="relative z-10 w-full max-w-lg max-h-[88dvh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)] shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
-        <div className="pt-2.5 pb-1 flex justify-center sm:hidden shrink-0">
-          <span className="w-10 h-1.5 rounded-full bg-[var(--color-border)]" />
-        </div>
-        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-3 shrink-0">
-          <div className="min-w-0">
-            <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">{title}</h3>
-            {subtitle && (
-              <p className="text-[11px] text-[var(--color-text-muted)] truncate mt-0.5">{subtitle}</p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="min-h-[44px] min-w-[44px] -mr-2 flex items-center justify-center rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] hover:text-[var(--color-text-title)] cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-};
+}) => (
+  <BaseModal
+    isOpen={isOpen}
+    onClose={onClose}
+    title={title}
+    subtitle={subtitle}
+    maxWidthClass="max-w-lg"
+    heightClass="max-h-[88dvh]"
+    showMobileHandle
+    bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
+  >
+    {children}
+  </BaseModal>
+);
 
 // ============================================================================
 // 1. SCHOOL ADMIN MOBILE QUICK HUB (ปรับข้อมูลด่วน · อนุมัติ · ประกาศ · ทางลัดคอม)
@@ -152,7 +130,7 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
   onAddAnnouncement,
   onUpdateLeaveStatus,
   onJumpToDesktopTab,
-  onOpenCheckin,
+  onOpenCheckin: _onOpenCheckin,
   currentUser,
 }) => {
   const [section, setSection] = useState<'triage' | 'students' | 'school'>('triage');
@@ -556,16 +534,6 @@ export const MobileAdminQuickHub: React.FC<MobileAdminQuickHubProps> = ({
                   );
                 })}
               </div>
-              {onOpenCheckin && (
-                <button
-                  type="button"
-                  onClick={onOpenCheckin}
-                  className="w-full min-h-[44px] mt-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-semibold text-[var(--color-primary-text)] flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <QrCode className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'ไปหน้าสแกนเช็คชื่อมือถือ' : 'Open Mobile Check-in'}</span>
-                </button>
-              )}
             </div>
           )}
         </div>

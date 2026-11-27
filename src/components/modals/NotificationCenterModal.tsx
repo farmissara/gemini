@@ -43,6 +43,7 @@ import {
   markParentNotificationsRead,
   saveParentNotificationPreferences,
 } from '../../lib/parentNotifications';
+import { BaseModal } from '../common/BaseModal';
 
 interface NotificationCenterModalProps {
   isOpen: boolean;
@@ -175,8 +176,6 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     window.addEventListener('eduverse:notification', handler);
     return () => window.removeEventListener('eduverse:notification', handler);
   }, [currentUser.role, loadScopedNotifications, onUnreadCountChange]);
-
-  if (!isOpen) return null;
 
   const handleRequestPermission = async () => {
     if (currentUser.role === 'parent') {
@@ -465,62 +464,66 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl text-[var(--color-text-body)] flex flex-col max-h-[85vh] overflow-hidden">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-[var(--color-card-subtle)]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[var(--color-primary)] text-white flex items-center justify-center shadow-xs">
-              <BellRing className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-extrabold text-[var(--color-text-title)] flex items-center gap-2">
-                <span>{lang === 'th' ? 'การแจ้งเตือนของคุณ' : 'Your Notifications'}</span>
-                {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white tabular-nums">
-                    {unreadCount} {lang === 'th' ? 'ใหม่' : 'new'}
-                  </span>
-                )}
-              </h3>
-              <p className="text-[11px] text-[var(--color-text-muted)]">
-                {currentUser.role === 'parent'
-                  ? lang === 'th'
-                    ? 'แสดงเฉพาะข้อมูลบุตรหลานและประกาศจากโรงเรียน'
-                    : 'Only notifications for linked children and school announcements'
-                  : currentUser.role === 'student'
-                    ? lang === 'th'
-                      ? 'แสดงเฉพาะแจ้งเตือนส่วนตัวของนักเรียน วันหยุด และประกาศจากโรงเรียน'
-                      : 'Personal student alerts, school holidays, and bulletins'
-                    : lang === 'th'
-                      ? 'แจ้งเตือนเฉพาะบัญชีของคุณและประกาศภายในโรงเรียน'
-                      : 'Scoped real-time alerts for your school account'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab(activeTab === 'list' ? 'settings' : 'list')}
-              className={`min-h-[40px] min-w-[40px] p-2 rounded-xl border border-[var(--color-border)] transition cursor-pointer flex items-center justify-center ${
-                activeTab === 'settings'
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : 'bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-              }`}
-              title={lang === 'th' ? 'ตั้งค่าการแจ้งเตือน' : 'Notification Settings'}
-            >
-              <Settings2 className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[40px] min-w-[40px] p-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] transition cursor-pointer flex items-center justify-center"
-              aria-label="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidthClass="max-w-lg"
+      heightClass="max-h-[85dvh]"
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden"
+      icon={<BellRing className="w-5 h-5" />}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <span>{lang === 'th' ? 'การแจ้งเตือนของคุณ' : 'Your Notifications'}</span>
+          {unreadCount > 0 && (
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white tabular-nums">
+              {unreadCount} {lang === 'th' ? 'ใหม่' : 'new'}
+            </span>
+          )}
+        </span>
+      }
+      subtitle={
+        currentUser.role === 'parent'
+          ? lang === 'th'
+            ? 'แสดงเฉพาะข้อมูลบุตรหลานและประกาศจากโรงเรียน'
+            : 'Only notifications for linked children and school announcements'
+          : currentUser.role === 'student'
+            ? lang === 'th'
+              ? 'แสดงเฉพาะแจ้งเตือนส่วนตัวของนักเรียน วันหยุด และประกาศจากโรงเรียน'
+              : 'Personal student alerts, school holidays, and bulletins'
+            : lang === 'th'
+              ? 'แจ้งเตือนเฉพาะบัญชีของคุณและประกาศภายในโรงเรียน'
+              : 'Scoped real-time alerts for your school account'
+      }
+      headerActions={
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'list' ? 'settings' : 'list')}
+          className={`btn-icon-tool ${
+            activeTab === 'settings'
+              ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+              : ''
+          }`}
+          title={lang === 'th' ? 'ตั้งค่าการแจ้งเตือน' : 'Notification Settings'}
+          aria-label={lang === 'th' ? 'ตั้งค่าการแจ้งเตือน' : 'Notification Settings'}
+        >
+          <Settings2 className="w-4 h-4" />
+        </button>
+      }
+      footer={
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            Scoped Notifications · {currentUser.role.toUpperCase()}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-tool-neutral px-4 py-1.5 text-xs"
+          >
+            {lang === 'th' ? 'ปิด' : 'Close'}
+          </button>
         </div>
+      }
+    >
 
         {/* Permission Request Banner */}
         {currentUser.role !== 'parent' && permission !== 'granted' && isPushNotificationSupported() && (
@@ -969,20 +972,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           </div>
         )}
 
-        {/* Footer */}
-        <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between text-xs shrink-0">
-          <span className="text-[10px] text-[var(--color-text-muted)]">
-            Scoped Notifications · {currentUser.role.toUpperCase()}
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] font-bold hover:bg-[var(--color-card-subtle)] cursor-pointer text-xs"
-          >
-            {lang === 'th' ? 'ปิด' : 'Close'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };
+

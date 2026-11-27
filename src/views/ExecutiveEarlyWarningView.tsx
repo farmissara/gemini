@@ -16,10 +16,10 @@ import {
   PhoneCall,
   FileCheck2,
   Download,
-  X,
   SlidersHorizontal,
   Printer,
   Users,
+  X,
   Activity,
   Award,
   AlertCircle,
@@ -43,6 +43,7 @@ import {
   RiskInterventionRecord
 } from '../types';
 import { PagedList } from '../components/PagedList';
+import { BaseModal } from '../components/common/BaseModal';
 import { FutureNavIcon } from '../components/common/FutureIcon';
 import { getModuleTone } from '../lib/moduleTheme';
 import { calculateGrade } from '../lib/schoolSettings';
@@ -1131,38 +1132,61 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
       {/* ======================================================== */}
       {/* 5. STUDENT RISK DEEP-DIVE & INTERVENTION MODAL           */}
       {/* ======================================================== */}
-      {activeDetailStudent && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-[var(--color-card)] text-[var(--color-text-body)] rounded-2xl border border-[var(--color-border)] shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="p-4 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-center overflow-hidden shrink-0">
-                  {activeDetailStudent.avatarUrl ? (
-                    <img src={activeDetailStudent.avatarUrl} alt={activeDetailStudent.studentName} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-6 h-6 text-[var(--color-text-muted)]" aria-hidden="true" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-base font-bold text-[var(--color-text-title)] truncate">{activeDetailStudent.studentName}</h3>
-                  <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
-                    เลขประจำตัว: {activeDetailStudent.studentNumber} · ห้องเรียน {activeDetailStudent.studentRoom}
-                  </p>
-                </div>
-              </div>
+      <BaseModal
+        isOpen={Boolean(activeDetailStudent)}
+        onClose={() => setActiveDetailStudent(null)}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-2xl"
+        heightClass="max-h-[90vh]"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
+        title={activeDetailStudent?.studentName || ''}
+        subtitle={
+          activeDetailStudent
+            ? `เลขประจำตัว: ${activeDetailStudent.studentNumber} · ห้องเรียน ${activeDetailStudent.studentRoom}`
+            : undefined
+        }
+        icon={
+          activeDetailStudent?.avatarUrl ? (
+            <img
+              src={activeDetailStudent.avatarUrl}
+              alt={activeDetailStudent.studentName}
+              className="w-full h-full object-cover rounded-xl"
+            />
+          ) : (
+            <User className="w-5 h-5 text-[var(--color-text-muted)]" aria-hidden="true" />
+          )
+        }
+        footerClassName="justify-between"
+        footer={
+          activeDetailStudent ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setOfficialNoticeStudent(activeDetailStudent)}
+                disabled={
+                  activeDetailStudent.attendanceRate === null ||
+                  activeDetailStudent.absenceCount === null ||
+                  activeDetailStudent.attendanceRate >= 100 - absenceThresholdPct
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>เปิดร่างหนังสือติดตาม (ต้องตรวจสอบ)</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setActiveDetailStudent(null)}
-                className="p-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] flex items-center justify-center transition cursor-pointer shrink-0"
-                aria-label="ปิดหน้าต่าง"
+                className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] font-bold text-xs transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                ปิดหน้าต่าง
               </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 space-y-4 overflow-y-auto flex-1">
+            </>
+          ) : undefined
+        }
+      >
+        {activeDetailStudent && (
+          <>
               {/* Alert Status Banner */}
               <div className={`p-3 rounded-2xl border ${
                 activeDetailStudent.riskLevel === 'high'
@@ -1343,40 +1367,28 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3.5 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setOfficialNoticeStudent(activeDetailStudent)}
-                disabled={activeDetailStudent.attendanceRate === null || activeDetailStudent.absenceCount === null || activeDetailStudent.attendanceRate >= 100 - absenceThresholdPct}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>เปิดร่างหนังสือติดตาม (ต้องตรวจสอบ)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveDetailStudent(null)}
-                className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] font-bold text-xs transition cursor-pointer"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
 
       {/* ======================================================== */}
       {/* 6. OFFICIAL NOTICE LETTER PRINT MODAL (แบบฟอร์ม มส.)       */}
       {/* ======================================================== */}
-      {officialNoticeStudent && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-white text-slate-900 rounded-3xl border border-slate-300 shadow-2xl overflow-hidden flex flex-col">
+      <BaseModal
+        isOpen={Boolean(officialNoticeStudent)}
+        onClose={() => setOfficialNoticeStudent(null)}
+        hideHeader
+        zIndexClass="z-50"
+        maxWidthClass="max-w-xl"
+        heightClass="max-h-[90vh]"
+        surfaceClassName="!bg-white !text-slate-900 !border-slate-300 rounded-3xl"
+        bodyClassName="flex-1 min-h-0 flex flex-col p-0"
+        title="ร่างหนังสือติดตามเวลาเรียน"
+      >
+        {officialNoticeStudent && (
+          <>
             {/* Toolbar for Print */}
-            <div className="p-3 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 text-xs font-bold">
                 <FileText className="w-4 h-4 text-rose-400" />
                 <span>ร่างหนังสือติดตามเวลาเรียน — ต้องตรวจสอบก่อนใช้</span>
@@ -1394,6 +1406,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                   type="button"
                   onClick={() => setOfficialNoticeStudent(null)}
                   className="p-1.5 rounded-lg hover:bg-white/10 text-white transition cursor-pointer"
+                  aria-label="ปิดหน้าต่าง"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1401,7 +1414,7 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
             </div>
 
             {/* Official Letter Document Canvas */}
-            <div className="p-6 sm:p-8 space-y-4 text-xs font-serif leading-relaxed overflow-y-auto max-h-[75vh]">
+            <div className="p-6 sm:p-8 space-y-4 text-xs font-serif leading-relaxed overflow-y-auto flex-1">
               {/* Draft header */}
               <div className="text-center space-y-1 border-b pb-4">
                 <p className="font-bold text-sm tracking-wide">ร่างหนังสือขอให้ตรวจสอบและติดตามเวลาเรียน</p>
@@ -1451,9 +1464,9 @@ export const ExecutiveEarlyWarningView: React.FC<ExecutiveEarlyWarningViewProps>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
     </div>
   );
 };

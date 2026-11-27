@@ -39,6 +39,8 @@ import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 import { FutureNavIcon } from '../components/common/FutureIcon';
 import { TableActionMenu } from '../components/common/TableActionMenu';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 
 interface InfirmaryHealthViewProps {
   schoolId?: string;
@@ -181,76 +183,72 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
   return (
     <div className={`${getModuleTone('infirmary')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-xl">
-            <FutureNavIcon tab="infirmary" size={18} active />
-          </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            {lang === 'th' ? 'ห้องพยาบาล & สุขภาพนักเรียน' : 'School Infirmary & Health'}
-          </h1>
-        </div>
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="infirmary" size={20} active />}
+        title={lang === 'th' ? 'ห้องพยาบาล & สุขภาพนักเรียน' : 'School Infirmary & Health'}
+        actions={
+          <>
+            <ModuleTourTrigger moduleId="infirmary" lang={lang} />
+            {/* Subtabs switcher */}
+            <div data-guide-id="infirmary-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                data-active={infirmaryTab === 'visits'}
+                onClick={() => setInfirmaryTab('visits')}
+                className="seg-tab-btn"
+              >
+                1. รักษา ({visits.length})
+              </button>
+              <button
+                type="button"
+                data-active={infirmaryTab === 'beds'}
+                onClick={() => setInfirmaryTab('beds')}
+                className="seg-tab-btn"
+              >
+                2. เตียงพัก ({visits.filter(v => v.status === 'resting').length}/{bedOptions.length})
+              </button>
+              <button
+                type="button"
+                data-active={infirmaryTab === 'allergies'}
+                onClick={() => setInfirmaryTab('allergies')}
+                className="seg-tab-btn"
+              >
+                3. แพ้ยา ({studentsWithAllergies.length})
+              </button>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          <ModuleTourTrigger moduleId="infirmary" lang={lang} />
-          {/* Subtabs switcher */}
-          <div data-guide-id="infirmary-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
             <button
               type="button"
-              data-active={infirmaryTab === 'visits'}
-              onClick={() => setInfirmaryTab('visits')}
-              className="seg-tab-btn"
+              onClick={() => {
+                setAllowDuplicateConfirm(false);
+                setVisitFormStep(1);
+                setShowAddModal(true);
+              }}
+              className="btn-action-primary px-3 py-1.5"
             >
-              1. รักษา ({visits.length})
+              <Plus className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'บันทึกการรักษา' : 'New Visit'}</span>
             </button>
-            <button
-              type="button"
-              data-active={infirmaryTab === 'beds'}
-              onClick={() => setInfirmaryTab('beds')}
-              className="seg-tab-btn"
-            >
-              2. เตียงพัก ({visits.filter(v => v.status === 'resting').length}/{bedOptions.length})
-            </button>
-            <button
-              type="button"
-              data-active={infirmaryTab === 'allergies'}
-              onClick={() => setInfirmaryTab('allergies')}
-              className="seg-tab-btn"
-            >
-              3. แพ้ยา ({studentsWithAllergies.length})
-            </button>
-          </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setAllowDuplicateConfirm(false);
-              setVisitFormStep(1);
-              setShowAddModal(true);
-            }}
-            className="btn-action-primary px-3 py-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'บันทึกการรักษา' : 'New Visit'}</span>
-          </button>
-
-          {isAdmin && (
-            <TableActionMenu
-              size="md"
-              ariaLabel="ตั้งค่าห้องพยาบาล"
-              menuWidth={210}
-              items={[
-                {
-                  id: 'infirmary_presets',
-                  label: 'ตั้งค่าเตียง / รายการยา',
-                  icon: <Sliders className="w-3.5 h-3.5 tone-text" />,
-                  onClick: () => setShowPresetModal(true),
-                },
-              ]}
-            />
-          )}
-        </div>
-      </div>
+            {isAdmin && (
+              <TableActionMenu
+                size="md"
+                ariaLabel="ตั้งค่าห้องพยาบาล"
+                menuWidth={210}
+                items={[
+                  {
+                    id: 'infirmary_presets',
+                    label: 'ตั้งค่าเตียง / รายการยา',
+                    icon: <Sliders className="w-3.5 h-3.5 tone-text" />,
+                    onClick: () => setShowPresetModal(true),
+                  },
+                ]}
+              />
+            )}
+          </>
+        }
+      />
 
       {offlineSavedNote && (
         <div role="status" className="shrink-0 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 px-3.5 py-2 text-xs font-bold text-amber-900 dark:text-amber-200">
@@ -531,18 +529,16 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
       )}
 
       {/* Add Visit Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <HeartPulse className="w-5 h-5 text-rose-700 dark:text-rose-300" />
-                {lang === 'th' ? 'บันทึกการรักษาพยาบาลใหม่' : 'New Infirmary Record'}
-              </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateVisit} className="space-y-4 text-xs">
+      <BaseModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={lang === 'th' ? 'บันทึกการรักษาพยาบาลใหม่' : 'New Infirmary Record'}
+        icon={<HeartPulse className="w-4 h-4 text-rose-700 dark:text-rose-300" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleCreateVisit} className="space-y-4 text-xs">
               <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
                 <span className={visitFormStep === 1 ? 'font-bold text-rose-700 dark:text-rose-300' : ''}>1. Patient & symptoms</span>
                 <span>→</span>
@@ -736,24 +732,21 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
               </div>
                 </div>
               )}
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Admin Infirmary Presets Modal */}
-      {showPresetModal && isAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col text-xs">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 shrink-0">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-rose-700 dark:text-rose-300" />
-                <span>ตั้งค่าเตียงพัก ยา และการปฐมพยาบาล (Admin)</span>
-              </h3>
-              <button type="button" onClick={() => setShowPresetModal(false)} className="px-2 py-0.5 rounded-lg text-sm font-bold hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+      <BaseModal
+        isOpen={showPresetModal && isAdmin}
+        onClose={() => setShowPresetModal(false)}
+        title="ตั้งค่าเตียงพัก ยา และการปฐมพยาบาล (Admin)"
+        icon={<Sliders className="w-4 h-4 text-rose-700 dark:text-rose-300" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[85vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 text-xs"
+      >
+        <div className="space-y-4">
               <div className="space-y-2">
                 <label className="font-bold text-[var(--color-text-title)]">รายชื่อเตียงห้องพยาบาล ({bedOptions.length} เตียง)</label>
                 <div className="flex gap-2">
@@ -848,10 +841,8 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
         </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

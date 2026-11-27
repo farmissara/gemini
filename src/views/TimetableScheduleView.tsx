@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   UserCheck,
   Users,
+  X,
 } from 'lucide-react';
 import { DayOfWeek, SchoolPeriodTime, Teacher, TimetableSlot } from '../types';
 import { sendEduVerseNotification } from '../lib/pushNotifications';
@@ -16,6 +17,7 @@ import { getCourseType, inferCourseLearningArea } from '../lib/courseClassificat
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { FutureNavIcon } from '../components/common/FutureIcon';
 import { TableActionMenu } from '../components/common/TableActionMenu';
+import { PageHeader } from '../components/common/PageShell';
 import {
   addCalendarDays,
   formatCalendarDate,
@@ -1806,10 +1808,10 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAddRoomInput(false)}
-                className="h-9 px-1.5 text-xs text-[var(--color-text-muted)]"
+                className="h-9 px-1.5 text-[var(--color-text-muted)] inline-flex items-center justify-center cursor-pointer"
                 aria-label="ยกเลิกเพิ่มห้อง"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             </span>
           )}
@@ -1883,18 +1885,14 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   return (
     <div className={`${getModuleTone('timetable')} h-full flex flex-col min-h-0 overflow-hidden space-y-4`}>
       {/* Single-Row Page Heading and Schedule Mode Switcher */}
-      <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="tone-chip w-9 h-9 rounded-xl shrink-0">
-              <FutureNavIcon tab="timetable" size={18} active />
-            </span>
-            <h1 className="text-base font-bold text-[var(--color-text-title)] leading-tight truncate">
-              ตารางเรียนและตารางสอน
-            </h1>
+      <PageHeader
+        compact
+        noPrint
+        icon={<FutureNavIcon tab="timetable" size={20} active />}
+        title="ตารางเรียนและตารางสอน"
+        actions={
+          <>
             <ModuleTourTrigger moduleId="timetable" lang={lang} />
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <nav data-guide-id="timetable-view-tabs" aria-label="หน้าตารางเรียนและตารางสอน" className="seg-tab-group max-w-full overflow-x-auto no-scrollbar">
               <button
                 type="button"
@@ -1986,9 +1984,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 ]}
               />
             )}
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {academicPeriodNotice && (
         <div className="shrink-0 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between gap-2">
@@ -1996,7 +1994,9 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             {academicPeriodNotice}
           </span>
-          <button type="button" onClick={() => setAcademicPeriodNotice(null)} className="text-xs font-bold px-1.5 cursor-pointer">✕</button>
+          <button type="button" onClick={() => setAcademicPeriodNotice(null)} aria-label="ปิดข้อความ" className="p-1 rounded cursor-pointer inline-flex items-center justify-center">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 

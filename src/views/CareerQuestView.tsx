@@ -55,6 +55,7 @@ import {
   StudentCareerQuestState,
 } from '../types';
 import type { NavTab } from '../components/layout/Sidebar';
+import { BaseModal } from '../components/common/BaseModal';
 import {
   CAREER_VIBE_QUIZ_QUESTIONS,
   POPULAR_CAREERS,
@@ -95,6 +96,7 @@ interface CareerQuestViewProps {
   onEarnRewards?: (userId: string, exp: number, gems: number, isWin: boolean) => void;
   onEquipCosmetic?: (payload: { frameId?: string; title?: string }) => void;
   onAddPortfolioItem?: (item: PortfolioItem) => void;
+  embeddedMobile?: boolean;
 }
 
 const STAGE_LABEL_OPTIONS: { id: CareerEducationStage; labelTh: string; labelEn: string }[] = [
@@ -124,6 +126,7 @@ export const CareerQuestView: React.FC<CareerQuestViewProps> = ({
   onEarnRewards,
   onEquipCosmetic,
   onAddPortfolioItem,
+  embeddedMobile = false,
 }) => {
   const isStaffTester =
     currentUser?.role === 'teacher' ||
@@ -731,7 +734,7 @@ export const CareerQuestView: React.FC<CareerQuestViewProps> = ({
   const currentRoleplayTurn = roleplayTurns[roleplayTurns.length - 1] || null;
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-200">
+    <div className={`${embeddedMobile ? 'space-y-4 pb-4' : 'space-y-6 pb-12'} animate-in fade-in duration-200`}>
       {/* ==================================================================== */}
       {/* TEACHER / ADMIN SANDBOX BAR & STUDENT INSIGHTS SWITCHER              */}
       {/* ==================================================================== */}
@@ -957,13 +960,15 @@ export const CareerQuestView: React.FC<CareerQuestViewProps> = ({
           {/* MODE 1: ENTRY / CAREER PICKER OR 5-QUESTION VIBE QUIZ                */}
           {/* ==================================================================== */}
           {(showPickerMode || !activeCareer) && (
-            <section className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <section className={`rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] ${embeddedMobile ? 'p-4 space-y-4' : 'p-6 space-y-6'}`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-violet-700 dark:text-violet-300">
-                    <Compass className="w-4 h-4" />
-                    <span>Career Quest AI · เส้นทางสู่อาชีพในฝัน</span>
-                  </div>
+                  {!embeddedMobile && (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-violet-700 dark:text-violet-300">
+                      <Compass className="w-4 h-4" />
+                      <span>Career Quest AI · เส้นทางสู่อาชีพในฝัน</span>
+                    </div>
+                  )}
                   <h2 className="text-xl sm:text-2xl font-bold text-[var(--color-text-title)] text-balance">
                     {lang === 'th' ? 'เลือกเส้นทางเริ่มต้นที่เหมาะกับตัวคุณ' : 'Choose how you want to discover your career path'}
                   </h2>
@@ -1285,7 +1290,7 @@ export const CareerQuestView: React.FC<CareerQuestViewProps> = ({
               {/* 1. TOP: CAREER RPG CARD & REAL-TIME READINESS */}
               <section
                 aria-label="การ์ดตัวละครสายอาชีพ"
-                className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 space-y-6"
+                className={`rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] ${embeddedMobile ? 'p-4 space-y-4' : 'p-6 space-y-6'}`}
               >
                 {/* Pinned Careers Switcher (Compare up to 3 careers without losing EXP) */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2043,24 +2048,16 @@ export const CareerQuestView: React.FC<CareerQuestViewProps> = ({
       )}
 
       {/* Quick Portfolio Evidence Submit Modal */}
-      {portfolioQuestModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                ส่งผลงานเข้า Digital Portfolio
-              </h3>
-              <button
-                type="button"
-                onClick={() => setPortfolioQuestModal(null)}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              ภารกิจ: {portfolioQuestModal.titleTh}
-            </p>
+      <BaseModal
+        isOpen={Boolean(portfolioQuestModal)}
+        onClose={() => setPortfolioQuestModal(null)}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-lg"
+        title="ส่งผลงานเข้า Digital Portfolio"
+        subtitle={portfolioQuestModal ? `ภารกิจ: ${portfolioQuestModal.titleTh}` : undefined}
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        {portfolioQuestModal && (
             <form onSubmit={handleSubmitPortfolioFromQuest} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-[var(--color-text-title)] mb-1">
@@ -2117,9 +2114,8 @@ export const CareerQuestView: React.FC<CareerQuestViewProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
     </div>
   );
 };

@@ -22,6 +22,7 @@ import {
 import { TableActionMenu } from '../components/common/TableActionMenu';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 import {
   AppLanguage,
   AttendanceRecord,
@@ -803,88 +804,81 @@ export const StudentQualityDevelopmentBookView: React.FC<StudentQualityDevelopme
   return (
     <div className={`${getModuleTone('student_development_book')} h-full flex flex-col min-h-0 overflow-hidden space-y-2`}>
       {/* Compact Header */}
-      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-xl">
-            <FutureNavIcon tab="student_development_book" size={18} active />
-          </span>
-          <div className="min-w-0 flex items-baseline gap-2">
-            <h1 className="text-sm font-bold text-[var(--color-text-title)] truncate">
-              สมุดบันทึกพัฒนาคุณภาพผู้เรียน (รายบุคคลรอบด้าน)
-            </h1>
-            <span className="hidden xl:inline module-category-kicker">
-              {lang === 'th' ? moduleGroup.labelTh : moduleGroup.labelEn}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
-          {canEdit && onAddBehaviorRecord && (
-            <button
-              type="button"
-              onClick={() => setShowQuickBehaviorForm((prev) => !prev)}
-              aria-label="บันทึกพฤติกรรม"
-              title="บันทึกพฤติกรรม"
-              className="btn-tool-tone px-2.5 py-1.5 text-xs whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5 tone-text" />
-              <span className="hidden sm:inline">บันทึกพฤติกรรม</span>
-            </button>
-          )}
-          <TableActionMenu
-            size="md"
-            ariaLabel="เอกสาร รายงาน และการพิมพ์สมุดพัฒนาการ"
-            menuWidth={230}
-            items={[
-              {
-                id: 'print_quality_book',
-                label: 'พิมพ์สมุดพัฒนาการ (A4)',
-                icon: <Printer className="w-3.5 h-3.5" />,
-                variant: 'primary',
-                onClick: handlePrint,
-              },
-              ...(onOpenCoreReportCard
-                ? [
-                    {
-                      id: 'core_report_card',
-                      label: 'Report Card วิชาพื้นฐาน',
-                      icon: <Award className="w-3.5 h-3.5 tone-text" />,
-                      dividerBefore: true,
-                      onClick: () => onOpenCoreReportCard(selectedStudent.id),
-                    },
-                  ]
-                : []),
-              ...(onOpenQualitativeSummary
-                ? [
-                    {
-                      id: 'qualitative_summary',
-                      label: 'สรุปคุณลักษณะฯ รายชั้น',
-                      icon: <ClipboardCheck className="w-3.5 h-3.5" />,
-                      onClick: onOpenQualitativeSummary,
-                    },
-                  ]
-                : []),
-              ...(onOpenReportCard
-                ? [
-                    {
-                      id: 'pp1_report_card',
-                      label: 'ใบรายงานผล (ปพ.1)',
-                      icon: <FileText className="w-3.5 h-3.5" />,
-                      onClick: () => onOpenReportCard(selectedStudent),
-                    },
-                  ]
-                : []),
-              {
-                id: 'export_csv',
-                label: 'ส่งออก CSV',
-                icon: <Download className="w-3.5 h-3.5" />,
-                dividerBefore: true,
-                onClick: handleExportCsv,
-              },
-            ]}
-          />
-        </div>
-      </div>
+      <PageHeader
+        compact
+        noPrint
+        kicker={lang === 'th' ? moduleGroup.labelTh : moduleGroup.labelEn}
+        title="สมุดบันทึกพัฒนาคุณภาพผู้เรียน (รายบุคคลรอบด้าน)"
+        icon={<FutureNavIcon tab="student_development_book" size={20} active />}
+        actions={
+          <>
+            {canEdit && onAddBehaviorRecord && (
+              <button
+                type="button"
+                onClick={() => setShowQuickBehaviorForm((prev) => !prev)}
+                aria-label="บันทึกพฤติกรรม"
+                title="บันทึกพฤติกรรม"
+                className="btn-tool-tone px-2.5 py-1.5 text-xs whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5 tone-text" />
+                <span className="hidden sm:inline">บันทึกพฤติกรรม</span>
+              </button>
+            )}
+            <TableActionMenu
+              size="md"
+              ariaLabel="เอกสาร รายงาน และการพิมพ์สมุดพัฒนาการ"
+              menuWidth={230}
+              items={[
+                {
+                  id: 'print_quality_book',
+                  label: 'พิมพ์สมุดพัฒนาการ (A4)',
+                  icon: <Printer className="w-3.5 h-3.5" />,
+                  variant: 'primary',
+                  onClick: handlePrint,
+                },
+                ...(onOpenCoreReportCard
+                  ? [
+                      {
+                        id: 'core_report_card',
+                        label: 'Report Card วิชาพื้นฐาน',
+                        icon: <Award className="w-3.5 h-3.5 tone-text" />,
+                        dividerBefore: true,
+                        onClick: () => onOpenCoreReportCard(selectedStudent.id),
+                      },
+                    ]
+                  : []),
+                ...(onOpenQualitativeSummary
+                  ? [
+                      {
+                        id: 'qualitative_summary',
+                        label: 'สรุปคุณลักษณะฯ รายชั้น',
+                        icon: <ClipboardCheck className="w-3.5 h-3.5" />,
+                        onClick: onOpenQualitativeSummary,
+                      },
+                    ]
+                  : []),
+                ...(onOpenReportCard
+                  ? [
+                      {
+                        id: 'pp1_report_card',
+                        label: 'ใบรายงานผล (ปพ.1)',
+                        icon: <FileText className="w-3.5 h-3.5" />,
+                        onClick: () => onOpenReportCard(selectedStudent),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'export_csv',
+                  label: 'ส่งออก CSV',
+                  icon: <Download className="w-3.5 h-3.5" />,
+                  dividerBefore: true,
+                  onClick: handleExportCsv,
+                },
+              ]}
+            />
+          </>
+        }
+      />
 
       {/* Student Selector & Filter Bar */}
       <div className="shrink-0 toolbar-filter-zone print:hidden flex flex-wrap items-center gap-2">

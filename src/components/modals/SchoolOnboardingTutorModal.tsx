@@ -23,6 +23,7 @@ import {
   Info
 } from 'lucide-react';
 import { AppLanguage, School } from '../../types';
+import { BaseModal } from '../common/BaseModal';
 
 interface SchoolOnboardingTutorModalProps {
   isOpen: boolean;
@@ -53,8 +54,6 @@ export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProp
     studentsCount > 0 ? 2 : 0,
     coursesCount > 0 ? 4 : 0,
   ].filter(Boolean));
-
-  if (!isOpen) return null;
 
   const toggleStep = (stepNum: number) => {
     setCompletedSteps(prev => 
@@ -200,10 +199,33 @@ export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProp
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[92vh] bg-[var(--color-card)] text-[var(--color-text-body)] rounded-3xl shadow-2xl border border-[var(--color-border)] flex flex-col overflow-hidden">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      hideHeader
+      title="ติวเตอร์แนะนำการเริ่มต้นใช้งานโรงเรียน (School Onboarding Tutor)"
+      maxWidthClass="max-w-4xl"
+      heightClass="max-h-[92dvh]"
+      showMobileHandle
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0 text-[var(--color-text-body)]"
+      footerClassName="!justify-between"
+      footer={
+        <>
+          <span className="text-[11px] text-[var(--color-text-muted)]">
+            ท่านสามารถเปิดติวเตอร์นี้ได้ตลอดเวลาจากปุ่ม <strong>&quot;ติวเตอร์แนะนำระบบ&quot;</strong> บนแถบเมนูด้านบน
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-bold cursor-pointer transition"
+          >
+            ปิดหน้าต่าง
+          </button>
+        </>
+      }
+    >
         {/* Header */}
-        <div className="p-4 sm:p-6 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex items-start justify-between">
+        <div className="p-4 sm:p-6 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex items-start justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0">
               <Sparkles className="w-6 h-6 text-amber-300 animate-pulse" />
@@ -366,20 +388,6 @@ export const SchoolOnboardingTutorModal: React.FC<SchoolOnboardingTutorModalProp
 
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between">
-          <span className="text-[11px] text-[var(--color-text-muted)]">
-            ท่านสามารถเปิดติวเตอร์นี้ได้ตลอดเวลาจากปุ่ม <strong>"ติวเตอร์แนะนำระบบ"</strong> บนแถบเมนูด้านบน
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] border border-[var(--color-border)] text-[var(--color-text-title)] text-xs font-bold cursor-pointer transition"
-          >
-            ปิดหน้าต่าง
-          </button>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

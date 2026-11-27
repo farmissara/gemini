@@ -3,6 +3,8 @@ import AttendancePhoto from '../components/AttendancePhoto';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 import { 
   Student, 
   AttendanceRecord, 
@@ -32,7 +34,6 @@ import {
   Camera,
   MapPin,
   Eye,
-  X,
   FileText,
   Send,
   Upload,
@@ -270,7 +271,7 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   if (students.length === 0 || !student) {
     return (
       <div className={`${getModuleTone('students')} max-w-2xl mx-auto w-full py-10`}>
-        <div className="app-page-header p-6 text-center space-y-3">
+        <div className="saas-card p-6 text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl tone-chip mx-auto flex items-center justify-center">
             <FutureNavIcon tab="students" size={24} active />
           </div>
@@ -292,52 +293,57 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
   return (
     <div className={`${getModuleTone('students')} space-y-4 max-w-5xl mx-auto w-full`}>
       {/* Student Switcher & Guardian Profile Card */}
-      <div className="app-page-header shrink-0 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 min-w-0">
+      <PageHeader
+        rawIcon
+        icon={
           <img
             src={student?.avatarUrl}
             alt={student?.firstNameEn}
-            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-[var(--color-border)] ring-1 ring-indigo-500/15 shrink-0"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-[var(--color-border)] ring-1 ring-indigo-500/15"
           />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
-                {lang === 'th'
-                  ? `${student?.firstNameTh} ${student?.lastNameTh}`
-                  : `${student?.firstNameEn} ${student?.lastNameEn}`}
-              </h2>
-              <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-indigo-700 dark:text-indigo-300 font-semibold tabular-nums shrink-0">
-                {student?.studentIdNumber}
-              </span>
-            </div>
-            <p className="text-xs font-medium text-[var(--color-text-body)] mt-0.5">
+        }
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span>
+              {lang === 'th'
+                ? `${student?.firstNameTh} ${student?.lastNameTh}`
+                : `${student?.firstNameEn} ${student?.lastNameEn}`}
+            </span>
+            <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-indigo-700 dark:text-indigo-300 font-semibold tabular-nums shrink-0">
+              {student?.studentIdNumber}
+            </span>
+          </span>
+        }
+        description={
+          <>
+            <span className="block font-medium text-[var(--color-text-body)]">
               {student?.gradeLevel} · {student?.room}
-            </p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate tabular-nums">
+            </span>
+            <span className="block truncate tabular-nums">
               {lang === 'th' ? 'ผู้ปกครอง:' : 'Guardian:'} {student?.guardianName} ({student?.guardianRelation}) · {student?.guardianPhone}
-            </p>
+            </span>
+          </>
+        }
+        actions={
+          <div data-guide-id="parent-student-switcher" className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
+            <ModuleTourTrigger moduleId="parent_portal" lang={lang} />
+            <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
+              {lang === 'th' ? 'เลือกลูก/นักเรียนในการดูแล:' : 'Select Student:'}
+            </label>
+            <select
+              value={selectedStudentId}
+              onChange={(e) => setSelectedStudentId(e.target.value)}
+              className="px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+            >
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.firstNameTh} ({s.studentIdNumber}) - {s.gradeLevel}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-
-        {/* Student selector */}
-        <div data-guide-id="parent-student-switcher" className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
-          <ModuleTourTrigger moduleId="parent_portal" lang={lang} />
-          <label className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-            {lang === 'th' ? 'เลือกลูก/นักเรียนในการดูแล:' : 'Select Student:'}
-          </label>
-          <select
-            value={selectedStudentId}
-            onChange={(e) => setSelectedStudentId(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-xs text-[var(--color-text-title)] font-semibold outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
-          >
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.firstNameTh} ({s.studentIdNumber}) - {s.gradeLevel}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+        }
+      />
 
       {/* Navigation Tabs in Parent Portal */}
       <div data-guide-id="parent-portal-tabs" className="seg-tab-group shrink-0 overflow-x-auto max-w-full">
@@ -975,53 +981,46 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
       </div>
 
       {/* Lightbox Modal for Zooming Child's Selfie Photo */}
-      {selectedZoomPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 text-[var(--color-text-title)]">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h4 className="font-bold text-sm text-[var(--color-text-title)]">รูปถ่ายเช็คชื่อตอนผ่านประตู</h4>
-                <p className="text-xs text-[var(--color-text-muted)]">{selectedZoomPhoto.date} • {selectedZoomPhoto.time} น.</p>
+      <BaseModal
+        isOpen={Boolean(selectedZoomPhoto)}
+        onClose={() => setSelectedZoomPhoto(null)}
+        zIndexClass="z-50"
+        maxWidthClass="max-w-md"
+        title="รูปถ่ายเช็คชื่อตอนผ่านประตู"
+        subtitle={selectedZoomPhoto ? `${selectedZoomPhoto.date} • ${selectedZoomPhoto.time} น.` : undefined}
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-4"
+        footer={
+          <button
+            type="button"
+            onClick={() => setSelectedZoomPhoto(null)}
+            className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
+          >
+            ปิดหน้าต่าง
+          </button>
+        }
+      >
+        {selectedZoomPhoto && (
+          <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
+            <AttendancePhoto
+              src={selectedZoomPhoto.photoUrl || selectedZoomPhoto.userAvatar || student?.avatarUrl}
+              alt="Selfie Zoom"
+              className="w-full h-full object-contain"
+            />
+            <div className="absolute bottom-2 left-2 right-2 p-2 rounded-xl bg-black/80 backdrop-blur-md text-white text-[10px] space-y-0.5">
+              <div className="flex justify-between font-bold">
+                <span>{student?.firstNameTh} {student?.lastNameTh}</span>
+                <span>{selectedZoomPhoto.time} น.</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedZoomPhoto(null)}
-                className="p-1 rounded-lg hover:bg-[var(--color-card-subtle)] text-[var(--color-text-body)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="relative rounded-2xl overflow-hidden aspect-4/3 max-h-72 mx-auto border border-[var(--color-border)] bg-slate-950 flex items-center justify-center">
-              <AttendancePhoto
-                src={selectedZoomPhoto.photoUrl || selectedZoomPhoto.userAvatar || student?.avatarUrl}
-                alt="Selfie Zoom"
-                className="w-full h-full object-contain"
-              />
-              <div className="absolute bottom-2 left-2 right-2 p-2 rounded-xl bg-black/80 backdrop-blur-md text-white text-[10px] space-y-0.5">
-                <div className="flex justify-between font-bold">
-                  <span>{student?.firstNameTh} {student?.lastNameTh}</span>
-                  <span>{selectedZoomPhoto.time} น.</span>
-                </div>
-                <div className="text-slate-200 text-[9px]">
-                  {selectedZoomPhoto.location?.geofenceZoneName || 'ประตูโรงเรียน'}
-                  {typeof selectedZoomPhoto.location?.distanceMeters === 'number'
-                    ? ` • ระยะห่าง ${selectedZoomPhoto.location.distanceMeters} ม.`
-                    : ''}
-                </div>
+              <div className="text-slate-200 text-[9px]">
+                {selectedZoomPhoto.location?.geofenceZoneName || 'ประตูโรงเรียน'}
+                {typeof selectedZoomPhoto.location?.distanceMeters === 'number'
+                  ? ` • ระยะห่าง ${selectedZoomPhoto.location.distanceMeters} ม.`
+                  : ''}
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setSelectedZoomPhoto(null)}
-              className="w-full py-2.5 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer"
-            >
-              ปิดหน้าต่าง
-            </button>
           </div>
-        </div>
-      )}
+        )}
+      </BaseModal>
 
     </div>
   );

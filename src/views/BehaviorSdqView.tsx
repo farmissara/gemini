@@ -42,6 +42,8 @@ import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 
 interface BehaviorSdqViewProps {
   schoolId?: string;
@@ -355,101 +357,96 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
   return (
     <div className={`${getModuleTone('behavior_sdq')} space-y-3`}>
       {/* Compact Top Header */}
-      <div className="shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 px-3 py-2 app-page-header">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="tone-chip w-8 h-8 rounded-xl">
-            <FutureNavIcon tab="behavior_sdq" size={18} active />
-          </span>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            {lang === 'th' ? 'ระบบดูแลช่วยเหลือนักเรียน & SDQ' : 'Student Care & Behavior (SDQ)'}
-          </h1>
-        </div>
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="behavior_sdq" size={20} active />}
+        title={lang === 'th' ? 'ระบบดูแลช่วยเหลือนักเรียน & SDQ' : 'Student Care & Behavior (SDQ)'}
+        actions={
+          <>
+            <ModuleTourTrigger moduleId="behavior_sdq" lang={lang} />
+            <div data-guide-id="behavior-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                data-active={activeTab === 'merit'}
+                onClick={() => setActiveTab('merit')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? '1. ความประพฤติ' : 'Merit & Demerit'}
+              </button>
+              <button
+                type="button"
+                data-active={activeTab === 'sdq'}
+                onClick={() => setActiveTab('sdq')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? '2. SDQ (5 ด้าน)' : 'SDQ Screening'}
+              </button>
+              <button
+                type="button"
+                data-active={activeTab === 'cct_poverty'}
+                onClick={() => setActiveTab('cct_poverty')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? '3. ทุน CCT' : 'CCT Poverty'}
+              </button>
+              <button
+                type="button"
+                data-active={activeTab === 'obec_care_steps'}
+                onClick={() => setActiveTab('obec_care_steps')}
+                className="seg-tab-btn"
+              >
+                {lang === 'th' ? '4. ดูแล 5 ขั้น' : 'OBEC 5 Steps'}
+              </button>
+            </div>
 
-        {/* Tab switchers & action */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <ModuleTourTrigger moduleId="behavior_sdq" lang={lang} />
-          <div data-guide-id="behavior-tabs" className="seg-tab-group overflow-x-auto no-scrollbar">
-            <button
-              type="button"
-              data-active={activeTab === 'merit'}
-              onClick={() => setActiveTab('merit')}
-              className="seg-tab-btn"
-            >
-              {lang === 'th' ? '1. ความประพฤติ' : 'Merit & Demerit'}
-            </button>
-            <button
-              type="button"
-              data-active={activeTab === 'sdq'}
-              onClick={() => setActiveTab('sdq')}
-              className="seg-tab-btn"
-            >
-              {lang === 'th' ? '2. SDQ (5 ด้าน)' : 'SDQ Screening'}
-            </button>
-            <button
-              type="button"
-              data-active={activeTab === 'cct_poverty'}
-              onClick={() => setActiveTab('cct_poverty')}
-              className="seg-tab-btn"
-            >
-              {lang === 'th' ? '3. ทุน CCT' : 'CCT Poverty'}
-            </button>
-            <button
-              type="button"
-              data-active={activeTab === 'obec_care_steps'}
-              onClick={() => setActiveTab('obec_care_steps')}
-              className="seg-tab-btn"
-            >
-              {lang === 'th' ? '4. ดูแล 5 ขั้น' : 'OBEC 5 Steps'}
-            </button>
-          </div>
+            {activeTab === 'merit' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAllowDuplicateConfirm(false);
+                    setShowAddRecordModal(true);
+                  }}
+                  className="btn-action-primary px-3 py-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
+                </button>
+                {isAdmin && (
+                  <TableActionMenu
+                    size="md"
+                    ariaLabel={lang === 'th' ? 'ตั้งค่าความประพฤติ' : 'Behavior settings'}
+                    menuWidth={210}
+                    items={[
+                      {
+                        id: 'behavior_presets',
+                        label: lang === 'th' ? 'ตั้งค่าเกณฑ์คะแนน' : 'Score Presets',
+                        icon: <Sliders className="w-3.5 h-3.5 tone-text" />,
+                        onClick: () => setShowPresetModal(true),
+                      },
+                    ]}
+                  />
+                )}
+              </>
+            )}
 
-          {activeTab === 'merit' && (
-            <>
+            {activeTab === 'sdq' && (
               <button
                 type="button"
                 onClick={() => {
                   setAllowDuplicateConfirm(false);
-                  setShowAddRecordModal(true);
+                  setSdqFormStep(1);
+                  setShowSdqModal(true);
                 }}
                 className="btn-action-primary px-3 py-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
+                <span>{lang === 'th' ? 'คัดกรอง SDQ' : 'New SDQ Assessment'}</span>
               </button>
-              {isAdmin && (
-                <TableActionMenu
-                  size="md"
-                  ariaLabel={lang === 'th' ? 'ตั้งค่าความประพฤติ' : 'Behavior settings'}
-                  menuWidth={210}
-                  items={[
-                    {
-                      id: 'behavior_presets',
-                      label: lang === 'th' ? 'ตั้งค่าเกณฑ์คะแนน' : 'Score Presets',
-                      icon: <Sliders className="w-3.5 h-3.5 tone-text" />,
-                      onClick: () => setShowPresetModal(true),
-                    },
-                  ]}
-                />
-              )}
-            </>
-          )}
-
-          {activeTab === 'sdq' && (
-            <button
-              type="button"
-              onClick={() => {
-                setAllowDuplicateConfirm(false);
-                setSdqFormStep(1);
-                setShowSdqModal(true);
-              }}
-              className="btn-action-primary px-3 py-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'คัดกรอง SDQ' : 'New SDQ Assessment'}</span>
-            </button>
-          )}
-        </div>
-      </div>
+            )}
+          </>
+        }
+      />
 
       {/* Tab 1: Merit & Demerit Tracker */}
       {activeTab === 'merit' && (
@@ -1090,18 +1087,16 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
       )}
 
       {/* Add Behavior Record Modal */}
-      {showAddRecordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[var(--color-primary-text)]" />
-                {lang === 'th' ? 'บันทึกคะแนนความประพฤติ' : 'Add Behavior Record'}
-              </h3>
-              <button onClick={() => setShowAddRecordModal(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateRecord} className="space-y-4 text-xs">
+      <BaseModal
+        isOpen={showAddRecordModal}
+        onClose={() => setShowAddRecordModal(false)}
+        title={lang === 'th' ? 'บันทึกคะแนนความประพฤติ' : 'Add Behavior Record'}
+        icon={<ShieldCheck className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleCreateRecord} className="space-y-4 text-xs">
               <div>
                 <label className="block text-[var(--color-text-body)] mb-1 font-semibold">{lang === 'th' ? 'เลือกนักเรียน' : 'Select Student'}</label>
                 <select
@@ -1246,24 +1241,20 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                   {lang === 'th' ? 'บันทึกคะแนน' : 'Save Record'}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* New SDQ Assessment Modal */}
-      {showSdqModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <FileText className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
-                {lang === 'th' ? 'ทำแบบคัดกรองพฤติกรรม SDQ (5 ด้าน)' : 'SDQ Assessment'}
-              </h3>
-              <button onClick={() => setShowSdqModal(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateSdq} className="space-y-4 text-xs">
+      <BaseModal
+        isOpen={showSdqModal}
+        onClose={() => setShowSdqModal(false)}
+        title={lang === 'th' ? 'ทำแบบคัดกรองพฤติกรรม SDQ (5 ด้าน)' : 'SDQ Assessment'}
+        icon={<FileText className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />}
+        maxWidthClass="max-w-lg"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleCreateSdq} className="space-y-4 text-xs">
               <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-text-muted)]">
                 <span className={sdqFormStep === 1 ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''}>1. Student & scores</span>
                 <span>→</span>
@@ -1444,22 +1435,20 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               </div>
                 </div>
               )}
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       {/* Admin Behavior Presets Manager Modal */}
-      {showPresetModal && isAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-2.5 shrink-0">
-              <h3 className="text-sm font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>ตั้งค่าหัวข้อและเกณฑ์คะแนนความประพฤติ (Admin)</span>
-              </h3>
-              <button type="button" onClick={() => setShowPresetModal(false)} className="px-2 py-0.5 rounded-lg text-sm font-bold hover:bg-[var(--color-card-subtle)] cursor-pointer">✕</button>
-            </div>
+      <BaseModal
+        isOpen={showPresetModal && isAdmin}
+        onClose={() => setShowPresetModal(false)}
+        title="ตั้งค่าหัวข้อและเกณฑ์คะแนนความประพฤติ (Admin)"
+        icon={<Sliders className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[85vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-5 space-y-4"
+      >
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 shrink-0 text-xs">
               <select
@@ -1552,9 +1541,7 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
     </div>
   );
 };

@@ -30,6 +30,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { BaseModal } from '../components/common/BaseModal';
+import { PageHeader } from '../components/common/PageShell';
 import { SuperAdminCentralExamManager } from './SuperAdminCentralExamManager';
 import { CentralExamPaymentSettingsView } from './CentralExamPaymentSettingsView';
 import { SuperAdminPackagesPanel } from '../components/admin/SuperAdminPackagesPanel';
@@ -539,61 +541,54 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       )}
 
       {/* Super Admin Developer Editorial Header */}
-      <div className="app-page-header px-4 py-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="tone-chip w-10 h-10 rounded-xl shrink-0">
-            <FutureNavIcon tab="super_admin_console" size={20} active />
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <div className="module-category-kicker">
-              03 · {lang === 'th' ? 'ระบบผู้พัฒนาระบบ (Developer & Platform Console)' : 'Developer & Platform Console'}
-            </div>
-            <h1 className="type-page-title truncate">
-              ศูนย์ควบคุมระบบผู้พัฒนาและแพ็กเกจ SaaS
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] flex-wrap">
-              <span>Platform Owner Workspace</span>
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard?.writeText('baanpakkru@gmail.com');
-                  setFeedbackToast(lang === 'th' ? 'คัดลอกอีเมล Master (baanpakkru@gmail.com) แล้ว' : 'Copied Master email');
-                }}
-                className="inline-flex items-center gap-1 text-[var(--color-text-body)] hover:text-[var(--tone)] font-mono hover:underline cursor-pointer"
-                title="คลิกเพื่อคัดลอกอีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
-              >
-                <Mail className="w-3 h-3" />
-                <span>baanpakkru@gmail.com</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {onOpenBackupCenter && (
-            <button type="button" onClick={onOpenBackupCenter} className="btn-tool-neutral">
-              <DatabaseBackup className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />
-              <span>สำรอง/กู้คืนระบบ</span>
-            </button>
-          )}
-          {onOpenCoordinationDesk && (
+      <PageHeader
+        icon={<FutureNavIcon tab="super_admin_console" size={20} active />}
+        kicker={`03 · ${lang === 'th' ? 'ระบบผู้พัฒนาระบบ (Developer & Platform Console)' : 'Developer & Platform Console'}`}
+        title="ศูนย์ควบคุมระบบผู้พัฒนาและแพ็กเกจ SaaS"
+        description={
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>Platform Owner Workspace</span>
+            <span aria-hidden="true">·</span>
             <button
               type="button"
-              onClick={onOpenCoordinationDesk}
-              className="btn-action-primary"
+              onClick={() => {
+                navigator.clipboard?.writeText('baanpakkru@gmail.com');
+                setFeedbackToast(lang === 'th' ? 'คัดลอกอีเมล Master (baanpakkru@gmail.com) แล้ว' : 'Copied Master email');
+              }}
+              className="inline-flex items-center gap-1 text-[var(--color-text-body)] hover:text-[var(--tone)] font-mono hover:underline cursor-pointer"
+              title="คลิกเพื่อคัดลอกอีเมล Master สำหรับตอบกลับยืนยันและรีเซ็ตรหัสผ่าน"
             >
-              <Mail className="w-3.5 h-3.5" />
-              <span>จดหมายโรงเรียน</span>
-              {coordinationUnreadCount > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold tabular-nums">
-                  {coordinationUnreadCount}
-                </span>
-              )}
+              <Mail className="w-3 h-3" />
+              <span>baanpakkru@gmail.com</span>
             </button>
-          )}
-        </div>
-      </div>
+          </div>
+        }
+        actions={
+          <>
+            {onOpenBackupCenter && (
+              <button type="button" onClick={onOpenBackupCenter} className="btn-tool-neutral">
+                <DatabaseBackup className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />
+                <span>สำรอง/กู้คืนระบบ</span>
+              </button>
+            )}
+            {onOpenCoordinationDesk && (
+              <button
+                type="button"
+                onClick={onOpenCoordinationDesk}
+                className="btn-action-primary"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>จดหมายโรงเรียน</span>
+                {coordinationUnreadCount > 0 && (
+                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold tabular-nums">
+                    {coordinationUnreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* 4-Cell Executive Summary Strip */}
       <section aria-label="สรุปสถานะส่วนกลาง" className="saas-kpi-strip">
@@ -1508,22 +1503,44 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
       })()}
 
       {/* Modal: School Feature Flags & Leveled Package Editor */}
-      {flagEditorSchool && flagDraft && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-3xl p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto text-xs">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                  แพ็กเกจ &amp; โมดูลใช้งานทั้ง {FEATURE_FLAG_LABELS.length} ฟังก์ชัน: {flagEditorSchool.nameTh}
-                </h3>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  เลือกระดับแพ็กเกจ (Level 1–4) กำหนดสิทธิ์ AI นักเรียน หรือเปิด/ปิดแต่ละโมดูลเฉพาะแห่ง
-                </p>
-              </div>
-              <button type="button" onClick={() => setFlagEditorSchool(null)} className="p-1.5 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer">
-                <X className="w-4 h-4" />
+      <BaseModal
+        isOpen={Boolean(flagEditorSchool && flagDraft)}
+        onClose={() => setFlagEditorSchool(null)}
+        title={
+          flagEditorSchool
+            ? `แพ็กเกจ & โมดูลใช้งานทั้ง ${FEATURE_FLAG_LABELS.length} ฟังก์ชัน: ${flagEditorSchool.nameTh}`
+            : ''
+        }
+        subtitle="เลือกระดับแพ็กเกจ (Level 1–4) กำหนดสิทธิ์ AI นักเรียน หรือเปิด/ปิดแต่ละโมดูลเฉพาะแห่ง"
+        icon={<Package className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-3xl"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 text-xs"
+        footer={
+          flagEditorSchool && flagDraft ? (
+            <>
+              <button type="button" onClick={() => setFlagEditorSchool(null)} className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] text-xs cursor-pointer">
+                ปิด
               </button>
-            </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await saveSchoolFeatureFlagsToDb(flagEditorSchool.id, flagDraft);
+                  onUpdateSchoolFeatureFlags?.(flagEditorSchool.id, flagDraft);
+                  showToast(`อัปเดตโมดูลใช้งานของ ${flagEditorSchool.nameTh} สำเร็จแล้ว`);
+                  setFlagEditorSchool(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer"
+              >
+                บันทึกแพ็กเกจโมดูล
+              </button>
+            </>
+          ) : undefined
+        }
+      >
+        {flagEditorSchool && flagDraft && (
+          <>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {packageCatalog.map((pkg) => {
@@ -1604,47 +1621,22 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                 );
               })}
             </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-[var(--color-border)]">
-              <button type="button" onClick={() => setFlagEditorSchool(null)} className="px-3.5 py-2 rounded-lg border border-[var(--color-border)] cursor-pointer">
-                ปิด
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await saveSchoolFeatureFlagsToDb(flagEditorSchool.id, flagDraft);
-                  onUpdateSchoolFeatureFlags?.(flagEditorSchool.id, flagDraft);
-                  showToast(`อัปเดตโมดูลใช้งานของ ${flagEditorSchool.nameTh} สำเร็จแล้ว`);
-                  setFlagEditorSchool(null);
-                }}
-                className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
-              >
-                บันทึกแพ็กเกจโมดูล
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
 
       {/* Modal: Create New Promotion */}
-      {showNewPromoModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-base font-bold text-[var(--color-text-title)] flex items-center gap-2">
-                <Tag className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>สร้างแคมเปญโปรโมชั่นใหม่ (Create Promotion)</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowNewPromoModal(false)}
-                className="text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-sm font-bold px-2 py-1 rounded-lg hover:bg-[var(--color-card-subtle)] cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePromo} className="space-y-3.5 text-xs">
+      <BaseModal
+        isOpen={showNewPromoModal}
+        onClose={() => setShowNewPromoModal(false)}
+        title="สร้างแคมเปญโปรโมชั่นใหม่ (Create Promotion)"
+        icon={<Tag className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[90vh]"
+        zIndexClass="z-50"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6"
+      >
+        <form onSubmit={handleCreatePromo} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[var(--color-text-title)] font-medium mb-1">โค้ดโปรโมชั่น (Promo Code)</label>
@@ -1769,10 +1761,8 @@ export const SuperAdminConsoleView: React.FC<SuperAdminConsoleViewProps> = ({
                   <span>บันทึกแคมเปญ</span>
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </BaseModal>
 
       <ConfirmActionModal
         isOpen={Boolean(pendingRegConfirm)}

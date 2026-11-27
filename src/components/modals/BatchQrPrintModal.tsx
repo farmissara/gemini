@@ -12,6 +12,7 @@ import {
 import { AppLanguage, School, Student } from '../../types';
 import { QrCodeMatrix } from '../QrCodeMatrix';
 import { downloadBatchStudentQrCodesPdf } from '../../lib/moeReportPdf';
+import { BaseModal } from '../common/BaseModal';
 
 interface BatchQrPrintModalProps {
   isOpen: boolean;
@@ -66,8 +67,6 @@ export const BatchQrPrintModal: React.FC<BatchQrPrintModalProps> = ({
     [students, selectedIds]
   );
 
-  if (!isOpen) return null;
-
   const toggleStudent = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -114,8 +113,15 @@ export const BatchQrPrintModal: React.FC<BatchQrPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-5xl rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl flex flex-col max-h-[94vh] overflow-hidden text-[var(--color-text-body)]">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      hideHeader
+      title={lang === 'th' ? 'พิมพ์รหัส QR นักเรียนชุดรวม (Batch Print QR Codes)' : 'Batch Print Student QR Codes'}
+      maxWidthClass="max-w-5xl"
+      heightClass="max-h-[94dvh]"
+      bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0 text-[var(--color-text-body)]"
+    >
         {/* Top Modal Header */}
         <div className="p-4 sm:p-5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex flex-wrap items-center justify-between gap-3 shrink-0 no-print">
           <div className="flex items-center gap-3 min-w-0">
@@ -346,7 +352,6 @@ export const BatchQrPrintModal: React.FC<BatchQrPrintModalProps> = ({
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

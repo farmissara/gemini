@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  X,
   Upload,
   Download,
   FileSpreadsheet,
@@ -26,6 +25,7 @@ import {
   downloadAttendanceExcelTemplate,
   parseAttendanceImportFile,
 } from '../../lib/attendanceImport';
+import { BaseModal } from '../common/BaseModal';
 
 interface AttendanceImportModalProps {
   isOpen: boolean;
@@ -114,8 +114,6 @@ export const AttendanceImportModal: React.FC<AttendanceImportModalProps> = ({
     return parseResult.rows;
   }, [parseResult, previewFilter, skipDuplicates]);
 
-  if (!isOpen) return null;
-
   const handleFileSelected = async (file?: File) => {
     if (!file) return;
     setIsParsing(true);
@@ -194,39 +192,47 @@ export const AttendanceImportModal: React.FC<AttendanceImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="p-4 sm:p-5 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shrink-0">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-                {lang === 'th'
-                  ? 'นำเข้าข้อมูลการเข้าเรียนจาก Excel / CSV (Batch Class Import)'
-                  : 'Import Attendance Records from Excel / CSV Template'}
-              </h3>
-              <p className="text-[11px] text-[var(--color-text-muted)]">
-                {lang === 'th'
-                  ? 'ดาวน์โหลดเทมเพลตพร้อมรายชื่อนักเรียนในห้อง กรอกสถานะครั้งเดียวแล้วอัปโหลดเข้าระบบทันที'
-                  : 'Download a pre-filled class template (.xlsx / .csv), mark statuses, and upload to bulk-record attendance.'}
-              </p>
-            </div>
-          </div>
-
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidthClass="max-w-4xl"
+      icon={<FileSpreadsheet className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+      title={
+        lang === 'th'
+          ? 'นำเข้าข้อมูลการเข้าเรียนจาก Excel / CSV (Batch Class Import)'
+          : 'Import Attendance Records from Excel / CSV Template'
+      }
+      subtitle={
+        lang === 'th'
+          ? 'ดาวน์โหลดเทมเพลตพร้อมรายชื่อนักเรียนในห้อง กรอกสถานะครั้งเดียวแล้วอัปโหลดเข้าระบบทันที'
+          : 'Download a pre-filled class template (.xlsx / .csv), mark statuses, and upload to bulk-record attendance.'
+      }
+      bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs"
+      footer={
+        <div className="flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer transition"
+            className="btn-tool-neutral px-4 py-2 text-xs"
           >
-            <X className="w-5 h-5" />
+            {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+          </button>
+          <button
+            type="button"
+            disabled={readyToImportCount === 0}
+            onClick={handleCommitImport}
+            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>
+              {lang === 'th'
+                ? `ยืนยันนำเข้า ${readyToImportCount} รายการ`
+                : `Confirm Import (${readyToImportCount})`}
+            </span>
           </button>
         </div>
-
-        {/* Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+      }
+    >
           {/* Step 1: Download Class Template */}
           <div className="p-4 rounded-xl bg-[var(--color-card-subtle)] border border-[var(--color-border)] space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -519,32 +525,7 @@ export const AttendanceImportModal: React.FC<AttendanceImportModalProps> = ({
               )}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 bg-[var(--color-card-subtle)] border-t border-[var(--color-border)] flex items-center justify-end gap-2.5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-          >
-            {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
-          </button>
-          <button
-            type="button"
-            disabled={readyToImportCount === 0}
-            onClick={handleCommitImport}
-            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>
-              {lang === 'th'
-                ? `ยืนยันนำเข้า ${readyToImportCount} รายการ`
-                : `Confirm Import (${readyToImportCount})`}
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };
+

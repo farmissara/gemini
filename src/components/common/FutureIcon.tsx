@@ -281,6 +281,24 @@ export const FutureNavIcon: React.FC<FutureNavIconProps> = ({
           </>
         );
 
+      case 'super_admin_schools':
+        return (
+          <>
+            <path d="M3.5 20V8.5L12 4L20.5 8.5V20H3.5Z" fill={`url(#${gradId})`} fillOpacity={fillOpacity} stroke="currentColor" strokeWidth="1.85" strokeLinejoin="round" />
+            <path d="M9.5 20V13.5H14.5V20" stroke="currentColor" strokeWidth="1.85" strokeLinejoin="round" />
+            <circle cx="12" cy="9.2" r="1.4" fill="currentColor" />
+          </>
+        );
+
+      case 'profile':
+      case 'account':
+        return (
+          <>
+            <circle cx="12" cy="8.2" r="3.6" fill={`url(#${gradId})`} fillOpacity={fillOpacity} stroke="currentColor" strokeWidth="1.85" />
+            <path d="M5 19.5C5.6 15.8 8.4 13.8 12 13.8C15.6 13.8 18.4 15.8 19 19.5" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" />
+          </>
+        );
+
       default:
         if (FallbackIcon) {
           return null;

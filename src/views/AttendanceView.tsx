@@ -42,6 +42,7 @@ import { getLocalDateString } from '../lib/date';
 import { findMatchingStudents, resolveSingleMatchedStudent } from '../lib/studentLookup';
 import { getModuleTone } from '../lib/moduleTheme';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
@@ -846,105 +847,98 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   return (
     <div className={`${getModuleTone('attendance')} h-full flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-4`}>
       {/* Compact SaaS Top Header */}
-      <div className="shrink-0 px-4 py-3 sm:px-5 app-page-header flex flex-wrap items-center justify-between gap-3 text-[var(--color-text-body)]">
-        <div className="min-w-0 flex items-center gap-3">
-          <span className="tone-chip w-10 h-10 rounded-xl">
-            <FutureNavIcon tab="attendance" size={20} active />
-          </span>
-          <div className="min-w-0">
-            <div className="module-category-kicker">04 · เช็กชื่อ กิจการ &amp; สุขภาพ</div>
-            <h1 className="type-page-title truncate">
-              เช็คชื่อเข้า/ออกโรงเรียน &amp; สแกนประตู
-            </h1>
-          </div>
-        </div>
-
-        {/* Subtabs Navigation */}
-        <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-2 shrink-0">
-          {onAttendanceAudienceChange && (
-            <AttendanceAudienceSwitch
-              active="students"
-              lang={lang}
-              onChange={onAttendanceAudienceChange}
-            />
-          )}
-          <div className="seg-tab-group overflow-x-auto no-scrollbar">
-            <button
-              type="button"
-              data-active={activeTab === 'gate_scanner'}
-              onClick={() => setActiveTab('gate_scanner')}
-              className="seg-tab-btn"
-              title="สแกนบัตรหน้าประตูและดูบันทึกเวลาแบบเรียลไทม์"
-            >
-              สแกนประตู
-            </button>
-            <button
-              type="button"
-              data-active={activeTab === 'leave_approval'}
-              onClick={() => setActiveTab('leave_approval')}
-              className="seg-tab-btn"
-              title="ตรวจสอบและอนุมัติคำขอลาออนไลน์"
-            >
-              <FileText className="w-3.5 h-3.5 shrink-0" />
-              <span>{isRestrictedViewer ? 'ใบลาของฉัน' : 'อนุมัติใบลา'}</span>
-              {pendingLeaveCount > 0 && (
-                <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">
-                  ({pendingLeaveCount})
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              data-active={activeTab === 'time_corrections'}
-              onClick={() => setActiveTab('time_corrections')}
-              className="seg-tab-btn"
-              title="ครูประจำชั้นยืนยันเข้า-ออก และอนุมัติคำขอแก้ไขปรับปรุงเวลาตามลำดับชั้น"
-            >
-              <FileEdit className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'แก้ไขเวลา / ยืนยัน' : 'Time Corrections'}</span>
-              {pendingCorrectionCount > 0 && (
-                <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">
-                  ({pendingCorrectionCount})
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              data-active={activeTab === 'export_reports'}
-              onClick={() => setActiveTab('export_reports')}
-              className="seg-tab-btn"
-              title="สรุปรายงานสถิติ กราฟแนวโน้ม และส่งออกไฟล์ Excel/CSV"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-              <span>{lang === 'th' ? 'สถิติและรายงาน' : 'Analytics & Reports'}</span>
-            </button>
-            {isAdminUser && (
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="attendance" size={20} active />}
+        kicker="04 · เช็กชื่อ กิจการ & สุขภาพ"
+        title="เช็คชื่อเข้า/ออกโรงเรียน & สแกนประตู"
+        actions={
+          <nav data-guide-id="attendance-tabs" aria-label="Attendance sections" className="flex flex-wrap items-center gap-2 shrink-0">
+            {onAttendanceAudienceChange && (
+              <AttendanceAudienceSwitch
+                active="students"
+                lang={lang}
+                onChange={onAttendanceAudienceChange}
+              />
+            )}
+            <div className="seg-tab-group overflow-x-auto no-scrollbar">
               <button
                 type="button"
-                data-active={activeTab === 'period_qr'}
-                onClick={() => setActiveTab('period_qr')}
+                data-active={activeTab === 'gate_scanner'}
+                onClick={() => setActiveTab('gate_scanner')}
                 className="seg-tab-btn"
-                title="สร้างรหัส QR เช็คชื่อประจำคาบเรียน"
+                title="สแกนบัตรหน้าประตูและดูบันทึกเวลาแบบเรียลไทม์"
               >
-                <QrCode className="w-3.5 h-3.5 shrink-0" />
-                <span>{lang === 'th' ? 'QR รายคาบ' : 'Period QR'}</span>
+                สแกนประตู
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                data-active={activeTab === 'leave_approval'}
+                onClick={() => setActiveTab('leave_approval')}
+                className="seg-tab-btn"
+                title="ตรวจสอบและอนุมัติคำขอลาออนไลน์"
+              >
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span>{isRestrictedViewer ? 'ใบลาของฉัน' : 'อนุมัติใบลา'}</span>
+                {pendingLeaveCount > 0 && (
+                  <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">
+                    ({pendingLeaveCount})
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                data-active={activeTab === 'time_corrections'}
+                onClick={() => setActiveTab('time_corrections')}
+                className="seg-tab-btn"
+                title="ครูประจำชั้นยืนยันเข้า-ออก และอนุมัติคำขอแก้ไขปรับปรุงเวลาตามลำดับชั้น"
+              >
+                <FileEdit className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'แก้ไขเวลา / ยืนยัน' : 'Time Corrections'}</span>
+                {pendingCorrectionCount > 0 && (
+                  <span className="font-bold tabular-nums text-amber-600 dark:text-amber-300">
+                    ({pendingCorrectionCount})
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                data-active={activeTab === 'export_reports'}
+                onClick={() => setActiveTab('export_reports')}
+                className="seg-tab-btn"
+                title="สรุปรายงานสถิติ กราฟแนวโน้ม และส่งออกไฟล์ Excel/CSV"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'สถิติและรายงาน' : 'Analytics & Reports'}</span>
+              </button>
+              {isAdminUser && (
+                <button
+                  type="button"
+                  data-active={activeTab === 'period_qr'}
+                  onClick={() => setActiveTab('period_qr')}
+                  className="seg-tab-btn"
+                  title="สร้างรหัส QR เช็คชื่อประจำคาบเรียน"
+                >
+                  <QrCode className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'th' ? 'QR รายคาบ' : 'Period QR'}</span>
+                </button>
+              )}
+            </div>
 
-          {/* Continuous Rapid Scanner Modal Trigger */}
-          <button
-            type="button"
-            data-guide-id="attendance-rapid-scanner"
-            onClick={() => setShowRapidScannerModal(true)}
-            className="btn-action-primary h-9 px-3"
-            title="เปิดโหมดกล้องสแกน QR / บาร์โค้ดต่อเนื่อง (1 วินาที/คน)"
-          >
-            <Camera className="w-3.5 h-3.5" />
-            <span>สแกนรัว</span>
-          </button>
-        </nav>
-      </div>
+            {/* Continuous Rapid Scanner Modal Trigger */}
+            <button
+              type="button"
+              data-guide-id="attendance-rapid-scanner"
+              onClick={() => setShowRapidScannerModal(true)}
+              className="btn-action-primary h-9 px-3"
+              title="เปิดโหมดกล้องสแกน QR / บาร์โค้ดต่อเนื่อง (1 วินาที/คน)"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>สแกนรัว</span>
+            </button>
+          </nav>
+        }
+      />
 
       {/* ========================================================================= */}
       {/* TAB 1: GATE SCANNER & REALTIME LOGS */}

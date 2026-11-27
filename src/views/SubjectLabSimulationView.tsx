@@ -38,9 +38,11 @@ import {
   Bot,
   Scroll,
   Globe,
-  Rocket
+  Rocket,
+  X
 } from 'lucide-react';
 import { getModuleTone } from '../lib/moduleTheme';
+import { BaseModal } from '../components/common/BaseModal';
 import { triggerHaptic } from '../lib/arcadeStore';
 import {
   CAMPUS_DATA_UPDATED_EVENT,
@@ -988,10 +990,11 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(item.id)}
-                        className="text-rose-400 hover:text-rose-200 ml-0.5 cursor-pointer text-xs font-black p-0.5"
+                        className="text-rose-400 hover:text-rose-200 ml-0.5 cursor-pointer p-0.5 inline-flex items-center justify-center"
                         title="ลบออก"
+                        aria-label="ลบออก"
                       >
-                        ✕
+                        <X className="w-3 h-3" />
                       </button>
                     </span>
                   ))
@@ -1248,9 +1251,16 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
       {/* ========================================================= */}
       {/* TEACHER CUSTOM LAB BUILDER MODAL */}
       {/* ========================================================= */}
-      {showTeacherBuilder && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
-          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
+      <BaseModal
+        isOpen={showTeacherBuilder}
+        onClose={() => setShowTeacherBuilder(false)}
+        hideHeader
+        zIndexClass="z-50"
+        maxWidthClass="max-w-lg"
+        surfaceClassName="!bg-slate-900 !border-slate-700 !text-white"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5"
+        title="สร้างโจทย์จำลองใหม่ (ครูผู้สอน)"
+      >
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
               <h3 className="font-bold text-sm text-cyan-300 flex items-center gap-1.5">
                 <Plus className="w-4 h-4 text-cyan-400" />
@@ -1259,9 +1269,10 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <button
                 type="button"
                 onClick={() => setShowTeacherBuilder(false)}
-                className="text-slate-300 hover:text-white text-xs p-1 cursor-pointer"
+                className="text-slate-300 hover:text-white text-xs px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 inline-flex items-center gap-1 cursor-pointer"
               >
-                ✕ ปิด
+                <X className="w-3.5 h-3.5" />
+                <span>ปิด</span>
               </button>
             </div>
 
@@ -1406,16 +1417,21 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
       {/* ========================================================= */}
       {/* QUEST STORY & OBJECTIVES POP-UP MODAL (กดซ่อน/กดโชว์ ไม่ล้นจอ) */}
       {/* ========================================================= */}
-      {showQuestModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 animate-in fade-in duration-200 overflow-y-auto">
-          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-2xl">
+      <BaseModal
+        isOpen={showQuestModal}
+        onClose={() => setShowQuestModal(false)}
+        hideHeader
+        zIndexClass="z-50"
+        maxWidthClass="max-w-lg"
+        surfaceClassName="!bg-slate-900 !border-slate-700 !text-white"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5"
+        title="โจทย์ & เป้าหมายภารกิจ"
+      >
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-cyan-400" />
@@ -1426,9 +1442,10 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
               <button
                 type="button"
                 onClick={() => setShowQuestModal(false)}
-                className="text-slate-200 hover:text-white text-xs px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 cursor-pointer"
+                className="text-slate-200 hover:text-white text-xs px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 inline-flex items-center gap-1 cursor-pointer"
               >
-                ✕ ซ่อน / ปิด
+                <X className="w-3.5 h-3.5" />
+                <span>ซ่อน / ปิด</span>
               </button>
             </div>
 
@@ -1496,9 +1513,7 @@ export const SubjectLabSimulationView: React.FC<SubjectLabSimulationViewProps> =
                 เข้าใจแล้ว เริ่มทดลองเลย!
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </BaseModal>
 
     </div>
   );

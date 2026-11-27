@@ -43,8 +43,10 @@ import {
   Filter,
   CheckSquare,
   Square,
+  X,
 } from 'lucide-react';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 import { AttendanceRecord, Course, GradeRecord, SystemConfig, Student, Teacher, TimetableSlot, AppLanguage, School, CampusGateGeofence, UserRole, SchoolFeatureFlags, AuthUser, PromotionCampaign } from '../types';
 import { getModuleTone } from '../lib/moduleTheme';
 import type { NavTab } from '../components/layout/Sidebar';
@@ -846,38 +848,32 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   return (
     <div className={`flex flex-col space-y-3 ${getModuleTone('system_settings')}`}>
       {/* Slim Single-Row Header */}
-      <div className="shrink-0 app-page-header px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl tone-chip shrink-0">
-            <FutureNavIcon tab="system_settings" size={20} active />
-          </div>
-          <div className="min-w-0">
-            <div className="module-category-kicker">
-              07 · {lang === 'th' ? 'ตั้งค่าระบบ & ประสานงาน' : 'Settings & Governance'}
-            </div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--color-text-title)] truncate">
-              {lang === 'th' ? 'ตั้งค่าระบบโรงเรียน' : 'School System Settings'}
-            </h1>
-            <p className="text-xs text-[var(--color-text-muted)] tabular-nums truncate">
-              {lang === 'th'
-                ? `เข้าเรียน ${generalConfig.schoolStartTime} น. · ตัดสาย ${generalConfig.lateCutoffTime} น. · ตัดขาด ${generalConfig.absenceCutoffTime} น.`
-                : `Start ${generalConfig.schoolStartTime} · Late ${generalConfig.lateCutoffTime} · Absent ${generalConfig.absenceCutoffTime}`}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <ModuleTourTrigger moduleId="system_settings" lang={lang} />
-          <button
-            type="button"
-            onClick={handleSave}
-            className="btn-action-primary px-4 py-2 whitespace-nowrap shrink-0"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'บันทึกการตั้งค่า' : 'Save Settings'}</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="system_settings" size={20} active />}
+        kicker={`07 · ${lang === 'th' ? 'ตั้งค่าระบบ & ประสานงาน' : 'Settings & Governance'}`}
+        title={lang === 'th' ? 'ตั้งค่าระบบโรงเรียน' : 'School System Settings'}
+        description={
+          <span className="tabular-nums">
+            {lang === 'th'
+              ? `เข้าเรียน ${generalConfig.schoolStartTime} น. · ตัดสาย ${generalConfig.lateCutoffTime} น. · ตัดขาด ${generalConfig.absenceCutoffTime} น.`
+              : `Start ${generalConfig.schoolStartTime} · Late ${generalConfig.lateCutoffTime} · Absent ${generalConfig.absenceCutoffTime}`}
+          </span>
+        }
+        actions={
+          <>
+            <ModuleTourTrigger moduleId="system_settings" lang={lang} />
+            <button
+              type="button"
+              onClick={handleSave}
+              className="btn-action-primary px-4 py-2 whitespace-nowrap shrink-0"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'บันทึกการตั้งค่า' : 'Save Settings'}</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Save Success Banner */}
       {saveSuccess && (
@@ -889,9 +885,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           <button
             type="button"
             onClick={() => setSaveSuccess(false)}
-            className="text-emerald-800 dark:text-emerald-200 hover:text-emerald-950 dark:hover:text-white font-bold px-2 py-0.5 cursor-pointer"
+            aria-label="ปิดการแจ้งเตือน"
+            className="text-emerald-800 dark:text-emerald-200 hover:text-emerald-950 dark:hover:text-white p-1 rounded cursor-pointer inline-flex items-center justify-center"
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -1140,9 +1137,10 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setQuickSwitchMessage(null)}
-                  className="text-xs font-bold px-1.5 py-0.5 cursor-pointer"
+                  aria-label="ปิดข้อความ"
+                  className="p-1 rounded cursor-pointer inline-flex items-center justify-center"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
@@ -1395,7 +1393,14 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{quickSwitchMessage}</span>
               </span>
-              <button type="button" onClick={() => setQuickSwitchMessage(null)} className="text-xs font-bold px-1.5 py-0.5 cursor-pointer">✕</button>
+              <button
+                type="button"
+                onClick={() => setQuickSwitchMessage(null)}
+                aria-label="ปิดข้อความ"
+                className="p-1 rounded cursor-pointer inline-flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 

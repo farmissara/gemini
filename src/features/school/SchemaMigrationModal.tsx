@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Check, Copy, Database, X } from 'lucide-react';
+import { Check, Copy, Database } from 'lucide-react';
 import type { AppLanguage } from '../../types';
 import { loadSupabasePatchMigrationSql } from '../../lib/supabase';
 import { emitAppToast } from '../../components/common/ToastProvider';
+import { BaseModal } from '../../components/common/BaseModal';
 
 interface SchemaMigrationModalProps {
   isOpen: boolean;
@@ -48,39 +49,35 @@ export const SchemaMigrationModal: React.FC<SchemaMigrationModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-xs">
-      <div className="w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] shadow-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between gap-3 bg-[var(--color-card-subtle)]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--color-text-title)]">
-                {lang === 'th'
-                  ? 'อัปเดตโครงสร้างฐานข้อมูล Supabase (SQL Migration Patch)'
-                  : 'Supabase Database Schema Migration Patch'}
-              </h3>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                {lang === 'th'
-                  ? 'รันครั้งเดียวเพื่อสร้างตาราง teachers, เพิ่มคอลัมน์ attendance.photo_url และรีเฟรช Schema Cache'
-                  : 'Run once in Supabase SQL Editor to create teachers, add attendance.photo_url, and reload schema cache'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] hover:bg-[var(--color-card)] cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-5 overflow-y-auto space-y-4 text-xs text-[var(--color-text-body)]">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        lang === 'th'
+          ? 'อัปเดตโครงสร้างฐานข้อมูล Supabase (SQL Migration Patch)'
+          : 'Supabase Database Schema Migration Patch'
+      }
+      subtitle={
+        lang === 'th'
+          ? 'รันครั้งเดียวเพื่อสร้างตาราง teachers, เพิ่มคอลัมน์ attendance.photo_url และรีเฟรช Schema Cache'
+          : 'Run once in Supabase SQL Editor to create teachers, add attendance.photo_url, and reload schema cache'
+      }
+      icon={<Database className="w-5 h-5 text-amber-700 dark:text-amber-300" />}
+      maxWidthClass="max-w-3xl"
+      heightClass="max-h-[88dvh]"
+      showMobileHandle
+      bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 text-xs text-[var(--color-text-body)]"
+      footer={
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
+        >
+          {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
+        </button>
+      }
+    >
           <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-1.5">
             <div className="font-bold text-amber-900 dark:text-amber-200">
               {lang === 'th' ? 'ขั้นตอนการแก้ไข (ใช้เวลา 30 วินาที):' : 'How to apply (takes 30 seconds):'}
@@ -111,18 +108,6 @@ export const SchemaMigrationModal: React.FC<SchemaMigrationModalProps> = ({
               {patchMigrationSql || 'กำลังโหลด SQL Migration...'}
             </pre>
           </div>
-        </div>
-
-        <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-          >
-            {lang === 'th' ? 'ปิดหน้าต่าง' : 'Close'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

@@ -19,6 +19,7 @@ import { buildCourseTeacherOptions, courseMatchesTeacherFilter, teacherMatchesCo
 import { resolveLinkedStudentsForUser } from '../lib/attendanceScope';
 import { isSchoolPolicyEnabled, SchoolPolicyId } from '../lib/schoolPermissions';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { PageHeader } from '../components/common/PageShell';
 
 interface LmsClassroomViewProps {
   schoolId: string;
@@ -176,43 +177,37 @@ export const LmsClassroomView: React.FC<LmsClassroomViewProps> = ({
   return (
     <div className={`space-y-3 ${getModuleTone('courses')}`}>
       {/* Compact Classroom Header */}
-      <div className="shrink-0 px-3 py-2 app-page-header flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-xl tone-chip shrink-0">
-            <FutureNavIcon tab="courses" size={18} active />
-          </div>
-          <h1 className="text-sm sm:text-base font-bold text-[var(--color-text-title)] truncate">
-            {lang === 'th' ? activeCourse?.titleTh : activeCourse?.titleEn}
-          </h1>
-          <span className="hidden sm:inline text-xs text-[var(--color-text-muted)] truncate">
-            · {activeCourse?.code} · {activeCourse?.teacherName}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          <ModuleTourTrigger moduleId="lms_classroom" lang={lang} />
-          {canManageLessons && (
-            <button type="button" disabled={!activeCourse} onClick={startNewLesson} className="px-2.5 py-1.5 rounded-lg bg-[var(--tone-solid)] text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
-              <Plus className="w-3.5 h-3.5" />{lang === 'th' ? 'เพิ่มบทเรียน' : 'Add lesson'}
-            </button>
-          )}
-          {submittedAlert && (
-            <div className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>{submittedAlert}</span>
+      <PageHeader
+        compact
+        icon={<FutureNavIcon tab="courses" size={20} active />}
+        kicker={activeCourse ? `${activeCourse.code} · ${activeCourse.teacherName}` : undefined}
+        title={lang === 'th' ? (activeCourse?.titleTh || 'ห้องเรียนออนไลน์') : (activeCourse?.titleEn || 'Online Classroom')}
+        actions={
+          <>
+            <ModuleTourTrigger moduleId="lms_classroom" lang={lang} />
+            {canManageLessons && (
+              <button type="button" disabled={!activeCourse} onClick={startNewLesson} className="px-2.5 py-1.5 rounded-lg bg-[var(--tone-solid)] text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                <Plus className="w-3.5 h-3.5" />{lang === 'th' ? 'เพิ่มบทเรียน' : 'Add lesson'}
+              </button>
+            )}
+            {submittedAlert && (
+              <div className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{submittedAlert}</span>
+              </div>
+            )}
+            {submissionError && (
+              <div role="alert" className="px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs">
+                {submissionError}
+              </div>
+            )}
+            <div className="ui-status" data-state={progressPercent === 100 ? 'success' : 'info'}>
+              <span className="text-[var(--color-text-muted)]">{lang === 'th' ? 'ความคืบหน้า:' : 'Progress:'}</span>
+              <span className="font-bold font-mono tabular-nums">{progressPercent}%</span>
             </div>
-          )}
-          {submissionError && (
-            <div role="alert" className="px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-100 text-xs">
-              {submissionError}
-            </div>
-          )}
-          <div className="ui-status" data-state={progressPercent === 100 ? 'success' : 'info'}>
-            <span className="text-[var(--color-text-muted)]">{lang === 'th' ? 'ความคืบหน้า:' : 'Progress:'}</span>
-            <span className="font-bold font-mono tabular-nums">{progressPercent}%</span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {lessonForm && (
         <section className="rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] p-4 space-y-3" aria-label={lang === 'th' ? 'แบบฟอร์มบทเรียน' : 'Lesson editor'}>

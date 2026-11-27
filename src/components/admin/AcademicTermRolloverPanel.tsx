@@ -19,6 +19,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { BaseModal } from '../common/BaseModal';
 import type {
   AttendanceRecord,
   Course,
@@ -794,37 +795,36 @@ export const AcademicTermRolloverPanel: React.FC<AcademicTermRolloverPanelProps>
       </div>
 
       {/* Historical Archive Inspector Modal */}
-      {inspectArchive && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-          <div className="w-full max-w-5xl max-h-[90vh] bg-[var(--color-card)] rounded-2xl border border-[var(--color-border)] shadow-2xl flex flex-col overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-[var(--color-text-title)]">
-                  ข้อมูลย้อนหลัง: ปีการศึกษา {inspectArchive.academicYear} · {formatSemesterLabel(inspectArchive.semester)}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  บันทึกเมื่อ {new Date(inspectArchive.archivedAt).toLocaleString('th-TH')} ·{' '}
-                  {inspectArchive.summary.studentCount} นักเรียน · {inspectArchive.summary.courseCount} รายวิชา ·{' '}
-                  {inspectArchive.summary.gradeCount} ผลการเรียน
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => exportArchiveGradesCsv(inspectArchive)}
-                  className="btn-action-success px-3 py-1.5 text-xs"
-                >
-                  <Download className="w-3.5 h-3.5" /> ส่งออก Excel CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInspectArchive(null)}
-                  className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-card)] cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+      <BaseModal
+        isOpen={Boolean(inspectArchive)}
+        onClose={() => setInspectArchive(null)}
+        title={
+          inspectArchive
+            ? `ข้อมูลย้อนหลัง: ปีการศึกษา ${inspectArchive.academicYear} · ${formatSemesterLabel(inspectArchive.semester)}`
+            : ''
+        }
+        subtitle={
+          inspectArchive
+            ? `บันทึกเมื่อ ${new Date(inspectArchive.archivedAt).toLocaleString('th-TH')} · ${inspectArchive.summary.studentCount} นักเรียน · ${inspectArchive.summary.courseCount} รายวิชา · ${inspectArchive.summary.gradeCount} ผลการเรียน`
+            : undefined
+        }
+        icon={<Archive className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        headerActions={
+          inspectArchive ? (
+            <button
+              type="button"
+              onClick={() => exportArchiveGradesCsv(inspectArchive)}
+              className="btn-action-success px-3 py-1.5 text-xs"
+            >
+              <Download className="w-3.5 h-3.5" /> ส่งออก Excel CSV
+            </button>
+          ) : undefined
+        }
+        maxWidthClass="max-w-5xl"
+        bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden p-0"
+      >
+        {inspectArchive && (
+          <>
 
             <div className="px-5 py-3 border-b border-[var(--color-border)] flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="seg-tab-group">
@@ -989,9 +989,9 @@ export const AcademicTermRolloverPanel: React.FC<AcademicTermRolloverPanelProps>
                 </table>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
     </section>
   );
 };

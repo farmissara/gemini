@@ -2744,7 +2744,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             <nav
               data-guide-id="mobile-checkin-tabs"
               aria-label="Attendance sub-navigation"
-              className="w-full min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
+              className="w-full min-w-0 flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
             >
               {[
                 { id: 'selfie_mobile', icon: Camera, labelTh: 'ลงเวลา', labelEn: 'Clock', staffOnly: false },
@@ -2800,17 +2800,17 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         setSubTab(tab.id as AttendanceSubTab);
                         if (tab.id === 'leave_request') setLeaveFormStep(1);
                       }}
-                      className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md text-[11px] whitespace-nowrap cursor-pointer transition active:scale-[0.97] ${
+                      className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 min-h-[34px] px-2.5 rounded-lg text-xs whitespace-nowrap cursor-pointer transition active:scale-[0.97] ${
                         isActive
                           ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
                           : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
                       }`}
                     >
-                      <tab.icon className="w-3 h-3 shrink-0" />
+                      <tab.icon className="w-3.5 h-3.5 shrink-0" />
                       <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
                       {tab.badge ? (
                         <span
-                          className={`text-[10px] font-bold tabular-nums ${
+                          className={`text-[11px] font-bold tabular-nums ${
                             isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
                           }`}
                         >

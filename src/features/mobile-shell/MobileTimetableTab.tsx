@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft,
   BookOpenCheck,
   Calendar,
   CalendarDays,
@@ -29,6 +28,8 @@ import {
 } from 'lucide-react';
 import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
 import { StatusBadge } from '../../components/common/StatusBadge';
+import { BaseModal } from '../../components/common/BaseModal';
+import { MobileSubPageHeader } from './MobileHeaderAndNav';
 import type {
   AppLanguage,
   Assignment,
@@ -688,74 +689,71 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
 
   return (
     <div className="space-y-3 animate-in fade-in duration-150">
-      {/* Top Action Bar */}
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[40px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer whitespace-nowrap shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <div className="flex items-center gap-1.5 justify-end">
-          {canSelfCheckin && (currentRole === 'student' || currentRole === 'teacher') && (
-            <button
-              type="button"
-              onClick={onOpenPeriodCheckinTab}
-              className="min-h-[38px] px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}</span>
-            </button>
-          )}
-          <TableActionMenu
-            ariaLabel={lang === 'th' ? 'เครื่องมือตารางเรียน/สอน' : 'Timetable tools'}
-            size="md"
-            menuWidth={236}
-            items={[
-              {
-                id: 'landscape_grid',
-                label: lang === 'th' ? 'ตารางสัปดาห์เต็มจอแนวนอน' : 'Fullscreen Landscape Grid',
-                icon: <Maximize2 className="w-3.5 h-3.5" />,
-                variant: 'primary',
-                onClick: () => {
-                  setShowLandscapeWeekly(true);
-                  void enterLandscapeGameMode(landscapeContainerRef.current);
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'ตารางเรียน & ตารางสอน' : 'Timetable'}
+        iconTab="timetable"
+        backLabel={lang === 'th' ? 'กลับ' : 'Back'}
+        onBack={onBackHome}
+        actions={
+          <div className="flex items-center gap-1.5 justify-end">
+            {canSelfCheckin && (currentRole === 'student' || currentRole === 'teacher') && (
+              <button
+                type="button"
+                onClick={onOpenPeriodCheckinTab}
+                className="min-h-[38px] px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'เช็คชื่อคาบเรียน' : 'Period Check-in'}</span>
+              </button>
+            )}
+            <TableActionMenu
+              ariaLabel={lang === 'th' ? 'เครื่องมือตารางเรียน/สอน' : 'Timetable tools'}
+              size="md"
+              menuWidth={236}
+              items={[
+                {
+                  id: 'landscape_grid',
+                  label: lang === 'th' ? 'ตารางสัปดาห์เต็มจอแนวนอน' : 'Fullscreen Landscape Grid',
+                  icon: <Maximize2 className="w-3.5 h-3.5" />,
+                  variant: 'primary',
+                  onClick: () => {
+                    setShowLandscapeWeekly(true);
+                    void enterLandscapeGameMode(landscapeContainerRef.current);
+                  },
                 },
-              },
-              {
-                id: 'print_a4',
-                label: lang === 'th' ? 'พิมพ์ตารางเรียน A4 (แนวนอน)' : 'Print A4 Landscape',
-                icon: <Printer className="w-3.5 h-3.5" />,
-                onClick: () => {
-                  setMobileTimetableMode('grid');
-                  setTimeout(() => printTimetableLandscape(), 120);
+                {
+                  id: 'print_a4',
+                  label: lang === 'th' ? 'พิมพ์ตารางเรียน A4 (แนวนอน)' : 'Print A4 Landscape',
+                  icon: <Printer className="w-3.5 h-3.5" />,
+                  onClick: () => {
+                    setMobileTimetableMode('grid');
+                    setTimeout(() => printTimetableLandscape(), 120);
+                  },
                 },
-              },
-              ...(canManageHolidays
-                ? [
-                    {
-                      id: 'sync_holidays',
-                      label: isSyncingHolidays ? 'กำลังซิงค์วันหยุด...' : 'ซิงค์วันหยุดราชการ',
-                      icon: <RefreshCw className={`w-3.5 h-3.5 ${isSyncingHolidays ? 'animate-spin' : ''}`} />,
-                      disabled: isSyncingHolidays,
-                      dividerBefore: true,
-                      onClick: () => void onManualHolidaySync(mobileCalendarMonthCursor.year),
-                    },
-                  ]
-                : []),
-              {
-                id: 'calendar_sync',
-                label: lang === 'th' ? 'เชื่อมต่อ Calendar & ภาพหน้าจอ' : 'Calendar & Wallpaper',
-                icon: <Calendar className="w-3.5 h-3.5" />,
-                dividerBefore: true,
-                onClick: onOpenCalendarSync,
-              },
-            ]}
-          />
-        </div>
-      </div>
+                ...(canManageHolidays
+                  ? [
+                      {
+                        id: 'sync_holidays',
+                        label: isSyncingHolidays ? 'กำลังซิงค์วันหยุด...' : 'ซิงค์วันหยุดราชการ',
+                        icon: <RefreshCw className={`w-3.5 h-3.5 ${isSyncingHolidays ? 'animate-spin' : ''}`} />,
+                        disabled: isSyncingHolidays,
+                        dividerBefore: true,
+                        onClick: () => void onManualHolidaySync(mobileCalendarMonthCursor.year),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'calendar_sync',
+                  label: lang === 'th' ? 'เชื่อมต่อ Calendar & ภาพหน้าจอ' : 'Calendar & Wallpaper',
+                  icon: <Calendar className="w-3.5 h-3.5" />,
+                  dividerBefore: true,
+                  onClick: onOpenCalendarSync,
+                },
+              ]}
+            />
+          </div>
+        }
+      />
 
       {/* 4-Mode Segmented Navigation: Daily / Weekly / Grid Table / Calendar */}
       <div
@@ -2005,24 +2003,27 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
       )}
 
       {/* ==================== SLOT DETAIL BOTTOM SHEET ==================== */}
-      {inspectSlotTarget &&
-        (() => {
-          const { slot, dateStr } = inspectSlotTarget;
-          const slotColor = getSlotColor(slot);
-          const course = scopedCourses.find((c) => c.id === slot.courseId || c.code === slot.courseCode);
-          const { slotActivity, status, nextCheckType, canCheckinNow } = getActivePeriodLabel(slot, dateStr);
-          const hasCoTeacher = getSlotTeachers(slot).length > 1;
-          const dayInfo = DAY_META_MAP[slot.dayOfWeek as AnyDayKey];
-          return (
-            <div
-              className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
-              onClick={() => setInspectSlotTarget(null)}
-            >
-              <div
-                className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xl overflow-hidden animate-in slide-in-from-bottom-4 duration-150"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700 mx-auto mt-3 mb-1 sm:hidden" />
+      <BaseModal
+        isOpen={Boolean(inspectSlotTarget)}
+        onClose={() => setInspectSlotTarget(null)}
+        hideHeader
+        showMobileHandle
+        zIndexClass="z-[130]"
+        maxWidthClass="max-w-lg"
+        heightClass="max-h-[92dvh]"
+        surfaceClassName="rounded-t-3xl sm:rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-0"
+      >
+        {inspectSlotTarget &&
+          (() => {
+            const { slot, dateStr } = inspectSlotTarget;
+            const slotColor = getSlotColor(slot);
+            const course = scopedCourses.find((c) => c.id === slot.courseId || c.code === slot.courseCode);
+            const { slotActivity, status, nextCheckType, canCheckinNow } = getActivePeriodLabel(slot, dateStr);
+            const hasCoTeacher = getSlotTeachers(slot).length > 1;
+            const dayInfo = DAY_META_MAP[slot.dayOfWeek as AnyDayKey];
+            return (
+              <>
                 <div
                   style={slotColor.style}
                   className={`mx-3 mt-2 rounded-2xl border p-3.5 ${slotColor.className}`}
@@ -2131,10 +2132,10 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
-          );
-        })()}
+              </>
+            );
+          })()}
+      </BaseModal>
 
       {/* ==================== FULLSCREEN LANDSCAPE WEEKLY OVERLAY ==================== */}
       {showLandscapeWeekly && (

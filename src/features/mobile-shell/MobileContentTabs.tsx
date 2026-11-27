@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowLeft,
+  Award,
   ChevronRight,
   Fingerprint,
-  GraduationCap,
   KeyRound,
-  Laptop,
   Lock,
-  LogOut,
   Pin,
   Search,
-  ShieldCheck,
-  Sparkles,
   Trash2,
   User,
   X,
@@ -49,8 +44,8 @@ import { DigitalIdCardView } from '../../views/DigitalIdCardView';
 import { PortfolioView } from '../../views/PortfolioView';
 import { CareerQuestView } from '../../views/CareerQuestView';
 import { PagedList } from '../../components/PagedList';
-import { PWAInstallButton } from '../../components/PWAInstallButton';
 import type { NavTab } from '../../components/layout/Sidebar';
+import { MobileSubPageHeader } from './MobileHeaderAndNav';
 import { splitAnnouncementIntoPages, type ActiveGameView, type MobileTab } from './types';
 
 interface MobileProfileTabProps {
@@ -92,14 +87,14 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   activeSchool,
   currentRole,
   lang,
-  setLang,
-  isLight,
-  setThemePalette,
+  setLang: _setLang,
+  isLight: _isLight,
+  setThemePalette: _setThemePalette,
   profilePage,
   setProfilePage,
   canViewDigitalId,
-  canOpenPortfolio: _canOpenPortfolio,
-  myOwnPortfolioCount: _myOwnPortfolioCount,
+  canOpenPortfolio,
+  myOwnPortfolioCount,
   isRestrictedViewer,
   ownStudent,
   linkedStudents,
@@ -112,13 +107,13 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   onUpdateTeacher,
   onUpdateOwnAvatar,
   onOpenProfileModal,
-  onOpenOnboardingTutor,
+  onOpenOnboardingTutor: _onOpenOnboardingTutor,
   onBiometricLock,
-  onSwitchToDesktopMode,
-  onLogout,
-  onOpenPortfolio: _onOpenPortfolio,
-  canSwitchAdminTeacherMode = false,
-  onSwitchOperationalRole,
+  onSwitchToDesktopMode: _onSwitchToDesktopMode,
+  onLogout: _onLogout,
+  onOpenPortfolio,
+  canSwitchAdminTeacherMode: _canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole: _onSwitchOperationalRole,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
     getPasskeyForUser(currentUser?.id)
@@ -191,7 +186,7 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
     ...(canViewDigitalId
       ? [{ id: 'id' as const, label: lang === 'th' ? 'บัตรดิจิทัล' : 'Digital ID' }]
       : []),
-    { id: 'account' as const, label: lang === 'th' ? 'บัญชี & ตั้งค่า' : 'Account' },
+    { id: 'account' as const, label: lang === 'th' ? 'ข้อมูลบัญชี' : 'Account' },
     { id: 'security' as const, label: lang === 'th' ? 'ความปลอดภัย' : 'Security' },
   ];
 
@@ -265,21 +260,21 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
         />
       )}
 
-      {/* TAB: ACCOUNT & PREFERENCES (Grouped Clean Rows) */}
+      {/* TAB: ACCOUNT IDENTITY (Deduplicated from header menus) */}
       {effectiveProfileSection === 'account' && (
         <div className="space-y-3 text-xs">
           {/* Compact Profile Identity Strip */}
-          <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2.5">
+          <div className="p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               {currentUser?.avatarUrl ? (
                 <img
                   src={currentUser.avatarUrl}
                   alt={userDisplayName}
                   referrerPolicy="no-referrer"
-                  className="w-10 h-10 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+                  className="w-11 h-11 rounded-full object-cover border border-[var(--color-border)] shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-11 h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] flex items-center justify-center font-bold text-xs shrink-0">
                   {userDisplayName.trim().slice(0, 2).toUpperCase() || <User className="w-4 h-4" />}
                 </div>
               )}
@@ -288,150 +283,38 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
                 <p className="text-[11px] text-[var(--color-text-muted)] truncate">
                   {currentUser?.email || activeSchool.nameTh}
                 </p>
+                {ownStudent && (
+                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate mt-0.5">
+                    {ownStudent.gradeLevel}/{ownStudent.room} · {ownStudent.studentIdNumber}
+                  </p>
+                )}
               </div>
             </div>
             <button
               type="button"
               onClick={onOpenProfileModal}
-              className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold text-[11px] shrink-0 cursor-pointer transition"
+              className="h-9 px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-semibold text-xs shrink-0 cursor-pointer transition"
             >
-              {lang === 'th' ? 'แก้ไข' : 'Edit'}
+              {lang === 'th' ? 'แก้ไขโปรไฟล์' : 'Edit'}
             </button>
           </div>
 
-          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2">
-              <p className="text-[11px] font-bold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'สลับโหมดปฏิบัติงาน' : 'Operational Role Mode'}
-              </p>
-              <div className="grid grid-cols-2 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => onSwitchOperationalRole('admin')}
-                  className={`min-h-[38px] flex items-center justify-center gap-1.5 rounded-lg px-2.5 font-bold cursor-pointer transition ${
-                    currentRole === 'admin'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
-                      : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4 shrink-0" />
-                  <span>{lang === 'th' ? 'โหมด Admin' : 'Admin'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSwitchOperationalRole('teacher')}
-                  className={`min-h-[38px] flex items-center justify-center gap-1.5 rounded-lg px-2.5 font-bold cursor-pointer transition ${
-                    currentRole === 'teacher'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                      : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  <GraduationCap className="w-4 h-4 shrink-0" />
-                  <span>{lang === 'th' ? 'โหมดครู' : 'Teacher'}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Grouped Settings List */}
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-            <div className="px-3 py-2.5 flex items-center justify-between gap-2">
-              <span className="font-semibold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'โหมดสี' : 'Theme'}
-              </span>
-              <div className="inline-flex items-center gap-1 p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setThemePalette('light_warm')}
-                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
-                    isLight
-                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  {lang === 'th' ? 'สว่าง' : 'Light'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setThemePalette('sapphire')}
-                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
-                    !isLight
-                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  {lang === 'th' ? 'มืด' : 'Dark'}
-                </button>
-              </div>
-            </div>
-
-            <div className="px-3 py-2.5 flex items-center justify-between gap-2">
-              <span className="font-semibold text-[var(--color-text-title)]">
-                {lang === 'th' ? 'ภาษา' : 'Language'}
-              </span>
-              <div className="inline-flex items-center gap-1 p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)]">
-                <button
-                  type="button"
-                  onClick={() => setLang('th')}
-                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
-                    lang === 'th'
-                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  ไทย
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLang('en')}
-                  className={`h-7 px-2.5 rounded-md text-[11px] font-semibold cursor-pointer transition ${
-                    lang === 'en'
-                      ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-2xs border border-[var(--color-border)]'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
-                  }`}
-                >
-                  EN
-                </button>
-              </div>
-            </div>
-
-            {onOpenOnboardingTutor && currentRole !== 'student' && (
-              <button
-                type="button"
-                onClick={onOpenOnboardingTutor}
-                className="w-full px-3 py-2.5 hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer transition"
-              >
-                <span className="flex items-center gap-2 font-semibold">
-                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>{lang === 'th' ? 'คู่มือและติวเตอร์ระบบ' : 'System Guide'}</span>
-                </span>
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
-              </button>
-            )}
-
+          {canOpenPortfolio && (
             <button
               type="button"
-              onClick={onSwitchToDesktopMode}
-              className="w-full px-3 py-2.5 hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] flex items-center justify-between text-left cursor-pointer transition"
+              onClick={onOpenPortfolio}
+              className="w-full p-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between text-left cursor-pointer transition"
             >
-              <span className="flex items-center gap-2 font-semibold">
-                <Laptop className="w-4 h-4 text-[var(--color-primary-text)]" />
-                <span>{lang === 'th' ? 'สลับมุมมองคอมพิวเตอร์' : 'Desktop View'}</span>
+              <span className="flex items-center gap-2.5 font-semibold text-[var(--color-text-title)]">
+                <Award className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>
+                  {lang === 'th' ? 'แฟ้มสะสมผลงาน' : 'Digital Portfolio'}
+                  {myOwnPortfolioCount > 0 ? ` (${myOwnPortfolioCount})` : ''}
+                </span>
               </span>
-              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
+              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
             </button>
-          </div>
-
-          <PWAInstallButton lang={lang} variant="sidebar" />
-
-          <button
-            type="button"
-            onClick={onLogout}
-            className="w-full h-10 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-200 font-semibold flex items-center justify-center gap-2 transition hover:bg-rose-100 dark:hover:bg-rose-900 cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>{lang === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>
-          </button>
+          )}
         </div>
       )}
 
@@ -662,19 +545,12 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
     <div className="space-y-3 animate-in fade-in duration-200 pb-4">
       {selectedAnnouncement ? (
         <>
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedAnnouncement(null)}
-              className="min-h-[44px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>{lang === 'th' ? 'กลับสู่รายการ' : 'Back to feed'}</span>
-            </button>
-            <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
-              {selectedAnnouncement.publishedAt}
-            </span>
-          </div>
+          <MobileSubPageHeader
+            title={lang === 'th' ? 'รายละเอียดประกาศ' : 'Announcement'}
+            subtitle={selectedAnnouncement.publishedAt}
+            onBack={() => setSelectedAnnouncement(null)}
+            backLabel={lang === 'th' ? 'รายการประกาศ' : 'Feed'}
+          />
           <article className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2">
             <p className="text-[11px] font-semibold text-[var(--color-primary-text)]">
               {lang === 'th'
@@ -707,30 +583,23 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
         </>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={onBackHome}
-              className="min-h-[44px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>{lang === 'th' ? 'หน้าหลัก' : 'Home'}</span>
-            </button>
-            <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
-              {lang === 'th' ? 'ประกาศและข่าวสาร' : 'Announcements'}
-            </h2>
-            {canCreate ? (
-              <button
-                type="button"
-                onClick={() => setShowForm((v) => !v)}
-                className="min-h-[44px] px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer whitespace-nowrap shrink-0"
-              >
-                {showForm ? (lang === 'th' ? 'ปิด' : 'Close') : lang === 'th' ? '+ สร้างประกาศ' : '+ New'}
-              </button>
-            ) : (
-              <span className="w-12" aria-hidden="true" />
-            )}
-          </div>
+          <MobileSubPageHeader
+            title={lang === 'th' ? 'ประกาศและข่าวสาร' : 'Announcements'}
+            iconTab="announcements"
+            onBack={onBackHome}
+            backLabel={lang === 'th' ? 'หน้าหลัก' : 'Home'}
+            actions={
+              canCreate ? (
+                <button
+                  type="button"
+                  onClick={() => setShowForm((v) => !v)}
+                  className="h-9 px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-semibold cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  {showForm ? (lang === 'th' ? 'ปิด' : 'Close') : lang === 'th' ? '+ สร้างประกาศ' : '+ New'}
+                </button>
+              ) : undefined
+            }
+          />
 
           {toast && (
             <div role="status" className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100 text-xs font-semibold">
@@ -989,19 +858,12 @@ export const MobilePortfolioTab: React.FC<MobilePortfolioTabProps> = ({
 }) => {
   return (
     <div className="space-y-3 animate-in fade-in duration-200">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <span className="text-xs font-semibold text-[var(--color-text-muted)]">
-          {lang === 'th' ? 'แฟ้มผลงานของฉัน' : 'My Portfolio'}
-        </span>
-      </div>
+      <MobileSubPageHeader
+        title={lang === 'th' ? 'แฟ้มผลงานของฉัน' : 'My Portfolio'}
+        iconTab="portfolio"
+        onBack={onBackHome}
+        backLabel={lang === 'th' ? 'หน้าหลัก' : 'Home'}
+      />
       <PortfolioView
         portfolioItems={portfolioItems}
         students={linkedStudents}
@@ -1017,6 +879,7 @@ export const MobilePortfolioTab: React.FC<MobilePortfolioTabProps> = ({
         onDeletePortfolioItem={onDeletePortfolioItem}
         onOpenProfile={onOpenProfileModal}
         academicYear={activeSchool.academicYear}
+        embeddedMobile
       />
     </div>
   );
@@ -1063,17 +926,12 @@ export const MobileCareerQuestTab: React.FC<MobileCareerQuestTabProps> = ({
 }) => {
   return (
     <div className="space-y-3 pb-4 animate-in fade-in duration-150">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setActiveTab('home')}
-          className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <span className="text-xs font-semibold text-[var(--color-text-muted)]">Career Quest AI</span>
-      </div>
+      <MobileSubPageHeader
+        title="Career Quest AI"
+        iconTab="career_quest"
+        onBack={() => setActiveTab('home')}
+        backLabel={lang === 'th' ? 'หน้าหลัก' : 'Home'}
+      />
       <CareerQuestView
         currentUser={currentUser}
         school={activeSchool}
@@ -1085,6 +943,7 @@ export const MobileCareerQuestTab: React.FC<MobileCareerQuestTabProps> = ({
         playerScores={playerScores}
         gradingSystem={gradingSystem}
         lang={lang}
+        embeddedMobile
         onEarnRewards={onEarnRewards}
         onEquipCosmetic={onEquipCosmetic}
         onAddPortfolioItem={onAddPortfolioItem}

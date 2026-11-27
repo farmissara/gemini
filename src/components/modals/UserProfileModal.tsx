@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { AuthUser, PortfolioItem, AppLanguage } from '../../types';
 import { ImageCaptureUploadModal } from './ImageCaptureUploadModal';
+import { BaseModal } from '../common/BaseModal';
 
 interface UserProfileModalProps {
   currentUser: AuthUser;
@@ -172,9 +173,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   }, [myPortfolioItems.length]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-hidden">
-      <div className="relative w-full max-w-4xl bg-[var(--color-card)] rounded-3xl shadow-2xl border border-[var(--color-border)] overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
-        
+    <>
+      <BaseModal
+        isOpen={true}
+        onClose={onClose}
+        hideHeader
+        maxWidthClass="max-w-4xl"
+        heightClass="max-h-[92dvh]"
+        bodyClassName="flex-1 min-h-0 flex flex-col overflow-hidden relative"
+      >
         {/* Toast Alert */}
         {toastMessage && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xl flex items-center gap-2 animate-in slide-in-from-top-3">
@@ -663,9 +670,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveSkill(skill)}
-                              className="text-blue-800 dark:text-blue-200 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer"
+                              aria-label={`ลบ ${skill}`}
+                              className="text-blue-800 dark:text-blue-200 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer inline-flex items-center"
                             >
-                              ✕
+                              <X className="w-3 h-3" />
                             </button>
                           </span>
                         ))}
@@ -795,9 +803,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveSubject(sub)}
-                              className="text-emerald-800 dark:text-emerald-200 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer"
+                              aria-label={`ลบ ${sub}`}
+                              className="text-emerald-800 dark:text-emerald-200 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer inline-flex items-center"
                             >
-                              ✕
+                              <X className="w-3 h-3" />
                             </button>
                           </span>
                         ))}
@@ -968,9 +977,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowAddWorkModal(false)}
-                      className="text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-xs font-bold cursor-pointer"
+                      className="text-[var(--color-text-body)] hover:text-[var(--color-text-title)] text-xs font-bold cursor-pointer inline-flex items-center gap-1"
                     >
-                      ✕ ปิด
+                      <X className="w-3.5 h-3.5" />
+                      <span>ปิด</span>
                     </button>
                   </div>
 
@@ -1297,7 +1307,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </BaseModal>
 
       {/* Profile Image Capture & Upload Modal */}
       <ImageCaptureUploadModal
@@ -1312,6 +1322,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         }}
         onClose={() => setShowImageModal(false)}
       />
-    </div>
+    </>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   AlertCircle,
-  ArrowLeft,
   BookOpen,
   Calendar,
   CheckCircle2,
@@ -10,7 +9,6 @@ import {
   Paperclip,
   Plus,
   Send,
-  X,
 } from 'lucide-react';
 import type {
   AppLanguage,
@@ -25,6 +23,8 @@ import { getBangkokDateInputValue } from '../../lib/timetableCalendar';
 import { PagedList } from '../../components/PagedList';
 import { TableActionMenu } from '../../components/common/TableActionMenu';
 import { StatusBadge } from '../../components/common/StatusBadge';
+import { BaseModal } from '../../components/common/BaseModal';
+import { MobileSubPageHeader } from './MobileHeaderAndNav';
 
 interface MobileHomeworkTabProps {
   activeSchool: School;
@@ -259,26 +259,20 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-150">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
-        </button>
-        <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
-          {isStaff
+      <MobileSubPageHeader
+        title={
+          isStaff
             ? lang === 'th'
               ? 'การบ้าน & ตรวจงานนักเรียน'
               : 'Homework Manager'
             : lang === 'th'
               ? 'การบ้านของฉัน'
-              : 'My Homework'}
-        </h2>
-      </div>
+              : 'My Homework'
+        }
+        iconTab="homework"
+        backLabel={lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}
+        onBack={onBackHome}
+      />
 
       {feedbackMsg && (
         <div
@@ -759,37 +753,41 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
       )}
 
       {/* STUDENT HOMEWORK SUBMISSION SHEET */}
-      {submittingAssignment && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] p-5 space-y-4 max-h-[90dvh] overflow-y-auto">
-            <div className="w-10 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto sm:hidden" />
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-[var(--color-primary-text)]">ส่งการบ้านออนไลน์</p>
-                <h3 className="text-base font-bold text-[var(--color-text-title)]">
-                  {submittingAssignment.titleTh}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)] tabular-nums mt-0.5">
-                  กำหนดส่ง {submittingAssignment.dueDate} · เต็ม {submittingAssignment.maxScore ?? submittingAssignment.points} คะแนน
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSubmittingAssignment(null)}
-                className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-card-subtle)] cursor-pointer"
-                aria-label="ปิด"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
+      <BaseModal
+        isOpen={Boolean(submittingAssignment)}
+        onClose={() => setSubmittingAssignment(null)}
+        title={submittingAssignment?.titleTh || 'ส่งการบ้านออนไลน์'}
+        subtitle={
+          submittingAssignment
+            ? `ส่งการบ้านออนไลน์ · กำหนดส่ง ${submittingAssignment.dueDate} · เต็ม ${submittingAssignment.maxScore ?? submittingAssignment.points} คะแนน`
+            : undefined
+        }
+        icon={<FileCheck2 className="w-4 h-4 text-[var(--color-primary-text)]" />}
+        showMobileHandle
+        maxWidthClass="max-w-md"
+        surfaceClassName="rounded-t-3xl sm:rounded-3xl"
+        bodyClassName="flex-1 min-h-0 overflow-y-auto p-5 space-y-4"
+        footer={
+          <button
+            type="submit"
+            form="mobile-homework-submit-form"
+            disabled={submitBusy}
+            className="w-full min-h-[48px] rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Send className="w-4 h-4" />
+            <span>{submitBusy ? 'กำลังส่ง...' : 'ยืนยันส่งการบ้าน'}</span>
+          </button>
+        }
+      >
+        {submittingAssignment && (
+          <>
             {submittingAssignment.description && (
               <div className="p-3 rounded-xl bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-body)] whitespace-pre-line">
                 {submittingAssignment.description}
               </div>
             )}
 
-            <form onSubmit={handleStudentSubmit} className="space-y-3">
+            <form id="mobile-homework-submit-form" onSubmit={handleStudentSubmit} className="space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-[var(--color-text-title)]">
                   คำตอบ / ลิงก์งาน / หมายเหตุถึงครู
@@ -831,19 +829,10 @@ export const MobileHomeworkTab: React.FC<MobileHomeworkTabProps> = ({
                   />
                 </label>
               </div>
-
-              <button
-                type="submit"
-                disabled={submitBusy}
-                className="w-full min-h-[48px] rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Send className="w-4 h-4" />
-                <span>{submitBusy ? 'กำลังส่ง...' : 'ยืนยันส่งการบ้าน'}</span>
-              </button>
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </BaseModal>
     </div>
   );
 };
