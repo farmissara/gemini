@@ -10,12 +10,13 @@ import {
   CreditCard,
   FileText,
   Gamepad2,
-  GraduationCap,
   HeartHandshake,
   HeartPulse,
   LayoutGrid,
   LogIn,
   Megaphone,
+  User,
+  Users,
 } from 'lucide-react';
 import type {
   AppLanguage,
@@ -34,7 +35,6 @@ import { getTimetableSlotActivityStatus, type BangkokClockSnapshot } from '../..
 import { PeriodTimeMissionsCard } from '../../components/PeriodTimeMissionsCard';
 import type { NavTab } from '../../components/layout/Sidebar';
 import type { ActiveGameView, ExecMetrics, MobileTab } from './types';
-import { FutureIconBadge, FutureNavIcon } from '../../components/common/FutureIcon';
 
 interface MobileTeacherParentHomeProps {
   currentUser: AuthUser | null;
@@ -89,16 +89,37 @@ interface MobileTeacherParentHomeProps {
 
 type TeacherParentHomeTab = 'today' | 'tools' | 'more';
 
+interface DirectoryRowProps {
+  icon: React.ReactNode;
+  label: string;
+  meta?: string;
+  onClick: () => void;
+}
+
+const DirectoryRow: React.FC<DirectoryRowProps> = ({ icon, label, meta, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full min-h-[48px] px-3.5 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] active:bg-[var(--color-card-subtle)] cursor-pointer transition"
+  >
+    <span className="flex items-center gap-3 min-w-0">
+      <span className="w-5 h-5 flex items-center justify-center shrink-0">{icon}</span>
+      <span className="text-sm font-medium text-[var(--color-text-title)] truncate">{label}</span>
+    </span>
+    <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)] tabular-nums shrink-0">
+      {meta && <span>{meta}</span>}
+      <ChevronRight className="w-4 h-4 shrink-0" />
+    </span>
+  </button>
+);
+
 export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = ({
   currentUser,
   activeSchool,
   currentRole,
   lang,
   linkedStudents,
-  canSwitchAdminTeacherMode,
-  onSwitchOperationalRole,
   todayHoliday,
-  upcomingHoliday,
   canSelfCheckin,
   canViewTimetable,
   canOpenLeave,
@@ -110,7 +131,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   canOpenLms = false,
   canOpenBehaviorSdq = false,
   canOpenInfirmary = false,
-  isModuleEnabled,
   todayCheckin,
   todayBangkokStr,
   bangkokClock,
@@ -134,6 +154,15 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   const isTeacher = currentRole === 'teacher';
   const isParent = currentRole === 'parent';
   const isWeekend = isWeekendDate(todayBangkokStr);
+
+  const displayName =
+    (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) ||
+    currentUser?.fullNameTh ||
+    currentUser?.fullNameEn ||
+    currentUser?.email ||
+    (isTeacher ? (lang === 'th' ? 'ครูผู้สอน' : 'Teacher') : lang === 'th' ? 'ผู้ปกครอง' : 'Parent');
+  const displayInitials = displayName.trim().slice(0, 2).toUpperCase();
+  const schoolName = lang === 'th' ? activeSchool.nameTh : activeSchool.nameEn;
 
   const tabs: Array<{ id: TeacherParentHomeTab; label: string; icon: React.ReactNode }> = [
     {
@@ -190,42 +219,49 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
 
   return (
     <div className="flex flex-col gap-2.5 pb-2 animate-in fade-in duration-150">
-      {/* 1. COMPACT PRIMARY ACTION BUTTON (Non-teacher only; teachers use Period Check-in & bottom bar directly) */}
-      {!isTeacher && (canSelfCheckin || canViewTimetable) && (
-        <button
-          type="button"
-          onClick={() => {
-            setMobileAttendanceInitialSubTab('selfie_mobile');
-            setActiveTab(canSelfCheckin ? 'checkin' : 'timetable');
-          }}
-          className="btn-action-primary w-full min-h-[44px] px-3 rounded-xl font-semibold text-xs flex items-center justify-between gap-2"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <FutureNavIcon tab={canSelfCheckin ? 'attendance' : 'timetable'} size={15} active />
-            <span className="truncate">
-              {!canSelfCheckin
-                ? lang === 'th'
-                  ? 'ตารางเรียนวันนี้'
-                  : 'Today Timetable'
-                : isParent
-                  ? lang === 'th'
-                    ? 'ดูเวลาเข้า-ออกบุตรหลาน'
-                    : 'Child Attendance'
+      {/* 1. COMPACT PROFILE IDENTITY STRIP */}
+      <button
+        type="button"
+        onClick={() => setActiveTab('profile')}
+        className="w-full p-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)] flex items-center justify-between gap-3 text-left transition cursor-pointer"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          {currentUser?.avatarUrl ? (
+            <img
+              src={currentUser.avatarUrl}
+              alt={displayName}
+              referrerPolicy="no-referrer"
+              className="w-11 h-11 rounded-full object-cover border border-[var(--color-border)] shrink-0"
+            />
+          ) : (
+            <div className="w-11 h-11 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)] font-bold text-xs flex items-center justify-center shrink-0">
+              {displayInitials || <User className="w-4 h-4" />}
+            </div>
+          )}
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums truncate">
+              {isTeacher
+                ? `${lang === 'th' ? 'ครูผู้สอน' : 'Teacher'} · ${
+                    todayCheckin
+                      ? lang === 'th'
+                        ? `เข้า รร. ${todayCheckin.time.slice(0, 5)} น.`
+                        : `In ${todayCheckin.time.slice(0, 5)}`
+                      : lang === 'th'
+                        ? 'ยังไม่ลงเวลาเข้าโรงเรียน'
+                        : 'Not checked in'
+                  }`
+                : isParent && linkedStudents.length > 0
+                  ? `${lang === 'th' ? 'ผู้ปกครอง' : 'Parent'} · ${linkedStudents[0].firstNameTh} (${linkedStudents[0].gradeLevel} ${linkedStudents[0].room})`
                   : lang === 'th'
-                    ? 'เช็คชื่อเข้า/ออกโรงเรียน'
-                    : 'School Check-in & Out'}
-            </span>
+                    ? 'ผู้ปกครอง / บุคลากร'
+                    : 'Parent / Staff'}
+            </p>
+            <p className="text-sm font-bold text-[var(--color-text-title)] truncate">{displayName}</p>
+            <p className="text-[11px] text-[var(--color-text-muted)] truncate">{schoolName}</p>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {todayCheckin && !isParent && (
-              <span className="px-1.5 py-0.5 rounded bg-white/15 text-[10px] font-medium text-white tabular-nums whitespace-nowrap">
-                {lang === 'th' ? `เข้า ${todayCheckin.time}` : todayCheckin.time}
-              </span>
-            )}
-            <ChevronRight className="w-4 h-4 shrink-0" />
-          </div>
-        </button>
-      )}
+        </div>
+        <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+      </button>
 
       {/* 2. SEGMENTED 3-TAB BAR */}
       <div
@@ -279,41 +315,98 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
             />
           )}
 
-          {isTeacher && !featuredSlot && (
+          {isTeacher && (
             <div className="grid grid-cols-2 gap-2">
-              {canViewTimetable && (
+              {canSelfCheckin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileAttendanceInitialSubTab('selfie_mobile');
+                    setActiveTab('checkin');
+                  }}
+                  className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-500 text-left flex flex-col justify-between cursor-pointer transition"
+                >
+                  <div className="flex items-center justify-between gap-1 text-emerald-700 dark:text-emerald-400">
+                    <LogIn className="w-4 h-4 shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
+                      {todayCheckin
+                        ? lang === 'th'
+                          ? `เข้า ${todayCheckin.time.slice(0, 5)} น.`
+                          : `In ${todayCheckin.time.slice(0, 5)}`
+                        : lang === 'th'
+                          ? 'ลงเวลาวันนี้'
+                          : 'Clock in'}
+                    </p>
+                  </div>
+                </button>
+              )}
+
+              {canSelfCheckin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileAttendanceInitialSubTab('period_checkin');
+                    setActiveTab('checkin');
+                  }}
+                  className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer transition"
+                >
+                  <div className="flex items-center justify-between gap-1 text-[var(--color-primary-text)]">
+                    <Users className="w-4 h-4 shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
+                      {todayHoliday || isWeekend
+                        ? lang === 'th'
+                          ? 'วันหยุด'
+                          : 'Day off'
+                        : `${todayMySlots.length} ${lang === 'th' ? 'คาบวันนี้' : 'periods'}`}
+                    </p>
+                  </div>
+                </button>
+              )}
+
+              {!featuredSlot && canViewTimetable && (
                 <button
                   type="button"
                   onClick={() => {
                     setMobileTimetableMode('day');
                     setActiveTab('timetable');
                   }}
-                  className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer"
+                  className="min-h-[60px] px-3 py-2.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex items-center justify-between gap-2 cursor-pointer transition"
                 >
-                  <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'ตารางสอนวันนี้' : 'Today Schedule'}
+                  <span className="flex items-center gap-2 min-w-0">
+                    <Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ตารางสอนวันนี้' : 'Schedule'}
+                    </span>
                   </span>
-                  <span className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
-                    {todayHoliday || isWeekend
-                      ? lang === 'th'
-                        ? 'วันหยุด'
-                        : 'Day off'
-                      : `${todayMySlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`}
-                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                 </button>
               )}
-              {canSelfCheckin && (
+
+              {!featuredSlot && canOpenLeave && (
                 <button
                   type="button"
-                  onClick={onOpenStudentAttendance}
-                  className="min-h-[68px] p-3 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex flex-col justify-between cursor-pointer"
+                  onClick={() => setActiveTab('leave')}
+                  className="min-h-[60px] px-3 py-2.5 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-amber-500 text-left flex items-center justify-between gap-2 cursor-pointer transition"
                 >
-                  <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
+                  <span className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="text-xs font-bold text-[var(--color-text-title)] truncate">
+                      {lang === 'th' ? 'ยื่นใบลา' : 'Leave'}
+                    </span>
                   </span>
-                  <span className="text-xs font-bold text-[var(--color-text-title)]">
-                    {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน · คาบเรียน' : 'School · Period Check-in/Out'}
-                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0" />
                 </button>
               )}
             </div>
@@ -390,373 +483,235 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
         </div>
       )}
 
-      {/* 5. TAB PANEL: ALL TOOLS / MENUS IN A COMPACT 2-COL GRID */}
+      {/* 4. TAB PANEL: GROUPED CLEAN LIST DIRECTORY */}
       {homeTab === 'tools' && (
-        <div role="tabpanel" className="grid grid-cols-2 sm:grid-cols-3 gap-2 animate-in fade-in duration-150">
-          {isTeacher && canViewTimetable && (
-            <button
-              type="button"
-              onClick={() => {
-                setMobileTimetableMode('day');
-                setActiveTab('timetable');
-              }}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-cyan-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-4" size="sm" variant="glass">
-                <FutureNavIcon tab="timetable" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'ตารางสอนวันนี้' : 'Schedule'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {todayHoliday
-                    ? lang === 'th'
-                      ? 'วันหยุด'
-                      : 'Holiday'
-                    : `${todayMySlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {isTeacher && canSelfCheckin && (
-            <button
-              type="button"
-              onClick={onOpenStudentAttendance}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-2" size="sm" variant="glass">
-                <FutureNavIcon tab="attendance" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {lang === 'th' ? 'เข้า/ออกโรงเรียน · เข้า/ออกคาบเรียน' : 'School & Period Check-in/Out'}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {isTeacher && canAccessHomework && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('homework')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-blue-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-1" size="sm" variant="glass">
-                <FutureNavIcon tab="homework" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'การบ้าน/ตรวจงาน' : 'Homework'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {scopedAssignmentsCount} {lang === 'th' ? 'งาน' : 'tasks'}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {isTeacher && canOpenLms && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('lms')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-sky-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-1" size="sm" variant="glass">
-                <FutureNavIcon tab="courses" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'ห้องเรียน LMS' : 'LMS'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {lessonsCount} {lang === 'th' ? 'บทเรียน' : 'lessons'}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {isTeacher && canOpenBehaviorSdq && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('behavior_sdq')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-rose-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-6" size="sm" variant="glass">
-                <FutureNavIcon tab="behavior_sdq" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'พฤติกรรม SDQ' : 'Behavior'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {execMetrics.riskCount > 0 ? `เสี่ยง ${execMetrics.riskCount}` : lang === 'th' ? 'บันทึก' : 'Log'}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {isTeacher && canOpenInfirmary && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('infirmary')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-teal-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-2" size="sm" variant="glass">
-                <FutureNavIcon tab="infirmary" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {execMetrics.todayInfirmary > 0
-                    ? `${execMetrics.todayInfirmary} วันนี้`
-                    : lang === 'th'
-                      ? 'ประวัติแพ้ยา'
-                      : 'Records'}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {isParent && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('attendance_history')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-[var(--color-primary)] text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-2" size="sm" variant="glass">
-                <FutureNavIcon tab="attendance" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'ประวัติมาเรียน' : 'Attendance'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {todayCheckin ? `วันนี้ ${todayCheckin.time} น.` : lang === 'th' ? 'ดูย้อนหลัง' : 'Logs'}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {isParent && canViewTimetable && (
-            <button
-              type="button"
-              onClick={() => {
-                setMobileTimetableMode('day');
-                setActiveTab('timetable');
-              }}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-blue-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-4" size="sm" variant="glass">
-                <FutureNavIcon tab="timetable" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {lang === 'th' ? 'รายวัน/สัปดาห์' : 'Daily view'}
-                </p>
-              </div>
-            </button>
-          )}
-
-          {canOpenLeave && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('leave')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-amber-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-3" size="sm" variant="glass">
-                <FileText className="w-4 h-4" />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'ยื่นใบลา' : 'Leave'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {pendingLeavesCount > 0 ? `${pendingLeavesCount} รอตรวจ` : lang === 'th' ? 'ออนไลน์' : 'Request'}
-                </p>
-              </div>
-            </button>
-          )}
-
+        <div role="tabpanel" className="space-y-3 animate-in fade-in duration-150">
           {isTeacher && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('executive')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-indigo-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-8" size="sm" variant="glass">
-                <FutureNavIcon tab="executive_monitor" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'ภาพรวม รร.' : 'Overview'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                  {execMetrics.attendanceRate}% {lang === 'th' ? 'มาเรียน' : 'rate'}
-                </p>
+            <>
+              <div className="space-y-1.5">
+                <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'การสอนและเวลาเรียน' : 'Teaching & Attendance'}
+                </h3>
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                  {canViewTimetable && (
+                    <DirectoryRow
+                      icon={<Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
+                      label={lang === 'th' ? 'ตารางสอนวันนี้' : 'Schedule'}
+                      meta={
+                        todayHoliday
+                          ? lang === 'th'
+                            ? 'วันหยุด'
+                            : 'Holiday'
+                          : `${todayMySlots.length} ${lang === 'th' ? 'คาบ' : 'slots'}`
+                      }
+                      onClick={() => {
+                        setMobileTimetableMode('day');
+                        setActiveTab('timetable');
+                      }}
+                    />
+                  )}
+                  {canSelfCheckin && (
+                    <DirectoryRow
+                      icon={<LogIn className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                      label={lang === 'th' ? 'เช็คชื่อเข้า/ออกโรงเรียน' : 'School Check-in/Out'}
+                      meta={todayCheckin ? `${todayCheckin.time.slice(0, 5)} น.` : undefined}
+                      onClick={() => {
+                        setMobileAttendanceInitialSubTab('selfie_mobile');
+                        setActiveTab('checkin');
+                      }}
+                    />
+                  )}
+                  {canSelfCheckin && (
+                    <DirectoryRow
+                      icon={<ClipboardCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                      label={lang === 'th' ? 'เช็คชื่อเข้า/ออกคาบเรียน' : 'Period Check-in/Out'}
+                      onClick={onOpenStudentAttendance}
+                    />
+                  )}
+                  {canAccessHomework && (
+                    <DirectoryRow
+                      icon={<FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                      label={lang === 'th' ? 'การบ้าน / ตรวจงาน' : 'Homework'}
+                      meta={`${scopedAssignmentsCount} ${lang === 'th' ? 'งาน' : 'tasks'}`}
+                      onClick={() => setActiveTab('homework')}
+                    />
+                  )}
+                  {canOpenLms && (
+                    <DirectoryRow
+                      icon={<BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
+                      label={lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Classroom'}
+                      meta={`${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`}
+                      onClick={() => setActiveTab('lms')}
+                    />
+                  )}
+                </div>
               </div>
-            </button>
-          )}
 
-          {isTeacher && canPlayGames && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('games');
-                setActiveGameView('hub');
-              }}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-purple-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-5" size="sm" variant="glass">
-                <FutureNavIcon tab="games" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {lang === 'th' ? 'เกม & แล็บ' : 'Games & Labs'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {lang === 'th' ? 'ฝึกฝน 8 สาระ' : 'Play & learn'}
-                </p>
-              </div>
-            </button>
-          )}
+              {(canOpenBehaviorSdq || canOpenInfirmary || canOpenLeave) && (
+                <div className="space-y-1.5">
+                  <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'ดูแลนักเรียน' : 'Student Care'}
+                  </h3>
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                    {canOpenBehaviorSdq && (
+                      <DirectoryRow
+                        icon={<HeartHandshake className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
+                        label={lang === 'th' ? 'พฤติกรรม SDQ' : 'Behavior & SDQ'}
+                        meta={execMetrics.riskCount > 0 ? `${lang === 'th' ? 'เสี่ยง' : 'Risk'} ${execMetrics.riskCount}` : undefined}
+                        onClick={() => setActiveTab('behavior_sdq')}
+                      />
+                    )}
+                    {canOpenInfirmary && (
+                      <DirectoryRow
+                        icon={<HeartPulse className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+                        label={lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary'}
+                        meta={execMetrics.todayInfirmary > 0 ? `${execMetrics.todayInfirmary}` : undefined}
+                        onClick={() => setActiveTab('infirmary')}
+                      />
+                    )}
+                    {canOpenLeave && (
+                      <DirectoryRow
+                        icon={<FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                        label={lang === 'th' ? 'ยื่นใบลา / อนุมัติลา' : 'Leave Requests'}
+                        meta={pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined}
+                        onClick={() => setActiveTab('leave')}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
 
-          {isTeacher && canOpenCareerQuest && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('career_quest')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-violet-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-5" size="sm" variant="glass">
-                <FutureNavIcon tab="career_quest" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  Career Quest
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {lang === 'th' ? 'เส้นทางอาชีพ' : 'Career AI'}
-                </p>
+              <div className="space-y-1.5">
+                <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
+                  {lang === 'th' ? 'ภาพรวมและกิจกรรม' : 'Overview & Activities'}
+                </h3>
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                  <DirectoryRow
+                    icon={<BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                    label={lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview'}
+                    meta={`${execMetrics.attendanceRate}%`}
+                    onClick={() => setActiveTab('executive')}
+                  />
+                  {canPlayGames && (
+                    <DirectoryRow
+                      icon={<Gamepad2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                      label={lang === 'th' ? 'เกม & แล็บ 8 สาระ' : 'Games & Labs'}
+                      onClick={() => {
+                        setActiveTab('games');
+                        setActiveGameView('hub');
+                      }}
+                    />
+                  )}
+                  {canOpenCareerQuest && (
+                    <DirectoryRow
+                      icon={<Compass className="w-4 h-4 text-violet-600 dark:text-violet-400" />}
+                      label="Career Quest AI"
+                      onClick={() => setActiveTab('career_quest')}
+                    />
+                  )}
+                </div>
               </div>
-            </button>
+            </>
           )}
 
           {isParent && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('profile')}
-              className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-cyan-400 text-left flex items-center gap-2.5 cursor-pointer transition"
-            >
-              <FutureIconBadge tone="tone-4" size="sm" variant="glass">
-                <FutureNavIcon tab="student_id_cards" size={16} active />
-              </FutureIconBadge>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                  {canViewDigitalId
-                    ? lang === 'th'
-                      ? 'บัตรดิจิทัล'
-                      : 'Digital ID'
-                    : lang === 'th'
-                      ? 'ตั้งค่าบัญชี'
-                      : 'Settings'}
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                  {lang === 'th' ? 'ข้อมูล & รหัสผ่าน' : 'Account'}
-                </p>
+            <div className="space-y-1.5">
+              <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'ติดตามบุตรหลาน' : 'Parent Services'}
+              </h3>
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                <DirectoryRow
+                  icon={<Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                  label={lang === 'th' ? 'ประวัติมาเรียน' : 'Attendance History'}
+                  meta={todayCheckin ? `${todayCheckin.time.slice(0, 5)} น.` : undefined}
+                  onClick={() => setActiveTab('attendance_history')}
+                />
+                {canViewTimetable && (
+                  <DirectoryRow
+                    icon={<Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
+                    label={lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
+                    onClick={() => {
+                      setMobileTimetableMode('day');
+                      setActiveTab('timetable');
+                    }}
+                  />
+                )}
+                {canOpenLeave && (
+                  <DirectoryRow
+                    icon={<FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                    label={lang === 'th' ? 'ยื่นใบลา' : 'Leave Requests'}
+                    meta={pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined}
+                    onClick={() => setActiveTab('leave')}
+                  />
+                )}
+                <DirectoryRow
+                  icon={<CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
+                  label={
+                    canViewDigitalId
+                      ? lang === 'th'
+                        ? 'บัตรดิจิทัล & ตั้งค่าบัญชี'
+                        : 'Digital ID & Settings'
+                      : lang === 'th'
+                        ? 'ตั้งค่าบัญชี'
+                        : 'Account Settings'
+                  }
+                  onClick={() => setActiveTab('profile')}
+                />
               </div>
-            </button>
+            </div>
           )}
         </div>
       )}
 
-      {/* 6. TAB PANEL: ANNOUNCEMENTS / CALENDAR / ACCOUNT */}
+      {/* 5. TAB PANEL: ANNOUNCEMENTS / CALENDAR / ACCOUNT */}
       {homeTab === 'more' && (
         <div
           role="tabpanel"
           className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden animate-in fade-in duration-150"
         >
           {canOpenAnnouncements && (
-            <button
-              type="button"
+            <DirectoryRow
+              icon={<Megaphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+              label={lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}
+              meta={`${scopedAnnouncementsCount}`}
               onClick={() => setActiveTab('announcements')}
-              className="w-full min-h-[52px] px-4 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-            >
-              <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                <Megaphone className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{lang === 'th' ? 'ประกาศจากโรงเรียน' : 'School Announcements'}</span>
-              </span>
-              <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-1.5 shrink-0">
-                {scopedAnnouncementsCount}
-                <ChevronRight className="w-4 h-4" />
-              </span>
-            </button>
+            />
           )}
 
           {canViewTimetable && (
-            <button
-              type="button"
+            <DirectoryRow
+              icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
+              label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}
+              meta=".ics"
               onClick={() => {
                 setMobileTimetableMode('calendar');
                 setActiveTab('timetable');
               }}
-              className="w-full min-h-[52px] px-4 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-            >
-              <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                <Calendar className="w-4 h-4 text-rose-500 shrink-0" />
-                <span>{lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}</span>
-              </span>
-              <span className="text-xs font-medium text-[var(--color-text-muted)] flex items-center gap-1.5 shrink-0">
-                <span>.ics</span>
-                <ChevronRight className="w-4 h-4" />
-              </span>
-            </button>
+            />
           )}
 
           {canOpenLeave && (
-            <button
-              type="button"
+            <DirectoryRow
+              icon={<FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+              label={lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}
+              meta={pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined}
               onClick={() => setActiveTab('leave')}
-              className="w-full min-h-[52px] px-4 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-            >
-              <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-                <FileText className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>{lang === 'th' ? 'ยื่นใบลาออนไลน์' : 'Leave Requests'}</span>
-              </span>
-              <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums flex items-center gap-1.5 shrink-0">
-                {pendingLeavesCount > 0 ? `${pendingLeavesCount}` : ''}
-                <ChevronRight className="w-4 h-4" />
-              </span>
-            </button>
+            />
           )}
 
-          <button
-            type="button"
+          <DirectoryRow
+            icon={<CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
+            label={
+              canViewDigitalId
+                ? lang === 'th'
+                  ? 'บัตรดิจิทัล & ตั้งค่าบัญชี'
+                  : 'Digital ID & Settings'
+                : lang === 'th'
+                  ? 'ตั้งค่าบัญชี'
+                  : 'Account Settings'
+            }
             onClick={() => setActiveTab('profile')}
-            className="w-full min-h-[52px] px-4 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] cursor-pointer transition"
-          >
-            <span className="text-sm font-semibold text-[var(--color-text-title)] flex items-center gap-2.5">
-              <CreditCard className="w-4 h-4 text-cyan-600 shrink-0" />
-              <span>
-                {canViewDigitalId
-                  ? lang === 'th'
-                    ? 'บัตรดิจิทัล & ตั้งค่าบัญชี'
-                    : 'Digital ID & Settings'
-                  : lang === 'th'
-                    ? 'ตั้งค่าบัญชี'
-                    : 'Account Settings'}
-              </span>
-            </span>
-            <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-          </button>
+          />
         </div>
       )}
     </div>

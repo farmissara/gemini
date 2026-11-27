@@ -4,7 +4,6 @@ import {
   BellRing,
   BookOpen,
   Calendar,
-  Camera,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -109,6 +108,30 @@ const getBarTone = (percent: number): string => {
   if (percent >= 50) return 'bg-amber-500 dark:bg-amber-400';
   return 'bg-rose-600 dark:bg-rose-500';
 };
+
+interface StudentDirectoryRowProps {
+  icon: React.ReactNode;
+  label: string;
+  meta?: string;
+  onClick: () => void;
+}
+
+const StudentDirectoryRow: React.FC<StudentDirectoryRowProps> = ({ icon, label, meta, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full min-h-[48px] px-3.5 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] active:bg-[var(--color-card-subtle)] cursor-pointer transition"
+  >
+    <span className="flex items-center gap-3 min-w-0">
+      <span className="w-5 h-5 flex items-center justify-center shrink-0">{icon}</span>
+      <span className="text-sm font-medium text-[var(--color-text-title)] truncate">{label}</span>
+    </span>
+    <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)] tabular-nums shrink-0">
+      {meta && <span>{meta}</span>}
+      <ChevronRight className="w-4 h-4 shrink-0" />
+    </span>
+  </button>
+);
 
 export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   currentUser,
@@ -898,237 +921,154 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         </div>
       )}
 
-      {/* 5. TAB PANEL: ALL MENUS (COMPACT 2-COLUMN GRID — FITS IN ONE SCREEN) */}
+      {/* 5. TAB PANEL: ALL MENUS (GROUPED CLEAN DIRECTORY LIST VIEW) */}
       {effectiveTab === 'menu' && (
-        <div role="tabpanel" className="space-y-2 animate-in fade-in duration-150">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {canViewTimetable && (
-              <button
-                type="button"
-                onClick={() => onOpenTimetable('day')}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-cyan-400 dark:hover:border-cyan-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
-                  <FutureNavIcon tab="timetable" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {todayHoliday || isWeekend
-                      ? lang === 'th'
-                        ? 'วันหยุด'
-                        : 'Day off'
-                      : lang === 'th'
-                        ? `${todayMySlots.length} คาบวันนี้`
-                        : `${todayMySlots.length} classes`}
-                  </p>
-                </div>
-              </button>
-            )}
-
-            {canViewGrades && (
-              <button
-                type="button"
-                onClick={onOpenGrades}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-emerald-400 dark:hover:border-emerald-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-2" size="sm" variant="glass">
-                  <FutureNavIcon tab="gradebook" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ผลการเรียน' : 'Grades'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {realGpax !== null ? `GPAX ${realGpax.toFixed(2)}` : `${scopedCourses.length} วิชา`}
-                  </p>
-                </div>
-              </button>
-            )}
-
-            {canOpenPortfolio && (
-              <button
-                type="button"
-                onClick={onOpenPortfolio}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-amber-400 dark:hover:border-amber-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-3" size="sm" variant="glass">
-                  <FutureNavIcon tab="portfolio" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ผลงานของฉัน' : 'Portfolio'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {myPortfolioCount > 0
-                      ? lang === 'th'
-                        ? `${myPortfolioCount} รายการ`
-                        : `${myPortfolioCount} items`
-                      : lang === 'th'
-                        ? 'เกียรติบัตร'
-                        : 'Certificates'}
-                  </p>
-                </div>
-              </button>
-            )}
-
-            {canAccessHomework && (
-              <button
-                type="button"
-                onClick={onOpenHomework}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-indigo-400 dark:hover:border-indigo-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-1" size="sm" variant="glass">
-                  <FutureNavIcon tab="homework" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'การบ้าน' : 'Homework'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {pendingHomeworkCount > 0
-                      ? lang === 'th'
-                        ? `รอส่ง ${pendingHomeworkCount} งาน`
-                        : `${pendingHomeworkCount} due`
-                      : lang === 'th'
-                        ? 'ส่งครบแล้ว'
-                        : 'Caught up'}
-                  </p>
-                </div>
-              </button>
-            )}
-
-            {canOpenLeave && (
-              <button
-                type="button"
-                onClick={onOpenLeave}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-rose-400 dark:hover:border-rose-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-6" size="sm" variant="glass">
-                  <FileText className="w-4 h-4" />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ยื่นใบลา' : 'Leave'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {pendingLeavesCount > 0
-                      ? lang === 'th'
-                        ? `รออนุมัติ ${pendingLeavesCount}`
-                        : `${pendingLeavesCount} pending`
-                      : lang === 'th'
-                        ? 'ลาป่วย · ลากิจ'
-                        : 'Sick · Personal'}
-                  </p>
-                </div>
-              </button>
-            )}
-
-            {canPlayGames ? (
-              <button
-                type="button"
-                onClick={onOpenGames}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-violet-400 dark:hover:border-violet-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-5" size="sm" variant="glass">
-                  <FutureNavIcon tab="games" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'เกม & แล็บ' : 'Games & Labs'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                    {lang === 'th' ? 'ฝึกฝน 8 สาระ' : 'Play & learn'}
-                  </p>
-                </div>
-              </button>
-            ) : canOpenAnnouncements ? (
-              <button
-                type="button"
-                onClick={() => onOpenAnnouncements()}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-teal-400 dark:hover:border-teal-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
-                  <FutureNavIcon tab="announcements" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ประกาศ' : 'News'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {scopedAnnouncements.length} {lang === 'th' ? 'ข่าวสาร' : 'posts'}
-                  </p>
-                </div>
-              </button>
-            ) : null}
-
-            {canOpenLms && onOpenLms && (
-              <button
-                type="button"
-                onClick={onOpenLms}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-sky-400 dark:hover:border-sky-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-1" size="sm" variant="glass">
-                  <FutureNavIcon tab="courses" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Lessons'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-                    {lessonsCount > 0
-                      ? `${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`
-                      : `${scopedCourses.length} ${lang === 'th' ? 'รายวิชา' : 'courses'}`}
-                  </p>
-                </div>
-              </button>
-            )}
-
-            {canViewDigitalId && onOpenDigitalId && (
-              <button
-                type="button"
-                onClick={onOpenDigitalId}
-                className="min-h-[60px] px-3 py-2.5 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-cyan-400 dark:hover:border-cyan-500 text-left flex items-center gap-2.5 transition active:scale-[0.98] cursor-pointer"
-              >
-                <FutureIconBadge tone="tone-4" size="sm" variant="glass">
-                  <FutureNavIcon tab="student_id_cards" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'บัตรนักเรียน' : 'Digital ID'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                    {lang === 'th' ? 'QR · บาร์โค้ด' : 'QR & Barcode'}
-                  </p>
-                </div>
-              </button>
-            )}
-          </div>
-
-          {onOpenCareerQuest && (
-            <button
-              type="button"
-              onClick={onOpenCareerQuest}
-              className="tone-5 frosted-purple w-full min-h-[56px] px-3.5 py-2.5 rounded-xl text-left flex items-center justify-between gap-2.5 transition active:scale-[0.99] cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <FutureIconBadge tone="tone-5" size="sm" variant="solid">
-                  <FutureNavIcon tab="career_quest" size={16} active />
-                </FutureIconBadge>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1">
-                    <span className="truncate">{lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}</span>
-                    <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                    {lang === 'th' ? 'Quiz 5 ข้อ · พลังความพร้อม' : 'Vibe quiz & readiness'}
-                  </p>
-                </div>
+        <div role="tabpanel" className="space-y-3 animate-in fade-in duration-150">
+          {(canViewTimetable || canViewGrades || canAccessHomework || (canOpenLms && Boolean(onOpenLms))) && (
+            <section className="space-y-1.5">
+              <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'การเรียนประจำวัน' : 'Daily Learning'}
+              </h3>
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                {canViewTimetable && (
+                  <StudentDirectoryRow
+                    icon={<Calendar className="w-4 h-4 text-[var(--color-primary-text)]" />}
+                    label={lang === 'th' ? 'ตารางเรียน' : 'Timetable'}
+                    meta={
+                      todayHoliday || isWeekend
+                        ? lang === 'th'
+                          ? 'วันหยุด'
+                          : 'Day off'
+                        : lang === 'th'
+                          ? `${todayMySlots.length} คาบวันนี้`
+                          : `${todayMySlots.length} classes`
+                    }
+                    onClick={() => onOpenTimetable('day')}
+                  />
+                )}
+                {canViewGrades && (
+                  <StudentDirectoryRow
+                    icon={<GraduationCap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                    label={lang === 'th' ? 'ผลการเรียน' : 'Grades'}
+                    meta={
+                      realGpax !== null
+                        ? `GPAX ${realGpax.toFixed(2)}`
+                        : lang === 'th'
+                          ? `${scopedCourses.length} วิชา`
+                          : `${scopedCourses.length} courses`
+                    }
+                    onClick={onOpenGrades}
+                  />
+                )}
+                {canAccessHomework && (
+                  <StudentDirectoryRow
+                    icon={<BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                    label={lang === 'th' ? 'การบ้าน' : 'Homework'}
+                    meta={
+                      pendingHomeworkCount > 0
+                        ? lang === 'th'
+                          ? `รอส่ง ${pendingHomeworkCount} งาน`
+                          : `${pendingHomeworkCount} due`
+                        : lang === 'th'
+                          ? 'ส่งครบแล้ว'
+                          : 'Caught up'
+                    }
+                    onClick={onOpenHomework}
+                  />
+                )}
+                {canOpenLms && onOpenLms && (
+                  <StudentDirectoryRow
+                    icon={<Library className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
+                    label={lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Lessons'}
+                    meta={
+                      lessonsCount > 0
+                        ? `${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`
+                        : `${scopedCourses.length} ${lang === 'th' ? 'รายวิชา' : 'courses'}`
+                    }
+                    onClick={onOpenLms}
+                  />
+                )}
               </div>
-              <ChevronRight className="w-4 h-4 text-violet-500 shrink-0" />
-            </button>
+            </section>
+          )}
+
+          {(canOpenPortfolio ||
+            canOpenLeave ||
+            canPlayGames ||
+            canOpenAnnouncements ||
+            (canViewDigitalId && Boolean(onOpenDigitalId)) ||
+            Boolean(onOpenCareerQuest)) && (
+            <section className="space-y-1.5">
+              <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'กิจกรรมและเอกสาร' : 'Activities & Records'}
+              </h3>
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
+                {canOpenPortfolio && (
+                  <StudentDirectoryRow
+                    icon={<Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                    label={lang === 'th' ? 'ผลงานของฉัน' : 'Portfolio'}
+                    meta={
+                      myPortfolioCount > 0
+                        ? lang === 'th'
+                          ? `${myPortfolioCount} รายการ`
+                          : `${myPortfolioCount} items`
+                        : lang === 'th'
+                          ? 'เกียรติบัตร'
+                          : 'Certificates'
+                    }
+                    onClick={onOpenPortfolio}
+                  />
+                )}
+                {canOpenLeave && (
+                  <StudentDirectoryRow
+                    icon={<FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
+                    label={lang === 'th' ? 'ยื่นใบลา' : 'Leave Request'}
+                    meta={
+                      pendingLeavesCount > 0
+                        ? lang === 'th'
+                          ? `รออนุมัติ ${pendingLeavesCount}`
+                          : `${pendingLeavesCount} pending`
+                        : lang === 'th'
+                          ? 'ลาป่วย · ลากิจ'
+                          : 'Sick · Personal'
+                    }
+                    onClick={onOpenLeave}
+                  />
+                )}
+                {canPlayGames && (
+                  <StudentDirectoryRow
+                    icon={<Gamepad2 className="w-4 h-4 text-violet-600 dark:text-violet-400" />}
+                    label={lang === 'th' ? 'เกม & แล็บ' : 'Games & Labs'}
+                    meta={lang === 'th' ? 'ฝึกฝน 8 สาระ' : 'Play & learn'}
+                    onClick={onOpenGames}
+                  />
+                )}
+                {!canPlayGames && canOpenAnnouncements && (
+                  <StudentDirectoryRow
+                    icon={<Megaphone className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+                    label={lang === 'th' ? 'ประกาศโรงเรียน' : 'Announcements'}
+                    meta={`${scopedAnnouncements.length} ${lang === 'th' ? 'ข่าวสาร' : 'posts'}`}
+                    onClick={() => onOpenAnnouncements()}
+                  />
+                )}
+                {canViewDigitalId && onOpenDigitalId && (
+                  <StudentDirectoryRow
+                    icon={<CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
+                    label={lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital ID'}
+                    meta={lang === 'th' ? 'QR · บาร์โค้ด' : 'QR & Barcode'}
+                    onClick={onOpenDigitalId}
+                  />
+                )}
+                {onOpenCareerQuest && (
+                  <StudentDirectoryRow
+                    icon={<Compass className="w-4 h-4 text-violet-600 dark:text-violet-400" />}
+                    label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}
+                    meta={lang === 'th' ? 'Quiz 5 ข้อ' : 'Vibe quiz'}
+                    onClick={onOpenCareerQuest}
+                  />
+                )}
+              </div>
+            </section>
           )}
         </div>
       )}

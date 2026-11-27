@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowLeft,
   Camera,
   Check,
   CheckCircle2,
@@ -31,6 +32,7 @@ import {
 import type {
   AppLanguage,
   AttendanceCheckType,
+  AttendanceRecord,
   AttendanceUserType,
   AuthUser,
   CampusGateGeofence,
@@ -81,10 +83,14 @@ interface SelfieAttendanceTabProps {
   cameraNotice: string | null;
   cameraError: string | null;
   startCamera: (targetFacingMode?: CameraFacingMode, preferredDeviceId?: string | null) => Promise<void>;
+  stopCamera?: () => void;
   handleCaptureSnapshot: () => void;
   isCameraActive: boolean;
   isSavingAttendance: boolean;
-  handleConfirmCheckin: () => Promise<void>;
+  handleConfirmCheckin: () => Promise<boolean | void>;
+  todayCheckInRecord?: AttendanceRecord;
+  todayCheckOutRecord?: AttendanceRecord;
+  schoolName?: string;
   gpsError: string | null;
   selfieActionError: string | null;
   isCameraSwitching: boolean;
@@ -337,10 +343,14 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
   cameraNotice,
   cameraError,
   startCamera,
+  stopCamera,
   handleCaptureSnapshot,
   isCameraActive,
   isSavingAttendance,
   handleConfirmCheckin,
+  todayCheckInRecord,
+  todayCheckOutRecord,
+  schoolName,
   gpsError,
   selfieActionError,
   isCameraSwitching,
@@ -383,13 +393,35 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
   const [selectedStickerUid, setSelectedStickerUid] = useState<string | null>(
     placedStickers[0]?.uid ?? null
   );
+  const [isCaptureOpen, setIsCaptureOpen] = useState<boolean>(false);
+  const [showMobileBoothTools, setShowMobileBoothTools] = useState<boolean>(false);
+  const [nowTick, setNowTick] = useState<Date>(() => new Date());
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ uid: string; startX: number; startY: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!embeddedMobile) return;
+    const timer = window.setInterval(() => {
+      setNowTick(new Date());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [embeddedMobile]);
 
   const activeFilter = getFilterOption(selfieFilterId);
   const activeEffect = getCameraEffectOption(selfieEffectId);
   const checkTypeLabel = checkType === 'check_in' ? 'เข้าโรงเรียน' : 'ออกโรงเรียน';
-  const liveTimeText = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const liveTimeText = nowTick.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const liveDateTimeFull = `${nowTick.toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })}, ${nowTick.toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })}`;
 
   const handleToggleSticker = (stickerId: SelfieStickerId) => {
     const existing = placedStickers.find((s) => s.stickerId === stickerId);
@@ -475,6 +507,238 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
     return 'bg-slate-950';
   })();
 
+  useEffect(() => {
+    if (!embeddedMobile) return;
+    if (isCaptureOpen && !capturedPhotoUrl) {
+      void startCamera(facingModeRef.current);
+    } else if (!isCaptureOpen) {
+      stopCamera?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embeddedMobile, isCaptureOpen]);
+
+  const activeInGateLabel = selectedGate
+    ? selectedGate.nameTh
+    : schoolName || (lang === 'th' ? 'จุดเช็คชื่อโรงเรียน' : 'Campus Gate');
+
+  if (embeddedMobile && !isCaptureOpen && !capturedPhotoUrl) {
+    return (
+      <div
+        data-guide-id="mobile-checkin-body"
+        className="flex-1 min-h-0 flex flex-col justify-between gap-3 overflow-y-auto px-0.5 py-1"
+      >
+        <div className="space-y-3">
+          {/* 1. Location & Live GPS Strip */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <MapPin className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+                {normalizedGates.length > 1 && selectedGate ? (
+                  <select
+                    aria-label={lang === 'th' ? 'จุดประตูเช็คชื่อ' : 'Check-in gate'}
+                    value={selectedGate.id}
+                    onChange={(e) => setSelectedGateId(e.target.value)}
+                    className="min-h-[40px] flex-1 min-w-0 bg-transparent text-sm font-bold text-[var(--color-text-title)] truncate focus:outline-hidden cursor-pointer"
+                  >
+                    {normalizedGates.map((gate) => (
+                      <option key={gate.id} value={gate.id}>
+                        {gate.nameTh}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                    {activeInGateLabel}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isSchoolAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowGpsAdminModal(true)}
+                    className="min-h-[44px] min-w-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center justify-center cursor-pointer transition"
+                    title="ตั้งค่าพิกัดจุดเช็คชื่อโรงเรียน"
+                    aria-label="ตั้งค่าพิกัดจุดเช็คชื่อโรงเรียน"
+                  >
+                    <Settings className="w-4 h-4 text-[var(--color-text-title)]" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleRefreshGps}
+                  className="min-h-[44px] min-w-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] flex items-center justify-center cursor-pointer transition active:scale-95"
+                  title="รีเฟรชพิกัด GPS"
+                  aria-label="รีเฟรชพิกัด GPS"
+                >
+                  <Navigation
+                    className={`w-4 h-4 text-[var(--color-primary-text)] ${isGpsLoading ? 'animate-spin' : ''}`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 text-xs pt-1 border-t border-[var(--color-border)]">
+              <span className="inline-flex items-center gap-1.5 min-w-0">
+                {isGpsLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 animate-spin shrink-0" />
+                ) : !hasSchoolGpsConfigured || currentGpsDistance === null ? (
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                ) : isInGeofence ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                )}
+                <span
+                  className={`font-semibold truncate tabular-nums ${
+                    !hasSchoolGpsConfigured || isGpsLoading || currentGpsDistance === null
+                      ? 'text-amber-700 dark:text-amber-300'
+                      : isInGeofence
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  {gpsStatusShortLabel}
+                </span>
+              </span>
+              {selectedGate && (
+                <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums shrink-0">
+                  {lang === 'th' ? `รัศมี ${selectedGate.radiusMeters} ม.` : `${selectedGate.radiusMeters}m radius`}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 2. Live Thai Date & Clock */}
+          <div className="py-1 text-center">
+            <p className="text-sm sm:text-base font-bold text-[var(--color-text-title)] tabular-nums tracking-tight">
+              {liveDateTimeFull}
+            </p>
+          </div>
+
+          {/* 3. Paired Time-Card Slots: เข้าโรงเรียน | ออกโรงเรียน */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] grid grid-cols-2 divide-x divide-[var(--color-border)] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setCheckType('check_in')}
+              className={`p-3.5 flex flex-col items-center gap-2 text-center cursor-pointer transition ${
+                checkType === 'check_in'
+                  ? 'bg-emerald-50/75 dark:bg-emerald-950/25'
+                  : 'hover:bg-[var(--color-card-subtle)]'
+              }`}
+            >
+              <div className="w-full max-w-[112px] aspect-[3/4] rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center">
+                {todayCheckInRecord?.photoUrl ? (
+                  <img
+                    src={todayCheckInRecord.photoUrl}
+                    alt={lang === 'th' ? 'ภาพลงเวลาเข้าโรงเรียน' : 'Check-in photo'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Camera className="w-6 h-6 text-[var(--color-text-muted)]/50" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
+                  {todayCheckInRecord?.time ? `${todayCheckInRecord.time.slice(0, 5)} น.` : '-'}
+                </p>
+                <p
+                  className={`text-xs font-semibold ${
+                    checkType === 'check_in' || todayCheckInRecord
+                      ? 'text-emerald-700 dark:text-emerald-400'
+                      : 'text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {lang === 'th' ? 'เข้าโรงเรียน' : 'Check In'}
+                </p>
+                {todayCheckInRecord && (
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {todayCheckInRecord.status === 'late'
+                      ? lang === 'th'
+                        ? 'มาสาย'
+                        : 'Late'
+                      : lang === 'th'
+                        ? 'ตรงเวลา'
+                        : 'On time'}
+                  </p>
+                )}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCheckType('check_out')}
+              className={`p-3.5 flex flex-col items-center gap-2 text-center cursor-pointer transition ${
+                checkType === 'check_out'
+                  ? 'bg-indigo-50/75 dark:bg-indigo-950/25'
+                  : 'hover:bg-[var(--color-card-subtle)]'
+              }`}
+            >
+              <div className="w-full max-w-[112px] aspect-[3/4] rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center">
+                {todayCheckOutRecord?.photoUrl ? (
+                  <img
+                    src={todayCheckOutRecord.photoUrl}
+                    alt={lang === 'th' ? 'ภาพลงเวลาออกโรงเรียน' : 'Check-out photo'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Camera className="w-6 h-6 text-[var(--color-text-muted)]/50" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-sm font-bold text-[var(--color-text-title)] tabular-nums">
+                  {todayCheckOutRecord?.time ? `${todayCheckOutRecord.time.slice(0, 5)} น.` : '-'}
+                </p>
+                <p
+                  className={`text-xs font-semibold ${
+                    checkType === 'check_out' || todayCheckOutRecord
+                      ? 'text-indigo-700 dark:text-indigo-400'
+                      : 'text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {lang === 'th' ? 'ออกโรงเรียน' : 'Check Out'}
+                </p>
+                {todayCheckOutRecord && (
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    {lang === 'th' ? 'บันทึกแล้ว' : 'Recorded'}
+                  </p>
+                )}
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* 4. Single Thumb-Zone Primary Action */}
+        <div className="pt-1 pb-2 space-y-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setCapturedPhotoUrl(null);
+              setIsCaptureOpen(true);
+            }}
+            className={`w-full min-h-[48px] px-4 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.99] cursor-pointer ${
+              checkType === 'check_in'
+                ? 'bg-emerald-600 hover:bg-emerald-700'
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
+          >
+            <Camera className="w-4 h-4 shrink-0" />
+            <span>
+              {checkType === 'check_in'
+                ? lang === 'th'
+                  ? 'ลงเวลาเข้าโรงเรียน'
+                  : 'Check In to School'
+                : lang === 'th'
+                  ? 'ลงเวลาออกโรงเรียน'
+                  : 'Check Out of School'}
+            </span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-guide-id="mobile-checkin-body"
@@ -483,33 +747,51 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
       {/* CAMERA PHOTO-BOOTH STUDIO COLUMN */}
       <div className={`${embeddedMobile ? 'flex-1 min-h-0 flex flex-col' : 'lg:col-span-7 flex flex-col'}`}>
         <div className={`w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] relative flex flex-col overflow-hidden shadow-xs ${embeddedMobile ? 'flex-1 min-h-0' : ''}`}>
-          {/* Studio Top Control Bar: Check-in/Out + Gate (+ Refresh GPS on mobile) */}
+          {/* Studio Top Control Bar: Check-in/Out + Gate (+ Back / Creative toggle on mobile capture) */}
           <div className={`bg-[var(--color-card)] border-b border-[var(--color-border)] flex items-center justify-between gap-1.5 shrink-0 ${embeddedMobile ? 'px-2.5 py-1.5' : 'px-3 py-2 flex-wrap gap-2'}`}>
-            <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] shrink-0">
-              <button
-                type="button"
-                onClick={() => setCheckType('check_in')}
-                className={`inline-flex items-center gap-1 rounded-md transition cursor-pointer active:scale-[0.97] ${embeddedMobile ? 'h-7 px-2 text-[11px]' : 'py-1.5 px-2.5 sm:px-3 text-xs'} ${
-                  checkType === 'check_in'
-                    ? 'bg-emerald-600 text-white font-bold shadow-2xs'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
-                }`}
-              >
-                <LogIn className="w-3 h-3 shrink-0" />
-                <span>เข้าโรงเรียน</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCheckType('check_out')}
-                className={`inline-flex items-center gap-1 rounded-md transition cursor-pointer active:scale-[0.97] ${embeddedMobile ? 'h-7 px-2 text-[11px]' : 'py-1.5 px-2.5 sm:px-3 text-xs'} ${
-                  checkType === 'check_out'
-                    ? 'bg-indigo-600 text-white font-bold shadow-2xs'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
-                }`}
-              >
-                <LogOut className="w-3 h-3 shrink-0" />
-                <span>ออกโรงเรียน</span>
-              </button>
+            <div className="flex items-center gap-1.5 min-w-0">
+              {embeddedMobile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCapturedPhotoUrl(null);
+                    setIsCaptureOpen(false);
+                    setShowMobileBoothTools(false);
+                    stopCamera?.();
+                  }}
+                  className="min-h-[36px] px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-semibold inline-flex items-center gap-1 cursor-pointer shrink-0"
+                  aria-label="กลับหน้าลงเวลา"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>กลับ</span>
+                </button>
+              )}
+              <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--color-card-subtle)] border border-[var(--color-border)] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCheckType('check_in')}
+                  className={`inline-flex items-center gap-1 rounded-md transition cursor-pointer active:scale-[0.97] ${embeddedMobile ? 'h-7 px-2 text-[11px]' : 'py-1.5 px-2.5 sm:px-3 text-xs'} ${
+                    checkType === 'check_in'
+                      ? 'bg-emerald-600 text-white font-bold shadow-2xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
+                  }`}
+                >
+                  <LogIn className="w-3 h-3 shrink-0" />
+                  <span>เข้า</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCheckType('check_out')}
+                  className={`inline-flex items-center gap-1 rounded-md transition cursor-pointer active:scale-[0.97] ${embeddedMobile ? 'h-7 px-2 text-[11px]' : 'py-1.5 px-2.5 sm:px-3 text-xs'} ${
+                    checkType === 'check_out'
+                      ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium'
+                  }`}
+                >
+                  <LogOut className="w-3 h-3 shrink-0" />
+                  <span>ออก</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
@@ -528,46 +810,65 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                   <button
                     type="button"
                     onClick={handleRefreshGps}
-                    className="h-7 w-7 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] inline-flex items-center justify-center cursor-pointer shrink-0"
+                    className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] inline-flex items-center justify-center cursor-pointer shrink-0"
                     title="รีเฟรชสัญญาณ GPS"
                     aria-label="รีเฟรชสัญญาณ GPS"
                   >
                     <Navigation className={`h-3.5 w-3.5 text-[var(--color-primary-text)] ${isGpsLoading ? 'animate-spin' : ''}`} />
                   </button>
                 </>
-              ) : normalizedGates.length > 1 && selectedGate ? (
-                <select
-                  aria-label={lang === 'th' ? 'จุดประตูเช็คชื่อ' : 'Check-in gate'}
-                  value={selectedGate.id}
-                  onChange={(e) => setSelectedGateId(e.target.value)}
-                  className={`${embeddedMobile ? 'h-7 text-[11px] max-w-[115px]' : 'h-8 text-xs max-w-[165px] sm:max-w-[230px]'} bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-medium rounded-lg px-2 border border-[var(--color-border)] truncate min-w-0 focus:outline-hidden transition cursor-pointer`}
-                >
-                  {normalizedGates.map((gate) => (
-                    <option key={gate.id} value={gate.id}>
-                      {gate.nameTh}
-                    </option>
-                  ))}
-                </select>
               ) : (
-                <span className={`inline-flex items-center gap-1 bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-medium rounded-lg px-2 border border-[var(--color-border)] truncate min-w-0 ${embeddedMobile ? 'h-7 text-[11px] max-w-[115px]' : 'h-8 text-xs max-w-[165px] sm:max-w-[230px]'}`}>
-                  <MapPin className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
-                  <span className="truncate">
-                    {selectedGate ? selectedGate.nameTh : lang === 'th' ? 'ยังไม่ตั้งพิกัด' : 'No GPS'}
-                  </span>
-                </span>
-              )}
+                <>
+                  {!embeddedMobile && normalizedGates.length > 1 && selectedGate ? (
+                    <select
+                      aria-label={lang === 'th' ? 'จุดประตูเช็คชื่อ' : 'Check-in gate'}
+                      value={selectedGate.id}
+                      onChange={(e) => setSelectedGateId(e.target.value)}
+                      className="h-8 text-xs max-w-[165px] sm:max-w-[230px] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-medium rounded-lg px-2 border border-[var(--color-border)] truncate min-w-0 focus:outline-hidden transition cursor-pointer"
+                    >
+                      {normalizedGates.map((gate) => (
+                        <option key={gate.id} value={gate.id}>
+                          {gate.nameTh}
+                        </option>
+                      ))}
+                    </select>
+                  ) : !embeddedMobile ? (
+                    <span className="inline-flex items-center gap-1 bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-medium rounded-lg px-2 border border-[var(--color-border)] truncate min-w-0 h-8 text-xs max-w-[165px] sm:max-w-[230px]">
+                      <MapPin className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
+                      <span className="truncate">
+                        {selectedGate ? selectedGate.nameTh : lang === 'th' ? 'ยังไม่ตั้งพิกัด' : 'No GPS'}
+                      </span>
+                    </span>
+                  ) : null}
 
-              {embeddedMobile && !simpleStaffCheckin && (
-                <button
-                  type="button"
-                  onClick={handleRefreshGps}
-                  className="h-7 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] text-[11px] font-semibold inline-flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0 shadow-2xs"
-                  title="รีเฟรชสัญญาณ GPS"
-                  aria-label="รีเฟรชสัญญาณ GPS"
-                >
-                  <Navigation className={`w-3 h-3 text-[var(--color-primary-text)] shrink-0 ${isGpsLoading ? 'animate-spin' : ''}`} />
-                  <span>GPS</span>
-                </button>
+                  {embeddedMobile && !capturedPhotoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMobileBoothTools((v) => !v)}
+                      className={`h-8 px-2 rounded-lg border text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer shrink-0 transition ${
+                        showMobileBoothTools
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                          : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)]'
+                      }`}
+                    >
+                      <Sparkles className="w-3 h-3 shrink-0" />
+                      <span>แต่งรูป</span>
+                    </button>
+                  )}
+
+                  {embeddedMobile && (
+                    <button
+                      type="button"
+                      onClick={handleRefreshGps}
+                      className="h-8 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] text-[11px] font-semibold inline-flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0 shadow-2xs"
+                      title="รีเฟรชสัญญาณ GPS"
+                      aria-label="รีเฟรชสัญญาณ GPS"
+                    >
+                      <Navigation className={`w-3 h-3 text-[var(--color-primary-text)] shrink-0 ${isGpsLoading ? 'animate-spin' : ''}`} />
+                      <span>GPS</span>
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -892,8 +1193,8 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             </div>
           )}
 
-          {/* Interactive Photo-Booth Creative Tray (Stickers · Effects · Frames · Filters) */}
-          {!simpleStaffCheckin && !capturedPhotoUrl && (
+          {/* Interactive Photo-Booth Creative Tray (Stickers · Effects · Frames · Filters — optional toggle on mobile) */}
+          {!simpleStaffCheckin && !capturedPhotoUrl && (!embeddedMobile || showMobileBoothTools) && (
             <div className={`bg-[var(--color-card-subtle)] border-t border-[var(--color-border)] shrink-0 ${embeddedMobile ? 'px-2.5 py-1.5 space-y-1.5' : 'px-3 py-2.5 space-y-2'}`}>
               <div className="flex items-center justify-between gap-1.5">
                 <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] overflow-x-auto no-scrollbar max-w-full">
@@ -1070,7 +1371,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
           )}
 
           {/* Studio Bottom Shutter & Action Deck */}
-          <div className={`bg-[var(--color-card)] border-t border-[var(--color-border)] shrink-0 ${embeddedMobile ? 'px-2.5 py-1.5' : 'px-3 sm:px-4 py-2.5 sm:py-3'}`}>
+          <div className={`bg-[var(--color-card)] border-t border-[var(--color-border)] shrink-0 ${embeddedMobile ? 'px-3 py-2.5' : 'px-3 sm:px-4 py-2.5 sm:py-3'}`}>
             {capturedPhotoUrl ? (
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1082,7 +1383,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                         void startCamera(facingModeRef.current);
                       }
                     }}
-                    className={`${embeddedMobile ? 'h-8 px-2.5 text-[11px]' : 'h-10 px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold inline-flex items-center justify-center gap-1 border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer`}
+                    className={`${embeddedMobile ? 'min-h-[44px] px-3 text-xs' : 'h-10 px-3 text-xs'} rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold inline-flex items-center justify-center gap-1.5 border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer`}
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     <span>ถ่ายใหม่</span>
@@ -1092,7 +1393,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     <a
                       href={capturedPhotoUrl}
                       download={`baanpakkru-selfie-${Date.now()}.jpg`}
-                      className={`${embeddedMobile ? 'h-8 px-2.5 text-[11px]' : 'h-10 px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold inline-flex items-center justify-center gap-1 border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer`}
+                      className={`${embeddedMobile ? 'min-h-[44px] px-3 text-xs' : 'h-10 px-3 text-xs'} rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] font-semibold inline-flex items-center justify-center gap-1.5 border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer`}
                       title="ดาวน์โหลดภาพเซลฟี่เก็บไว้"
                     >
                       <Download className="w-3.5 h-3.5 text-[var(--color-primary-text)]" />
@@ -1103,8 +1404,15 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                   <button
                     type="button"
                     disabled={!isInGeofence || isSavingAttendance}
-                    onClick={handleConfirmCheckin}
-                    className={`flex-1 min-w-[130px] ${embeddedMobile ? 'h-8 px-3 text-[11px]' : 'h-10 px-4 text-xs'} rounded-lg text-white font-bold inline-flex items-center justify-center gap-1 shadow-xs transition active:scale-[0.98] cursor-pointer ${
+                    onClick={async () => {
+                      const ok = await handleConfirmCheckin();
+                      if (ok !== false && embeddedMobile) {
+                        setIsCaptureOpen(false);
+                        setShowMobileBoothTools(false);
+                        stopCamera?.();
+                      }
+                    }}
+                    className={`flex-1 min-w-[130px] ${embeddedMobile ? 'min-h-[44px] px-4 text-xs' : 'h-10 px-4 text-xs'} rounded-xl text-white font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition active:scale-[0.98] cursor-pointer ${
                       isInGeofence
                         ? checkType === 'check_in'
                           ? 'bg-emerald-600 hover:bg-emerald-700 border border-emerald-700'
@@ -1112,7 +1420,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                         : 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-70'
                     }`}
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-4 h-4" />
                     <span>
                       {isSavingAttendance
                         ? 'กำลังบันทึก...'
@@ -1155,19 +1463,19 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1 min-w-0 overflow-x-auto no-scrollbar">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar">
                   <button
                     type="button"
                     disabled={isCameraSwitching}
                     onClick={() => {
                       void startCamera(facingModeRef.current);
                     }}
-                    className={`${embeddedMobile ? 'h-8 w-8' : 'h-10 px-2.5 sm:px-3 gap-1.5 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center justify-center font-semibold disabled:opacity-50 shrink-0`}
+                    className={`${embeddedMobile ? 'min-h-[44px] min-w-[44px]' : 'h-10 px-2.5 sm:px-3 gap-1.5 text-xs'} rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center justify-center font-semibold disabled:opacity-50 shrink-0`}
                     title="เปิด / รีเฟรชกล้อง"
                     aria-label="เปิดหรือรีเฟรชกล้อง"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-spin' : ''}`} />
                     {!embeddedMobile && <span className="hidden sm:inline">รีเฟรช</span>}
                   </button>
 
@@ -1175,20 +1483,20 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                     type="button"
                     disabled={isCameraSwitching}
                     onClick={handleToggleFacingMode}
-                    className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 sm:px-3 text-xs'} rounded-lg bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold disabled:opacity-60 shrink-0`}
+                    className={`${embeddedMobile ? 'min-h-[44px] px-3 text-xs' : 'h-10 px-2.5 sm:px-3 text-xs'} rounded-xl bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-[var(--color-text-title)] border border-[var(--color-border)] shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold disabled:opacity-60 shrink-0`}
                     title={facingMode === 'user' ? 'สลับเป็นกล้องหลัง' : 'สลับเป็นกล้องหน้า'}
                     aria-label="สลับกล้องหน้าหรือกล้องหลัง"
                   >
-                    <SwitchCamera className={`w-3.5 h-3.5 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
+                    <SwitchCamera className={`w-4 h-4 text-[var(--color-text-muted)] shrink-0 ${isCameraSwitching ? 'animate-pulse' : ''}`} />
                     <span>{embeddedMobile ? 'สลับ' : 'สลับกล้อง'}</span>
                   </button>
 
-                  {!simpleStaffCheckin && (
+                  {!simpleStaffCheckin && (!embeddedMobile || showMobileBoothTools) && (
                     <>
                       <button
                         type="button"
                         onClick={() => setSelfieFilterId(getNextFilterId(selfieFilterId))}
-                        className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 text-xs'} rounded-lg border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
+                        className={`${embeddedMobile ? 'min-h-[44px] px-2.5 text-xs' : 'h-10 px-2.5 text-xs'} rounded-xl border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
                           selfieFilterId !== 'normal'
                             ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
                             : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] hover:bg-[var(--color-card)]'
@@ -1203,14 +1511,14 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                       <button
                         type="button"
                         onClick={() => setSelfieTimerSeconds(selfieTimerSeconds === 0 ? 3 : 0)}
-                        className={`${embeddedMobile ? 'h-8 px-2 text-[11px]' : 'h-10 px-2.5 text-xs'} rounded-lg border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
+                        className={`${embeddedMobile ? 'min-h-[44px] px-2.5 text-xs' : 'h-10 px-2.5 text-xs'} rounded-xl border shadow-2xs transition active:scale-95 cursor-pointer inline-flex items-center gap-1 font-semibold shrink-0 ${
                           selfieTimerSeconds === 3
                             ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
                             : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
                         }`}
                         title="ตั้งเวลานับถอยหลัง 3 วินาทีก่อนถ่าย"
                       >
-                        <Timer className="w-3 h-3 shrink-0" />
+                        <Timer className="w-3.5 h-3.5 shrink-0" />
                         <span className="tabular-nums">{selfieTimerSeconds === 3 ? '3วิ' : '0วิ'}</span>
                       </button>
                     </>
@@ -1242,11 +1550,11 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
                   type="button"
                   onClick={handleCaptureSnapshot}
                   disabled={isCapturing || isCameraSwitching || selfieCountdown !== null}
-                  className={`${embeddedMobile ? 'h-8 px-3 text-[11px]' : 'h-10 px-4 sm:px-5 text-xs'} rounded-lg bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 border border-indigo-700 text-white font-bold inline-flex items-center gap-1 shadow-sm transition active:scale-[0.97] cursor-pointer disabled:opacity-60 shrink-0 ml-auto`}
+                  className={`${embeddedMobile ? 'min-h-[44px] px-4 text-xs' : 'h-10 px-4 sm:px-5 text-xs'} rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 border border-indigo-700 text-white font-bold inline-flex items-center gap-1.5 shadow-sm transition active:scale-[0.97] cursor-pointer disabled:opacity-60 shrink-0 ml-auto`}
                   title="ถ่ายรูปเซลฟี่เช็คชื่อ"
                   aria-label="ถ่ายรูปเช็คชื่อ"
                 >
-                  <Camera className="w-3.5 h-3.5" />
+                  <Camera className="w-4 h-4" />
                   <span>
                     {selfieCountdown !== null
                       ? `${selfieCountdown}...`

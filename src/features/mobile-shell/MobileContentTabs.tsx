@@ -8,9 +8,12 @@ import {
   Laptop,
   Lock,
   LogOut,
+  Pin,
+  Search,
   Sparkles,
   Trash2,
   User,
+  X,
 } from 'lucide-react';
 import type {
   Announcement,
@@ -561,6 +564,13 @@ interface MobileAnnouncementsTabProps {
   onBackHome: () => void;
 }
 
+const ANNOUNCEMENT_CATEGORY_TH: Record<Announcement['category'], string> = {
+  academic: 'วิชาการ',
+  event: 'กิจกรรม',
+  urgent: 'ด่วน',
+  general: 'ทั่วไป',
+};
+
 export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
   lang,
   currentRole,
@@ -573,7 +583,9 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
 }) => {
   const canCreate = ['teacher', 'admin', 'super_admin'].includes(currentRole) && Boolean(onAddAnnouncement);
   const [showForm, setShowForm] = useState(false);
-  const [audienceFilter, setAudienceFilter] = useState<string>('all');
+  const [feedTab, setFeedTab] = useState<'all' | 'important'>('all');
+  const [audienceFilter, setAudienceFilter] = useState<'all' | 'students' | 'parents' | 'teachers'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<Announcement['category']>('academic');
@@ -581,9 +593,22 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
   const [pinned, setPinned] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const visibleAnnouncements = scopedAnnouncements.filter((a) =>
+  const audienceScopedAnnouncements = scopedAnnouncements.filter((a) =>
     audienceFilter === 'all' ? true : a.targetAudience === audienceFilter || a.targetAudience === 'all'
   );
+  const importantCount = audienceScopedAnnouncements.filter(
+    (a) => a.pinned || a.category === 'urgent'
+  ).length;
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const visibleAnnouncements = audienceScopedAnnouncements.filter((a) => {
+    if (feedTab === 'important' && !a.pinned && a.category !== 'urgent') return false;
+    if (!normalizedQuery) return true;
+    return (
+      a.title.toLowerCase().includes(normalizedQuery) ||
+      a.content.toLowerCase().includes(normalizedQuery) ||
+      a.author.toLowerCase().includes(normalizedQuery)
+    );
+  });
 
   const handlePublish = (e: React.FormEvent) => {
     e.preventDefault();
@@ -613,28 +638,34 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200 pb-4">
+    <div className="space-y-3 animate-in fade-in duration-200 pb-4">
       {selectedAnnouncement ? (
         <>
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setSelectedAnnouncement(null)}
-              className="min-h-[40px] flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              className="min-h-[44px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>กลับสู่รายการ</span>
+              <ArrowLeft className="w-4 h-4" />
+              <span>{lang === 'th' ? 'กลับสู่รายการ' : 'Back to feed'}</span>
             </button>
-            <span className="text-[10px] text-[var(--color-text-muted)]">
+            <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums">
               {selectedAnnouncement.publishedAt}
             </span>
           </div>
           <article className="p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2">
-            <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
+            <p className="text-[11px] font-semibold text-[var(--color-primary-text)]">
+              {lang === 'th'
+                ? ANNOUNCEMENT_CATEGORY_TH[selectedAnnouncement.category] || selectedAnnouncement.category
+                : selectedAnnouncement.category}
+              {selectedAnnouncement.pinned ? (lang === 'th' ? ' · ปักหมุด' : ' · Pinned') : ''}
+            </p>
+            <h2 className="text-base font-extrabold text-[var(--color-text-title)] leading-snug">
               {selectedAnnouncement.title}
             </h2>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
-              {selectedAnnouncement.author} ({selectedAnnouncement.authorRole})
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {selectedAnnouncement.author} · {selectedAnnouncement.authorRole}
             </p>
             <PagedList
               items={splitAnnouncementIntoPages(selectedAnnouncement.content)}
@@ -645,7 +676,7 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
               renderItem={(pageText, pageIndex) => (
                 <p
                   key={pageIndex}
-                  className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-text-body)]"
+                  className="mt-2 pt-3 border-t border-[var(--color-border)] whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--color-text-body)]"
                 >
                   {pageText}
                 </p>
@@ -659,27 +690,29 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
             <button
               type="button"
               onClick={onBackHome}
-              className="min-h-[40px] flex items-center gap-1 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
+              className="min-h-[44px] flex items-center gap-1.5 text-xs font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>กลับหน้าหลัก</span>
+              <ArrowLeft className="w-4 h-4" />
+              <span>{lang === 'th' ? 'หน้าหลัก' : 'Home'}</span>
             </button>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">ประกาศโรงเรียน</h2>
-              {canCreate && (
-                <button
-                  type="button"
-                  onClick={() => setShowForm((v) => !v)}
-                  className="min-h-[36px] px-3 rounded-xl bg-[var(--color-primary)] text-white text-xs font-bold cursor-pointer"
-                >
-                  {showForm ? 'ปิด' : '+ สร้างประกาศ'}
-                </button>
-              )}
-            </div>
+            <h2 className="text-sm font-extrabold text-[var(--color-text-title)]">
+              {lang === 'th' ? 'ประกาศและข่าวสาร' : 'Announcements'}
+            </h2>
+            {canCreate ? (
+              <button
+                type="button"
+                onClick={() => setShowForm((v) => !v)}
+                className="min-h-[44px] px-3 rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-bold cursor-pointer whitespace-nowrap shrink-0"
+              >
+                {showForm ? (lang === 'th' ? 'ปิด' : 'Close') : lang === 'th' ? '+ สร้างประกาศ' : '+ New'}
+              </button>
+            ) : (
+              <span className="w-12" aria-hidden="true" />
+            )}
           </div>
 
           {toast && (
-            <div role="status" className="p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100 text-xs font-semibold">
+            <div role="status" className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100 text-xs font-semibold">
               {toast}
             </div>
           )}
@@ -704,7 +737,7 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as Announcement['category'])}
-                  className="min-h-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                  className="min-h-[44px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
                 >
                   <option value="academic">วิชาการ</option>
                   <option value="general">ทั่วไป</option>
@@ -714,7 +747,7 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
                 <select
                   value={targetAudience}
                   onChange={(e) => setTargetAudience(e.target.value as Announcement['targetAudience'])}
-                  className="min-h-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
+                  className="min-h-[44px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)]"
                 >
                   <option value="all">ทุกคนในโรงเรียน</option>
                   <option value="students">นักเรียน</option>
@@ -722,7 +755,7 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
                   <option value="teachers">ครูและบุคลากร</option>
                 </select>
               </div>
-              <label className="flex items-center justify-between py-1 cursor-pointer">
+              <label className="flex items-center justify-between min-h-[44px] cursor-pointer">
                 <span className="font-semibold text-[var(--color-text-title)]">ปักหมุดไว้ด้านบน</span>
                 <input
                   type="checkbox"
@@ -741,23 +774,89 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
             </form>
           )}
 
+          {/* Clean 2-tab feed switcher */}
+          <div
+            role="tablist"
+            aria-label={lang === 'th' ? 'ประเภทประกาศ' : 'Announcement feed'}
+            className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={feedTab === 'all'}
+              onClick={() => setFeedTab('all')}
+              className={`min-h-[44px] px-3 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap tabular-nums ${
+                feedTab === 'all'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs border border-[var(--color-border)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-transparent'
+              }`}
+            >
+              {lang === 'th'
+                ? `ข่าวสารทั้งหมด (${audienceScopedAnnouncements.length})`
+                : `All (${audienceScopedAnnouncements.length})`}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={feedTab === 'important'}
+              onClick={() => setFeedTab('important')}
+              className={`min-h-[44px] px-3 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap tabular-nums flex items-center justify-center gap-1.5 ${
+                feedTab === 'important'
+                  ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] shadow-xs border border-[var(--color-border)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] border border-transparent'
+              }`}
+            >
+              <Pin className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                {lang === 'th' ? `สำคัญ/ปักหมุด (${importantCount})` : `Important (${importantCount})`}
+              </span>
+            </button>
+          </div>
+
+          {/* Search input */}
+          <div className="relative">
+            <Search
+              className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={lang === 'th' ? 'ค้นหาหัวข้อ หรือเนื้อหาประกาศ...' : 'Search announcements...'}
+              aria-label={lang === 'th' ? 'ค้นหาประกาศ' : 'Search announcements'}
+              className="w-full min-h-[44px] pl-10 pr-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label={lang === 'th' ? 'ล้างคำค้นหา' : 'Clear search'}
+                className="min-h-[44px] min-w-[44px] absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Audience filter */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {(
               [
-                { id: 'all', label: 'ทั้งหมด' },
-                { id: 'students', label: 'นักเรียน' },
-                { id: 'parents', label: 'ผู้ปกครอง' },
-                { id: 'teachers', label: 'ครู' },
+                { id: 'all', label: lang === 'th' ? 'ทุกกลุ่ม' : 'All' },
+                { id: 'students', label: lang === 'th' ? 'นักเรียน' : 'Students' },
+                { id: 'parents', label: lang === 'th' ? 'ผู้ปกครอง' : 'Parents' },
+                { id: 'teachers', label: lang === 'th' ? 'ครู' : 'Teachers' },
               ] as const
             ).map((f) => (
               <button
                 key={f.id}
                 type="button"
                 onClick={() => setAudienceFilter(f.id)}
-                className={`min-h-[36px] px-3 rounded-xl text-xs font-semibold shrink-0 cursor-pointer ${
+                className={`min-h-[44px] px-3 rounded-xl text-xs font-semibold shrink-0 cursor-pointer whitespace-nowrap transition ${
                   audienceFilter === f.id
                     ? 'bg-[var(--color-primary)] text-white'
-                    : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)]'
+                    : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card-subtle)]'
                 }`}
               >
                 {f.label}
@@ -767,43 +866,65 @@ export const MobileAnnouncementsTab: React.FC<MobileAnnouncementsTabProps> = ({
 
           <PagedList
             items={visibleAnnouncements}
-            pageSize={4}
+            pageSize={5}
             previousLabel={lang === 'th' ? 'ก่อนหน้า' : 'Previous'}
             nextLabel={lang === 'th' ? 'ถัดไป' : 'Next'}
             paginationLabel={lang === 'th' ? 'เปลี่ยนหน้าประกาศ' : 'Announcement pages'}
-            emptyState={<p className="py-8 text-center text-xs text-[var(--color-text-muted)]">ไม่มีประกาศ</p>}
+            emptyState={
+              <p className="py-8 text-center text-xs text-[var(--color-text-muted)]">
+                {normalizedQuery
+                  ? lang === 'th'
+                    ? 'ไม่พบประกาศที่ตรงกับคำค้นหา'
+                    : 'No announcements match your search'
+                  : lang === 'th'
+                    ? 'ไม่มีประกาศในหมวดนี้'
+                    : 'No announcements'}
+              </p>
+            }
             renderItem={(a) => (
-              <div
+              <button
                 key={a.id}
-                className={`p-4 rounded-2xl border ${
-                  a.pinned
-                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40'
-                    : 'bg-[var(--color-card)] border-[var(--color-border)]'
-                } shadow-xs space-y-2 text-xs`}
+                type="button"
+                onClick={() => setSelectedAnnouncement(a)}
+                className={`w-full p-3.5 rounded-2xl border text-left space-y-1.5 transition active:scale-[0.99] cursor-pointer ${
+                  a.pinned || a.category === 'urgent'
+                    ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/25 hover:border-amber-400'
+                    : 'bg-[var(--color-card)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
+                }`}
               >
-                <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] tabular-nums">
-                  <span className="font-semibold text-[var(--color-primary-text)]">{a.category}</span>
-                  <span>{a.publishedAt}</span>
+                <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                  <span
+                    className={`font-semibold truncate ${
+                      a.category === 'urgent'
+                        ? 'text-rose-700 dark:text-rose-400'
+                        : a.pinned
+                          ? 'text-amber-700 dark:text-amber-400'
+                          : 'text-[var(--color-primary-text)]'
+                    }`}
+                  >
+                    {lang === 'th' ? ANNOUNCEMENT_CATEGORY_TH[a.category] || a.category : a.category}
+                    {a.pinned ? (lang === 'th' ? ' · ปักหมุด' : ' · Pinned') : ''}
+                  </span>
+                  <span className="shrink-0">{a.publishedAt}</span>
                 </div>
 
-                <h4 className="font-bold text-sm text-[var(--color-text-title)]">{a.title}</h4>
+                <h4 className="font-bold text-sm text-[var(--color-text-title)] leading-snug line-clamp-1">
+                  {a.title}
+                </h4>
                 <p className="text-[var(--color-text-body)] leading-relaxed text-xs whitespace-pre-line line-clamp-2">
                   {a.content}
                 </p>
 
-                <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-[var(--color-text-muted)]">
+                <div className="pt-1.5 border-t border-[var(--color-border)] flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-[var(--color-text-muted)] truncate">
                     {a.author} · {a.authorRole}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAnnouncement(a)}
-                    className="shrink-0 text-[11px] font-bold text-[var(--color-primary-text)] hover:underline cursor-pointer"
-                  >
-                    อ่านทั้งหมด
-                  </button>
+                  <span className="inline-flex items-center gap-0.5 font-bold text-[var(--color-primary-text)] shrink-0">
+                    <span>{lang === 'th' ? 'อ่านทั้งหมด' : 'Read'}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
-              </div>
+              </button>
             )}
           />
         </>

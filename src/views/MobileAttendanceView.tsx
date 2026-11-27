@@ -1066,6 +1066,39 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       ? selectedTeacher?.department
       : selectedStudent?.room;
 
+  const activeTargetId = isSelfCheckin
+    ? loggedInProfile.targetId
+    : effectiveUserType === 'teacher'
+      ? selectedTeacher?.id
+      : selectedStudent?.id;
+  const todayDateStr = getLocalDateString();
+  const activeTodayCheckIn = useMemo(() => {
+    if (!activeTargetId) return undefined;
+    return attendance.find(
+      (a) =>
+        a.date === todayDateStr &&
+        (a.recordType || 'check_in') === 'check_in' &&
+        (a.studentId === activeTargetId || a.teacherId === activeTargetId)
+    );
+  }, [attendance, activeTargetId, todayDateStr]);
+  const activeTodayCheckOut = useMemo(() => {
+    if (!activeTargetId) return undefined;
+    return attendance.find(
+      (a) =>
+        a.date === todayDateStr &&
+        a.recordType === 'check_out' &&
+        (a.studentId === activeTargetId || a.teacherId === activeTargetId)
+    );
+  }, [attendance, activeTargetId, todayDateStr]);
+
+  useEffect(() => {
+    if (activeTodayCheckIn && !activeTodayCheckOut) {
+      setCheckType('check_out');
+    } else if (!activeTodayCheckIn) {
+      setCheckType('check_in');
+    }
+  }, [activeTargetId, activeTodayCheckIn?.id, activeTodayCheckOut?.id]);
+
   const hasSchoolGpsConfigured = Boolean(selectedGate);
   const isInGeofence = Boolean(
     selectedGate && currentGpsDistance !== null && currentGpsDistance <= selectedGate.radiusMeters
@@ -1214,7 +1247,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   };
 
   useEffect(() => {
-    if (subTab === 'selfie_mobile') {
+    if (subTab === 'selfie_mobile' && !embeddedMobile) {
       void startCamera(facingModeRef.current);
     } else {
       stopCamera();
@@ -1222,7 +1255,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     return () => {
       stopCamera();
     };
-  }, [subTab]);
+  }, [subTab, embeddedMobile]);
 
   useEffect(() => {
     return () => {
@@ -1433,12 +1466,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     }
   }, [realGpsCoords, selectedGate]);
 
-  const handleConfirmCheckin = async () => {
-    if (isSavingAttendance) return;
+  const handleConfirmCheckin = async (): Promise<boolean> => {
+    if (isSavingAttendance) return false;
     setSelfieActionError(null);
     if (!isSelfCheckin && effectiveUserType === 'student' && !selectedStudent) {
       setSelfieActionError('ไม่พบข้อมูลนักเรียนสำหรับบันทึกเช็คชื่อ กรุณาเลือกนักเรียนก่อน');
-      return;
+      return false;
     }
     if (
       isSelfCheckin &&
@@ -1447,11 +1480,11 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       !loggedInProfile.isLinkedToStudentRecord
     ) {
       setSelfieActionError('บัญชีนี้ยังไม่ได้ผูกกับระเบียนนักเรียนที่ยืนยันได้ กรุณาติดต่อผู้ดูแลระบบก่อนเช็คอิน');
-      return;
+      return false;
     }
     if (!isSelfCheckin && effectiveUserType === 'teacher' && !selectedTeacher) {
       setSelfieActionError('ไม่พบข้อมูลครูสำหรับบันทึกเช็คชื่อ กรุณาเลือกครูก่อน');
-      return;
+      return false;
     }
     const attendancePerson = isSelfCheckin
       ? { id: loggedInProfile.targetId }
@@ -1460,14 +1493,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         : selectedStudent;
     if (!attendancePerson) {
       setSelfieActionError('ไม่พบข้อมูลผู้ใช้งานสำหรับเช็คอิน กรุณาติดต่อผู้ดูแลระบบ');
-      return;
+      return false;
     }
     if (
       (currentUser?.role === 'student' || isSelfCheckin) &&
       (isSimulatedPhoto || !capturedPhotoUrl?.startsWith('data:image/jpeg;base64,'))
     ) {
       setSelfieActionError('ยังไม่มีภาพถ่ายจากกล้องจริง กรุณาเปิดกล้องและถ่ายภาพก่อนยืนยันเช็คอิน');
-      return;
+      return false;
     }
     if (!selectedGate) {
       setSelfieActionError(
@@ -1475,19 +1508,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           ? 'ยังไม่ได้ตั้งค่าพิกัด GPS ของโรงเรียน กรุณากำหนดพิกัดและจุดประตูเช็คชื่อของโรงเรียนก่อนใช้งาน'
           : 'โรงเรียนยังไม่ได้ตั้งค่าพิกัด GPS เช็คชื่อ กรุณาแจ้งผู้ดูแลระบบโรงเรียน'
       );
-      return;
+      return false;
     }
     if (currentGpsDistance === null || !realGpsCoords) {
       setSelfieActionError(
         gpsError || 'ยังไม่ได้รับพิกัด GPS ปัจจุบัน กรุณาอนุญาตตำแหน่ง (Location) แล้วกดอัปเดตพิกัด GPS'
       );
-      return;
+      return false;
     }
     if (!isInGeofence) {
       setSelfieActionError(
         `คุณอยู่นอกพื้นที่โรงเรียน (ระยะห่าง ${currentGpsDistance.toLocaleString()} ม. เกินรัศมี ${selectedGate.radiusMeters} ม. ที่โรงเรียนกำหนด) กรุณาเข้ามาในบริเวณโรงเรียนแล้วกดอัปเดตพิกัด GPS`
       );
-      return;
+      return false;
     }
 
     const photoToSave =
@@ -1546,7 +1579,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       } catch (error) {
         setSelfieActionError(error instanceof Error ? error.message : 'บันทึกการเช็คอินไม่สำเร็จ');
         setIsSavingAttendance(false);
-        return;
+        return false;
       }
       setIsSavingAttendance(false);
     }
@@ -1586,6 +1619,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     });
 
     setCapturedPhotoUrl(null);
+    return true;
   };
 
   const handleSubmitLeave = (e: React.FormEvent) => {
@@ -2254,7 +2288,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       );
     });
 
-  const todayDateStr = getLocalDateString();
   const todayAttendanceByStudent = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
     for (const rec of attendance) {
@@ -3206,15 +3239,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         )}
 
-      {/* Compact Single-Line Context Bar for Mobile Selfie (clearly clickable bordered buttons) */}
-      {embeddedMobile && subTab === 'selfie_mobile' && !isSimpleStaffCheckin && (
+      {/* Compact Single-Line Context Bar for Staff Proxy Selfie (Time-Card handles GPS/location cleanly for self check-in) */}
+      {embeddedMobile && subTab === 'selfie_mobile' && !isSimpleStaffCheckin && isStaffUser && (
         <div className="shrink-0 flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setShowIdentitySheet(true)}
-            className="h-8 flex-1 min-w-0 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center gap-1 text-left cursor-pointer transition active:scale-[0.98] shadow-2xs"
+            className="h-8 flex-1 min-w-0 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center gap-1.5 text-left cursor-pointer transition active:scale-[0.98] shadow-2xs"
           >
-            <User className="w-3 h-3 text-[var(--color-primary-text)] shrink-0" />
+            <User className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
             <span className="text-[11px] font-semibold text-[var(--color-text-title)] truncate">
               {activePersonName}
             </span>
@@ -3223,43 +3256,13 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowGeofenceSheet(true)}
-            className="h-8 flex-1 min-w-0 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center gap-1 text-left cursor-pointer transition active:scale-[0.98] shadow-2xs"
+            onClick={() => setShowQuickRosterSheet(true)}
+            className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] flex items-center gap-1 text-[11px] font-semibold text-[var(--color-primary-text)] cursor-pointer transition active:scale-[0.98] shrink-0 shadow-2xs"
+            title={lang === 'th' ? 'เปิดรายชื่อนักเรียน' : 'Open Student Roster'}
           >
-            <MapPin
-              className={`w-3 h-3 shrink-0 ${
-                !hasSchoolGpsConfigured || isGpsLoading
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : isInGeofence
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-rose-600 dark:text-rose-400'
-              }`}
-            />
-            <span
-              className={`text-[11px] font-semibold tabular-nums truncate ${
-                !hasSchoolGpsConfigured || isGpsLoading
-                  ? 'text-amber-700 dark:text-amber-300'
-                  : isInGeofence
-                    ? 'text-emerald-700 dark:text-emerald-300'
-                    : 'text-rose-700 dark:text-rose-300'
-              }`}
-            >
-              {gpsStatusShortLabel}
-            </span>
-            <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] shrink-0 ml-auto" />
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
           </button>
-
-          {isStaffUser && (
-            <button
-              type="button"
-              onClick={() => setShowQuickRosterSheet(true)}
-              className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] flex items-center gap-1 text-[11px] font-semibold text-[var(--color-primary-text)] cursor-pointer transition active:scale-[0.98] shrink-0 shadow-2xs"
-              title={lang === 'th' ? 'เปิดรายชื่อนักเรียน' : 'Open Student Roster'}
-            >
-              <Users className="w-3 h-3 shrink-0" />
-              <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
-            </button>
-          )}
         </div>
       )}
 
@@ -3289,10 +3292,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           cameraNotice={cameraNotice}
           cameraError={cameraError}
           startCamera={startCamera}
+          stopCamera={stopCamera}
           handleCaptureSnapshot={handleCaptureSnapshot}
           isCameraActive={isCameraActive}
           isSavingAttendance={isSavingAttendance}
           handleConfirmCheckin={handleConfirmCheckin}
+          todayCheckInRecord={activeTodayCheckIn}
+          todayCheckOutRecord={activeTodayCheckOut}
+          schoolName={_school?.nameTh || _school?.nameEn}
           gpsError={gpsError}
           selfieActionError={selfieActionError}
           isCameraSwitching={isCameraSwitching}
