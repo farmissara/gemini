@@ -351,7 +351,7 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] whitespace-nowrap shrink-0">
-                  <span>{lang === 'th' ? 'ลงเวลา / ประวัติ' : 'Clock / History'}</span>
+                  <span>{lang === 'th' ? 'ลงเวลา' : 'Clock In'}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </span>
               </button>

@@ -1157,7 +1157,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               onLogout={onLogout}
               onOpenPortfolio={() => setActiveTab('portfolio')}
               canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
-              onSwitchOperationalRole={onSwitchOperationalRole}
+              onSwitchOperationalRole={
+                onSwitchOperationalRole
+                  ? (nextRole) => {
+                      onSwitchOperationalRole(nextRole);
+                      if (nextRole !== currentRole) {
+                        setActiveTab('home');
+                      }
+                    }
+                  : undefined
+              }
             />
           )}
 

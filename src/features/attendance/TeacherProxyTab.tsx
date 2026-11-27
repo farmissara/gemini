@@ -157,27 +157,6 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block space-y-1">
-                <span className="type-label">วันที่บันทึก</span>
-                <input
-                  type="date"
-                  value={proxyDate}
-                  onChange={(event) => setProxyDate(event.target.value)}
-                  className="w-full min-h-[40px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] tabular-nums"
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="type-label">เวลาบันทึก</span>
-                <input
-                  type="time"
-                  value={proxyTime}
-                  onChange={(event) => setProxyTime(event.target.value)}
-                  className="w-full min-h-[40px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] tabular-nums"
-                />
-              </label>
-            </div>
-
             {/* Matched Student Confirmation & Check-in Controls */}
             {matchedProxyStudent ? (
               <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 space-y-3">
@@ -257,6 +236,27 @@ export const TeacherProxyTab: React.FC<TeacherProxyTabProps> = ({
                       ))}
                     </div>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1">
+                    <span className="type-meta font-semibold block">วันที่บันทึก</span>
+                    <input
+                      type="date"
+                      value={proxyDate}
+                      onChange={(event) => setProxyDate(event.target.value)}
+                      className="w-full min-h-[40px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] tabular-nums"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="type-meta font-semibold block">เวลาบันทึก</span>
+                    <input
+                      type="time"
+                      value={proxyTime}
+                      onChange={(event) => setProxyTime(event.target.value)}
+                      className="w-full min-h-[40px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-xs text-[var(--color-text-title)] tabular-nums"
+                    />
+                  </label>
                 </div>
 
                 <button

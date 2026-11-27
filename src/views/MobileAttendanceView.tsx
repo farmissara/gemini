@@ -2800,7 +2800,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                         setSubTab(tab.id as AttendanceSubTab);
                         if (tab.id === 'leave_request') setLeaveFormStep(1);
                       }}
-                      className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
+                      className={`flex-1 min-w-fit inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md text-[11px] whitespace-nowrap cursor-pointer transition active:scale-[0.97] ${
                         isActive
                           ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
                           : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'

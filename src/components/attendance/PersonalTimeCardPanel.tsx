@@ -101,10 +101,10 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
           <button
             type="button"
             onClick={() => handleSlotClick('check_in', todayCheckInPhotoSrc)}
-            className={`p-3 flex flex-col items-center gap-2 text-center cursor-pointer transition ${
+            className={`p-3 flex flex-col items-center gap-2 text-center cursor-pointer transition border-b-2 ${
               activeCheckType === 'check_in'
-                ? 'bg-emerald-50/75 dark:bg-emerald-950/25'
-                : 'hover:bg-[var(--color-card-subtle)]'
+                ? 'bg-emerald-50/75 dark:bg-emerald-950/25 border-b-emerald-600'
+                : 'border-b-transparent hover:bg-[var(--color-card-subtle)]'
             }`}
           >
             <div
@@ -119,7 +119,7 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
                   });
                 }
               }}
-              className="relative w-full max-w-[104px] aspect-[3/4] rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center"
+              className="relative w-full max-w-[96px] aspect-[3/4] rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center"
             >
               {todayCheckInPhotoSrc ? (
                 <>
@@ -152,27 +152,35 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
               >
                 {lang === 'th' ? 'เข้าโรงเรียน' : 'Check In'}
               </p>
-              {todayCheckInRecord && (
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  {todayCheckInRecord.status === 'late'
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                {todayCheckInRecord
+                  ? todayCheckInRecord.status === 'late'
                     ? lang === 'th'
                       ? 'มาสาย'
                       : 'Late'
                     : lang === 'th'
                       ? 'ตรงเวลา'
-                      : 'On time'}
-                </p>
-              )}
+                      : 'On time'
+                  : onSelectCheckType
+                    ? lang === 'th'
+                      ? activeCheckType === 'check_in'
+                        ? 'กำลังเลือก'
+                        : 'แตะเพื่อเลือก'
+                      : activeCheckType === 'check_in'
+                        ? 'Selected'
+                        : 'Tap to select'
+                    : null}
+              </p>
             </div>
           </button>
 
           <button
             type="button"
             onClick={() => handleSlotClick('check_out', todayCheckOutPhotoSrc)}
-            className={`p-3 flex flex-col items-center gap-2 text-center cursor-pointer transition ${
+            className={`p-3 flex flex-col items-center gap-2 text-center cursor-pointer transition border-b-2 ${
               activeCheckType === 'check_out'
-                ? 'bg-indigo-50/75 dark:bg-indigo-950/25'
-                : 'hover:bg-[var(--color-card-subtle)]'
+                ? 'bg-indigo-50/75 dark:bg-indigo-950/25 border-b-indigo-600'
+                : 'border-b-transparent hover:bg-[var(--color-card-subtle)]'
             }`}
           >
             <div
@@ -187,7 +195,7 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
                   });
                 }
               }}
-              className="relative w-full max-w-[104px] aspect-[3/4] rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center"
+              className="relative w-full max-w-[96px] aspect-[3/4] rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center"
             >
               {todayCheckOutPhotoSrc ? (
                 <>
@@ -220,11 +228,21 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
               >
                 {lang === 'th' ? 'ออกโรงเรียน' : 'Check Out'}
               </p>
-              {todayCheckOutDisplayTime && (
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  {lang === 'th' ? 'บันทึกแล้ว' : 'Recorded'}
-                </p>
-              )}
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                {todayCheckOutDisplayTime
+                  ? lang === 'th'
+                    ? 'บันทึกแล้ว'
+                    : 'Recorded'
+                  : onSelectCheckType
+                    ? lang === 'th'
+                      ? activeCheckType === 'check_out'
+                        ? 'กำลังเลือก'
+                        : 'แตะเพื่อเลือก'
+                      : activeCheckType === 'check_out'
+                        ? 'Selected'
+                        : 'Tap to select'
+                    : null}
+              </p>
             </div>
           </button>
         </div>
@@ -277,7 +295,7 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
         </div>
 
         <div className={`${historyMaxHeightClass} overflow-y-auto`}>
-          <div className="sticky top-0 z-10 grid grid-cols-[minmax(84px,1.25fr)_48px_48px_44px_minmax(60px,0.9fr)_40px] items-center gap-1 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[11px] font-bold text-[var(--color-text-muted)]">
+          <div className="sticky top-0 z-10 grid grid-cols-[minmax(76px,1.2fr)_42px_42px_38px_minmax(56px,0.85fr)_38px] sm:grid-cols-[minmax(96px,1.25fr)_52px_52px_48px_minmax(72px,0.9fr)_42px] items-center gap-1 px-2.5 sm:px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-card)] text-[11px] font-bold text-[var(--color-text-muted)]">
             <span>{lang === 'th' ? 'วันที่' : 'Date'}</span>
             <span className="text-center">{lang === 'th' ? 'เข้า' : 'In'}</span>
             <span className="text-center">{lang === 'th' ? 'ออก' : 'Out'}</span>
@@ -322,7 +340,7 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
                 return (
                   <div
                     key={row.date}
-                    className="grid grid-cols-[minmax(84px,1.25fr)_48px_48px_44px_minmax(60px,0.9fr)_40px] items-center gap-1 pl-3 pr-1 py-1.5 text-xs hover:bg-[var(--color-card-subtle)] transition"
+                    className="grid grid-cols-[minmax(76px,1.2fr)_42px_42px_38px_minmax(56px,0.85fr)_38px] sm:grid-cols-[minmax(96px,1.25fr)_52px_52px_48px_minmax(72px,0.9fr)_42px] items-center gap-1 pl-2.5 sm:pl-3 pr-1 py-1.5 text-xs hover:bg-[var(--color-card-subtle)] transition"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1 min-w-0">
