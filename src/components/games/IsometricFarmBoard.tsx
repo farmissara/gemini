@@ -27,6 +27,8 @@ interface IsometricFarmBoardProps {
   farmName?: string;
   readOnly?: boolean;
   allowNeighborCropWater?: boolean;
+  fullscreenLandscape?: boolean;
+  hasGoldenStreakBuff?: boolean;
   feedbacks: FloatingFeedback[];
   lang: 'th' | 'en';
   ordersCount?: number;
@@ -382,6 +384,8 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   farmName,
   readOnly = false,
   allowNeighborCropWater = false,
+  fullscreenLandscape = false,
+  hasGoldenStreakBuff = false,
   feedbacks,
   lang,
   ordersCount = 0,
@@ -403,7 +407,13 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   const orderedTiles = [...tiles].sort((a, b) => a.row + a.col - (b.row + b.col) || a.row - b.row);
 
   return (
-    <div className="relative w-full select-none overflow-hidden rounded-2xl border border-emerald-200/80 dark:border-emerald-900/60 bg-gradient-to-b from-sky-100 via-emerald-50 to-lime-100/80 dark:from-slate-900 dark:via-emerald-950/60 dark:to-slate-900 shadow-inner">
+    <div
+      className={
+        fullscreenLandscape
+          ? 'relative w-full h-full flex items-center justify-center select-none overflow-hidden bg-gradient-to-b from-sky-200 via-emerald-100 to-lime-200 dark:from-slate-950 dark:via-emerald-950 dark:to-slate-900'
+          : 'relative w-full select-none overflow-hidden rounded-2xl border border-emerald-200/80 dark:border-emerald-900/60 bg-gradient-to-b from-sky-100 via-emerald-50 to-lime-100/80 dark:from-slate-900 dark:via-emerald-950/60 dark:to-slate-900 shadow-inner'
+      }
+    >
       <style>{`
         @media (prefers-reduced-motion: no-preference) {
           .farm-harvest-bounce {
@@ -449,7 +459,8 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
 
       <svg
         viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-        className="w-full h-auto max-h-[560px] block touch-manipulation"
+        preserveAspectRatio="xMidYMid meet"
+        className={fullscreenLandscape ? 'w-full h-full block touch-manipulation' : 'w-full h-auto max-h-[560px] block touch-manipulation'}
         role="img"
         aria-label={lang === 'th' ? 'แผนที่ฟาร์มและเมืองโรงเรียนแบบไอโซเมตริก' : 'Isometric school farm and town map'}
       >
@@ -729,7 +740,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </g>
               )}
 
-              {tile.fertilized && (
+              {(tile.fertilized || (tile.growthSpeedMultiplier || 1) >= 2) && (
                 <g transform={`translate(${centerX}, ${centerY}) scale(${spriteScale})`}>
                   <circle cx="-18" cy="-3" r="2.2" fill="#fde047" />
                   <circle cx="18" cy="1" r="2.2" fill="#fde047" />
@@ -763,6 +774,14 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                     centerX,
                     centerY,
                     spriteScale
+                  )}
+                  {!isReadyCrop && (tile.fertilized || (tile.growthSpeedMultiplier || 1) >= 2 || hasGoldenStreakBuff) && (
+                    <g transform={`translate(${centerX - 15 * spriteScale}, ${centerY - 17 * spriteScale})`}>
+                      <rect x="-9" y="-6" width="18" height="12" rx="6" fill="#eab308" stroke="#78350f" strokeWidth="0.9" />
+                      <text x="0" y="2.5" textAnchor="middle" fontSize="7.5" fontWeight="900" fill="#451a03">
+                        ×2
+                      </text>
+                    </g>
                   )}
                   {isReadyCrop && !readOnly && (
                     <g transform={`translate(${centerX}, ${centerY - 28 * spriteScale})`} className="farm-harvest-bounce">

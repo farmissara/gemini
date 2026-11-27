@@ -507,7 +507,9 @@ export const MobileFullscreenGameOverlay: React.FC<MobileFullscreenGameOverlayPr
               behaviorRecords={behaviorRecords}
               questions={questions}
               playerScores={playerScores}
+              rewardItems={rewardItems}
               onEarnRewards={onEarnRewards}
+              onRedeemReward={onRedeemReward}
               onExit={onExitGame}
             />
           </div>

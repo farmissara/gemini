@@ -106,6 +106,7 @@ export interface FarmTile {
   growthProgress?: number; // 0..watersNeeded
   wateredToday?: boolean;
   fertilized?: boolean;
+  growthSpeedMultiplier?: number;
   buildingId?: BuildingId;
   buildingLevel?: number;
   lastCollectedDate?: string;
@@ -138,6 +139,8 @@ export interface VisitorRequest {
   quantity: number;
   rewardCoins: number;
   rewardXp: number;
+  rewardGems?: number;
+  dailyQuotaLimit?: number;
 }
 
 export interface RoadsideListing {
@@ -148,6 +151,13 @@ export interface RoadsideListing {
   priceCoins: number;
   sold: boolean;
   buyerName?: string;
+}
+
+export interface GoldenFertilizerStatus {
+  speedMultiplier: number;
+  unlockedByStreakDays: number;
+  grantedAt: string;
+  reasonTh: string;
 }
 
 export interface SchoolFarmState {
@@ -163,6 +173,8 @@ export interface SchoolFarmState {
   water: number;
   dailyFertilizer: number;
   fertilizer: number;
+  goldenFertilizerStatus?: GoldenFertilizerStatus;
+  goldenStreakBonusDates: string[];
   townStars: number;
   farmXp: number;
   seeds: Record<CropId, number>;
@@ -171,7 +183,17 @@ export interface SchoolFarmState {
   tiles: FarmTile[];
   marketOrders: MarketOrder[];
   visitorQueue: VisitorRequest[];
+  visitorDailyQuotas: {
+    date: string;
+    servedByNpc: Record<string, number>;
+  };
   roadsideShop: RoadsideListing[];
+  claimedMarketplaceRewards: Array<{
+    rewardId: string;
+    titleTh: string;
+    costCoins: number;
+    redeemedAt: string;
+  }>;
   unlockedBlueprints: BuildingId[];
   claimedAttendanceDates: string[];
   claimedHomeworkIds: string[];
@@ -193,6 +215,7 @@ export interface DisciplineChestSummary {
   matchedStudentId?: string;
   attendanceStatusToday: 'present' | 'late' | 'absent' | 'none';
   attendanceStreakDays: number;
+  goldenStreakUnlocked: boolean;
   submittedHomeworkCount: number;
   pendingHomeworkCount: number;
   pendingHomeworkTitles: string[];
@@ -648,6 +671,8 @@ export const createVisitorRequests = (townLevel: number, seedOffset = 0): Visito
       quantity: 2,
       rewardCoins: 76,
       rewardXp: 24,
+      rewardGems: 2,
+      dailyQuotaLimit: 3,
     },
     {
       npcId: 'uncle_somchai',
@@ -659,6 +684,8 @@ export const createVisitorRequests = (townLevel: number, seedOffset = 0): Visito
       quantity: 1,
       rewardCoins: 72,
       rewardXp: 22,
+      rewardGems: 2,
+      dailyQuotaLimit: 3,
     },
     {
       npcId: 'namsai',
@@ -670,6 +697,8 @@ export const createVisitorRequests = (townLevel: number, seedOffset = 0): Visito
       quantity: 2,
       rewardCoins: 108,
       rewardXp: 30,
+      rewardGems: 2,
+      dailyQuotaLimit: 3,
     },
     {
       npcId: 'teacher_dao',
@@ -681,6 +710,8 @@ export const createVisitorRequests = (townLevel: number, seedOffset = 0): Visito
       quantity: 1,
       rewardCoins: townLevel >= 2 ? 155 : 52,
       rewardXp: townLevel >= 2 ? 42 : 18,
+      rewardGems: townLevel >= 2 ? 3 : 2,
+      dailyQuotaLimit: 3,
     },
   ];
 
@@ -907,6 +938,7 @@ export const createInitialFarmState = (params: {
     water: 8,
     dailyFertilizer: 3,
     fertilizer: 2,
+    goldenStreakBonusDates: [],
     townStars: 5,
     farmXp: 40,
     seeds: {
@@ -927,7 +959,12 @@ export const createInitialFarmState = (params: {
     tiles,
     marketOrders: createMarketOrders(1, 0),
     visitorQueue: createVisitorRequests(1, 0),
+    visitorDailyQuotas: {
+      date: getTodayBangkokDate(),
+      servedByNpc: {},
+    },
     roadsideShop: [],
+    claimedMarketplaceRewards: [],
     unlockedBlueprints: [
       'farm_cottage',
       'chicken_coop',
@@ -975,6 +1012,7 @@ export const normalizeFarmState = (
         growthProgress: typeof tile?.growthProgress === 'number' ? tile.growthProgress : undefined,
         wateredToday: Boolean(tile?.wateredToday),
         fertilized: Boolean(tile?.fertilized),
+        growthSpeedMultiplier: typeof tile?.growthSpeedMultiplier === 'number' ? tile.growthSpeedMultiplier : undefined,
         buildingId: tile?.buildingId,
         buildingLevel: typeof tile?.buildingLevel === 'number' ? tile.buildingLevel : undefined,
         lastCollectedDate: tile?.lastCollectedDate,
@@ -983,6 +1021,9 @@ export const normalizeFarmState = (
         weedReasonTh: typeof tile?.weedReasonTh === 'string' ? tile.weedReasonTh : undefined,
       }))
     : base.tiles;
+
+  const today = getTodayBangkokDate();
+  const rawQuotaDate = raw.visitorDailyQuotas?.date;
 
   return {
     ...base,
@@ -995,13 +1036,19 @@ export const normalizeFarmState = (
     ownerName: raw.ownerName || fallbackParams.ownerName,
     ownerRoom: raw.ownerRoom || fallbackParams.ownerRoom,
     dailyFertilizer: typeof raw.dailyFertilizer === 'number' ? raw.dailyFertilizer : base.dailyFertilizer,
+    goldenStreakBonusDates: Array.isArray(raw.goldenStreakBonusDates) ? raw.goldenStreakBonusDates : [],
     seeds: { ...emptyRecord(), ...(raw.seeds || {}) },
     barn: { ...emptyRecord(), ...(raw.barn || {}) },
     goods: { ...emptyProductsRecord(), ...(raw.goods || {}) },
     tiles: normalizedTiles,
     marketOrders: Array.isArray(raw.marketOrders) && raw.marketOrders.length > 0 ? raw.marketOrders : base.marketOrders,
     visitorQueue: Array.isArray(raw.visitorQueue) && raw.visitorQueue.length > 0 ? raw.visitorQueue : base.visitorQueue,
+    visitorDailyQuotas:
+      rawQuotaDate === today && raw.visitorDailyQuotas?.servedByNpc
+        ? { date: today, servedByNpc: { ...raw.visitorDailyQuotas.servedByNpc } }
+        : { date: today, servedByNpc: {} },
     roadsideShop: Array.isArray(raw.roadsideShop) ? raw.roadsideShop : [],
+    claimedMarketplaceRewards: Array.isArray(raw.claimedMarketplaceRewards) ? raw.claimedMarketplaceRewards : [],
     unlockedBlueprints: Array.isArray(raw.unlockedBlueprints) && raw.unlockedBlueprints.length > 0
       ? raw.unlockedBlueprints
       : base.unlockedBlueprints,
@@ -1042,6 +1089,25 @@ const computeConsecutiveAttendanceDays = (dates: string[]): number => {
     }
   }
   return streak;
+};
+
+export const computeStudentPresentStreak = (
+  records: AttendanceRecord[],
+  candidateIds: Set<string>,
+  extraPresentDates: string[] = []
+): number => {
+  const presentDates: string[] = extraPresentDates.filter(Boolean);
+  for (const rec of records) {
+    if (rec.recordType === 'check_out') continue;
+    if (rec.status !== 'present') continue;
+    if (
+      candidateIds.has(rec.studentId) ||
+      (rec.teacherId && candidateIds.has(rec.teacherId))
+    ) {
+      if (rec.date) presentDates.push(rec.date);
+    }
+  }
+  return computeConsecutiveAttendanceDays(presentDates);
 };
 
 export const resolveStudentForUser = (
@@ -1124,6 +1190,7 @@ export const computeDisciplineChestSummary = (params: {
       .map((r) => r.date),
   ];
   const attendanceStreakDays = computeConsecutiveAttendanceDays(presentOrLateDates);
+  const goldenStreakUnlocked = attendanceStreakDays > 5;
 
   let newAttendanceDateToClaim: string | null = null;
   let claimableWater = 0;
@@ -1138,8 +1205,8 @@ export const computeDisciplineChestSummary = (params: {
     const streakBonus = Math.min(3, Math.floor(attendanceStreakDays / 3));
     claimableWater += 4 + streakBonus;
     claimableDailyFertilizer += 2;
-    claimableFertilizer += attendanceStreakDays >= 3 ? 2 : 1;
-    claimableCoins += 20;
+    claimableFertilizer += attendanceStreakDays > 5 ? 3 : attendanceStreakDays >= 3 ? 2 : 1;
+    claimableCoins += attendanceStreakDays > 5 ? 35 : 20;
   }
 
   // 2. Homework check
@@ -1243,6 +1310,7 @@ export const computeDisciplineChestSummary = (params: {
     matchedStudentId: matchedStudent?.id,
     attendanceStatusToday,
     attendanceStreakDays,
+    goldenStreakUnlocked,
     submittedHomeworkCount,
     pendingHomeworkCount: pendingAssignments.length,
     pendingHomeworkTitles: pendingAssignments.slice(0, 3).map((a) => a.titleTh || a.titleEn),
@@ -1321,12 +1389,23 @@ export const claimDisciplineSupplies = (
     new Set([...(state.unlockedBlueprints || []), ...(summary.claimableBlueprints || [])])
   );
 
+  const nextGoldenStatus =
+    summary.attendanceStreakDays > 5
+      ? {
+          speedMultiplier: 2,
+          unlockedByStreakDays: summary.attendanceStreakDays,
+          grantedAt: new Date().toISOString(),
+          reasonTh: `เช็คชื่อเข้าเรียนต่อเนื่อง ${summary.attendanceStreakDays} วัน (>5 วัน) พืชโตไว 2 เท่า!`,
+        }
+      : state.goldenFertilizerStatus;
+
   return {
     ...state,
     coins: state.coins + summary.claimableCoins,
     water: state.water + summary.claimableWater,
     dailyFertilizer: (state.dailyFertilizer || 0) + summary.claimableDailyFertilizer,
     fertilizer: state.fertilizer + summary.claimableFertilizer,
+    goldenFertilizerStatus: nextGoldenStatus,
     townStars: state.townStars + summary.claimableStars,
     farmXp:
       state.farmXp +
@@ -1342,6 +1421,54 @@ export const claimDisciplineSupplies = (
       : state.claimedHomeworkMasteryCount || 0,
     claimedMeritIds: Array.from(new Set([...state.claimedMeritIds, ...summary.newMeritIdsToClaim])),
     updatedAt: new Date().toISOString(),
+  };
+};
+
+/**
+ * Grants the >5-day attendance streak Golden Fertilizer bonus directly to the farm database.
+ * Grants +2 Golden Fertilizer & activates 2x crop growth speed status (`goldenFertilizerStatus`).
+ */
+export const applyAttendanceStreakGoldenBonus = (
+  state: SchoolFarmState,
+  streakDays: number,
+  dateStr: string = getTodayBangkokDate()
+): { state: SchoolFarmState; granted: boolean } => {
+  if (streakDays <= 5) {
+    return { state, granted: false };
+  }
+  const existingDates = state.goldenStreakBonusDates || [];
+  if (existingDates.includes(dateStr)) {
+    const needsSpeedUpgrade = (state.goldenFertilizerStatus?.speedMultiplier || 1) < 2;
+    if (!needsSpeedUpgrade) return { state, granted: false };
+    return {
+      granted: false,
+      state: {
+        ...state,
+        goldenFertilizerStatus: {
+          speedMultiplier: 2,
+          unlockedByStreakDays: streakDays,
+          grantedAt: new Date().toISOString(),
+          reasonTh: `โบนัสเข้าเรียนต่อเนื่อง ${streakDays} วัน (โตไว ×2)`,
+        },
+        updatedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  return {
+    granted: true,
+    state: {
+      ...state,
+      fertilizer: state.fertilizer + 2,
+      goldenStreakBonusDates: [...existingDates, dateStr],
+      goldenFertilizerStatus: {
+        speedMultiplier: 2,
+        unlockedByStreakDays: streakDays,
+        grantedAt: new Date().toISOString(),
+        reasonTh: `โบนัสเข้าเรียนต่อเนื่อง ${streakDays} วัน (โตไว ×2)`,
+      },
+      updatedAt: new Date().toISOString(),
+    },
   };
 };
 
@@ -1446,13 +1573,20 @@ export const waterTile = (
     return { state, ok: false, errorTh: 'น้ำรดต้นไม้หมดแล้ว เช็กชื่อเข้าเรียนหรือตอบคำถามทบทวนเพื่อรับน้ำเพิ่ม' };
   }
 
-  const nextProgress = Math.min(def.watersNeeded, progress + 1);
+  const isGoldenBoost = Boolean(
+    tile.fertilized ||
+      (tile.growthSpeedMultiplier || 1) >= 2 ||
+      (state.goldenFertilizerStatus?.speedMultiplier || 1) >= 2
+  );
+  const growthStep = isGoldenBoost ? 2 : 1;
+  const nextProgress = Math.min(def.watersNeeded, progress + growthStep);
   const nextTiles = state.tiles.map((t, idx) =>
     idx === tileIndex
       ? {
           ...t,
           growthProgress: nextProgress,
           wateredToday: true,
+          growthSpeedMultiplier: isGoldenBoost ? 2 : t.growthSpeedMultiplier,
         }
       : t
   );
@@ -1463,7 +1597,7 @@ export const waterTile = (
       ...state,
       water: state.water - 1,
       tiles: nextTiles,
-      farmXp: state.farmXp + 5,
+      farmXp: state.farmXp + (isGoldenBoost ? 8 : 5),
       updatedAt: new Date().toISOString(),
     },
   };
@@ -1531,6 +1665,7 @@ export const fertilizeTile = (
           ...t,
           growthProgress: def.watersNeeded,
           fertilized: true,
+          growthSpeedMultiplier: 2,
           wateredToday: true,
         }
       : t
@@ -1540,6 +1675,12 @@ export const fertilizeTile = (
     state: {
       ...state,
       fertilizer: state.fertilizer - 1,
+      goldenFertilizerStatus: state.goldenFertilizerStatus || {
+        speedMultiplier: 2,
+        unlockedByStreakDays: 0,
+        grantedAt: new Date().toISOString(),
+        reasonTh: 'เปิดใช้งานปุ๋ยทองคำเร่งโต 2 เท่า',
+      },
       tiles: nextTiles,
       farmXp: state.farmXp + 10,
       updatedAt: new Date().toISOString(),
@@ -1956,12 +2097,41 @@ export const craftProductOnFarm = (
   };
 };
 
+export const getNpcDailyQuotaStatus = (
+  state: SchoolFarmState,
+  npcId: VisitorRequest['npcId'],
+  todayDate: string = getTodayBangkokDate(),
+  limit = 3
+): { limit: number; servedToday: number; remaining: number } => {
+  const quotaState =
+    state.visitorDailyQuotas?.date === todayDate
+      ? state.visitorDailyQuotas.servedByNpc || {}
+      : {};
+  const servedToday = quotaState[npcId] || 0;
+  return {
+    limit,
+    servedToday,
+    remaining: Math.max(0, limit - servedToday),
+  };
+};
+
 export const fulfillVisitorRequest = (
   state: SchoolFarmState,
-  visitorId: string
+  visitorId: string,
+  todayDate: string = getTodayBangkokDate()
 ): { state: SchoolFarmState; ok: boolean; visitor?: VisitorRequest; errorTh?: string } => {
   const visitor = (state.visitorQueue || []).find((v) => v.id === visitorId);
   if (!visitor) return { state, ok: false, errorTh: 'ไม่พบผู้มาเยือนนี้' };
+
+  const quotaLimit = visitor.dailyQuotaLimit || 3;
+  const quotaStatus = getNpcDailyQuotaStatus(state, visitor.npcId, todayDate, quotaLimit);
+  if (quotaStatus.remaining <= 0) {
+    return {
+      state,
+      ok: false,
+      errorTh: `${visitor.nameTh.split(' ')[0]} รับซื้อครบโควตาวันนี้แล้ว (${quotaLimit}/${quotaLimit}) กด "คนถัดไป" หรือรอพรุ่งนี้`,
+    };
+  }
 
   const nextBarn = { ...state.barn };
   const nextGoods = { ...(state.goods || emptyProductsRecord()) };
@@ -1988,6 +2158,11 @@ export const fulfillVisitorRequest = (
     nextGoods[pid] -= visitor.quantity;
   }
 
+  const nextServedMap = {
+    ...(state.visitorDailyQuotas?.date === todayDate ? state.visitorDailyQuotas.servedByNpc : {}),
+    [visitor.npcId]: quotaStatus.servedToday + 1,
+  };
+
   const { level } = getTownLevelFromXp(state.farmXp + visitor.rewardXp);
   const replacement = createVisitorRequests(level, state.totalOrdersCompleted + state.visitorQueue.length + 1)[0];
 
@@ -2001,6 +2176,10 @@ export const fulfillVisitorRequest = (
       barn: nextBarn,
       goods: nextGoods,
       totalOrdersCompleted: state.totalOrdersCompleted + 1,
+      visitorDailyQuotas: {
+        date: todayDate,
+        servedByNpc: nextServedMap,
+      },
       visitorQueue: state.visitorQueue.map((v) => (v.id === visitorId ? replacement : v)),
       updatedAt: new Date().toISOString(),
     },
@@ -2017,6 +2196,27 @@ export const dismissVisitorRequest = (
     ...state,
     visitorQueue: (state.visitorQueue || []).map((v) => (v.id === visitorId ? replacement : v)),
     updatedAt: new Date().toISOString(),
+  };
+};
+
+export const convertFarmCoinsToGems = (
+  state: SchoolFarmState,
+  coinCost: number,
+  gemGain: number
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  if (coinCost <= 0 || gemGain <= 0) {
+    return { state, ok: false, errorTh: 'จำนวนแลกเปลี่ยนไม่ถูกต้อง' };
+  }
+  if (state.coins < coinCost) {
+    return { state, ok: false, errorTh: `เหรียญฟาร์มไม่พอ (ต้องการ ${coinCost}🪙)` };
+  }
+  return {
+    ok: true,
+    state: {
+      ...state,
+      coins: state.coins - coinCost,
+      updatedAt: new Date().toISOString(),
+    },
   };
 };
 

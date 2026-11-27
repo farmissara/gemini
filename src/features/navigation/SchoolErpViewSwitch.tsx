@@ -806,7 +806,10 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
                   behaviorRecords={viewBehaviorRecords}
                   questions={schoolQuestions}
                   playerScores={viewPlayerScores}
+                  rewardItems={rewardItems}
                   onEarnRewards={props.onEarnRewards}
+                  onRedeemReward={props.onRedeemReward}
+                  onExit={() => setCurrentTab('dashboard')}
                 />
               )}
 

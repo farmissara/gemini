@@ -8,6 +8,7 @@ import {
   ChefHat,
   Coins,
   Droplets,
+  Gem,
   Gift,
   Grid2X2Plus,
   Hand,
@@ -16,8 +17,11 @@ import {
   Leaf,
   Lock,
   LockOpen,
+  Maximize2,
   MessageCircleHeart,
+  Minimize2,
   Pencil,
+  RotateCw,
   ShoppingBag,
   Shovel,
   Sparkles,
@@ -30,6 +34,7 @@ import {
   Volume2,
   VolumeX,
   Wheat,
+  X,
 } from 'lucide-react';
 import type {
   AppLanguage,
@@ -41,13 +46,12 @@ import type {
   PeriodAttendanceRecord,
   PlayerScore,
   QuizQuestion,
+  RewardItem,
   School,
   Student,
   UserRole,
 } from '../types';
-import { PageHeader } from '../components/common/PageShell';
 import { BaseModal } from '../components/common/BaseModal';
-import { FutureNavIcon } from '../components/common/FutureIcon';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { getModuleTone } from '../lib/moduleTheme';
 import {
@@ -69,6 +73,7 @@ import {
   collectBuildingYield,
   computeDisciplineChestSummary,
   constructBuildingOnTile,
+  convertFarmCoinsToGems,
   craftProductOnFarm,
   CROP_CATALOG,
   CROP_MAP,
@@ -80,6 +85,7 @@ import {
   getBuildingUpgradeCost,
   getCropSellMultiplier,
   getFarmGridSize,
+  getNpcDailyQuotaStatus,
   getPlotUnlockStarCost,
   getTodayBangkokDate,
   getTownLevelFromXp,
@@ -124,11 +130,14 @@ interface SchoolFarmGameViewProps {
   behaviorRecords: BehaviorRecord[];
   questions: QuizQuestion[];
   playerScores?: PlayerScore[];
+  rewardItems?: RewardItem[];
   onEarnRewards?: (userId: string, exp: number, gems: number, isWin: boolean) => void;
+  onRedeemReward?: (itemId: string, costGems: number) => void;
   onExit?: () => void;
 }
 
-type FarmModalKind = 'market' | 'visitors' | 'quiz' | 'town' | 'guide' | null;
+type FarmModalKind = 'market' | 'visitors' | 'quiz' | 'town' | 'guide' | 'chest' | null;
+type MarketSubTabKind = 'marketplace' | 'orders' | 'craft' | 'roadside' | 'shop' | 'barn';
 
 const PRODUCTION_BUILDINGS = new Set<BuildingId>([
   'chicken_coop',
@@ -217,7 +226,6 @@ const FALLBACK_BOOST_QUESTIONS: QuizQuestion[] = [
   },
 ];
 
-// Gentle Web Audio chime synthesizer without external MP3 dependencies
 const playFarmChime = (type: 'water' | 'plant' | 'harvest' | 'coin' | 'build' | 'weed' | 'till', muted: boolean) => {
   if (muted || typeof window === 'undefined') return;
   try {
@@ -282,7 +290,10 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   assignments,
   behaviorRecords,
   questions,
+  playerScores = [],
+  rewardItems = [],
   onEarnRewards,
+  onRedeemReward,
   onExit,
 }) => {
   const schoolId = activeSchool.id || 'default-school';
@@ -309,13 +320,17 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     return resetDailyWaterFlagsIfNeeded(normalized, todayDate);
   });
 
+  const [isFullscreen, setIsFullscreen] = useState(true);
+  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
+  const [dismissedPortraitHint, setDismissedPortraitHint] = useState(false);
+
   const [activeTool, setActiveTool] = useState<FarmTool>('inspect');
   const [selectedCropId, setSelectedCropId] = useState<CropId>('corn');
   const [selectedBuildingId, setSelectedBuildingId] = useState<BuildingId>('chicken_coop');
   const [buildCategoryFilter, setBuildCategoryFilter] = useState<'all' | 'production' | 'landmark' | 'decor'>('all');
-  const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(14);
+  const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null);
   const [activeModal, setActiveModal] = useState<FarmModalKind>(null);
-  const [marketSubTab, setMarketSubTab] = useState<'orders' | 'craft' | 'roadside' | 'shop' | 'barn'>('orders');
+  const [marketSubTab, setMarketSubTab] = useState<MarketSubTabKind>('marketplace');
   const [focusBuildingId, setFocusBuildingId] = useState<BuildingId | null>(null);
   const [truckAnimating, setTruckAnimating] = useState(false);
   const [roadsideItemKey, setRoadsideItemKey] = useState<string>('crop:corn');
@@ -330,6 +345,38 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const [farmNameDraft, setFarmNameDraft] = useState('');
 
   const feedbackSeqRef = useRef(1);
+  const rootContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Detect portrait viewport on mobile to nudge landscape play like Hay Day
+  useEffect(() => {
+    const checkOrientation = () => {
+      if (typeof window === 'undefined') return;
+      setIsPortraitMobile(window.innerWidth < 768 && window.innerHeight > window.innerWidth);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
+
+  const requestLandscapeFullscreen = async () => {
+    setIsFullscreen(true);
+    try {
+      const targetEl = rootContainerRef.current || document.documentElement;
+      if (!document.fullscreenElement && targetEl.requestFullscreen) {
+        await targetEl.requestFullscreen();
+      }
+      const orientationObj = screen.orientation as unknown as { lock?: (mode: string) => Promise<void> } | undefined;
+      if (orientationObj?.lock) {
+        await orientationObj.lock('landscape').catch(() => undefined);
+      }
+    } catch {
+      // Ignore fullscreen / orientation lock restrictions in embedded browsers
+    }
+  };
 
   // Re-load when user/school changes or Supabase hydrates
   useEffect(() => {
@@ -350,14 +397,12 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     return () => window.removeEventListener(CAMPUS_DATA_UPDATED_EVENT, hydrateFromStore);
   }, [schoolId, userId, matchedStudent?.id, currentUser?.studentRecordId, ownerName, ownerRoom]);
 
-  // Persist farm state cleanly whenever changed
   const persistFarm = (nextState: SchoolFarmState) => {
     setFarmState(nextState);
     saveSchoolFarmState(schoolId, userId, nextState, nextState.studentId);
     setNeighborSyncTick((t) => t + 1);
   };
 
-  // Compute live discipline chest summary from Attendance + Homework + Behavior
   const disciplineSummary = useMemo(
     () =>
       computeDisciplineChestSummary({
@@ -387,6 +432,20 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const prosperityScore = useMemo(() => calculateTownProsperity(farmState), [farmState]);
   const sellMultiplier = useMemo(() => getCropSellMultiplier(farmState), [farmState]);
   const gridSize = useMemo(() => getFarmGridSize(farmState), [farmState]);
+
+  const currentPlayerScore = useMemo(
+    () =>
+      playerScores.find(
+        (p) =>
+          p.userId === userId ||
+          (matchedStudent && (p.studentId === matchedStudent.id || p.userId === matchedStudent.id))
+      ),
+    [playerScores, userId, matchedStudent]
+  );
+  const playerGems = currentPlayerScore?.gems ?? 0;
+  const hasGoldenStreakBuff = Boolean(
+    (farmState.goldenFertilizerStatus?.speedMultiplier || 1) >= 2 || disciplineSummary.goldenStreakUnlocked
+  );
 
   const neighbors = useMemo(() => {
     void neighborSyncTick;
@@ -442,7 +501,6 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     const tile = farmState.tiles[tileIndex];
     if (!tile) return;
 
-    // Smart Inspect mode: performs the most intuitive helpful action on tap!
     let toolToRun: FarmTool = overrideTool || activeTool;
     if (toolToRun === 'inspect') {
       if (!tile.unlocked) {
@@ -518,7 +576,11 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       }
       persistFarm(res.state);
       playFarmChime('water', farmState.soundMuted);
-      pushFeedback(tileIndex, res.matured ? 'สุกพร้อมเก็บ!' : 'รดน้ำ +1 💧', 'sky');
+      pushFeedback(
+        tileIndex,
+        res.matured ? 'สุกพร้อมเก็บ!' : hasGoldenStreakBuff ? 'รดน้ำ ×2 โตไว!' : 'รดน้ำ +1 💧',
+        hasGoldenStreakBuff ? 'amber' : 'sky'
+      );
       return;
     }
 
@@ -650,7 +712,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     }
     emitAppToast({
       title: lang === 'th' ? 'รถบรรทุกส่งออเดอร์สำเร็จ!' : 'Truck Delivery Complete!',
-      message: `+${res.order.rewardCoins} 🪙 · +1 ⭐ · +${res.order.rewardGems} Gems`,
+      message: `+${res.order.rewardCoins} 🪙 · +1 ⭐ · +${res.order.rewardGems} 💎`,
       tone: 'success',
     });
   };
@@ -672,19 +734,20 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   };
 
   const handleFulfillVisitor = (visitorId: string) => {
-    const res = fulfillVisitorRequest(farmState, visitorId);
+    const res = fulfillVisitorRequest(farmState, visitorId, todayDate);
     if (!res.ok || !res.visitor) {
       emitAppToast({ title: lang === 'th' ? 'ยังขายให้ชาวบ้านไม่ได้' : 'Cannot serve visitor', message: res.errorTh || 'สินค้าไม่พอ', tone: 'warning' });
       return;
     }
     persistFarm(res.state);
     playFarmChime('coin', farmState.soundMuted);
+    const gemReward = res.visitor.rewardGems ?? 2;
     if (onEarnRewards && currentUser?.id) {
-      onEarnRewards(currentUser.id, res.visitor.rewardXp, 1, true);
+      onEarnRewards(currentUser.id, res.visitor.rewardXp, gemReward, true);
     }
     emitAppToast({
       title: lang === 'th' ? `ขายให้ ${res.visitor.nameTh.split(' ')[0]} แล้ว!` : 'Visitor Served!',
-      message: `+${res.visitor.rewardCoins} 🪙 · +${res.visitor.rewardXp} XP`,
+      message: `+${res.visitor.rewardCoins} 🪙 · +${res.visitor.rewardXp} XP · +${gemReward} 💎`,
       tone: 'success',
     });
   };
@@ -692,6 +755,74 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const handleDismissVisitor = (visitorId: string) => {
     persistFarm(dismissVisitorRequest(farmState, visitorId));
     playFarmChime('till', farmState.soundMuted);
+  };
+
+  const handleExchangeCoinsForGems = (coinCost = 50, gemGain = 10) => {
+    const res = convertFarmCoinsToGems(farmState, coinCost, gemGain);
+    if (!res.ok) {
+      emitAppToast({
+        title: lang === 'th' ? 'เหรียญฟาร์มยังไม่พอ' : 'Not enough coins',
+        message: res.errorTh || `ต้องการ ${coinCost}🪙`,
+        tone: 'warning',
+      });
+      return;
+    }
+    persistFarm(res.state);
+    if (onEarnRewards && currentUser?.id) {
+      onEarnRewards(currentUser.id, 10, gemGain, false);
+    }
+    playFarmChime('coin', farmState.soundMuted);
+    emitAppToast({
+      title: lang === 'th' ? 'แลกเพชรตลาดกลางสำเร็จ!' : 'Coins Exchanged for Gems!',
+      message: `-${coinCost} 🪙 → +${gemGain} 💎`,
+      tone: 'success',
+    });
+  };
+
+  const handleRedeemClassroomReward = (item: RewardItem) => {
+    if (item.stock <= 0) {
+      emitAppToast({
+        title: lang === 'th' ? 'ของรางวัลหมดสต็อก' : 'Out of stock',
+        message: lang === 'th' ? 'กรุณารอคุณครูเติมคลังไอเทมรางวัล' : 'Please wait for teacher restock.',
+        tone: 'warning',
+      });
+      return;
+    }
+    if (playerGems < item.costGems) {
+      emitAppToast({
+        title: lang === 'th' ? 'เพชร 💎 ยังไม่พอแลก' : 'Not enough Gems',
+        message: lang === 'th'
+          ? `ขายผลผลิตให้ชาวบ้านรายวัน หรือแลก 50🪙 → +10💎 เพื่อสะสมให้ครบ ${item.costGems}💎`
+          : `Need ${item.costGems} Gems`,
+        tone: 'warning',
+      });
+      return;
+    }
+    if (onRedeemReward) {
+      onRedeemReward(item.id, item.costGems);
+    }
+    const nextHistory = [
+      {
+        rewardId: item.id,
+        titleTh: item.titleTh,
+        costCoins: item.costGems,
+        redeemedAt: new Date().toISOString(),
+      },
+      ...(farmState.claimedMarketplaceRewards || []).slice(0, 19),
+    ];
+    persistFarm({
+      ...farmState,
+      claimedMarketplaceRewards: nextHistory,
+      updatedAt: new Date().toISOString(),
+    });
+    playFarmChime('harvest', farmState.soundMuted);
+    emitAppToast({
+      title: lang === 'th' ? `แลก "${item.titleTh}" ในตลาดกลางสำเร็จ!` : `Redeemed ${item.titleTh}!`,
+      message: lang === 'th'
+        ? `ส่งคำขอให้คุณครูตรวจอนุมัติแล้ว (-${item.costGems} 💎)`
+        : `Sent to teacher queue (-${item.costGems} Gems)`,
+      tone: 'success',
+    });
   };
 
   const handleListRoadsideItem = () => {
@@ -747,9 +878,12 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     }
     persistFarm(res.state);
     playFarmChime('coin', farmState.soundMuted);
+    if (onEarnRewards && currentUser?.id) {
+      onEarnRewards(currentUser.id, 6, 0, false);
+    }
     emitAppToast({
       title: lang === 'th' ? `ขาย ${CROP_MAP[cropId].nameTh} แล้ว` : 'Crop Sold',
-      message: `+${res.coinsEarned} 🪙`,
+      message: `+${res.coinsEarned} 🪙 · +6 XP`,
       tone: 'success',
     });
   };
@@ -841,22 +975,22 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   }[] = [
     {
       id: 'inspect',
-      labelTh: 'แตะอัจฉริยะ',
-      labelEn: 'Smart Tap',
+      labelTh: 'แตะ',
+      labelEn: 'Tap',
       icon: Hand,
       badge: readyCropCount + readyBuildingCount > 0 ? readyCropCount + readyBuildingCount : undefined,
       toneClass: 'text-emerald-700 dark:text-emerald-300',
     },
     {
       id: 'till',
-      labelTh: 'ขุดแปลง',
+      labelTh: 'ขุดดิน',
       labelEn: 'Till',
       icon: Shovel,
       toneClass: 'text-amber-700 dark:text-amber-300',
     },
     {
       id: 'plant',
-      labelTh: 'หว่านเมล็ด',
+      labelTh: 'ปลูกผัก',
       labelEn: 'Plant',
       icon: Sprout,
       toneClass: 'text-lime-700 dark:text-lime-300',
@@ -879,15 +1013,15 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     },
     {
       id: 'fertilize',
-      labelTh: 'ปุ๋ยทอง ×2',
-      labelEn: 'Gold Fert',
+      labelTh: 'ปุ๋ยทอง×2',
+      labelEn: 'Gold×2',
       icon: Sparkles,
       badge: farmState.fertilizer,
       toneClass: 'text-yellow-700 dark:text-yellow-300',
     },
     {
       id: 'clear_weed',
-      labelTh: 'ปราบวัชพืช',
+      labelTh: 'วัชพืช',
       labelEn: 'Weed',
       icon: Shovel,
       badge: weedCount > 0 ? weedCount : undefined,
@@ -895,7 +1029,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     },
     {
       id: 'build',
-      labelTh: 'สร้าง/แต่งเมือง',
+      labelTh: 'สร้างเมือง',
       labelEn: 'Build',
       icon: Building2,
       toneClass: 'text-indigo-700 dark:text-indigo-300',
@@ -913,767 +1047,727 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     (b) => buildCategoryFilter === 'all' || b.category === buildCategoryFilter
   );
 
+  const wrapperClass = isFullscreen
+    ? onExit
+      ? `relative w-full h-full overflow-hidden select-none ${getModuleTone('school_farm')}`
+      : `fixed inset-0 z-50 h-dvh w-full overflow-hidden select-none ${getModuleTone('school_farm')}`
+    : `relative w-full h-[640px] rounded-2xl border border-[var(--color-border)] overflow-hidden select-none ${getModuleTone('school_farm')}`;
+
   return (
-    <div className={`h-full flex flex-col min-h-0 overflow-y-auto space-y-4 pb-6 ${getModuleTone('school_farm')}`}>
-      {/* Header: Mobile Fullscreen HUD or Desktop PageHeader */}
-      {onExit ? (
-        <div className="shrink-0 flex items-center justify-between gap-2 px-3 pt-3 pb-2 border-b border-[var(--color-border)] bg-[var(--color-card)]">
-          <button
-            type="button"
-            onClick={onExit}
-            className="min-h-[44px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer active:scale-95 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{lang === 'th' ? 'ออก' : 'Exit'}</span>
-          </button>
-          <div className="text-center min-w-0">
-            <h1 className="text-sm font-black text-[var(--color-text-title)] truncate">
-              {farmState.farmName} · Lv.{townLevelInfo.level}
-            </h1>
-            <p className="text-[11px] text-[var(--color-text-muted)] tabular-nums truncate">
-              🪙 {farmState.coins} · 💧 {farmState.water} · 🌱 {farmState.dailyFertilizer || 0} · ✨ {farmState.fertilizer} · ⭐ {farmState.townStars}
-            </p>
+    <div ref={rootContainerRef} className={wrapperClass}>
+      {/* FULL-SCREEN HAY DAY ISOMETRIC WORLD */}
+      <IsometricFarmBoard
+        tiles={farmState.tiles}
+        selectedTileIndex={selectedTileIndex}
+        activeTool={activeTool}
+        todayDate={todayDate}
+        farmName={farmState.farmName}
+        fullscreenLandscape
+        hasGoldenStreakBuff={hasGoldenStreakBuff}
+        feedbacks={feedbacks}
+        lang={lang}
+        ordersCount={farmState.marketOrders.length}
+        roadsideCount={activeRoadsideCount}
+        visitors={farmState.visitorQueue}
+        truckAnimating={truckAnimating}
+        onTileActivate={(idx) => executeTileAction(idx)}
+        onOpenMarket={() => {
+          setFocusBuildingId(null);
+          setMarketSubTab('orders');
+          setActiveModal('market');
+        }}
+        onOpenShop={() => {
+          setFocusBuildingId(null);
+          setMarketSubTab('roadside');
+          setActiveModal('market');
+        }}
+        onOpenVisitors={() => setActiveModal('visitors')}
+      />
+
+      {/* TOP-LEFT HAY DAY CREST HUD */}
+      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex items-center gap-1.5 max-w-[54vw] pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => {
+            if (onExit) onExit();
+            else setIsFullscreen((prev) => !prev);
+          }}
+          aria-label={onExit ? 'Exit Farm' : 'Toggle Fullscreen'}
+          className="min-w-[40px] min-h-[40px] px-2.5 rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg inline-flex items-center justify-center gap-1 text-xs font-black whitespace-nowrap shrink-0 cursor-pointer active:scale-95 transition"
+        >
+          {onExit ? <ArrowLeft className="w-4 h-4" /> : isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          <span className="hidden sm:inline">{onExit ? (lang === 'th' ? 'ออก' : 'Exit') : isFullscreen ? 'ย่อจอ' : 'เต็มจอ'}</span>
+        </button>
+
+        <div className="rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 shadow-lg px-2.5 py-1.5 flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-amber-500 text-white font-black text-xs flex items-center justify-center shrink-0 tabular-nums shadow-xs">
+            Lv.{townLevelInfo.level}
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => persistFarm({ ...farmState, soundMuted: !farmState.soundMuted })}
-              aria-label={farmState.soundMuted ? 'Unmute sound' : 'Mute sound'}
-              className="min-w-[44px] min-h-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center text-[var(--color-text-title)] cursor-pointer"
-            >
-              {farmState.soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveModal('guide')}
-              aria-label="Game Guide"
-              className="min-w-[44px] min-h-[44px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] flex items-center justify-center text-[var(--color-text-title)] cursor-pointer"
-            >
-              <HelpCircle className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <PageHeader
-          icon={<FutureNavIcon tab="school_farm" size={20} active />}
-          title={lang === 'th' ? 'ฟาร์มโรงเรียนแสนสนุก (School Farm & Town)' : 'School Farm & Town'}
-          description={
-            lang === 'th'
-              ? 'มาเรียนตรงเวลา ส่งการบ้านครบ และสะสมความดี เพื่อปลดล็อกน้ำ ปุ๋ย เมล็ดพันธุ์ และสร้างเมืองเกษตร 2D Isometric'
-              : 'Earn water, fertilizer, seeds, and town stars directly from attendance, homework, and merits.'
-          }
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-black text-amber-950 dark:text-amber-50 truncate max-w-[120px] sm:max-w-[180px]">
+                {farmState.farmName}
+              </p>
               <button
                 type="button"
                 onClick={() => {
-                  setFocusBuildingId(null);
-                  setMarketSubTab('craft');
-                  setActiveModal('market');
+                  setFarmNameDraft(farmState.farmName);
+                  setIsEditingFarmName(true);
                 }}
-                className="min-h-[40px] px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
+                aria-label="Edit farm name"
+                className="text-amber-800 dark:text-amber-300 hover:opacity-80 cursor-pointer shrink-0"
               >
-                <ChefHat className="w-4 h-4" />
-                <span>{lang === 'th' ? `แปรรูป & ปศุสัตว์ (${totalGoodsItems})` : `Workshop (${totalGoodsItems})`}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFocusBuildingId(null);
-                  setMarketSubTab('orders');
-                  setActiveModal('market');
-                }}
-                className="min-h-[40px] px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
-              >
-                <Store className="w-4 h-4" />
-                <span>{lang === 'th' ? `ตลาด & รถส่งของ (${totalBarnItems})` : `Market (${totalBarnItems})`}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveModal('visitors')}
-                className="min-h-[40px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
-              >
-                <MessageCircleHeart className="w-4 h-4 text-rose-500" />
-                <span>{lang === 'th' ? `ชาวบ้าน (${farmState.visitorQueue.length})` : `Visitors (${farmState.visitorQueue.length})`}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setVisitingNeighbor(null);
-                  setActiveModal('town');
-                }}
-                className="min-h-[40px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
-              >
-                <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>{lang === 'th' ? 'เมืองเพื่อนร่วมห้อง' : 'Class Town'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => persistFarm({ ...farmState, soundMuted: !farmState.soundMuted })}
-                aria-label="Toggle sound"
-                className="min-h-[40px] min-w-[40px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] flex items-center justify-center shrink-0 cursor-pointer transition"
-              >
-                {farmState.soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveModal('guide')}
-                aria-label="How to play"
-                className="min-h-[40px] min-w-[40px] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] flex items-center justify-center shrink-0 cursor-pointer transition"
-              >
-                <HelpCircle className="w-4 h-4" />
+                <Pencil className="w-3 h-3" />
               </button>
             </div>
-          }
-        />
-      )}
-
-      {/* Main Responsive Workspace: Isometric Board + Control & Discipline Side Dock */}
-      <div className={`grid grid-cols-1 xl:grid-cols-12 gap-4 ${onExit ? 'px-3' : ''}`}>
-        {/* Left/Center: Isometric 2D Canvas + Interactive Tool Palette */}
-        <div className="xl:col-span-8 space-y-3">
-          {/* Compact Resource HUD strip (hidden on mobile fullscreen since header shows it) */}
-          {!onExit && (
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center gap-2">
-                <Home className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">เมือง Lv.{townLevelInfo.level}</p>
-                  <p className="text-sm font-black text-[var(--color-text-title)] tabular-nums">
-                    {prosperityScore} แต้ม
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center gap-2">
-                <Coins className="w-4 h-4 text-amber-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-[var(--color-text-muted)]">เหรียญฟาร์ม</p>
-                  <p className="text-sm font-black text-[var(--color-text-title)] tabular-nums">{farmState.coins}</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center gap-2">
-                <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-[var(--color-text-muted)]">บัวรดน้ำ</p>
-                  <p className="text-sm font-black text-[var(--color-text-title)] tabular-nums">{farmState.water}</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center gap-2">
-                <Leaf className="w-4 h-4 text-emerald-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-[var(--color-text-muted)]">ปุ๋ยวัน</p>
-                  <p className="text-sm font-black text-[var(--color-text-title)] tabular-nums">{farmState.dailyFertilizer || 0}</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-yellow-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-[var(--color-text-muted)]">ปุ๋ยทอง ×2</p>
-                  <p className="text-sm font-black text-[var(--color-text-title)] tabular-nums">{farmState.fertilizer}</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center gap-2">
-                <Star className="w-4 h-4 text-violet-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-[var(--color-text-muted)]">ดาวเมือง</p>
-                  <p className="text-sm font-black text-[var(--color-text-title)] tabular-nums">{farmState.townStars}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Isometric SVG Farm Board */}
-          <IsometricFarmBoard
-            tiles={farmState.tiles}
-            selectedTileIndex={selectedTileIndex}
-            activeTool={activeTool}
-            todayDate={todayDate}
-            farmName={farmState.farmName}
-            feedbacks={feedbacks}
-            lang={lang}
-            ordersCount={farmState.marketOrders.length}
-            roadsideCount={activeRoadsideCount}
-            visitors={farmState.visitorQueue}
-            truckAnimating={truckAnimating}
-            onTileActivate={(idx) => executeTileAction(idx)}
-            onOpenMarket={() => {
-              setFocusBuildingId(null);
-              setMarketSubTab('orders');
-              setActiveModal('market');
-            }}
-            onOpenShop={() => {
-              setFocusBuildingId(null);
-              setMarketSubTab('roadside');
-              setActiveModal('market');
-            }}
-            onOpenVisitors={() => setActiveModal('visitors')}
-          />
-
-          {/* Interactive Tool Dock (44px+ touch targets) */}
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-2.5 space-y-2.5">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-              {toolButtons.map((tool) => {
-                const Icon = tool.icon;
-                const isActive = activeTool === tool.id;
-                return (
-                  <button
-                    key={tool.id}
-                    type="button"
-                    onClick={() => setActiveTool(tool.id)}
-                    className={`min-h-[44px] px-3 py-2 rounded-xl border text-xs font-bold whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 transition cursor-pointer ${
-                      isActive
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-[var(--color-card-subtle)] border-[var(--color-border)] text-[var(--color-text-body)] hover:bg-[var(--color-card)]'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : tool.toneClass}`} />
-                    <span>{lang === 'th' ? tool.labelTh : tool.labelEn}</span>
-                    {tool.badge !== undefined && (
-                      <span
-                        className={`ml-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-mono tabular-nums ${
-                          isActive
-                            ? 'bg-white/20 text-white'
-                            : 'bg-[var(--color-card)] text-[var(--color-text-title)]'
-                        }`}
-                      >
-                        {tool.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Contextual Seed Picker when Plant tool is active */}
-            {activeTool === 'plant' && (
-              <div className="pt-2 border-t border-[var(--color-border)] flex items-center gap-2 overflow-x-auto no-scrollbar">
-                {CROP_CATALOG.map((crop) => {
-                  const owned = farmState.seeds[crop.id] || 0;
-                  const unlocked = isCropUnlocked(crop.id, farmState, disciplineSummary.submittedHomeworkCount);
-                  const selected = selectedCropId === crop.id;
-                  return (
-                    <button
-                      key={crop.id}
-                      type="button"
-                      disabled={!unlocked}
-                      onClick={() => setSelectedCropId(crop.id)}
-                      className={`min-h-[44px] px-3 py-1.5 rounded-xl border text-left shrink-0 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                        selected
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-100'
-                          : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
-                      }`}
-                    >
-                      <div className="text-xs font-bold flex items-center gap-1.5 whitespace-nowrap">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: crop.accentColor }}
-                        />
-                        <span>{lang === 'th' ? crop.nameTh : crop.nameEn}</span>
-                        <span className="font-mono text-[11px] tabular-nums opacity-80">×{owned}</span>
-                      </div>
-                      <div className="text-[10px] text-[var(--color-text-muted)] whitespace-nowrap tabular-nums">
-                        {unlocked
-                          ? `💧${crop.watersNeeded} · ขาย ${crop.sellPrice}🪙`
-                          : `Lv.${crop.unlockTownLevel}${crop.minHomeworkCount ? ` & การบ้าน ${crop.minHomeworkCount}` : ''}`}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Contextual Building & Town Decor Picker when Build tool is active */}
-            {activeTool === 'build' && (
-              <div className="pt-2 border-t border-[var(--color-border)] space-y-2">
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                  {(
-                    [
-                      { id: 'all', label: 'ทั้งหมด' },
-                      { id: 'production', label: 'ปศุสัตว์ & โรงงาน' },
-                      { id: 'landmark', label: 'บ้าน & ลานเมือง' },
-                      { id: 'decor', label: 'รั้ว & ถนน' },
-                    ] as const
-                  ).map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setBuildCategoryFilter(cat.id)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 cursor-pointer transition ${
-                        buildCategoryFilter === cat.id
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                  {filteredBuildings.map((b) => {
-                    const unlocked = isBuildingUnlocked(b.id, farmState);
-                    const selected = selectedBuildingId === b.id;
-                    return (
-                      <button
-                        key={b.id}
-                        type="button"
-                        disabled={!unlocked}
-                        onClick={() => setSelectedBuildingId(b.id)}
-                        className={`min-h-[44px] px-3 py-1.5 rounded-xl border text-left shrink-0 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                          selected
-                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-100'
-                            : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
-                        }`}
-                      >
-                        <div className="text-xs font-bold whitespace-nowrap">
-                          {lang === 'th' ? b.nameTh : b.nameEn}
-                        </div>
-                        <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
-                          {!unlocked
-                            ? `ต้องใช้ Lv.${b.unlockTownLevel} หรือพิมพ์เขียวการบ้าน`
-                            : `${b.coinCost}🪙 · ${b.starCost}★${b.dailyCoins > 0 ? ` · +${b.dailyCoins}🪙/วัน` : ` · +${b.prosperityPoints} เจริญ`}`}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Contextual 8x8 Grid Upgrade option when Unlock/Expand tool is active */}
-            {activeTool === 'unlock' && gridSize === 6 && (
-              <div className="pt-2 border-t border-[var(--color-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <p className="text-xs text-[var(--color-text-body)]">
-                  พื้นที่ปัจจุบัน 6×6 ช่อง · ขยายเขตเมืองเป็น <strong className="text-[var(--color-text-title)]">8×8 (64 ช่อง)</strong> เพื่อสร้างเมืองเกษตรเต็มรูปแบบ
-                </p>
-                <button
-                  type="button"
-                  onClick={handleExpandTo8x8}
-                  className="min-h-[40px] px-3.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
-                >
-                  <Grid2X2Plus className="w-4 h-4" />
-                  <span>ขยายฟาร์มเป็น 8×8 (4 ★)</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Side Panel: Daily Discipline Chest + Selected Tile + Quick Actions */}
-        <div className="xl:col-span-4 space-y-3">
-          {/* Daily School Behavior -> Supplies Chest */}
-          <section className="rounded-2xl border border-emerald-200 dark:border-emerald-900/70 bg-[var(--color-card)] p-4 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                  <Gift className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-sm font-black text-[var(--color-text-title)] truncate">
-                    {lang === 'th' ? 'กล่องเสบียงจากวินัยเรียนวันนี้' : 'Daily Discipline Supply Chest'}
-                  </h2>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'ดึงสถิติจริงจากเช็กชื่อ การบ้าน & ความดี' : 'Synced live with school records'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-card-subtle)] px-3 py-2">
-                <span className="text-[var(--color-text-body)]">1. เช็กชื่อเข้าเรียนวันนี้</span>
-                <span
-                  className={`font-bold text-right ${
-                    disciplineSummary.attendanceStatusToday === 'present'
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : disciplineSummary.attendanceStatusToday === 'late' || disciplineSummary.attendanceStatusToday === 'absent'
-                        ? 'text-rose-600 dark:text-rose-400'
-                        : 'text-[var(--color-text-muted)]'
-                  }`}
-                >
-                  {disciplineSummary.attendanceStatusToday === 'present'
-                    ? `ตรงเวลา (${disciplineSummary.attendanceStreakDays} วันติด${disciplineSummary.attendanceStreakDays >= 3 ? ' · ปุ๋ยทอง!' : ''})`
-                    : disciplineSummary.attendanceStatusToday === 'late'
-                      ? 'มาสาย (ไม่มีโบนัสน้ำฟรีวันนี้)'
-                      : disciplineSummary.attendanceStatusToday === 'absent'
-                        ? 'ขาดเรียน (ไม่มีโบนัสน้ำฟรีวันนี้)'
-                        : 'ยังไม่มีบันทึกวันนี้'}
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-800 dark:text-amber-200 tabular-nums whitespace-nowrap">
+              <span>ความเจริญ {prosperityScore}</span>
+              {hasGoldenStreakBuff && (
+                <span className="px-1.5 py-0.2 rounded-md bg-yellow-400/90 text-amber-950 font-black">
+                  ✨ โตไว ×2
                 </span>
-              </div>
-
-              <div className="rounded-xl bg-[var(--color-card-subtle)] px-3 py-2 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[var(--color-text-body)]">2. การบ้าน & พิมพ์เขียว</span>
-                  <span className="font-bold text-[var(--color-text-title)] tabular-nums">
-                    ส่งแล้ว {disciplineSummary.submittedHomeworkCount} ชิ้น
-                    {disciplineSummary.pendingHomeworkCount > 0
-                      ? ` · ค้าง ${disciplineSummary.pendingHomeworkCount} ชิ้น`
-                      : ' · ครบทุกชิ้น!'}
-                  </span>
-                </div>
-                {disciplineSummary.homeworkBonusLocked && (
-                  <p className="text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                    <Lock className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">
-                      เคลียร์งานค้าง ({disciplineSummary.pendingHomeworkTitles.join(', ')}) เพื่อรับเมล็ดชุดพิเศษ & พิมพ์เขียว
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-card-subtle)] px-3 py-2">
-                <span className="text-[var(--color-text-body)]">3. ความประพฤติ & จิตอาสา</span>
-                <span className="font-bold text-violet-600 dark:text-violet-400 tabular-nums">
-                  ความดี +{disciplineSummary.totalMeritPoints} แต้ม
-                  {weedCount > 0 ? ` · วัชพืช ${weedCount} ช่อง` : ''}
-                </span>
-              </div>
+              )}
             </div>
-
-            <button
-              type="button"
-              onClick={handleClaimDisciplineChest}
-              className={`w-full min-h-[44px] px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer transition ${
-                disciplineSummary.hasAnythingToClaim
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                  : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]'
-              }`}
-            >
-              <Gift className="w-4 h-4 shrink-0" />
-              <span className="truncate">
-                {disciplineSummary.hasAnythingToClaim
-                  ? `เปิดรับเสบียง (+${disciplineSummary.claimableWater}💧 +${disciplineSummary.claimableDailyFertilizer}🌱 +${disciplineSummary.claimableFertilizer}✨ +${disciplineSummary.claimableStars}★)`
-                  : 'รับเสบียงล่าสุดครบแล้ว (เช็กชื่อ/ส่งงานเพิ่มเพื่อรับใหม่)'}
-              </span>
-            </button>
-          </section>
-
-          {/* Selected Plot Inspector */}
-          {selectedTile && (
-            <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-black text-[var(--color-text-title)]">
-                  ช่อง #{selectedTile.index + 1} (แถว {selectedTile.row + 1}, คอลัมน์ {selectedTile.col + 1})
-                </h3>
-                <span className="text-[11px] font-semibold text-[var(--color-text-muted)]">
-                  {!selectedTile.unlocked
-                    ? 'ยังไม่ปลดล็อก'
-                    : selectedTile.kind === 'crop' && selectedTile.cropId
-                      ? CROP_MAP[selectedTile.cropId].nameTh
-                      : selectedTile.kind === 'building' && selectedTile.buildingId
-                        ? `${BUILDING_MAP[selectedTile.buildingId].nameTh} (Lv.${selectedTile.buildingLevel || 1})`
-                        : selectedTile.kind === 'weed'
-                          ? selectedTile.weedVariant === 'pest'
-                            ? 'แมลงศัตรูพืช'
-                            : 'วัชพืช'
-                          : selectedTile.tilled
-                            ? 'ดินขุดแล้วพร้อมปลูก'
-                            : 'สนามหญ้าว่าง'}
-                </span>
-              </div>
-
-              {selectedTile.kind === 'crop' && selectedTile.cropId && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-[var(--color-text-body)]">
-                    <span>{getGrowthStageLabel(selectedTile.growthProgress || 0, CROP_MAP[selectedTile.cropId].watersNeeded, lang)}</span>
-                    <span className="font-mono font-bold tabular-nums">
-                      {selectedTile.growthProgress || 0} / {CROP_MAP[selectedTile.cropId].watersNeeded}
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-[var(--color-card-subtle)] overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 transition-all"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.round(((selectedTile.growthProgress || 0) / CROP_MAP[selectedTile.cropId].watersNeeded) * 100)
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                  {(selectedTile.growthProgress || 0) < CROP_MAP[selectedTile.cropId].watersNeeded ? (
-                    <div className="grid grid-cols-3 gap-1.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => executeTileAction(selectedTile.index, 'water')}
-                        className="min-h-[38px] px-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold whitespace-nowrap cursor-pointer"
-                      >
-                        รดน้ำ 💧
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => executeTileAction(selectedTile.index, 'daily_fertilize')}
-                        className="min-h-[38px] px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold whitespace-nowrap cursor-pointer"
-                      >
-                        ปุ๋ยวัน 🌱
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => executeTileAction(selectedTile.index, 'fertilize')}
-                        className="min-h-[38px] px-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold whitespace-nowrap cursor-pointer"
-                      >
-                        ปุ๋ยทอง ✨
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => executeTileAction(selectedTile.index, 'harvest')}
-                      className="w-full min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
-                    >
-                      เก็บเกี่ยวเข้ายุ้งฉาง
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {selectedTile.kind === 'weed' && (
-                <div className="space-y-2">
-                  <p className="text-xs text-rose-700 dark:text-rose-300">
-                    {selectedTile.weedReasonTh
-                      ? `สาเหตุ: ${selectedTile.weedReasonTh}`
-                      : 'เกิดจากบันทึกหักคะแนนความประพฤติ รักษาความดีและใช้น้ำ 1 ถังเพื่อฟื้นฟูดิน'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => executeTileAction(selectedTile.index, 'clear_weed')}
-                    className="w-full min-h-[40px] rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
-                  >
-                    ปราบวัชพืช & ฟื้นฟูแปลง (-1 💧)
-                  </button>
-                </div>
-              )}
-
-              {selectedTile.kind === 'building' && selectedTile.buildingId && (() => {
-                const bDef = BUILDING_MAP[selectedTile.buildingId];
-                const curLv = selectedTile.buildingLevel || 1;
-                const canUpgrade = curLv < bDef.maxLevel;
-                const upgCost = canUpgrade ? getBuildingUpgradeCost(selectedTile.buildingId, curLv) : null;
-                return (
-                  <div className="space-y-2">
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      {bDef.descTh}
-                      {bDef.dailyCoins > 0 || bDef.dailyFertilizer
-                        ? ` · ${selectedTile.lastCollectedDate === todayDate ? 'วันนี้เก็บรายได้แล้ว' : 'แตะบนแผนที่เพื่อเก็บรายได้วันนี้!'}`
-                        : ''}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {PRODUCTION_BUILDINGS.has(selectedTile.buildingId) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFocusBuildingId(selectedTile.buildingId || null);
-                            setMarketSubTab('craft');
-                            setActiveModal('market');
-                          }}
-                          className="flex-1 min-h-[40px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
-                        >
-                          <ChefHat className="w-4 h-4" />
-                          <span>เปิดโรงงานแปรรูป</span>
-                        </button>
-                      )}
-                      {canUpgrade && upgCost && (
-                        <button
-                          type="button"
-                          onClick={() => handleUpgradeBuilding(selectedTile.index)}
-                          className="flex-1 min-h-[40px] px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
-                        >
-                          <ArrowUpCircle className="w-4 h-4" />
-                          <span>อัปเกรด Lv.{curLv + 1} ({upgCost.coinCost}🪙 {upgCost.starCost}★)</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveBuilding(selectedTile.index)}
-                        aria-label="Remove building"
-                        className="min-h-[40px] min-w-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {!selectedTile.unlocked && (
-                <button
-                  type="button"
-                  onClick={() => executeTileAction(selectedTile.index, 'unlock')}
-                  className="w-full min-h-[44px] rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition"
-                >
-                  <LockOpen className="w-4 h-4" />
-                  <span>
-                    ปลดล็อกแปลงนี้ ({getPlotUnlockStarCost(farmState.tiles.filter((t) => t.unlocked).length)} ⭐)
-                  </span>
-                </button>
-              )}
-
-              {/* Rename farm shortcut */}
-              <div className="pt-2 border-t border-[var(--color-border)]">
-                {isEditingFarmName ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      maxLength={32}
-                      value={farmNameDraft}
-                      onChange={(e) => setFarmNameDraft(e.target.value)}
-                      placeholder="ตั้งชื่อเมืองฟาร์ม..."
-                      className="flex-1 min-h-[36px] px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const clean = farmNameDraft.trim();
-                        if (clean) {
-                          persistFarm({ ...farmState, farmName: clean, updatedAt: new Date().toISOString() });
-                        }
-                        setIsEditingFarmName(false);
-                      }}
-                      className="min-h-[36px] px-3 rounded-lg bg-emerald-600 text-white text-xs font-bold cursor-pointer"
-                    >
-                      บันทึก
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFarmNameDraft(farmState.farmName);
-                      setIsEditingFarmName(true);
-                    }}
-                    className="text-[11px] font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <Pencil className="w-3 h-3" />
-                    <span>เปลี่ยนชื่อเมืองฟาร์ม ({farmState.farmName})</span>
-                  </button>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* Quick Secondary Panels (Workshop, Visitors, Market, Study Quiz, Class Town) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setFocusBuildingId(null);
-                setMarketSubTab('craft');
-                setActiveModal('market');
-              }}
-              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <ChefHat className="w-4 h-4 text-emerald-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">ปศุสัตว์ & โรงงานแปรรูปสินค้า</p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
-                    สินค้าในคลัง {totalGoodsItems} ชิ้น · ผลิตไข่ นม ขนมปัง สมูทตี้
-                  </p>
-                </div>
-              </div>
-              <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveModal('visitors')}
-              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <MessageCircleHeart className="w-4 h-4 text-rose-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">
-                    ชาวบ้านผู้มาเยือนฟาร์ม ({farmState.visitorQueue.length} คนรอซื้อ)
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                    {farmState.visitorQueue[0]?.nameTh || 'ต้อนรับชาวบ้านหน้าฟาร์มรับเหรียญเพิ่ม'}
-                  </p>
-                </div>
-              </div>
-              <Coins className="w-4 h-4 text-amber-500 shrink-0" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setFocusBuildingId(null);
-                setMarketSubTab('orders');
-                setActiveModal('market');
-              }}
-              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Truck className="w-4 h-4 text-amber-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">รถส่งของ · แผงลอยริมทาง · ซื้อเมล็ด</p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
-                    ออเดอร์ {farmState.marketOrders.length} · แผงริมทาง {activeRoadsideCount}/6 · ยุ้งฉาง {totalBarnItems}
-                  </p>
-                </div>
-              </div>
-              <Wheat className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setQuizPicked(null);
-                setActiveModal('quiz');
-              }}
-              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <BookOpen className="w-4 h-4 text-sky-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">ทบทวนความรู้รับน้ำพิเศษ</p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
-                    วันนี้ใช้ไป {quizUsedToday}/3 ครั้ง (+2💧 +1✨)
-                  </p>
-                </div>
-              </div>
-              <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setVisitingNeighbor(null);
-                setActiveModal('town');
-              }}
-              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Users className="w-4 h-4 text-emerald-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">
-                    {isStaff ? 'เมืองห้องเรียน & มอบรางวัลครู' : 'เยี่ยมฟาร์ม & แวะซื้อร้านเพื่อน'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
-                    มีฟาร์มในโรงเรียน {Math.max(1, neighbors.length)} แห่ง
-                  </p>
-                </div>
-              </div>
-              <Award className="w-4 h-4 text-emerald-500 shrink-0" />
-            </button>
           </div>
         </div>
       </div>
 
-      {/* MODAL 1: Farm Market, Craft Workshop, Roadside Shop, Seed Shop & Barn */}
+      {/* TOP-RIGHT HAY DAY RESOURCE BAR */}
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex items-center gap-1 max-w-[44vw] sm:max-w-none overflow-x-auto no-scrollbar pointer-events-auto">
+        <div className="rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 shadow-lg px-2.5 py-1.5 flex items-center gap-2.5 text-xs font-black text-amber-950 dark:text-amber-50 tabular-nums whitespace-nowrap">
+          <span className="inline-flex items-center gap-1" title="เหรียญฟาร์ม">
+            <Coins className="w-3.5 h-3.5 text-amber-500" />
+            {farmState.coins}
+          </span>
+          <span className="inline-flex items-center gap-1" title="เพชรตลาดกลาง">
+            <Gem className="w-3.5 h-3.5 text-cyan-500" />
+            {playerGems}
+          </span>
+          <span className="inline-flex items-center gap-1" title="ดาวเมือง">
+            <Star className="w-3.5 h-3.5 text-violet-500" />
+            {farmState.townStars}
+          </span>
+          <span className="inline-flex items-center gap-1" title="น้ำรดต้นไม้">
+            <Droplets className="w-3.5 h-3.5 text-sky-500" />
+            {farmState.water}
+          </span>
+          <span className="hidden sm:inline-flex items-center gap-1" title="ปุ๋ยวัน">
+            <Leaf className="w-3.5 h-3.5 text-emerald-500" />
+            {farmState.dailyFertilizer || 0}
+          </span>
+          <span className="inline-flex items-center gap-1" title="ปุ๋ยทอง ×2">
+            <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
+            {farmState.fertilizer}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void requestLandscapeFullscreen()}
+          title={lang === 'th' ? 'ขยายเต็มจอแนวนอน (Hay Day)' : 'Fullscreen Landscape'}
+          aria-label="Fullscreen landscape"
+          className="min-w-[40px] min-h-[40px] rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex items-center justify-center shrink-0 cursor-pointer"
+        >
+          <RotateCw className="w-4 h-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => persistFarm({ ...farmState, soundMuted: !farmState.soundMuted })}
+          aria-label={farmState.soundMuted ? 'Unmute sound' : 'Mute sound'}
+          className="min-w-[40px] min-h-[40px] rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex items-center justify-center shrink-0 cursor-pointer"
+        >
+          {farmState.soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveModal('guide')}
+          aria-label="Game Guide"
+          className="min-w-[40px] min-h-[40px] rounded-xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex items-center justify-center shrink-0 cursor-pointer"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* NON-BLOCKING MOBILE PORTRAIT LANDSCAPE PROMPT */}
+      {isPortraitMobile && !dismissedPortraitHint && (
+        <div className="absolute top-14 inset-x-3 z-20 rounded-xl border border-amber-500/60 bg-amber-950/90 text-amber-50 px-3 py-2 flex items-center justify-between gap-2 shadow-lg">
+          <div className="flex items-center gap-2 min-w-0 text-[11px] font-bold">
+            <RotateCw className="w-4 h-4 text-amber-300 shrink-0" />
+            <span className="truncate">หมุนโทรศัพท์แนวนอน เพื่อเล่นเมนูแบบ Hay Day เต็มตา</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => void requestLandscapeFullscreen()}
+              className="min-h-[32px] px-2.5 rounded-lg bg-amber-500 text-amber-950 text-[11px] font-black whitespace-nowrap cursor-pointer"
+            >
+              เต็มจอแนวนอน
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissedPortraitHint(true)}
+              aria-label="Dismiss hint"
+              className="min-w-[32px] min-h-[32px] rounded-lg bg-white/10 flex items-center justify-center cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* INLINE RENAME POPOVER */}
+      {isEditingFarmName && (
+        <div className="absolute top-14 left-3 z-30 rounded-xl border-2 border-amber-700 bg-[var(--color-card)] p-2.5 shadow-xl flex items-center gap-2">
+          <input
+            type="text"
+            maxLength={32}
+            value={farmNameDraft}
+            onChange={(e) => setFarmNameDraft(e.target.value)}
+            placeholder="ตั้งชื่อเมืองฟาร์ม..."
+            className="min-h-[36px] px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs text-[var(--color-text-title)]"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const clean = farmNameDraft.trim();
+              if (clean) {
+                persistFarm({ ...farmState, farmName: clean, updatedAt: new Date().toISOString() });
+              }
+              setIsEditingFarmName(false);
+            }}
+            className="min-h-[36px] px-3 rounded-lg bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+          >
+            บันทึก
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsEditingFarmName(false)}
+            className="min-h-[36px] px-2 rounded-lg text-xs text-[var(--color-text-muted)] cursor-pointer"
+          >
+            ยกเลิก
+          </button>
+        </div>
+      )}
+
+      {/* LEFT FLOATING HAY DAY ICON RAIL */}
+      <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => setActiveModal('chest')}
+          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-emerald-700/50 bg-emerald-50/95 dark:bg-slate-900/92 text-emerald-800 dark:text-emerald-200 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+        >
+          {disciplineSummary.hasAnythingToClaim && (
+            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-600 border-2 border-white animate-pulse" />
+          )}
+          <Gift className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-[10px] font-black whitespace-nowrap">เสบียง</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setQuizPicked(null);
+            setActiveModal('quiz');
+          }}
+          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-sky-700/40 bg-sky-50/95 dark:bg-slate-900/92 text-sky-900 dark:text-sky-200 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+        >
+          <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-sky-600 text-white text-[9px] font-mono font-bold tabular-nums">
+            {quizUsedToday}/3
+          </span>
+          <BookOpen className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+          <span className="text-[10px] font-black whitespace-nowrap">ควิซน้ำ</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTool((prev) => (prev === 'build' ? 'inspect' : 'build'))}
+          className={`min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition ${
+            activeTool === 'build'
+              ? 'border-indigo-500 bg-indigo-600 text-white'
+              : 'border-indigo-700/40 bg-indigo-50/95 dark:bg-slate-900/92 text-indigo-900 dark:text-indigo-200'
+          }`}
+        >
+          <Building2 className="w-5 h-5" />
+          <span className="text-[10px] font-black whitespace-nowrap">ก่อสร้าง</span>
+        </button>
+      </div>
+
+      {/* RIGHT FLOATING HAY DAY ICON RAIL */}
+      <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => {
+            setFocusBuildingId(null);
+            setMarketSubTab('marketplace');
+            setActiveModal('market');
+          }}
+          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-amber-700/50 bg-amber-50/95 dark:bg-slate-900/92 text-amber-950 dark:text-amber-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+        >
+          {rewardItems.length > 0 && (
+            <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-amber-500 text-white text-[9px] font-mono font-bold tabular-nums">
+              {rewardItems.length}
+            </span>
+          )}
+          <ShoppingBag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <span className="text-[10px] font-black whitespace-nowrap">ตลาดกลาง</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setFocusBuildingId(null);
+            setMarketSubTab('orders');
+            setActiveModal('market');
+          }}
+          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-orange-700/40 bg-orange-50/95 dark:bg-slate-900/92 text-orange-950 dark:text-orange-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+        >
+          <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-orange-600 text-white text-[9px] font-mono font-bold tabular-nums">
+            {farmState.marketOrders.length}
+          </span>
+          <Truck className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+          <span className="text-[10px] font-black whitespace-nowrap">ส่งของ</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveModal('visitors')}
+          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-rose-700/40 bg-rose-50/95 dark:bg-slate-900/92 text-rose-950 dark:text-rose-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+        >
+          <span className="absolute -top-1.5 -right-1 px-1.5 rounded-full bg-rose-600 text-white text-[9px] font-mono font-bold tabular-nums">
+            {farmState.visitorQueue.length}
+          </span>
+          <MessageCircleHeart className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+          <span className="text-[10px] font-black whitespace-nowrap">ชาวบ้าน</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setVisitingNeighbor(null);
+            setActiveModal('town');
+          }}
+          className="relative min-w-[52px] min-h-[52px] px-2 py-1.5 rounded-2xl border-2 border-teal-700/40 bg-teal-50/95 dark:bg-slate-900/92 text-teal-950 dark:text-teal-100 shadow-lg flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+        >
+          <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+          <span className="text-[10px] font-black whitespace-nowrap">เพื่อน</span>
+        </button>
+      </div>
+
+      {/* FLOATING COMPACT SELECTED PLOT POPOVER */}
+      {selectedTile && activeTool !== 'plant' && activeTool !== 'build' && (
+        <div className="absolute bottom-[74px] right-2 sm:right-3 z-20 w-[260px] rounded-2xl border-2 border-amber-800/40 bg-[var(--color-card)]/96 backdrop-blur-md p-2.5 shadow-xl space-y-2 pointer-events-auto">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-black text-[var(--color-text-title)] truncate">
+              {!selectedTile.unlocked
+                ? `แปลง #${selectedTile.index + 1} (ล็อก)`
+                : selectedTile.kind === 'crop' && selectedTile.cropId
+                  ? CROP_MAP[selectedTile.cropId].nameTh
+                  : selectedTile.kind === 'building' && selectedTile.buildingId
+                    ? `${BUILDING_MAP[selectedTile.buildingId].nameTh} Lv.${selectedTile.buildingLevel || 1}`
+                    : selectedTile.kind === 'weed'
+                      ? selectedTile.weedVariant === 'pest'
+                        ? 'แมลงศัตรูพืช'
+                        : 'วัชพืช'
+                      : selectedTile.tilled
+                        ? `แปลง #${selectedTile.index + 1} พร้อมปลูก`
+                        : `สนามหญ้า #${selectedTile.index + 1}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedTileIndex(null)}
+              aria-label="Close plot inspector"
+              className="w-6 h-6 rounded-lg bg-[var(--color-card-subtle)] text-[var(--color-text-muted)] flex items-center justify-center cursor-pointer shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {selectedTile.kind === 'crop' && selectedTile.cropId && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] text-[var(--color-text-body)] tabular-nums">
+                <span>{getGrowthStageLabel(selectedTile.growthProgress || 0, CROP_MAP[selectedTile.cropId].watersNeeded, lang)}</span>
+                <span className="font-mono font-bold">
+                  {selectedTile.growthProgress || 0}/{CROP_MAP[selectedTile.cropId].watersNeeded}
+                </span>
+              </div>
+              {(selectedTile.growthProgress || 0) < CROP_MAP[selectedTile.cropId].watersNeeded ? (
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => executeTileAction(selectedTile.index, 'water')}
+                    className="min-h-[34px] px-1.5 rounded-lg bg-sky-600 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                  >
+                    รดน้ำ 💧
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => executeTileAction(selectedTile.index, 'daily_fertilize')}
+                    className="min-h-[34px] px-1.5 rounded-lg bg-emerald-600 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                  >
+                    ปุ๋ยวัน 🌱
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => executeTileAction(selectedTile.index, 'fertilize')}
+                    className="min-h-[34px] px-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-bold whitespace-nowrap cursor-pointer"
+                  >
+                    ปุ๋ยทอง ✨
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => executeTileAction(selectedTile.index, 'harvest')}
+                  className="w-full min-h-[36px] rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                >
+                  เก็บเกี่ยวเข้ายุ้งฉาง
+                </button>
+              )}
+            </div>
+          )}
+
+          {selectedTile.kind === 'weed' && (
+            <button
+              type="button"
+              onClick={() => executeTileAction(selectedTile.index, 'clear_weed')}
+              className="w-full min-h-[36px] rounded-xl bg-rose-600 text-white text-xs font-bold cursor-pointer"
+            >
+              ปราบวัชพืช (-1 💧)
+            </button>
+          )}
+
+          {selectedTile.kind === 'empty' && selectedTile.unlocked && (
+            <div className="flex items-center gap-1.5">
+              {!selectedTile.tilled ? (
+                <button
+                  type="button"
+                  onClick={() => executeTileAction(selectedTile.index, 'till')}
+                  className="flex-1 min-h-[36px] rounded-xl bg-amber-600 text-white text-xs font-bold cursor-pointer"
+                >
+                  ขุดดินเตรียมปลูก
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActiveTool('plant')}
+                  className="flex-1 min-h-[36px] rounded-xl bg-lime-600 text-white text-xs font-bold cursor-pointer"
+                >
+                  เลือกเมล็ดลงปลูก
+                </button>
+              )}
+            </div>
+          )}
+
+          {selectedTile.kind === 'building' && selectedTile.buildingId && (() => {
+            const bDef = BUILDING_MAP[selectedTile.buildingId];
+            const curLv = selectedTile.buildingLevel || 1;
+            const canUpgrade = curLv < bDef.maxLevel;
+            const upgCost = canUpgrade ? getBuildingUpgradeCost(selectedTile.buildingId, curLv) : null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {PRODUCTION_BUILDINGS.has(selectedTile.buildingId) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFocusBuildingId(selectedTile.buildingId || null);
+                      setMarketSubTab('craft');
+                      setActiveModal('market');
+                    }}
+                    className="flex-1 min-h-[34px] px-2.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
+                  >
+                    <ChefHat className="w-3.5 h-3.5" />
+                    <span>แปรรูป</span>
+                  </button>
+                )}
+                {canUpgrade && upgCost && (
+                  <button
+                    type="button"
+                    onClick={() => handleUpgradeBuilding(selectedTile.index)}
+                    className="flex-1 min-h-[34px] px-2.5 rounded-lg bg-indigo-600 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer"
+                  >
+                    <ArrowUpCircle className="w-3.5 h-3.5" />
+                    <span>Lv.{curLv + 1} ({upgCost.coinCost}🪙)</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveBuilding(selectedTile.index)}
+                  aria-label="Remove building"
+                  className="min-h-[34px] min-w-[34px] rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-rose-600 flex items-center justify-center cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })()}
+
+          {!selectedTile.unlocked && (
+            <button
+              type="button"
+              onClick={() => executeTileAction(selectedTile.index, 'unlock')}
+              className="w-full min-h-[36px] rounded-xl bg-violet-600 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <LockOpen className="w-3.5 h-3.5" />
+              <span>ปลดล็อก ({getPlotUnlockStarCost(farmState.tiles.filter((t) => t.unlocked).length)} ⭐)</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* BOTTOM FLOATING HAY DAY ACTION DOCK & POP-UP DRAWERS */}
+      <div className="absolute bottom-2 inset-x-2 z-20 flex flex-col items-center gap-1.5 pointer-events-none">
+        {/* Contextual Seed Drawer */}
+        {activeTool === 'plant' && (
+          <div className="pointer-events-auto max-w-[94vw] rounded-2xl border-2 border-emerald-700/40 bg-[var(--color-card)]/96 backdrop-blur-md shadow-xl p-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {CROP_CATALOG.map((crop) => {
+              const owned = farmState.seeds[crop.id] || 0;
+              const unlocked = isCropUnlocked(crop.id, farmState, disciplineSummary.submittedHomeworkCount);
+              const selected = selectedCropId === crop.id;
+              return (
+                <button
+                  key={crop.id}
+                  type="button"
+                  disabled={!unlocked}
+                  onClick={() => setSelectedCropId(crop.id)}
+                  className={`min-h-[42px] px-2.5 py-1 rounded-xl border text-left shrink-0 transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                    selected
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-100'
+                      : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                  }`}
+                >
+                  <div className="text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: crop.accentColor }} />
+                    <span>{lang === 'th' ? crop.nameTh : crop.nameEn}</span>
+                    <span className="font-mono tabular-nums">×{owned}</span>
+                  </div>
+                  <div className="text-[10px] text-[var(--color-text-muted)] whitespace-nowrap tabular-nums">
+                    {unlocked ? `💧${crop.watersNeeded} · ${crop.sellPrice}🪙` : `Lv.${crop.unlockTownLevel}`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Contextual Building Drawer */}
+        {activeTool === 'build' && (
+          <div className="pointer-events-auto max-w-[94vw] rounded-2xl border-2 border-indigo-700/40 bg-[var(--color-card)]/96 backdrop-blur-md shadow-xl p-2 space-y-1.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {(
+                [
+                  { id: 'all', label: 'ทั้งหมด' },
+                  { id: 'production', label: 'ปศุสัตว์ & โรงงาน' },
+                  { id: 'landmark', label: 'บ้าน & ลานเมือง' },
+                  { id: 'decor', label: 'รั้ว & ถนน' },
+                ] as const
+              ).map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setBuildCategoryFilter(cat.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap shrink-0 cursor-pointer ${
+                    buildCategoryFilter === cat.id
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-[var(--color-card-subtle)] text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {filteredBuildings.map((b) => {
+                const unlocked = isBuildingUnlocked(b.id, farmState);
+                const selected = selectedBuildingId === b.id;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    disabled={!unlocked}
+                    onClick={() => setSelectedBuildingId(b.id)}
+                    className={`min-h-[42px] px-2.5 py-1 rounded-xl border text-left shrink-0 transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                      selected
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-100'
+                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
+                    }`}
+                  >
+                    <div className="text-[11px] font-bold whitespace-nowrap">
+                      {lang === 'th' ? b.nameTh : b.nameEn}
+                    </div>
+                    <div className="text-[10px] text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
+                      {!unlocked ? `Lv.${b.unlockTownLevel}` : `${b.coinCost}🪙 · ${b.starCost}★`}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Contextual 8x8 Expand Bar */}
+        {activeTool === 'unlock' && gridSize === 6 && (
+          <div className="pointer-events-auto rounded-2xl border-2 border-violet-600/50 bg-[var(--color-card)]/96 backdrop-blur-md shadow-xl px-3 py-2 flex items-center gap-3">
+            <span className="text-xs font-bold text-[var(--color-text-title)] whitespace-nowrap">
+              ขยายพื้นที่ฟาร์ม 6×6 → 8×8
+            </span>
+            <button
+              type="button"
+              onClick={handleExpandTo8x8}
+              className="min-h-[36px] px-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold inline-flex items-center gap-1 whitespace-nowrap cursor-pointer"
+            >
+              <Grid2X2Plus className="w-3.5 h-3.5" />
+              <span>ขยาย (4 ★)</span>
+            </button>
+          </div>
+        )}
+
+        {/* Horizontal Bottom Hay Day Tool Bar */}
+        <div className="pointer-events-auto max-w-[96vw] rounded-2xl border-2 border-amber-800/40 bg-amber-50/95 dark:bg-slate-900/92 backdrop-blur-md shadow-xl px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {toolButtons.map((tool) => {
+            const Icon = tool.icon;
+            const isActive = activeTool === tool.id;
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => setActiveTool(tool.id)}
+                className={`min-h-[42px] px-2.5 py-1.5 rounded-xl border text-[11px] font-black whitespace-nowrap shrink-0 inline-flex items-center gap-1 transition cursor-pointer ${
+                  isActive
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-white/80 dark:bg-slate-800/85 border-amber-900/15 dark:border-slate-700 text-[var(--color-text-body)]'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : tool.toneClass}`} />
+                <span>{lang === 'th' ? tool.labelTh : tool.labelEn}</span>
+                {tool.badge !== undefined && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono tabular-nums ${
+                      isActive
+                        ? 'bg-white/25 text-white'
+                        : 'bg-amber-100 dark:bg-slate-700 text-[var(--color-text-title)]'
+                    }`}
+                  >
+                    {tool.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* MODAL 0: Daily Discipline Supply Chest & >5d Streak Golden Fertilizer Status */}
+      <BaseModal
+        isOpen={activeModal === 'chest'}
+        onClose={() => setActiveModal(null)}
+        maxWidthClass="max-w-lg"
+        title={lang === 'th' ? 'กล่องเสบียงจากวินัยการเรียนจริง' : 'Daily Discipline Supply Chest'}
+        subtitle={lang === 'th' ? 'เช็กชื่อต่อเนื่อง > 5 วัน รับปุ๋ยทองคำโตไว ×2 อัตโนมัติ' : 'Check-in > 5 consecutive days unlocks 2x Golden Fertilizer'}
+      >
+        <div className="space-y-3">
+          {hasGoldenStreakBuff && (
+            <div className="rounded-xl border border-yellow-400 bg-yellow-50 dark:bg-yellow-950/40 px-3.5 py-2.5 flex items-center gap-2.5">
+              <Sparkles className="w-5 h-5 text-yellow-600 dark:text-yellow-300 shrink-0" />
+              <div className="text-xs">
+                <p className="font-black text-amber-900 dark:text-yellow-200">
+                  สถานะพิเศษ: ปุ๋ยทองคำโตไว ×2 เปิดใช้งานอยู่!
+                </p>
+                <p className="text-amber-800 dark:text-yellow-300/90">
+                  {farmState.goldenFertilizerStatus?.reasonTh || `เข้าเรียนตรงเวลาต่อเนื่อง ${disciplineSummary.attendanceStreakDays} วัน`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-card-subtle)] px-3 py-2.5">
+              <span className="text-[var(--color-text-body)]">1. เช็กชื่อเข้าเรียนวันนี้</span>
+              <span
+                className={`font-bold text-right tabular-nums ${
+                  disciplineSummary.attendanceStatusToday === 'present'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : disciplineSummary.attendanceStatusToday === 'late' || disciplineSummary.attendanceStatusToday === 'absent'
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-[var(--color-text-muted)]'
+                }`}
+              >
+                {disciplineSummary.attendanceStatusToday === 'present'
+                  ? `ตรงเวลา (${disciplineSummary.attendanceStreakDays} วันติด${disciplineSummary.attendanceStreakDays > 5 ? ' · ปุ๋ยทอง ×2!' : disciplineSummary.attendanceStreakDays >= 3 ? ' · ปุ๋ยทอง!' : ''})`
+                  : disciplineSummary.attendanceStatusToday === 'late'
+                    ? 'มาสาย (ไม่มีโบนัสน้ำฟรีวันนี้)'
+                    : disciplineSummary.attendanceStatusToday === 'absent'
+                      ? 'ขาดเรียน (ไม่มีโบนัสน้ำฟรีวันนี้)'
+                      : 'ยังไม่มีบันทึกวันนี้'}
+              </span>
+            </div>
+
+            <div className="rounded-xl bg-[var(--color-card-subtle)] px-3 py-2.5 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[var(--color-text-body)]">2. การบ้าน & พิมพ์เขียว</span>
+                <span className="font-bold text-[var(--color-text-title)] tabular-nums">
+                  ส่งแล้ว {disciplineSummary.submittedHomeworkCount} ชิ้น
+                  {disciplineSummary.pendingHomeworkCount > 0
+                    ? ` · ค้าง ${disciplineSummary.pendingHomeworkCount} ชิ้น`
+                    : ' · ครบทุกชิ้น!'}
+                </span>
+              </div>
+              {disciplineSummary.homeworkBonusLocked && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">
+                    เคลียร์งานค้าง ({disciplineSummary.pendingHomeworkTitles.join(', ')}) เพื่อรับเมล็ดชุดพิเศษ
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-card-subtle)] px-3 py-2.5">
+              <span className="text-[var(--color-text-body)]">3. ความประพฤติ & จิตอาสา</span>
+              <span className="font-bold text-violet-600 dark:text-violet-400 tabular-nums">
+                ความดี +{disciplineSummary.totalMeritPoints} แต้ม
+                {weedCount > 0 ? ` · วัชพืช ${weedCount} ช่อง` : ''}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleClaimDisciplineChest}
+            className={`w-full min-h-[44px] px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer transition ${
+              disciplineSummary.hasAnythingToClaim
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)]'
+            }`}
+          >
+            <Gift className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              {disciplineSummary.hasAnythingToClaim
+                ? `เปิดรับเสบียง (+${disciplineSummary.claimableWater}💧 +${disciplineSummary.claimableDailyFertilizer}🌱 +${disciplineSummary.claimableFertilizer}✨ +${disciplineSummary.claimableStars}★)`
+                : 'รับเสบียงล่าสุดครบแล้ว (เช็กชื่อ/ส่งงานเพิ่มเพื่อรับใหม่)'}
+            </span>
+          </button>
+        </div>
+      </BaseModal>
+
+      {/* MODAL 1: Classroom Marketplace (rewardItems), Truck Orders, Craft Workshop, Roadside Shop, Seed Shop & Barn */}
       <BaseModal
         isOpen={activeModal === 'market'}
         onClose={() => setActiveModal(null)}
         maxWidthClass="max-w-3xl"
-        title={lang === 'th' ? 'ตลาดเกษตร รถส่งของ & โรงงานแปรรูป' : 'Farm Market, Truck & Workshop'}
+        title={lang === 'th' ? 'ตลาดกลางห้องเรียน · รถส่งของ & โรงงาน' : 'Classroom Marketplace & Workshop'}
         subtitle={
           lang === 'th'
-            ? `เหรียญฟาร์มของคุณ: ${farmState.coins} 🪙${sellMultiplier > 1 ? ` · โบนัสเบเกอรี่ +${Math.round((sellMultiplier - 1) * 100)}%` : ''}`
-            : `Coins: ${farmState.coins}`
+            ? `เหรียญฟาร์ม: ${farmState.coins} 🪙 · เพชรแลกรางวัล: ${playerGems} 💎${sellMultiplier > 1 ? ` · โบนัสเบเกอรี่ +${Math.round((sellMultiplier - 1) * 100)}%` : ''}`
+            : `Coins: ${farmState.coins} · Gems: ${playerGems}`
         }
       >
         <div className="space-y-4">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-[var(--color-border)] pb-2">
             {(
               [
+                { id: 'marketplace', label: `ตลาดกลางห้องเรียน (${rewardItems.length})` },
                 { id: 'orders', label: 'รถส่งออเดอร์' },
                 { id: 'craft', label: `แปรรูป & ปศุสัตว์ (${totalGoodsItems})` },
                 { id: 'roadside', label: `แผงริมทาง (${activeRoadsideCount}/6)` },
@@ -1699,6 +1793,116 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             ))}
           </div>
 
+          {marketSubTab === 'marketplace' && (
+            <div className="space-y-4 max-h-[62vh] overflow-y-auto pr-1">
+              {/* Wallet Exchange Banner */}
+              <div className="rounded-2xl border border-amber-300/70 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-black text-[var(--color-text-title)]">
+                    นำผลผลิตในฟาร์มมาขาย แลกเพชร 💎 และรับไอเทมรางวัลของคุณครู
+                  </p>
+                  <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                    มี {farmState.coins} 🪙 · {playerGems} 💎 · ผลผลิตในยุ้งฉาง {totalBarnItems} ชิ้น
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleExchangeCoinsForGems(50, 10)}
+                    disabled={farmState.coins < 50}
+                    className="min-h-[40px] px-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:opacity-45 text-white text-xs font-bold whitespace-nowrap cursor-pointer transition"
+                  >
+                    แลก 50🪙 → +10💎
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal('visitors')}
+                    className="min-h-[40px] px-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold whitespace-nowrap cursor-pointer transition"
+                  >
+                    ออเดอร์ชาวบ้าน ({farmState.visitorQueue.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Crop Sell Strip */}
+              {totalBarnItems > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-[var(--color-text-title)]">ขายพืชผลเข้าตลาดกลางทันที</p>
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {CROP_CATALOG.filter((c) => (farmState.barn[c.id] || 0) > 0).map((crop) => {
+                      const qty = farmState.barn[crop.id] || 0;
+                      const price = Math.round(crop.sellPrice * sellMultiplier);
+                      return (
+                        <button
+                          key={crop.id}
+                          type="button"
+                          onClick={() => handleSellBarn(crop.id)}
+                          className="min-h-[40px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer tabular-nums"
+                        >
+                          ขาย {crop.nameTh} (มี {qty}) +{price}🪙
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Teacher RewardItems Catalog */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black text-[var(--color-text-title)]">
+                    คลังไอเทมรางวัลของคุณครู ({rewardItems.length})
+                  </p>
+                  <span className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 tabular-nums">
+                    เพชรของคุณ: {playerGems} 💎
+                  </span>
+                </div>
+                {rewardItems.length === 0 ? (
+                  <p className="text-xs text-[var(--color-text-muted)] text-center py-6 rounded-xl bg-[var(--color-card-subtle)]">
+                    ยังไม่มีรายการรางวัลในคลังของคุณครู
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {rewardItems.map((item) => {
+                      const canAfford = playerGems >= item.costGems && item.stock > 0;
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 flex flex-col justify-between gap-2.5"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-bold text-[var(--color-text-title)] truncate">{item.titleTh}</p>
+                              <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 text-[11px] font-black tabular-nums shrink-0">
+                                {item.costGems} 💎
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2">{item.descriptionTh}</p>
+                            <p className="text-[11px] font-semibold text-[var(--color-text-body)] tabular-nums">
+                              คงเหลือ {item.stock} ชิ้น
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!canAfford}
+                            onClick={() => handleRedeemClassroomReward(item)}
+                            className="w-full min-h-[38px] px-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold whitespace-nowrap cursor-pointer transition"
+                          >
+                            {item.stock <= 0
+                              ? 'หมดสต็อก'
+                              : playerGems < item.costGems
+                                ? `ขาดอีก ${item.costGems - playerGems} 💎`
+                                : `แลกรางวัลครู (-${item.costGems} 💎)`}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {marketSubTab === 'orders' && (
             <div className="space-y-2.5">
               {farmState.marketOrders.map((order) => {
@@ -1719,7 +1923,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                       <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
                         ต้องการ {crop.nameTh} {order.quantity} (มี {ownedCrop})
                         {prod && order.productQty ? ` + ${prod.nameTh} ${order.productQty} (มี ${ownedProd})` : ''}
-                        {' '}· รางวัล +{order.rewardCoins}🪙 +1⭐ +{order.rewardGems} Gems
+                        {' '}· รางวัล +{order.rewardCoins}🪙 +1⭐ +{order.rewardGems} 💎
                       </p>
                     </div>
                     <button
@@ -2226,30 +2430,30 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         isOpen={activeModal === 'guide'}
         onClose={() => setActiveModal(null)}
         maxWidthClass="max-w-lg"
-        title={lang === 'th' ? 'วิธีเล่นฟาร์มโรงเรียนแสนสนุก' : 'How to Play School Farm & Town'}
+        title={lang === 'th' ? 'วิธีเล่นฟาร์มโรงเรียน (สไตล์ Hay Day)' : 'How to Play School Farm & Town'}
       >
         <div className="space-y-3 text-xs text-[var(--color-text-body)] leading-relaxed">
           <div className="rounded-xl bg-[var(--color-card-subtle)] p-3 space-y-1">
-            <p className="font-bold text-[var(--color-text-title)]">1. วินัยเรียนจริง = ทรัพยากรในฟาร์ม</p>
-            <p>• เช็กชื่อมาเรียนตรงเวลา: รับบัวรดน้ำ 💧 + ปุ๋ยวัน 🌱 (มาติดกัน 3 วันขึ้นไปได้ปุ๋ยทองคำ ×2 ✨ · มาสาย/ขาดเรียนไม่มีโบนัสฟรี)</p>
-            <p>• ส่งการบ้านครบ: ปลดล็อกเมล็ดพันธุ์พิเศษ & พิมพ์เขียวสิ่งปลูกสร้าง (หากมีงานค้างจะล็อกกล่องชุดพิเศษไว้)</p>
-            <p>• คะแนนความประพฤติ: แต้มความดีให้ดาวเมือง ⭐ ไว้อัปเกรด/ขยายเมืองเป็น 8×8 ส่วนคะแนนหักจะเกิดวัชพืชหรือแมลงในแปลง</p>
+            <p className="font-bold text-[var(--color-text-title)]">1. วินัยเรียนจริง = พลังงาน & ปุ๋ยทองคำ ×2</p>
+            <p>• เช็กชื่อมาเรียนตรงเวลา: รับบัวรดน้ำ 💧 + ปุ๋ยวัน 🌱 (มาต่อเนื่องเกิน 5 วันรับปุ๋ยทองคำเพิ่มความเร็วโตของพืช ×2!)</p>
+            <p>• ส่งการบ้านครบ: ปลดล็อกเมล็ดพันธุ์พิเศษ & พิมพ์เขียวสิ่งปลูกสร้าง</p>
+            <p>• คะแนนความประพฤติ: แต้มความดีให้ดาวเมือง ⭐ ไว้อัปเกรด/ขยายเมืองเป็น 8×8 ส่วนคะแนนหักจะเกิดวัชพืชในแปลง</p>
           </div>
           <div className="rounded-xl bg-[var(--color-card-subtle)] p-3 space-y-1">
-            <p className="font-bold text-[var(--color-text-title)]">2. ทำฟาร์ม แปรรูปสินค้า & ค้าขายสไตล์ Hay Day</p>
-            <p>• แตะที่เล้าไก่ คอกวัว คอกแกะ ซุ้มน้ำผลไม้ หรือเบเกอรี่ เพื่อผลิตไข่ไก่ นมสด ขนแกะ ขนมปัง และเค้ก</p>
-            <p>• ส่งสินค้าให้รถบรรทุกตลาด คุยขายให้ชาวบ้านหน้าฟาร์ม วางขายที่แผงริมทาง และแวะเยี่ยมช่วยรดน้ำฟาร์มเพื่อนร่วมห้องได้</p>
+            <p className="font-bold text-[var(--color-text-title)]">2. ตลาดกลางห้องเรียน & ออเดอร์ชาวบ้านรายวัน</p>
+            <p>• ขายผลผลิตให้ออเดอร์ชาวบ้านรายวัน (จำกัดโควตาต่อวัน) เพื่อรับเหรียญ 🪙, XP และเพชร 💎</p>
+            <p>• เปิด &quot;ตลาดกลางห้องเรียน&quot; เพื่อนำเพชรและเหรียญฟาร์มไปแลกไอเทมรางวัลของคุณครูได้เลย</p>
           </div>
         </div>
       </BaseModal>
 
-      {/* MODAL 5: Hay Day Farm NPC Visitors */}
+      {/* MODAL 5: Daily NPC Farm Visitors with Per-Day Quotas */}
       <BaseModal
         isOpen={activeModal === 'visitors'}
         onClose={() => setActiveModal(null)}
         maxWidthClass="max-w-xl"
-        title={lang === 'th' ? 'ชาวบ้านผู้มาเยือนฟาร์ม' : 'Farm Visitors'}
-        subtitle={lang === 'th' ? 'ขายผลผลิตหรือสินค้าแปรรูปให้เพื่อนบ้านและคุณครูเพื่อรับเหรียญและ XP พิเศษ' : 'Sell produce directly to town visitors'}
+        title={lang === 'th' ? 'ออเดอร์รายวันของชาวบ้าน (NPC)' : 'Daily NPC Villager Orders'}
+        subtitle={lang === 'th' ? 'ขายผลผลิตตามโควตาความต้องการต่อวัน เพื่อรับเหรียญ XP และเพชรแลกรางวัลครู' : 'Serve daily NPC villager quotas for coins, XP & Gems'}
       >
         <div className="space-y-3">
           {farmState.visitorQueue.map((vis) => {
@@ -2261,7 +2465,9 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               vis.itemKind === 'crop'
                 ? CROP_MAP[vis.itemId as CropId]?.nameTh
                 : PRODUCT_MAP[vis.itemId as ProductId]?.nameTh;
-            const ready = have >= vis.quantity;
+            const quota = getNpcDailyQuotaStatus(farmState, vis.npcId, todayDate, vis.dailyQuotaLimit || 3);
+            const ready = have >= vis.quantity && quota.remaining > 0;
+            const gemGain = vis.rewardGems ?? 2;
             return (
               <div
                 key={vis.id}
@@ -2272,11 +2478,19 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-black text-[var(--color-text-title)] truncate">{vis.nameTh}</p>
-                      <span className="text-[11px] font-semibold text-[var(--color-text-muted)] shrink-0">{vis.roleTh}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 tabular-nums ${
+                          quota.remaining > 0
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
+                        }`}
+                      >
+                        โควตาวันนี้: เหลือ {quota.remaining}/{quota.limit}
+                      </span>
                     </div>
                     <p className="text-xs text-[var(--color-text-body)]">“{vis.dialogueTh}”</p>
                     <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 tabular-nums pt-0.5">
-                      ขอซื้อ: {itemName} {vis.quantity} ชิ้น (มีอยู่ {have}) · ให้ +{vis.rewardCoins}🪙 +{vis.rewardXp} XP
+                      ขอซื้อ: {itemName} {vis.quantity} ชิ้น (มีอยู่ {have}) · ให้ +{vis.rewardCoins}🪙 +{vis.rewardXp} XP +{gemGain}💎
                     </p>
                   </div>
                 </div>
@@ -2294,7 +2508,11 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                     onClick={() => handleFulfillVisitor(vis.id)}
                     className="min-h-[38px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer transition"
                   >
-                    {ready ? `ขายให้ (+${vis.rewardCoins}🪙)` : 'ของยังไม่พอ'}
+                    {quota.remaining <= 0
+                      ? 'ครบโควตาวันนี้แล้ว'
+                      : have >= vis.quantity
+                        ? `ขายให้ (+${vis.rewardCoins}🪙 +${gemGain}💎)`
+                        : 'ของยังไม่พอ'}
                   </button>
                 </div>
               </div>

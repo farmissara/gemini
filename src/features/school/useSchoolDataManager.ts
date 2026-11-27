@@ -103,7 +103,16 @@ import {
 import {
   cleanupStudentCampusData,
   hydrateCampusDataFromSupabase,
+  loadSchoolFarmState,
+  saveSchoolFarmState,
 } from '../../lib/campusDataStore';
+import {
+  applyAttendanceStreakGoldenBonus,
+  computeStudentPresentStreak,
+  normalizeFarmState,
+  type SchoolFarmState,
+} from '../../lib/schoolFarmEngine';
+export { computeStudentPresentStreak };
 import { hydrateMoeQualitativeFromSupabase } from '../../lib/moeQualitativeStore';
 import { clearSchoolSnapshotsForUser } from '../../lib/offlineSchoolCache';
 import { hydrateSchoolRegistryFromSupabase } from '../../lib/studentRegistryStore';
@@ -178,6 +187,7 @@ import {
   writePortfolioItemsCache,
 } from '../../services/storage/localStorageService';
 import { normalizeTimetableAcademicYear } from './useSchoolScope';
+
 
 type CoreSyncRows = {
   students: Student[];
@@ -2318,20 +2328,82 @@ export function useSchoolDataManager({
     }
 
     if (!isCheckOut && (status === 'present' || status === 'late')) {
+      const candidateIds = new Set<string>(
+        [
+          studentId,
+          st?.id,
+          st?.studentIdNumber,
+          isCurrentActor ? currentUser?.id : undefined,
+          isCurrentActor ? currentUser?.studentRecordId : undefined,
+        ].filter((v): v is string => Boolean(v))
+      );
+      const recordStreak = status === 'present'
+        ? computeStudentPresentStreak(attendance, candidateIds, [todayStr])
+        : 0;
+
+      const matchedScore = playerScores.find(
+        (p) =>
+          p.studentId === studentId ||
+          p.userId === studentId ||
+          (st && (p.studentId === st.id || p.userId === st.id))
+      );
+      const resolvedStreak =
+        status === 'present'
+          ? Math.max(recordStreak, (matchedScore?.attendanceStreak ?? matchedScore?.streak ?? 0) + 1)
+          : (matchedScore?.attendanceStreak ?? matchedScore?.streak ?? 0);
+
       setPlayerScores((prev) =>
         prev.map((p) => {
-          const isMatch = p.studentId === studentId || p.userId === studentId;
+          const isMatch =
+            p.studentId === studentId ||
+            p.userId === studentId ||
+            (st && (p.studentId === st.id || p.userId === st.id));
           if (!isMatch) return p;
           const isPresent = status === 'present';
           return {
             ...p,
             attendanceDays: (p.attendanceDays ?? 0) + 1,
-            attendanceStreak: isPresent ? (p.attendanceStreak ?? p.streak) + 1 : p.attendanceStreak ?? p.streak,
+            attendanceStreak: isPresent
+              ? Math.max(recordStreak, (p.attendanceStreak ?? p.streak) + 1)
+              : p.attendanceStreak ?? p.streak,
             exp: p.exp + (isPresent ? 35 : 15),
             gems: p.gems + (isPresent ? 5 : 2),
           };
         })
       );
+
+      if (status === 'present' && resolvedStreak > 5 && activeSchool.id) {
+        const farmTargetIds = Array.from(
+          new Set(
+            [
+              matchedScore?.userId,
+              isCurrentActor && currentUser?.id ? currentUser.id : undefined,
+              !matchedScore?.userId && !(isCurrentActor && currentUser?.id) ? st?.id || studentId : undefined,
+            ].filter((v): v is string => Boolean(v))
+          )
+        );
+        let grantedAny = false;
+        for (const farmUserId of farmTargetIds) {
+          const rawFarm = loadSchoolFarmState<Partial<SchoolFarmState>>(activeSchool.id, farmUserId);
+          const normalized = normalizeFarmState(rawFarm, {
+            schoolId: activeSchool.id,
+            userId: farmUserId,
+            studentId: st?.id || studentId,
+            ownerName: personName,
+            ownerRoom: st ? `${st.gradeLevel} ${st.room}` : (extra?.userDepartmentOrRoom || tc?.department),
+          });
+          const bonusRes = applyAttendanceStreakGoldenBonus(normalized, resolvedStreak, todayStr);
+          saveSchoolFarmState(activeSchool.id, farmUserId, bonusRes.state, st?.id || studentId);
+          if (bonusRes.granted) grantedAny = true;
+        }
+        if (grantedAny) {
+          emitAppToast({
+            title: '✨ ปลดล็อกโบนัสปุ๋ยทองคำฟาร์ม (โตไว ×2)!',
+            message: `${personName} เช็คชื่อตรงเวลาต่อเนื่อง ${resolvedStreak} วัน รับปุ๋ยทองคำ +2 ถุงเข้าฐานข้อมูลฟาร์มแล้ว`,
+            tone: 'success',
+          });
+        }
+      }
     }
   };
 
@@ -2342,31 +2414,87 @@ export function useSchoolDataManager({
       schoolId: rec.schoolId || activeSchool.id,
     }));
 
-    setAttendance((prev) => [...taggedRecords, ...prev]);
+    const combinedAttendance = [...taggedRecords, ...attendance];
+    setAttendance(combinedAttendance);
 
-    const bonusByStudent = new Map<string, { present: number; late: number }>();
+    const bonusByStudent = new Map<string, { present: number; late: number; latestPresentDate: string }>();
     for (const rec of taggedRecords) {
       if (rec.recordType === 'check_out') continue;
       if (rec.status !== 'present' && rec.status !== 'late') continue;
-      const entry = bonusByStudent.get(rec.studentId) || { present: 0, late: 0 };
-      if (rec.status === 'present') entry.present += 1;
-      else entry.late += 1;
+      const entry = bonusByStudent.get(rec.studentId) || {
+        present: 0,
+        late: 0,
+        latestPresentDate: '',
+      };
+      if (rec.status === 'present') {
+        entry.present += 1;
+        if (!entry.latestPresentDate || rec.date > entry.latestPresentDate) {
+          entry.latestPresentDate = rec.date;
+        }
+      } else {
+        entry.late += 1;
+      }
       bonusByStudent.set(rec.studentId, entry);
     }
 
     if (bonusByStudent.size > 0) {
+      const updatedStreaks = new Map<string, number>();
+      for (const [sid, bonus] of bonusByStudent.entries()) {
+        if (bonus.present <= 0) continue;
+        const st = activeSchoolStudents.find((s) => s.id === sid || s.studentIdNumber === sid);
+        const candidateIds = new Set<string>(
+          [sid, st?.id, st?.studentIdNumber].filter((v): v is string => Boolean(v))
+        );
+        const recordStreak = computeStudentPresentStreak(combinedAttendance, candidateIds);
+        const matchedScore = playerScores.find(
+          (p) =>
+            p.studentId === sid ||
+            p.userId === sid ||
+            (st && (p.studentId === st.id || p.userId === st.id))
+        );
+        const resolvedStreak = Math.max(
+          recordStreak,
+          (matchedScore?.attendanceStreak ?? matchedScore?.streak ?? 0) + bonus.present
+        );
+        updatedStreaks.set(sid, resolvedStreak);
+
+        if (resolvedStreak > 5 && activeSchool.id) {
+          const farmUserId = matchedScore?.userId || st?.id || sid;
+          const rawFarm = loadSchoolFarmState<Partial<SchoolFarmState>>(activeSchool.id, farmUserId);
+          const ownerName = st ? `${st.firstNameTh} ${st.lastNameTh}` : 'นักเรียน';
+          const normalized = normalizeFarmState(rawFarm, {
+            schoolId: activeSchool.id,
+            userId: farmUserId,
+            studentId: st?.id || sid,
+            ownerName,
+            ownerRoom: st ? `${st.gradeLevel} ${st.room}` : undefined,
+          });
+          const bonusRes = applyAttendanceStreakGoldenBonus(
+            normalized,
+            resolvedStreak,
+            bonus.latestPresentDate || getLocalDateString()
+          );
+          saveSchoolFarmState(activeSchool.id, farmUserId, bonusRes.state, st?.id || sid);
+        }
+      }
+
       setPlayerScores((prev) =>
         prev.map((p) => {
-          const bonus =
+          const matchedEntry =
             bonusByStudent.get(p.studentId || '') ||
             bonusByStudent.get(p.userId);
-          if (!bonus) return p;
+          if (!matchedEntry) return p;
+          const streakKey = p.studentId && updatedStreaks.has(p.studentId) ? p.studentId : p.userId;
+          const resolved = updatedStreaks.get(streakKey);
           return {
             ...p,
-            attendanceDays: (p.attendanceDays ?? 0) + bonus.present + bonus.late,
-            attendanceStreak: (p.attendanceStreak ?? p.streak) + bonus.present,
-            exp: p.exp + bonus.present * 35 + bonus.late * 15,
-            gems: p.gems + bonus.present * 5 + bonus.late * 2,
+            attendanceDays: (p.attendanceDays ?? 0) + matchedEntry.present + matchedEntry.late,
+            attendanceStreak:
+              resolved !== undefined
+                ? resolved
+                : (p.attendanceStreak ?? p.streak) + matchedEntry.present,
+            exp: p.exp + matchedEntry.present * 35 + matchedEntry.late * 15,
+            gems: p.gems + matchedEntry.present * 5 + matchedEntry.late * 2,
           };
         })
       );

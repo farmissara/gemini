@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyAttendanceStreakGoldenBonus,
   applyDailyFertilizerTile,
   applyQuizBoostReward,
   buyFromNeighborRoadsideShop,
@@ -10,7 +11,9 @@ import {
   clearWeedOnTile,
   collectBuildingYield,
   computeDisciplineChestSummary,
+  computeStudentPresentStreak,
   constructBuildingOnTile,
+  convertFarmCoinsToGems,
   craftProductOnFarm,
   createInitialFarmState,
   dismissVisitorRequest,
@@ -19,6 +22,7 @@ import {
   fulfillMarketOrder,
   fulfillVisitorRequest,
   getFarmGridSize,
+  getNpcDailyQuotaStatus,
   harvestTile,
   helpNeighborFarm,
   listItemInRoadsideShop,
@@ -508,4 +512,150 @@ describe('schoolFarmEngine', () => {
     assert.equal(trade.sellerState.coins, state.coins + 60);
     assert.equal(trade.sellerState.roadsideShop[0].sold, true);
   });
+
+  it('grants Golden Fertilizer (2x crop growth speed) when attendance streak exceeds 5 days', () => {
+    let state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-streak',
+      studentId: 'stu-1',
+      ownerName: 'มะลิ',
+    });
+
+    const fiveDaysRecords: AttendanceRecord[] = ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27'].map(
+      (date, i) => ({
+        id: `att-s-${i}`,
+        studentId: 'stu-1',
+        date,
+        time: '07:45:00',
+        status: 'present',
+        checkinMethod: 'qr_scanner',
+      })
+    );
+    const ids = new Set(['stu-1']);
+    assert.equal(computeStudentPresentStreak(fiveDaysRecords, ids), 5);
+
+    // 5 days exactly does NOT grant >5-day Golden Fertilizer bonus
+    const noBonus = applyAttendanceStreakGoldenBonus(state, 5, '2026-11-27');
+    assert.equal(noBonus.granted, false);
+    assert.equal(noBonus.state.goldenFertilizerStatus, undefined);
+
+    // 6 consecutive days (> 5) grants +2 Golden Fertilizer & activates 2x speed
+    const sixDaysRecords: AttendanceRecord[] = [
+      {
+        id: 'att-s-prev',
+        studentId: 'stu-1',
+        date: '2026-11-20', // Friday before Monday 2026-11-23 (weekend gap = 3 days)
+        time: '07:45:00',
+        status: 'present',
+        checkinMethod: 'qr_scanner',
+      },
+      ...fiveDaysRecords,
+    ];
+    const streak6 = computeStudentPresentStreak(sixDaysRecords, ids);
+    assert.equal(streak6, 6);
+
+    const grantedBonus = applyAttendanceStreakGoldenBonus(state, streak6, '2026-11-27');
+    assert.equal(grantedBonus.granted, true);
+    state = grantedBonus.state;
+    assert.equal(state.fertilizer, 4);
+    assert.equal(state.goldenFertilizerStatus?.speedMultiplier, 2);
+
+    // Idempotent on the same date
+    const dupBonus = applyAttendanceStreakGoldenBonus(state, streak6, '2026-11-27');
+    assert.equal(dupBonus.granted, false);
+    assert.equal(dupBonus.state.fertilizer, 4);
+
+    // Watering a newly planted crop with 2x Golden Fertilizer advances growthProgress by +2 in 1 water
+    const planted = plantCropOnTile(state, 7, 'corn'); // corn needs 2 waters
+    assert.equal(planted.ok, true);
+    state = planted.state;
+    const watered = waterTile(state, 7);
+    assert.equal(watered.ok, true);
+    assert.equal(watered.matured, true);
+    assert.equal(watered.state.tiles[7].growthProgress, 2);
+  });
+
+  it('enforces daily NPC villager quotas (3/day) and supports coin-to-gem marketplace conversion', () => {
+    let state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-market',
+      ownerName: 'ต้นกล้า',
+    });
+    state = {
+      ...state,
+      barn: { ...state.barn, corn: 12 },
+    };
+
+    const today = '2026-11-27';
+    const nextDay = '2026-11-28';
+
+    // Serve aunt_malee up to her daily quota of 3 times on the same date
+    for (let i = 0; i < 3; i += 1) {
+      state = {
+        ...state,
+        visitorQueue: [
+          {
+            id: `vis-malee-${i}`,
+            npcId: 'aunt_malee',
+            nameTh: 'ป้ามาลี',
+            roleTh: 'ผู้มาเยือน',
+            dialogueTh: 'ขอซื้อข้าวโพดจ้า',
+            itemKind: 'crop',
+            itemId: 'corn',
+            quantity: 2,
+            rewardCoins: 76,
+            rewardXp: 24,
+            rewardGems: 2,
+            dailyQuotaLimit: 3,
+          },
+        ],
+      };
+      const res = fulfillVisitorRequest(state, `vis-malee-${i}`, today);
+      assert.equal(res.ok, true);
+      state = res.state;
+    }
+
+    const exhaustedQuota = getNpcDailyQuotaStatus(state, 'aunt_malee', today, 3);
+    assert.equal(exhaustedQuota.servedToday, 3);
+    assert.equal(exhaustedQuota.remaining, 0);
+
+    // 4th attempt on same day for aunt_malee is blocked
+    state = {
+      ...state,
+      visitorQueue: [
+        {
+          id: 'vis-malee-4',
+          npcId: 'aunt_malee',
+          nameTh: 'ป้ามาลี',
+          roleTh: 'ผู้มาเยือน',
+          dialogueTh: 'ขอซื้อเพิ่มอีกจ้า',
+          itemKind: 'crop',
+          itemId: 'corn',
+          quantity: 2,
+          rewardCoins: 76,
+          rewardXp: 24,
+          rewardGems: 2,
+          dailyQuotaLimit: 3,
+        },
+      ],
+    };
+    const blocked = fulfillVisitorRequest(state, 'vis-malee-4', today);
+    assert.equal(blocked.ok, false);
+
+    // Next day resets daily NPC quota cleanly
+    const freshQuota = getNpcDailyQuotaStatus(state, 'aunt_malee', nextDay, 3);
+    assert.equal(freshQuota.remaining, 3);
+    const nextDayServe = fulfillVisitorRequest(state, 'vis-malee-4', nextDay);
+    assert.equal(nextDayServe.ok, true);
+
+    // Convert 50 coins -> +10 gems
+    const convOk = convertFarmCoinsToGems(nextDayServe.state, 50, 10);
+    assert.equal(convOk.ok, true);
+    assert.equal(convOk.state.coins, nextDayServe.state.coins - 50);
+
+    // Block insufficient coins
+    const convFail = convertFarmCoinsToGems({ ...convOk.state, coins: 20 }, 50, 10);
+    assert.equal(convFail.ok, false);
+  });
 });
+

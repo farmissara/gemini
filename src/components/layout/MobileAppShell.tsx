@@ -358,7 +358,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         : true);
   const canPlayGames =
     (currentRole === 'student' ? schoolPermissions?.student_treasure_game !== false : true) &&
-    (isModuleEnabled('games') || isModuleEnabled('subject_labs') || isModuleEnabled('boss_raid'));
+    (isModuleEnabled('games') || isModuleEnabled('subject_labs') || isModuleEnabled('boss_raid') || isModuleEnabled('school_farm'));
   const canEditGradesMobile =
     currentRole === 'admin' ||
     currentRole === 'super_admin' ||

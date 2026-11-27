@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, LayoutDashboard, QrCode, User } from 'lucide-react';
+import { Briefcase, Gamepad2, LayoutDashboard, QrCode, User } from 'lucide-react';
 import type { AppProgramMode, SchoolFeatureFlags, UserRole } from '../../types';
 import type { NavTab } from '../../components/layout/Sidebar';
 import type { SchoolPermissionsState } from '../../lib/schoolPermissions';
@@ -80,12 +80,20 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           ? 'การบ้าน'
           : 'หน้าหลัก';
 
+  const canFarm = isTabEnabledByFeatureFlags('school_farm', activeFeatureFlags, currentRole);
+  const canGames = isTabEnabledByFeatureFlags('games', activeFeatureFlags, currentRole);
+  const showGamesSlot =
+    (currentRole !== 'student' || schoolPermissions.student_treasure_game !== false) &&
+    (canFarm || canGames);
+  const gamesTarget: NavTab = canFarm ? 'school_farm' : 'games';
+
   const isHomeActive = programMode === 'school_erp' && currentTab === 'dashboard';
   const isSlot2Active = programMode === 'school_erp' && currentTab === slot2Target;
   const isSlot3Active = programMode === 'school_erp' && currentTab === slot3Target;
+  const isGamesActive = currentTab === 'school_farm' || currentTab === 'games';
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)]/92 backdrop-blur-xl border-t border-[var(--color-border)] px-3 py-1.5 grid grid-cols-4 gap-1 shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.18)]">
+    <nav className={`md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-card)]/92 backdrop-blur-xl border-t border-[var(--color-border)] px-2 py-1.5 grid ${showGamesSlot ? 'grid-cols-5' : 'grid-cols-4'} gap-1 shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.18)]`}>
       <button
         type="button"
         onClick={() => {
@@ -139,6 +147,25 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </span>
         <span>{slot3Label}</span>
       </button>
+
+      {showGamesSlot && (
+        <button
+          type="button"
+          onClick={() => {
+            onNavigateTab(gamesTarget);
+          }}
+          className={`${getModuleTone(gamesTarget)} min-h-[46px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition cursor-pointer ${
+            isGamesActive
+              ? 'text-[var(--tone)] font-bold'
+              : 'text-[var(--color-text-muted)]'
+          }`}
+        >
+          <span className={`flex h-7 w-11 items-center justify-center rounded-xl transition-all ${isGamesActive ? 'tone-chip-solid' : ''}`}>
+            <FutureNavIcon tab={gamesTarget} fallback={Gamepad2} size={18} active={isGamesActive} />
+          </span>
+          <span>เกมส์</span>
+        </button>
+      )}
 
       <button
         type="button"

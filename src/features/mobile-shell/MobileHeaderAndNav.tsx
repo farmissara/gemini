@@ -582,14 +582,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   : activeTab === 'portfolio'
             : activeTab === 'executive';
 
+  const showGamesSlot = canPlayGames && currentRole !== 'super_admin';
   const slot4IsAnnouncements = canOpenAnnouncements;
   const slot4Active = slot4IsAnnouncements
     ? activeTab === 'announcements'
     : activeTab === 'profile';
+  const gamesActive = activeTab === 'games';
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-card)]/92 backdrop-blur-xl shadow-[0_-8px_28px_-14px_rgba(37,99,235,0.18)] px-2 py-1 safe-area-bottom">
-      <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
+      <div className={`max-w-md mx-auto grid ${showGamesSlot ? 'grid-cols-5' : 'grid-cols-4'} gap-1`}>
         {/* SLOT 1: HOME */}
         <button
           type="button"
@@ -744,11 +746,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               } else if (currentRole === 'student') {
                 if (canAccessHomework) setActiveTab('homework');
                 else if (canViewGradesStudent) setActiveTab('student_grades');
+                else if (canOpenPortfolio) setActiveTab('portfolio');
                 else if (canPlayGames) {
                   setActiveTab('games');
                   setActiveGameView('hub');
-                } else if (canOpenPortfolio) setActiveTab('portfolio');
-                else setActiveTab('profile');
+                } else setActiveTab('profile');
               } else {
                 setActiveTab('executive');
               }
@@ -797,8 +799,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                         ? 'เกรด'
                         : 'Grades'
                       : lang === 'th'
-                        ? 'เกมส์'
-                        : 'Games'
+                        ? 'ผลงาน'
+                        : 'Portfolio'
                   : lang === 'th'
                     ? 'ภาพรวม'
                     : 'Overview'}
@@ -806,7 +808,32 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </button>
         )}
 
-        {/* SLOT 4: ANNOUNCEMENTS / ACCOUNT */}
+        {/* SLOT 4: GAMES (Pinned directly on main bottom bar) */}
+        {showGamesSlot && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('games');
+              setActiveGameView('hub');
+            }}
+            className={`tone-5 min-h-[46px] flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+              gamesActive
+                ? 'bg-[var(--tone-soft)] text-[var(--tone)] font-bold'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)]'
+            }`}
+          >
+            <span
+              className={`inline-flex items-center justify-center w-8 h-6 rounded-lg mb-0.5 transition ${
+                gamesActive ? 'tone-chip-solid shadow-xs' : ''
+              }`}
+            >
+              <FutureNavIcon tab="games" size={18} active={gamesActive} />
+            </span>
+            <span className="text-[11px] truncate max-w-full">{lang === 'th' ? 'เกมส์' : 'Games'}</span>
+          </button>
+        )}
+
+        {/* SLOT 5: ANNOUNCEMENTS / ACCOUNT */}
         <button
           type="button"
           onClick={() => setActiveTab(slot4IsAnnouncements ? 'announcements' : 'profile')}
