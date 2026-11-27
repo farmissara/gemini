@@ -38,6 +38,7 @@ import { emitAppToast } from '../components/common/ToastProvider';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { StatusBadge, type StatusBadgeStatus } from '../components/common/StatusBadge';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface InfirmaryHealthViewProps {
   schoolId?: string;
@@ -220,17 +221,6 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             </button>
           </div>
 
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setShowPresetModal(true)}
-              className="btn-tool-tone px-2.5 py-1.5"
-            >
-              <Sliders className="w-3.5 h-3.5 tone-text" />
-              <span>ตั้งค่าเตียง/ยา</span>
-            </button>
-          )}
-
           <button
             type="button"
             onClick={() => {
@@ -243,6 +233,22 @@ export const InfirmaryHealthView: React.FC<InfirmaryHealthViewProps> = ({
             <Plus className="w-3.5 h-3.5" />
             <span>{lang === 'th' ? 'บันทึกการรักษา' : 'New Visit'}</span>
           </button>
+
+          {isAdmin && (
+            <TableActionMenu
+              size="md"
+              ariaLabel="ตั้งค่าห้องพยาบาล"
+              menuWidth={210}
+              items={[
+                {
+                  id: 'infirmary_presets',
+                  label: 'ตั้งค่าเตียง / รายการยา',
+                  icon: <Sliders className="w-3.5 h-3.5 tone-text" />,
+                  onClick: () => setShowPresetModal(true),
+                },
+              ]}
+            />
+          )}
         </div>
       </div>
 

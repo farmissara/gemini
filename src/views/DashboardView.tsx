@@ -100,6 +100,7 @@ import { AdminDashboardWorkspace } from '../components/admin/AdminDashboardWorks
 import { ObecLearningAreaExecutiveDashboard } from '../components/ObecLearningAreaExecutiveDashboard';
 import { Pp6ExecutiveQualityDashboard } from '../components/Pp6ExecutiveQualityDashboard';
 import type { SystemSettingsTab } from './SystemSettingsView';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 export type DashboardSubTab =
   | 'overview'
@@ -1079,41 +1080,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </select>
               );
             })()}
-            {isStaffUser && (
+            {isFocusMode && (
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="btn-icon-tool h-9 w-9 cursor-pointer"
-                title={lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF Report'}
-                aria-label={lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF Report'}
+                data-guide-id="dashboard-focus-toggle"
+                aria-pressed={true}
+                onClick={handleToggleFocus}
+                title={lang === 'th' ? 'ออกจากโหมดโฟกัส (Ctrl+Shift+F)' : 'Exit Focus Mode (Ctrl+Shift+F)'}
+                aria-label={lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode'}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0"
               >
-                <Printer className="w-4 h-4" />
+                <Focus className="w-3.5 h-3.5 shrink-0" />
+                <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>
               </button>
             )}
-            <button
-              type="button"
-              data-guide-id="dashboard-focus-toggle"
-              aria-pressed={isFocusMode}
-              onClick={handleToggleFocus}
-              title={
-                isFocusMode
-                  ? (lang === 'th' ? 'ออกจากโหมดโฟกัส (Ctrl+Shift+F)' : 'Exit Focus Mode (Ctrl+Shift+F)')
-                  : (lang === 'th' ? 'เปิดโหมดการทำงานแบบโฟกัส (Ctrl+Shift+F)' : 'Focus Mode (Ctrl+Shift+F)')
-              }
-              aria-label={
-                isFocusMode
-                  ? (lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode')
-                  : (lang === 'th' ? 'โหมดโฟกัส' : 'Focus Mode')
-              }
-              className={
-                isFocusMode
-                  ? 'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] type-label transition cursor-pointer whitespace-nowrap shrink-0'
-                  : 'btn-icon-tool h-9 w-9 cursor-pointer'
-              }
-            >
-              <Focus className={isFocusMode ? 'w-3.5 h-3.5 shrink-0' : 'w-4 h-4'} />
-              {isFocusMode && <span>{lang === 'th' ? 'ออกจากโฟกัส' : 'Exit Focus'}</span>}
-            </button>
+            <TableActionMenu
+              size="md"
+              dataGuideId={!isFocusMode ? 'dashboard-focus-toggle' : undefined}
+              ariaLabel={lang === 'th' ? 'ตัวเลือกแดชบอร์ด' : 'Dashboard options'}
+              menuWidth={230}
+              items={[
+                ...(isStaffUser
+                  ? [
+                      {
+                        id: 'print_dashboard_pdf',
+                        label: lang === 'th' ? 'พิมพ์รายงาน PDF' : 'Print PDF Report',
+                        icon: <Printer className="w-3.5 h-3.5" />,
+                        onClick: () => window.print(),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'toggle_focus_mode',
+                  label: isFocusMode
+                    ? (lang === 'th' ? 'ออกจากโหมดโฟกัส' : 'Exit Focus Mode')
+                    : (lang === 'th' ? 'เปิดโหมดโฟกัส (Ctrl+Shift+F)' : 'Focus Mode (Ctrl+Shift+F)'),
+                  icon: <Focus className="w-3.5 h-3.5 tone-text" />,
+                  variant: isFocusMode ? 'primary' : 'default',
+                  onClick: handleToggleFocus,
+                },
+              ]}
+            />
           </div>
         </div>
       </div>

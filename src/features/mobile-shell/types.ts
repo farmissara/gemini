@@ -187,6 +187,10 @@ export interface MobileAppShellProps {
   onUpdateTeacher?: (teacher: Teacher) => void;
   onUpdateOwnAvatar?: (avatarUrl: string) => void;
   timetableSlots?: TimetableSlot[];
+  allSchoolTimetableSlots?: TimetableSlot[];
+  allSchoolCourses?: Course[];
+  allSchoolTeachers?: Teacher[];
+  allSchoolStudents?: Student[];
   schoolPeriods?: SchoolPeriodTime[];
   gradingSystem?: GradingSystem;
   systemConfig?: SystemConfig;

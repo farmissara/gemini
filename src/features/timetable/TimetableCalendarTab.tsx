@@ -64,6 +64,7 @@ import {
 } from '../../lib/calendarNotes';
 import { formatSlotTeachersDisplay, getSlotTeachers } from '../../lib/timetableTeachers';
 import { getTimetableSlotCardStyle } from '../../lib/timetableColors';
+import { TableActionMenu } from '../../components/common/TableActionMenu';
 import { DAYS, formatTimeMinutes } from './types';
 import { SlotStaffStatusBadges } from './SlotStaffStatusBadges';
 
@@ -415,38 +416,6 @@ export const TimetableCalendarTab: React.FC<TimetableCalendarTabProps> = ({
             )}
 
             <div className="fn-group">
-              {isAdmin && (
-                <button
-                  type="button"
-                  disabled={isSyncingHolidays}
-                  onClick={() => void handleManualHolidaySync(calendarMonthCursor.year)}
-                  className="btn-tool-neutral px-2.5 py-1.5 disabled:opacity-60"
-                  title="ดึงวันหยุดราชการไทยล่าสุดจาก Public Holiday API"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
-                  <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุดราชการ'}</span>
-                </button>
-              )}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowAddHolidayForm((v) => !v)}
-                  className="btn-tool-neutral px-2.5 py-1.5"
-                >
-                  <CalendarDays className="h-3.5 w-3.5 text-rose-500" />
-                  <span>เพิ่มวันหยุดโรงเรียน</span>
-                </button>
-              )}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowImportExportModal(true)}
-                  className="btn-tool-neutral px-2.5 py-1.5"
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Export / Import</span>
-                </button>
-              )}
               <button
                 type="button"
                 onClick={openGoogleCalendarModal}
@@ -455,6 +424,37 @@ export const TimetableCalendarTab: React.FC<TimetableCalendarTabProps> = ({
                 <Calendar className="h-3.5 w-3.5" />
                 <span>เชื่อมต่อ Calendar (.ics)</span>
               </button>
+              {isAdmin && (
+                <TableActionMenu
+                  ariaLabel="ตัวเลือกปฏิทินและวันหยุด"
+                  size="md"
+                  menuWidth={240}
+                  items={[
+                    {
+                      id: 'sync_holidays',
+                      label: isSyncingHolidays ? 'กำลังซิงค์วันหยุด...' : 'ซิงค์วันหยุดราชการ',
+                      icon: <RefreshCw className={`h-3.5 w-3.5 ${isSyncingHolidays ? 'animate-spin' : ''}`} />,
+                      variant: 'danger',
+                      disabled: isSyncingHolidays,
+                      onClick: () => void handleManualHolidaySync(calendarMonthCursor.year),
+                    },
+                    {
+                      id: 'add_holiday',
+                      label: 'เพิ่มวันหยุดโรงเรียน',
+                      icon: <CalendarDays className="h-3.5 w-3.5" />,
+                      onClick: () => setShowAddHolidayForm((v) => !v),
+                    },
+                    {
+                      id: 'import_export',
+                      label: 'Export / Import',
+                      icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
+                      variant: 'success',
+                      dividerBefore: true,
+                      onClick: () => setShowImportExportModal(true),
+                    },
+                  ]}
+                />
+              )}
             </div>
           </div>
         </div>

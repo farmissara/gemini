@@ -96,23 +96,18 @@ export const TimetablePeriodRollcallTab: React.FC<TimetablePeriodRollcallTabProp
     <section className="flex-1 min-h-0 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm flex flex-col">
       <header className="shrink-0 border-b border-[var(--color-border)] px-3 py-2.5 space-y-2 bg-[var(--color-card)]">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0 flex flex-wrap items-center gap-2">
-            <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
-              <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>เช็กชื่อและสถานะการเข้าเรียนรายคาบ</span>
-            </h2>
-            <span className="text-[11px] text-[var(--color-text-muted)]">
-              ดึงสถานะเช็คอินเข้าโรงเรียนและใบลาอัตโนมัติ · บันทึกลงฐานข้อมูลเชื่อมรายงาน ปพ.5 / Report ทันที
-            </span>
-          </div>
+          <h2 className="flex items-center gap-1.5 text-sm font-bold text-[var(--color-text-title)]">
+            <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>เช็กชื่อรายคาบ</span>
+          </h2>
           <div className="flex flex-wrap items-center gap-2">
             <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-body)]">
-              <span>วันที่:</span>
+              <span>วันที่</span>
               <input
                 type="date"
                 value={rollcallDate}
                 onChange={(e) => setRollcallDate(e.target.value || todayBangkokDate)}
-                className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-bold text-[var(--color-text-title)] tabular-nums"
+                className="h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-bold text-[var(--color-text-title)] tabular-nums"
               />
             </label>
             {renderRoomAndTermControls()}
@@ -127,7 +122,7 @@ export const TimetablePeriodRollcallTab: React.FC<TimetablePeriodRollcallTabProp
         )}
 
         {daySlots.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
             {daySlots.map((slot) => {
               const isSelected = activeRollcallSlot?.id === slot.id;
               const slotSum = getSlotAttendanceAndLeaveSummary({
@@ -145,28 +140,24 @@ export const TimetablePeriodRollcallTab: React.FC<TimetablePeriodRollcallTabProp
                   key={slot.id}
                   type="button"
                   onClick={() => setRollcallSlotId(slot.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold cursor-pointer transition ${
+                  className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold cursor-pointer transition ${
                     isSelected
                       ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
                       : 'bg-[var(--color-card-subtle)] text-[var(--color-text-title)] border-[var(--color-border)] hover:border-[var(--color-primary)]'
                   }`}
                 >
-                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/15">
-                    คาบ {slot.periodNumber}
+                  <span className="font-mono text-[11px] opacity-90">คาบ {slot.periodNumber}</span>
+                  <span className="truncate max-w-[150px]">
+                    {slot.courseCode} {slot.courseTitleTh}
                   </span>
-                  <span className="truncate max-w-[160px]">
-                    {slot.courseCode} · {slot.courseTitleTh}
-                  </span>
-                  <span className="text-[10px] opacity-85">({slot.classRoom})</span>
+                  <span className="text-[11px] opacity-80">({slot.classRoom})</span>
                   {slotSum.periodCheckedTotal > 0 && (
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded tabular-nums ${
-                        isSelected
-                          ? 'bg-white/20 text-white'
-                          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
+                      className={`text-[11px] font-bold tabular-nums ${
+                        isSelected ? 'text-white/95' : 'text-emerald-700 dark:text-emerald-300'
                       }`}
                     >
-                      {slotSum.periodPresent + slotSum.periodLate}/{slotSum.expectedTotal}
+                      · {slotSum.periodPresent + slotSum.periodLate}/{slotSum.expectedTotal}
                     </span>
                   )}
                 </button>

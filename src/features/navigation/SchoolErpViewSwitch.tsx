@@ -130,6 +130,10 @@ export interface SchoolErpViewSwitchProps {
   viewTimetableSlots: TimetableSlot[];
   viewTimetableSlotsAllTerms: TimetableSlot[];
   schoolTimetableSlots: TimetableSlot[];
+  schoolTimetableSlotsAllTerms?: TimetableSlot[];
+  schoolStudents?: Student[];
+  schoolTeachers?: Teacher[];
+  schoolCourses?: Course[];
   timetableAcademicYear: string;
   timetableSemester: string;
   schoolPeriods: SchoolPeriodTime[];
@@ -893,11 +897,27 @@ export const SchoolErpViewSwitch: React.FC<SchoolErpViewSwitchProps> = (props) =
 
               {currentTab === 'timetable' && (
                 <TimetableScheduleView
-                  slots={viewTimetableSlotsAllTerms}
-                  courses={viewCourses}
+                  slots={
+                    currentRole === 'student' || currentRole === 'parent'
+                      ? viewTimetableSlotsAllTerms
+                      : (props.schoolTimetableSlotsAllTerms ?? viewTimetableSlotsAllTerms)
+                  }
+                  courses={
+                    currentRole === 'student' || currentRole === 'parent'
+                      ? viewCourses
+                      : (props.schoolCourses ?? viewCourses)
+                  }
                   assignments={viewAssignments}
-                  teachers={viewTeachers}
-                  students={viewStudents}
+                  teachers={
+                    currentRole === 'student' || currentRole === 'parent'
+                      ? viewTeachers
+                      : (props.schoolTeachers ?? viewTeachers)
+                  }
+                  students={
+                    currentRole === 'student' || currentRole === 'parent'
+                      ? viewStudents
+                      : (props.schoolStudents ?? viewStudents)
+                  }
                   onAddSlot={currentRole === 'teacher' ? undefined : props.onAddTimetableSlot}
                   onUpdateSlot={currentRole === 'teacher' ? undefined : props.onUpdateTimetableSlot}
                   onDeleteSlot={currentRole === 'teacher' ? undefined : props.onDeleteTimetableSlot}

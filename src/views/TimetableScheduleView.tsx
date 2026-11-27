@@ -15,6 +15,7 @@ import { sendEduVerseNotification } from '../lib/pushNotifications';
 import { getCourseType, inferCourseLearningArea } from '../lib/courseClassification';
 import { ModuleTourTrigger } from '../components/guide/GuideTourContext';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 import {
   addCalendarDays,
   formatCalendarDate,
@@ -195,7 +196,41 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
   ));
 
   // Main view mode: classroom schedule, period roll-call, calendar, attendance-hours criteria, staff workload summary, or substitute finder.
-  const [viewMode, setViewMode] = useState<TimetableViewMode>('classroom');
+  const timetableViewStorageKey = `eduverse:tt-view:${schoolId}:${currentUser?.id || currentRole}`;
+  const [viewMode, setViewMode] = useState<TimetableViewMode>(() => {
+    if (typeof window === 'undefined') return 'classroom';
+    try {
+      const saved = window.sessionStorage.getItem(timetableViewStorageKey) as TimetableViewMode | null;
+      const validModes: TimetableViewMode[] = [
+        'classroom',
+        'period_rollcall',
+        'calendar',
+        'hours_criteria',
+        'workload',
+        'substitute',
+      ];
+      if (saved && validModes.includes(saved)) {
+        if (
+          isPersonalViewer &&
+          (saved === 'workload' || saved === 'substitute' || saved === 'period_rollcall')
+        ) {
+          return 'classroom';
+        }
+        return saved;
+      }
+    } catch {
+      // Ignore storage errors
+    }
+    return 'classroom';
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(timetableViewStorageKey, viewMode);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [timetableViewStorageKey, viewMode]);
   const [rollcallDate, setRollcallDate] = useState<string>(() => getBangkokDateInputValue());
   const [rollcallSlotId, setRollcallSlotId] = useState<string>('');
   const [workloadSearchTerm, setWorkloadSearchTerm] = useState('');
@@ -1629,58 +1664,54 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
       );
     } else {
       setHoursTeacherFilter('all');
+      if (
+        viewMode === 'hours_criteria' &&
+        selectedClassRoom === ALL_CLASSROOMS &&
+        firstScheduledClassRoom
+      ) {
+        setSelectedClassRoom(firstScheduledClassRoom);
+      }
     }
+  };
+
+  const openAcademicPeriodEditorModal = () => {
+    setDraftAcademicYear(academicYear);
+    setDraftSemester(currentSemester);
+    setDraftSemesterOptions(semesterOptions.length > 0 ? semesterOptions : ['1', '2', 'Summer']);
+    setShowPeriodEditor(true);
   };
 
   const renderRoomAndTermControls = (showRoomFilter = true) => (
     <div className="flex flex-wrap items-center gap-2 print:hidden">
       {(currentRole === 'teacher' || hasTeacherTimetableMatch) && (
-        currentRole === 'admin' || currentRole === 'super_admin' ? (
-          <div
-            role="group"
-            aria-label="ขอบเขตวิชาตามผู้สอน"
-            className="seg-tab-group h-9"
-          >
-            <button
-              type="button"
-              data-active={!myCoursesOnly}
-              aria-pressed={!myCoursesOnly}
-              onClick={() => setTimetableTeacherScope(false)}
-              className="seg-tab-btn inline-flex items-center gap-1.5 text-xs"
-            >
-              <Users className="h-3.5 w-3.5" />
-              <span>ทั้งโรงเรียน</span>
-            </button>
-            <button
-              type="button"
-              data-active={myCoursesOnly}
-              aria-pressed={myCoursesOnly}
-              onClick={() => setTimetableTeacherScope(true)}
-              className="seg-tab-btn inline-flex items-center gap-1.5 text-xs"
-            >
-              <UserCheck className="h-3.5 w-3.5" />
-              <span>วิชาที่ฉันสอน</span>
-            </button>
-          </div>
-        ) : (
+        <div
+          role="group"
+          aria-label="ขอบเขตตารางสอน"
+          className="seg-tab-group h-9"
+        >
           <button
             type="button"
-            aria-pressed={myCoursesOnly}
-            data-active={myCoursesOnly}
-            onClick={() => setTimetableTeacherScope(!myCoursesOnly)}
-            className="btn-tool-neutral h-9 px-2.5 text-xs"
-            title={
-              myCoursesOnly
-                ? 'กำลังแสดงเฉพาะวิชาที่ฉันสอน คลิกเพื่อดูตารางทั้งโรงเรียน'
-                : 'กำลังแสดงตารางทั้งโรงเรียน คลิกเพื่อกรองเฉพาะวิชาที่ฉันสอน'
-            }
+            data-active={!myCoursesOnly}
+            aria-pressed={!myCoursesOnly}
+            onClick={() => setTimetableTeacherScope(false)}
+            className="seg-tab-btn inline-flex items-center gap-1.5 text-xs"
+            title="แสดงตารางสอนทั้งโรงเรียน"
           >
-            {myCoursesOnly
-              ? <UserCheck className="h-3.5 w-3.5 tone-text" />
-              : <Users className="h-3.5 w-3.5 tone-text" />}
-            <span>{myCoursesOnly ? 'วิชาที่ฉันสอน' : 'ทั้งโรงเรียน'}</span>
+            <Users className="h-3.5 w-3.5" />
+            <span>ทั้งโรงเรียน</span>
           </button>
-        )
+          <button
+            type="button"
+            data-active={myCoursesOnly}
+            aria-pressed={myCoursesOnly}
+            onClick={() => setTimetableTeacherScope(true)}
+            className="seg-tab-btn inline-flex items-center gap-1.5 text-xs"
+            title="แสดงเฉพาะคาบเรียนที่ฉันสอน"
+          >
+            <UserCheck className="h-3.5 w-3.5" />
+            <span>คาบฉัน</span>
+          </button>
+        </div>
       )}
 
       {showRoomFilter && (activeScheduleFilters ? (
@@ -1729,70 +1760,58 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
               );
             })}
           </select>
-          {isAdmin && isViewingCurrentTerm && (
-            showAddRoomInput ? (
-              <span className="inline-flex items-center gap-1">
-                <input
-                  type="text"
-                  value={newCustomRoomName}
-                  onChange={(e) => setNewCustomRoomName(e.target.value)}
-                  placeholder="เช่น ม.4/3"
-                  aria-label="ชื่อห้องเรียนใหม่"
-                  className="h-9 w-24 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const room = newCustomRoomName.trim();
-                    if (!room) return;
-                    if (roomOptions.some((existing) => isSameTimetableRoom(existing, room))) {
-                      setRoomOptionsError('มีชื่อห้องนี้อยู่แล้ว');
-                      return;
-                    }
-                    void (async () => {
-                      setIsSavingRoomOption(true);
-                      setRoomOptionsError(null);
-                      try {
-                        const nextOptions = [...roomOptions, room];
-                        await onUpdateRoomOptions?.(nextOptions);
-                        updatePresets({ roomOptions: nextOptions });
-                        hasManualRoomSelectionRef.current = true;
-                        setSelectedClassRoom(room);
-                        setActiveScheduleFilters(null);
-                        setNewCustomRoomName('');
-                        setShowAddRoomInput(false);
-                      } catch (error) {
-                        setRoomOptionsError(error instanceof Error ? error.message : 'บันทึกรายการห้องเรียนไม่สำเร็จ');
-                      } finally {
-                        setIsSavingRoomOption(false);
-                      }
-                    })();
-                  }}
-                  disabled={isSavingRoomOption}
-                  className="h-9 rounded-lg bg-[var(--color-primary)] px-2.5 text-xs font-semibold text-white disabled:opacity-50"
-                >
-                  เพิ่ม
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddRoomInput(false)}
-                  className="h-9 px-1.5 text-xs text-[var(--color-text-muted)]"
-                  aria-label="ยกเลิกเพิ่มห้อง"
-                >
-                  ✕
-                </button>
-              </span>
-            ) : (
+          {isAdmin && isViewingCurrentTerm && showAddRoomInput && (
+            <span className="inline-flex items-center gap-1">
+              <input
+                type="text"
+                value={newCustomRoomName}
+                onChange={(e) => setNewCustomRoomName(e.target.value)}
+                placeholder="เช่น ม.4/3"
+                aria-label="ชื่อห้องเรียนใหม่"
+                className="h-9 w-24 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-xs text-[var(--color-text-title)]"
+              />
               <button
                 type="button"
-                onClick={() => setShowAddRoomInput(true)}
-                className="btn-tool-neutral h-9 px-2.5 text-xs"
-                title="เพิ่มห้องเรียนใหม่"
+                onClick={() => {
+                  const room = newCustomRoomName.trim();
+                  if (!room) return;
+                  if (roomOptions.some((existing) => isSameTimetableRoom(existing, room))) {
+                    setRoomOptionsError('มีชื่อห้องนี้อยู่แล้ว');
+                    return;
+                  }
+                  void (async () => {
+                    setIsSavingRoomOption(true);
+                    setRoomOptionsError(null);
+                    try {
+                      const nextOptions = [...roomOptions, room];
+                      await onUpdateRoomOptions?.(nextOptions);
+                      updatePresets({ roomOptions: nextOptions });
+                      hasManualRoomSelectionRef.current = true;
+                      setSelectedClassRoom(room);
+                      setActiveScheduleFilters(null);
+                      setNewCustomRoomName('');
+                      setShowAddRoomInput(false);
+                    } catch (error) {
+                      setRoomOptionsError(error instanceof Error ? error.message : 'บันทึกรายการห้องเรียนไม่สำเร็จ');
+                    } finally {
+                      setIsSavingRoomOption(false);
+                    }
+                  })();
+                }}
+                disabled={isSavingRoomOption}
+                className="h-9 rounded-lg bg-[var(--color-primary)] px-2.5 text-xs font-semibold text-white disabled:opacity-50"
               >
-                <Plus className="h-3.5 w-3.5" />
-                <span>เพิ่มห้อง</span>
+                เพิ่ม
               </button>
-            )
+              <button
+                type="button"
+                onClick={() => setShowAddRoomInput(false)}
+                className="h-9 px-1.5 text-xs text-[var(--color-text-muted)]"
+                aria-label="ยกเลิกเพิ่มห้อง"
+              >
+                ✕
+              </button>
+            </span>
           )}
         </>
       ))}
@@ -1814,22 +1833,6 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
         <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 whitespace-nowrap px-1">
           ดูย้อนหลัง · อ่านอย่างเดียว
         </span>
-      )}
-      {onUpdateAcademicPeriod && isAdmin && (
-        <button
-          type="button"
-          onClick={() => {
-            setDraftAcademicYear(academicYear);
-            setDraftSemester(currentSemester);
-            setDraftSemesterOptions(semesterOptions.length > 0 ? semesterOptions : ['1', '2', 'Summer']);
-            setShowPeriodEditor(true);
-          }}
-          className="btn-tool-neutral h-9 px-2.5 text-xs"
-          title="แก้ไขปีการศึกษาและภาคเรียนปัจจุบันของโรงเรียน"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--color-primary-text)]" />
-          <span>ตั้งค่าเทอม</span>
-        </button>
       )}
       {showRoomFilter && roomOptionsError && <span role="alert" className="text-xs text-rose-700">{roomOptionsError}</span>}
     </div>
@@ -1901,7 +1904,7 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 className="seg-tab-btn"
               >
                 <Layers className="h-3.5 w-3.5 shrink-0" />
-                <span>ตารางห้อง</span>
+                <span>ตารางสอน</span>
               </button>
               {!isPersonalViewer && (
                 <button
@@ -1925,51 +1928,64 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
                 <span>ปฏิทิน</span>
               </button>
-              <button
-                type="button"
-                aria-pressed={viewMode === 'hours_criteria'}
-                data-active={viewMode === 'hours_criteria'}
-                onClick={() => handleViewModeChange('hours_criteria')}
-                className="seg-tab-btn"
-              >
-                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                <span>เวลาเรียน 80%</span>
-              </button>
-              {!isPersonalViewer && (
-                <>
-                  <button
-                    type="button"
-                    aria-pressed={viewMode === 'workload'}
-                    data-active={viewMode === 'workload'}
-                    onClick={() => handleViewModeChange('workload')}
-                    className="seg-tab-btn"
-                  >
-                    <Users className="h-3.5 w-3.5 shrink-0" />
-                    <span>ภาระงานครู</span>
-                    {(lowWorkloadCount > 0 || highWorkloadCount > 0) && (
-                      <span className="text-[11px] font-bold text-amber-600 dark:text-amber-300 tabular-nums">
-                        ({lowWorkloadCount + highWorkloadCount})
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={viewMode === 'substitute'}
-                    data-active={viewMode === 'substitute'}
-                    onClick={() => handleViewModeChange('substitute')}
-                    className="seg-tab-btn"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-                    <span>หาครูสอนแทน</span>
-                    {teacherLeavesToday.length > 0 && (
-                      <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                        ({teacherLeavesToday.length})
-                      </span>
-                    )}
-                  </button>
-                </>
+              {isPersonalViewer && (
+                <button
+                  type="button"
+                  aria-pressed={viewMode === 'hours_criteria'}
+                  data-active={viewMode === 'hours_criteria'}
+                  onClick={() => handleViewModeChange('hours_criteria')}
+                  className="seg-tab-btn"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                  <span>เวลาเรียน 80%</span>
+                </button>
               )}
             </nav>
+
+            {!isPersonalViewer && (
+              <TableActionMenu
+                ariaLabel="วิเคราะห์และจัดการตารางสอน"
+                triggerLabel={
+                  viewMode === 'hours_criteria'
+                    ? 'เวลาเรียน 80%'
+                    : viewMode === 'workload'
+                      ? 'ภาระงานครู'
+                      : viewMode === 'substitute'
+                        ? 'หาครูสอนแทน'
+                        : 'วิเคราะห์ & จัดการ'
+                }
+                triggerClassName={
+                  viewMode === 'hours_criteria' || viewMode === 'workload' || viewMode === 'substitute'
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
+                    : ''
+                }
+                size="md"
+                menuWidth={240}
+                items={[
+                  {
+                    id: 'hours_criteria',
+                    label: 'เกณฑ์เวลาเรียน 80% (ปพ.5)',
+                    icon: <ShieldCheck className="h-3.5 w-3.5" />,
+                    variant: viewMode === 'hours_criteria' ? 'primary' : 'default',
+                    onClick: () => handleViewModeChange('hours_criteria'),
+                  },
+                  {
+                    id: 'workload',
+                    label: `ภาระงานครู${lowWorkloadCount + highWorkloadCount > 0 ? ` (${lowWorkloadCount + highWorkloadCount})` : ''}`,
+                    icon: <Users className="h-3.5 w-3.5" />,
+                    variant: viewMode === 'workload' ? 'primary' : 'default',
+                    onClick: () => handleViewModeChange('workload'),
+                  },
+                  {
+                    id: 'substitute',
+                    label: `หาครูสอนแทน${teacherLeavesToday.length > 0 ? ` (${teacherLeavesToday.length})` : ''}`,
+                    icon: <RefreshCw className="h-3.5 w-3.5" />,
+                    variant: viewMode === 'substitute' ? 'primary' : teacherLeavesToday.length > 0 ? 'danger' : 'default',
+                    onClick: () => handleViewModeChange('substitute'),
+                  },
+                ]}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -2179,6 +2195,8 @@ export const TimetableScheduleView: React.FC<TimetableScheduleViewProps> = ({
           openAddSlotModal={openAddSlotModal}
           openScheduleSettings={openScheduleSettings}
           openPeriodSettingsModal={openPeriodSettingsModal}
+          onTriggerAddRoom={isAdmin && isViewingCurrentTerm ? () => setShowAddRoomInput(true) : undefined}
+          onOpenAcademicPeriodEditor={onUpdateAcademicPeriod && isAdmin ? openAcademicPeriodEditorModal : undefined}
           setShowImportExportModal={setShowImportExportModal}
           openGoogleCalendarModal={openGoogleCalendarModal}
           setCalendarLayoutMode={setCalendarLayoutMode}

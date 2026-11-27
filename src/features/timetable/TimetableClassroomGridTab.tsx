@@ -96,6 +96,8 @@ interface TimetableClassroomGridTabProps {
   openAddSlotModal: () => void;
   openScheduleSettings: () => void;
   openPeriodSettingsModal: () => void;
+  onTriggerAddRoom?: () => void;
+  onOpenAcademicPeriodEditor?: () => void;
   setShowImportExportModal: (show: boolean) => void;
   openGoogleCalendarModal: () => void;
   setCalendarLayoutMode: (mode: 'week' | 'month') => void;
@@ -164,6 +166,8 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
   openAddSlotModal,
   openScheduleSettings,
   openPeriodSettingsModal,
+  onTriggerAddRoom,
+  onOpenAcademicPeriodEditor,
   setShowImportExportModal,
   openGoogleCalendarModal,
   setCalendarLayoutMode,
@@ -283,7 +287,7 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
           </div>
         </div>
         <div className="print:hidden flex flex-wrap items-center justify-end gap-1.5">
-          {canUsePeriodCheckin && hasOpenPeriodCheckinHandler && (() => {
+          {(() => {
             const todayCandidates = activeSlots
               .filter((s) => s.dayOfWeek === todayDayKey)
               .slice()
@@ -297,181 +301,205 @@ export const TimetableClassroomGridTab: React.FC<TimetableClassroomGridTabProps>
               }).isActive
             );
             const targetSlot = activeSlotToday || todayCandidates[0] || activeSlots[0] || slots[0];
-            if (!targetSlot) return null;
-            const targetStatus = getSlotCheckStatusForDate(targetSlot, todayBangkokDate);
+            const showCheckinBtn = Boolean(canUsePeriodCheckin && hasOpenPeriodCheckinHandler && targetSlot);
+            const showAddBtn = Boolean(isViewingCurrentTerm && canManageTimetable);
+            const targetStatus = targetSlot ? getSlotCheckStatusForDate(targetSlot, todayBangkokDate) : null;
             const nextType: 'check_in' | 'check_out' =
-              targetStatus.hasCheckIn && !targetStatus.hasCheckOut ? 'check_out' : 'check_in';
+              targetStatus?.hasCheckIn && !targetStatus?.hasCheckOut ? 'check_out' : 'check_in';
+
             return (
-              <button
-                type="button"
-                onClick={() => triggerSlotCheckin(targetSlot, todayBangkokDate, nextType)}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white shadow-sm cursor-pointer transition ${
-                  activeSlotToday
-                    ? 'bg-rose-600 hover:bg-rose-700'
-                    : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
-                }`}
-              >
-                {nextType === 'check_out' ? (
-                  <LogOut className="h-3.5 w-3.5" />
-                ) : (
-                  <LogIn className="h-3.5 w-3.5" />
+              <>
+                {isLandscapeExpanded && (
+                  <button
+                    type="button"
+                    onClick={handleToggleLandscapeExpanded}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-primary)] bg-[var(--color-primary)] text-white px-2.5 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    <Minimize2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>{lang === 'th' ? 'ออกจากแนวนอน' : 'Exit Wide'}</span>
+                  </button>
                 )}
-                <span>
-                  {activeSlotToday
-                    ? `เช็คอินคาบ ${activeSlotToday.periodNumber} (ถึงเวลา)`
-                    : 'เช็คอิน/เอาท์รายคาบ'}
-                </span>
-              </button>
+
+                {showAddBtn ? (
+                  <button
+                    type="button"
+                    onClick={openAddSlotModal}
+                    className="btn-action-primary px-3 py-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>เพิ่มคาบ</span>
+                  </button>
+                ) : showCheckinBtn && targetSlot ? (
+                  <button
+                    type="button"
+                    onClick={() => triggerSlotCheckin(targetSlot, todayBangkokDate, nextType)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white shadow-sm cursor-pointer transition ${
+                      activeSlotToday
+                        ? 'bg-rose-600 hover:bg-rose-700'
+                        : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]'
+                    }`}
+                  >
+                    {nextType === 'check_out' ? (
+                      <LogOut className="h-3.5 w-3.5" />
+                    ) : (
+                      <LogIn className="h-3.5 w-3.5" />
+                    )}
+                    <span>
+                      {activeSlotToday
+                        ? `เช็คอินคาบ ${activeSlotToday.periodNumber} (ถึงเวลา)`
+                        : 'เช็คอิน/เอาท์รายคาบ'}
+                    </span>
+                  </button>
+                ) : null}
+
+                <TableActionMenu
+                  ariaLabel="เครื่องมือ & ส่งออกตารางสอน"
+                  size="md"
+                  menuWidth={260}
+                  items={[
+                    ...(showAddBtn && showCheckinBtn && targetSlot
+                      ? [
+                          {
+                            id: 'period_checkin_menu',
+                            label: activeSlotToday
+                              ? `เช็คอินคาบ ${activeSlotToday.periodNumber} (ถึงเวลา)`
+                              : 'เช็คอิน/เอาท์รายคาบ',
+                            icon: nextType === 'check_out' ? <LogOut className="h-3.5 w-3.5" /> : <LogIn className="h-3.5 w-3.5" />,
+                            variant: 'primary' as const,
+                            onClick: () => triggerSlotCheckin(targetSlot, todayBangkokDate, nextType),
+                          },
+                        ]
+                      : []),
+                    {
+                      id: 'schedule_settings',
+                      label: 'กรองหลายเงื่อนไข / ตั้งค่าการแสดง',
+                      icon: <SlidersHorizontal className="h-3.5 w-3.5" />,
+                      variant: 'primary',
+                      onClick: () => openScheduleSettings(),
+                    },
+                    {
+                      id: 'toggle_landscape',
+                      label: isLandscapeExpanded
+                        ? (lang === 'th' ? 'ออกจากมุมมองแนวนอน' : 'Exit Landscape')
+                        : (lang === 'th' ? 'มุมมองแนวนอนเต็มจอ' : 'Landscape Fullscreen'),
+                      icon: isLandscapeExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />,
+                      onClick: handleToggleLandscapeExpanded,
+                    },
+                    {
+                      id: 'print_a4',
+                      label: lang === 'th' ? 'พิมพ์ตารางเรียน A4 (แนวนอน)' : 'Print A4 Landscape',
+                      icon: <Printer className="h-3.5 w-3.5" />,
+                      onClick: () => printTimetableLandscape(),
+                    },
+                    ...(isViewingCurrentTerm && isAdmin
+                      ? [
+                          {
+                            id: 'period_settings',
+                            label: 'ตั้งเวลาคาบเรียนมาตรฐาน',
+                            icon: <Clock className="h-3.5 w-3.5" />,
+                            dividerBefore: true,
+                            onClick: () => openPeriodSettingsModal(),
+                          },
+                          ...(onTriggerAddRoom
+                            ? [
+                                {
+                                  id: 'add_room',
+                                  label: 'เพิ่มห้องเรียนใหม่',
+                                  icon: <Plus className="h-3.5 w-3.5" />,
+                                  onClick: onTriggerAddRoom,
+                                },
+                              ]
+                            : []),
+                          ...(onOpenAcademicPeriodEditor
+                            ? [
+                                {
+                                  id: 'edit_academic_period',
+                                  label: 'ตั้งค่าปีการศึกษา / เทอม',
+                                  icon: <Calendar className="h-3.5 w-3.5" />,
+                                  onClick: onOpenAcademicPeriodEditor,
+                                },
+                              ]
+                            : []),
+                        ]
+                      : []),
+                    ...(!isPersonalViewer
+                      ? [
+                          {
+                            id: 'import_export',
+                            label: 'Export / Import Excel & CSV',
+                            icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
+                            variant: 'success' as const,
+                            dividerBefore: true,
+                            onClick: () => setShowImportExportModal(true),
+                          },
+                        ]
+                      : []),
+                    {
+                      id: 'google_calendar',
+                      label: 'Google Calendar & ภาพหน้าจอมือถือ',
+                      icon: <Calendar className="h-3.5 w-3.5" />,
+                      onClick: () => openGoogleCalendarModal(),
+                    },
+                    ...(!isPersonalViewer
+                      ? ([
+                          {
+                            id: 'sync_holidays',
+                            label: isSyncingHolidays
+                              ? 'กำลังซิงค์วันหยุด...'
+                              : `ซิงค์วันหยุดราชการ (${currentBangkokYear + 543})`,
+                            icon: <RefreshCw className={`h-3.5 w-3.5 ${isSyncingHolidays ? 'animate-spin' : ''}`} />,
+                            variant: 'danger',
+                            dividerBefore: true,
+                            disabled: isSyncingHolidays,
+                            onClick: () => void handleManualHolidaySync(currentBangkokYear),
+                          },
+                          {
+                            id: 'holiday_calendar',
+                            label: `ปฏิทินวันหยุด (${yearHolidaysCount} วัน)`,
+                            icon: <CalendarDays className="h-3.5 w-3.5" />,
+                            onClick: () => {
+                              setCalendarLayoutMode('month');
+                              setViewMode('calendar');
+                            },
+                          },
+                          {
+                            id: 'test_checkin_notif',
+                            label: 'ทดสอบเริ่มคาบ & เช็คอิน',
+                            icon: <LogIn className="h-3.5 w-3.5" />,
+                            variant: 'success',
+                            dividerBefore: true,
+                            onClick: () =>
+                              sendEduVerseNotification({
+                                title: '[ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
+                                body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'}`,
+                                category: 'attendance',
+                                priority: 'urgent',
+                                schoolId,
+                                targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
+                              }),
+                          },
+                          {
+                            id: 'test_checkout_notif',
+                            label: 'ทดสอบหมดคาบ & เช็คเอาท์',
+                            icon: <LogOut className="h-3.5 w-3.5" />,
+                            variant: 'primary',
+                            onClick: () =>
+                              sendEduVerseNotification({
+                                title: '[ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
+                                body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาเช็คชื่อออก (Check-out)`,
+                                category: 'attendance',
+                                priority: 'normal',
+                                schoolId,
+                                targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
+                              }),
+                          },
+                        ] satisfies TableActionItem[])
+                      : []),
+                  ]}
+                />
+              </>
             );
           })()}
-          {isViewingCurrentTerm && canManageTimetable && (
-            <button
-              type="button"
-              onClick={openAddSlotModal}
-              className="btn-action-primary px-3 py-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>เพิ่มคาบ</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleToggleLandscapeExpanded}
-            aria-pressed={isLandscapeExpanded}
-            title={lang === 'th' ? 'แสดงตารางสอนแบบแนวนอนเต็มจอ' : 'Toggle full-width landscape view'}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-              isLandscapeExpanded
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-xs'
-                : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] hover:bg-[var(--color-card-subtle)]'
-            }`}
-          >
-            {isLandscapeExpanded ? (
-              <Minimize2 className="h-3.5 w-3.5 shrink-0" />
-            ) : (
-              <Maximize2 className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" />
-            )}
-            <span>
-              {isLandscapeExpanded
-                ? lang === 'th' ? 'ออกจากแนวนอน' : 'Exit Wide'
-                : lang === 'th' ? 'มุมมองแนวนอน' : 'Landscape'}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={printTimetableLandscape}
-            title={lang === 'th' ? 'พิมพ์ตารางสอนขนาด A4 แนวนอน' : 'Print A4 Landscape'}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] px-2.5 py-1.5 text-xs font-bold text-[var(--color-text-title)] transition cursor-pointer"
-          >
-            <Printer className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-text)]" />
-            <span>{lang === 'th' ? 'พิมพ์แนวนอน (A4)' : 'Print Landscape'}</span>
-          </button>
-
-          <TableActionMenu
-            ariaLabel="เครื่องมือ & ส่งออกตารางสอน"
-            triggerLabel="เครื่องมือ & ส่งออก"
-            triggerClassName="btn-tool-tone px-2.5 py-1.5"
-            menuWidth={260}
-            items={[
-              {
-                id: 'schedule_settings',
-                label: 'กรองหลายเงื่อนไข / ตั้งค่าการแสดง',
-                icon: <SlidersHorizontal className="h-3.5 w-3.5" />,
-                variant: 'primary',
-                onClick: () => openScheduleSettings(),
-              },
-              ...(isViewingCurrentTerm && isAdmin
-                ? [
-                    {
-                      id: 'period_settings',
-                      label: 'ตั้งเวลาคาบเรียนมาตรฐาน',
-                      icon: <Clock className="h-3.5 w-3.5" />,
-                      onClick: () => openPeriodSettingsModal(),
-                    },
-                  ]
-                : []),
-              ...(!isPersonalViewer
-                ? [
-                    {
-                      id: 'import_export',
-                      label: 'Export / Import Excel & CSV',
-                      icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
-                      variant: 'success' as const,
-                      dividerBefore: true,
-                      onClick: () => setShowImportExportModal(true),
-                    },
-                  ]
-                : []),
-              {
-                id: 'google_calendar',
-                label: 'Google Calendar & ภาพหน้าจอมือถือ',
-                icon: <Calendar className="h-3.5 w-3.5" />,
-                onClick: () => openGoogleCalendarModal(),
-              },
-              {
-                id: 'print_a4',
-                label: 'พิมพ์ตารางเรียน A4 (แนวนอน)',
-                icon: <Printer className="h-3.5 w-3.5" />,
-                onClick: () => printTimetableLandscape(),
-              },
-              ...(!isPersonalViewer
-                ? ([
-                    {
-                      id: 'sync_holidays',
-                      label: isSyncingHolidays
-                        ? 'กำลังซิงค์วันหยุด...'
-                        : `ซิงค์วันหยุดราชการ (${currentBangkokYear + 543})`,
-                      icon: <RefreshCw className={`h-3.5 w-3.5 ${isSyncingHolidays ? 'animate-spin' : ''}`} />,
-                      variant: 'danger',
-                      dividerBefore: true,
-                      disabled: isSyncingHolidays,
-                      onClick: () => void handleManualHolidaySync(currentBangkokYear),
-                    },
-                    {
-                      id: 'holiday_calendar',
-                      label: `ปฏิทินวันหยุด (${yearHolidaysCount} วัน)`,
-                      icon: <CalendarDays className="h-3.5 w-3.5" />,
-                      onClick: () => {
-                        setCalendarLayoutMode('month');
-                        setViewMode('calendar');
-                      },
-                    },
-                    {
-                      id: 'test_checkin_notif',
-                      label: 'ทดสอบเริ่มคาบ & เช็คอิน',
-                      icon: <LogIn className="h-3.5 w-3.5" />,
-                      variant: 'success',
-                      dividerBefore: true,
-                      onClick: () =>
-                        sendEduVerseNotification({
-                          title: '[ทดสอบตารางสอน] เริ่มคาบเรียนที่ 1 (08:30 - 09:20)',
-                          body: `วิชาเรียน ${courses[0]?.code || 'ว21101'} (${courses[0]?.titleTh || 'วิทยาศาสตร์'}) ห้อง ${courses[0]?.room || '401'}`,
-                          category: 'attendance',
-                          priority: 'urgent',
-                          schoolId,
-                          targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
-                        }),
-                    },
-                    {
-                      id: 'test_checkout_notif',
-                      label: 'ทดสอบหมดคาบ & เช็คเอาท์',
-                      icon: <LogOut className="h-3.5 w-3.5" />,
-                      variant: 'primary',
-                      onClick: () =>
-                        sendEduVerseNotification({
-                          title: '[ทดสอบตารางสอน] สิ้นสุดคาบเรียนที่ 1 (09:20 น.)',
-                          body: `หมดเวลาคาบเรียน ${courses[0]?.code || 'ว21101'} แล้ว กรุณาเช็คชื่อออก (Check-out)`,
-                          category: 'attendance',
-                          priority: 'normal',
-                          schoolId,
-                          targetUserIds: currentUser?.id ? [currentUser.id] : undefined,
-                        }),
-                    },
-                  ] satisfies TableActionItem[])
-                : []),
-            ]}
-          />
         </div>
       </div>
 

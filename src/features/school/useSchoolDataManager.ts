@@ -63,6 +63,7 @@ import {
   setMyOperationalRole,
 } from '../../lib/superAdminSettings';
 import { getAvailableOperationalRoles } from '../../lib/operationalRoles';
+import { clearSavedNavState, readSavedNavState } from '../navigation/navPersistence';
 import { belongsToSchool } from '../../lib/schoolDataScope';
 import {
   isPasswordRecoveryRedirect,
@@ -236,7 +237,12 @@ export function getAcademicYearStartDate(label: string): string {
 }
 
 export interface NavCallbacks {
-  onLoginNavigate: (role: UserRole, hasDeepLink: boolean) => void;
+  onLoginNavigate: (
+    role: UserRole,
+    hasDeepLink: boolean,
+    userId: string,
+    isSessionRestore?: boolean
+  ) => void;
   onRoleSwitchNavigate: (nextRole: 'admin' | 'teacher') => void;
   onViewSchoolNavigate: () => void;
 }
@@ -581,12 +587,31 @@ export function useSchoolDataManager({
     }
   }, [activeSchool.id, activeSchool.nameTh, activeSchool.nameEn, activeSchool.latitude, activeSchool.longitude, activeSchool.geofenceRadiusMeters]);
 
-  const handleLogin = (context: AuthContext) => {
-    const school = context.school;
+  const handleLogin = (
+    context: AuthContext,
+    options?: { isSessionRestore?: boolean }
+  ) => {
+    const isSessionRestore = Boolean(options?.isSessionRestore);
+    const savedNav = isSessionRestore ? readSavedNavState(context.user.id) : null;
+    const restoredSchool =
+      isSessionRestore &&
+      context.user.role === 'super_admin' &&
+      savedNav?.isSuperAdminSchoolView &&
+      savedNav.schoolId
+        ? context.schools.find((s) => s.id === savedNav.schoolId) || context.school
+        : context.school;
+    const shouldRestoreSuperAdminSchoolView = Boolean(
+      isSessionRestore &&
+        context.user.role === 'super_admin' &&
+        savedNav?.isSuperAdminSchoolView &&
+        restoredSchool
+    );
+
+    const school = restoredSchool;
     setBiometricSoftLock(null);
     setIsBiometricLocked(false);
     setBiometricLockError(null);
-    setIsSuperAdminSchoolView(false);
+    setIsSuperAdminSchoolView(shouldRestoreSuperAdminSchoolView);
     setOperationalRoleReady(false);
     setIsDataReady(false);
     setSchools(context.schools);
@@ -628,7 +653,12 @@ export function useSchoolDataManager({
     setInfirmaryVisits([]);
     setHomeworkSubmissions([]);
     setLeaveRequests([]);
-    navCallbacksRef.current.onLoginNavigate(context.user.role, hasDeepLink);
+    navCallbacksRef.current.onLoginNavigate(
+      context.user.role,
+      hasDeepLink,
+      context.user.id,
+      isSessionRestore
+    );
   };
 
   // Restore Supabase session on mount
@@ -642,7 +672,7 @@ export function useSchoolDataManager({
           const softLock = getBiometricSoftLock();
           const shouldStayLocked =
             Boolean(softLock && softLock.userId === context.user.id && getPasskeyForUser(context.user.id));
-          handleLogin(context);
+          handleLogin(context, { isSessionRestore: true });
           if (shouldStayLocked) {
             setIsBiometricLocked(true);
             setBiometricSoftLock(softLock);
@@ -1422,6 +1452,7 @@ export function useSchoolDataManager({
         }
       }
       await signOutFromSupabase();
+      clearSavedNavState();
       setBiometricSoftLock(null);
       setIsBiometricLocked(false);
       setBiometricLockError(null);

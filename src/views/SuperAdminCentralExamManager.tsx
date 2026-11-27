@@ -683,45 +683,6 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {missingBuiltInCount > 0 && (
-            <button
-              type="button"
-              disabled={isSyncingDefaults}
-              onClick={() => void handleSyncBuiltInPacks()}
-              className="btn-tool-tone disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDefaults ? 'animate-spin' : ''}`} />
-              <span>
-                {isSyncingDefaults
-                  ? 'กำลังซิงก์ข้อสอบ...'
-                  : `เติมข้อสอบกลาง (+${missingBuiltInCount} ชุด)`}
-              </span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleDownloadCsvTemplate}
-            className="btn-tool-neutral"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>เทมเพลต CSV</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowImportModal(true)}
-            className="btn-tool-tone"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>นำเข้า CSV / JSON</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowPaymentSettingsModal(true)}
-            className="btn-tool-tone"
-          >
-            <CreditCard className="w-3.5 h-3.5" />
-            <span>ตั้งค่า QR PromptPay รับเงิน</span>
-          </button>
           <button
             type="button"
             onClick={() => setShowCreatePackModal(true)}
@@ -730,6 +691,47 @@ export const SuperAdminCentralExamManager: React.FC<SuperAdminCentralExamManager
             <Plus className="w-4 h-4" />
             <span>สร้างชุดข้อสอบกลางใหม่</span>
           </button>
+
+          <TableActionMenu
+            size="md"
+            ariaLabel="เครื่องมือคลังข้อสอบกลาง"
+            menuWidth={255}
+            items={[
+              ...(missingBuiltInCount > 0
+                ? [
+                    {
+                      id: 'sync-builtin',
+                      label: isSyncingDefaults
+                        ? 'กำลังซิงก์ข้อสอบ...'
+                        : `เติมข้อสอบกลาง (+${missingBuiltInCount} ชุด)`,
+                      icon: <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDefaults ? 'animate-spin' : ''}`} />,
+                      variant: 'primary' as const,
+                      disabled: isSyncingDefaults,
+                      onClick: () => void handleSyncBuiltInPacks(),
+                    },
+                  ]
+                : []),
+              {
+                id: 'import-packs',
+                label: 'นำเข้าข้อสอบ CSV / JSON',
+                icon: <Upload className="w-3.5 h-3.5 tone-text" />,
+                onClick: () => setShowImportModal(true),
+              },
+              {
+                id: 'csv-template',
+                label: 'ดาวน์โหลดเทมเพลต CSV',
+                icon: <Download className="w-3.5 h-3.5" />,
+                onClick: handleDownloadCsvTemplate,
+              },
+              {
+                id: 'promptpay-settings',
+                label: 'ตั้งค่า QR PromptPay รับเงิน',
+                icon: <CreditCard className="w-3.5 h-3.5" />,
+                dividerBefore: true,
+                onClick: () => setShowPaymentSettingsModal(true),
+              },
+            ]}
+          />
         </div>
       </div>
 

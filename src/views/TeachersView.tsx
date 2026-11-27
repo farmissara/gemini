@@ -712,10 +712,19 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
 
         <div data-guide-id="teachers-tools" className="flex flex-wrap items-center gap-1.5">
           <ModuleTourTrigger moduleId="teachers" lang={lang} />
+          {canManage && (
+            <button
+              type="button"
+              onClick={handleOpenAdd}
+              className="btn-action-primary h-9 px-3"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>
+            </button>
+          )}
           <TableActionMenu
+            size="md"
             ariaLabel={lang === 'th' ? 'เครื่องมือจัดการบุคลากร' : 'Manage staff tools'}
-            triggerLabel={lang === 'th' ? 'เครื่องมือจัดการ' : 'Manage'}
-            triggerClassName="btn-tool-neutral h-9 px-3"
             menuWidth={240}
             items={[
               ...(onOpenImportExport
@@ -783,17 +792,6 @@ export const TeachersView: React.FC<TeachersViewProps> = ({
                 : []),
             ]}
           />
-
-          {canManage && (
-            <button
-              type="button"
-              onClick={handleOpenAdd}
-              className="btn-action-primary h-9 px-3"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'เพิ่มครู' : 'Add Teacher'}</span>
-            </button>
-          )}
         </div>
       </div>
 

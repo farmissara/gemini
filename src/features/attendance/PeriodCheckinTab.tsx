@@ -190,6 +190,8 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
   onOpenPeriodCorrection,
 }) => {
   const [editingTimeStudentId, setEditingTimeStudentId] = React.useState<string | null>(null);
+  const [showGpsConfigPanel, setShowGpsConfigPanel] = React.useState(false);
+  const [showFlexConfigPanel, setShowFlexConfigPanel] = React.useState(false);
   const periodRoomOptions = Array.from(
     new Set(
       periodStudentIds
@@ -208,22 +210,63 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
           <div>
             <h3 className="type-section-title flex items-center gap-1.5">
               <QrCode className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
-              <span>เช็คชื่อรายคาบ (QR &amp; Link)</span>
+              <span>เช็คชื่อรายคาบ</span>
             </h3>
             <p className="type-meta mt-0.5">
               {isRestrictedViewer
                 ? 'สแกน QR Code หรือเปิดลิงก์เพื่อเช็คชื่อเข้าคาบเรียน'
-                : `${periodStudentIds.length} นักเรียนในรายวิชานี้`}
+                : `${selectedCourse.code} · คาบที่ ${selectedPeriod} · ${periodStudentIds.length} คน`}
             </p>
           </div>
           {isStaffUser && (
-            <button
-              type="button"
-              onClick={() => runWithBiometricGuard(() => handleSavePeriodAttendance())}
-              className="btn-action-primary px-3.5 py-1.5 self-start sm:self-auto"
-            >
-              บันทึกรายชื่อทั้งคาบ
-            </button>
+            <div className="flex items-center gap-1.5 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => runWithBiometricGuard(() => handleSavePeriodAttendance())}
+                className="btn-action-primary px-3.5 py-1.5"
+              >
+                บันทึกรายชื่อทั้งคาบ
+              </button>
+              <TableActionMenu
+                ariaLabel="ตั้งค่าเพิ่มเติมสำหรับการเช็คชื่อรายคาบ"
+                size="md"
+                menuWidth={260}
+                items={[
+                  {
+                    id: 'toggle_gps_panel',
+                    label: classroomGps
+                      ? `พิกัด GPS ห้อง (${classroomGps.radiusMeters} ม.)`
+                      : 'ตั้งค่าพิกัด GPS ห้องเรียน',
+                    icon: <MapPin className="w-3.5 h-3.5" />,
+                    variant: classroomGps ? 'success' : 'warning',
+                    onClick: () => setShowGpsConfigPanel((v) => !v),
+                  },
+                  {
+                    id: 'toggle_flex_panel',
+                    label:
+                      periodFlexConfig.graceMinutes >= 999
+                        ? 'เวลายืดหยุ่น (ตลอดคาบ)'
+                        : `เวลายืดหยุ่น (ผ่อนผัน ${periodFlexConfig.graceMinutes} น.)`,
+                    icon: <Clock className="w-3.5 h-3.5" />,
+                    onClick: () => setShowFlexConfigPanel((v) => !v),
+                  },
+                  {
+                    id: 'fullscreen_qr',
+                    label: 'ขยาย QR เต็มจอ (โปรเจกเตอร์)',
+                    icon: <Maximize2 className="w-3.5 h-3.5" />,
+                    variant: 'primary',
+                    dividerBefore: true,
+                    onClick: () => setShowPeriodQrModal(true),
+                  },
+                  {
+                    id: 'copy_qr_link',
+                    label: periodQrCopied ? 'คัดลอกลิงก์เช็คชื่อแล้ว ✓' : 'คัดลอกลิงก์เช็คชื่อรายคาบ',
+                    icon: periodQrCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />,
+                    onClick: () => void handleCopyPeriodLink(),
+                  },
+                ]}
+              />
+            </div>
           )}
         </div>
 
@@ -311,8 +354,8 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
             </div>
           )}
 
-          {/* Classroom GPS Setup Card for Staff/Teachers */}
-          {!isRestrictedViewer && (
+          {/* Classroom GPS Setup Card (Opened via 3-Dot Menu) */}
+          {!isRestrictedViewer && showGpsConfigPanel && (
             <div
               className={`p-3 rounded-xl border space-y-2.5 ${
                 classroomGps
@@ -327,15 +370,25 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                     พิกัด GPS ห้องเรียน ({selectedCourse.room || selectedCourse.code})
                   </span>
                 </div>
-                <span
-                  className={`text-[11px] font-bold ${
-                    classroomGps ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'
-                  }`}
-                >
-                  {classroomGps
-                    ? `ตั้งค่าแล้ว · รัศมี ${classroomGps.radiusMeters} ม.`
-                    : 'จำเป็นต้องตั้งพิกัดห้องเรียนก่อนเช็คชื่อรายคาบ'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-[11px] font-bold ${
+                      classroomGps ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'
+                    }`}
+                  >
+                    {classroomGps
+                      ? `ตั้งค่าแล้ว · รัศมี ${classroomGps.radiusMeters} ม.`
+                      : 'ยังไม่ได้ตั้งพิกัด'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowGpsConfigPanel(false)}
+                    className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                    aria-label="ซ่อนแผงตั้งค่าพิกัด GPS"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
@@ -408,8 +461,8 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
             </div>
           )}
 
-          {/* Teacher Flexible Class-Period Window Controls */}
-          {!isRestrictedViewer && (
+          {/* Teacher Flexible Class-Period Window Controls (Opened via 3-Dot Menu) */}
+          {!isRestrictedViewer && showFlexConfigPanel && (
             <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
@@ -418,11 +471,21 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                     เวลายืดหยุ่นเข้า-ออกคาบเรียน ({selectedCourse.code})
                   </span>
                 </div>
-                <span className="text-[11px] font-semibold text-[var(--color-primary-text)]">
-                  {periodFlexConfig.graceMinutes >= 999
-                    ? 'เปิดเช็คชื่อยืดหยุ่นตลอดคาบ'
-                    : `ผ่อนผันเข้าสายได้ ${periodFlexConfig.graceMinutes} นาที`}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-[var(--color-primary-text)]">
+                    {periodFlexConfig.graceMinutes >= 999
+                      ? 'เปิดเช็คชื่อยืดหยุ่นตลอดคาบ'
+                      : `ผ่อนผันเข้าสายได้ ${periodFlexConfig.graceMinutes} นาที`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowFlexConfigPanel(false)}
+                    className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                    aria-label="ซ่อนแผงตั้งค่าเวลายืดหยุ่น"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
@@ -839,52 +902,44 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
             return (
               <>
                 <div className="p-3 border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-bold text-[var(--color-text-title)] flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-amber-600" />
-                      <span>ตรวจเช็คชื่อรายคาบ · กรณีนักเรียนไม่มีมือถือ กดรับแทนได้ทันที</span>
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {(
-                        [
-                          ['all', `ทั้งหมด (${periodStudentIds.length})`],
-                          ['unchecked', `ยังไม่เช็ค (${uncheckedCount})`],
-                          ['proxy', `ครูรับแทน (${proxyCount})`],
-                          ['mobile', `สแกนมือถือ (${mobileCount})`],
-                        ] as const
-                      ).map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setPeriodRosterFilter(key)}
-                          className={`px-2 py-1 rounded-md text-[10px] font-bold cursor-pointer border transition ${
-                            periodRosterFilter === key
-                              ? 'bg-[var(--color-primary)] text-white border-transparent'
-                              : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)]'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold tabular-nums">
+                      <span className="font-bold text-[var(--color-text-title)]">
+                        รายชื่อในคาบ ({periodStudentIds.length})
+                      </span>
+                      <span className="text-[var(--color-text-muted)]">รอเช็ค {uncheckedCount}</span>
+                      <span className="text-[var(--color-primary-text)]">รับแทน {proxyCount}</span>
+                      <span className="text-emerald-700 dark:text-emerald-300">สแกน QR {mobileCount}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-2" />
+                      <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-2.5" />
                       <input
                         type="search"
                         value={periodRosterSearch}
                         onChange={(e) => setPeriodRosterSearch(e.target.value)}
                         placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
                         aria-label="ค้นหานักเรียนในรายวิชา"
-                        className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                        className="w-full h-9 pl-8 pr-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
                       />
                     </div>
+                    <select
+                      aria-label="กรองตามสถานะเช็คชื่อ"
+                      value={periodRosterFilter}
+                      onChange={(e) => setPeriodRosterFilter(e.target.value as PeriodRosterFilter)}
+                      className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)]"
+                    >
+                      <option value="all">ทุกสถานะ ({periodStudentIds.length})</option>
+                      <option value="unchecked">ยังไม่เช็ค ({uncheckedCount})</option>
+                      <option value="proxy">ครูรับแทน ({proxyCount})</option>
+                      <option value="mobile">สแกนมือถือ ({mobileCount})</option>
+                    </select>
                     <select
                       aria-label="กรองตามห้องเรียนในรายวิชา"
                       value={periodRosterRoomFilter}
                       onChange={(e) => setPeriodRosterRoomFilter(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                      className="w-full h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-title)]"
                     >
                       <option value="all">ทุกห้องในรายวิชา</option>
                       {periodRoomOptions.map((room) => (
@@ -897,7 +952,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                 <div className="divide-y divide-[var(--color-border)]">
                   <PagedList
                     items={filteredIds}
-                    pageSize={8}
+                    pageSize={10}
                     navClassName="px-3 pb-3 pt-2.5"
                     emptyState={<p className="type-meta text-center py-4">ไม่พบรายชื่อนักเรียนตามตัวกรอง</p>}
                     renderItem={(stuId) => {
@@ -912,103 +967,106 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                       const displayOut = customTime.checkOut || savedRecord?.actualCheckOutTime;
 
                       return (
-                        <div key={st.id} className="p-3 space-y-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
+                        <div key={st.id} className="px-3 py-3 space-y-2 hover:bg-[var(--color-card-subtle)]/50 transition">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                               <img
                                 src={st.avatarUrl}
-                                alt={st.firstNameEn}
-                                className="w-9 h-9 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
+                                alt={`${st.firstNameTh} ${st.lastNameTh}`}
+                                className="w-10 h-10 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
                               />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <p className="type-card-title truncate">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                  <span className="text-sm sm:text-[15px] font-bold text-[var(--color-text-title)] leading-snug break-words">
                                     {st.firstNameTh} {st.lastNameTh}
-                                  </p>
+                                  </span>
+                                  <span className="text-[11px] font-mono text-[var(--color-text-muted)] shrink-0">
+                                    {st.studentIdNumber} · {st.gradeLevel} {st.room}
+                                  </span>
+                                </div>
+
+                                <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px]">
                                   {savedRecord?.checkMethod === 'qr_code' && (
-                                    <StatusBadge size="xs" status="info" label="สแกนมือถือแล้ว" />
+                                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300">
+                                      <Smartphone className="w-3 h-3 shrink-0" />
+                                      <span>สแกนมือถือ</span>
+                                    </span>
                                   )}
                                   {savedRecord?.checkMethod === 'teacher_proxy' && (
-                                    <StatusBadge size="xs" status="pending" label="ครูกดรับแทน" />
+                                    <span className="font-semibold text-[var(--color-primary-text)]">
+                                      ครูรับแทน
+                                    </span>
+                                  )}
+                                  {!recordedStatus && (
+                                    <span className="text-[var(--color-text-muted)]">รอเช็คชื่อ</span>
                                   )}
                                   {(displayIn || displayOut) && (
-                                    <span className="px-1.5 py-0.5 rounded bg-[var(--color-card-subtle)] text-[10px] font-mono font-semibold text-[var(--color-primary-text)] tabular-nums">
+                                    <span className="font-mono font-semibold text-[var(--color-primary-text)] tabular-nums">
                                       {displayIn ? `เข้า ${displayIn}` : ''}
                                       {displayIn && displayOut ? ' · ' : ''}
                                       {displayOut ? `ออก ${displayOut}` : ''}
                                     </span>
                                   )}
-                                  <StatusBadge
-                                    size="xs"
-                                    status={
-                                      !recordedStatus
-                                        ? 'neutral'
-                                        : recordedStatus === 'present'
-                                          ? 'complete'
-                                          : recordedStatus === 'late'
-                                            ? 'pending'
-                                            : recordedStatus === 'excused'
-                                              ? 'info'
-                                              : 'delayed'
-                                    }
-                                    label={
-                                      !recordedStatus
-                                        ? 'ยังไม่เช็ค'
-                                        : recordedStatus === 'present'
-                                          ? 'มาเรียน'
-                                          : recordedStatus === 'late'
-                                            ? 'สาย'
-                                            : recordedStatus === 'excused'
-                                              ? 'ลา'
-                                              : 'ขาด'
-                                    }
-                                  />
+                                  {savedRecord?.flexReason && (
+                                    <span className="text-[var(--color-text-muted)]">· {savedRecord.flexReason}</span>
+                                  )}
                                 </div>
-                                <p className="type-meta font-mono truncate">
-                                  {st.studentIdNumber} · {st.gradeLevel} {st.room}
-                                  {savedRecord?.flexReason ? ` · ${savedRecord.flexReason}` : ''}
-                                </p>
                               </div>
                             </div>
 
-                            <div className="self-end sm:self-auto shrink-0">
+                            <div className="flex items-center justify-end gap-1.5 shrink-0 pl-12 sm:pl-0">
+                              <div
+                                role="group"
+                                aria-label={`สถานะคาบ ${st.firstNameTh} ${st.lastNameTh}`}
+                                className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 gap-0.5"
+                              >
+                                {(
+                                  [
+                                    { id: 'present', label: 'มา', fullLabel: 'มาเรียน' },
+                                    { id: 'late', label: 'สาย', fullLabel: 'มาสาย' },
+                                    { id: 'excused', label: 'ลา', fullLabel: 'ลา / มีเหตุผล' },
+                                    { id: 'absent', label: 'ขาด', fullLabel: 'ขาดเรียน' },
+                                  ] as const
+                                ).map((opt) => {
+                                  const isActive = recordedStatus === opt.id;
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => handleTeacherProxyPeriodCheckin(st, opt.id, false)}
+                                      aria-pressed={isActive}
+                                      title={opt.fullLabel}
+                                      className={`min-h-[34px] min-w-[44px] sm:min-w-[50px] px-2.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1 transition cursor-pointer ${
+                                        isActive
+                                          ? opt.id === 'present'
+                                            ? 'bg-emerald-700 text-white shadow-xs'
+                                            : opt.id === 'late'
+                                              ? 'bg-amber-500 text-slate-950 shadow-xs'
+                                              : opt.id === 'excused'
+                                                ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                                                : 'bg-rose-700 text-white shadow-xs'
+                                          : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
+                                      }`}
+                                    >
+                                      {isActive && <Check className="w-3 h-3 shrink-0" />}
+                                      <span>{opt.label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
                               <TableActionMenu
                                 size="md"
                                 menuWidth={230}
-                                ariaLabel={`แก้ไขเช็คชื่อรายคาบ ${st.firstNameTh} ${st.lastNameTh}`}
+                                ariaLabel={`ตัวเลือกเพิ่มเติม ${st.firstNameTh} ${st.lastNameTh}`}
                                 items={[
-                                  {
-                                    id: 'present',
-                                    label: 'มาเรียน',
-                                    variant: 'success',
-                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'present', false),
-                                  },
-                                  {
-                                    id: 'late',
-                                    label: 'มาสาย',
-                                    variant: 'warning',
-                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'late', false),
-                                  },
-                                  {
-                                    id: 'excused',
-                                    label: 'ลา / มีเหตุผล',
-                                    variant: 'primary',
-                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'excused', false),
-                                  },
-                                  {
-                                    id: 'absent',
-                                    label: 'ขาดเรียน',
-                                    variant: 'danger',
-                                    onClick: () => handleTeacherProxyPeriodCheckin(st, 'absent', false),
-                                  },
                                   ...(!savedRecord || savedRecord.checkMethod !== 'qr_code'
                                     ? [
                                         {
                                           id: 'no-phone-proxy',
                                           label: 'กดเช็คแทน (ไม่มีมือถือ)',
                                           icon: <UserCheck className="w-3.5 h-3.5" />,
-                                          variant: 'warning' as const,
-                                          dividerBefore: true,
+                                          variant: 'primary' as const,
                                           onClick: () => handleTeacherProxyPeriodCheckin(st, 'present', true),
                                         },
                                       ]
@@ -1017,7 +1075,7 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                                     id: 'edit-time',
                                     label: isEditingTime ? 'ปิดการปรับเวลาเข้า–ออก' : 'ปรับเวลาเข้า–ออก',
                                     icon: <Clock className="w-3.5 h-3.5" />,
-                                    dividerBefore: Boolean(savedRecord && savedRecord.checkMethod === 'qr_code'),
+                                    dividerBefore: Boolean(!savedRecord || savedRecord.checkMethod !== 'qr_code'),
                                     onClick: () => setEditingTimeStudentId(isEditingTime ? null : st.id),
                                   },
                                 ]}

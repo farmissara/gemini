@@ -1344,15 +1344,26 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <ModuleTourTrigger moduleId="students" lang="th" />
             {activeTab === 'roster' && (
               <>
+                {canManageStudentRecords && (
+                  <button
+                    type="button"
+                    data-guide-id="students-add-single"
+                    onClick={handleOpenAdd}
+                    className="btn-action-primary px-3.5 py-1.5 whitespace-nowrap shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>เพิ่มนักเรียน</span>
+                  </button>
+                )}
+
                 <TableActionMenu
+                  size="md"
                   dataGuideId="students-import-export"
-                  ariaLabel="เครื่องมือจัดการชุดนักเรียน"
-                  triggerLabel={
+                  ariaLabel={
                     selectedQrStudentIds.length > 0
-                      ? `เครื่องมือชุด (${selectedQrStudentIds.length})`
-                      : 'เครื่องมือชุด'
+                      ? `เครื่องมือจัดการชุดนักเรียน (เลือก ${selectedQrStudentIds.length})`
+                      : 'เครื่องมือจัดการชุดนักเรียน'
                   }
-                  triggerClassName="btn-tool-neutral px-3 py-1.5 whitespace-nowrap shrink-0"
                   menuWidth={240}
                   items={[
                     ...(canManageStudentRecords
@@ -1422,18 +1433,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       : []),
                   ]}
                 />
-
-                {canManageStudentRecords && (
-                  <button
-                    type="button"
-                    data-guide-id="students-add-single"
-                    onClick={handleOpenAdd}
-                    className="btn-action-primary px-3.5 py-1.5 whitespace-nowrap shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>เพิ่มนักเรียน</span>
-                  </button>
-                )}
               </>
             )}
           </div>

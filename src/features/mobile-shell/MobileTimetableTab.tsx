@@ -15,6 +15,7 @@ import {
   StickyNote,
   Trash2,
   UserCheck,
+  Users,
   X,
 } from 'lucide-react';
 import { TableActionMenu, type TableActionItem } from '../../components/common/TableActionMenu';
@@ -205,12 +206,21 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
   const calDayKey =
     ([null, 'mon', 'tue', 'wed', 'thu', 'fri', null] as const)[selectedCalDateObj.getUTCDay()] || null;
   const selectedDateHolidays = getHolidaysForDate(mobileSelectedCalendarDate, activeSchool.id);
+  const hasTeacherTimetableMatch =
+    !isRestrictedViewer &&
+    (currentRole === 'teacher' ||
+      Boolean(
+        currentUser &&
+          scopedTimetableSlots.some((s) =>
+            slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses)
+          )
+      ));
   const selectedCalDaySlots = calDayKey
     ? scopedTimetableSlots
         .filter((s) => s.dayOfWeek === calDayKey)
         .filter(
           (s) =>
-            !(currentRole === 'teacher' && timetableOnlyMine) ||
+            !(hasTeacherTimetableMatch && timetableOnlyMine) ||
             slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses)
         )
         .slice()
@@ -218,7 +228,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
     : [];
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-150">
+    <div className="space-y-3 animate-in fade-in duration-150">
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -228,7 +238,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
           <ArrowLeft className="w-4 h-4" />
           <span>{lang === 'th' ? 'กลับหน้าหลัก' : 'Back'}</span>
         </button>
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        <div className="flex items-center gap-1.5 justify-end">
           {canSelfCheckin && (currentRole === 'student' || currentRole === 'teacher') && (
             <button
               type="button"
@@ -239,25 +249,41 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
               <span>เช็คอินรายคาบ</span>
             </button>
           )}
-          {(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin') && (
-            <button
-              type="button"
-              disabled={isSyncingHolidays}
-              onClick={() => void onManualHolidaySync(mobileCalendarMonthCursor.year)}
-              className="min-h-[36px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-text-title)] inline-flex items-center gap-1.5 cursor-pointer hover:bg-[var(--color-card-subtle)] disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-rose-500 ${isSyncingHolidays ? 'animate-spin' : ''}`} />
-              <span>{isSyncingHolidays ? 'กำลังซิงค์...' : 'ซิงค์วันหยุด'}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onOpenCalendarSync}
-            className="min-h-[36px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-primary-text)] inline-flex items-center gap-1.5 cursor-pointer hover:bg-[var(--color-card-subtle)]"
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{lang === 'th' ? 'ปฏิทิน & ภาพหน้าจอ' : 'Calendar & Wallpaper'}</span>
-          </button>
+          <TableActionMenu
+            ariaLabel={lang === 'th' ? 'เครื่องมือตารางเรียน/สอน' : 'Timetable tools'}
+            size="md"
+            menuWidth={230}
+            items={[
+              {
+                id: 'landscape_grid',
+                label: lang === 'th' ? 'ตารางสัปดาห์แนวนอน' : 'Landscape Weekly Grid',
+                icon: <Maximize2 className="w-3.5 h-3.5" />,
+                variant: 'primary',
+                onClick: () => {
+                  setShowLandscapeWeekly(true);
+                  void enterLandscapeGameMode(landscapeContainerRef.current);
+                },
+              },
+              ...(currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin'
+                ? [
+                    {
+                      id: 'sync_holidays',
+                      label: isSyncingHolidays ? 'กำลังซิงค์วันหยุด...' : 'ซิงค์วันหยุดราชการ',
+                      icon: <RefreshCw className={`w-3.5 h-3.5 ${isSyncingHolidays ? 'animate-spin' : ''}`} />,
+                      disabled: isSyncingHolidays,
+                      onClick: () => void onManualHolidaySync(mobileCalendarMonthCursor.year),
+                    },
+                  ]
+                : []),
+              {
+                id: 'calendar_sync',
+                label: lang === 'th' ? 'ปฏิทิน & ภาพหน้าจอ' : 'Calendar & Wallpaper',
+                icon: <Calendar className="w-3.5 h-3.5" />,
+                dividerBefore: true,
+                onClick: onOpenCalendarSync,
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -309,37 +335,40 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setShowLandscapeWeekly(true);
-              void enterLandscapeGameMode(landscapeContainerRef.current);
-            }}
-            className="min-h-[36px] px-3 rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary-light)] text-[var(--color-primary-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+        {hasTeacherTimetableMatch && (
+          <div
+            role="group"
+            aria-label={lang === 'th' ? 'ขอบเขตตารางสอน' : 'Timetable scope'}
+            className="flex items-center gap-1 p-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]"
           >
-            <Maximize2 className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'ตารางสัปดาห์แนวนอน' : 'Landscape Grid'}</span>
-          </button>
-
-          {currentRole === 'teacher' && (
             <button
               type="button"
-              onClick={() => setTimetableOnlyMine((prev) => !prev)}
-              className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold cursor-pointer whitespace-nowrap ${
-                timetableOnlyMine
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary-text)]'
-                  : 'border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-body)]'
+              aria-pressed={!timetableOnlyMine}
+              onClick={() => setTimetableOnlyMine(false)}
+              className={`min-h-[36px] px-2.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition ${
+                !timetableOnlyMine
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'text-[var(--color-text-body)]'
               }`}
             >
-              {timetableOnlyMine
-                ? (lang === 'th' ? 'คาบฉัน' : 'Mine')
-                : lang === 'th'
-                  ? 'ทั้งโรงเรียน'
-                  : 'Whole school'}
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'ทั้งโรงเรียน' : 'School'}</span>
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              aria-pressed={timetableOnlyMine}
+              onClick={() => setTimetableOnlyMine(true)}
+              className={`min-h-[36px] px-2.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition ${
+                timetableOnlyMine
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'text-[var(--color-text-body)]'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>{lang === 'th' ? 'คาบฉัน' : 'Mine'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {mobileTimetableMode === 'day' ? (
@@ -409,7 +438,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
             const daySlots = scopedTimetableSlots
               .filter((s) => s.dayOfWeek === selectedTimetableDay)
               .filter((s) => {
-                if (currentRole === 'teacher' && timetableOnlyMine) {
+                if (hasTeacherTimetableMatch && timetableOnlyMine) {
                   return slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses);
                 }
                 return true;
@@ -1123,7 +1152,7 @@ export const MobileTimetableTab: React.FC<MobileTimetableTabProps> = ({
                       .filter((s) => s.dayOfWeek === day.key)
                       .filter(
                         (s) =>
-                          !(currentRole === 'teacher' && timetableOnlyMine) ||
+                          !(hasTeacherTimetableMatch && timetableOnlyMine) ||
                           slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses)
                       );
                     return (

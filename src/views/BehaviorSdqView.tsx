@@ -405,16 +405,6 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
 
           {activeTab === 'merit' && (
             <>
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowPresetModal(true)}
-                  className="btn-tool-tone px-2.5 py-1.5"
-                >
-                  <Sliders className="w-3.5 h-3.5 tone-text" />
-                  <span>{lang === 'th' ? 'เกณฑ์คะแนน' : 'Presets'}</span>
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => {
@@ -426,6 +416,21 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
                 <Plus className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'บันทึกพฤติกรรม' : 'Record Behavior'}</span>
               </button>
+              {isAdmin && (
+                <TableActionMenu
+                  size="md"
+                  ariaLabel={lang === 'th' ? 'ตั้งค่าความประพฤติ' : 'Behavior settings'}
+                  menuWidth={210}
+                  items={[
+                    {
+                      id: 'behavior_presets',
+                      label: lang === 'th' ? 'ตั้งค่าเกณฑ์คะแนน' : 'Score Presets',
+                      icon: <Sliders className="w-3.5 h-3.5 tone-text" />,
+                      onClick: () => setShowPresetModal(true),
+                    },
+                  ]}
+                />
+              )}
             </>
           )}
 
@@ -760,24 +765,28 @@ export const BehaviorSdqView: React.FC<BehaviorSdqViewProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 print:hidden">
-              <button
-                type="button"
-                onClick={handleExportSdqCsv}
-                disabled={filteredSdqList.length === 0}
-                className="btn-tool-tone px-2.5 py-1.5 text-xs disabled:opacity-40 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>ส่งออก CSV สรุป SDQ</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="btn-tool-neutral px-2.5 py-1.5 text-xs cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>พิมพ์รายงาน</span>
-              </button>
+            <div className="flex items-center print:hidden">
+              <TableActionMenu
+                size="md"
+                ariaLabel="ส่งออกและพิมพ์ผล SDQ"
+                menuWidth={220}
+                items={[
+                  {
+                    id: 'export_sdq_csv',
+                    label: 'ส่งออก CSV สรุป SDQ',
+                    icon: <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />,
+                    variant: 'success',
+                    disabled: filteredSdqList.length === 0,
+                    onClick: handleExportSdqCsv,
+                  },
+                  {
+                    id: 'print_sdq_report',
+                    label: 'พิมพ์รายงาน',
+                    icon: <Printer className="w-3.5 h-3.5" />,
+                    onClick: () => window.print(),
+                  },
+                ]}
+              />
             </div>
           </div>
 

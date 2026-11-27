@@ -351,16 +351,6 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
             </button>
           </div>
 
-          <button
-            type="button"
-            data-guide-id="homework-gcal-sync"
-            onClick={() => setShowGoogleCalendarModal(true)}
-            className="btn-tool-tone px-2.5 py-1.5"
-          >
-            <Calendar className="w-3.5 h-3.5 tone-text" />
-            <span>{lang === 'th' ? 'ซิงค์ Calendar' : 'Calendar'}</span>
-          </button>
-
           {canManageAssignments ? (
             <button
               type="button"
@@ -396,6 +386,22 @@ export const HomeworkTrackerView: React.FC<HomeworkTrackerViewProps> = ({
                 : (lang === 'th' ? 'ปิดรับส่งงานออนไลน์' : 'Online submission paused')}</span>
             </button>
           ) : null}
+
+          <TableActionMenu
+            size="md"
+            dataGuideId="homework-gcal-sync"
+            ariaLabel={lang === 'th' ? 'เครื่องมือเพิ่มเติม' : 'More tools'}
+            menuWidth={220}
+            items={[
+              {
+                id: 'calendar_sync',
+                label: lang === 'th' ? 'ซิงค์ Google Calendar' : 'Sync Google Calendar',
+                icon: <Calendar className="w-3.5 h-3.5 tone-text" />,
+                variant: 'primary',
+                onClick: () => setShowGoogleCalendarModal(true),
+              },
+            ]}
+          />
         </div>
       </div>
 

@@ -97,7 +97,27 @@ export function useAppPreferences() {
   const [isPortraitScreen, setIsPortraitScreen] = useState<boolean>(() => (
     typeof window !== 'undefined' && window.innerHeight > window.innerWidth
   ));
-  const [deviceViewPreference, setDeviceViewPreference] = useState<'auto' | 'mobile' | 'desktop'>('auto');
+  const [deviceViewPreference, setDeviceViewPreference] = useState<'auto' | 'mobile' | 'desktop'>(() => {
+    if (typeof window === 'undefined') return 'auto';
+    try {
+      const saved = window.sessionStorage.getItem('eduverse:device-view-pref');
+      if (saved === 'mobile' || saved === 'desktop' || saved === 'auto') {
+        return saved;
+      }
+    } catch {
+      // Ignore storage access errors
+    }
+    return 'auto';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem('eduverse:device-view-pref', deviceViewPreference);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [deviceViewPreference]);
 
   useEffect(() => {
     const handleResize = () => {

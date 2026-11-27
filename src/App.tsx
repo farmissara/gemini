@@ -18,6 +18,12 @@ import { getLocalDateString } from './lib/date';
 import { useDeepLinkParams } from './features/navigation/useDeepLinkParams';
 import { useAppPreferences } from './features/navigation/useAppPreferences';
 import { useTabNavigation } from './features/navigation/useTabNavigation';
+import {
+  clearSavedNavState,
+  readSavedNavState,
+  syncUrlNavParams,
+  writeSavedNavState,
+} from './features/navigation/navPersistence';
 import { MobileBottomNav } from './features/navigation/MobileBottomNav';
 import { SchoolErpViewSwitch } from './features/navigation/SchoolErpViewSwitch';
 import { AppModalsHost } from './features/navigation/AppModalsHost';
@@ -92,8 +98,34 @@ export const App: React.FC = () => {
   });
 
   navCallbacksRef.current = {
-    onLoginNavigate: (role, hasDeepLink) => {
+    onLoginNavigate: (role, hasDeepLink, userId, isSessionRestore) => {
       setShowSchoolSwitcher(false);
+      const saved = isSessionRestore && !hasDeepLink ? readSavedNavState(userId) : null;
+      if (saved) {
+        nav.setDashboardInitialSubTab(saved.dashboardInitialSubTab || 'overview');
+        nav.setSystemSettingsInitialTab(saved.systemSettingsInitialTab || 'school_general');
+        if (saved.superAdminSubTab) nav.setSuperAdminSubTab(saved.superAdminSubTab);
+        if (saved.studentsSubTab) nav.setStudentsSubTab(saved.studentsSubTab);
+        if (role === 'super_admin' && !saved.isSuperAdminSchoolView) {
+          nav.setProgramMode('school_erp');
+          nav.setCurrentTab(
+            saved.currentTab === 'admin_superadmin_desk'
+              ? 'admin_superadmin_desk'
+              : 'super_admin_console'
+          );
+        } else if (role === 'parent') {
+          nav.setProgramMode('parent_portal');
+          nav.setCurrentTab(saved.currentTab || 'dashboard');
+        } else {
+          nav.setProgramMode(saved.programMode || 'school_erp');
+          nav.setCurrentTab(saved.currentTab || 'dashboard');
+        }
+        return;
+      }
+
+      if (!isSessionRestore) {
+        clearSavedNavState();
+      }
       nav.setDashboardInitialSubTab('overview');
       nav.setSystemSettingsInitialTab('school_general');
       if (role === 'super_admin') {
@@ -116,6 +148,37 @@ export const App: React.FC = () => {
       nav.setCurrentTab('dashboard');
     },
   };
+
+  useEffect(() => {
+    if (!data.currentUser) return;
+    writeSavedNavState({
+      userId: data.currentUser.id,
+      currentTab: nav.currentTab,
+      programMode: nav.programMode,
+      dashboardInitialSubTab: nav.dashboardInitialSubTab,
+      systemSettingsInitialTab: nav.systemSettingsInitialTab,
+      superAdminSubTab: nav.superAdminSubTab,
+      studentsSubTab: nav.studentsSubTab,
+      isSuperAdminSchoolView: data.isSuperAdminSchoolView,
+      schoolId: data.activeSchool.id || undefined,
+    });
+    syncUrlNavParams({
+      currentTab: nav.currentTab,
+      programMode: nav.programMode,
+      isMobileView: prefs.shouldShowMobileView,
+    });
+  }, [
+    data.currentUser?.id,
+    data.isSuperAdminSchoolView,
+    data.activeSchool.id,
+    nav.currentTab,
+    nav.programMode,
+    nav.dashboardInitialSubTab,
+    nav.systemSettingsInitialTab,
+    nav.superAdminSubTab,
+    nav.studentsSubTab,
+    prefs.shouldShowMobileView,
+  ]);
 
   // Load LMS lessons once the active school data is ready (used by ERP Dashboard, Mobile Shell, and LMS mode)
   useEffect(() => {
@@ -417,6 +480,26 @@ export const App: React.FC = () => {
               rewardItems={data.rewardItems}
               campusGates={data.campusGates}
               timetableSlots={scope.viewTimetableSlots}
+              allSchoolTimetableSlots={
+                data.currentRole === 'student' || data.currentRole === 'parent'
+                  ? undefined
+                  : scope.schoolTimetableSlots
+              }
+              allSchoolCourses={
+                data.currentRole === 'student' || data.currentRole === 'parent'
+                  ? undefined
+                  : scope.schoolCourses
+              }
+              allSchoolTeachers={
+                data.currentRole === 'student' || data.currentRole === 'parent'
+                  ? undefined
+                  : scope.schoolTeachers
+              }
+              allSchoolStudents={
+                data.currentRole === 'student' || data.currentRole === 'parent'
+                  ? undefined
+                  : scope.schoolStudents
+              }
               schoolPeriods={data.schoolPeriods}
               gradingSystem={data.systemConfig.gradingSystem}
               systemConfig={data.systemConfig}
@@ -772,6 +855,10 @@ export const App: React.FC = () => {
                 viewTimetableSlots={scope.viewTimetableSlots}
                 viewTimetableSlotsAllTerms={scope.viewTimetableSlotsAllTerms}
                 schoolTimetableSlots={scope.schoolTimetableSlots}
+                schoolTimetableSlotsAllTerms={scope.schoolTimetableSlotsAllTerms}
+                schoolStudents={scope.schoolStudents}
+                schoolTeachers={scope.schoolTeachers}
+                schoolCourses={scope.schoolCourses}
                 timetableAcademicYear={scope.timetableAcademicYear}
                 timetableSemester={scope.timetableSemester}
                 schoolPeriods={data.schoolPeriods}

@@ -21,6 +21,7 @@ import {
   isProgramModeEnabledByFeatureFlags,
   isTabEnabledByFeatureFlags,
 } from '../../lib/schoolFeatureFlags';
+import { readSavedNavState } from './navPersistence';
 
 export interface GradebookJumpTarget {
   courseId?: string;
@@ -93,17 +94,31 @@ export function useTabNavigation({
   onOpenBackupCenter,
   onSyncError,
 }: UseTabNavigationParams) {
-  const [currentTab, setCurrentTab] = useState<NavTab>(deepLinkParams ? 'mobile_checkin' : 'dashboard');
+  const [initialSavedNav] = useState(() => (deepLinkParams ? null : readSavedNavState()));
+
+  const [currentTab, setCurrentTab] = useState<NavTab>(
+    deepLinkParams ? 'mobile_checkin' : (initialSavedNav?.currentTab || 'dashboard')
+  );
   const [timetableCheckinTarget, setTimetableCheckinTarget] = useState<TimetableCheckinTarget | null>(null);
-  const [dashboardInitialSubTab, setDashboardInitialSubTab] = useState<DashboardSubTab>('overview');
-  const [systemSettingsInitialTab, setSystemSettingsInitialTab] = useState<SystemSettingsTab>('school_general');
-  const [superAdminSubTab, setSuperAdminSubTab] = useState<SuperAdminSubTab>('approvals');
+  const [dashboardInitialSubTab, setDashboardInitialSubTab] = useState<DashboardSubTab>(
+    initialSavedNav?.dashboardInitialSubTab || 'overview'
+  );
+  const [systemSettingsInitialTab, setSystemSettingsInitialTab] = useState<SystemSettingsTab>(
+    initialSavedNav?.systemSettingsInitialTab || 'school_general'
+  );
+  const [superAdminSubTab, setSuperAdminSubTab] = useState<SuperAdminSubTab>(
+    initialSavedNav?.superAdminSubTab || 'approvals'
+  );
   const [isGamePlaying, setIsGamePlaying] = useState(false);
-  const [programMode, setProgramMode] = useState<AppProgramMode>('school_erp');
+  const [programMode, setProgramMode] = useState<AppProgramMode>(
+    initialSavedNav?.programMode || 'school_erp'
+  );
   const [lmsLessonJumpTarget, setLmsLessonJumpTarget] = useState<{ courseId: string; lessonId: string } | null>(null);
   const [adaptivePracticeTopic, setAdaptivePracticeTopic] = useState<AdaptivePracticeTopic | null>(null);
   const [devBookTargetStudentId, setDevBookTargetStudentId] = useState<string | undefined>(undefined);
-  const [studentsSubTab, setStudentsSubTab] = useState<StudentsViewSubTab>('roster');
+  const [studentsSubTab, setStudentsSubTab] = useState<StudentsViewSubTab>(
+    initialSavedNav?.studentsSubTab || 'roster'
+  );
   const [studentsTargetStudentId, setStudentsTargetStudentId] = useState<string | undefined>(undefined);
   const [studentsMoeJumpTarget, setStudentsMoeJumpTarget] = useState<StudentsMoeJumpTarget | null>(null);
   const [gradebookJumpTarget, setGradebookJumpTarget] = useState<GradebookJumpTarget | null>(null);

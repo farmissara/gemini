@@ -32,7 +32,7 @@ import {
 } from '../lib/classroomGps';
 import { isValidCoordinatePair } from '../lib/schoolGps';
 import { BaseModal } from './common/BaseModal';
-import { StatusBadge } from './common/StatusBadge';
+import { TableActionMenu } from './common/TableActionMenu';
 import {
   resolveMatchedCourseForSlot,
   resolveSlotStudents,
@@ -462,120 +462,147 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
 
   return (
     <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
-      {/* Controls + Teacher Status + Summary */}
+      {/* Compact Toolbar + Clean Unboxed Summary */}
       <div
         className={`${
           compactHeader ? 'px-3 py-2.5' : 'px-4 sm:px-5 py-3'
-        } border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2.5 shrink-0`}
+        } border-b border-[var(--color-border)] bg-[var(--color-card-subtle)] space-y-2 shrink-0`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
             {showDatePicker && onDateChange && (
-              <label className="inline-flex items-center gap-1.5 font-semibold text-[var(--color-text-body)]">
-                <span>วันที่:</span>
+              <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-body)]">
+                <span>วันที่</span>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => onDateChange(e.target.value || selectedDate)}
-                  className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs tabular-nums"
+                  className="h-9 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-text-title)] text-xs tabular-nums"
                 />
               </label>
             )}
-            {showGpsEditorToggle && (
-              <button
-                type="button"
-                onClick={() => setShowGpsEditor(true)}
-                aria-haspopup="dialog"
-                aria-expanded={showGpsEditor}
-                title={
-                  classroomGps
-                    ? `ตั้งค่าพิกัดห้องเรียน ${resolvedRoomLabel} ใหม่`
-                    : `ยังไม่ตั้งพิกัดห้องเรียน ${resolvedRoomLabel}`
-                }
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer transition ${
-                  classroomGps
-                    ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
-                    : 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                }`}
-              >
-                <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  {classroomGps
-                    ? `พิกัดตั้งแล้ว · ${classroomGps.radiusMeters} ม.`
-                    : 'ตั้งค่าพิกัด GPS'}
-                </span>
-              </button>
-            )}
+            <div className="relative flex-1 min-w-[180px] sm:max-w-[240px]">
+              <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ค้นหาชื่อ / รหัสนักเรียน..."
+                aria-label="ค้นหาชื่อหรือรหัสนักเรียน"
+                className="w-full h-9 pl-8 pr-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+              />
+            </div>
+            <label className="sr-only" htmlFor="period-roster-filter">ตัวกรองรายชื่อนักเรียน</label>
+            <select
+              id="period-roster-filter"
+              value={rosterFilter}
+              onChange={(e) => setRosterFilter(e.target.value as RosterFilter)}
+              className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-semibold text-[var(--color-text-title)] focus:outline-none focus:border-[var(--color-primary)]"
+            >
+              <option value="all">ทุกสถานะ ({slotStudents.length})</option>
+              <option value="unchecked">ยังไม่เช็คชื่อ ({stats.unchecked})</option>
+              <option value="gate_missing">ยังไม่เข้า รร. ({stats.gateNotChecked})</option>
+              <option value="absent">ขาดเรียน ({stats.absent})</option>
+              <option value="leave">มีใบลา ({leaveByStudentId.size})</option>
+              <option value="proxy">ครูกดรับแทน ({stats.proxyCount})</option>
+              <option value="mobile">สแกนมือถือ/QR ({stats.mobileCount})</option>
+            </select>
           </div>
 
-          {onRecordPeriodAttendance && (
-            <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onRecordPeriodAttendance && (
               <button
                 type="button"
                 onClick={() => handleBulkMarkUnchecked('present')}
                 disabled={stats.unchecked === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold cursor-pointer transition"
+                className="h-9 inline-flex items-center gap-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold cursor-pointer transition"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>เช็คมาเรียนทั้งหมด ({stats.unchecked})</span>
               </button>
-              <button
-                type="button"
-                onClick={() => handleBulkMarkUnchecked('absent')}
-                disabled={stats.unchecked === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 disabled:opacity-50 text-white text-xs font-bold cursor-pointer transition"
-                title="บันทึกขาดเรียนสำหรับนักเรียนที่ยังไม่เช็คชื่อ (ถ้ามีใบลาอนุมัติจะบันทึกเป็น 'ลา' ให้อัตโนมัติ)"
-              >
-                <UserMinus className="w-3.5 h-3.5" />
-                <span>เช็คขาดที่เหลือ ({stats.unchecked})</span>
-              </button>
+            )}
+
+            {(onRecordPeriodAttendance || showGpsEditorToggle) && (
+              <TableActionMenu
+                ariaLabel="เมนูเช็คชื่อรายคาบเพิ่มเติม"
+                size="md"
+                menuWidth={250}
+                items={[
+                  ...(onRecordPeriodAttendance
+                    ? [
+                        {
+                          id: 'bulk_absent',
+                          label: `เช็คขาด/ลาที่เหลือ (${stats.unchecked})`,
+                          icon: <UserMinus className="w-3.5 h-3.5" />,
+                          variant: 'danger' as const,
+                          disabled: stats.unchecked === 0,
+                          onClick: () => handleBulkMarkUnchecked('absent'),
+                        },
+                      ]
+                    : []),
+                  ...(showGpsEditorToggle
+                    ? [
+                        {
+                          id: 'classroom_gps',
+                          label: classroomGps
+                            ? `พิกัด GPS ห้อง ${resolvedRoomLabel} (${classroomGps.radiusMeters} ม.)`
+                            : `ตั้งค่าพิกัด GPS (${resolvedRoomLabel})`,
+                          icon: <MapPin className="w-3.5 h-3.5" />,
+                          variant: 'primary' as const,
+                          dividerBefore: Boolean(onRecordPeriodAttendance),
+                          onClick: () => setShowGpsEditor(true),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Clean Unboxed Summary + Compact Teacher Status */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold tabular-nums">
+            <span className="text-[var(--color-text-title)]">ทั้งหมด {stats.total}</span>
+            <span className="text-emerald-700 dark:text-emerald-300">มา {stats.present}</span>
+            <span className="text-amber-700 dark:text-amber-300">สาย {stats.late}</span>
+            <span className="text-sky-700 dark:text-sky-300">ลา {stats.excused}</span>
+            <span className="text-rose-700 dark:text-rose-300">ขาด {stats.absent}</span>
+            <span className="text-[var(--color-text-muted)]">รอเช็ค {stats.unchecked}</span>
+          </div>
+
+          {teacherStatuses.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--color-text-muted)]">
+              {teacherStatuses.map((ts, idx) => (
+                <span key={`${ts.teacherName}-${idx}`} className="inline-flex items-center gap-1">
+                  <span className="font-bold text-[var(--color-text-title)]">{ts.teacherName}:</span>
+                  {ts.status === 'checked_in' && (
+                    <span className="text-emerald-700 dark:text-emerald-300 font-semibold tabular-nums">
+                      เข้า รร.{ts.checkInTime ? ` ${ts.checkInTime}` : ''}
+                    </span>
+                  )}
+                  {ts.status === 'late' && (
+                    <span className="text-amber-700 dark:text-amber-300 font-semibold tabular-nums">
+                      สาย{ts.checkInTime ? ` ${ts.checkInTime}` : ''}
+                    </span>
+                  )}
+                  {(ts.status === 'on_leave_approved' || ts.status === 'on_leave_pending') && (
+                    <span className="text-rose-700 dark:text-rose-300 font-semibold">
+                      {ts.leave ? LEAVE_TYPE_LABELS[ts.leave.leaveType] || 'ลา' : 'ลา'}
+                      {ts.substituteTeacherName ? ` (แทน: ${ts.substituteTeacherName})` : ''}
+                    </span>
+                  )}
+                  {ts.status === 'absent' && (
+                    <span className="text-rose-700 dark:text-rose-300 font-semibold">ขาด</span>
+                  )}
+                  {ts.status === 'not_checked_in' && (
+                    <span>ยังไม่เช็คเข้า รร.</span>
+                  )}
+                </span>
+              ))}
             </div>
           )}
         </div>
-
-        {/* Teacher School Check-in & Leave Status Banner */}
-        {teacherStatuses.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs">
-            <span className="font-bold text-[var(--color-text-muted)] shrink-0">สถานะครูผู้สอน:</span>
-            {teacherStatuses.map((ts, idx) => (
-              <div key={`${ts.teacherName}-${idx}`} className="inline-flex flex-wrap items-center gap-1.5">
-                <span className="font-bold text-[var(--color-text-title)]">{ts.teacherName}</span>
-                {ts.status === 'checked_in' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold tabular-nums">
-                    <LogIn className="w-3 h-3" />
-                    <span>เข้าโรงเรียนแล้ว{ts.checkInTime ? ` ${ts.checkInTime} น.` : ''}</span>
-                  </span>
-                )}
-                {ts.status === 'late' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-[11px] font-bold tabular-nums">
-                    <Clock className="w-3 h-3" />
-                    <span>เข้าโรงเรียนสาย{ts.checkInTime ? ` ${ts.checkInTime} น.` : ''}</span>
-                  </span>
-                )}
-                {(ts.status === 'on_leave_approved' || ts.status === 'on_leave_pending') && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-[11px] font-bold">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>
-                      {ts.leave ? LEAVE_TYPE_LABELS[ts.leave.leaveType] || 'ลา' : 'ลา'} (
-                      {ts.status === 'on_leave_approved' ? 'อนุมัติแล้ว' : 'รออนุมัติ'})
-                      {ts.substituteTeacherName ? ` · ครูสอนแทน: ${ts.substituteTeacherName}` : ''}
-                    </span>
-                  </span>
-                )}
-                {ts.status === 'absent' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 text-[11px] font-bold">
-                    <span>ขาด / ไม่มาปฏิบัติหน้าที่</span>
-                  </span>
-                )}
-                {ts.status === 'not_checked_in' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-[11px] font-semibold">
-                    <span>ยังไม่เช็คอินเข้าโรงเรียน</span>
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Classroom GPS Settings Popup */}
         {showGpsEditor && showGpsEditorToggle && (
@@ -677,57 +704,6 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
           </BaseModal>
         )}
 
-        {/* Summary Strip + Search + Filter */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold tabular-nums">
-            <StatusBadge size="xs" status="neutral" label={`ทั้งหมด ${stats.total}`} />
-            <StatusBadge size="xs" status="complete" label={`มาเรียน ${stats.present}`} />
-            <StatusBadge size="xs" status="pending" label={`สาย ${stats.late}`} />
-            <StatusBadge size="xs" status="info" label={`ลา ${stats.excused}`} />
-            <StatusBadge size="xs" status="delayed" label={`ขาดเรียน ${stats.absent}`} />
-            <StatusBadge size="xs" status="info" label={`รับแทน ${stats.proxyCount}`} />
-            <StatusBadge size="xs" status="pending" label={`รอเช็ค ${stats.unchecked}`} />
-          </div>
-
-          <div className="relative w-full sm:w-56">
-            <Search className="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาชื่อ / รหัสนักเรียน..."
-              className="w-full pl-8 pr-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-          {(
-            [
-              { id: 'all', label: `ทั้งหมด (${slotStudents.length})` },
-              { id: 'unchecked', label: `ยังไม่เช็คชื่อ (${stats.unchecked})` },
-              { id: 'gate_missing', label: `ยังไม่เข้า รร. (${stats.gateNotChecked})` },
-              { id: 'absent', label: `ขาดเรียน (${stats.absent})` },
-              { id: 'leave', label: `มีใบลา (${leaveByStudentId.size})` },
-              { id: 'proxy', label: `ครูกดรับแทน (${stats.proxyCount})` },
-              { id: 'mobile', label: `สแกนมือถือ/QR (${stats.mobileCount})` },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setRosterFilter(tab.id)}
-              className={`px-2.5 py-1 rounded-md border font-semibold cursor-pointer transition ${
-                rosterFilter === tab.id
-                  ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-                  : 'bg-[var(--color-card)] text-[var(--color-text-body)] border-[var(--color-border)] hover:text-[var(--color-text-title)]'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
         {feedbackMsg && (
           <div className="px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs font-semibold flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-300 shrink-0" />
@@ -736,202 +712,165 @@ export const TimetablePeriodRosterTable: React.FC<TimetablePeriodRosterTableProp
         )}
       </div>
 
-      {/* Structured Roster Table with Explicit 'สถานะการเข้าเรียน' Column */}
-      <div className="flex-1 min-h-0 overflow-auto">
+      {/* Prominent Student Names + Clear Inline Check-in Controls (Responsive, No Horizontal Scroll) */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {visibleStudents.length === 0 ? (
           <div className="py-10 text-center space-y-2 text-xs text-[var(--color-text-muted)]">
             <Users className="w-8 h-8 mx-auto opacity-50" />
             <p>ไม่พบรายชื่อนักเรียนในเงื่อนไขที่เลือก</p>
           </div>
         ) : (
-          <table className="w-full text-left border-collapse min-w-[680px]">
-            <thead className="sticky top-0 z-10 bg-[var(--color-card-subtle)] border-b border-[var(--color-border)] text-[11px] font-bold text-[var(--color-text-title)]">
-              <tr>
-                <th className="py-2.5 pl-4 pr-2 w-10 text-center">#</th>
-                <th className="py-2.5 px-2.5">
-                  {lang === 'th' ? 'นักเรียน' : 'Student'}
-                </th>
-                <th className="py-2.5 px-2.5">
-                  {lang === 'th' ? 'สถานะการเข้าเรียน (เช็คอิน / ลา)' : 'Attendance Status (Check-in / Leave)'}
-                </th>
-                {onRecordPeriodAttendance && (
-                  <th className="py-2.5 pl-2.5 pr-4 text-right">
-                    {lang === 'th' ? 'บันทึกสถานะรายคาบ' : 'Record Period Status'}
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-border)] bg-[var(--color-card)]">
-              {visibleStudents.map((st, idx) => {
-                const saved = recordsByStudentId.get(st.id);
-                const leave = leaveByStudentId.get(st.id);
-                const gate = gateStatusByStudentId.get(st.id);
-                const currentStatus = draftStatuses[st.id] || saved?.status;
-                const isPhoneChecked =
-                  saved?.checkMethod === 'qr_code' || saved?.checkMethod === 'student_mobile';
-                const isTeacherProxy = saved?.checkMethod === 'teacher_proxy';
+          <div className="divide-y divide-[var(--color-border)] bg-[var(--color-card)]">
+            {visibleStudents.map((st, idx) => {
+              const saved = recordsByStudentId.get(st.id);
+              const leave = leaveByStudentId.get(st.id);
+              const gate = gateStatusByStudentId.get(st.id);
+              const currentStatus = draftStatuses[st.id] || saved?.status;
+              const isPhoneChecked =
+                saved?.checkMethod === 'qr_code' || saved?.checkMethod === 'student_mobile';
+              const isTeacherProxy = saved?.checkMethod === 'teacher_proxy';
 
-                return (
-                  <tr
-                    key={st.id}
-                    className="hover:bg-[var(--color-card-subtle)]/60 transition align-middle"
-                  >
-                    <td className="py-2.5 pl-4 pr-2 text-center text-[11px] font-mono font-bold text-[var(--color-text-muted)] tabular-nums">
+              return (
+                <div
+                  key={st.id}
+                  className={`px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition hover:bg-[var(--color-card-subtle)]/60 ${
+                    !currentStatus ? 'bg-amber-50/20 dark:bg-amber-950/10' : ''
+                  }`}
+                >
+                  {/* Student Identity + Clear Inline Context */}
+                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                    <span className="w-6 text-center text-xs font-mono font-bold text-[var(--color-text-muted)] tabular-nums shrink-0 mt-1 sm:mt-0">
                       {idx + 1}
-                    </td>
-
-                    <td className="py-2.5 px-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={st.avatarUrl}
-                          alt={st.firstNameTh}
-                          className="w-9 h-9 rounded-lg object-cover border border-[var(--color-border)] shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-[var(--color-text-title)] truncate">
-                            {st.firstNameTh} {st.lastNameTh}
-                          </div>
-                          <div className="text-[11px] font-mono text-[var(--color-text-muted)] truncate">
-                            {st.studentIdNumber} · {st.gradeLevel} {st.room}
-                          </div>
-                        </div>
+                    </span>
+                    <img
+                      src={st.avatarUrl}
+                      alt={`${st.firstNameTh} ${st.lastNameTh}`}
+                      className="w-10 h-10 rounded-xl object-cover border border-[var(--color-border)] shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="text-sm sm:text-[15px] font-bold text-[var(--color-text-title)] leading-snug break-words">
+                          {st.firstNameTh} {st.lastNameTh}
+                        </span>
+                        <span className="text-[11px] font-mono text-[var(--color-text-muted)] shrink-0">
+                          {st.studentIdNumber} · {st.room}
+                        </span>
                       </div>
-                    </td>
 
-                    {/* Automatic Status Column: Gate Check-in + Leave + Period Self Check-in */}
-                    <td className="py-2.5 px-2.5">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {/* 1. School gate check-in status */}
-                        {gate?.status === 'present' ? (
-                          <StatusBadge
-                            size="xs"
-                            status="complete"
-                            className="tabular-nums"
-                            label={`เข้า รร.${gate.time ? ` ${gate.time}` : ''}`}
-                          />
-                        ) : gate?.status === 'late' ? (
-                          <StatusBadge
-                            size="xs"
-                            status="pending"
-                            className="tabular-nums"
-                            label={`สาย รร.${gate.time ? ` ${gate.time}` : ''}`}
-                          />
-                        ) : gate?.status === 'absent' ? (
-                          <StatusBadge size="xs" status="delayed" label="ขาด รร." />
-                        ) : (
-                          <StatusBadge size="xs" status="neutral" label="รอเช็คอิน รร." />
-                        )}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px]">
+                        <span
+                          className={`font-semibold tabular-nums ${
+                            gate?.status === 'present'
+                              ? 'text-emerald-700 dark:text-emerald-300'
+                              : gate?.status === 'late'
+                                ? 'text-amber-700 dark:text-amber-300'
+                                : gate?.status === 'absent'
+                                  ? 'text-rose-700 dark:text-rose-300'
+                                  : 'text-[var(--color-text-muted)]'
+                          }`}
+                        >
+                          {gate?.status === 'present'
+                            ? `เข้า รร. ${gate.time || ''}`
+                            : gate?.status === 'late'
+                              ? `สาย รร. ${gate.time || ''}`
+                              : gate?.status === 'absent'
+                                ? 'ขาด รร.'
+                                : 'ยังไม่เข้า รร.'}
+                        </span>
 
-                        {/* 2. Leave system status */}
                         {leave && (
-                          <StatusBadge
-                            size="xs"
-                            status={leave.status === 'approved' ? 'info' : 'pending'}
+                          <span
                             title={leave.reason}
-                            label={`${LEAVE_TYPE_LABELS[leave.leaveType] || 'ลา'} (${leave.status === 'approved' ? 'อนุมัติ' : 'รออนุมัติ'})`}
-                          />
+                            className="font-semibold text-sky-700 dark:text-sky-300"
+                          >
+                            · {LEAVE_TYPE_LABELS[leave.leaveType] || 'ลา'} ({leave.status === 'approved' ? 'อนุมัติ' : 'รออนุมัติ'})
+                            {leave.reason ? ` "${leave.reason}"` : ''}
+                          </span>
                         )}
 
-                        {/* 3. Period check-in method / current status */}
                         {isPhoneChecked && (
-                          <StatusBadge size="xs" status="complete" label="สแกน QR" />
+                          <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300">
+                            <Smartphone className="w-3 h-3 shrink-0" />
+                            <span>สแกน QR</span>
+                          </span>
                         )}
+
                         {isTeacherProxy && (
-                          <StatusBadge size="xs" status="info" label="ครูบันทึก" />
-                        )}
-                        {currentStatus && !isPhoneChecked && !isTeacherProxy && (
-                          <StatusBadge
-                            size="xs"
-                            status={
-                              currentStatus === 'present'
-                                ? 'complete'
-                                : currentStatus === 'late'
-                                  ? 'pending'
-                                  : currentStatus === 'excused'
-                                    ? 'info'
-                                    : 'delayed'
-                            }
-                            label={
-                              currentStatus === 'present'
-                                ? 'มาเรียน'
-                                : currentStatus === 'late'
-                                  ? 'สาย'
-                                  : currentStatus === 'excused'
-                                    ? 'ลา'
-                                    : 'ขาดเรียน'
-                            }
-                          />
+                          <span className="font-semibold text-[var(--color-primary-text)]">
+                            · ครูรับแทน
+                          </span>
                         )}
                       </div>
-                      {leave?.reason && (
-                        <p className="mt-0.5 text-[10px] text-[var(--color-text-muted)] truncate max-w-[260px]">
-                          เหตุผลการลา: {leave.reason}
-                        </p>
-                      )}
-                    </td>
+                    </div>
+                  </div>
 
-                    {/* Teacher Action Column: 'มาเรียน' | 'สาย' | 'ลา' | 'ขาดเรียน' */}
-                    {onRecordPeriodAttendance && (
-                      <td className="py-2.5 pl-2.5 pr-4">
-                        <div className="flex flex-wrap items-center justify-end gap-1.5">
-                          {!isPhoneChecked && (
+                  {/* Prominent Check-in Controls + 3-Dot Overflow */}
+                  {onRecordPeriodAttendance && (
+                    <div className="flex items-center justify-end gap-1.5 shrink-0 pl-8 sm:pl-0">
+                      <div
+                        role="group"
+                        aria-label={`เช็คชื่อ ${st.firstNameTh} ${st.lastNameTh}`}
+                        className="inline-flex items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-0.5 gap-0.5"
+                      >
+                        {(
+                          [
+                            { id: 'present', label: 'มา', fullLabel: 'มาเรียน' },
+                            { id: 'late', label: 'สาย', fullLabel: 'มาสาย' },
+                            { id: 'excused', label: 'ลา', fullLabel: 'ลา' },
+                            { id: 'absent', label: 'ขาด', fullLabel: 'ขาดเรียน' },
+                          ] as const
+                        ).map((option) => {
+                          const isActive = currentStatus === option.id;
+                          return (
                             <button
+                              key={option.id}
                               type="button"
-                              onClick={() => handleInstantTeacherAccept(st, 'present', true)}
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
-                                isTeacherProxy && currentStatus === 'present'
-                                  ? 'bg-sky-700 text-white border-sky-700'
-                                  : 'bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-700'
+                              onClick={() => handleInstantTeacherAccept(st, option.id, false)}
+                              aria-pressed={isActive}
+                              title={option.fullLabel}
+                              className={`min-h-[34px] min-w-[44px] sm:min-w-[50px] px-2.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1 transition cursor-pointer ${
+                                isActive
+                                  ? option.id === 'present'
+                                    ? 'bg-emerald-700 text-white shadow-xs'
+                                    : option.id === 'late'
+                                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                                      : option.id === 'excused'
+                                        ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                                        : 'bg-rose-700 text-white shadow-xs'
+                                  : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
                               }`}
-                              title="กรณีนักเรียนไม่มีมือถือเช็คอิน กดปุ่มนี้เพื่อรับเช็คชื่อเข้าคาบแทนทันที"
                             >
-                              <UserCheck className="w-3.5 h-3.5 shrink-0" />
-                              <span>
-                                {isTeacherProxy && currentStatus === 'present'
-                                  ? 'รับแทนแล้ว ✓'
-                                  : 'ไม่มีมือถือ · กดรับแทน'}
-                              </span>
+                              {isActive && <Check className="w-3 h-3 shrink-0" />}
+                              <span>{option.label}</span>
                             </button>
-                          )}
+                          );
+                        })}
+                      </div>
 
-                          <div className="inline-flex items-center gap-1">
-                            {(
-                              [
-                                { id: 'present', label: 'มาเรียน' },
-                                { id: 'late', label: 'สาย' },
-                                { id: 'excused', label: 'ลา' },
-                                { id: 'absent', label: 'ขาดเรียน' },
-                              ] as const
-                            ).map((option) => (
-                              <button
-                                key={option.id}
-                                type="button"
-                                onClick={() => handleInstantTeacherAccept(st, option.id, false)}
-                                aria-pressed={currentStatus === option.id}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
-                                  currentStatus === option.id
-                                    ? option.id === 'present'
-                                      ? 'bg-emerald-700 text-white shadow-xs'
-                                      : option.id === 'late'
-                                        ? 'bg-amber-500 text-slate-950 shadow-xs'
-                                        : option.id === 'excused'
-                                          ? 'bg-[var(--color-primary)] text-white shadow-xs'
-                                          : 'bg-rose-700 text-white shadow-xs'
-                                    : 'bg-[var(--color-card-subtle)] border border-[var(--color-border)] text-[var(--color-text-body)] hover:text-[var(--color-text-title)]'
-                                }`}
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {!isPhoneChecked && (
+                        <TableActionMenu
+                          size="md"
+                          menuWidth={220}
+                          ariaLabel={`ตัวเลือกเพิ่มเติมสำหรับ ${st.firstNameTh} ${st.lastNameTh}`}
+                          items={[
+                            {
+                              id: 'no_phone_proxy',
+                              label: isTeacherProxy && currentStatus === 'present'
+                                ? 'รับแทนแล้ว (ไม่มีมือถือ)'
+                                : 'ไม่มีมือถือ · กดรับแทน (มาเรียน)',
+                              icon: <UserCheck className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => handleInstantTeacherAccept(st, 'present', true),
+                            },
+                          ]}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

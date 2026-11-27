@@ -1667,17 +1667,6 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
           )}
 
-          {(activeTab === 'pp3_online' || activeTab === 'onet_niets') && (
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="btn-tool-tone px-2.5 py-1.5"
-            >
-              <Printer className="w-3.5 h-3.5 tone-text" />
-              <span>พิมพ์</span>
-            </button>
-          )}
-
           {/* Consolidated Export, Import & Notification Tools 3-Dot Menu (Staff only) */}
           {!isPersonalGradeViewer && (
             <TableActionMenu
@@ -1686,6 +1675,17 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               ariaLabel="ส่งออกและเครื่องมือสมุดคะแนน"
               menuWidth={245}
               items={[
+                ...((activeTab === 'pp3_online' || activeTab === 'onet_niets')
+                  ? [
+                      {
+                        id: 'print_official_doc',
+                        label: 'พิมพ์เอกสาร / PDF',
+                        icon: <Printer className="w-3.5 h-3.5 tone-text" />,
+                        variant: 'primary' as const,
+                        onClick: handlePrint,
+                      },
+                    ]
+                  : []),
                 ...(activeTab === 'gradebook'
                   ? [
                       {

@@ -42,6 +42,7 @@ import {
 } from '../lib/idCardBackLayout';
 import { emitAppToast } from '../components/common/ToastProvider';
 import { FutureNavIcon } from '../components/common/FutureIcon';
+import { TableActionMenu } from '../components/common/TableActionMenu';
 
 interface DigitalIdCardViewProps {
   students: Student[];
@@ -366,17 +367,6 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                 </button>
               </div>
 
-              {activePerson && (
-                <button
-                  type="button"
-                  onClick={handlePrintSingleCard}
-                  className="btn-tool-neutral px-2.5 py-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? 'พิมพ์บัตรนี้' : 'Print This Card'}</span>
-                </button>
-              )}
-
               <button
                 type="button"
                 onClick={() => setShowPrintModal(true)}
@@ -398,6 +388,22 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                         : `Print All Selected (${selectedBatchStudentIds.size})`)}
                 </span>
               </button>
+
+              {activePerson && (
+                <TableActionMenu
+                  size="md"
+                  ariaLabel={lang === 'th' ? 'ตัวเลือกพิมพ์บัตร' : 'Card print options'}
+                  menuWidth={210}
+                  items={[
+                    {
+                      id: 'print-single-card',
+                      label: lang === 'th' ? 'พิมพ์บัตรหน้านี้ (เดี่ยว)' : 'Print This Card',
+                      icon: <Printer className="w-3.5 h-3.5" />,
+                      onClick: handlePrintSingleCard,
+                    },
+                  ]}
+                />
+              )}
             </>
           )}
 
@@ -412,18 +418,22 @@ export const DigitalIdCardView: React.FC<DigitalIdCardViewProps> = ({
                 <span>{lang === 'th' ? 'พิมพ์บัตรหน้า-หลัง (A4)' : 'Print Front & Back'}</span>
               </button>
               {canBatchPrint && (
-                <button
-                  type="button"
-                  onClick={() => setShowPrintModal(true)}
-                  className="btn-tool-neutral px-3 py-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>
-                    {lang === 'th'
-                      ? `พิมพ์บัตรที่เลือกทั้งหมด (${isParentViewer ? selectedBatchStudentIds.size : students.length} ใบ)`
-                      : `Print All Selected (${isParentViewer ? selectedBatchStudentIds.size : students.length})`}
-                  </span>
-                </button>
+                <TableActionMenu
+                  size="md"
+                  ariaLabel={lang === 'th' ? 'ตัวเลือกพิมพ์บัตรชุด' : 'Batch print options'}
+                  menuWidth={230}
+                  items={[
+                    {
+                      id: 'print-batch-cards',
+                      label:
+                        lang === 'th'
+                          ? `พิมพ์บัตรที่เลือกทั้งหมด (${isParentViewer ? selectedBatchStudentIds.size : students.length} ใบ)`
+                          : `Print All Selected (${isParentViewer ? selectedBatchStudentIds.size : students.length})`,
+                      icon: <Printer className="w-3.5 h-3.5" />,
+                      onClick: () => setShowPrintModal(true),
+                    },
+                  ]}
+                />
               )}
             </>
           )}

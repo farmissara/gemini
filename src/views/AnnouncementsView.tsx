@@ -124,8 +124,20 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <ModuleTourTrigger moduleId="announcements" lang="th" />
+          <button
+            type="button"
+            data-guide-id="announcements-compose-btn"
+            onClick={() => {
+              setAllowDuplicateConfirm(false);
+              setShowComposeModal(true);
+            }}
+            className="btn-action-primary px-3 py-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>สร้างประกาศใหม่</span>
+          </button>
           <TableActionMenu
-            triggerLabel="เครื่องมือ"
+            size="md"
             ariaLabel="เครื่องมือจัดการประกาศ"
             menuWidth={240}
             items={[
@@ -144,18 +156,6 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               },
             ]}
           />
-          <button
-            type="button"
-            data-guide-id="announcements-compose-btn"
-            onClick={() => {
-              setAllowDuplicateConfirm(false);
-              setShowComposeModal(true);
-            }}
-            className="btn-action-primary px-3 py-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Publish Broadcast</span>
-          </button>
         </div>
       </div>
 

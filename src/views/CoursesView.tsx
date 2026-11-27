@@ -575,8 +575,17 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                 </button>
               )}
 
+              <button
+                type="button"
+                onClick={handleOpenAddCourse}
+                className="btn-action-primary h-9 px-3"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>เพิ่มรายวิชา</span>
+              </button>
+
               <TableActionMenu
-                triggerLabel="เครื่องมือจัดการ"
+                size="md"
                 ariaLabel="เครื่องมือจัดการหลักสูตร"
                 menuWidth={230}
                 items={[
@@ -631,15 +640,6 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
                     : []),
                 ]}
               />
-
-              <button
-                type="button"
-                onClick={handleOpenAddCourse}
-                className="btn-action-primary h-9 px-3"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มรายวิชา</span>
-              </button>
             </div>
           )}
         </div>

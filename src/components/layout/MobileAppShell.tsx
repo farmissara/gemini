@@ -9,6 +9,11 @@ import { getModuleTone } from '../../lib/moduleTheme';
 import { CALENDAR_NOTES_UPDATED_EVENT } from '../../lib/calendarNotes';
 import { getMobileTabForNavTab } from '../../lib/mobileNavigation';
 import {
+  readSavedNavState,
+  syncUrlNavParams,
+  writeSavedNavState,
+} from '../../features/navigation/navPersistence';
+import {
   filterAttendanceForUser,
   filterLeaveRequestsForUser,
   isRestrictedAttendanceViewer,
@@ -112,6 +117,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onUpdateTeacher,
   onUpdateOwnAvatar,
   timetableSlots = [],
+  allSchoolTimetableSlots,
+  allSchoolCourses,
+  allSchoolTeachers,
+  allSchoolStudents,
   schoolPeriods = DEFAULT_SCHOOL_PERIODS,
   gradingSystem = activeSchool.gradingSystem || 'thai',
   systemConfig,
@@ -159,7 +168,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
 }) => {
-  const [activeTab, setActiveTab] = useState<MobileTab>(initialMobileTab);
+  const [activeTab, setActiveTab] = useState<MobileTab>(() => {
+    if (initialPeriodCourseId || initialPeriodNumber || initialMobileTab !== 'home') {
+      return initialMobileTab;
+    }
+    return readSavedNavState(currentUser?.id)?.mobileTab || initialMobileTab;
+  });
   const [showModuleDrawer, setShowModuleDrawer] = useState(false);
   const [activeGameView, setActiveGameView] = useState<ActiveGameView>('hub');
   const [arcadeInitialSubTab, setArcadeInitialSubTab] = useState<EduGameSubTab>('hub');
@@ -187,7 +201,22 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const currentBangkokYear = Number(todayBangkokStr.slice(0, 4));
   const todayDayKey = bangkokClock.dayKey;
   const [timetableOnlyMine, setTimetableOnlyMine] = useState<boolean>(currentRole === 'teacher');
-  const [mobileTimetableMode, setMobileTimetableMode] = useState<'day' | 'calendar'>('day');
+  const [mobileTimetableMode, setMobileTimetableMode] = useState<'day' | 'calendar'>(
+    () => readSavedNavState(currentUser?.id)?.mobileTimetableMode || 'day'
+  );
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    writeSavedNavState({
+      userId: currentUser.id,
+      mobileTab: activeTab,
+      mobileTimetableMode,
+    });
+    syncUrlNavParams({
+      mobileTab: activeTab,
+      isMobileView: true,
+    });
+  }, [currentUser?.id, activeTab, mobileTimetableMode]);
   const [mobileCalendarMonthCursor, setMobileCalendarMonthCursor] = useState<{ year: number; month: number }>(() => ({
     year: Number(todayBangkokStr.slice(0, 4)),
     month: Number(todayBangkokStr.slice(5, 7)) - 1,
@@ -378,23 +407,33 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     [announcements, currentUser]
   );
 
+  const timetableScopeCourses = isRestrictedViewer ? scopedCourses : (allSchoolCourses ?? courses);
+  const timetableScopeTeachers = isRestrictedViewer ? teachers : (allSchoolTeachers ?? teachers);
+  const timetableScopeStudents = isRestrictedViewer ? students : (allSchoolStudents ?? students);
+  const timetableScopeSlots = isRestrictedViewer
+    ? scopedTimetableSlots
+    : (allSchoolTimetableSlots ?? timetableSlots);
+
   const matchedTeacher = useMemo(
-    () => (currentRole === 'teacher' ? resolveMatchedTeacherForUser(currentUser, teachers) : undefined),
-    [currentRole, currentUser, teachers]
+    () =>
+      currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'super_admin'
+        ? resolveMatchedTeacherForUser(currentUser, timetableScopeTeachers)
+        : undefined,
+    [currentRole, currentUser, timetableScopeTeachers]
   );
   const teacherFullName = currentUser?.fullNameTh || currentUser?.fullNameEn || '';
   const todayMySlots = useMemo(() => {
-    return scopedTimetableSlots
+    return timetableScopeSlots
       .filter((s) => s.dayOfWeek === todayDayKey)
       .filter((s) => {
-        if (currentRole === 'teacher' && timetableOnlyMine) {
-          return slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, courses);
+        if (currentRole === 'teacher') {
+          return slotMatchesLoggedInTeacher(s, currentUser, matchedTeacher, timetableScopeCourses);
         }
         return true;
       })
       .slice()
       .sort((a, b) => a.periodNumber - b.periodNumber);
-  }, [scopedTimetableSlots, todayDayKey, currentRole, timetableOnlyMine, currentUser, matchedTeacher, courses]);
+  }, [timetableScopeSlots, todayDayKey, currentRole, currentUser, matchedTeacher, timetableScopeCourses]);
 
   const todayHoliday = useMemo(
     () => (holidaySyncTick >= 0 ? getHolidayForDate(todayBangkokStr, activeSchool.id) : null),
@@ -913,11 +952,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               lang={lang}
               isRestrictedViewer={isRestrictedViewer}
               canSelfCheckin={canSelfCheckin}
-              courses={courses}
-              scopedCourses={scopedCourses}
-              scopedTimetableSlots={scopedTimetableSlots}
-              students={students}
-              teachers={teachers}
+              courses={timetableScopeCourses}
+              scopedCourses={isRestrictedViewer ? scopedCourses : timetableScopeCourses}
+              scopedTimetableSlots={timetableScopeSlots}
+              students={timetableScopeStudents}
+              teachers={timetableScopeTeachers}
               attendance={attendance}
               periodAttendance={periodAttendance}
               leaveRequests={leaveRequests}
