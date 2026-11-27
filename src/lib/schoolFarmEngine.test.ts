@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applyDailyFertilizerTile,
   applyQuizBoostReward,
   buySeedPack,
   calculateTownProsperity,
@@ -10,14 +11,18 @@ import {
   computeDisciplineChestSummary,
   constructBuildingOnTile,
   createInitialFarmState,
+  expandFarmGridTo8x8,
   fertilizeTile,
   fulfillMarketOrder,
+  getFarmGridSize,
   harvestTile,
   helpNeighborFarm,
   plantCropOnTile,
   sellCropFromBarn,
   syncBehaviorWeedsOntoFarm,
+  tillPlotTile,
   unlockPlotTile,
+  upgradeBuildingOnTile,
   waterTile,
 } from './schoolFarmEngine';
 import type {
@@ -338,5 +343,89 @@ describe('schoolFarmEngine', () => {
 
     const repeat = helpNeighborFarm(coop.helperState, coop.neighborState, '2026-11-27');
     assert.equal(repeat.ok, false);
+  });
+
+  it('denies free water bonus when late/absent, supports building upgrades, 8x8 expansion, and targeted neighbor crop watering', () => {
+    const student = makeStudent();
+    const user = makeUser();
+    const today = '2026-11-27';
+    let state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-stu-1',
+      studentId: 'stu-1',
+      ownerName: 'สมชาย ใจดี',
+    });
+
+    // Late attendance grants 0 free daily water bonus
+    const lateSummary = computeDisciplineChestSummary({
+      farmState: state,
+      currentUser: user,
+      students: [student],
+      attendance: [
+        {
+          id: 'att-late',
+          studentId: 'stu-1',
+          date: today,
+          time: '08:30:00',
+          status: 'late',
+          checkinMethod: 'qr_scanner',
+        },
+      ],
+      periodAttendance: [],
+      homeworkSubmissions: [],
+      assignments: [],
+      behaviorRecords: [],
+      todayDate: today,
+    });
+    assert.equal(lateSummary.attendanceStatusToday, 'late');
+    assert.equal(lateSummary.claimableWater, 0);
+
+    // Daily fertilizer advances growth +1 without consuming water
+    const dailyFert = applyDailyFertilizerTile(state, 15); // starter tomato (1/2)
+    assert.equal(dailyFert.ok, true);
+    assert.equal(dailyFert.matured, true);
+    state = dailyFert.state;
+
+    // Till an unlocked empty tile (row 1, col 1 -> index 7)
+    state = {
+      ...state,
+      tiles: state.tiles.map((t, i) => (i === 7 ? { ...t, tilled: false } : t)),
+    };
+    const tilled = tillPlotTile(state, 7);
+    assert.equal(tilled.ok, true);
+    state = tilled.state;
+    assert.equal(state.tiles[7].tilled, true);
+
+    // Build and upgrade chicken coop to Lv.2
+    state = { ...state, coins: 300, townStars: 12, farmXp: 200 };
+    const built = constructBuildingOnTile(state, 7, 'chicken_coop');
+    assert.equal(built.ok, true);
+    state = built.state;
+
+    const upgraded = upgradeBuildingOnTile(state, 7);
+    assert.equal(upgraded.ok, true);
+    assert.equal(upgraded.newLevel, 2);
+    state = upgraded.state;
+
+    // Expand grid from 6x6 to 8x8 while preserving existing building at (1,1) -> shifted to (2,2) = index 18
+    const expanded = expandFarmGridTo8x8(state);
+    assert.equal(expanded.ok, true);
+    state = expanded.state;
+    assert.equal(getFarmGridSize(state), 8);
+    assert.equal(state.tiles.length, 64);
+    assert.equal(state.tiles[2 * 8 + 2].kind, 'building');
+    assert.equal(state.tiles[2 * 8 + 2].buildingId, 'chicken_coop');
+    assert.equal(state.tiles[2 * 8 + 2].buildingLevel, 2);
+
+    // Interactive neighbor crop watering advances friend's crop on targetTileIndex 15
+    const friend = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-friend',
+      ownerName: 'เพื่อนรัก',
+    });
+    const helpRes = helpNeighborFarm(state, friend, today, 15);
+    assert.equal(helpRes.ok, true);
+    assert.equal(helpRes.wateredCropTile, true);
+    assert.equal(helpRes.neighborState.tiles[15].growthProgress, 2);
   });
 });

@@ -10,23 +10,30 @@ import type {
 
 export type CropId =
   | 'corn'
+  | 'carrot'
   | 'tomato'
   | 'strawberry'
+  | 'sunflower'
   | 'jasmine_rice'
   | 'pumpkin'
   | 'golden_melon';
 
 export type BuildingId =
   | 'chicken_coop'
+  | 'town_fountain'
+  | 'farm_cottage'
   | 'dairy_barn'
   | 'school_greenhouse'
   | 'windmill_bakery'
-  | 'town_fountain';
+  | 'wooden_fence'
+  | 'cobble_path';
 
 export type FarmTool =
   | 'inspect'
+  | 'till'
   | 'plant'
   | 'water'
+  | 'daily_fertilize'
   | 'fertilize'
   | 'harvest'
   | 'clear_weed'
@@ -52,6 +59,7 @@ export interface BuildingDefinition {
   id: BuildingId;
   nameTh: string;
   nameEn: string;
+  category: 'production' | 'landmark' | 'decor';
   coinCost: number;
   starCost: number;
   unlockTownLevel: number;
@@ -59,6 +67,7 @@ export interface BuildingDefinition {
   dailyFertilizer?: number;
   cropSellBonusPct?: number;
   prosperityPoints: number;
+  maxLevel: number;
   descTh: string;
   descEn: string;
 }
@@ -68,6 +77,7 @@ export interface FarmTile {
   row: number;
   col: number;
   unlocked: boolean;
+  tilled?: boolean;
   kind: 'empty' | 'crop' | 'building' | 'weed';
   cropId?: CropId;
   growthProgress?: number; // 0..watersNeeded
@@ -77,6 +87,8 @@ export interface FarmTile {
   buildingLevel?: number;
   lastCollectedDate?: string;
   weedSourceId?: string;
+  weedVariant?: 'weed' | 'pest';
+  weedReasonTh?: string;
 }
 
 export interface MarketOrder {
@@ -92,6 +104,7 @@ export interface MarketOrder {
 
 export interface SchoolFarmState {
   version: 1;
+  gridSize: 6 | 8;
   userId: string;
   schoolId: string;
   studentId?: string;
@@ -100,6 +113,7 @@ export interface SchoolFarmState {
   farmName: string;
   coins: number;
   water: number;
+  dailyFertilizer: number;
   fertilizer: number;
   townStars: number;
   farmXp: number;
@@ -107,8 +121,10 @@ export interface SchoolFarmState {
   barn: Record<CropId, number>;
   tiles: FarmTile[];
   marketOrders: MarketOrder[];
+  unlockedBlueprints: BuildingId[];
   claimedAttendanceDates: string[];
   claimedHomeworkIds: string[];
+  claimedHomeworkMasteryCount: number;
   claimedMeritIds: string[];
   resolvedDemeritIds: string[];
   lastQuizBoostDate: string;
@@ -129,20 +145,26 @@ export interface DisciplineChestSummary {
   submittedHomeworkCount: number;
   pendingHomeworkCount: number;
   pendingHomeworkTitles: string[];
+  homeworkBonusLocked: boolean;
   totalMeritPoints: number;
   unresolvedDemeritIds: string[];
+  unresolvedDemerits: Array<{ id: string; reasonTh: string }>;
   claimableWater: number;
+  claimableDailyFertilizer: number;
   claimableFertilizer: number;
   claimableSeeds: Partial<Record<CropId, number>>;
+  claimableBlueprints: BuildingId[];
   claimableStars: number;
   claimableCoins: number;
   newAttendanceDateToClaim: string | null;
   newHomeworkIdsToClaim: string[];
   newMeritIdsToClaim: string[];
+  canClaimHomeworkMasteryPack: boolean;
   hasAnythingToClaim: boolean;
 }
 
 export const FARM_GRID_SIZE = 6;
+export const EXPANDED_FARM_GRID_SIZE = 8;
 
 export const CROP_CATALOG: CropDefinition[] = [
   {
@@ -157,6 +179,19 @@ export const CROP_CATALOG: CropDefinition[] = [
     accentColor: '#eab308',
     descTh: 'โตไว เก็บเกี่ยวได้ใน 2 ครั้งรดน้ำ',
     descEn: 'Fast-growing staple crop (2 waters)',
+  },
+  {
+    id: 'carrot',
+    nameTh: 'แครอทกรอบ',
+    nameEn: 'Crisp Carrot',
+    watersNeeded: 2,
+    seedCost: 13,
+    sellPrice: 36,
+    xpReward: 14,
+    unlockTownLevel: 1,
+    accentColor: '#fb923c',
+    descTh: 'ปลูกง่าย เติบโตเร็วใน 2 ครั้งรดน้ำ',
+    descEn: 'Crunchy starter root crop (2 waters)',
   },
   {
     id: 'tomato',
@@ -184,6 +219,19 @@ export const CROP_CATALOG: CropDefinition[] = [
     accentColor: '#f43f5e',
     descTh: 'ปลดล็อกเมื่อส่งการบ้านอย่างน้อย 1 งาน',
     descEn: 'Unlocked by submitting at least 1 homework',
+  },
+  {
+    id: 'sunflower',
+    nameTh: 'ดอกทานตะวัน',
+    nameEn: 'Bright Sunflower',
+    watersNeeded: 3,
+    seedCost: 30,
+    sellPrice: 86,
+    xpReward: 28,
+    unlockTownLevel: 2,
+    accentColor: '#facc15',
+    descTh: 'บานสะพรั่งดึงดูดผึ้ง เพิ่มความสดใสให้เมือง',
+    descEn: 'Radiant bloom unlocked at Town Lv.2',
   },
   {
     id: 'jasmine_rice',
@@ -232,63 +280,115 @@ export const BUILDING_CATALOG: BuildingDefinition[] = [
     id: 'chicken_coop',
     nameTh: 'เล้าไก่ไข่แสนรู้',
     nameEn: 'Cozy Chicken Coop',
+    category: 'production',
     coinCost: 65,
     starCost: 2,
     unlockTownLevel: 1,
     dailyCoins: 28,
     prosperityPoints: 25,
-    descTh: 'เก็บผลผลิตไข่สดรับ +28 เหรียญฟาร์มทุกวัน',
+    maxLevel: 3,
+    descTh: 'เลี้ยงแม่ไก่อารมณ์ดี เก็บไข่รับ +28🪙/วัน',
     descEn: 'Produces fresh eggs for +28 coins daily',
+  },
+  {
+    id: 'farm_cottage',
+    nameTh: 'บ้านพักชาวสวน',
+    nameEn: 'Farmhouse Cottage',
+    category: 'landmark',
+    coinCost: 85,
+    starCost: 2,
+    unlockTownLevel: 1,
+    dailyCoins: 22,
+    prosperityPoints: 35,
+    maxLevel: 3,
+    descTh: 'บ้านพักอบอุ่นหัวใจเมือง รับ +22🪙/วัน',
+    descEn: 'Cozy home centerpiece (+22 coins daily)',
   },
   {
     id: 'town_fountain',
     nameTh: 'ลานน้ำพุกลางเมือง',
     nameEn: 'Town Plaza Fountain',
+    category: 'landmark',
     coinCost: 90,
     starCost: 3,
     unlockTownLevel: 1,
     dailyCoins: 24,
     prosperityPoints: 40,
-    descTh: 'เพิ่มความเจริญเมืองและรายได้ประจำวัน +24 เหรียญ',
+    maxLevel: 3,
+    descTh: 'เพิ่มความเจริญเมืองและรายได้ +24🪙/วัน',
     descEn: 'Boosts town prosperity and +24 coins daily',
   },
   {
     id: 'dairy_barn',
     nameTh: 'คอกวัวนมสด',
     nameEn: 'Sunny Dairy Barn',
+    category: 'production',
     coinCost: 115,
     starCost: 4,
     unlockTownLevel: 2,
     dailyCoins: 48,
     prosperityPoints: 50,
-    descTh: 'ผลิตนมสดโรงเรียนรับ +48 เหรียญทุกวัน',
+    maxLevel: 3,
+    descTh: 'เลี้ยงวัวนมผลิตนมสดโรงเรียน +48🪙/วัน',
     descEn: 'Produces school milk for +48 coins daily',
   },
   {
     id: 'school_greenhouse',
     nameTh: 'เรือนกระจกพฤกษศาสตร์',
     nameEn: 'Botanical Greenhouse',
+    category: 'production',
     coinCost: 145,
     starCost: 5,
     unlockTownLevel: 2,
     dailyCoins: 30,
     dailyFertilizer: 1,
     prosperityPoints: 60,
-    descTh: 'ผลิต +30 เหรียญ และปุ๋ยทองคำ +1 ถุงทุกวัน',
-    descEn: 'Yields +30 coins & +1 fertilizer daily',
+    maxLevel: 3,
+    descTh: 'ผลิต +30🪙 และปุ๋ยทองคำ +1 ถุงทุกวัน',
+    descEn: 'Yields +30 coins & +1 golden fertilizer daily',
   },
   {
     id: 'windmill_bakery',
     nameTh: 'โรงสี & ร้านเบเกอรี่',
     nameEn: 'Windmill Bakery',
+    category: 'production',
     coinCost: 175,
     starCost: 6,
     unlockTownLevel: 3,
     dailyCoins: 64,
     cropSellBonusPct: 20,
     prosperityPoints: 80,
-    descTh: 'เพิ่มราคาขายพืชผล +20% และรับ +64 เหรียญทุกวัน',
+    maxLevel: 3,
+    descTh: 'เพิ่มราคาขายพืชผล +20% และรับ +64🪙/วัน',
     descEn: '+20% crop market price & +64 coins daily',
+  },
+  {
+    id: 'wooden_fence',
+    nameTh: 'รั้วไม้ฟาร์ม',
+    nameEn: 'Wooden Fence',
+    category: 'decor',
+    coinCost: 25,
+    starCost: 0,
+    unlockTownLevel: 1,
+    dailyCoins: 0,
+    prosperityPoints: 12,
+    maxLevel: 1,
+    descTh: 'ตกแต่งขอบแปลงให้เป็นระเบียบ (+12 ความเจริญ)',
+    descEn: 'Charming timber fence (+12 prosperity)',
+  },
+  {
+    id: 'cobble_path',
+    nameTh: 'ถนนหินปูเมือง',
+    nameEn: 'Cobblestone Road',
+    category: 'decor',
+    coinCost: 20,
+    starCost: 0,
+    unlockTownLevel: 1,
+    dailyCoins: 0,
+    prosperityPoints: 10,
+    maxLevel: 1,
+    descTh: 'ปูทางเดินเชื่อมอาคารในเมืองเกษตร (+10 ความเจริญ)',
+    descEn: 'Connects town buildings neatly (+10 prosperity)',
   },
 ];
 
@@ -311,6 +411,11 @@ export const getTodayBangkokDate = (now: Date = new Date()): string => {
   } catch {
     return now.toISOString().slice(0, 10);
   }
+};
+
+export const getFarmGridSize = (tilesOrState: FarmTile[] | SchoolFarmState): 6 | 8 => {
+  const count = Array.isArray(tilesOrState) ? tilesOrState.length : tilesOrState.tiles.length;
+  return count >= EXPANDED_FARM_GRID_SIZE * EXPANDED_FARM_GRID_SIZE ? 8 : 6;
 };
 
 export const getTownLevelFromXp = (farmXp: number): { level: number; currentIntoLevel: number; nextLevelNeed: number } => {
@@ -336,13 +441,23 @@ export const calculateTownProsperity = (state: SchoolFarmState): number => {
     return sum + (def ? def.prosperityPoints * (tile.buildingLevel || 1) : 0);
   }, 0);
   const { level } = getTownLevelFromXp(state.farmXp);
-  return level * 50 + unlockedCount * 6 + buildingScore + state.totalOrdersCompleted * 15;
+  const gridBonus = getFarmGridSize(state) === 8 ? 60 : 0;
+  return level * 50 + unlockedCount * 6 + buildingScore + state.totalOrdersCompleted * 15 + gridBonus;
 };
 
 export const getPlotUnlockStarCost = (unlockedCount: number): number => {
   if (unlockedCount < 20) return 1;
-  if (unlockedCount < 28) return 2;
+  if (unlockedCount < 32) return 2;
   return 3;
+};
+
+export const getBuildingUpgradeCost = (buildingId: BuildingId, currentLevel: number): { coinCost: number; starCost: number } => {
+  const def = BUILDING_MAP[buildingId];
+  const nextLv = currentLevel + 1;
+  return {
+    coinCost: Math.round(def.coinCost * 0.75 * nextLv),
+    starCost: Math.max(1, Math.ceil(def.starCost * 0.65 * nextLv)),
+  };
 };
 
 export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrder[] => {
@@ -354,6 +469,15 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
       quantity: 2,
       rewardCoins: 72,
       rewardXp: 28,
+      rewardGems: 2,
+    },
+    {
+      titleTh: 'ห้องคหกรรมต้องการแครอทสด',
+      titleEn: 'Home Ec Crisp Carrot Crate',
+      cropId: 'carrot',
+      quantity: 2,
+      rewardCoins: 90,
+      rewardXp: 32,
       rewardGems: 2,
     },
     {
@@ -376,6 +500,15 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
     },
     ...(townLevel >= 2
       ? [
+          {
+            titleTh: 'จัดดอกไม้หน้าเสาธงด้วยทานตะวัน',
+            titleEn: 'Morning Assembly Sunflower Bouquet',
+            cropId: 'sunflower' as CropId,
+            quantity: 2,
+            rewardCoins: 205,
+            rewardXp: 60,
+            rewardGems: 5,
+          },
           {
             titleTh: 'สหกรณ์โรงเรียนสั่งข้าวหอมมะลิ',
             titleEn: 'School Co-op Jasmine Rice Pack',
@@ -428,8 +561,10 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
 
 const emptyRecord = (): Record<CropId, number> => ({
   corn: 0,
+  carrot: 0,
   tomato: 0,
   strawberry: 0,
+  sunflower: 0,
   jasmine_rice: 0,
   pumpkin: 0,
   golden_melon: 0,
@@ -454,6 +589,7 @@ export const createInitialFarmState = (params: {
         row,
         col,
         unlocked,
+        tilled: unlocked,
         kind: 'empty',
       });
     }
@@ -463,6 +599,7 @@ export const createInitialFarmState = (params: {
   const starterPlot1 = tiles.find((t) => t.row === 2 && t.col === 2);
   if (starterPlot1) {
     starterPlot1.kind = 'crop';
+    starterPlot1.tilled = true;
     starterPlot1.cropId = 'corn';
     starterPlot1.growthProgress = 2; // ready to harvest right away!
     starterPlot1.wateredToday = true;
@@ -470,6 +607,7 @@ export const createInitialFarmState = (params: {
   const starterPlot2 = tiles.find((t) => t.row === 2 && t.col === 3);
   if (starterPlot2) {
     starterPlot2.kind = 'crop';
+    starterPlot2.tilled = true;
     starterPlot2.cropId = 'tomato';
     starterPlot2.growthProgress = 1;
     starterPlot2.wateredToday = false;
@@ -477,6 +615,7 @@ export const createInitialFarmState = (params: {
 
   return {
     version: 1,
+    gridSize: FARM_GRID_SIZE,
     userId: params.userId,
     schoolId: params.schoolId,
     studentId: params.studentId,
@@ -485,13 +624,16 @@ export const createInitialFarmState = (params: {
     farmName: params.farmName || `ฟาร์มของ${params.ownerName.split(' ')[0] || 'ฉัน'}`,
     coins: 70,
     water: 5,
+    dailyFertilizer: 1,
     fertilizer: 2,
     townStars: 3,
     farmXp: 25,
     seeds: {
       corn: 3,
+      carrot: 2,
       tomato: 2,
       strawberry: 0,
+      sunflower: 0,
       jasmine_rice: 0,
       pumpkin: 0,
       golden_melon: 0,
@@ -499,8 +641,10 @@ export const createInitialFarmState = (params: {
     barn: emptyRecord(),
     tiles,
     marketOrders: createMarketOrders(1, 0),
+    unlockedBlueprints: ['chicken_coop', 'farm_cottage', 'town_fountain', 'wooden_fence', 'cobble_path'],
     claimedAttendanceDates: [],
     claimedHomeworkIds: [],
+    claimedHomeworkMasteryCount: 0,
     claimedMeritIds: [],
     resolvedDemeritIds: [],
     lastQuizBoostDate: '',
@@ -520,12 +664,17 @@ export const normalizeFarmState = (
 ): SchoolFarmState => {
   const base = createInitialFarmState(fallbackParams);
   if (!raw || typeof raw !== 'object') return base;
-  const normalizedTiles: FarmTile[] = Array.isArray(raw.tiles) && raw.tiles.length === FARM_GRID_SIZE * FARM_GRID_SIZE
+  const rawLen = Array.isArray(raw.tiles) ? raw.tiles.length : 0;
+  const gridSize: 6 | 8 = rawLen === 64 ? 8 : 6;
+  const expectedLen = gridSize * gridSize;
+
+  const normalizedTiles: FarmTile[] = Array.isArray(raw.tiles) && raw.tiles.length === expectedLen
     ? raw.tiles.map((tile, idx) => ({
         index: idx,
-        row: Math.floor(idx / FARM_GRID_SIZE),
-        col: idx % FARM_GRID_SIZE,
+        row: Math.floor(idx / gridSize),
+        col: idx % gridSize,
         unlocked: Boolean(tile?.unlocked),
+        tilled: tile?.tilled !== undefined ? Boolean(tile.tilled) : Boolean(tile?.unlocked),
         kind: tile?.kind === 'crop' || tile?.kind === 'building' || tile?.kind === 'weed' ? tile.kind : 'empty',
         cropId: tile?.cropId,
         growthProgress: typeof tile?.growthProgress === 'number' ? tile.growthProgress : undefined,
@@ -535,6 +684,8 @@ export const normalizeFarmState = (
         buildingLevel: typeof tile?.buildingLevel === 'number' ? tile.buildingLevel : undefined,
         lastCollectedDate: tile?.lastCollectedDate,
         weedSourceId: tile?.weedSourceId,
+        weedVariant: tile?.weedVariant === 'pest' ? 'pest' : tile?.kind === 'weed' ? 'weed' : undefined,
+        weedReasonTh: typeof tile?.weedReasonTh === 'string' ? tile.weedReasonTh : undefined,
       }))
     : base.tiles;
 
@@ -542,17 +693,23 @@ export const normalizeFarmState = (
     ...base,
     ...raw,
     version: 1,
+    gridSize,
     schoolId: fallbackParams.schoolId,
     userId: fallbackParams.userId,
     studentId: raw.studentId || fallbackParams.studentId,
     ownerName: raw.ownerName || fallbackParams.ownerName,
     ownerRoom: raw.ownerRoom || fallbackParams.ownerRoom,
+    dailyFertilizer: typeof raw.dailyFertilizer === 'number' ? raw.dailyFertilizer : base.dailyFertilizer,
     seeds: { ...emptyRecord(), ...(raw.seeds || {}) },
     barn: { ...emptyRecord(), ...(raw.barn || {}) },
     tiles: normalizedTiles,
     marketOrders: Array.isArray(raw.marketOrders) && raw.marketOrders.length > 0 ? raw.marketOrders : base.marketOrders,
+    unlockedBlueprints: Array.isArray(raw.unlockedBlueprints) && raw.unlockedBlueprints.length > 0
+      ? raw.unlockedBlueprints
+      : base.unlockedBlueprints,
     claimedAttendanceDates: Array.isArray(raw.claimedAttendanceDates) ? raw.claimedAttendanceDates : [],
     claimedHomeworkIds: Array.isArray(raw.claimedHomeworkIds) ? raw.claimedHomeworkIds : [],
+    claimedHomeworkMasteryCount: typeof raw.claimedHomeworkMasteryCount === 'number' ? raw.claimedHomeworkMasteryCount : 0,
     claimedMeritIds: Array.isArray(raw.claimedMeritIds) ? raw.claimedMeritIds : [],
     resolvedDemeritIds: Array.isArray(raw.resolvedDemeritIds) ? raw.resolvedDemeritIds : [],
     helpedNeighborDates: raw.helpedNeighborDates && typeof raw.helpedNeighborDates === 'object' ? raw.helpedNeighborDates : {},
@@ -673,17 +830,19 @@ export const computeDisciplineChestSummary = (params: {
 
   let newAttendanceDateToClaim: string | null = null;
   let claimableWater = 0;
+  let claimableDailyFertilizer = 0;
   let claimableFertilizer = 0;
   let claimableCoins = 0;
   if (
-    (attendanceStatusToday === 'present' || attendanceStatusToday === 'late') &&
+    attendanceStatusToday === 'present' &&
     !params.farmState.claimedAttendanceDates.includes(todayDate)
   ) {
     newAttendanceDateToClaim = todayDate;
     const streakBonus = Math.min(3, Math.floor(attendanceStreakDays / 3));
-    claimableWater += (attendanceStatusToday === 'present' ? 4 : 2) + streakBonus;
-    claimableFertilizer += attendanceStatusToday === 'present' ? 2 : 1;
-    claimableCoins += attendanceStatusToday === 'present' ? 20 : 10;
+    claimableWater += 4 + streakBonus;
+    claimableDailyFertilizer += 2;
+    claimableFertilizer += attendanceStreakDays >= 3 ? 2 : 1;
+    claimableCoins += 20;
   }
 
   // 2. Homework check
@@ -721,15 +880,20 @@ export const computeDisciplineChestSummary = (params: {
     return true;
   });
 
+  const homeworkBonusLocked = pendingAssignments.length > 0;
+  const canClaimHomeworkMasteryPack =
+    !homeworkBonusLocked &&
+    submittedHomeworkCount > (params.farmState.claimedHomeworkMasteryCount || 0);
+
   const newHomeworkIdsToClaim = allCompletedHwTokens
     .filter((t) => !params.farmState.claimedHomeworkIds.includes(t.tokenId))
     .map((t) => t.tokenId);
 
   const claimableSeeds: Partial<Record<CropId, number>> = {};
   if (newHomeworkIdsToClaim.length > 0) {
-    // Cap batch claim visually reasonable while rewarding each completed homework
     const count = newHomeworkIdsToClaim.length;
     claimableSeeds.corn = (claimableSeeds.corn || 0) + count;
+    claimableSeeds.carrot = (claimableSeeds.carrot || 0) + count;
     claimableSeeds.tomato = (claimableSeeds.tomato || 0) + count;
     if (submittedHomeworkCount >= 1) {
       claimableSeeds.strawberry = (claimableSeeds.strawberry || 0) + Math.min(3, count);
@@ -740,7 +904,18 @@ export const computeDisciplineChestSummary = (params: {
     claimableCoins += count * 15;
   }
 
-  // 3. Behavior check (Merits -> Town Stars, Demerits -> Weeds)
+  // Clearing ALL pending homework unlocks a bonus Special Seed + Building Blueprint!
+  const claimableBlueprints: BuildingId[] = [];
+  if (canClaimHomeworkMasteryPack) {
+    claimableSeeds.sunflower = (claimableSeeds.sunflower || 0) + 1;
+    claimableSeeds.golden_melon = (claimableSeeds.golden_melon || 0) + 1;
+    const lockedPool: BuildingId[] = ['dairy_barn', 'school_greenhouse', 'windmill_bakery'];
+    const nextBp = lockedPool.find((id) => !(params.farmState.unlockedBlueprints || []).includes(id));
+    if (nextBp) claimableBlueprints.push(nextBp);
+    claimableCoins += 25;
+  }
+
+  // 3. Behavior check (Merits -> Town Stars, Demerits -> Weeds/Pests)
   const personalBehaviors = params.behaviorRecords.filter((b) => candidateIds.has(b.studentId));
   const meritRecords = personalBehaviors.filter((b) => b.type === 'merit');
   const demeritRecords = personalBehaviors.filter((b) => b.type === 'demerit');
@@ -753,13 +928,19 @@ export const computeDisciplineChestSummary = (params: {
     0
   );
 
-  const unresolvedDemeritIds = demeritRecords
-    .filter((b) => !params.farmState.resolvedDemeritIds.includes(b.id))
-    .map((b) => b.id);
+  const unresolvedDemeritRecords = demeritRecords.filter(
+    (b) => !params.farmState.resolvedDemeritIds.includes(b.id)
+  );
+  const unresolvedDemeritIds = unresolvedDemeritRecords.map((b) => b.id);
+  const unresolvedDemerits = unresolvedDemeritRecords.map((b) => ({
+    id: b.id,
+    reasonTh: b.notes ? `${b.category}: ${b.notes}` : b.category,
+  }));
 
   const hasAnythingToClaim =
     Boolean(newAttendanceDateToClaim) ||
     newHomeworkIdsToClaim.length > 0 ||
+    canClaimHomeworkMasteryPack ||
     newMeritIdsToClaim.length > 0;
 
   return {
@@ -770,41 +951,54 @@ export const computeDisciplineChestSummary = (params: {
     submittedHomeworkCount,
     pendingHomeworkCount: pendingAssignments.length,
     pendingHomeworkTitles: pendingAssignments.slice(0, 3).map((a) => a.titleTh || a.titleEn),
+    homeworkBonusLocked,
     totalMeritPoints,
     unresolvedDemeritIds,
+    unresolvedDemerits,
     claimableWater,
+    claimableDailyFertilizer,
     claimableFertilizer,
     claimableSeeds,
+    claimableBlueprints,
     claimableStars,
     claimableCoins,
     newAttendanceDateToClaim,
     newHomeworkIdsToClaim,
     newMeritIdsToClaim,
+    canClaimHomeworkMasteryPack,
     hasAnythingToClaim,
   };
 };
 
 export const syncBehaviorWeedsOntoFarm = (
   state: SchoolFarmState,
-  unresolvedDemeritIds: string[]
+  unresolvedDemeritsInput: Array<string | { id: string; reasonTh?: string }>
 ): SchoolFarmState => {
-  if (unresolvedDemeritIds.length === 0) return state;
+  if (unresolvedDemeritsInput.length === 0) return state;
+  const normalizedInput = unresolvedDemeritsInput.map((item, idx) =>
+    typeof item === 'string'
+      ? { id: item, reasonTh: undefined, variant: (idx % 2 === 1 ? 'pest' : 'weed') as 'weed' | 'pest' }
+      : { id: item.id, reasonTh: item.reasonTh, variant: (idx % 2 === 1 ? 'pest' : 'weed') as 'weed' | 'pest' }
+  );
+
   const existingWeedSources = new Set(
     state.tiles
       .filter((t) => t.kind === 'weed' && t.weedSourceId)
       .map((t) => t.weedSourceId as string)
   );
-  const pendingToSpawn = unresolvedDemeritIds
-    .filter((id) => !existingWeedSources.has(id) && !state.resolvedDemeritIds.includes(id))
+  const pendingToSpawn = normalizedInput
+    .filter((entry) => !existingWeedSources.has(entry.id) && !state.resolvedDemeritIds.includes(entry.id))
     .slice(0, 3);
   if (pendingToSpawn.length === 0) return state;
 
   const nextTiles = state.tiles.map((t) => ({ ...t }));
-  for (const demeritId of pendingToSpawn) {
+  for (const demerit of pendingToSpawn) {
     const emptySlot = nextTiles.find((t) => t.unlocked && t.kind === 'empty');
     if (!emptySlot) break;
     emptySlot.kind = 'weed';
-    emptySlot.weedSourceId = demeritId;
+    emptySlot.weedSourceId = demerit.id;
+    emptySlot.weedVariant = demerit.variant;
+    emptySlot.weedReasonTh = demerit.reasonTh;
   }
   return {
     ...state,
@@ -828,16 +1022,29 @@ export const claimDisciplineSupplies = (
     ? Array.from(new Set([...state.claimedAttendanceDates, summary.newAttendanceDateToClaim]))
     : state.claimedAttendanceDates;
 
+  const nextBlueprints = Array.from(
+    new Set([...(state.unlockedBlueprints || []), ...(summary.claimableBlueprints || [])])
+  );
+
   return {
     ...state,
     coins: state.coins + summary.claimableCoins,
     water: state.water + summary.claimableWater,
+    dailyFertilizer: (state.dailyFertilizer || 0) + summary.claimableDailyFertilizer,
     fertilizer: state.fertilizer + summary.claimableFertilizer,
     townStars: state.townStars + summary.claimableStars,
-    farmXp: state.farmXp + (summary.newAttendanceDateToClaim ? 12 : 0) + summary.newHomeworkIdsToClaim.length * 10,
+    farmXp:
+      state.farmXp +
+      (summary.newAttendanceDateToClaim ? 12 : 0) +
+      summary.newHomeworkIdsToClaim.length * 10 +
+      (summary.canClaimHomeworkMasteryPack ? 20 : 0),
     seeds: nextSeeds,
+    unlockedBlueprints: nextBlueprints,
     claimedAttendanceDates: nextAttDates,
     claimedHomeworkIds: Array.from(new Set([...state.claimedHomeworkIds, ...summary.newHomeworkIdsToClaim])),
+    claimedHomeworkMasteryCount: summary.canClaimHomeworkMasteryPack
+      ? summary.submittedHomeworkCount
+      : state.claimedHomeworkMasteryCount || 0,
     claimedMeritIds: Array.from(new Set([...state.claimedMeritIds, ...summary.newMeritIdsToClaim])),
     updatedAt: new Date().toISOString(),
   };
@@ -857,6 +1064,37 @@ export const isCropUnlocked = (
   return true;
 };
 
+export const isBuildingUnlocked = (buildingId: BuildingId, state: SchoolFarmState): boolean => {
+  const def = BUILDING_MAP[buildingId];
+  const { level } = getTownLevelFromXp(state.farmXp);
+  if (level >= def.unlockTownLevel) return true;
+  return (state.unlockedBlueprints || []).includes(buildingId);
+};
+
+export const tillPlotTile = (
+  state: SchoolFarmState,
+  tileIndex: number
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  const tile = state.tiles[tileIndex];
+  if (!tile) return { state, ok: false, errorTh: 'ไม่พบแปลงที่เลือก' };
+  if (!tile.unlocked) return { state, ok: false, errorTh: 'แปลงนี้ยังไม่ปลดล็อก' };
+  if (tile.kind !== 'empty') return { state, ok: false, errorTh: 'ขุดได้เฉพาะพื้นที่ดินว่างเท่านั้น' };
+  if (tile.tilled) return { state, ok: false, errorTh: 'แปลงนี้ขุดเตรียมดินไว้พร้อมปลูกแล้ว' };
+
+  const nextTiles = state.tiles.map((t, idx) =>
+    idx === tileIndex ? { ...t, tilled: true } : t
+  );
+  return {
+    ok: true,
+    state: {
+      ...state,
+      farmXp: state.farmXp + 2,
+      tiles: nextTiles,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
 export const plantCropOnTile = (
   state: SchoolFarmState,
   tileIndex: number,
@@ -865,7 +1103,7 @@ export const plantCropOnTile = (
   const tile = state.tiles[tileIndex];
   if (!tile) return { state, ok: false, errorTh: 'ไม่พบแปลงที่เลือก' };
   if (!tile.unlocked) return { state, ok: false, errorTh: 'แปลงนี้ยังไม่ปลดล็อก ต้องใช้ดาวเมืองปลดล็อกก่อน' };
-  if (tile.kind === 'weed') return { state, ok: false, errorTh: 'มีวัชพืชขึ้นอยู่ กรุณาถอนวัชพืชก่อนปลูก' };
+  if (tile.kind === 'weed') return { state, ok: false, errorTh: 'มีวัชพืช/แมลงขึ้นอยู่ กรุณาปราบก่อนปลูก' };
   if (tile.kind !== 'empty') return { state, ok: false, errorTh: 'แปลงนี้ไม่ว่าง' };
   if ((state.seeds[cropId] || 0) <= 0) {
     return { state, ok: false, errorTh: 'เมล็ดพันธุ์หมด ซื้อเพิ่มที่ตลาดหรือส่งการบ้านเพื่อรับเมล็ดฟรี' };
@@ -875,6 +1113,7 @@ export const plantCropOnTile = (
     idx === tileIndex
       ? {
           ...t,
+          tilled: true,
           kind: 'crop' as const,
           cropId,
           growthProgress: 0,
@@ -935,6 +1174,46 @@ export const waterTile = (
   };
 };
 
+export const applyDailyFertilizerTile = (
+  state: SchoolFarmState,
+  tileIndex: number
+): { state: SchoolFarmState; ok: boolean; matured?: boolean; errorTh?: string } => {
+  const tile = state.tiles[tileIndex];
+  if (!tile || tile.kind !== 'crop' || !tile.cropId) {
+    return { state, ok: false, errorTh: 'เลือกแปลงที่กำลังปลูกพืชเพื่อใส่ปุ๋ยประจำวัน' };
+  }
+  const def = CROP_MAP[tile.cropId];
+  const progress = tile.growthProgress || 0;
+  if (progress >= def.watersNeeded) {
+    return { state, ok: false, errorTh: 'พืชโตเต็มที่แล้ว เก็บเกี่ยวได้เลย!' };
+  }
+  if ((state.dailyFertilizer || 0) <= 0) {
+    return { state, ok: false, errorTh: 'ปุ๋ยประจำวันหมด เช็กชื่อตรงเวลาเพื่อรับปุ๋ยเพิ่ม' };
+  }
+
+  const nextProgress = Math.min(def.watersNeeded, progress + 1);
+  const nextTiles = state.tiles.map((t, idx) =>
+    idx === tileIndex
+      ? {
+          ...t,
+          growthProgress: nextProgress,
+          wateredToday: true,
+        }
+      : t
+  );
+  return {
+    ok: true,
+    matured: nextProgress >= def.watersNeeded,
+    state: {
+      ...state,
+      dailyFertilizer: (state.dailyFertilizer || 0) - 1,
+      tiles: nextTiles,
+      farmXp: state.farmXp + 7,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
 export const fertilizeTile = (
   state: SchoolFarmState,
   tileIndex: number
@@ -948,10 +1227,10 @@ export const fertilizeTile = (
     return { state, ok: false, errorTh: 'พืชโตเต็มที่แล้ว เก็บเกี่ยวได้เลย!' };
   }
   if (state.fertilizer <= 0) {
-    return { state, ok: false, errorTh: 'ปุ๋ยทองคำหมด เช็กชื่อตรงเวลาหรือสร้างเรือนกระจกเพื่อรับปุ๋ยเพิ่ม' };
+    return { state, ok: false, errorTh: 'ปุ๋ยทองคำหมด เช็กชื่อตรงเวลาต่อเนื่องหรือสร้างเรือนกระจกเพื่อรับปุ๋ยเพิ่ม' };
   }
 
-  // Fertilizer instantly advances crop to full maturity + bonus yield flag!
+  // Golden Fertilizer instantly advances crop to full maturity + 2x yield flag!
   const nextTiles = state.tiles.map((t, idx) =>
     idx === tileIndex
       ? {
@@ -1007,6 +1286,7 @@ export const harvestTile = (
           row: t.row,
           col: t.col,
           unlocked: t.unlocked,
+          tilled: true,
           kind: 'empty' as const,
         }
       : t
@@ -1037,7 +1317,7 @@ export const clearWeedOnTile = (
 ): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
   const tile = state.tiles[tileIndex];
   if (!tile || tile.kind !== 'weed') {
-    return { state, ok: false, errorTh: 'แปลงนี้ไม่มีวัชพืช' };
+    return { state, ok: false, errorTh: 'แปลงนี้ไม่มีวัชพืชหรือแมลง' };
   }
   if (state.water <= 0) {
     return { state, ok: false, errorTh: 'ต้องใช้น้ำ 1 ถังในการล้างวัชพืชและฟื้นฟูดิน' };
@@ -1053,6 +1333,7 @@ export const clearWeedOnTile = (
           row: t.row,
           col: t.col,
           unlocked: t.unlocked,
+          tilled: true,
           kind: 'empty' as const,
         }
       : t
@@ -1090,7 +1371,7 @@ export const unlockPlotTile = (
   }
 
   const nextTiles = state.tiles.map((t, idx) =>
-    idx === tileIndex ? { ...t, unlocked: true } : t
+    idx === tileIndex ? { ...t, unlocked: true, tilled: false } : t
   );
 
   return {
@@ -1100,6 +1381,63 @@ export const unlockPlotTile = (
       ...state,
       townStars: state.townStars - costStars,
       farmXp: state.farmXp + 18,
+      tiles: nextTiles,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+export const expandFarmGridTo8x8 = (
+  state: SchoolFarmState
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  if (getFarmGridSize(state) >= 8) {
+    return { state, ok: false, errorTh: 'ฟาร์มของคุณขยายเป็นขนาดใหญ่ 8×8 แล้ว' };
+  }
+  const { level } = getTownLevelFromXp(state.farmXp);
+  if (level < 2) {
+    return { state, ok: false, errorTh: 'ต้องพัฒนาเมืองถึง Lv.2 ขึ้นไปก่อนจึงจะขยายแผนที่เป็น 8×8 ได้' };
+  }
+  if (state.townStars < 4) {
+    return { state, ok: false, errorTh: 'ต้องใช้ดาวพัฒนาเมือง 4 ดวง (⭐) ในการขยายเขตเมือง 8×8' };
+  }
+
+  const oldMap = new Map<string, FarmTile>();
+  for (const tile of state.tiles) {
+    oldMap.set(`${tile.row}:${tile.col}`, tile);
+  }
+
+  const nextTiles: FarmTile[] = [];
+  for (let row = 0; row < EXPANDED_FARM_GRID_SIZE; row += 1) {
+    for (let col = 0; col < EXPANDED_FARM_GRID_SIZE; col += 1) {
+      const index = row * EXPANDED_FARM_GRID_SIZE + col;
+      const existing = oldMap.get(`${row - 1}:${col - 1}`);
+      if (existing) {
+        nextTiles.push({
+          ...existing,
+          index,
+          row,
+          col,
+        });
+      } else {
+        nextTiles.push({
+          index,
+          row,
+          col,
+          unlocked: false,
+          tilled: false,
+          kind: 'empty',
+        });
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    state: {
+      ...state,
+      gridSize: 8,
+      townStars: state.townStars - 4,
+      farmXp: state.farmXp + 50,
       tiles: nextTiles,
       updatedAt: new Date().toISOString(),
     },
@@ -1117,9 +1455,8 @@ export const constructBuildingOnTile = (
   if (tile.kind !== 'empty') return { state, ok: false, errorTh: 'กรุณาเลือกพื้นที่ว่างในการก่อสร้าง' };
 
   const def = BUILDING_MAP[buildingId];
-  const { level } = getTownLevelFromXp(state.farmXp);
-  if (level < def.unlockTownLevel) {
-    return { state, ok: false, errorTh: `ต้องมีระดับเมือง Lv.${def.unlockTownLevel} ขึ้นไป` };
+  if (!isBuildingUnlocked(buildingId, state)) {
+    return { state, ok: false, errorTh: `ต้องมีระดับเมือง Lv.${def.unlockTownLevel} หรือปลดล็อกพิมพ์เขียวจากการส่งการบ้าน` };
   }
   if (state.coins < def.coinCost) {
     return { state, ok: false, errorTh: `ต้องใช้ ${def.coinCost} เหรียญฟาร์ม` };
@@ -1136,7 +1473,7 @@ export const constructBuildingOnTile = (
           kind: 'building' as const,
           buildingId,
           buildingLevel: 1,
-          lastCollectedDate: '', // Ready to collect first yield right away!
+          lastCollectedDate: def.dailyCoins > 0 || def.dailyFertilizer ? '' : today,
         }
       : t
   );
@@ -1147,9 +1484,83 @@ export const constructBuildingOnTile = (
       ...state,
       coins: state.coins - def.coinCost,
       townStars: state.townStars - def.starCost,
-      farmXp: state.farmXp + 45,
+      farmXp: state.farmXp + (def.category === 'decor' ? 12 : 45),
       tiles: nextTiles,
       updatedAt: `${today}T${new Date().toISOString().slice(11)}`,
+    },
+  };
+};
+
+export const upgradeBuildingOnTile = (
+  state: SchoolFarmState,
+  tileIndex: number
+): { state: SchoolFarmState; ok: boolean; newLevel?: number; errorTh?: string } => {
+  const tile = state.tiles[tileIndex];
+  if (!tile || tile.kind !== 'building' || !tile.buildingId) {
+    return { state, ok: false, errorTh: 'ไม่พบสิ่งปลูกสร้างในช่องนี้' };
+  }
+  const def = BUILDING_MAP[tile.buildingId];
+  const currentLevel = tile.buildingLevel || 1;
+  if (currentLevel >= def.maxLevel) {
+    return { state, ok: false, errorTh: `${def.nameTh} อัปเกรดถึงระดับสูงสุด (Lv.${def.maxLevel}) แล้ว` };
+  }
+
+  const { coinCost, starCost } = getBuildingUpgradeCost(tile.buildingId, currentLevel);
+  if (state.coins < coinCost) {
+    return { state, ok: false, errorTh: `ต้องการ ${coinCost} เหรียญฟาร์มเพื่ออัปเกรด` };
+  }
+  if (state.townStars < starCost) {
+    return { state, ok: false, errorTh: `ต้องการดาวเมือง ${starCost} ดวง (⭐) เพื่ออัปเกรด` };
+  }
+
+  const newLevel = currentLevel + 1;
+  const nextTiles = state.tiles.map((t, idx) =>
+    idx === tileIndex ? { ...t, buildingLevel: newLevel } : t
+  );
+
+  return {
+    ok: true,
+    newLevel,
+    state: {
+      ...state,
+      coins: state.coins - coinCost,
+      townStars: state.townStars - starCost,
+      farmXp: state.farmXp + 35 * newLevel,
+      tiles: nextTiles,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+export const removeBuildingOnTile = (
+  state: SchoolFarmState,
+  tileIndex: number
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  const tile = state.tiles[tileIndex];
+  if (!tile || tile.kind !== 'building' || !tile.buildingId) {
+    return { state, ok: false, errorTh: 'ไม่พบสิ่งปลูกสร้างในช่องนี้' };
+  }
+  const def = BUILDING_MAP[tile.buildingId];
+  const refundCoins = Math.round(def.coinCost * 0.4);
+  const nextTiles = state.tiles.map((t, idx) =>
+    idx === tileIndex
+      ? {
+          index: t.index,
+          row: t.row,
+          col: t.col,
+          unlocked: t.unlocked,
+          tilled: false,
+          kind: 'empty' as const,
+        }
+      : t
+  );
+  return {
+    ok: true,
+    state: {
+      ...state,
+      coins: state.coins + refundCoins,
+      tiles: nextTiles,
+      updatedAt: new Date().toISOString(),
     },
   };
 };
@@ -1163,11 +1574,14 @@ export const collectBuildingYield = (
   if (!tile || tile.kind !== 'building' || !tile.buildingId) {
     return { state, ok: false, coinsEarned: 0, fertilizerEarned: 0, errorTh: 'ไม่พบสิ่งปลูกสร้างในช่องนี้' };
   }
+  const def = BUILDING_MAP[tile.buildingId];
+  if (def.dailyCoins <= 0 && !def.dailyFertilizer) {
+    return { state, ok: false, coinsEarned: 0, fertilizerEarned: 0, errorTh: `${def.nameTh} เป็นสิ่งปลูกสร้างตกแต่งเมือง` };
+  }
   if (tile.lastCollectedDate === todayDate) {
     return { state, ok: false, coinsEarned: 0, fertilizerEarned: 0, errorTh: 'เก็บผลผลิตของวันนี้ไปแล้ว รอรับใหม่พรุ่งนี้นะ' };
   }
 
-  const def = BUILDING_MAP[tile.buildingId];
   const lvlMult = tile.buildingLevel || 1;
   const coinsEarned = def.dailyCoins * lvlMult;
   const fertilizerEarned = (def.dailyFertilizer || 0) * lvlMult;
@@ -1192,10 +1606,13 @@ export const collectBuildingYield = (
 };
 
 export const getCropSellMultiplier = (state: SchoolFarmState): number => {
-  const bakeryCount = state.tiles.filter(
-    (t) => t.kind === 'building' && t.buildingId === 'windmill_bakery'
-  ).length;
-  return 1 + bakeryCount * 0.2;
+  const bakeryBonus = state.tiles.reduce((sum, t) => {
+    if (t.kind === 'building' && t.buildingId === 'windmill_bakery') {
+      return sum + 0.2 * (t.buildingLevel || 1);
+    }
+    return sum;
+  }, 0);
+  return 1 + bakeryBonus;
 };
 
 export const buySeedPack = (
@@ -1314,11 +1731,13 @@ export const applyQuizBoostReward = (
 export const helpNeighborFarm = (
   helperState: SchoolFarmState,
   neighborState: SchoolFarmState,
-  todayDate: string = getTodayBangkokDate()
+  todayDate: string = getTodayBangkokDate(),
+  targetTileIndex?: number
 ): {
   helperState: SchoolFarmState;
   neighborState: SchoolFarmState;
   ok: boolean;
+  wateredCropTile?: boolean;
   errorTh?: string;
 } => {
   if (helperState.userId === neighborState.userId) {
@@ -1327,8 +1746,29 @@ export const helpNeighborFarm = (
   if (helperState.helpedNeighborDates[neighborState.userId] === todayDate) {
     return { helperState, neighborState, ok: false, errorTh: 'วันนี้คุณช่วยรดน้ำฟาร์มของเพื่อนคนนี้แล้ว' };
   }
+
+  let wateredCropTile = false;
+  const nextNeighborTiles = neighborState.tiles.map((t, idx) => {
+    if (
+      targetTileIndex !== undefined &&
+      idx === targetTileIndex &&
+      t.kind === 'crop' &&
+      t.cropId &&
+      (t.growthProgress || 0) < CROP_MAP[t.cropId].watersNeeded
+    ) {
+      wateredCropTile = true;
+      return {
+        ...t,
+        growthProgress: Math.min(CROP_MAP[t.cropId].watersNeeded, (t.growthProgress || 0) + 1),
+        wateredToday: true,
+      };
+    }
+    return t;
+  });
+
   return {
     ok: true,
+    wateredCropTile,
     helperState: {
       ...helperState,
       coins: helperState.coins + 15,
@@ -1343,6 +1783,7 @@ export const helpNeighborFarm = (
       ...neighborState,
       water: neighborState.water + 2,
       coins: neighborState.coins + 10,
+      tiles: nextNeighborTiles,
       helpReceivedDates: Array.from(new Set([...neighborState.helpReceivedDates, todayDate])),
       updatedAt: new Date().toISOString(),
     },
