@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock,
   Copy,
-  ExternalLink,
   Link2,
   LocateFixed,
   LogIn,
@@ -195,7 +194,6 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
   onUpdatePeriodFlexConfig,
   periodCustomTimes,
   onSetStudentPeriodCustomTime,
-  onOpenPeriodCorrection,
   teacherPeriodCheckStatus,
   onTeacherPeriodCheck,
 }) => {
@@ -1124,15 +1122,8 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pt-0.5">
-                <a
-                  href={periodCheckinUrl}
-                  className="font-bold text-[var(--color-primary-text)] underline underline-offset-4 inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>เปิดลิงก์เช็คชื่อ</span>
-                </a>
-                {isStaffUser && (
+              {isStaffUser && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pt-0.5">
                   <span className="type-meta text-emerald-700 dark:text-emerald-300 font-semibold">
                     เช็คแล้ว:{' '}
                     {
@@ -1146,8 +1137,8 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                     }{' '}
                     / {periodStudentIds.length} คน
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1300,26 +1291,12 @@ export const PeriodCheckinTab: React.FC<PeriodCheckinTabProps> = ({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-[var(--color-border)] text-[11px]">
+              <div className="pt-1.5 border-t border-[var(--color-border)] text-[11px]">
                 <span className="text-[var(--color-text-muted)] font-medium">
                   {periodFlexConfig.graceMinutes >= 999
                     ? 'วิชานี้เปิดเช็คชื่อเข้า-ออกแบบยืดหยุ่นตลอดคาบ'
                     : `เกณฑ์ยืดหยุ่นวิชานี้: ผ่อนผันเข้าเรียน ${periodFlexConfig.graceMinutes} นาที`}
                 </span>
-                {onOpenPeriodCorrection && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onOpenPeriodCorrection({
-                        targetScope: periodCheckType === 'check_out' ? 'period_checkout' : 'period_checkin',
-                        issueType: periodCheckType === 'check_out' ? 'forgot_checkout' : 'late_arrival',
-                      })
-                    }
-                    className="font-bold text-[var(--color-primary-text)] hover:underline underline-offset-4 cursor-pointer"
-                  >
-                    เข้าช้า / ลืมสแกน? ขอแก้ไขเวลาคาบนี้ →
-                  </button>
-                )}
               </div>
 
               {studentPeriodCheckinMsg && (

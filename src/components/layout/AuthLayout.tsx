@@ -917,7 +917,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                   <FutureIconBadge tone="tone-2" size="xs" variant="glass">
                     <FutureNavIcon tab="attendance" size={14} active />
                   </FutureIconBadge>
-                  <span>{lang === 'th' ? 'เช็คชื่อ QR · NFC · GPS' : 'QR · NFC · GPS Check-In'}</span>
+                  <span>{lang === 'th' ? 'เช็คชื่อ QR · เซลฟี่ · GPS' : 'QR · Selfie · GPS Check-In'}</span>
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <FutureIconBadge tone="tone-6" size="xs" variant="glass">

@@ -39,6 +39,7 @@ import {
   Upload
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
+import { findMatchingStudents, resolveSingleMatchedStudent } from '../lib/studentLookup';
 import { getModuleTone } from '../lib/moduleTheme';
 import { FutureNavIcon } from '../components/common/FutureIcon';
 import {
@@ -180,11 +181,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const matchedScannerStudent = isRestrictedViewer
     ? (ownStudent || scopedStudents[0])
     : normalizedScannerToken
-      ? students.find((s) => (
-          (s.studentIdNumber || '').trim().toLowerCase() === normalizedScannerToken.toLowerCase()
-          || (s.id || '').trim().toLowerCase() === normalizedScannerToken.toLowerCase()
-        ))
+      ? resolveSingleMatchedStudent(normalizedScannerToken, scopedStudents)
       : undefined;
+  const scannerSuggestions = useMemo(
+    () =>
+      !isRestrictedViewer && normalizedScannerToken && !matchedScannerStudent
+        ? findMatchingStudents(normalizedScannerToken, scopedStudents, { limit: 5 })
+        : [],
+    [isRestrictedViewer, normalizedScannerToken, matchedScannerStudent, scopedStudents]
+  );
 
   const todayDateStr = getLocalDateString();
   const scannerDupReasons = matchedScannerStudent
@@ -1042,27 +1047,28 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 ) : (
                   <div className="space-y-1.5">
                     <label className="type-label block">
-                      รหัสนักเรียน <span className="text-rose-600 dark:text-rose-400">*</span>
+                      รหัสหรือชื่อนักเรียน <span className="text-rose-600 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
                       value={scannerStudentIdInput}
                       onChange={(e) => setScannerStudentIdInput(e.target.value)}
-                      placeholder={`เช่น ${students[0]?.studentIdNumber || 'ED-6901'}`}
-                      className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-mono type-body"
+                      placeholder={`พิมพ์รหัส เช่น ${scopedStudents[0]?.studentIdNumber || '2799'} หรือชื่อนักเรียน`}
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] type-body"
                     />
-                    {students.length > 0 && !trimmedScannerId && (
-                      <p className="type-meta">
-                        ตัวอย่าง: {students.slice(0, 3).map((s) => s.studentIdNumber).join(', ')}
-                      </p>
-                    )}
                     {trimmedScannerId && matchedScannerStudent && (
                       <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center gap-2.5">
-                        <img
-                          src={matchedScannerStudent.avatarUrl}
-                          alt={matchedScannerStudent.firstNameTh}
-                          className="w-8 h-8 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 shrink-0"
-                        />
+                        {matchedScannerStudent.avatarUrl ? (
+                          <img
+                            src={matchedScannerStudent.avatarUrl}
+                            alt={matchedScannerStudent.firstNameTh}
+                            className="w-8 h-8 rounded-lg object-cover border border-emerald-300 dark:border-emerald-700 shrink-0"
+                          />
+                        ) : (
+                          <span className="w-8 h-8 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center justify-center shrink-0">
+                            {(matchedScannerStudent.firstNameTh || 'S').slice(0, 2)}
+                          </span>
+                        )}
                         <div className="min-w-0">
                           <p className="type-card-title text-emerald-950 dark:text-emerald-100 truncate">
                             {matchedScannerStudent.firstNameTh} {matchedScannerStudent.lastNameTh}
@@ -1073,9 +1079,28 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                         </div>
                       </div>
                     )}
-                    {trimmedScannerId && !matchedScannerStudent && (
+                    {trimmedScannerId && !matchedScannerStudent && scannerSuggestions.length > 0 && (
+                      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] divide-y divide-[var(--color-border)] overflow-hidden">
+                        {scannerSuggestions.map((candidate) => (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            onClick={() => setScannerStudentIdInput(candidate.studentIdNumber || candidate.id)}
+                            className="w-full px-2.5 py-2 flex items-center justify-between gap-2 text-left hover:bg-[var(--color-card)] transition cursor-pointer"
+                          >
+                            <span className="text-xs font-semibold text-[var(--color-text-title)] truncate">
+                              {candidate.firstNameTh} {candidate.lastNameTh} ({candidate.room})
+                            </span>
+                            <span className="text-[11px] font-mono font-semibold text-[var(--color-primary-text)] tabular-nums shrink-0">
+                              {candidate.studentIdNumber}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {trimmedScannerId && !matchedScannerStudent && scannerSuggestions.length === 0 && (
                       <p className="type-meta text-rose-700 dark:text-rose-300 font-semibold">
-                        ไม่พบนักเรียนรหัส "{trimmedScannerId}"
+                        ไม่พบนักเรียนที่ตรงกับ "{trimmedScannerId}"
                       </p>
                     )}
                   </div>

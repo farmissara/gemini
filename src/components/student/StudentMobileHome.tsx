@@ -465,8 +465,8 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                         : `Last at ${todayCheckin.time}`
                       : canSelfCheckin
                         ? lang === 'th'
-                          ? 'เซลฟี่ GPS หรือแตะบัตร NFC'
-                          : 'Selfie GPS or NFC tap'
+                          ? 'ถ่ายรูปเซลฟี่พร้อมพิกัด GPS'
+                          : 'Selfie with GPS'
                         : lang === 'th'
                           ? `${todayMySlots.length} คาบเรียนวันนี้`
                           : `${todayMySlots.length} classes today`}
@@ -549,13 +549,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onOpenTimetable('day')}
-                  className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-primary-text)] whitespace-nowrap shrink-0 cursor-pointer tabular-nums"
-                >
-                  {lang === 'th' ? `ทั้งวัน ${todayMySlots.length} คาบ` : `All ${todayMySlots.length}`}
-                </button>
+                <span className="text-xs font-medium text-[var(--color-text-muted)] whitespace-nowrap shrink-0 tabular-nums">
+                  {lang === 'th' ? `${todayMySlots.length} คาบ` : `${todayMySlots.length} periods`}
+                </span>
               </div>
 
               <div>

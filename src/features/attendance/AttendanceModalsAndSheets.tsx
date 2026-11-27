@@ -7,14 +7,12 @@ import {
   FileText,
   Fingerprint,
   MapPin,
-  Nfc,
   Plus,
   QrCode,
   RefreshCw,
   ScanLine,
   Search,
   Settings,
-  Trash2,
   Users,
   X,
 } from 'lucide-react';
@@ -32,11 +30,10 @@ import type {
   UserRole,
 } from '../../types';
 import type { EnrolledBiometricPasskey } from '../../lib/webAuthn';
-import { removeNfcBinding, type NfcCardBinding } from '../../lib/nfcAttendance';
 import { ContinuousRapidScannerModal } from '../../components/modals/ContinuousRapidScannerModal';
 import { SchoolGpsSettingsCard } from '../../components/SchoolGpsSettingsCard';
 import { MobileBottomSheet } from '../../components/layout/MobileRoleWorkspace';
-import type { AttendanceSubTab, CheckinSuccessFeedback, NfcRecentLogEntry } from './types';
+import type { AttendanceSubTab, CheckinSuccessFeedback } from './types';
 
 interface AttendanceModalsAndSheetsProps {
   embeddedMobile: boolean;
@@ -131,13 +128,6 @@ interface AttendanceModalsAndSheetsProps {
   handleRefreshGps: () => void;
   isGpsLoading: boolean;
   gpsError: string | null;
-  // NFC Sheet
-  nfcDrawerMode: null | 'quick_tap' | 'recent_logs';
-  setNfcDrawerMode: (mode: null | 'quick_tap' | 'recent_logs') => void;
-  nfcBindings: NfcCardBinding[];
-  setNfcBindings: (bindings: NfcCardBinding[]) => void;
-  nfcRecentLogs: NfcRecentLogEntry[];
-  handleProcessNfcCardInput: (rawUid: string, payloadText?: string) => void;
   // Biometric Unlock Modal
   showBiometricUnlockModal: boolean;
   userPasskey: EnrolledBiometricPasskey | null;
@@ -210,12 +200,6 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
   handleRefreshGps,
   isGpsLoading,
   gpsError,
-  nfcDrawerMode,
-  setNfcDrawerMode,
-  nfcBindings,
-  setNfcBindings,
-  nfcRecentLogs,
-  handleProcessNfcCardInput,
   showBiometricUnlockModal,
   userPasskey,
   biometricError,
@@ -720,116 +704,6 @@ export const AttendanceModalsAndSheets: React.FC<AttendanceModalsAndSheetsProps>
         </div>
       </MobileBottomSheet>
 
-      {/* BOTTOM SHEET: MOBILE NFC QUICK TAP / RECENT LOGS */}
-      <MobileBottomSheet
-        isOpen={Boolean(nfcDrawerMode)}
-        onClose={() => setNfcDrawerMode(null)}
-        title={
-          nfcDrawerMode === 'quick_tap'
-            ? lang === 'th'
-              ? `แตะบัตรด่วน (${nfcBindings.length} ใบ)`
-              : `Quick ID Tap (${nfcBindings.length})`
-            : lang === 'th'
-              ? `ประวัติแตะบัตรล่าสุด (${nfcRecentLogs.length})`
-              : `Recent NFC Check-ins (${nfcRecentLogs.length})`
-        }
-      >
-        {nfcDrawerMode === 'quick_tap' ? (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-1.5">
-              {teachers.slice(0, 4).map((tc) => (
-                <button
-                  key={tc.id}
-                  type="button"
-                  onClick={() => {
-                    handleProcessNfcCardInput(tc.nfcCardUid || tc.teacherIdNumber);
-                    setNfcDrawerMode(null);
-                  }}
-                  className="min-h-[42px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Nfc className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-                  <span className="truncate max-w-[140px]">{tc.fullNameTh}</span>
-                </button>
-              ))}
-              {students.slice(0, 6).map((st) => (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => {
-                    handleProcessNfcCardInput(st.nfcCardUid || st.studentIdNumber);
-                    setNfcDrawerMode(null);
-                  }}
-                  className="min-h-[42px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[var(--color-text-title)] font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Nfc className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="truncate max-w-[140px]">
-                    {st.firstNameTh} {st.lastNameTh}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {nfcBindings.length > 0 && (
-              <div className="pt-3 border-t border-[var(--color-border)] divide-y divide-[var(--color-border)]">
-                {nfcBindings.map((b) => (
-                  <div key={b.normalizedUid} className="py-2 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="type-card-title truncate">{b.label}</p>
-                      <p className="type-meta font-mono truncate">
-                        {b.uid} · {b.displayId}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setNfcBindings(removeNfcBinding(activeSchoolId, b.uid))}
-                      className="btn-icon-tool text-rose-600 dark:text-rose-300"
-                      aria-label={lang === 'th' ? 'ยกเลิกการผูกบัตร' : 'Unbind'}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : nfcRecentLogs.length === 0 ? (
-          <p className="type-meta text-center py-6">
-            {lang === 'th' ? 'ยังไม่มีรายการแตะบัตร NFC ในเซสชันนี้' : 'No NFC taps recorded in this session yet.'}
-          </p>
-        ) : (
-          <div className="divide-y divide-[var(--color-border)]">
-            {nfcRecentLogs.map((log) => (
-              <div key={log.id} className="py-2.5 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="type-card-title truncate">{log.name}</p>
-                  <p className="type-meta truncate">
-                    {log.roleLabel} · UID {log.uid} · {log.gateName}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <span
-                    className={`type-label ${
-                      log.checkType === 'check_in'
-                        ? log.status === 'late'
-                          ? 'text-amber-700 dark:text-amber-300'
-                          : 'text-emerald-700 dark:text-emerald-300'
-                        : 'text-[var(--color-primary-text)]'
-                    }`}
-                  >
-                    {log.checkType === 'check_in'
-                      ? log.status === 'late'
-                        ? 'เข้า · สาย'
-                        : 'เข้าโรงเรียน'
-                      : 'ออกโรงเรียน'}
-                  </span>
-                  <p className="type-meta font-mono">{log.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </MobileBottomSheet>
-
       {/* Biometric Verification Modal for Quick-Action Attendance */}
       {showBiometricUnlockModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
@@ -933,18 +807,6 @@ export const AttendanceQuickActionBar: React.FC<AttendanceQuickActionBarProps> =
 
   const quickToolsDrawer = fabMenuOpen ? (
     <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1.5 w-full animate-in fade-in duration-150">
-      <button
-        type="button"
-        onClick={() => {
-          setFabMenuOpen(false);
-          setSubTab('nfc_tap');
-        }}
-        className="min-h-[36px] px-3 rounded-lg bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text-title)] shadow-2xs text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap hover:bg-[var(--color-card-subtle)]"
-      >
-        <Nfc className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
-        <span>{lang === 'th' ? 'แตะบัตร NFC' : 'NFC Card Tap'}</span>
-      </button>
-
       {isStaffUser && (
         <button
           type="button"
@@ -1018,8 +880,6 @@ export const AttendanceQuickActionBar: React.FC<AttendanceQuickActionBarProps> =
         >
           {subTab === 'selfie_mobile' && !capturedPhotoUrl ? (
             <Camera className="w-3.5 h-3.5 shrink-0" />
-          ) : subTab === 'nfc_tap' ? (
-            <Nfc className="w-3.5 h-3.5 shrink-0" />
           ) : subTab === 'teacher_proxy' && !matchedProxyStudent ? (
             <QrCode className="w-3.5 h-3.5 shrink-0" />
           ) : (

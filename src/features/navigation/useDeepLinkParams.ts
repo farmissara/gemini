@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 export interface DeepLinkParams {
-  subTab: 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
+  subTab: 'selfie_mobile' | 'history' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
   courseId?: string;
   periodNumber?: number;
   date?: string;
@@ -31,7 +31,7 @@ export function parseDeepLinkParamsFromWindow(): DeepLinkParams | null {
     const isPeriodDeepLink = tab === 'mobile_checkin' || subTab === 'period_checkin' || Boolean(courseId);
     if (!isPeriodDeepLink) return null;
     return {
-      subTab: (subTab === 'leave_request' || subTab === 'period_checkin' || subTab === 'teacher_proxy' || subTab === 'nfc_tap'
+      subTab: (subTab === 'leave_request' || subTab === 'period_checkin' || subTab === 'teacher_proxy' || subTab === 'history'
         ? subTab
         : 'period_checkin') as DeepLinkParams['subTab'],
       courseId,

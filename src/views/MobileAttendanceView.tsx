@@ -5,12 +5,12 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Clock,
   FileEdit,
   FileText,
   Fingerprint,
   Lock,
   MapPin,
-  Nfc,
   ScanLine,
   Smartphone,
   User,
@@ -20,6 +20,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { getLocalDateString } from '../lib/date';
+import { findMatchingStudents, resolveSingleMatchedStudent } from '../lib/studentLookup';
 import { getBangkokClockSnapshot } from '../lib/timetableCalendar';
 import { loadSavedPeriodQrSessions, validatePeriodQrTokenState } from '../lib/periodQrTokens';
 import {
@@ -91,18 +92,6 @@ import {
 } from '../lib/classroomGps';
 import { resolveStudentLeaveApprovers } from '../lib/leaveApprovalRouting';
 import {
-  formatNfcUidDisplay,
-  getNdefReaderConstructor,
-  isSecureNfcContext,
-  isWebNfcSupported,
-  loadNfcBindings,
-  parseNfcReadingEvent,
-  resolveNfcTap,
-  saveNfcBinding,
-  type NfcCardBinding,
-  type WebNdefReadingEvent,
-} from '../lib/nfcAttendance';
-import {
   formatCameraErrorTh,
   openCameraStream,
   stopCameraStream,
@@ -129,11 +118,11 @@ import {
   type CorrectionPrefillSeed,
 } from '../components/attendance/AttendanceCorrectionHub';
 import { AttendanceAudienceSwitch } from '../components/attendance/AttendanceAudienceSwitch';
+import { PersonalTimeCardPanel } from '../components/attendance/PersonalTimeCardPanel';
 import {
   AttendanceModalsAndSheets,
   DailyAttendanceReportTab,
   LeaveRequestTab,
-  NfcTapAttendanceTab,
   PeriodCheckinTab,
   SelfieAttendanceTab,
   TeacherProxyTab,
@@ -141,7 +130,6 @@ import {
   type AttendanceSubTab,
   type CheckinSuccessFeedback,
   type MobileAttendanceViewProps,
-  type NfcRecentLogEntry,
   type PeriodRosterFilter,
 } from '../features/attendance';
 
@@ -198,8 +186,12 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     () => getTeacherHomeroomStudents(currentUser, teachers, students),
     [currentUser, teachers, students]
   );
-  const gateRosterStudents = effectiveRole === 'teacher' ? teacherHomeroomStudents : scopedStudents;
-  const attendanceStudentScope = effectiveRole === 'teacher' ? gateRosterStudents : scopedStudents;
+  const teacherHomeroomStudentIds = useMemo(
+    () => new Set(teacherHomeroomStudents.map((student) => student.id)),
+    [teacherHomeroomStudents]
+  );
+  const gateRosterStudents = scopedStudents;
+  const attendanceStudentScope = scopedStudents;
   const scopedLeaveRequests = filterLeaveRequestsForUser(leaveRequests, currentUser, students);
   const scopedPeriodAttendance = filterPeriodAttendanceForUser(periodAttendance, currentUser, students);
 
@@ -225,7 +217,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   };
   const [showIdentitySheet, setShowIdentitySheet] = useState(false);
   const [showGeofenceSheet, setShowGeofenceSheet] = useState(false);
-  const [nfcDrawerMode, setNfcDrawerMode] = useState<null | 'quick_tap' | 'recent_logs'>(null);
   const [showRapidScanner, setShowRapidScanner] = useState(false);
   const [showQuickRosterSheet, setShowQuickRosterSheet] = useState(false);
   const [rosterSheetQuery, setRosterSheetQuery] = useState('');
@@ -254,44 +245,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     isStaffUser,
     lang,
   });
-
-  // NFC Attendance Tap State
-  const webNfcAvailable = isWebNfcSupported();
-  const secureNfc = isSecureNfcContext();
-  const [nfcCheckType, setNfcCheckType] = useState<AttendanceCheckType>('check_in');
-  const [nfcStatusMode, setNfcStatusMode] = useState<AttendanceStatus>('present');
-  const [isNfcScanning, setIsNfcScanning] = useState(false);
-  const [nfcStatusMessage, setNfcStatusMessage] = useState<string | null>(null);
-  const [nfcErrorMessage, setNfcErrorMessage] = useState<string | null>(null);
-  const [nfcManualUidInput, setNfcManualUidInput] = useState('');
-  const [nfcBindings, setNfcBindings] = useState<NfcCardBinding[]>(() =>
-    loadNfcBindings(activeSchoolId)
-  );
-  const [unregisteredNfcTag, setUnregisteredNfcTag] = useState<{
-    uid: string;
-    payloadText: string;
-  } | null>(null);
-  const [bindTargetType, setBindTargetType] = useState<'student' | 'teacher'>('student');
-  const [bindTargetId, setBindTargetId] = useState<string>(attendanceStudentScope[0]?.id || teachers[0]?.id || '');
-  const [nfcRecentLogs, setNfcRecentLogs] = useState<NfcRecentLogEntry[]>([]);
-  const nfcAbortRef = useRef<AbortController | null>(null);
-  const nfcLastTapRef = useRef<{ key: string; at: number }>({ key: '', at: 0 });
-
-  useEffect(() => {
-    setNfcBindings(loadNfcBindings(activeSchoolId));
-  }, [activeSchoolId]);
-
-  useEffect(() => {
-    if (bindTargetType === 'student') {
-      if (!attendanceStudentScope.some((s) => s.id === bindTargetId)) {
-        setBindTargetId(attendanceStudentScope[0]?.id || '');
-      }
-    } else {
-      if (!teachers.some((t) => t.id === bindTargetId)) {
-        setBindTargetId(teachers[0]?.id || '');
-      }
-    }
-  }, [bindTargetType, bindTargetId, attendanceStudentScope, teachers]);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -427,9 +380,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   );
   const [proxyCheckType, setProxyCheckType] = useState<AttendanceCheckType>('check_in');
   const [proxySingleStatus, setProxySingleStatus] = useState<AttendanceStatus>('present');
-  const [proxyShowRosterHint, setProxyShowRosterHint] = useState<boolean>(false);
   const [proxyRoomFilter, setProxyRoomFilter] = useState<string>('all');
-  const [proxySearch, setProxySearch] = useState('');
   const [proxySavedNotification, setProxySavedNotification] = useState<string | null>(null);
 
   const fallbackCourse: Course = {
@@ -1877,9 +1828,22 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   })();
 
   const trimmedProxyStudentId = proxyStudentIdInput.trim();
-  const matchedProxyStudent = trimmedProxyStudentId
-    ? gateRosterStudents.find((s) => (s.studentIdNumber || '').trim().toLowerCase() === trimmedProxyStudentId.toLowerCase())
-    : undefined;
+  const matchedProxyStudent = useMemo(
+    () =>
+      trimmedProxyStudentId
+        ? resolveSingleMatchedStudent(trimmedProxyStudentId, gateRosterStudents)
+        : undefined,
+    [trimmedProxyStudentId, gateRosterStudents]
+  );
+  const matchingProxyCandidates = useMemo(
+    () =>
+      findMatchingStudents(trimmedProxyStudentId, gateRosterStudents, {
+        roomFilter: proxyRoomFilter,
+        prioritizedStudentIds: teacherHomeroomStudentIds,
+        limit: trimmedProxyStudentId ? 25 : undefined,
+      }),
+    [trimmedProxyStudentId, gateRosterStudents, proxyRoomFilter, teacherHomeroomStudentIds]
+  );
 
   const handleConfirmProxySingleCheckin = () => {
     if (!matchedProxyStudent) return;
@@ -1909,13 +1873,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setTimeout(() => setProxySavedNotification(null), 5000);
   };
 
-  const handlePrepareProxyStudentEdit = (student: Student, checkType: AttendanceCheckType) => {
-    if (!gateRosterStudents.some((allowedStudent) => allowedStudent.id === student.id)) return;
-    setProxyStudentIdInput(student.studentIdNumber);
-    setProxyCheckType(checkType);
-    setProxyShowRosterHint(false);
-  };
-
   const handleOpenDailyGateEdit = (student: Student, checkType: AttendanceCheckType) => {
     if (!gateRosterStudents.some((allowedStudent) => allowedStudent.id === student.id)) return;
     const reportRow = gateDailyReportRows.find((row) => row.student.id === student.id);
@@ -1927,7 +1884,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     );
     setProxyStudentIdInput(student.studentIdNumber);
     setProxyCheckType(checkType);
-    setProxyShowRosterHint(false);
     setSubTab('teacher_proxy');
   };
 
@@ -2360,18 +2316,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     setTimeout(() => setPeriodSavedNotification(null), 5000);
   };
 
-  const filteredProxyStudents =
-    gateRosterStudents.filter((student) => {
-      if (proxyRoomFilter !== 'all' && `${student.gradeLevel} ${student.room}`.trim() !== proxyRoomFilter) return false;
-      const query = proxySearch.trim().toLowerCase();
-      if (!query) return true;
-      return (
-        `${student.firstNameTh} ${student.lastNameTh}`.toLowerCase().includes(query) ||
-        `${student.firstNameEn} ${student.lastNameEn}`.toLowerCase().includes(query) ||
-        student.studentIdNumber.toLowerCase().includes(query)
-      );
-    });
-
   const todayAttendanceByStudent = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
     for (const rec of attendance) {
@@ -2393,18 +2337,14 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   }, [quickRosterStudents]);
 
   const filteredRosterStudents = useMemo(() => {
-    const q = rosterSheetQuery.trim().toLowerCase();
-    return quickRosterStudents.filter((s) => {
-      if (rosterSheetGradeFilter !== 'all' && s.gradeLevel !== rosterSheetGradeFilter) return false;
-      if (!q) return true;
-      return (
-        `${s.firstNameTh} ${s.lastNameTh}`.toLowerCase().includes(q) ||
-        `${s.firstNameEn} ${s.lastNameEn}`.toLowerCase().includes(q) ||
-        s.studentIdNumber.toLowerCase().includes(q) ||
-        `${s.gradeLevel}/${s.room}`.toLowerCase().includes(q)
-      );
+    const gradeScoped =
+      rosterSheetGradeFilter === 'all'
+        ? quickRosterStudents
+        : quickRosterStudents.filter((s) => s.gradeLevel === rosterSheetGradeFilter);
+    return findMatchingStudents(rosterSheetQuery, gradeScoped, {
+      prioritizedStudentIds: teacherHomeroomStudentIds,
     });
-  }, [quickRosterStudents, rosterSheetGradeFilter, rosterSheetQuery]);
+  }, [quickRosterStudents, rosterSheetGradeFilter, rosterSheetQuery, teacherHomeroomStudentIds]);
 
   const rosterTodayStats = useMemo(() => {
     let checkedIn = 0;
@@ -2420,292 +2360,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       pending: Math.max(0, quickRosterStudents.length - checkedIn - late),
     };
   }, [quickRosterStudents, todayAttendanceByStudent]);
-
-  const stopNfcScanning = () => {
-    if (nfcAbortRef.current) {
-      try {
-        nfcAbortRef.current.abort();
-      } catch {
-        // ignore abort errors
-      }
-      nfcAbortRef.current = null;
-    }
-    setIsNfcScanning(false);
-  };
-
-  useEffect(() => {
-    if (subTab !== 'nfc_tap') {
-      stopNfcScanning();
-    }
-    return () => {
-      stopNfcScanning();
-    };
-  }, [subTab]);
-
-  const logResolvedNfcAttendance = (params: {
-    userType: 'student' | 'teacher';
-    student?: Student;
-    teacher?: Teacher;
-    uid: string;
-  }) => {
-    const { userType, student, teacher, uid } = params;
-    const nowTime = new Date().toLocaleTimeString('th-TH', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-    const [h, m] = nowTime.split(':').map(Number);
-    const minutes = (h || 0) * 60 + (m || 0);
-    const resolvedStatus: AttendanceStatus = isStaffUser
-      ? nfcStatusMode
-      : nfcCheckType === 'check_in' && minutes > 8 * 60
-        ? 'late'
-        : 'present';
-
-    const actionWord = nfcCheckType === 'check_in' ? 'เช็คชื่อเข้า' : 'เช็คชื่อออก';
-    const personName =
-      userType === 'student'
-        ? `${student?.firstNameTh || ''} ${student?.lastNameTh || ''}`.trim()
-        : teacher?.fullNameTh || 'บุคลากร';
-    const targetId = userType === 'student' ? student?.id || '' : teacher?.id || '';
-    const roleLabel =
-      userType === 'student'
-        ? `นักเรียน (${student?.gradeLevel || ''} ${student?.room || ''})`.trim()
-        : teacher?.academicStanding || 'ครู / บุคลากร';
-
-    onRecordAttendance(
-      targetId,
-      resolvedStatus,
-      `แตะบัตร NFC (${uid}) ${actionWord}${selectedGate ? ` ที่${selectedGate.nameTh}` : ''}`,
-      'nfc',
-      {
-        recordType: nfcCheckType,
-        userType,
-        teacherId: userType === 'teacher' ? targetId : undefined,
-        userName: personName,
-        userRole: roleLabel,
-        userAvatar: userType === 'student' ? student?.avatarUrl : teacher?.avatarUrl,
-        userDepartmentOrRoom: userType === 'student' ? student?.room : teacher?.department,
-        date: todayDateStr,
-        recordedBy: isStaffUser ? currentUser?.fullNameTh || 'เจ้าหน้าที่จุดสแกน NFC' : personName,
-        recordedByRole: currentUser?.role || userType,
-        ...(selectedGate && currentGpsDistance !== null
-          ? {
-              location: {
-                lat: realGpsCoords?.lat ?? selectedGate.lat,
-                lng: realGpsCoords?.lng ?? selectedGate.lng,
-                distanceMeters: currentGpsDistance,
-                inGeofence: isInGeofence,
-                geofenceZoneName: selectedGate.nameTh,
-              },
-            }
-          : {}),
-      }
-    );
-
-    playChime();
-    setNfcRecentLogs((prev) => [
-      {
-        id: `nfc-log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        uid,
-        name: personName,
-        roleLabel,
-        userType,
-        checkType: nfcCheckType,
-        status: resolvedStatus,
-        time: nowTime,
-        gateName: selectedGate?.nameTh || _school?.nameTh || 'จุดสแกน NFC',
-      },
-      ...prev.slice(0, 14),
-    ]);
-    setNfcErrorMessage(null);
-    setUnregisteredNfcTag(null);
-    setNfcStatusMessage(
-      lang === 'th'
-        ? `แตะบัตร NFC สำเร็จ: ${personName} (${actionWord} • ${nowTime} น.)`
-        : `NFC Tap logged: ${personName} (${nfcCheckType} • ${nowTime})`
-    );
-    window.setTimeout(() => setNfcStatusMessage(null), 5000);
-  };
-
-  const handleProcessNfcCardInput = (rawUid: string, payloadText = '') => {
-    const clean = rawUid.trim() || payloadText.trim();
-    if (!clean) {
-      setNfcErrorMessage(lang === 'th' ? 'ไม่พบรหัสบัตร NFC กรุณาลองแตะใหม่อีกครั้ง' : 'Empty NFC tag UID');
-      return;
-    }
-
-    const dedupeKey = `${clean.toUpperCase()}:${nfcCheckType}`;
-    const now = Date.now();
-    if (nfcLastTapRef.current.key === dedupeKey && now - nfcLastTapRef.current.at < 2500) {
-      return;
-    }
-    nfcLastTapRef.current = { key: dedupeKey, at: now };
-
-    if (isStaffUser && isQuickAttendanceLocked) {
-      runWithBiometricGuard(() => handleProcessNfcCardInput(rawUid, payloadText));
-      return;
-    }
-
-    const match = resolveNfcTap({
-      schoolId: activeSchoolId,
-      rawInput: clean,
-      payloadText,
-      students: attendanceStudentScope,
-      teachers: isRestrictedViewer ? (ownTeacher ? [ownTeacher] : []) : teachers,
-    });
-
-    if (!match.matched) {
-      if (isRestrictedViewer && ownStudent) {
-        setUnregisteredNfcTag({ uid: match.uid, payloadText: match.payloadText });
-        setNfcErrorMessage(
-          lang === 'th'
-            ? `บัตร UID ${match.uid} ยังไม่ผูกกับบัญชีของคุณ กดปุ่มด้านล่างเพื่อผูกกับบัตรนักเรียนของ ${ownStudent.firstNameTh} และเช็คชื่อทันที`
-            : `Card UID ${match.uid} is not bound yet. Bind it to your student profile below.`
-        );
-        return;
-      }
-      setUnregisteredNfcTag({ uid: match.uid, payloadText: match.payloadText });
-      setNfcErrorMessage(
-        lang === 'th'
-          ? `บัตร NFC UID "${match.uid}" ยังไม่ได้ลงทะเบียนในระบบ กรุณาเลือกเจ้าของบัตรเพื่อจับคู่และเช็คชื่อ`
-          : `Unregistered NFC card UID "${match.uid}". Pair it to a student or teacher below.`
-      );
-      return;
-    }
-
-    if (isRestrictedViewer && ownStudent && match.userType === 'student' && match.student.id !== ownStudent.id) {
-      setNfcErrorMessage(
-        lang === 'th'
-          ? 'บัตรนี้ไม่ใช่บัตรประจำตัวของคุณ ระบบไม่อนุญาตให้แตะบัตรแทนผู้อื่น'
-          : 'This NFC card does not belong to your account.'
-      );
-      return;
-    }
-
-    logResolvedNfcAttendance({
-      userType: match.userType,
-      student: match.userType === 'student' ? match.student : undefined,
-      teacher: match.userType === 'teacher' ? match.teacher : undefined,
-      uid: match.uid,
-    });
-  };
-
-  const handleBindUnregisteredNfcCard = () => {
-    if (!unregisteredNfcTag) return;
-    if (isRestrictedViewer && ownStudent) {
-      const updated = saveNfcBinding(activeSchoolId, {
-        uid: unregisteredNfcTag.uid,
-        targetType: 'student',
-        targetId: ownStudent.id,
-        displayId: ownStudent.studentIdNumber,
-        label: `${ownStudent.firstNameTh} ${ownStudent.lastNameTh}`,
-      });
-      setNfcBindings(updated);
-      logResolvedNfcAttendance({
-        userType: 'student',
-        student: ownStudent,
-        uid: formatNfcUidDisplay(unregisteredNfcTag.uid),
-      });
-      return;
-    }
-
-    if (bindTargetType === 'student') {
-      const stu = attendanceStudentScope.find((s) => s.id === bindTargetId);
-      if (!stu) return;
-      const updated = saveNfcBinding(activeSchoolId, {
-        uid: unregisteredNfcTag.uid,
-        targetType: 'student',
-        targetId: stu.id,
-        displayId: stu.studentIdNumber,
-        label: `${stu.firstNameTh} ${stu.lastNameTh}`,
-      });
-      setNfcBindings(updated);
-      logResolvedNfcAttendance({
-        userType: 'student',
-        student: stu,
-        uid: formatNfcUidDisplay(unregisteredNfcTag.uid),
-      });
-    } else {
-      const tch = teachers.find((t) => t.id === bindTargetId);
-      if (!tch) return;
-      const updated = saveNfcBinding(activeSchoolId, {
-        uid: unregisteredNfcTag.uid,
-        targetType: 'teacher',
-        targetId: tch.id,
-        displayId: tch.teacherIdNumber,
-        label: tch.fullNameTh,
-      });
-      setNfcBindings(updated);
-      logResolvedNfcAttendance({
-        userType: 'teacher',
-        teacher: tch,
-        uid: formatNfcUidDisplay(unregisteredNfcTag.uid),
-      });
-    }
-  };
-
-  const handleStartWebNfcScan = async () => {
-    if (isStaffUser && isQuickAttendanceLocked) {
-      runWithBiometricGuard(() => {
-        void handleStartWebNfcScan();
-      });
-      return;
-    }
-
-    const NdefCtor = getNdefReaderConstructor();
-    if (!NdefCtor) {
-      setNfcErrorMessage(
-        lang === 'th'
-          ? 'เบราว์เซอร์นี้ไม่รองรับ Web NFC (NDEFReader) ใช้ได้บน Android Chrome ผ่าน HTTPS — คุณสามารถใช้เครื่องอ่าน NFC แบบ USB หรือกรอก UID ด้านล่างแทนได้'
-          : 'Web NFC (NDEFReader) is only supported on Android Chrome over HTTPS. Use USB reader or manual UID input below.'
-      );
-      return;
-    }
-
-    stopNfcScanning();
-    setNfcErrorMessage(null);
-    const controller = new AbortController();
-    nfcAbortRef.current = controller;
-
-    try {
-      const reader = new NdefCtor();
-      await reader.scan({ signal: controller.signal });
-      setIsNfcScanning(true);
-      setNfcStatusMessage(
-        lang === 'th'
-          ? 'เปิดเครื่องอ่าน NFC แล้ว: แตะบัตรนักเรียน/ครูที่ด้านหลังมือถือ'
-          : 'NFC Reader active: hold an ID card against the back of your device'
-      );
-
-      reader.addEventListener('reading', (event: Event) => {
-        const parsed = parseNfcReadingEvent(event as WebNdefReadingEvent);
-        handleProcessNfcCardInput(parsed.serialNumber, parsed.payloadText);
-      });
-
-      reader.addEventListener('readingerror', () => {
-        setNfcErrorMessage(
-          lang === 'th'
-            ? 'อ่านข้อมูลจากบัตร NFC ไม่สำเร็จ กรุณาขยับบัตรให้ตรงตำแหน่งเสาสัญญาณด้านหลังเครื่อง'
-            : 'Could not read NFC tag. Hold the card steady near the back antenna.'
-        );
-      });
-    } catch (err) {
-      stopNfcScanning();
-      const msg = err instanceof Error ? err.message : String(err);
-      if ((err as { name?: string })?.name === 'NotAllowedError') {
-        setNfcErrorMessage(
-          lang === 'th'
-            ? 'ไม่ได้รับอนุญาตให้ใช้งาน NFC บนเบราว์เซอร์ กรุณาตรวจสอบสิทธิ์ NFC ในการตั้งค่าเว็บไซต์'
-            : 'NFC permission was denied by browser settings.'
-        );
-      } else {
-        setNfcErrorMessage(
-          lang === 'th' ? `ไม่สามารถเปิดเครื่องอ่าน NFC ได้ (${msg})` : `Could not start NFC reader (${msg})`
-        );
-      }
-    }
-  };
 
   const handleQuickRosterCheckin = (st: Student, status: AttendanceStatus = 'present') => {
     if (!quickRosterStudents.some((student) => student.id === st.id)) return;
@@ -2742,11 +2396,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     if (!quickRosterStudents.some((student) => student.id === st.id)) return;
     if (subTab === 'teacher_proxy') {
       setProxyStudentIdInput(st.studentIdNumber);
-      setShowQuickRosterSheet(false);
-      return;
-    }
-    if (subTab === 'nfc_tap') {
-      setNfcManualUidInput(st.nfcCardUid || st.studentIdNumber);
       setShowQuickRosterSheet(false);
       return;
     }
@@ -2793,21 +2442,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       }
       return;
     }
-    if (subTab === 'nfc_tap') {
-      if (isNfcScanning) {
-        stopNfcScanning();
-      } else if (webNfcAvailable && secureNfc) {
-        void handleStartWebNfcScan();
-      } else if (nfcManualUidInput.trim()) {
-        handleProcessNfcCardInput(nfcManualUidInput);
-        setNfcManualUidInput('');
-      } else if (isRestrictedViewer && ownStudent) {
-        handleProcessNfcCardInput(ownStudent.nfcCardUid || ownStudent.studentIdNumber);
-      } else {
-        setShowQuickRosterSheet(true);
-      }
-      return;
-    }
     if (subTab === 'teacher_proxy') {
       if (matchedProxyStudent) {
         runWithBiometricGuard(() => handleConfirmProxySingleCheckin());
@@ -2834,12 +2468,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
       }
       return lang === 'th' ? 'ถ่ายเช็คชื่อ' : 'Snap Check-in';
     }
-    if (subTab === 'nfc_tap') {
-      if (isNfcScanning) return lang === 'th' ? 'หยุดสแกน NFC' : 'Stop NFC';
-      if (webNfcAvailable && secureNfc) return lang === 'th' ? 'เริ่มแตะบัตร NFC' : 'Start NFC';
-      if (nfcManualUidInput.trim()) return lang === 'th' ? 'เช็คชื่อด้วยบัตร' : 'Tap Card';
-      return lang === 'th' ? 'แตะบัตรเช็คชื่อ' : 'Tap NFC';
-    }
     if (subTab === 'teacher_proxy') {
       if (matchedProxyStudent) {
         return lang === 'th' ? 'เช็คชื่อคนนี้' : 'Confirm';
@@ -2861,7 +2489,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
   const hideFloatingToolbar =
     subTab === 'selfie_mobile' ||
     (embeddedMobile &&
-      (subTab === 'period_checkin' ||
+      (subTab === 'history' ||
+        subTab === 'period_checkin' ||
         subTab === 'daily_report' ||
         subTab === 'leave_request' ||
         subTab === 'corrections')) ||
@@ -2871,7 +2500,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
     showQuickRosterSheet ||
     showIdentitySheet ||
     showGeofenceSheet ||
-    Boolean(nfcDrawerMode) ||
     showBiometricUnlockModal ||
     Boolean(checkinSuccessFeedback);
 
@@ -2899,8 +2527,8 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                           ? 'เช็คชื่อเข้า/ออกโรงเรียน (ครู/บุคลากร)'
                           : 'Staff School Check-in / Out'
                         : lang === 'th'
-                          ? 'เช็คชื่อเข้า/ออกโรงเรียน & แตะบัตร NFC'
-                          : 'School Check-in / Out & NFC'}
+                          ? 'เช็คชื่อเข้า/ออกโรงเรียน'
+                          : 'School Check-in / Out'}
                   </h1>
                   <span className="text-xs text-[var(--color-text-muted)] tabular-nums whitespace-nowrap">
                     · {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -2993,7 +2621,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             >
             {[
               { id: 'selfie_mobile', icon: Camera, labelTh: 'เซลฟี่เข้า/ออก รร.', labelEn: 'Selfie Gate', staffOnly: false },
-              { id: 'nfc_tap', icon: Nfc, labelTh: 'แตะบัตร NFC (รร.)', labelEn: 'NFC Gate', staffOnly: false },
+              { id: 'history', icon: Clock, labelTh: 'ประวัติลงเวลา', labelEn: 'History', staffOnly: false },
               {
                 id: 'leave_request',
                 icon: FileText,
@@ -3058,7 +2686,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         </div>
       )}
 
-      {/* Mobile Sub-Navigation & Compact Action Controls (Embedded Mobile Only) */}
+      {/* Mobile Sub-Navigation & Clean Audience Separation (Embedded Mobile Only) */}
       {embeddedMobile && (
         <div className="shrink-0 flex flex-col gap-1.5">
           {showAttendanceAudienceSwitch && onAttendanceAudienceChange && (
@@ -3069,164 +2697,130 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
                 onChange={handleAttendanceAudienceChange}
               />
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              {isStaffUser && userPasskey?.protectQuickAttendance && (
                 <button
                   type="button"
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
-                  title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-                  aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-                >
-                  {soundEnabled ? (
-                    <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
-                  ) : (
-                    <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  )}
-                </button>
-
-                {isStaffUser && userPasskey?.protectQuickAttendance && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isQuickAttendanceLocked) {
-                        void handleBiometricVerify();
-                      } else {
-                        handleLockQuickAttendanceNow();
-                      }
-                    }}
-                    disabled={biometricBusy}
-                    className={`h-8 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition active:scale-95 shrink-0 shadow-2xs ${
-                      isQuickAttendanceLocked
-                        ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                        : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400'
-                    }`}
-                    title={
-                      isQuickAttendanceLocked
-                        ? lang === 'th'
-                          ? 'แตะเพื่อปลดล็อกด้วย FaceID / TouchID'
-                          : 'Unlock with FaceID / TouchID'
-                        : lang === 'th'
-                          ? 'แตะเพื่อล็อกเช็คชื่อด่วน'
-                          : 'Lock quick attendance'
+                  onClick={() => {
+                    if (isQuickAttendanceLocked) {
+                      void handleBiometricVerify();
+                    } else {
+                      handleLockQuickAttendanceNow();
                     }
-                  >
-                    {isQuickAttendanceLocked ? (
-                      <Lock className="w-3 h-3 shrink-0" />
-                    ) : (
-                      <Fingerprint className="w-3 h-3 shrink-0" />
-                    )}
-                    <span className="tabular-nums">
-                      {isQuickAttendanceLocked
-                        ? lang === 'th'
-                          ? 'ล็อก'
-                          : 'Locked'
-                        : `${biometricUnlockMinutes}${lang === 'th' ? 'น.' : 'm'}`}
-                    </span>
-                  </button>
-                )}
-              </div>
+                  }}
+                  disabled={biometricBusy}
+                  className={`h-8 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition active:scale-95 shrink-0 shadow-2xs ${
+                    isQuickAttendanceLocked
+                      ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                      : 'bg-[var(--color-card)] border-[var(--color-border)] text-emerald-700 dark:text-emerald-400'
+                  }`}
+                  title={
+                    isQuickAttendanceLocked
+                      ? lang === 'th'
+                        ? 'แตะเพื่อปลดล็อกด้วย FaceID / TouchID'
+                        : 'Unlock with FaceID / TouchID'
+                      : lang === 'th'
+                        ? 'แตะเพื่อล็อกเช็คชื่อด่วน'
+                        : 'Lock quick attendance'
+                  }
+                >
+                  {isQuickAttendanceLocked ? (
+                    <Lock className="w-3 h-3 shrink-0" />
+                  ) : (
+                    <Fingerprint className="w-3 h-3 shrink-0" />
+                  )}
+                  <span className="tabular-nums">
+                    {isQuickAttendanceLocked
+                      ? lang === 'th'
+                        ? 'ล็อก'
+                        : 'Locked'
+                      : `${biometricUnlockMinutes}${lang === 'th' ? 'น.' : 'm'}`}
+                  </span>
+                </button>
+              )}
             </div>
           )}
 
           {initialSubTab !== 'leave_request' && (
-            <div className="flex items-center justify-between gap-1.5">
-              <nav
-                data-guide-id="mobile-checkin-tabs"
-                aria-label="Attendance sub-navigation"
-                className="flex-1 min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
-              >
-                {[
-                  { id: 'selfie_mobile', icon: Camera, labelTh: 'ลงเวลา', labelEn: 'Clock', staffOnly: false },
-                  { id: 'nfc_tap', icon: Nfc, labelTh: 'NFC', labelEn: 'NFC', staffOnly: false },
-                  {
-                    id: 'leave_request',
-                    icon: FileText,
-                    labelTh: 'ใบลา',
-                    labelEn: 'Leave',
-                    badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
-                    staffOnly: false,
-                  },
-                  { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เข้า/ออก รร.', labelEn: 'School', staffOnly: true },
-                  { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
-                  { id: 'period_checkin', icon: Users, labelTh: 'เข้า/ออกคาบ', labelEn: 'Periods', staffOnly: false },
-                  {
-                    id: 'corrections',
-                    icon: FileEdit,
-                    labelTh: 'แก้เวลา',
-                    labelEn: 'Adjust',
-                    badge: pendingCorrectionCount,
-                    staffOnly: false,
-                  },
-                ]
-                  .filter((tab) => {
-                    if (
-                      filterTabsByAudience &&
-                      showAttendanceAudienceSwitch &&
-                      isStaffUser &&
-                      !(
-                        activeAttendanceAudience === 'students'
-                          ? ['teacher_proxy', 'period_checkin', 'daily_report', 'corrections'].includes(tab.id)
-                          : ['selfie_mobile', 'nfc_tap', 'leave_request', 'corrections'].includes(tab.id)
-                      )
-                    ) {
-                      return false;
-                    }
-                    if (hideStaffOverviewTabs && isStaffUser && tab.id === 'daily_report') {
-                      return false;
-                    }
-                    return tab.id === 'daily_report'
-                      ? canViewDailyReport
-                      : isStaffUser || !tab.staffOnly;
-                  })
-                  .map((tab) => {
-                    const isActive = subTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        data-active={isActive}
-                        onClick={() => {
-                          setSubTab(tab.id as AttendanceSubTab);
-                          if (tab.id === 'leave_request') setLeaveFormStep(1);
-                        }}
-                        className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
-                          isActive
-                            ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
-                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
-                        }`}
-                      >
-                        <tab.icon className="w-3 h-3 shrink-0" />
-                        <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
-                        {tab.badge ? (
-                          <span
-                            className={`text-[10px] font-bold tabular-nums ${
-                              isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
-                            }`}
-                          >
-                            ({tab.badge})
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-              </nav>
-
-              {!(showAttendanceAudienceSwitch && onAttendanceAudienceChange) && (
-                <button
-                  type="button"
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="h-8 w-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-center shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
-                  title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-                  aria-label={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
-                >
-                  {soundEnabled ? (
-                    <Volume2 className="w-3.5 h-3.5 text-[var(--tone)]" />
-                  ) : (
-                    <VolumeX className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  )}
-                </button>
-              )}
-            </div>
+            <nav
+              data-guide-id="mobile-checkin-tabs"
+              aria-label="Attendance sub-navigation"
+              className="w-full min-w-0 flex items-center gap-1 p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] overflow-x-auto no-scrollbar"
+            >
+              {[
+                { id: 'selfie_mobile', icon: Camera, labelTh: 'ลงเวลา', labelEn: 'Clock', staffOnly: false },
+                { id: 'history', icon: Clock, labelTh: 'ประวัติ', labelEn: 'History', staffOnly: false },
+                {
+                  id: 'leave_request',
+                  icon: FileText,
+                  labelTh: 'ใบลา',
+                  labelEn: 'Leave',
+                  badge: scopedLeaveRequests.filter((r) => r.status === 'pending').length,
+                  staffOnly: false,
+                },
+                { id: 'teacher_proxy', icon: UserCheck, labelTh: 'เข้า/ออก รร.', labelEn: 'School', staffOnly: true },
+                { id: 'period_checkin', icon: Users, labelTh: 'เข้า/ออกคาบ', labelEn: 'Periods', staffOnly: false },
+                { id: 'daily_report', icon: ClipboardCheck, labelTh: 'รายงาน', labelEn: 'Daily', staffOnly: true },
+                {
+                  id: 'corrections',
+                  icon: FileEdit,
+                  labelTh: 'แก้เวลา',
+                  labelEn: 'Adjust',
+                  badge: pendingCorrectionCount,
+                  staffOnly: false,
+                },
+              ]
+                .filter((tab) => {
+                  if (
+                    filterTabsByAudience &&
+                    showAttendanceAudienceSwitch &&
+                    isStaffUser &&
+                    !(
+                      activeAttendanceAudience === 'students'
+                        ? ['teacher_proxy', 'period_checkin', 'daily_report', 'corrections'].includes(tab.id)
+                        : ['selfie_mobile', 'history', 'leave_request', 'corrections'].includes(tab.id)
+                    )
+                  ) {
+                    return false;
+                  }
+                  if (hideStaffOverviewTabs && isStaffUser && tab.id === 'daily_report') {
+                    return false;
+                  }
+                  return tab.id === 'daily_report'
+                    ? canViewDailyReport
+                    : isStaffUser || !tab.staffOnly;
+                })
+                .map((tab) => {
+                  const isActive = subTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      data-active={isActive}
+                      onClick={() => {
+                        setSubTab(tab.id as AttendanceSubTab);
+                        if (tab.id === 'leave_request') setLeaveFormStep(1);
+                      }}
+                      className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-md text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition active:scale-[0.97] ${
+                        isActive
+                          ? 'bg-[var(--color-card)] text-[var(--color-primary-text)] font-bold border border-[var(--color-border)] shadow-2xs'
+                          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] font-medium border border-transparent'
+                      }`}
+                    >
+                      <tab.icon className="w-3 h-3 shrink-0" />
+                      <span>{lang === 'th' ? tab.labelTh : tab.labelEn}</span>
+                      {tab.badge ? (
+                        <span
+                          className={`text-[10px] font-bold tabular-nums ${
+                            isActive ? 'text-[var(--color-primary-text)]' : 'text-amber-600 dark:text-amber-300'
+                          }`}
+                        >
+                          ({tab.badge})
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+            </nav>
           )}
         </div>
       )}
@@ -3236,7 +2830,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         (biometricNotice ||
           biometricError ||
           (isQuickAttendanceLocked &&
-            (subTab === 'nfc_tap' || subTab === 'teacher_proxy' || subTab === 'period_checkin'))) && (
+            (subTab === 'teacher_proxy' || subTab === 'period_checkin'))) && (
           <div className="shrink-0 space-y-1.5">
             {biometricNotice && (
               <div
@@ -3258,7 +2852,7 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
             )}
 
             {isQuickAttendanceLocked &&
-              (subTab === 'nfc_tap' || subTab === 'teacher_proxy' || subTab === 'period_checkin') && (
+              (subTab === 'teacher_proxy' || subTab === 'period_checkin') && (
                 <div className="px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 flex items-center justify-between gap-2.5 text-xs">
                   <div className="flex items-center gap-2 min-w-0">
                     <Lock className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
@@ -3280,29 +2874,19 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           </div>
         )}
 
-      {/* Compact Single-Line Context Bar for Staff Proxy Selfie (Time-Card handles GPS/location cleanly for self check-in) */}
+      {/* Compact Single-Line Context Bar for Staff Proxy Selfie */}
       {embeddedMobile && subTab === 'selfie_mobile' && !isSimpleStaffCheckin && isStaffUser && (
         <div className="shrink-0 flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setShowIdentitySheet(true)}
-            className="h-8 flex-1 min-w-0 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center gap-1.5 text-left cursor-pointer transition active:scale-[0.98] shadow-2xs"
+            className="h-9 flex-1 min-w-0 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center gap-1.5 text-left cursor-pointer transition active:scale-[0.98] shadow-2xs"
           >
             <User className="w-3.5 h-3.5 text-[var(--color-primary-text)] shrink-0" />
             <span className="text-[11px] font-semibold text-[var(--color-text-title)] truncate">
               {activePersonName}
             </span>
             <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] shrink-0 ml-auto" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowQuickRosterSheet(true)}
-            className="h-8 px-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-primary-light)] flex items-center gap-1 text-[11px] font-semibold text-[var(--color-primary-text)] cursor-pointer transition active:scale-[0.98] shrink-0 shadow-2xs"
-            title={lang === 'th' ? 'เปิดรายชื่อนักเรียน' : 'Open Student Roster'}
-          >
-            <Users className="w-3.5 h-3.5 shrink-0" />
-            <span>{lang === 'th' ? 'รายชื่อ' : 'Roster'}</span>
           </button>
         </div>
       )}
@@ -3485,46 +3069,48 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         />
       )}
 
-      {/* TAB 2B: NFC SCHOOL ID CARD TAP */}
-      {subTab === 'nfc_tap' && (
-        <NfcTapAttendanceTab
-          embeddedMobile={embeddedMobile}
-          lang={lang}
-          activeSchoolId={activeSchoolId}
-          isStaffUser={isStaffUser}
-          isRestrictedViewer={isRestrictedViewer}
-          ownStudent={ownStudent}
-          students={effectiveRole === 'teacher' ? gateRosterStudents : students}
-          teachers={teachers}
-          isNfcScanning={isNfcScanning}
-          webNfcAvailable={webNfcAvailable}
-          secureNfc={secureNfc}
-          nfcCheckType={nfcCheckType}
-          setNfcCheckType={setNfcCheckType}
-          normalizedGates={normalizedGates}
-          selectedGate={selectedGate}
-          setSelectedGateId={setSelectedGateId}
-          nfcStatusMode={nfcStatusMode}
-          setNfcStatusMode={setNfcStatusMode}
-          stopNfcScanning={stopNfcScanning}
-          handleStartWebNfcScan={handleStartWebNfcScan}
-          handleProcessNfcCardInput={handleProcessNfcCardInput}
-          nfcStatusMessage={nfcStatusMessage}
-          nfcErrorMessage={nfcErrorMessage}
-          nfcManualUidInput={nfcManualUidInput}
-          setNfcManualUidInput={setNfcManualUidInput}
-          unregisteredNfcTag={unregisteredNfcTag}
-          setUnregisteredNfcTag={setUnregisteredNfcTag}
-          bindTargetType={bindTargetType}
-          setBindTargetType={setBindTargetType}
-          bindTargetId={bindTargetId}
-          setBindTargetId={setBindTargetId}
-          handleBindUnregisteredNfcCard={handleBindUnregisteredNfcCard}
-          nfcBindings={nfcBindings}
-          setNfcBindings={setNfcBindings}
-          nfcRecentLogs={nfcRecentLogs}
-          setNfcDrawerMode={setNfcDrawerMode}
-        />
+      {/* TAB 1B: DEDICATED PERSONAL ATTENDANCE HISTORY */}
+      {subTab === 'history' && (
+        <div className={embeddedMobile ? 'flex-1 min-h-0 overflow-y-auto pb-4' : ''}>
+          <PersonalTimeCardPanel
+            lang={lang}
+            personName={activePersonName}
+            todayCheckInRecord={activeTodayCheckIn}
+            todayCheckOutRecord={activeTodayCheckOut}
+            rows={personalAttendanceRows}
+            showPairedTimeCards={false}
+            showHistoryTable={true}
+            historyMaxHeightClass={embeddedMobile ? 'max-h-[calc(100dvh-270px)]' : 'max-h-[460px]'}
+            onOpenCorrectionFromHistory={(row) => {
+              const targetScope =
+                row.checkInTime && !row.checkOutTime ? 'gate_checkout' : 'gate_checkin';
+              const issueType = !row.checkInTime
+                ? 'forgot_checkin'
+                : !row.checkOutTime
+                  ? 'forgot_checkout'
+                  : row.statusKey === 'late'
+                    ? 'late_arrival'
+                    : 'time_mismatch';
+              setCorrectionPrefill({
+                targetScope,
+                issueType,
+                date: row.date,
+                originalTime:
+                  targetScope === 'gate_checkout'
+                    ? row.checkOutTime || ''
+                    : row.checkInTime || '',
+                requesterId: activeTargetId,
+              });
+              setSubTab('corrections');
+            }}
+            onOpenLeaveFromHistory={(row) => {
+              setLeaveStartDate(row.date);
+              setLeaveEndDate(row.date);
+              setLeaveFormStep(1);
+              setSubTab('leave_request');
+            }}
+          />
+        </div>
       )}
 
       {/* TAB 3: TEACHER PROXY CHECK-IN */}
@@ -3532,8 +3118,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         <TeacherProxyTab
           embeddedMobile={embeddedMobile}
           students={gateRosterStudents}
-          proxyShowRosterHint={proxyShowRosterHint}
-          setProxyShowRosterHint={setProxyShowRosterHint}
           proxySavedNotification={proxySavedNotification}
           proxyStudentIdInput={proxyStudentIdInput}
           setProxyStudentIdInput={setProxyStudentIdInput}
@@ -3543,18 +3127,15 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
           setProxyTime={setProxyTime}
           trimmedProxyStudentId={trimmedProxyStudentId}
           matchedProxyStudent={matchedProxyStudent}
+          matchingProxyCandidates={matchingProxyCandidates}
           proxyCheckType={proxyCheckType}
           setProxyCheckType={setProxyCheckType}
           proxySingleStatus={proxySingleStatus}
           setProxySingleStatus={setProxySingleStatus}
           runWithBiometricGuard={runWithBiometricGuard}
           handleConfirmProxySingleCheckin={handleConfirmProxySingleCheckin}
-          filteredProxyStudents={filteredProxyStudents}
-          proxySearch={proxySearch}
-          setProxySearch={setProxySearch}
           proxyRoomFilter={proxyRoomFilter}
           setProxyRoomFilter={setProxyRoomFilter}
-          onEditStudent={handlePrepareProxyStudentEdit}
         />
       )}
 
@@ -3732,12 +3313,6 @@ export const MobileAttendanceView: React.FC<MobileAttendanceViewProps> = ({
         handleRefreshGps={handleRefreshGps}
         isGpsLoading={isGpsLoading}
         gpsError={gpsError}
-        nfcDrawerMode={nfcDrawerMode}
-        setNfcDrawerMode={setNfcDrawerMode}
-        nfcBindings={nfcBindings}
-        setNfcBindings={setNfcBindings}
-        nfcRecentLogs={nfcRecentLogs}
-        handleProcessNfcCardInput={handleProcessNfcCardInput}
         showBiometricUnlockModal={showBiometricUnlockModal}
         userPasskey={userPasskey}
         biometricError={biometricError}

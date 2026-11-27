@@ -560,7 +560,7 @@ export const IdCardBackContent: React.FC<IdCardBackContentProps> = React.memo(({
       <div className={cardContainerClass}>
         <div className="rounded-lg bg-slate-950/90 border border-slate-700 flex items-center justify-between px-3 py-1.5 shrink-0">
           <span className="text-[8.5px] font-mono tracking-wider text-slate-200 truncate">
-            {isStaff ? 'OFFICIAL PERSONNEL PASS · NFC' : 'OFFICIAL STUDENT PASS · NFC'}
+            {isStaff ? 'OFFICIAL PERSONNEL PASS' : 'OFFICIAL STUDENT PASS'}
           </span>
           <span className="text-[8.5px] font-mono text-cyan-300 shrink-0">{school.code}</span>
         </div>

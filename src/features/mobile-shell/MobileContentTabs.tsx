@@ -3,12 +3,14 @@ import {
   ArrowLeft,
   ChevronRight,
   Fingerprint,
+  GraduationCap,
   KeyRound,
   Laptop,
   Lock,
   LogOut,
   Pin,
   Search,
+  ShieldCheck,
   Sparkles,
   Trash2,
   User,
@@ -81,6 +83,8 @@ interface MobileProfileTabProps {
   onSwitchToDesktopMode: () => void;
   onLogout: () => void;
   onOpenPortfolio: () => void;
+  canSwitchAdminTeacherMode?: boolean;
+  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
 }
 
 export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
@@ -113,6 +117,8 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
   onSwitchToDesktopMode,
   onLogout,
   onOpenPortfolio: _onOpenPortfolio,
+  canSwitchAdminTeacherMode = false,
+  onSwitchOperationalRole,
 }) => {
   const [passkey, setPasskey] = useState<EnrolledBiometricPasskey | null>(() =>
     getPasskeyForUser(currentUser?.id)
@@ -292,6 +298,40 @@ export const MobileProfileTab: React.FC<MobileProfileTabProps> = ({
               {lang === 'th' ? 'แก้ไข' : 'Edit'}
             </button>
           </div>
+
+          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
+            <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] space-y-2">
+              <p className="text-[11px] font-bold text-[var(--color-text-muted)]">
+                {lang === 'th' ? 'สลับโหมดปฏิบัติงาน' : 'Operational Role Mode'}
+              </p>
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => onSwitchOperationalRole('admin')}
+                  className={`min-h-[38px] flex items-center justify-center gap-1.5 rounded-lg px-2.5 font-bold cursor-pointer transition ${
+                    currentRole === 'admin'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span>{lang === 'th' ? 'โหมด Admin' : 'Admin'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSwitchOperationalRole('teacher')}
+                  className={`min-h-[38px] flex items-center justify-center gap-1.5 rounded-lg px-2.5 font-bold cursor-pointer transition ${
+                    currentRole === 'teacher'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                      : 'text-[var(--color-text-body)] hover:bg-[var(--color-card)] hover:text-[var(--color-text-title)]'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4 shrink-0" />
+                  <span>{lang === 'th' ? 'โหมดครู' : 'Teacher'}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Grouped Settings List */}
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">

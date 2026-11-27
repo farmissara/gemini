@@ -625,7 +625,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             </p>
           </div>
 
-          {/* 3 & 4. Paired Time-Card Photo Slots + Scrollable Personal Attendance History Table */}
+          {/* 3. Paired Time-Card Photo Slots (History lives in the dedicated History tab) */}
           <PersonalTimeCardPanel
             lang={lang}
             personName={activePersonName}
@@ -636,7 +636,7 @@ export const SelfieAttendanceTab: React.FC<SelfieAttendanceTabProps> = ({
             onSelectCheckType={setCheckType}
             onOpenCorrectionFromHistory={onOpenCorrectionFromHistory}
             onOpenLeaveFromHistory={onOpenLeaveFromHistory}
-            historyMaxHeightClass="max-h-[340px]"
+            showHistoryTable={false}
           />
         </div>
 

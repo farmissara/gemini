@@ -234,7 +234,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
 
   // Dynamic Check-in deep-link state
   const [mobileAttendanceInitialSubTab, setMobileAttendanceInitialSubTab] = useState<
-    'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin' | 'corrections'
+    'selfie_mobile' | 'history' | 'leave_request' | 'teacher_proxy' | 'period_checkin' | 'corrections'
   >(initialAttendanceSubTab);
   const [mobileCorrectionPrefill, setMobileCorrectionPrefill] =
     useState<CorrectionPrefillSeed | null>(null);
@@ -688,10 +688,11 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         setThemePalette={setThemePalette}
         unreadCount={unreadCount}
         onOpenNotifications={onOpenNotifications}
-        onOpenProfile={() => setActiveTab('profile')}
+        onOpenProfile={() => {
+          setProfilePage(1);
+          setActiveTab('profile');
+        }}
         onOpenSchoolSwitcher={onOpenSchoolSwitcher}
-        canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
-        onSwitchOperationalRole={onSwitchOperationalRole}
         onSwitchToDesktopMode={onSwitchToDesktopMode}
         onLogout={onLogout}
       />
@@ -1155,6 +1156,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               onSwitchToDesktopMode={onSwitchToDesktopMode}
               onLogout={onLogout}
               onOpenPortfolio={() => setActiveTab('portfolio')}
+              canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+              onSwitchOperationalRole={onSwitchOperationalRole}
             />
           )}
 

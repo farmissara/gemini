@@ -220,7 +220,7 @@ export interface MobileAppShellProps {
   onUpdateSchoolFeatureFlags?: (schoolId: string, flags: SchoolFeatureFlags) => void;
   onJumpToDesktopTab?: (tab: NavTab) => void;
   initialMobileTab?: MobileTab;
-  initialAttendanceSubTab?: 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
+  initialAttendanceSubTab?: 'selfie_mobile' | 'history' | 'leave_request' | 'teacher_proxy' | 'period_checkin';
   initialPeriodCourseId?: string;
   initialPeriodNumber?: number;
   initialPeriodDate?: string;

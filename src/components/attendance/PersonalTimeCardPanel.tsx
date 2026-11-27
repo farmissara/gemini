@@ -28,6 +28,7 @@ interface PersonalTimeCardPanelProps {
   onOpenCorrectionFromHistory?: (row: PersonalDailyAttendanceRow) => void;
   onOpenLeaveFromHistory?: (row: PersonalDailyAttendanceRow) => void;
   showPairedTimeCards?: boolean;
+  showHistoryTable?: boolean;
   historyMaxHeightClass?: string;
 }
 
@@ -42,6 +43,7 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
   onOpenCorrectionFromHistory,
   onOpenLeaveFromHistory,
   showPairedTimeCards = true,
+  showHistoryTable = true,
   historyMaxHeightClass = 'max-h-[340px]',
 }) => {
   const [historyFilter, setHistoryFilter] = useState<'all' | 'present' | 'late' | 'absent_leave'>('all');
@@ -229,19 +231,20 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
       )}
 
       {/* 2. Scrollable Personal Attendance History Table + 3-Dots Row Actions */}
+      {showHistoryTable && (
       <section
         aria-label={lang === 'th' ? 'ประวัติการลงเวลา' : 'Attendance History'}
         className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden"
       >
-        <div className="px-3.5 py-2.5 bg-emerald-600 text-white flex items-center justify-between gap-2">
+        <div className="px-3.5 py-2.5 bg-[var(--color-card)] border-b border-[var(--color-border)] flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Clock className="w-4 h-4 shrink-0" />
-            <h3 className="text-sm font-bold truncate">
+            <Clock className="w-4 h-4 text-[var(--color-primary-text)] shrink-0" />
+            <h3 className="text-sm font-bold text-[var(--color-text-title)] truncate">
               {lang === 'th' ? 'ประวัติการลงเวลา' : 'Attendance History'}
               {personName ? ` · ${personName}` : ''}
             </h3>
           </div>
-          <span className="text-[11px] font-semibold text-emerald-50 tabular-nums shrink-0">
+          <span className="text-xs font-semibold text-[var(--color-text-muted)] tabular-nums shrink-0">
             {filteredRows.length} {lang === 'th' ? 'วัน' : 'days'}
           </span>
         </div>
@@ -402,6 +405,7 @@ export const PersonalTimeCardPanel: React.FC<PersonalTimeCardPanelProps> = ({
           )}
         </div>
       </section>
+      )}
 
       {/* 3-Dots Action Sheet Modal for Selected Day */}
       {actionRowMenu && (

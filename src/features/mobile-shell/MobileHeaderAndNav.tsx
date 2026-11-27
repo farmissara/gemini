@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ArrowLeftRight,
   Bell,
   Building2,
   User,
@@ -22,8 +21,6 @@ interface MobileHeaderProps {
   onOpenNotifications?: () => void;
   onOpenProfile: () => void;
   onOpenSchoolSwitcher?: () => void;
-  canSwitchAdminTeacherMode: boolean;
-  onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
   onSwitchToDesktopMode?: () => void;
   onLogout?: () => void;
 }
@@ -37,8 +34,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onOpenNotifications,
   onOpenProfile,
   onOpenSchoolSwitcher,
-  canSwitchAdminTeacherMode,
-  onSwitchOperationalRole,
 }) => {
   const profileDisplayName =
     (lang === 'th' ? currentUser?.fullNameTh : currentUser?.fullNameEn) ||
@@ -69,26 +64,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {canSwitchAdminTeacherMode && onSwitchOperationalRole && (
-            <button
-              type="button"
-              onClick={() => onSwitchOperationalRole(currentRole === 'admin' ? 'teacher' : 'admin')}
-              className="min-h-[36px] px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-[11px] font-bold text-[var(--color-primary-text)] inline-flex items-center gap-1 cursor-pointer transition hover:bg-[var(--color-card)]"
-              title={
-                currentRole === 'admin'
-                  ? lang === 'th'
-                    ? 'สลับเป็นโหมดครูผู้สอน'
-                    : 'Teacher mode'
-                  : lang === 'th'
-                    ? 'สลับเป็นโหมด Admin'
-                    : 'Admin mode'
-              }
-            >
-              <ArrowLeftRight className="w-3 h-3 shrink-0" />
-              <span>{currentRole === 'admin' ? (lang === 'th' ? 'โหมดครู' : 'Teacher') : 'Admin'}</span>
-            </button>
-          )}
-
           {onOpenNotifications && (
             <button
               type="button"

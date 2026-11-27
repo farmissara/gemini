@@ -569,7 +569,7 @@ export const LeaveRequestTab: React.FC<LeaveRequestTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setLeaveFormStep(1)}
-                    className="w-full py-1 text-center type-meta hover:text-[var(--color-text-title)] font-semibold underline underline-offset-4 cursor-pointer"
+                    className="w-full py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)] text-center text-xs text-[var(--color-text-body)] font-semibold transition cursor-pointer"
                   >
                     ย้อนกลับแก้ไขวันลา
                   </button>

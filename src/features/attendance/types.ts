@@ -22,7 +22,7 @@ import type { CorrectionPrefillSeed } from '../../components/attendance/Attendan
 
 export type AttendanceSubTab =
   | 'selfie_mobile'
-  | 'nfc_tap'
+  | 'history'
   | 'leave_request'
   | 'teacher_proxy'
   | 'period_checkin'
@@ -38,18 +38,6 @@ export interface CheckinSuccessFeedback {
   time: string;
   distance: number;
   photoUrl: string;
-  gateName: string;
-}
-
-export interface NfcRecentLogEntry {
-  id: string;
-  uid: string;
-  name: string;
-  roleLabel: string;
-  userType: AttendanceUserType;
-  checkType: AttendanceCheckType;
-  status: AttendanceStatus;
-  time: string;
   gateName: string;
 }
 

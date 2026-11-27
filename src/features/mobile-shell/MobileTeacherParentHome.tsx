@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   BarChart3,
   BookOpen,
-  Calendar,
   Camera,
   ChevronRight,
   Clock,
@@ -82,7 +81,7 @@ interface MobileTeacherParentHomeProps {
     checkType: 'check_in' | 'check_out'
   ) => void;
   setMobileAttendanceInitialSubTab: (
-    subTab: 'selfie_mobile' | 'nfc_tap' | 'leave_request' | 'teacher_proxy' | 'period_checkin'
+    subTab: 'selfie_mobile' | 'history' | 'leave_request' | 'teacher_proxy' | 'period_checkin'
   ) => void;
   setMobileTimetableMode: (mode: 'day' | 'calendar') => void;
   setActiveTab: (tab: MobileTab) => void;
@@ -123,7 +122,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   linkedStudents,
   todayHoliday,
   canSelfCheckin,
-  canViewTimetable,
   canOpenLeave,
   canOpenCareerQuest,
   canPlayGames,
@@ -145,7 +143,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
   getSlotTodayCheckStatus,
   openPeriodCheckinFromSlot,
   setMobileAttendanceInitialSubTab,
-  setMobileTimetableMode,
   setActiveTab,
   setActiveGameView,
 }) => {
@@ -295,10 +292,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
               canSelfCheckin={canSelfCheckin}
               getSlotCheckStatus={(s, d) => getSlotTodayCheckStatus(s, d)}
               onTriggerCheckin={openPeriodCheckinFromSlot}
-              onOpenSchedule={() => {
-                setMobileTimetableMode('day');
-                setActiveTab('timetable');
-              }}
               periodAttendance={periodAttendance}
             />
           )}
@@ -440,10 +433,10 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
         <div role="tabpanel" className="space-y-3 animate-in fade-in duration-150">
           {isTeacher && (
             <>
-              {(canAccessHomework || canOpenLms || canViewTimetable) && (
+              {(canAccessHomework || canOpenLms) && (
                 <div className="space-y-1.5">
                   <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
-                    {lang === 'th' ? 'งานสอนและวิชาการ' : 'Academics & Calendar'}
+                    {lang === 'th' ? 'งานสอนและวิชาการ' : 'Academics'}
                   </h3>
                   <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
                     {canAccessHomework && (
@@ -460,17 +453,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                         label={lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Classroom'}
                         meta={`${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`}
                         onClick={() => setActiveTab('lms')}
-                      />
-                    )}
-                    {canViewTimetable && (
-                      <DirectoryRow
-                        icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
-                        label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}
-                        meta=".ics"
-                        onClick={() => {
-                          setMobileTimetableMode('calendar');
-                          setActiveTab('timetable');
-                        }}
                       />
                     )}
                   </div>
@@ -556,17 +538,6 @@ export const MobileTeacherParentHome: React.FC<MobileTeacherParentHomeProps> = (
                   meta={todayCheckin ? `${todayCheckin.time.slice(0, 5)} น.` : undefined}
                   onClick={() => setActiveTab('attendance_history')}
                 />
-                {canViewTimetable && (
-                  <DirectoryRow
-                    icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
-                    label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Holidays'}
-                    meta=".ics"
-                    onClick={() => {
-                      setMobileTimetableMode('calendar');
-                      setActiveTab('timetable');
-                    }}
-                  />
-                )}
                 {canOpenLeave && (
                   <DirectoryRow
                     icon={<FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
