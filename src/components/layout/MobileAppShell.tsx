@@ -1,4 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Award,
+  BarChart3,
+  BookOpen,
+  Compass,
+  CreditCard,
+  FileText,
+  Gamepad2,
+  GraduationCap,
+  HeartHandshake,
+  HeartPulse,
+  History,
+} from 'lucide-react';
 import type { PlayerScore, TimetableSlot } from '../../types';
 import { getLocalDateString } from '../../lib/date';
 import { DEFAULT_SCHOOL_PERIODS } from '../../lib/schoolPeriods';
@@ -69,6 +82,7 @@ import {
   MobileTeacherGradebookTab,
   MobileTeacherParentHome,
   MobileTimetableTab,
+  type MobileQuickMenuItem,
   type ActiveGameView,
   type ExecMetrics,
   type MobileAppShellProps,
@@ -673,6 +687,300 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     };
   }, [attendance, students, teachers, courses, infirmaryVisits, sdqAssessments]);
 
+  const mobileOtherMenuItems = useMemo<MobileQuickMenuItem[]>(() => {
+    const items: MobileQuickMenuItem[] = [];
+    const slot3IsTimetable =
+      currentRole !== 'admin' && currentRole !== 'super_admin' && canViewTimetable;
+    const slot3IsHomework =
+      currentRole === 'student' && !canViewTimetable && canAccessHomework;
+    const slot3IsStudentGrades =
+      currentRole === 'student' && !canViewTimetable && !canAccessHomework && canViewGradesStudent;
+    const slot3IsGames =
+      currentRole === 'student' && !canViewTimetable && !canAccessHomework && !canViewGradesStudent && canPlayGames;
+    const slot3IsPortfolio =
+      currentRole === 'student' && !canViewTimetable && !canAccessHomework && !canViewGradesStudent && !canPlayGames;
+    const slot3IsExecutive =
+      currentRole !== 'admin' && currentRole !== 'super_admin' && currentRole !== 'student' && !canViewTimetable;
+
+    if (currentRole === 'teacher') {
+      if (canAccessHomework) {
+        items.push({
+          id: 'homework',
+          label: lang === 'th' ? 'การบ้าน / ตรวจงาน' : 'Homework',
+          meta: scopedAssignments.length > 0 ? `${scopedAssignments.length}` : undefined,
+          icon: <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
+          active: activeTab === 'homework',
+          onClick: () => setActiveTab('homework'),
+        });
+      }
+      if (canOpenLms) {
+        items.push({
+          id: 'lms',
+          label: lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Classroom',
+          meta: scopedLessons.length > 0 ? `${scopedLessons.length}` : undefined,
+          icon: <BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />,
+          active: activeTab === 'lms',
+          onClick: () => setActiveTab('lms'),
+        });
+      }
+      if (isModuleEnabled('gradebook')) {
+        items.push({
+          id: 'gradebook',
+          label: lang === 'th' ? 'คะแนน & ปพ.' : 'Gradebook',
+          icon: <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />,
+          active: activeTab === 'gradebook',
+          onClick: () => setActiveTab('gradebook'),
+        });
+      }
+      if (canOpenLeave) {
+        items.push({
+          id: 'leave',
+          label: lang === 'th' ? 'ยื่นใบลา / อนุมัติลา' : 'Leave Requests',
+          meta: pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined,
+          icon: <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+          active: activeTab === 'leave',
+          onClick: () => setActiveTab('leave'),
+        });
+      }
+      if (canOpenBehaviorSdq) {
+        items.push({
+          id: 'behavior_sdq',
+          label: lang === 'th' ? 'พฤติกรรม SDQ' : 'Behavior & SDQ',
+          meta: execMetrics.riskCount > 0 ? `${execMetrics.riskCount}` : undefined,
+          icon: <HeartHandshake className="w-4 h-4 text-rose-600 dark:text-rose-400" />,
+          active: activeTab === 'behavior_sdq',
+          onClick: () => setActiveTab('behavior_sdq'),
+        });
+      }
+      if (canOpenInfirmary) {
+        items.push({
+          id: 'infirmary',
+          label: lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary',
+          meta: execMetrics.todayInfirmary > 0 ? `${execMetrics.todayInfirmary}` : undefined,
+          icon: <HeartPulse className="w-4 h-4 text-teal-600 dark:text-teal-400" />,
+          active: activeTab === 'infirmary',
+          onClick: () => setActiveTab('infirmary'),
+        });
+      }
+      if (!slot3IsExecutive) {
+        items.push({
+          id: 'executive',
+          label: lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview',
+          meta: `${execMetrics.attendanceRate}%`,
+          icon: <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />,
+          active: activeTab === 'executive',
+          onClick: () => setActiveTab('executive'),
+        });
+      }
+      if (canPlayGames) {
+        items.push({
+          id: 'games',
+          label: lang === 'th' ? 'เกม & แล็บ 8 สาระ' : 'Games & Labs',
+          icon: <Gamepad2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />,
+          active: activeTab === 'games',
+          onClick: () => {
+            setActiveTab('games');
+            setActiveGameView('hub');
+          },
+        });
+      }
+      if (canOpenCareerQuest) {
+        items.push({
+          id: 'career_quest',
+          label: 'Career Quest AI',
+          icon: <Compass className="w-4 h-4 text-violet-600 dark:text-violet-400" />,
+          active: activeTab === 'career_quest',
+          onClick: () => setActiveTab('career_quest'),
+        });
+      }
+    } else if (currentRole === 'student') {
+      if (canAccessHomework && !slot3IsHomework) {
+        items.push({
+          id: 'homework',
+          label: lang === 'th' ? 'การบ้าน' : 'Homework',
+          meta: pendingHomeworkCount > 0 ? `${pendingHomeworkCount}` : undefined,
+          icon: <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
+          active: activeTab === 'homework',
+          onClick: () => setActiveTab('homework'),
+        });
+      }
+      if (canOpenLms) {
+        items.push({
+          id: 'lms',
+          label: lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Classroom',
+          meta: scopedLessons.length > 0 ? `${scopedLessons.length}` : undefined,
+          icon: <BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />,
+          active: activeTab === 'lms',
+          onClick: () => setActiveTab('lms'),
+        });
+      }
+      if (canViewGradesStudent && !slot3IsStudentGrades) {
+        items.push({
+          id: 'student_grades',
+          label: lang === 'th' ? 'ผลการเรียน' : 'Grades',
+          icon: <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />,
+          active: activeTab === 'student_grades',
+          onClick: () => setActiveTab('student_grades'),
+        });
+      }
+      if (canOpenPortfolio && !slot3IsPortfolio) {
+        items.push({
+          id: 'portfolio',
+          label: lang === 'th' ? 'ผลงานของฉัน' : 'Portfolio',
+          meta: myOwnPortfolioCount > 0 ? `${myOwnPortfolioCount}` : undefined,
+          icon: <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+          active: activeTab === 'portfolio',
+          onClick: () => setActiveTab('portfolio'),
+        });
+      }
+      if (canOpenLeave) {
+        items.push({
+          id: 'leave',
+          label: lang === 'th' ? 'ยื่นใบลา' : 'Leave Request',
+          meta: pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined,
+          icon: <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />,
+          active: activeTab === 'leave',
+          onClick: () => setActiveTab('leave'),
+        });
+      }
+      items.push({
+        id: 'attendance_history',
+        label: lang === 'th' ? 'ประวัติมาเรียน' : 'Attendance History',
+        icon: <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+        active: activeTab === 'attendance_history',
+        onClick: () => setActiveTab('attendance_history'),
+      });
+      if (canPlayGames && !slot3IsGames) {
+        items.push({
+          id: 'games',
+          label: lang === 'th' ? 'เกม & แล็บ' : 'Games & Labs',
+          icon: <Gamepad2 className="w-4 h-4 text-violet-600 dark:text-violet-400" />,
+          active: activeTab === 'games',
+          onClick: () => {
+            setActiveTab('games');
+            setActiveGameView('hub');
+          },
+        });
+      }
+      if (canOpenCareerQuest) {
+        items.push({
+          id: 'career_quest',
+          label: 'Career Quest AI',
+          icon: <Compass className="w-4 h-4 text-violet-600 dark:text-violet-400" />,
+          active: activeTab === 'career_quest',
+          onClick: () => setActiveTab('career_quest'),
+        });
+      }
+      if (canViewDigitalId) {
+        items.push({
+          id: 'digital_id',
+          label: lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital ID',
+          icon: <CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />,
+          active: activeTab === 'profile' && profilePage === 0,
+          onClick: () => {
+            setProfilePage(0);
+            setActiveTab('profile');
+          },
+        });
+      }
+    } else if (currentRole === 'parent') {
+      if (canOpenLeave) {
+        items.push({
+          id: 'leave',
+          label: lang === 'th' ? 'ยื่นใบลาให้บุตรหลาน' : 'Submit Leave Request',
+          meta: pendingLeavesCount > 0 ? `${pendingLeavesCount}` : undefined,
+          icon: <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+          active: activeTab === 'leave',
+          onClick: () => setActiveTab('leave'),
+        });
+      }
+      if (canOpenPortfolio) {
+        items.push({
+          id: 'portfolio',
+          label: lang === 'th' ? 'ผลงานนักเรียน' : 'Portfolio',
+          icon: <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+          active: activeTab === 'portfolio',
+          onClick: () => setActiveTab('portfolio'),
+        });
+      }
+      if (canViewDigitalId) {
+        items.push({
+          id: 'digital_id',
+          label: lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital ID',
+          icon: <CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />,
+          active: activeTab === 'profile' && profilePage === 0,
+          onClick: () => {
+            setProfilePage(0);
+            setActiveTab('profile');
+          },
+        });
+      }
+    } else if (currentRole === 'admin') {
+      items.push({
+        id: 'executive',
+        label: lang === 'th' ? 'ภาพรวมโรงเรียน' : 'School Overview',
+        meta: `${execMetrics.attendanceRate}%`,
+        icon: <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />,
+        active: activeTab === 'executive',
+        onClick: () => setActiveTab('executive'),
+      });
+      if (canViewTimetable && !slot3IsTimetable) {
+        items.push({
+          id: 'timetable',
+          label: lang === 'th' ? 'ตารางสอน' : 'Timetable',
+          icon: <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
+          active: activeTab === 'timetable',
+          onClick: () => setActiveTab('timetable'),
+        });
+      }
+      if (canOpenBehaviorSdq) {
+        items.push({
+          id: 'behavior_sdq',
+          label: lang === 'th' ? 'พฤติกรรม SDQ' : 'Behavior & SDQ',
+          icon: <HeartHandshake className="w-4 h-4 text-rose-600 dark:text-rose-400" />,
+          active: activeTab === 'behavior_sdq',
+          onClick: () => setActiveTab('behavior_sdq'),
+        });
+      }
+      if (canOpenInfirmary) {
+        items.push({
+          id: 'infirmary',
+          label: lang === 'th' ? 'ห้องพยาบาล' : 'Infirmary',
+          icon: <HeartPulse className="w-4 h-4 text-teal-600 dark:text-teal-400" />,
+          active: activeTab === 'infirmary',
+          onClick: () => setActiveTab('infirmary'),
+        });
+      }
+    }
+
+    return items;
+  }, [
+    activeTab,
+    canAccessHomework,
+    canOpenBehaviorSdq,
+    canOpenCareerQuest,
+    canOpenInfirmary,
+    canOpenLeave,
+    canOpenLms,
+    canOpenPortfolio,
+    canPlayGames,
+    canViewDigitalId,
+    canViewGradesStudent,
+    canViewTimetable,
+    currentRole,
+    execMetrics.attendanceRate,
+    execMetrics.riskCount,
+    execMetrics.todayInfirmary,
+    featureFlags,
+    lang,
+    myOwnPortfolioCount,
+    pendingHomeworkCount,
+    pendingLeavesCount,
+    profilePage,
+    scopedAssignments.length,
+    scopedLessons.length,
+  ]);
+
   return (
     <div
       className={`${getModuleTone(MOBILE_TONE_TARGET[activeTab])} mobile-app-workspace h-full min-h-0 flex flex-col overflow-hidden app-workspace text-[var(--color-text-body)] pb-14 sm:pb-16 select-none`}
@@ -687,14 +995,29 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         isLight={isLight}
         setThemePalette={setThemePalette}
         unreadCount={unreadCount}
+        coordinationUnreadCount={coordinationUnreadCount}
         onOpenNotifications={onOpenNotifications}
         onOpenProfile={() => {
-          setProfilePage(1);
+          setProfilePage(canViewDigitalId ? 0 : 1);
           setActiveTab('profile');
         }}
+        onOpenProfileModal={onOpenProfileModal}
         onOpenSchoolSwitcher={onOpenSchoolSwitcher}
         onSwitchToDesktopMode={onSwitchToDesktopMode}
+        onOpenOnboardingTutor={onOpenOnboardingTutor}
         onLogout={onLogout}
+        canSwitchAdminTeacherMode={canSwitchAdminTeacherMode}
+        onSwitchOperationalRole={
+          onSwitchOperationalRole
+            ? (nextRole) => {
+                onSwitchOperationalRole(nextRole);
+                if (nextRole !== currentRole) {
+                  setActiveTab('home');
+                }
+              }
+            : undefined
+        }
+        otherMenuItems={mobileOtherMenuItems}
       />
 
       {/* 2. MAIN ACTIVE VIEW CONTAINER (Compact mobile padding) */}

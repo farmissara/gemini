@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
 import {
-  Award,
-  BellRing,
   BookOpen,
-  Calendar,
   Camera,
   CheckCircle2,
   ChevronRight,
   Clock,
-  Compass,
-  CreditCard,
-  FileText,
-  Gamepad2,
   GraduationCap,
-  LayoutGrid,
-  Library,
   LogIn,
   LogOut,
 } from 'lucide-react';
@@ -33,7 +24,6 @@ import {
   Student,
   TimetableSlot,
 } from '../../types';
-import { getProfileFrame } from '../../lib/arcadeStore';
 import { calculateStudentAcademicSummary } from '../../lib/moeGrading';
 import { calculateGrade } from '../../lib/schoolSettings';
 import {
@@ -105,7 +95,7 @@ interface StudentMobileHomeProps {
   onOpenLms?: () => void;
 }
 
-type StudentHomeTab = 'today' | 'academics' | 'menu';
+type StudentHomeTab = 'today' | 'academics';
 
 const getBarTone = (percent: number): string => {
   if (percent >= 80) return 'bg-emerald-600 dark:bg-emerald-500';
@@ -113,30 +103,6 @@ const getBarTone = (percent: number): string => {
   if (percent >= 50) return 'bg-amber-500 dark:bg-amber-400';
   return 'bg-rose-600 dark:bg-rose-500';
 };
-
-interface StudentDirectoryRowProps {
-  icon: React.ReactNode;
-  label: string;
-  meta?: string;
-  onClick: () => void;
-}
-
-const StudentDirectoryRow: React.FC<StudentDirectoryRowProps> = ({ icon, label, meta, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="w-full min-h-[48px] px-3.5 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-[var(--color-card-subtle)] active:bg-[var(--color-card-subtle)] cursor-pointer transition"
-  >
-    <span className="flex items-center gap-3 min-w-0">
-      <span className="w-5 h-5 flex items-center justify-center shrink-0">{icon}</span>
-      <span className="text-sm font-medium text-[var(--color-text-title)] truncate">{label}</span>
-    </span>
-    <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)] tabular-nums shrink-0">
-      {meta && <span>{meta}</span>}
-      <ChevronRight className="w-4 h-4 shrink-0" />
-    </span>
-  </button>
-);
 
 export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
   currentUser,
@@ -210,9 +176,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
     currentUser?.fullNameTh ||
     currentUser?.email ||
     (lang === 'th' ? 'นักเรียน' : 'Student');
-
-  const avatarUrl = currentUser?.avatarUrl || ownStudent?.avatarUrl || '';
-  const initials = displayName.trim().slice(0, 2);
 
   // Real attendance rate & breakdown
   const attendanceOnTime = scopedAttendance.filter((r) => r.status === 'present').length;
@@ -342,9 +305,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
     month: 'short',
   });
 
-  const equippedFrame = getProfileFrame(playerProfile?.equippedFrameId);
-  const hasCustomFrame =
-    playerProfile?.equippedFrameId && playerProfile.equippedFrameId !== 'frame-default';
   const dailyStreak = playerProfile?.dailyStreak || 0;
 
   const tabs: Array<{ id: StudentHomeTab; label: string; icon: React.ReactNode }> = [
@@ -357,11 +317,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
       id: 'academics',
       label: lang === 'th' ? 'ผลการเรียน' : 'Progress',
       icon: <GraduationCap className="w-3.5 h-3.5 shrink-0" />,
-    },
-    {
-      id: 'menu',
-      label: lang === 'th' ? 'บริการอื่นๆ' : 'Services',
-      icon: <LayoutGrid className="w-3.5 h-3.5 shrink-0" />,
     },
   ];
 
@@ -384,43 +339,22 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
           className="absolute inset-0 bg-gradient-to-t from-slate-950/92 via-slate-950/60 to-slate-950/35"
         />
 
-        <div className="relative z-10 px-3.5 pt-3 pb-2.5 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-sky-200/95 tabular-nums truncate">
-              {greetingText} · {formattedDate}
-              {dailyStreak > 0 ? ` · ${dailyStreak} วันติด` : ''}
-            </p>
-            <h1 className="text-lg font-extrabold text-white tracking-tight leading-tight truncate mt-0.5">
-              {displayName}
-            </h1>
-            <p className="text-[11px] text-slate-200/90 tabular-nums truncate">
-              {ownStudent
-                ? `${ownStudent.gradeLevel} ${ownStudent.room} · รหัส ${ownStudent.studentIdNumber}`
-                : lang === 'th'
-                  ? activeSchool.nameTh
-                  : activeSchool.nameEn}
-              {playerProfile?.equippedTitle ? ` · ${playerProfile.equippedTitle}` : ''}
-            </p>
-          </div>
-
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              referrerPolicy="no-referrer"
-              className={`w-10 h-10 rounded-xl object-cover shadow-md shrink-0 bg-slate-800 ${
-                hasCustomFrame ? equippedFrame.ringClass : 'ring-2 ring-white/50'
-              }`}
-            />
-          ) : (
-            <div
-              className={`w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md text-white font-bold text-sm flex items-center justify-center shrink-0 ${
-                hasCustomFrame ? equippedFrame.ringClass : 'ring-1 ring-white/30'
-              }`}
-            >
-              {initials}
-            </div>
-          )}
+        <div className="relative z-10 px-3.5 pt-3 pb-2.5">
+          <p className="text-[11px] font-medium text-sky-200/95 tabular-nums truncate">
+            {greetingText} · {formattedDate}
+            {dailyStreak > 0 ? ` · ${dailyStreak} วันติด` : ''}
+          </p>
+          <h1 className="text-lg font-extrabold text-white tracking-tight leading-tight truncate mt-0.5">
+            {displayName}
+          </h1>
+          <p className="text-[11px] text-slate-200/90 tabular-nums truncate">
+            {ownStudent
+              ? `${ownStudent.gradeLevel} ${ownStudent.room} · รหัส ${ownStudent.studentIdNumber}`
+              : lang === 'th'
+                ? 'นักเรียน'
+                : 'Student'}
+            {playerProfile?.equippedTitle ? ` · ${playerProfile.equippedTitle}` : ''}
+          </p>
         </div>
 
         {(canSelfCheckin || canViewTimetable) && (
@@ -479,11 +413,11 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         )}
       </section>
 
-      {/* 2. COMPACT SEGMENTED 3-TAB NAVIGATION */}
+      {/* 2. COMPACT SEGMENTED 2-TAB NAVIGATION */}
       <div
         role="tablist"
         aria-label={lang === 'th' ? 'เมนูหน้านักเรียน' : 'Student sections'}
-        className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
+        className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--color-card-subtle)] border border-[var(--color-border)]"
       >
         {tabs.map((tab) => {
           const isSelected = effectiveTab === tab.id;
@@ -629,9 +563,9 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
             </button>
           )}
 
-          {/* Today's School Check-in/Out Photo + Timestamp Strip & Homework Summary */}
+          {/* Homework Summary (Check-in status is already shown in Hero CTA when canSelfCheckin) */}
           <div className="space-y-2">
-            {(() => {
+            {!canSelfCheckin && (() => {
               const checkInTimeText = formatShortAttendanceTime(todayCheckin?.time);
               const checkOutTimeText = formatShortAttendanceTime(
                 todayCheckout?.time || todayCheckin?.checkOutTime
@@ -684,10 +618,7 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-text)] whitespace-nowrap shrink-0">
-                    <span>{lang === 'th' ? 'ประวัติ / แก้เวลา' : 'History'}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </span>
+                  <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
                 </button>
               );
             })()}
@@ -945,110 +876,6 @@ export const StudentMobileHome: React.FC<StudentMobileHomeProps> = ({
         </div>
       )}
 
-      {/* 5. TAB PANEL: OTHER SERVICES (Zero duplicates of Today/Progress/BottomNav) */}
-      {effectiveTab === 'menu' && (
-        <div role="tabpanel" className="space-y-3 animate-in fade-in duration-150">
-          {((canOpenLms && Boolean(onOpenLms)) || canViewTimetable) && (
-            <section className="space-y-1.5">
-              <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'บทเรียนและปฏิทิน' : 'Lessons & Calendar'}
-              </h3>
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                {canOpenLms && onOpenLms && (
-                  <StudentDirectoryRow
-                    icon={<Library className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
-                    label={lang === 'th' ? 'ห้องเรียน LMS' : 'LMS Lessons'}
-                    meta={
-                      lessonsCount > 0
-                        ? `${lessonsCount} ${lang === 'th' ? 'บทเรียน' : 'lessons'}`
-                        : `${scopedCourses.length} ${lang === 'th' ? 'รายวิชา' : 'courses'}`
-                    }
-                    onClick={onOpenLms}
-                  />
-                )}
-                {canViewTimetable && (
-                  <StudentDirectoryRow
-                    icon={<Calendar className="w-4 h-4 text-rose-500 dark:text-rose-400" />}
-                    label={lang === 'th' ? 'ปฏิทินเรียน & วันหยุดราชการ' : 'Calendar & Public Holidays'}
-                    meta=".ics"
-                    onClick={() => onOpenTimetable('calendar')}
-                  />
-                )}
-              </div>
-            </section>
-          )}
-
-          {(canOpenPortfolio ||
-            canOpenLeave ||
-            canPlayGames ||
-            (canViewDigitalId && Boolean(onOpenDigitalId)) ||
-            Boolean(onOpenCareerQuest)) && (
-            <section className="space-y-1.5">
-              <h3 className="px-1 text-xs font-bold text-[var(--color-text-muted)]">
-                {lang === 'th' ? 'กิจกรรมและเอกสาร' : 'Activities & Records'}
-              </h3>
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] divide-y divide-[var(--color-border)] overflow-hidden">
-                {canOpenPortfolio && (
-                  <StudentDirectoryRow
-                    icon={<Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
-                    label={lang === 'th' ? 'ผลงานของฉัน' : 'Portfolio'}
-                    meta={
-                      myPortfolioCount > 0
-                        ? lang === 'th'
-                          ? `${myPortfolioCount} รายการ`
-                          : `${myPortfolioCount} items`
-                        : lang === 'th'
-                          ? 'เกียรติบัตร'
-                          : 'Certificates'
-                    }
-                    onClick={onOpenPortfolio}
-                  />
-                )}
-                {canOpenLeave && (
-                  <StudentDirectoryRow
-                    icon={<FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
-                    label={lang === 'th' ? 'ยื่นใบลา' : 'Leave Request'}
-                    meta={
-                      pendingLeavesCount > 0
-                        ? lang === 'th'
-                          ? `รออนุมัติ ${pendingLeavesCount}`
-                          : `${pendingLeavesCount} pending`
-                        : lang === 'th'
-                          ? 'ลาป่วย · ลากิจ'
-                          : 'Sick · Personal'
-                    }
-                    onClick={onOpenLeave}
-                  />
-                )}
-                {canPlayGames && (
-                  <StudentDirectoryRow
-                    icon={<Gamepad2 className="w-4 h-4 text-violet-600 dark:text-violet-400" />}
-                    label={lang === 'th' ? 'เกม & แล็บ' : 'Games & Labs'}
-                    meta={lang === 'th' ? 'ฝึกฝน 8 สาระ' : 'Play & learn'}
-                    onClick={onOpenGames}
-                  />
-                )}
-                {canViewDigitalId && onOpenDigitalId && (
-                  <StudentDirectoryRow
-                    icon={<CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
-                    label={lang === 'th' ? 'บัตรนักเรียนดิจิทัล' : 'Digital ID'}
-                    meta={lang === 'th' ? 'QR · บาร์โค้ด' : 'QR & Barcode'}
-                    onClick={onOpenDigitalId}
-                  />
-                )}
-                {onOpenCareerQuest && (
-                  <StudentDirectoryRow
-                    icon={<Compass className="w-4 h-4 text-violet-600 dark:text-violet-400" />}
-                    label={lang === 'th' ? 'เส้นทางสู่อาชีพในฝัน' : 'Career Quest AI'}
-                    meta={lang === 'th' ? 'Quiz 5 ข้อ' : 'Vibe quiz'}
-                    onClick={onOpenCareerQuest}
-                  />
-                )}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
     </div>
   );
 };
