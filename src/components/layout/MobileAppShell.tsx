@@ -201,7 +201,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const currentBangkokYear = Number(todayBangkokStr.slice(0, 4));
   const todayDayKey = bangkokClock.dayKey;
   const [timetableOnlyMine, setTimetableOnlyMine] = useState<boolean>(currentRole === 'teacher');
-  const [mobileTimetableMode, setMobileTimetableMode] = useState<'day' | 'calendar'>(
+  const [mobileTimetableMode, setMobileTimetableMode] = useState<'day' | 'week' | 'grid' | 'calendar'>(
     () => readSavedNavState(currentUser?.id)?.mobileTimetableMode || 'day'
   );
 
@@ -955,6 +955,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               courses={timetableScopeCourses}
               scopedCourses={isRestrictedViewer ? scopedCourses : timetableScopeCourses}
               scopedTimetableSlots={timetableScopeSlots}
+              assignments={scopedAssignments}
               students={timetableScopeStudents}
               teachers={timetableScopeTeachers}
               attendance={attendance}
@@ -977,6 +978,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               holidaySyncStatus={holidaySyncStatus}
               isSyncingHolidays={isSyncingHolidays}
               onManualHolidaySync={handleManualMobileHolidaySync}
+              onHolidayMutated={() => setHolidaySyncTick((v) => v + 1)}
               onOpenCalendarSync={() => setShowMobileCalendarSync(true)}
               onOpenPeriodCheckinTab={() => {
                 setMobileAttendanceInitialSubTab('period_checkin');

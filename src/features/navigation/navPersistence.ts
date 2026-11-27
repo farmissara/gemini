@@ -16,7 +16,7 @@ export interface PersistedNavState {
   superAdminSubTab?: SuperAdminSubTab;
   studentsSubTab?: StudentsViewSubTab;
   mobileTab?: MobileTab;
-  mobileTimetableMode?: 'day' | 'calendar';
+  mobileTimetableMode?: 'day' | 'week' | 'grid' | 'calendar';
   isSuperAdminSchoolView?: boolean;
   schoolId?: string;
 }
@@ -134,7 +134,10 @@ export function readSavedNavState(expectedUserId?: string): PersistedNavState | 
                 ? (parsed.mobileTab as MobileTab)
                 : undefined,
             mobileTimetableMode:
-              parsed.mobileTimetableMode === 'calendar' || parsed.mobileTimetableMode === 'day'
+              parsed.mobileTimetableMode === 'calendar' ||
+              parsed.mobileTimetableMode === 'day' ||
+              parsed.mobileTimetableMode === 'week' ||
+              parsed.mobileTimetableMode === 'grid'
                 ? parsed.mobileTimetableMode
                 : undefined,
             isSuperAdminSchoolView: Boolean(parsed.isSuperAdminSchoolView),

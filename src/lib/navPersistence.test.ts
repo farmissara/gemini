@@ -72,6 +72,24 @@ test('persists and restores navigation state isolated by expectedUserId', () => 
     assert.equal(restoredSameUser.mobileTab, 'timetable');
     assert.equal(restoredSameUser.mobileTimetableMode, 'calendar');
 
+    writeSavedNavState({
+      userId: 'teacher-1',
+      currentTab: 'timetable',
+      programMode: 'school_erp',
+      mobileTab: 'timetable',
+      mobileTimetableMode: 'grid',
+    });
+    assert.equal(readSavedNavState('teacher-1')?.mobileTimetableMode, 'grid');
+
+    writeSavedNavState({
+      userId: 'teacher-1',
+      currentTab: 'timetable',
+      programMode: 'school_erp',
+      mobileTab: 'timetable',
+      mobileTimetableMode: 'week',
+    });
+    assert.equal(readSavedNavState('teacher-1')?.mobileTimetableMode, 'week');
+
     // Different user must not inherit previous user's saved tab
     assert.equal(readSavedNavState('teacher-2'), null);
   } finally {

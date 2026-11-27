@@ -1,5 +1,6 @@
 import type React from 'react';
-import type { TimetablePresetColor } from '../types';
+import type { Course, LearningStrandId, TimetablePresetColor, TimetableSlot } from '../types';
+import { inferCourseLearningArea } from './courseClassification';
 
 export interface TimetableColorPreset {
   key: TimetablePresetColor;
@@ -112,10 +113,68 @@ export const TIMETABLE_COLOR_MAP: Record<string, TimetableColorPreset> = Object.
   TIMETABLE_COLOR_PRESETS.map((preset) => [preset.key, preset])
 );
 
+const LEARNING_AREA_COLOR_MAP: Record<LearningStrandId, TimetablePresetColor> = {
+  thai: 'amber',
+  math: 'purple',
+  science_tech: 'emerald',
+  social: 'indigo',
+  health_pe: 'rose',
+  arts: 'pink',
+  career_tech: 'teal',
+  foreign_lang: 'sky',
+};
+
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
 export function isCustomHexColor(colorTag?: string | null): boolean {
   return Boolean(colorTag && HEX_COLOR_PATTERN.test(colorTag.trim()));
+}
+
+export function hasDiverseSlotColorTags(slots: ReadonlyArray<Pick<TimetableSlot, 'colorTag'>>): boolean {
+  const distinct = new Set(
+    slots
+      .map((s) => (s.colorTag || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+  return distinct.size > 1 || (distinct.size === 1 && !distinct.has('sky'));
+}
+
+export function resolveTimetableSlotColorTag(params: {
+  slot: Pick<TimetableSlot, 'colorTag' | 'courseCode' | 'courseTitleTh' | 'courseTitleEn'>;
+  course?: Pick<Course, 'learningArea' | 'category' | 'department' | 'code' | 'titleTh' | 'titleEn'> | null;
+  hasDiverseColors?: boolean;
+}): string {
+  const { slot, course, hasDiverseColors = true } = params;
+  const rawTag = (slot.colorTag || '').trim();
+  if (isCustomHexColor(rawTag)) return rawTag;
+  if (rawTag && (hasDiverseColors || rawTag.toLowerCase() !== 'sky')) {
+    return rawTag;
+  }
+
+  const area = inferCourseLearningArea(
+    course || {
+      code: slot.courseCode,
+      titleTh: slot.courseTitleTh,
+      titleEn: slot.courseTitleEn,
+      category: '',
+      department: '',
+    }
+  );
+  if (area && LEARNING_AREA_COLOR_MAP[area]) {
+    return LEARNING_AREA_COLOR_MAP[area];
+  }
+
+  const seedText = `${slot.courseCode || ''}${slot.courseTitleTh || ''}`.trim();
+  if (seedText.includes('กิจกรรม') || seedText.includes('ลูกเสือ') || seedText.includes('แนะแนว') || seedText.includes('ชุมนุม')) {
+    return 'cyan';
+  }
+  if (!seedText) return 'sky';
+
+  let hash = 0;
+  for (let i = 0; i < seedText.length; i += 1) {
+    hash = (hash * 31 + seedText.charCodeAt(i)) >>> 0;
+  }
+  return TIMETABLE_COLOR_PRESETS[hash % TIMETABLE_COLOR_PRESETS.length].key;
 }
 
 export function getTimetableSlotCardStyle(colorTag?: string | null): {
