@@ -2,10 +2,12 @@ import React from 'react';
 import {
   BUILDING_MAP,
   CROP_MAP,
+  DEFAULT_FARM_OWNER_CHARACTER,
   PRODUCT_MAP,
   getFarmGridSize,
   getPlotUnlockStarCost,
   type CropId,
+  type FarmOwnerCharacter,
   type FarmTile,
   type FarmTool,
   type ProductId,
@@ -25,6 +27,9 @@ interface IsometricFarmBoardProps {
   activeTool: FarmTool;
   todayDate: string;
   farmName?: string;
+  ownerName?: string;
+  ownerCharacter?: FarmOwnerCharacter;
+  farmerTileIndex?: number | null;
   readOnly?: boolean;
   allowNeighborCropWater?: boolean;
   fullscreenLandscape?: boolean;
@@ -39,6 +44,7 @@ interface IsometricFarmBoardProps {
   onOpenMarket?: () => void;
   onOpenShop?: () => void;
   onOpenVisitors?: () => void;
+  onOpenCharacter?: () => void;
 }
 
 const VIEWBOX_W = 800;
@@ -389,6 +395,9 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   activeTool,
   todayDate,
   farmName,
+  ownerName,
+  ownerCharacter,
+  farmerTileIndex,
   readOnly = false,
   allowNeighborCropWater = false,
   fullscreenLandscape = false,
@@ -403,6 +412,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   onOpenMarket,
   onOpenShop,
   onOpenVisitors,
+  onOpenCharacter,
 }) => {
   const geom = getBoardGeometry(getFarmGridSize(tiles));
   const { gridSize, tileH, halfW, halfH, blockDepth, originX, originY } = geom;
@@ -412,6 +422,22 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   const nextUnlockCost = getPlotUnlockStarCost(unlockedCount);
 
   const orderedTiles = [...tiles].sort((a, b) => a.row + a.col - (b.row + b.col) || a.row - b.row);
+
+  // Compute Farm Owner Character standing/walking position
+  const activeOwnerChar = ownerCharacter || DEFAULT_FARM_OWNER_CHARACTER;
+  const targetTile =
+    !readOnly && farmerTileIndex !== null && farmerTileIndex !== undefined
+      ? tiles[farmerTileIndex]
+      : undefined;
+  const homeCottageTile = tiles.find((t) => t.buildingId === 'farm_cottage');
+  const farmerIso = targetTile
+    ? tileToIso(targetTile.row, targetTile.col, gridSize)
+    : homeCottageTile
+      ? tileToIso(homeCottageTile.row + 0.45, homeCottageTile.col - 0.15, gridSize)
+      : tileToIso(1.65, 2.15, gridSize);
+  const farmerX = farmerIso.x + (targetTile ? -14 * spriteScale : 0);
+  const farmerY = farmerIso.y + halfH + (targetTile ? 4 * spriteScale : 8 * spriteScale);
+  const shortOwnerLabel = (ownerName || (lang === 'th' ? 'เจ้าของฟาร์ม' : 'Farmer')).split(' ')[0].slice(0, 12);
 
   return (
     <div
@@ -974,6 +1000,165 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             </text>
           </g>
         )}
+
+        {/* Living Farm Owner Character (glides smoothly between worked plots or stands by the farmhouse) */}
+        <g
+          style={{
+            transform: `translate(${farmerX}px, ${farmerY}px)`,
+            transition: 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+          }}
+          role={!readOnly && onOpenCharacter ? 'button' : undefined}
+          tabIndex={!readOnly && onOpenCharacter ? 0 : -1}
+          aria-label={lang === 'th' ? 'ตัวละครเจ้าของฟาร์ม (แตะเพื่อแต่งตัว)' : 'Farm owner character'}
+          onClick={() => {
+            if (!readOnly && onOpenCharacter) onOpenCharacter();
+          }}
+          onKeyDown={(e) => {
+            if (!readOnly && onOpenCharacter && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              onOpenCharacter();
+            }
+          }}
+          className={!readOnly && onOpenCharacter ? 'cursor-pointer' : 'pointer-events-none'}
+        >
+          <g transform={`scale(${spriteScale * 1.06})`} className="farm-animal-bob">
+            {/* Soft ground shadow */}
+            <ellipse cx="0" cy="4" rx="12" ry="4.5" fill="#14532d" opacity="0.28" />
+
+            {/* Boots */}
+            <ellipse cx="-4.2" cy="2.5" rx="3.2" ry="2" fill="#78350f" stroke="#451a03" strokeWidth="1" />
+            <ellipse cx="4.2" cy="2.5" rx="3.2" ry="2" fill="#78350f" stroke="#451a03" strokeWidth="1" />
+
+            {/* Long back hair if girl preset */}
+            {(activeOwnerChar.styleId === 'girl_farmer' || activeOwnerChar.styleId === 'gardener_girl') && (
+              <path
+                d="M-8 -18 C-10 -9 -8 -4 -4 -3 H4 C8 -4 10 -9 8 -18 Z"
+                fill={activeOwnerChar.hairColor}
+                stroke="#1e293b"
+                strokeWidth="1"
+              />
+            )}
+
+            {/* Shirt & Overalls / Skirt / Vest */}
+            <rect x="-7.5" y="-13" width="15" height="14" rx="4.5" fill="#fffbeb" stroke="#451a03" strokeWidth="1.2" />
+            {activeOwnerChar.styleId === 'girl_farmer' || activeOwnerChar.styleId === 'gardener_girl' ? (
+              <path
+                d="M-7.5 -9 L7.5 -9 L9.5 1.5 L-9.5 1.5 Z"
+                fill={activeOwnerChar.outfitColor}
+                stroke="#1e293b"
+                strokeWidth="1.1"
+              />
+            ) : (
+              <rect
+                x="-7.5"
+                y="-8.5"
+                width="15"
+                height="10"
+                rx="3"
+                fill={activeOwnerChar.outfitColor}
+                stroke="#1e293b"
+                strokeWidth="1.1"
+              />
+            )}
+            {/* Straps or scholar tie */}
+            {activeOwnerChar.styleId === 'scholar_farmer' ? (
+              <polygon points="-1.5,-12 1.5,-12 1,-5 -1,-5" fill="#e11d48" />
+            ) : (
+              <>
+                <rect x="-5.5" y="-13" width="2.5" height="6" fill={activeOwnerChar.outfitColor} />
+                <rect x="3" y="-13" width="2.5" height="6" fill={activeOwnerChar.outfitColor} />
+              </>
+            )}
+
+            {/* Left waving arm */}
+            <path d="M-7.5 -10 C-12 -12 -13 -16 -10 -17" fill="none" stroke="#fed7aa" strokeWidth="3.2" strokeLinecap="round" />
+
+            {/* Right arm + Active Farm Tool Prop */}
+            <path d="M7.5 -10 L13 -7" fill="none" stroke="#fed7aa" strokeWidth="3.2" strokeLinecap="round" />
+            {!readOnly && activeTool === 'water' ? (
+              <g transform="translate(14, -7)">
+                <rect x="-3" y="-3" width="7" height="6" rx="1.5" fill="#0284c7" stroke="#0c4a6e" strokeWidth="1" />
+                <line x1="4" y1="-1" x2="8" y2="-4" stroke="#38bdf8" strokeWidth="1.8" strokeLinecap="round" />
+              </g>
+            ) : !readOnly && (activeTool === 'till' || activeTool === 'clear_weed') ? (
+              <g transform="translate(14, -8)">
+                <line x1="-2" y1="6" x2="4" y2="-8" stroke="#78350f" strokeWidth="2" strokeLinecap="round" />
+                <polygon points="2,-9 8,-10 7,-5" fill="#94a3b8" stroke="#334155" strokeWidth="0.9" />
+              </g>
+            ) : !readOnly && (activeTool === 'plant' || activeTool === 'fertilize' || activeTool === 'daily_fertilize') ? (
+              <g transform="translate(13, -7)">
+                <rect
+                  x="-3"
+                  y="-4"
+                  width="6"
+                  height="8"
+                  rx="1.5"
+                  fill={activeTool === 'fertilize' ? '#facc15' : activeTool === 'daily_fertilize' ? '#22c55e' : '#fef08a'}
+                  stroke="#78350f"
+                  strokeWidth="1"
+                />
+              </g>
+            ) : !readOnly && activeTool === 'build' ? (
+              <g transform="translate(14, -8)">
+                <line x1="-1" y1="5" x2="4" y2="-6" stroke="#78350f" strokeWidth="2" strokeLinecap="round" />
+                <rect x="1" y="-8" width="6" height="3.5" rx="1" fill="#d97706" stroke="#451a03" strokeWidth="0.9" />
+              </g>
+            ) : (
+              /* Cute wicker harvest basket by default / neighbor visit */
+              <g transform="translate(13, -5)">
+                <path d="M-4 -1 H4 L3 4 H-3 Z" fill="#d97706" stroke="#78350f" strokeWidth="1" />
+                <path d="M-3 -1 C-3 -5 3 -5 3 -1" fill="none" stroke="#78350f" strokeWidth="1" />
+                <circle cx="-1" cy="-1.5" r="1.5" fill="#ef4444" />
+                <circle cx="1.5" cy="-1.5" r="1.5" fill="#facc15" />
+              </g>
+            )}
+
+            {/* Head */}
+            <circle cx="0" cy="-21" r="8.2" fill="#fed7aa" stroke="#7c2d12" strokeWidth="1.2" />
+            <path
+              d="M-7.5 -23 C-6 -29 6 -29 7.5 -23 C4 -25.5 -4 -25.5 -7.5 -23 Z"
+              fill={activeOwnerChar.hairColor}
+            />
+            <circle cx="-2.6" cy="-20.5" r="1.1" fill="#0f172a" />
+            <circle cx="2.6" cy="-20.5" r="1.1" fill="#0f172a" />
+            <ellipse cx="-4.8" cy="-18.6" rx="1.4" ry="0.8" fill="#fb7185" opacity="0.55" />
+            <ellipse cx="4.8" cy="-18.6" rx="1.4" ry="0.8" fill="#fb7185" opacity="0.55" />
+            <path d="M-2.2 -17.2 Q0 -15.2 2.2 -17.2" fill="none" stroke="#9a3412" strokeWidth="1.2" strokeLinecap="round" />
+
+            {/* Hat */}
+            {activeOwnerChar.styleId === 'scholar_farmer' ? (
+              <g>
+                <path d="M-8.5 -25.5 C-8.5 -32 8.5 -32 8.5 -25.5 Z" fill={activeOwnerChar.hatColor} stroke="#0f172a" strokeWidth="1.1" />
+                <path d="M-8 -25.5 Q1 -27 11 -24 Q2 -23 -8 -25.5 Z" fill="#0284c7" stroke="#0f172a" strokeWidth="1" />
+              </g>
+            ) : (
+              <g>
+                <ellipse cx="0" cy="-26" rx="12.5" ry="3.2" fill={activeOwnerChar.hatColor} stroke="#78350f" strokeWidth="1.1" />
+                <path d="M-6.5 -27 C-6 -34 6 -34 6.5 -27 Z" fill={activeOwnerChar.hatColor} stroke="#78350f" strokeWidth="1.1" />
+                <path
+                  d="M-6.5 -27.5 Q0 -26.2 6.5 -27.5"
+                  fill="none"
+                  stroke={activeOwnerChar.styleId === 'girl_farmer' ? '#f43f5e' : activeOwnerChar.styleId === 'gardener_girl' ? '#16a34a' : '#dc2626'}
+                  strokeWidth="1.8"
+                />
+                {activeOwnerChar.styleId === 'girl_farmer' && (
+                  <circle cx="6.2" cy="-28.5" r="1.8" fill="#fb7185" stroke="#881337" strokeWidth="0.7" />
+                )}
+                {activeOwnerChar.styleId === 'gardener_girl' && (
+                  <circle cx="6.2" cy="-28.5" r="2" fill="#ffffff" stroke="#15803d" strokeWidth="0.7" />
+                )}
+              </g>
+            )}
+
+            {/* Clean Owner Nameplate */}
+            <g transform="translate(0, -40)">
+              <rect x="-32" y="-9" width="64" height="14" rx="7" fill="#0f172a" fillOpacity="0.82" stroke="#fde047" strokeWidth="1" />
+              <text x="0" y="1" textAnchor="middle" fontSize="7.8" fontWeight="900" fill="#ffffff">
+                {shortOwnerLabel}
+              </text>
+            </g>
+          </g>
+        </g>
 
         {/* Floating action feedback labels */}
         {feedbacks.map((fb) => {

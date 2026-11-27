@@ -16,6 +16,7 @@ import {
   convertFarmCoinsToGems,
   craftProductOnFarm,
   createInitialFarmState,
+  DEFAULT_FARM_OWNER_CHARACTER,
   dismissVisitorRequest,
   expandFarmGridTo8x8,
   fertilizeTile,
@@ -26,11 +27,13 @@ import {
   harvestTile,
   helpNeighborFarm,
   listItemInRoadsideShop,
+  normalizeFarmState,
   plantCropOnTile,
   sellCropFromBarn,
   syncBehaviorWeedsOntoFarm,
   tillPlotTile,
   unlockPlotTile,
+  updateFarmOwnerCharacter,
   upgradeBuildingOnTile,
   waterTile,
 } from './schoolFarmEngine';
@@ -656,6 +659,40 @@ describe('schoolFarmEngine', () => {
     // Block insufficient coins
     const convFail = convertFarmCoinsToGems({ ...convOk.state, coins: 20 }, 50, 10);
     assert.equal(convFail.ok, false);
+  });
+
+  it('initializes, normalizes, and updates customizable FarmOwnerCharacter', () => {
+    const initial = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-owner',
+      ownerName: 'ต้นข้าว',
+    });
+    assert.deepEqual(initial.ownerCharacter, DEFAULT_FARM_OWNER_CHARACTER);
+
+    // Legacy snapshot missing ownerCharacter falls back safely
+    const legacyNormalized = normalizeFarmState(
+      { coins: 500 },
+      { schoolId: 'sch-1', userId: 'usr-owner', ownerName: 'ต้นข้าว' }
+    );
+    assert.deepEqual(legacyNormalized.ownerCharacter, DEFAULT_FARM_OWNER_CHARACTER);
+    assert.equal(legacyNormalized.coins, 500);
+
+    // Customize style & colors and verify persistence through normalizeFarmState
+    const customized = updateFarmOwnerCharacter(initial, {
+      styleId: 'girl_farmer',
+      hatColor: '#86efac',
+      outfitColor: '#e11d48',
+      hairColor: '#1e293b',
+    });
+    assert.equal(customized.ownerCharacter.styleId, 'girl_farmer');
+    assert.equal(customized.ownerCharacter.hatColor, '#86efac');
+
+    const rehydrated = normalizeFarmState(customized, {
+      schoolId: 'sch-1',
+      userId: 'usr-owner',
+      ownerName: 'ต้นข้าว',
+    });
+    assert.deepEqual(rehydrated.ownerCharacter, customized.ownerCharacter);
   });
 });
 

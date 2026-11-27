@@ -160,6 +160,81 @@ export interface GoldenFertilizerStatus {
   reasonTh: string;
 }
 
+export type FarmCharacterStyleId =
+  | 'boy_farmer'
+  | 'girl_farmer'
+  | 'gardener_girl'
+  | 'scholar_farmer';
+
+export interface FarmOwnerCharacter {
+  styleId: FarmCharacterStyleId;
+  hatColor: string;
+  outfitColor: string;
+  hairColor: string;
+}
+
+export interface FarmCharacterPreset {
+  id: FarmCharacterStyleId;
+  nameTh: string;
+  nameEn: string;
+  descTh: string;
+  defaultCharacter: FarmOwnerCharacter;
+}
+
+export const FARM_CHARACTER_PRESETS: FarmCharacterPreset[] = [
+  {
+    id: 'boy_farmer',
+    nameTh: 'หนุ่มชาวนาเอี๊ยมยีนส์',
+    nameEn: 'Denim Farm Boy',
+    descTh: 'หมวกฟางสานขอบแดงกับเอี๊ยมยีนส์คู่ใจสไตล์ Hay Day',
+    defaultCharacter: {
+      styleId: 'boy_farmer',
+      hatColor: '#facc15',
+      outfitColor: '#2563eb',
+      hairColor: '#78350f',
+    },
+  },
+  {
+    id: 'girl_farmer',
+    nameTh: 'สาวน้อยบ้านไร่',
+    nameEn: 'Country Farm Girl',
+    descTh: 'หมวกฟางโบว์ชมพูและชุดเอี๊ยมกระโปรงแสนสดใส',
+    defaultCharacter: {
+      styleId: 'girl_farmer',
+      hatColor: '#fde047',
+      outfitColor: '#e11d48',
+      hairColor: '#451a03',
+    },
+  },
+  {
+    id: 'gardener_girl',
+    nameTh: 'นักพฤกษศาสตร์ฟาร์ม',
+    nameEn: 'Botanical Gardener',
+    descTh: 'หมวกกันแดดติดดอกไม้และชุดนักจัดสวนรักษ์โลก',
+    defaultCharacter: {
+      styleId: 'gardener_girl',
+      hatColor: '#86efac',
+      outfitColor: '#059669',
+      hairColor: '#92400e',
+    },
+  },
+  {
+    id: 'scholar_farmer',
+    nameTh: 'ยุวเกษตรดีเด่น',
+    nameEn: 'Honor Student Farmer',
+    descTh: 'หมวกแก๊ปฟาร์มและชุดยุวเกษตรประจำโรงเรียน',
+    defaultCharacter: {
+      styleId: 'scholar_farmer',
+      hatColor: '#38bdf8',
+      outfitColor: '#1d4ed8',
+      hairColor: '#1e293b',
+    },
+  },
+];
+
+export const DEFAULT_FARM_OWNER_CHARACTER: FarmOwnerCharacter =
+  FARM_CHARACTER_PRESETS[0].defaultCharacter;
+
 export interface SchoolFarmState {
   version: 1;
   gridSize: 6 | 8;
@@ -168,6 +243,7 @@ export interface SchoolFarmState {
   studentId?: string;
   ownerName: string;
   ownerRoom?: string;
+  ownerCharacter: FarmOwnerCharacter;
   farmName: string;
   coins: number;
   water: number;
@@ -933,6 +1009,7 @@ export const createInitialFarmState = (params: {
     studentId: params.studentId,
     ownerName: params.ownerName,
     ownerRoom: params.ownerRoom,
+    ownerCharacter: { ...DEFAULT_FARM_OWNER_CHARACTER },
     farmName: params.farmName || `ฟาร์มของ${params.ownerName.split(' ')[0] || 'ฉัน'}`,
     coins: 350, // Generous starter coins so students can expand & build right away!
     water: 8,
@@ -1035,6 +1112,15 @@ export const normalizeFarmState = (
     studentId: raw.studentId || fallbackParams.studentId,
     ownerName: raw.ownerName || fallbackParams.ownerName,
     ownerRoom: raw.ownerRoom || fallbackParams.ownerRoom,
+    ownerCharacter:
+      raw.ownerCharacter && raw.ownerCharacter.styleId
+        ? {
+            styleId: raw.ownerCharacter.styleId,
+            hatColor: raw.ownerCharacter.hatColor || DEFAULT_FARM_OWNER_CHARACTER.hatColor,
+            outfitColor: raw.ownerCharacter.outfitColor || DEFAULT_FARM_OWNER_CHARACTER.outfitColor,
+            hairColor: raw.ownerCharacter.hairColor || DEFAULT_FARM_OWNER_CHARACTER.hairColor,
+          }
+        : { ...DEFAULT_FARM_OWNER_CHARACTER },
     dailyFertilizer: typeof raw.dailyFertilizer === 'number' ? raw.dailyFertilizer : base.dailyFertilizer,
     goldenStreakBonusDates: Array.isArray(raw.goldenStreakBonusDates) ? raw.goldenStreakBonusDates : [],
     seeds: { ...emptyRecord(), ...(raw.seeds || {}) },
@@ -2533,6 +2619,20 @@ export const grantTeacherBonusToFarm = (
     fertilizer: targetState.fertilizer + (bonus.fertilizer || 0),
     townStars: targetState.townStars + (bonus.stars || 0),
     coins: targetState.coins + (bonus.coins || 0),
+    updatedAt: new Date().toISOString(),
+  };
+};
+
+export const updateFarmOwnerCharacter = (
+  state: SchoolFarmState,
+  patch: Partial<FarmOwnerCharacter>
+): SchoolFarmState => {
+  return {
+    ...state,
+    ownerCharacter: {
+      ...(state.ownerCharacter || DEFAULT_FARM_OWNER_CHARACTER),
+      ...patch,
+    },
     updatedAt: new Date().toISOString(),
   };
 };

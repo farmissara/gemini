@@ -63,6 +63,7 @@ import {
   CROP_MAP,
   dismissVisitorRequest,
   expandFarmGridTo8x8,
+  FARM_CHARACTER_PRESETS,
   fertilizeTile,
   fulfillMarketOrder,
   fulfillVisitorRequest,
@@ -90,10 +91,12 @@ import {
   syncBehaviorWeedsOntoFarm,
   tillPlotTile,
   unlockPlotTile,
+  updateFarmOwnerCharacter,
   upgradeBuildingOnTile,
   waterTile,
   type BuildingId,
   type CropId,
+  type FarmOwnerCharacter,
   type FarmTool,
   type ProductId,
   type SchoolFarmState,
@@ -101,6 +104,7 @@ import {
 } from '../lib/schoolFarmEngine';
 import { IsometricFarmBoard, type FloatingFeedback } from '../components/games/IsometricFarmBoard';
 import {
+  FarmOwnerPortraitSvg,
   HayDayChatBubbleIcon,
   HayDayCoinIcon,
   HayDayFarmBookIcon,
@@ -135,7 +139,7 @@ interface SchoolFarmGameViewProps {
   onExit?: () => void;
 }
 
-type FarmModalKind = 'market' | 'visitors' | 'quiz' | 'town' | 'guide' | 'chest' | null;
+type FarmModalKind = 'market' | 'visitors' | 'quiz' | 'town' | 'guide' | 'chest' | 'character' | null;
 type MarketSubTabKind = 'marketplace' | 'orders' | 'craft' | 'roadside' | 'shop' | 'barn';
 
 const PRODUCTION_BUILDINGS = new Set<BuildingId>([
@@ -342,6 +346,13 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const [visitingNeighbor, setVisitingNeighbor] = useState<SchoolFarmState | null>(null);
   const [isEditingFarmName, setIsEditingFarmName] = useState(false);
   const [farmNameDraft, setFarmNameDraft] = useState('');
+  const [farmerTileIndex, setFarmerTileIndex] = useState<number | null>(null);
+  const [charDraft, setCharDraft] = useState<FarmOwnerCharacter>(() => farmState.ownerCharacter);
+
+  const openCharacterModal = () => {
+    setCharDraft(farmState.ownerCharacter);
+    setActiveModal('character');
+  };
 
   const feedbackSeqRef = useRef(1);
   const rootContainerRef = useRef<HTMLDivElement | null>(null);
@@ -497,6 +508,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
   const executeTileAction = (tileIndex: number, overrideTool?: FarmTool) => {
     setSelectedTileIndex(tileIndex);
+    setFarmerTileIndex(tileIndex);
     const tile = farmState.tiles[tileIndex];
     if (!tile) return;
 
@@ -1041,6 +1053,9 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         activeTool={activeTool}
         todayDate={todayDate}
         farmName={farmState.farmName}
+        ownerName={farmState.ownerName}
+        ownerCharacter={farmState.ownerCharacter}
+        farmerTileIndex={farmerTileIndex}
         fullscreenLandscape
         hasGoldenStreakBuff={hasGoldenStreakBuff}
         feedbacks={feedbacks}
@@ -1061,10 +1076,11 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           setActiveModal('market');
         }}
         onOpenVisitors={() => setActiveModal('visitors')}
+        onOpenCharacter={openCharacterModal}
       />
 
-      {/* TOP-LEFT: HAY DAY BLUE STAR LEVEL BADGE + EXIT/NAMEPLATE */}
-      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex items-center gap-1.5 max-w-[56vw] pointer-events-auto">
+      {/* TOP-LEFT: HAY DAY BLUE STAR LEVEL BADGE + OWNER PORTRAIT MEDALLION + NAMEPLATE */}
+      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex items-center gap-1.5 max-w-[58vw] pointer-events-auto">
         <HayDayMedallionButton
           size="sm"
           onClick={() => {
@@ -1091,6 +1107,18 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         >
           <HayDayLevelStarBadge level={townLevelInfo.level} className="w-12 h-12 sm:w-14 sm:h-14" />
         </button>
+
+        <HayDayMedallionButton
+          size="md"
+          onClick={openCharacterModal}
+          ariaLabel={lang === 'th' ? 'ตัวละครเจ้าของฟาร์ม' : 'Farm Owner Character'}
+          title={lang === 'th' ? 'แต่งตัวละครเจ้าของฟาร์ม' : 'Customize Farm Owner'}
+        >
+          <FarmOwnerPortraitSvg
+            character={farmState.ownerCharacter}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full"
+          />
+        </HayDayMedallionButton>
 
         <div className="hidden xs:flex sm:flex flex-col min-w-0 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
           <div className="flex items-center gap-1">
@@ -2279,6 +2307,8 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               activeTool="water"
               todayDate={todayDate}
               farmName={visitingNeighbor.farmName}
+              ownerName={visitingNeighbor.ownerName}
+              ownerCharacter={visitingNeighbor.ownerCharacter}
               readOnly
               allowNeighborCropWater={
                 visitingNeighbor.userId !== userId &&
@@ -2375,13 +2405,19 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                   key={n.userId}
                   className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
-                      #{idx + 1} · {n.ownerName} {isMe ? '(ฟาร์มของคุณ)' : ''}
-                    </p>
-                    <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
-                      {n.ownerRoom ? `${n.ownerRoom} · ` : ''}Lv.{lv} · ความเจริญ {score} แต้ม · เก็บเกี่ยว {n.totalHarvested} ครั้ง
-                    </p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FarmOwnerPortraitSvg
+                      character={n.ownerCharacter}
+                      className="w-10 h-10 rounded-full border border-[var(--color-border)] shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-[var(--color-text-title)] truncate">
+                        #{idx + 1} · {n.ownerName} {isMe ? '(ฟาร์มของคุณ)' : ''}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                        {n.ownerRoom ? `${n.ownerRoom} · ` : ''}Lv.{lv} · ความเจริญ {score} แต้ม · เก็บเกี่ยว {n.totalHarvested} ครั้ง
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
@@ -2501,6 +2537,149 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               </div>
             );
           })}
+        </div>
+      </BaseModal>
+
+      {/* MODAL 6: Farm Owner Character Wardrobe */}
+      <BaseModal
+        isOpen={activeModal === 'character'}
+        onClose={() => setActiveModal(null)}
+        maxWidthClass="max-w-xl"
+        title={lang === 'th' ? 'ตัวละครเจ้าของฟาร์ม (Farm Owner)' : 'Farm Owner Character'}
+        subtitle={lang === 'th' ? 'เลือกสไตล์หมวกและชุดเจ้าของฟาร์ม ตัวละครจะเดินดูแลแปลงตามที่คุณแตะเล่น!' : 'Customize your farm owner avatar'}
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-amber-300/70 dark:border-amber-800/60 bg-amber-50/75 dark:bg-amber-950/30 p-3.5 flex items-center gap-4">
+            <FarmOwnerPortraitSvg
+              character={charDraft}
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-amber-400 shadow-md shrink-0"
+            />
+            <div className="min-w-0 space-y-1">
+              <p className="text-base font-black text-[var(--color-text-title)] truncate">
+                {farmState.ownerName}
+              </p>
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                {FARM_CHARACTER_PRESETS.find((p) => p.id === charDraft.styleId)?.nameTh || 'เจ้าของฟาร์ม'}
+                {farmState.ownerRoom ? ` · ${farmState.ownerRoom}` : ''}
+              </p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">
+                {FARM_CHARACTER_PRESETS.find((p) => p.id === charDraft.styleId)?.descTh}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-black text-[var(--color-text-title)]">เลือกสไตล์ตัวละคร</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {FARM_CHARACTER_PRESETS.map((preset) => {
+                const selected = charDraft.styleId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setCharDraft({ ...preset.defaultCharacter })}
+                    className={`p-2.5 rounded-xl border-2 text-left flex items-center gap-2.5 cursor-pointer transition ${
+                      selected
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
+                        : 'border-[var(--color-border)] bg-[var(--color-card-subtle)] hover:bg-[var(--color-card)]'
+                    }`}
+                  >
+                    <FarmOwnerPortraitSvg
+                      character={preset.defaultCharacter}
+                      className="w-11 h-11 rounded-full shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-[var(--color-text-title)] truncate">{preset.nameTh}</p>
+                      <p className="text-[10px] text-[var(--color-text-muted)] line-clamp-2">{preset.descTh}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-black text-[var(--color-text-title)]">สีหมวก</p>
+              <div className="flex flex-wrap gap-1.5">
+                {['#facc15', '#fde047', '#fb923c', '#86efac', '#38bdf8', '#f472b6'].map((hex) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    aria-label={`Hat color ${hex}`}
+                    onClick={() => setCharDraft((prev) => ({ ...prev, hatColor: hex }))}
+                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition ${
+                      charDraft.hatColor === hex ? 'border-slate-900 dark:border-white scale-110' : 'border-white/70'
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-black text-[var(--color-text-title)]">สีชุดเอี๊ยม / เสื้อ</p>
+              <div className="flex flex-wrap gap-1.5">
+                {['#2563eb', '#e11d48', '#059669', '#d97706', '#7c3aed', '#0284c7'].map((hex) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    aria-label={`Outfit color ${hex}`}
+                    onClick={() => setCharDraft((prev) => ({ ...prev, outfitColor: hex }))}
+                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition ${
+                      charDraft.outfitColor === hex ? 'border-slate-900 dark:border-white scale-110' : 'border-white/70'
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-black text-[var(--color-text-title)]">สีผม</p>
+              <div className="flex flex-wrap gap-1.5">
+                {['#78350f', '#451a03', '#1e293b', '#92400e', '#b45309', '#be185d'].map((hex) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    aria-label={`Hair color ${hex}`}
+                    onClick={() => setCharDraft((prev) => ({ ...prev, hairColor: hex }))}
+                    className={`w-7 h-7 rounded-full border-2 cursor-pointer transition ${
+                      charDraft.hairColor === hex ? 'border-slate-900 dark:border-white scale-110' : 'border-white/70'
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setActiveModal(null)}
+              className="min-h-[42px] px-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] text-xs font-bold whitespace-nowrap cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const updated = updateFarmOwnerCharacter(farmState, charDraft);
+                persistFarm(updated);
+                playFarmChime('harvest', farmState.soundMuted);
+                emitAppToast({
+                  title: lang === 'th' ? 'บันทึกตัวละครเจ้าของฟาร์มแล้ว!' : 'Farm Owner Saved!',
+                  message: lang === 'th' ? 'ตัวละครใหม่ของคุณพร้อมลงแปลงทำงานแล้ว' : 'Your farmer avatar is ready!',
+                  tone: 'success',
+                });
+                setActiveModal(null);
+              }}
+              className="min-h-[42px] px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black whitespace-nowrap cursor-pointer transition"
+            >
+              บันทึกชุดเจ้าของฟาร์ม
+            </button>
+          </div>
         </div>
       </BaseModal>
     </div>

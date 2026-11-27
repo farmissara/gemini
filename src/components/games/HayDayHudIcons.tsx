@@ -1,5 +1,5 @@
 import React from 'react';
-import type { FarmTool } from '../../lib/schoolFarmEngine';
+import type { FarmOwnerCharacter, FarmTool } from '../../lib/schoolFarmEngine';
 
 export const HayDayLevelStarBadge: React.FC<{
   level: number;
@@ -305,4 +305,128 @@ export const HayDayToolSprite: React.FC<{ tool: FarmTool; className?: string }> 
     default:
       return null;
   }
+};
+
+export const FarmOwnerPortraitSvg: React.FC<{
+  character: FarmOwnerCharacter;
+  className?: string;
+}> = ({ character, className = 'w-9 h-9' }) => {
+  const { styleId, hatColor, outfitColor, hairColor } = character;
+  const isGirl = styleId === 'girl_farmer' || styleId === 'gardener_girl';
+  const isScholar = styleId === 'scholar_farmer';
+
+  return (
+    <svg viewBox="0 0 64 64" className={`${className} select-none`} aria-hidden="true">
+      <defs>
+        <clipPath id="hdOwnerClip">
+          <circle cx="32" cy="32" r="30" />
+        </clipPath>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="#bae6fd" />
+      <g clipPath="url(#hdOwnerClip)">
+        {/* Sunlit meadow background band */}
+        <ellipse cx="32" cy="58" rx="34" ry="16" fill="#84cc16" />
+
+        {/* Back hair for long-hair presets */}
+        {isGirl && (
+          <path
+            d="M17 30 C15 44 17 52 22 54 H42 C47 52 49 44 47 30 Z"
+            fill={hairColor}
+            stroke="#1e293b"
+            strokeWidth="1.6"
+          />
+        )}
+
+        {/* Shirt & Overalls / Dress / Vest */}
+        <path
+          d="M13 64 C13 48 51 48 51 64 Z"
+          fill="#fffbeb"
+          stroke="#451a03"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M17 64 C18 50 46 50 47 64 Z"
+          fill={outfitColor}
+          stroke="#1e293b"
+          strokeWidth="1.6"
+        />
+        {/* Overall straps / collar */}
+        {!isScholar ? (
+          <>
+            <rect x="22" y="48" width="4" height="14" rx="1.5" fill={outfitColor} stroke="#1e293b" strokeWidth="1.1" />
+            <rect x="38" y="48" width="4" height="14" rx="1.5" fill={outfitColor} stroke="#1e293b" strokeWidth="1.1" />
+            <circle cx="24" cy="53" r="1.4" fill="#facc15" />
+            <circle cx="40" cy="53" r="1.4" fill="#facc15" />
+          </>
+        ) : (
+          <>
+            <polygon points="24,49 32,57 40,49" fill="#ffffff" stroke="#1e293b" strokeWidth="1.2" />
+            <polygon points="30,52 34,52 33,61 31,61" fill="#e11d48" />
+          </>
+        )}
+
+        {/* Head */}
+        <circle cx="32" cy="34" r="12.5" fill="#fed7aa" stroke="#7c2d12" strokeWidth="1.8" />
+
+        {/* Front Hair Bangs */}
+        {isGirl ? (
+          <path
+            d="M19.5 31 C22 22 42 22 44.5 31 C39 27 35 28 32 30 C29 28 24 27 19.5 31 Z"
+            fill={hairColor}
+            stroke="#1e293b"
+            strokeWidth="1.2"
+          />
+        ) : (
+          <path
+            d="M19.8 30 C21 21 43 21 44.2 30 C39 26 25 26 19.8 30 Z"
+            fill={hairColor}
+            stroke="#1e293b"
+            strokeWidth="1.2"
+          />
+        )}
+
+        {/* Eyes & Cheerful Smile */}
+        <circle cx="27" cy="34.5" r="1.7" fill="#0f172a" />
+        <circle cx="37" cy="34.5" r="1.7" fill="#0f172a" />
+        <circle cx="26.5" cy="33.9" r="0.6" fill="#ffffff" />
+        <circle cx="36.5" cy="33.9" r="0.6" fill="#ffffff" />
+        <ellipse cx="23.5" cy="37.5" rx="2.2" ry="1.2" fill="#fb7185" opacity="0.55" />
+        <ellipse cx="40.5" cy="37.5" rx="2.2" ry="1.2" fill="#fb7185" opacity="0.55" />
+        <path d="M28 39.5 Q32 43 36 39.5" fill="none" stroke="#9a3412" strokeWidth="1.7" strokeLinecap="round" />
+
+        {/* Hats matching preset style */}
+        {styleId === 'scholar_farmer' ? (
+          <g>
+            <path d="M18 25 C18 14 46 14 46 25 Z" fill={hatColor} stroke="#0f172a" strokeWidth="1.6" />
+            <path d="M18 25 Q34 22 50 27 Q36 28 18 25 Z" fill="#0284c7" stroke="#0f172a" strokeWidth="1.4" />
+            <circle cx="32" cy="18.5" r="2.6" fill="#facc15" stroke="#854d0e" strokeWidth="1" />
+          </g>
+        ) : (
+          <g>
+            <ellipse cx="32" cy="24.5" rx="19" ry="4.8" fill={hatColor} stroke="#78350f" strokeWidth="1.6" />
+            <path d="M21 23 C22 12 42 12 43 23 Z" fill={hatColor} stroke="#78350f" strokeWidth="1.6" />
+            <path
+              d="M21.5 21.5 Q32 23.5 42.5 21.5"
+              fill="none"
+              stroke={styleId === 'girl_farmer' ? '#f43f5e' : styleId === 'gardener_girl' ? '#16a34a' : '#dc2626'}
+              strokeWidth="2.8"
+            />
+            {styleId === 'girl_farmer' && (
+              <g transform="translate(41, 20)">
+                <circle cx="-2.2" cy="0" r="2.2" fill="#fb7185" stroke="#881337" strokeWidth="0.9" />
+                <circle cx="2.2" cy="0" r="2.2" fill="#fb7185" stroke="#881337" strokeWidth="0.9" />
+                <circle cx="0" cy="0" r="1.4" fill="#ffe4e6" />
+              </g>
+            )}
+            {styleId === 'gardener_girl' && (
+              <g transform="translate(41, 20)">
+                <circle cx="0" cy="0" r="3.4" fill="#ffffff" stroke="#15803d" strokeWidth="0.9" />
+                <circle cx="0" cy="0" r="1.5" fill="#facc15" />
+              </g>
+            )}
+          </g>
+        )}
+      </g>
+    </svg>
+  );
 };
