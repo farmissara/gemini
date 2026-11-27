@@ -43,6 +43,10 @@ const MobileAppShell = lazyNamedWithRetry(
   () => import('./components/layout/MobileAppShell'),
   'MobileAppShell',
 );
+const GameView = lazyNamedWithRetry(
+  () => import('./components/game/GameView'),
+  'GameView',
+);
 
 export const App: React.FC = () => {
   const prefs = useAppPreferences();
@@ -66,6 +70,7 @@ export const App: React.FC = () => {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showCentralExamPopup, setShowCentralExamPopup] = useState(false);
   const [showSchemaMigrationModal, setShowSchemaMigrationModal] = useState(false);
+  const [isStudentGameViewActive, setIsStudentGameViewActive] = useState(false);
 
   const navCallbacksRef = useRef<NavCallbacks>({
     onLoginNavigate: () => {},
@@ -268,6 +273,12 @@ export const App: React.FC = () => {
     schoolCourses: scope.schoolCourses,
   });
 
+  useEffect(() => {
+    if (!data.currentUser || data.currentRole !== 'student') {
+      setIsStudentGameViewActive(false);
+    }
+  }, [data.currentUser, data.currentRole]);
+
   if (!data.currentUser) {
     return (
       <AuthLayout
@@ -440,6 +451,29 @@ export const App: React.FC = () => {
     />
   );
 
+  // Full-Screen Student Isometric Game View Toggle
+  if (data.currentRole === 'student' && isStudentGameViewActive) {
+    return (
+      <div className="h-dvh w-full overflow-hidden bg-[#65a30d] font-sans">
+        <ViewErrorBoundary
+          resetKey={`game-view:${data.activeSchool.id}:${data.currentUser.id}`}
+          lang={prefs.lang}
+          viewName="GameView"
+          onBackHome={() => setIsStudentGameViewActive(false)}
+        >
+          <Suspense fallback={<div className="p-6"><PageSkeleton rows={5} /></div>}>
+            <GameView
+              lang={prefs.lang}
+              currentUser={data.currentUser}
+              activeSchool={data.activeSchool}
+              onExit={() => setIsStudentGameViewActive(false)}
+            />
+          </Suspense>
+        </ViewErrorBoundary>
+      </div>
+    );
+  }
+
   // Mobile App Shell View
   if (prefs.shouldShowMobileView) {
     return (
@@ -565,6 +599,11 @@ export const App: React.FC = () => {
               onEquipCosmetic={data.handleEquipCosmetic}
               onReviewRedemption={data.handleReviewRedemption}
               onCreateCustomReward={data.handleCreateCustomReward}
+              onToggleGameView={
+                data.currentRole === 'student'
+                  ? () => setIsStudentGameViewActive((prev) => !prev)
+                  : undefined
+              }
             />
             {sharedModalsHost}
           </Suspense>
@@ -688,6 +727,12 @@ export const App: React.FC = () => {
             canSwitchAdminTeacherMode={scope.canSwitchAdminTeacherMode}
             onSwitchOperationalRole={(nextRole) =>
               data.handleSwitchOperationalRole(nextRole, scope.canUseAdminMode, scope.canUseTeacherMode)
+            }
+            isGameViewActive={isStudentGameViewActive}
+            onToggleGameView={
+              data.currentRole === 'student'
+                ? () => setIsStudentGameViewActive((prev) => !prev)
+                : undefined
             }
           />
         )}

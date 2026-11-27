@@ -186,6 +186,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onCreateCustomReward,
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
+  onToggleGameView,
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>(() => {
     if (initialPeriodCourseId || initialPeriodNumber || initialMobileTab !== 'home') {
@@ -1018,6 +1019,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               }
             : undefined
         }
+        onToggleGameView={onToggleGameView}
         otherMenuItems={mobileOtherMenuItems}
       />
 

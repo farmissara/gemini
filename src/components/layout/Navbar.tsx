@@ -26,6 +26,7 @@ import {
   Eye,
   EyeOff,
   MoreVertical,
+  Sprout,
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { UnifiedNavbarSearch } from './UnifiedNavbarSearch';
@@ -82,6 +83,8 @@ interface NavbarProps {
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
   isMascotHidden?: boolean;
   onToggleMascotHidden?: () => void;
+  isGameViewActive?: boolean;
+  onToggleGameView?: () => void;
 }
 
 const buildInitialsAvatar = (name?: string) => {
@@ -162,6 +165,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchOperationalRole,
   isMascotHidden = false,
   onToggleMascotHidden,
+  isGameViewActive = false,
+  onToggleGameView,
 }) => {
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
@@ -462,6 +467,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               onNavigateTab={onNavigateTab}
             />
           </div>
+        )}
+
+        {!focusMode && currentRole === 'student' && onToggleGameView && (
+          <button
+            type="button"
+            onClick={onToggleGameView}
+            aria-pressed={isGameViewActive}
+            className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+              isGameViewActive
+                ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                : 'border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+            }`}
+            title={lang === 'th' ? 'สลับเข้าสู่เกมฟาร์มไอโซเมตริกเต็มจอ' : 'Toggle Full-Screen Isometric Farm Game'}
+          >
+            <Sprout className="w-4 h-4 shrink-0" />
+            <span>{lang === 'th' ? 'โหมดฟาร์ม' : 'Farm View'}</span>
+          </button>
         )}
 
         {!focusMode && onOpenNotifications && (

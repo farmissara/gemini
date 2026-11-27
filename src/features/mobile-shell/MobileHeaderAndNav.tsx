@@ -11,6 +11,7 @@ import {
   MoreVertical,
   ShieldCheck,
   Sparkles,
+  Sprout,
   Sun,
   User,
 } from 'lucide-react';
@@ -99,6 +100,7 @@ interface MobileHeaderProps {
   onLogout?: () => void;
   canSwitchAdminTeacherMode?: boolean;
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
+  onToggleGameView?: () => void;
   otherMenuItems?: MobileQuickMenuItem[];
 }
 
@@ -121,6 +123,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onLogout,
   canSwitchAdminTeacherMode = false,
   onSwitchOperationalRole,
+  onToggleGameView,
   otherMenuItems = [],
 }) => {
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
@@ -192,6 +195,17 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {currentRole === 'student' && onToggleGameView && (
+            <button
+              type="button"
+              onClick={onToggleGameView}
+              className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Sprout className="w-4 h-4 shrink-0" />
+              <span>{lang === 'th' ? 'โหมดฟาร์ม' : 'Farm'}</span>
+            </button>
+          )}
+
           {onOpenNotifications && (
             <button
               type="button"

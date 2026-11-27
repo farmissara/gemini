@@ -240,4 +240,5 @@ export interface MobileAppShellProps {
   onCreateCustomReward?: (item: RewardItem) => void;
   canSwitchAdminTeacherMode?: boolean;
   onSwitchOperationalRole?: (nextRole: 'admin' | 'teacher') => void;
+  onToggleGameView?: () => void;
 }
