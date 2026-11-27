@@ -18,13 +18,24 @@ export type CropId =
   | 'pumpkin'
   | 'golden_melon';
 
+export type ProductId =
+  | 'egg'
+  | 'milk'
+  | 'wool'
+  | 'bread'
+  | 'berry_smoothie'
+  | 'berry_cake'
+  | 'pumpkin_pie';
+
 export type BuildingId =
   | 'chicken_coop'
   | 'town_fountain'
   | 'farm_cottage'
   | 'dairy_barn'
+  | 'sheep_pen'
   | 'school_greenhouse'
   | 'windmill_bakery'
+  | 'juice_stand'
   | 'wooden_fence'
   | 'cobble_path';
 
@@ -53,6 +64,18 @@ export interface CropDefinition {
   accentColor: string;
   descTh: string;
   descEn: string;
+}
+
+export interface ProductDefinition {
+  id: ProductId;
+  nameTh: string;
+  nameEn: string;
+  sourceBuildingId: BuildingId;
+  ingredients: Array<{ kind: 'crop' | 'product'; id: CropId | ProductId; qty: number }>;
+  sellPrice: number;
+  xpReward: number;
+  accentColor: string;
+  descTh: string;
 }
 
 export interface BuildingDefinition {
@@ -97,9 +120,34 @@ export interface MarketOrder {
   titleEn: string;
   cropId: CropId;
   quantity: number;
+  productId?: ProductId;
+  productQty?: number;
   rewardCoins: number;
   rewardXp: number;
   rewardGems: number;
+}
+
+export interface VisitorRequest {
+  id: string;
+  npcId: 'uncle_somchai' | 'aunt_malee' | 'namsai' | 'teacher_dao';
+  nameTh: string;
+  roleTh: string;
+  dialogueTh: string;
+  itemKind: 'crop' | 'product';
+  itemId: CropId | ProductId;
+  quantity: number;
+  rewardCoins: number;
+  rewardXp: number;
+}
+
+export interface RoadsideListing {
+  id: string;
+  itemKind: 'crop' | 'product';
+  itemId: CropId | ProductId;
+  quantity: number;
+  priceCoins: number;
+  sold: boolean;
+  buyerName?: string;
 }
 
 export interface SchoolFarmState {
@@ -119,8 +167,11 @@ export interface SchoolFarmState {
   farmXp: number;
   seeds: Record<CropId, number>;
   barn: Record<CropId, number>;
+  goods: Record<ProductId, number>;
   tiles: FarmTile[];
   marketOrders: MarketOrder[];
+  visitorQueue: VisitorRequest[];
+  roadsideShop: RoadsideListing[];
   unlockedBlueprints: BuildingId[];
   claimedAttendanceDates: string[];
   claimedHomeworkIds: string[];
@@ -177,7 +228,7 @@ export const CROP_CATALOG: CropDefinition[] = [
     xpReward: 12,
     unlockTownLevel: 1,
     accentColor: '#eab308',
-    descTh: 'โตไว เก็บเกี่ยวได้ใน 2 ครั้งรดน้ำ',
+    descTh: 'โตไว ใช้เลี้ยงไก่และส่งตลาด (2 ครั้งรดน้ำ)',
     descEn: 'Fast-growing staple crop (2 waters)',
   },
   {
@@ -190,7 +241,7 @@ export const CROP_CATALOG: CropDefinition[] = [
     xpReward: 14,
     unlockTownLevel: 1,
     accentColor: '#fb923c',
-    descTh: 'ปลูกง่าย เติบโตเร็วใน 2 ครั้งรดน้ำ',
+    descTh: 'ปลูกง่าย ใช้เลี้ยงวัวนมและแปรรูป (2 ครั้งรดน้ำ)',
     descEn: 'Crunchy starter root crop (2 waters)',
   },
   {
@@ -243,7 +294,7 @@ export const CROP_CATALOG: CropDefinition[] = [
     xpReward: 30,
     unlockTownLevel: 2,
     accentColor: '#84cc16',
-    descTh: 'พืชเศรษฐกิจประจำชุมชนโรงเรียน',
+    descTh: 'วัตถุดิบหลักสำหรับอบขนมปังในเบเกอรี่',
     descEn: 'Golden grain unlocked at Town Lv.2',
   },
   {
@@ -256,7 +307,7 @@ export const CROP_CATALOG: CropDefinition[] = [
     xpReward: 42,
     unlockTownLevel: 3,
     accentColor: '#f97316',
-    descTh: 'ผลใหญ่ราคาสูง เหมาะกับออเดอร์เทศกาล',
+    descTh: 'ผลใหญ่ราคาสูง ใช้ทำพายฟักทอง',
     descEn: 'High-value harvest unlocked at Town Lv.3',
   },
   {
@@ -275,21 +326,100 @@ export const CROP_CATALOG: CropDefinition[] = [
   },
 ];
 
-export const BUILDING_CATALOG: BuildingDefinition[] = [
+export const PRODUCT_CATALOG: ProductDefinition[] = [
   {
-    id: 'chicken_coop',
-    nameTh: 'เล้าไก่ไข่แสนรู้',
-    nameEn: 'Cozy Chicken Coop',
-    category: 'production',
-    coinCost: 65,
-    starCost: 2,
-    unlockTownLevel: 1,
-    dailyCoins: 28,
-    prosperityPoints: 25,
-    maxLevel: 3,
-    descTh: 'เลี้ยงแม่ไก่อารมณ์ดี เก็บไข่รับ +28🪙/วัน',
-    descEn: 'Produces fresh eggs for +28 coins daily',
+    id: 'egg',
+    nameTh: 'ไข่ไก่สด',
+    nameEn: 'Fresh Farm Egg',
+    sourceBuildingId: 'chicken_coop',
+    ingredients: [{ kind: 'crop', id: 'corn', qty: 1 }],
+    sellPrice: 52,
+    xpReward: 18,
+    accentColor: '#fef3c7',
+    descTh: 'ป้อนข้าวโพด 1 ฝักให้แม่ไก่ เพื่อเก็บไข่สด',
   },
+  {
+    id: 'milk',
+    nameTh: 'นมสดโรงเรียน',
+    nameEn: 'Fresh Dairy Milk',
+    sourceBuildingId: 'dairy_barn',
+    ingredients: [{ kind: 'crop', id: 'carrot', qty: 1 }],
+    sellPrice: 74,
+    xpReward: 24,
+    accentColor: '#e0f2fe',
+    descTh: 'ป้อนแครอท 1 หัวให้วัวนม เพื่อรีดนมสด',
+  },
+  {
+    id: 'wool',
+    nameTh: 'ขนแกะนุ่ม',
+    nameEn: 'Fluffy Wool',
+    sourceBuildingId: 'sheep_pen',
+    ingredients: [{ kind: 'crop', id: 'corn', qty: 1 }],
+    sellPrice: 80,
+    xpReward: 26,
+    accentColor: '#f1f5f9',
+    descTh: 'เลี้ยงแกะด้วยข้าวโพด 1 ฝัก เพื่อตัดขนแกะ',
+  },
+  {
+    id: 'bread',
+    nameTh: 'ขนมปังโฮมเมด',
+    nameEn: 'Artisan Bread',
+    sourceBuildingId: 'windmill_bakery',
+    ingredients: [
+      { kind: 'crop', id: 'corn', qty: 1 },
+      { kind: 'product', id: 'egg', qty: 1 },
+    ],
+    sellPrice: 125,
+    xpReward: 38,
+    accentColor: '#f59e0b',
+    descTh: 'อบจากข้าวโพด + ไข่ไก่สด ขายได้ราคาดีมาก',
+  },
+  {
+    id: 'berry_smoothie',
+    nameTh: 'สมูทตี้สตรอว์เบอร์รี',
+    nameEn: 'Berry Smoothie',
+    sourceBuildingId: 'juice_stand',
+    ingredients: [
+      { kind: 'crop', id: 'strawberry', qty: 1 },
+      { kind: 'crop', id: 'tomato', qty: 1 },
+    ],
+    sellPrice: 165,
+    xpReward: 46,
+    accentColor: '#fb7185',
+    descTh: 'ปั่นสตรอว์เบอร์รี + มะเขือเทศ สดชื่นสุดๆ',
+  },
+  {
+    id: 'berry_cake',
+    nameTh: 'เค้กสตรอว์เบอร์รี',
+    nameEn: 'Strawberry Shortcake',
+    sourceBuildingId: 'windmill_bakery',
+    ingredients: [
+      { kind: 'crop', id: 'strawberry', qty: 1 },
+      { kind: 'product', id: 'milk', qty: 1 },
+      { kind: 'product', id: 'egg', qty: 1 },
+    ],
+    sellPrice: 260,
+    xpReward: 75,
+    accentColor: '#f43f5e',
+    descTh: 'ขนมยอดฮิตงานโรงเรียน ราคาสูงสุดในเบเกอรี่',
+  },
+  {
+    id: 'pumpkin_pie',
+    nameTh: 'พายฟักทองอบเชย',
+    nameEn: 'Golden Pumpkin Pie',
+    sourceBuildingId: 'windmill_bakery',
+    ingredients: [
+      { kind: 'crop', id: 'pumpkin', qty: 1 },
+      { kind: 'product', id: 'egg', qty: 1 },
+    ],
+    sellPrice: 280,
+    xpReward: 82,
+    accentColor: '#ea580c',
+    descTh: 'พายสูตรพิเศษจากฟักทองยักษ์ + ไข่สด',
+  },
+];
+
+export const BUILDING_CATALOG: BuildingDefinition[] = [
   {
     id: 'farm_cottage',
     nameTh: 'บ้านพักชาวสวน',
@@ -305,6 +435,92 @@ export const BUILDING_CATALOG: BuildingDefinition[] = [
     descEn: 'Cozy home centerpiece (+22 coins daily)',
   },
   {
+    id: 'chicken_coop',
+    nameTh: 'เล้าไก่ไข่แสนรู้',
+    nameEn: 'Cozy Chicken Coop',
+    category: 'production',
+    coinCost: 65,
+    starCost: 2,
+    unlockTownLevel: 1,
+    dailyCoins: 28,
+    prosperityPoints: 25,
+    maxLevel: 3,
+    descTh: 'เลี้ยงแม่ไก่ผลิตไข่สด & รับ +28🪙/วัน',
+    descEn: 'Produces fresh eggs & +28 coins daily',
+  },
+  {
+    id: 'dairy_barn',
+    nameTh: 'คอกวัวนมสด',
+    nameEn: 'Sunny Dairy Barn',
+    category: 'production',
+    coinCost: 110,
+    starCost: 3,
+    unlockTownLevel: 1,
+    dailyCoins: 48,
+    prosperityPoints: 50,
+    maxLevel: 3,
+    descTh: 'เลี้ยงวัวนมผลิตนมสดโรงเรียน & +48🪙/วัน',
+    descEn: 'Produces school milk & +48 coins daily',
+  },
+  {
+    id: 'sheep_pen',
+    nameTh: 'คอกแกะขนปุย',
+    nameEn: 'Fluffy Sheep Pasture',
+    category: 'production',
+    coinCost: 120,
+    starCost: 3,
+    unlockTownLevel: 2,
+    dailyCoins: 42,
+    prosperityPoints: 52,
+    maxLevel: 3,
+    descTh: 'เลี้ยงแกะน่ารักผลิตขนแกะ & +42🪙/วัน',
+    descEn: 'Produces soft wool & +42 coins daily',
+  },
+  {
+    id: 'juice_stand',
+    nameTh: 'ซุ้มน้ำผลไม้สด',
+    nameEn: 'Fresh Juice Press',
+    category: 'production',
+    coinCost: 130,
+    starCost: 3,
+    unlockTownLevel: 1,
+    dailyCoins: 36,
+    prosperityPoints: 55,
+    maxLevel: 3,
+    descTh: 'ปั่นสมูทตี้ผลไม้ขายในตลาด & +36🪙/วัน',
+    descEn: 'Crafts fresh fruit smoothies & +36 coins daily',
+  },
+  {
+    id: 'windmill_bakery',
+    nameTh: 'โรงสี & ร้านเบเกอรี่',
+    nameEn: 'Windmill Bakery',
+    category: 'production',
+    coinCost: 165,
+    starCost: 4,
+    unlockTownLevel: 2,
+    dailyCoins: 64,
+    cropSellBonusPct: 20,
+    prosperityPoints: 80,
+    maxLevel: 3,
+    descTh: 'อบขนมปัง/เค้ก + เพิ่มราคาพืช +20% +64🪙/วัน',
+    descEn: 'Bakes bread/cakes, +20% crop value & +64 coins daily',
+  },
+  {
+    id: 'school_greenhouse',
+    nameTh: 'เรือนกระจกพฤกษศาสตร์',
+    nameEn: 'Botanical Greenhouse',
+    category: 'production',
+    coinCost: 145,
+    starCost: 4,
+    unlockTownLevel: 2,
+    dailyCoins: 30,
+    dailyFertilizer: 1,
+    prosperityPoints: 60,
+    maxLevel: 3,
+    descTh: 'ผลิต +30🪙 และปุ๋ยทองคำ +1 ถุงทุกวัน',
+    descEn: 'Yields +30 coins & +1 golden fertilizer daily',
+  },
+  {
     id: 'town_fountain',
     nameTh: 'ลานน้ำพุกลางเมือง',
     nameEn: 'Town Plaza Fountain',
@@ -316,51 +532,7 @@ export const BUILDING_CATALOG: BuildingDefinition[] = [
     prosperityPoints: 40,
     maxLevel: 3,
     descTh: 'เพิ่มความเจริญเมืองและรายได้ +24🪙/วัน',
-    descEn: 'Boosts town prosperity and +24 coins daily',
-  },
-  {
-    id: 'dairy_barn',
-    nameTh: 'คอกวัวนมสด',
-    nameEn: 'Sunny Dairy Barn',
-    category: 'production',
-    coinCost: 115,
-    starCost: 4,
-    unlockTownLevel: 2,
-    dailyCoins: 48,
-    prosperityPoints: 50,
-    maxLevel: 3,
-    descTh: 'เลี้ยงวัวนมผลิตนมสดโรงเรียน +48🪙/วัน',
-    descEn: 'Produces school milk for +48 coins daily',
-  },
-  {
-    id: 'school_greenhouse',
-    nameTh: 'เรือนกระจกพฤกษศาสตร์',
-    nameEn: 'Botanical Greenhouse',
-    category: 'production',
-    coinCost: 145,
-    starCost: 5,
-    unlockTownLevel: 2,
-    dailyCoins: 30,
-    dailyFertilizer: 1,
-    prosperityPoints: 60,
-    maxLevel: 3,
-    descTh: 'ผลิต +30🪙 และปุ๋ยทองคำ +1 ถุงทุกวัน',
-    descEn: 'Yields +30 coins & +1 golden fertilizer daily',
-  },
-  {
-    id: 'windmill_bakery',
-    nameTh: 'โรงสี & ร้านเบเกอรี่',
-    nameEn: 'Windmill Bakery',
-    category: 'production',
-    coinCost: 175,
-    starCost: 6,
-    unlockTownLevel: 3,
-    dailyCoins: 64,
-    cropSellBonusPct: 20,
-    prosperityPoints: 80,
-    maxLevel: 3,
-    descTh: 'เพิ่มราคาขายพืชผล +20% และรับ +64🪙/วัน',
-    descEn: '+20% crop market price & +64 coins daily',
+    descEn: 'Boosts town prosperity & +24 coins daily',
   },
   {
     id: 'wooden_fence',
@@ -395,6 +567,10 @@ export const BUILDING_CATALOG: BuildingDefinition[] = [
 export const CROP_MAP: Record<CropId, CropDefinition> = Object.fromEntries(
   CROP_CATALOG.map((c) => [c.id, c])
 ) as Record<CropId, CropDefinition>;
+
+export const PRODUCT_MAP: Record<ProductId, ProductDefinition> = Object.fromEntries(
+  PRODUCT_CATALOG.map((p) => [p.id, p])
+) as Record<ProductId, ProductDefinition>;
 
 export const BUILDING_MAP: Record<BuildingId, BuildingDefinition> = Object.fromEntries(
   BUILDING_CATALOG.map((b) => [b.id, b])
@@ -460,42 +636,103 @@ export const getBuildingUpgradeCost = (buildingId: BuildingId, currentLevel: num
   };
 };
 
+export const createVisitorRequests = (townLevel: number, seedOffset = 0): VisitorRequest[] => {
+  const templates: Array<Omit<VisitorRequest, 'id'>> = [
+    {
+      npcId: 'aunt_malee',
+      nameTh: 'ป้ามาลี (แม่ครัวโรงอาหาร)',
+      roleTh: 'ผู้มาเยือนฟาร์ม',
+      dialogueTh: 'สวัสดีจ้า! โรงอาหารกำลังขาดข้าวโพดหวานพอดี แบ่งขายให้ป้าสักหน่อยได้ไหม?',
+      itemKind: 'crop',
+      itemId: 'corn',
+      quantity: 2,
+      rewardCoins: 76,
+      rewardXp: 24,
+    },
+    {
+      npcId: 'uncle_somchai',
+      nameTh: 'ลุงสมชาย (ชาวสวนรุ่นพี่)',
+      roleTh: 'เพื่อนบ้าน',
+      dialogueTh: 'ฟาร์มหนูดูคึกคักขึ้นเยอะเลยนะ ลุงขอรับซื้อไข่ไก่สดไปทำอาหารเช้าหน่อยจ้า',
+      itemKind: 'product',
+      itemId: 'egg',
+      quantity: 1,
+      rewardCoins: 72,
+      rewardXp: 22,
+    },
+    {
+      npcId: 'namsai',
+      nameTh: 'น้องน้ำใส (หัวหน้าห้อง)',
+      roleTh: 'เพื่อนร่วมโรงเรียน',
+      dialogueTh: 'ชมรมเตรียมจัดกิจกรรมพักเที่ยง อยากได้มะเขือเทศเชอร์รีสดๆ สัก 2 ผลจ้า!',
+      itemKind: 'crop',
+      itemId: 'tomato',
+      quantity: 2,
+      rewardCoins: 108,
+      rewardXp: 30,
+    },
+    {
+      npcId: 'teacher_dao',
+      nameTh: 'ครูดาว (ห้องสมุด)',
+      roleTh: 'คุณครูที่ปรึกษา',
+      dialogueTh: 'กลิ่นขนมปังจากฟาร์มหอมมากเลย! ครูขออุดหนุนขนมปังโฮมเมดสักชิ้นนะ',
+      itemKind: townLevel >= 2 ? 'product' : 'crop',
+      itemId: townLevel >= 2 ? 'bread' : 'carrot',
+      quantity: 1,
+      rewardCoins: townLevel >= 2 ? 155 : 52,
+      rewardXp: townLevel >= 2 ? 42 : 18,
+    },
+  ];
+
+  const picked: VisitorRequest[] = [];
+  for (let i = 0; i < 2; i += 1) {
+    const item = templates[(seedOffset + i) % templates.length];
+    picked.push({
+      ...item,
+      id: `vis-${Date.now()}-${seedOffset}-${i}`,
+    });
+  }
+  return picked;
+};
+
 export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrder[] => {
   const pool: Omit<MarketOrder, 'id'>[] = [
     {
-      titleTh: 'โรงอาหารโรงเรียนสั่งข้าวโพดหวาน',
-      titleEn: 'Cafeteria Sweet Corn Order',
+      titleTh: 'รถบรรทุกส่งข้าวโพดหวานเข้าเมือง',
+      titleEn: 'Truck Delivery: Sweet Corn',
       cropId: 'corn',
       quantity: 2,
-      rewardCoins: 72,
-      rewardXp: 28,
+      rewardCoins: 82,
+      rewardXp: 30,
       rewardGems: 2,
     },
     {
-      titleTh: 'ห้องคหกรรมต้องการแครอทสด',
-      titleEn: 'Home Ec Crisp Carrot Crate',
+      titleTh: 'ส่งแครอทสดให้สหกรณ์นักเรียน',
+      titleEn: 'Truck Delivery: Crisp Carrot',
       cropId: 'carrot',
       quantity: 2,
-      rewardCoins: 90,
-      rewardXp: 32,
+      rewardCoins: 98,
+      rewardXp: 34,
       rewardGems: 2,
     },
     {
-      titleTh: 'ชมรมคหกรรมต้องการมะเขือเทศสด',
-      titleEn: 'Home Ec Cherry Tomato Crate',
+      titleTh: 'ชมรมคหกรรมสั่งมะเขือเทศ + ไข่สด',
+      titleEn: 'Home Ec Tomato & Egg Crate',
       cropId: 'tomato',
       quantity: 2,
-      rewardCoins: 108,
-      rewardXp: 36,
-      rewardGems: 3,
+      productId: 'egg',
+      productQty: 1,
+      rewardCoins: 175,
+      rewardXp: 52,
+      rewardGems: 4,
     },
     {
       titleTh: 'บูธน้ำผลไม้งานวิชาการ',
       titleEn: 'Academic Fair Strawberry Stand',
       cropId: 'strawberry',
       quantity: 2,
-      rewardCoins: 175,
-      rewardXp: 52,
+      rewardCoins: 185,
+      rewardXp: 56,
       rewardGems: 4,
     },
     ...(townLevel >= 2
@@ -505,18 +742,20 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
             titleEn: 'Morning Assembly Sunflower Bouquet',
             cropId: 'sunflower' as CropId,
             quantity: 2,
-            rewardCoins: 205,
-            rewardXp: 60,
+            rewardCoins: 215,
+            rewardXp: 64,
             rewardGems: 5,
           },
           {
-            titleTh: 'สหกรณ์โรงเรียนสั่งข้าวหอมมะลิ',
-            titleEn: 'School Co-op Jasmine Rice Pack',
+            titleTh: 'ส่งขนมปัง + ข้าวหอมมะลิให้ห้องพักครู',
+            titleEn: 'Teachers Lounge Rice & Bread Order',
             cropId: 'jasmine_rice' as CropId,
             quantity: 2,
-            rewardCoins: 215,
-            rewardXp: 65,
-            rewardGems: 5,
+            productId: 'bread' as ProductId,
+            productQty: 1,
+            rewardCoins: 360,
+            rewardXp: 95,
+            rewardGems: 6,
           },
         ]
       : []),
@@ -527,8 +766,8 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
             titleEn: 'Semester Giant Pumpkin Basket',
             cropId: 'pumpkin' as CropId,
             quantity: 2,
-            rewardCoins: 315,
-            rewardXp: 90,
+            rewardCoins: 330,
+            rewardXp: 95,
             rewardGems: 7,
           },
         ]
@@ -540,8 +779,8 @@ export const createMarketOrders = (townLevel: number, seedOffset = 0): MarketOrd
             titleEn: 'Golden Melon Gift Box',
             cropId: 'golden_melon' as CropId,
             quantity: 1,
-            rewardCoins: 265,
-            rewardXp: 85,
+            rewardCoins: 280,
+            rewardXp: 90,
             rewardGems: 8,
           },
         ]
@@ -570,6 +809,16 @@ const emptyRecord = (): Record<CropId, number> => ({
   golden_melon: 0,
 });
 
+const emptyProductsRecord = (): Record<ProductId, number> => ({
+  egg: 0,
+  milk: 0,
+  wool: 0,
+  bread: 0,
+  berry_smoothie: 0,
+  berry_cake: 0,
+  pumpkin_pie: 0,
+});
+
 export const createInitialFarmState = (params: {
   schoolId: string;
   userId: string;
@@ -595,15 +844,47 @@ export const createInitialFarmState = (params: {
     }
   }
 
-  // Starter crops so the player immediately sees life on the farm
+  // Hay Day Starter Farmstead: never start from 0!
+  // Keep index 7 (row 1, col 1) empty & index 0 (row 0, col 0) locked for deterministic unit tests.
+  const cottagePlot = tiles.find((t) => t.row === 1 && t.col === 2);
+  if (cottagePlot) {
+    cottagePlot.kind = 'building';
+    cottagePlot.buildingId = 'farm_cottage';
+    cottagePlot.buildingLevel = 1;
+    cottagePlot.lastCollectedDate = '';
+  }
+  const coopPlot = tiles.find((t) => t.row === 1 && t.col === 3);
+  if (coopPlot) {
+    coopPlot.kind = 'building';
+    coopPlot.buildingId = 'chicken_coop';
+    coopPlot.buildingLevel = 1;
+    coopPlot.lastCollectedDate = '';
+  }
+  const fencePlot = tiles.find((t) => t.row === 3 && t.col === 1);
+  if (fencePlot) {
+    fencePlot.kind = 'building';
+    fencePlot.buildingId = 'wooden_fence';
+    fencePlot.buildingLevel = 1;
+    fencePlot.lastCollectedDate = 'decor';
+  }
+  const starterCarrot = tiles.find((t) => t.row === 2 && t.col === 1);
+  if (starterCarrot) {
+    starterCarrot.kind = 'crop';
+    starterCarrot.tilled = true;
+    starterCarrot.cropId = 'carrot';
+    starterCarrot.growthProgress = 2; // ready!
+    starterCarrot.wateredToday = true;
+  }
+  // Starter corn at (2,2) -> index 14 (ready to harvest right away!)
   const starterPlot1 = tiles.find((t) => t.row === 2 && t.col === 2);
   if (starterPlot1) {
     starterPlot1.kind = 'crop';
     starterPlot1.tilled = true;
     starterPlot1.cropId = 'corn';
-    starterPlot1.growthProgress = 2; // ready to harvest right away!
+    starterPlot1.growthProgress = 2;
     starterPlot1.wateredToday = true;
   }
+  // Starter tomato at (2,3) -> index 15 (growing 1/2)
   const starterPlot2 = tiles.find((t) => t.row === 2 && t.col === 3);
   if (starterPlot2) {
     starterPlot2.kind = 'crop';
@@ -622,15 +903,15 @@ export const createInitialFarmState = (params: {
     ownerName: params.ownerName,
     ownerRoom: params.ownerRoom,
     farmName: params.farmName || `ฟาร์มของ${params.ownerName.split(' ')[0] || 'ฉัน'}`,
-    coins: 70,
-    water: 5,
-    dailyFertilizer: 1,
+    coins: 350, // Generous starter coins so students can expand & build right away!
+    water: 8,
+    dailyFertilizer: 3,
     fertilizer: 2,
-    townStars: 3,
-    farmXp: 25,
+    townStars: 5,
+    farmXp: 40,
     seeds: {
-      corn: 3,
-      carrot: 2,
+      corn: 5,
+      carrot: 3,
       tomato: 2,
       strawberry: 0,
       sunflower: 0,
@@ -639,9 +920,23 @@ export const createInitialFarmState = (params: {
       golden_melon: 0,
     },
     barn: emptyRecord(),
+    goods: {
+      ...emptyProductsRecord(),
+      egg: 1,
+    },
     tiles,
     marketOrders: createMarketOrders(1, 0),
-    unlockedBlueprints: ['chicken_coop', 'farm_cottage', 'town_fountain', 'wooden_fence', 'cobble_path'],
+    visitorQueue: createVisitorRequests(1, 0),
+    roadsideShop: [],
+    unlockedBlueprints: [
+      'farm_cottage',
+      'chicken_coop',
+      'dairy_barn',
+      'juice_stand',
+      'town_fountain',
+      'wooden_fence',
+      'cobble_path',
+    ],
     claimedAttendanceDates: [],
     claimedHomeworkIds: [],
     claimedHomeworkMasteryCount: 0,
@@ -702,8 +997,11 @@ export const normalizeFarmState = (
     dailyFertilizer: typeof raw.dailyFertilizer === 'number' ? raw.dailyFertilizer : base.dailyFertilizer,
     seeds: { ...emptyRecord(), ...(raw.seeds || {}) },
     barn: { ...emptyRecord(), ...(raw.barn || {}) },
+    goods: { ...emptyProductsRecord(), ...(raw.goods || {}) },
     tiles: normalizedTiles,
     marketOrders: Array.isArray(raw.marketOrders) && raw.marketOrders.length > 0 ? raw.marketOrders : base.marketOrders,
+    visitorQueue: Array.isArray(raw.visitorQueue) && raw.visitorQueue.length > 0 ? raw.visitorQueue : base.visitorQueue,
+    roadsideShop: Array.isArray(raw.roadsideShop) ? raw.roadsideShop : [],
     unlockedBlueprints: Array.isArray(raw.unlockedBlueprints) && raw.unlockedBlueprints.length > 0
       ? raw.unlockedBlueprints
       : base.unlockedBlueprints,
@@ -738,7 +1036,6 @@ const computeConsecutiveAttendanceDays = (dates: string[]): number => {
     const next = new Date(`${unique[i + 1]}T00:00:00Z`).getTime();
     const diffDays = Math.round((cur - next) / 86400000);
     if (diffDays <= 3 && diffDays >= 1) {
-      // Allow weekend gap (Fri -> Mon is 3 days) so school attendance streaks stay encouraging
       streak += 1;
     } else {
       break;
@@ -853,7 +1150,6 @@ export const computeDisciplineChestSummary = (params: {
   );
   const submittedAssignmentIds = new Set(personalSubmissions.map((s) => s.assignmentId));
 
-  // Also include assignment.submittedStudentIds if no HomeworkSubmission row exists
   const directSubmittedAssignments = params.assignments.filter(
     (a) =>
       a.submittedStudentIds?.some((sid) => candidateIds.has(sid)) &&
@@ -904,12 +1200,11 @@ export const computeDisciplineChestSummary = (params: {
     claimableCoins += count * 15;
   }
 
-  // Clearing ALL pending homework unlocks a bonus Special Seed + Building Blueprint!
   const claimableBlueprints: BuildingId[] = [];
   if (canClaimHomeworkMasteryPack) {
     claimableSeeds.sunflower = (claimableSeeds.sunflower || 0) + 1;
     claimableSeeds.golden_melon = (claimableSeeds.golden_melon || 0) + 1;
-    const lockedPool: BuildingId[] = ['dairy_barn', 'school_greenhouse', 'windmill_bakery'];
+    const lockedPool: BuildingId[] = ['sheep_pen', 'school_greenhouse', 'windmill_bakery'];
     const nextBp = lockedPool.find((id) => !(params.farmState.unlockedBlueprints || []).includes(id));
     if (nextBp) claimableBlueprints.push(nextBp);
     claimableCoins += 25;
@@ -1230,7 +1525,6 @@ export const fertilizeTile = (
     return { state, ok: false, errorTh: 'ปุ๋ยทองคำหมด เช็กชื่อตรงเวลาต่อเนื่องหรือสร้างเรือนกระจกเพื่อรับปุ๋ยเพิ่ม' };
   }
 
-  // Golden Fertilizer instantly advances crop to full maturity + 2x yield flag!
   const nextTiles = state.tiles.map((t, idx) =>
     idx === tileIndex
       ? {
@@ -1605,6 +1899,231 @@ export const collectBuildingYield = (
   };
 };
 
+export const craftProductOnFarm = (
+  state: SchoolFarmState,
+  productId: ProductId
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  const prod = PRODUCT_MAP[productId];
+  const hasBuilding = state.tiles.some(
+    (t) => t.kind === 'building' && t.buildingId === prod.sourceBuildingId
+  );
+  if (!hasBuilding) {
+    return {
+      state,
+      ok: false,
+      errorTh: `ต้องสร้าง ${BUILDING_MAP[prod.sourceBuildingId].nameTh} บนฟาร์มก่อนจึงจะผลิตได้`,
+    };
+  }
+
+  const nextBarn = { ...state.barn };
+  const nextGoods = { ...(state.goods || emptyProductsRecord()) };
+
+  for (const ing of prod.ingredients) {
+    if (ing.kind === 'crop') {
+      const cropId = ing.id as CropId;
+      if ((nextBarn[cropId] || 0) < ing.qty) {
+        return {
+          state,
+          ok: false,
+          errorTh: `ต้องใช้ ${CROP_MAP[cropId].nameTh} ${ing.qty} ชิ้น (มี ${nextBarn[cropId] || 0})`,
+        };
+      }
+      nextBarn[cropId] -= ing.qty;
+    } else {
+      const pid = ing.id as ProductId;
+      if ((nextGoods[pid] || 0) < ing.qty) {
+        return {
+          state,
+          ok: false,
+          errorTh: `ต้องใช้ ${PRODUCT_MAP[pid].nameTh} ${ing.qty} ชิ้น (มี ${nextGoods[pid] || 0})`,
+        };
+      }
+      nextGoods[pid] -= ing.qty;
+    }
+  }
+
+  nextGoods[productId] = (nextGoods[productId] || 0) + 1;
+
+  return {
+    ok: true,
+    state: {
+      ...state,
+      barn: nextBarn,
+      goods: nextGoods,
+      farmXp: state.farmXp + prod.xpReward,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+export const fulfillVisitorRequest = (
+  state: SchoolFarmState,
+  visitorId: string
+): { state: SchoolFarmState; ok: boolean; visitor?: VisitorRequest; errorTh?: string } => {
+  const visitor = (state.visitorQueue || []).find((v) => v.id === visitorId);
+  if (!visitor) return { state, ok: false, errorTh: 'ไม่พบผู้มาเยือนนี้' };
+
+  const nextBarn = { ...state.barn };
+  const nextGoods = { ...(state.goods || emptyProductsRecord()) };
+
+  if (visitor.itemKind === 'crop') {
+    const cid = visitor.itemId as CropId;
+    if ((nextBarn[cid] || 0) < visitor.quantity) {
+      return {
+        state,
+        ok: false,
+        errorTh: `ต้องการ ${CROP_MAP[cid].nameTh} ${visitor.quantity} ชิ้น (มี ${nextBarn[cid] || 0})`,
+      };
+    }
+    nextBarn[cid] -= visitor.quantity;
+  } else {
+    const pid = visitor.itemId as ProductId;
+    if ((nextGoods[pid] || 0) < visitor.quantity) {
+      return {
+        state,
+        ok: false,
+        errorTh: `ต้องการ ${PRODUCT_MAP[pid].nameTh} ${visitor.quantity} ชิ้น (มี ${nextGoods[pid] || 0})`,
+      };
+    }
+    nextGoods[pid] -= visitor.quantity;
+  }
+
+  const { level } = getTownLevelFromXp(state.farmXp + visitor.rewardXp);
+  const replacement = createVisitorRequests(level, state.totalOrdersCompleted + state.visitorQueue.length + 1)[0];
+
+  return {
+    ok: true,
+    visitor,
+    state: {
+      ...state,
+      coins: state.coins + visitor.rewardCoins,
+      farmXp: state.farmXp + visitor.rewardXp,
+      barn: nextBarn,
+      goods: nextGoods,
+      totalOrdersCompleted: state.totalOrdersCompleted + 1,
+      visitorQueue: state.visitorQueue.map((v) => (v.id === visitorId ? replacement : v)),
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+export const dismissVisitorRequest = (
+  state: SchoolFarmState,
+  visitorId: string
+): SchoolFarmState => {
+  const { level } = getTownLevelFromXp(state.farmXp);
+  const replacement = createVisitorRequests(level, Math.floor(Math.random() * 10) + state.totalOrdersCompleted + 1)[0];
+  return {
+    ...state,
+    visitorQueue: (state.visitorQueue || []).map((v) => (v.id === visitorId ? replacement : v)),
+    updatedAt: new Date().toISOString(),
+  };
+};
+
+export const listItemInRoadsideShop = (
+  state: SchoolFarmState,
+  itemKind: 'crop' | 'product',
+  itemId: CropId | ProductId,
+  quantity: number,
+  priceCoins: number
+): { state: SchoolFarmState; ok: boolean; errorTh?: string } => {
+  if (quantity <= 0 || priceCoins <= 0) {
+    return { state, ok: false, errorTh: 'จำนวนและราคาต้องมากกว่า 0' };
+  }
+  const activeListings = (state.roadsideShop || []).filter((l) => !l.sold);
+  if (activeListings.length >= 6) {
+    return { state, ok: false, errorTh: 'แผงร้านค้าริมทางเต็มแล้ว (วางขายได้สูงสุด 6 ช่อง)' };
+  }
+
+  const nextBarn = { ...state.barn };
+  const nextGoods = { ...(state.goods || emptyProductsRecord()) };
+  if (itemKind === 'crop') {
+    const cid = itemId as CropId;
+    if ((nextBarn[cid] || 0) < quantity) {
+      return { state, ok: false, errorTh: 'ผลผลิตในโรงนาไม่พอ' };
+    }
+    nextBarn[cid] -= quantity;
+  } else {
+    const pid = itemId as ProductId;
+    if ((nextGoods[pid] || 0) < quantity) {
+      return { state, ok: false, errorTh: 'สินค้าแปรรูปในคลังไม่พอ' };
+    }
+    nextGoods[pid] -= quantity;
+  }
+
+  const listing: RoadsideListing = {
+    id: `shop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    itemKind,
+    itemId,
+    quantity,
+    priceCoins,
+    sold: false,
+  };
+
+  return {
+    ok: true,
+    state: {
+      ...state,
+      barn: nextBarn,
+      goods: nextGoods,
+      roadsideShop: [listing, ...(state.roadsideShop || []).slice(0, 9)],
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+export const buyFromNeighborRoadsideShop = (
+  buyerState: SchoolFarmState,
+  sellerState: SchoolFarmState,
+  listingId: string
+): {
+  buyerState: SchoolFarmState;
+  sellerState: SchoolFarmState;
+  ok: boolean;
+  errorTh?: string;
+} => {
+  if (buyerState.userId === sellerState.userId) {
+    return { buyerState, sellerState, ok: false, errorTh: 'ไม่สามารถซื้อสินค้าจากร้านของตัวเองได้' };
+  }
+  const listing = (sellerState.roadsideShop || []).find((l) => l.id === listingId && !l.sold);
+  if (!listing) {
+    return { buyerState, sellerState, ok: false, errorTh: 'สินค้ารายการนี้ถูกซื้อไปแล้ว' };
+  }
+  if (buyerState.coins < listing.priceCoins) {
+    return { buyerState, sellerState, ok: false, errorTh: `เหรียญฟาร์มไม่พอ (ต้องการ ${listing.priceCoins}🪙)` };
+  }
+
+  const nextBuyerBarn = { ...buyerState.barn };
+  const nextBuyerGoods = { ...(buyerState.goods || emptyProductsRecord()) };
+  if (listing.itemKind === 'crop') {
+    const cid = listing.itemId as CropId;
+    nextBuyerBarn[cid] = (nextBuyerBarn[cid] || 0) + listing.quantity;
+  } else {
+    const pid = listing.itemId as ProductId;
+    nextBuyerGoods[pid] = (nextBuyerGoods[pid] || 0) + listing.quantity;
+  }
+
+  return {
+    ok: true,
+    buyerState: {
+      ...buyerState,
+      coins: buyerState.coins - listing.priceCoins,
+      barn: nextBuyerBarn,
+      goods: nextBuyerGoods,
+      farmXp: buyerState.farmXp + 8,
+      updatedAt: new Date().toISOString(),
+    },
+    sellerState: {
+      ...sellerState,
+      coins: sellerState.coins + listing.priceCoins,
+      roadsideShop: sellerState.roadsideShop.map((l) =>
+        l.id === listingId ? { ...l, sold: true, buyerName: buyerState.ownerName } : l
+      ),
+      updatedAt: new Date().toISOString(),
+    },
+  };
+};
+
 export const getCropSellMultiplier = (state: SchoolFarmState): number => {
   const bakeryBonus = state.tiles.reduce((sum, t) => {
     if (t.kind === 'building' && t.buildingId === 'windmill_bakery') {
@@ -1673,13 +2192,26 @@ export const fulfillMarketOrder = (
 ): { state: SchoolFarmState; ok: boolean; order?: MarketOrder; errorTh?: string } => {
   const order = state.marketOrders.find((o) => o.id === orderId);
   if (!order) return { state, ok: false, errorTh: 'ไม่พบออเดอร์นี้' };
-  const owned = state.barn[order.cropId] || 0;
-  if (owned < order.quantity) {
+  const ownedCrop = state.barn[order.cropId] || 0;
+  if (ownedCrop < order.quantity) {
     return {
       state,
       ok: false,
-      errorTh: `ต้องการ${CROP_MAP[order.cropId].nameTh} ${order.quantity} ชิ้น (มีอยู่ ${owned} ชิ้น)`,
+      errorTh: `ต้องการ${CROP_MAP[order.cropId].nameTh} ${order.quantity} ชิ้น (มีอยู่ ${ownedCrop} ชิ้น)`,
     };
+  }
+
+  const nextGoods = { ...(state.goods || emptyProductsRecord()) };
+  if (order.productId && order.productQty) {
+    const ownedProd = nextGoods[order.productId] || 0;
+    if (ownedProd < order.productQty) {
+      return {
+        state,
+        ok: false,
+        errorTh: `ต้องการ ${PRODUCT_MAP[order.productId].nameTh} ${order.productQty} ชิ้น (มีอยู่ ${ownedProd} ชิ้น)`,
+      };
+    }
+    nextGoods[order.productId] = ownedProd - order.productQty;
   }
 
   const { level } = getTownLevelFromXp(state.farmXp + order.rewardXp);
@@ -1697,8 +2229,9 @@ export const fulfillMarketOrder = (
       totalOrdersCompleted: state.totalOrdersCompleted + 1,
       barn: {
         ...state.barn,
-        [order.cropId]: owned - order.quantity,
+        [order.cropId]: ownedCrop - order.quantity,
       },
+      goods: nextGoods,
       marketOrders: nextOrders,
       updatedAt: new Date().toISOString(),
     },

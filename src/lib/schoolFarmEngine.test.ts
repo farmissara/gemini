@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   applyDailyFertilizerTile,
   applyQuizBoostReward,
+  buyFromNeighborRoadsideShop,
   buySeedPack,
   calculateTownProsperity,
   claimDisciplineSupplies,
@@ -10,13 +11,17 @@ import {
   collectBuildingYield,
   computeDisciplineChestSummary,
   constructBuildingOnTile,
+  craftProductOnFarm,
   createInitialFarmState,
+  dismissVisitorRequest,
   expandFarmGridTo8x8,
   fertilizeTile,
   fulfillMarketOrder,
+  fulfillVisitorRequest,
   getFarmGridSize,
   harvestTile,
   helpNeighborFarm,
+  listItemInRoadsideShop,
   plantCropOnTile,
   sellCropFromBarn,
   syncBehaviorWeedsOntoFarm,
@@ -427,5 +432,80 @@ describe('schoolFarmEngine', () => {
     assert.equal(helpRes.ok, true);
     assert.equal(helpRes.wateredCropTile, true);
     assert.equal(helpRes.neighborState.tiles[15].growthProgress, 2);
+  });
+
+  it('starts with Hay Day starter farmstead, supports crafting products, NPC visitors, roadside shop trading, and compound orders', () => {
+    let state = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-seller',
+      ownerName: 'ปันปัน',
+    });
+
+    // Starter farmstead does not start at 0
+    assert.ok(state.coins >= 350);
+    assert.equal(state.tiles[8].buildingId, 'farm_cottage');
+    assert.equal(state.tiles[9].buildingId, 'chicken_coop');
+    assert.equal(state.tiles[19].buildingId, 'wooden_fence');
+    assert.equal(state.goods.egg, 1);
+    assert.ok(state.visitorQueue.length >= 2);
+
+    // Harvest starter corn at index 14, then craft Fresh Egg at starter chicken_coop
+    const hCorn = harvestTile(state, 14);
+    assert.equal(hCorn.ok, true);
+    state = hCorn.state;
+    assert.equal(state.barn.corn, 1);
+
+    const craftedEgg = craftProductOnFarm(state, 'egg');
+    assert.equal(craftedEgg.ok, true);
+    state = craftedEgg.state;
+    assert.equal(state.barn.corn, 0);
+    assert.equal(state.goods.egg, 2);
+
+    // Compound order check (tomato + egg)
+    state = {
+      ...state,
+      barn: { ...state.barn, tomato: 2, corn: 3 },
+    };
+    const compoundOrder = state.marketOrders.find((o) => o.productId === 'egg');
+    assert.ok(compoundOrder);
+    const ordDelivered = fulfillMarketOrder(state, compoundOrder.id);
+    assert.equal(ordDelivered.ok, true);
+    state = ordDelivered.state;
+    assert.equal(state.goods.egg, 1);
+
+    // Serve NPC visitor & dismiss another
+    const cornVisitor = state.visitorQueue.find((v) => v.itemId === 'corn');
+    assert.ok(cornVisitor);
+    const served = fulfillVisitorRequest(state, cornVisitor.id);
+    assert.equal(served.ok, true);
+    state = served.state;
+    assert.equal(state.barn.corn, 1);
+
+    const firstVisId = state.visitorQueue[0].id;
+    const afterDismiss = dismissVisitorRequest(state, firstVisId);
+    assert.equal(afterDismiss.visitorQueue.length, state.visitorQueue.length);
+
+    // Roadside shop listing & neighbor purchase
+    const listed = listItemInRoadsideShop(state, 'product', 'egg', 1, 60);
+    assert.equal(listed.ok, true);
+    state = listed.state;
+    assert.equal(state.goods.egg, 0);
+    assert.equal(state.roadsideShop.length, 1);
+
+    const buyer = createInitialFarmState({
+      schoolId: 'sch-1',
+      userId: 'usr-buyer',
+      ownerName: 'น้ำใส',
+    });
+    // Prevent self-buy
+    const selfBuy = buyFromNeighborRoadsideShop(state, state, state.roadsideShop[0].id);
+    assert.equal(selfBuy.ok, false);
+
+    const trade = buyFromNeighborRoadsideShop(buyer, state, state.roadsideShop[0].id);
+    assert.equal(trade.ok, true);
+    assert.equal(trade.buyerState.coins, buyer.coins - 60);
+    assert.equal(trade.buyerState.goods.egg, buyer.goods.egg + 1);
+    assert.equal(trade.sellerState.coins, state.coins + 60);
+    assert.equal(trade.sellerState.roadsideShop[0].sold, true);
   });
 });

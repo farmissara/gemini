@@ -2,11 +2,14 @@ import React from 'react';
 import {
   BUILDING_MAP,
   CROP_MAP,
+  PRODUCT_MAP,
   getFarmGridSize,
   getPlotUnlockStarCost,
   type CropId,
   type FarmTile,
   type FarmTool,
+  type ProductId,
+  type VisitorRequest,
 } from '../../lib/schoolFarmEngine';
 
 export interface FloatingFeedback {
@@ -26,11 +29,18 @@ interface IsometricFarmBoardProps {
   allowNeighborCropWater?: boolean;
   feedbacks: FloatingFeedback[];
   lang: 'th' | 'en';
+  ordersCount?: number;
+  roadsideCount?: number;
+  visitors?: VisitorRequest[];
+  truckAnimating?: boolean;
   onTileActivate: (tileIndex: number) => void;
+  onOpenMarket?: () => void;
+  onOpenShop?: () => void;
+  onOpenVisitors?: () => void;
 }
 
 const VIEWBOX_W = 680;
-const VIEWBOX_H = 450;
+const VIEWBOX_H = 468;
 
 export const getBoardGeometry = (gridSize: 6 | 8) => {
   const tileW = gridSize === 8 ? 72 : 92;
@@ -39,7 +49,7 @@ export const getBoardGeometry = (gridSize: 6 | 8) => {
   const halfH = tileH / 2;
   const blockDepth = gridSize === 8 ? 10 : 12;
   const originX = VIEWBOX_W / 2;
-  const originY = gridSize === 8 ? 64 : 76;
+  const originY = gridSize === 8 ? 64 : 78;
   return { gridSize, tileW, tileH, halfW, halfH, blockDepth, originX, originY };
 };
 
@@ -59,7 +69,6 @@ const renderCropArt = (
   cy: number,
   scale: number
 ) => {
-  // Stage 0: Seeds sown in soil
   if (stageRatio <= 0) {
     return (
       <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
@@ -70,7 +79,6 @@ const renderCropArt = (
     );
   }
 
-  // Stage 1: Fresh green sprout (ต้นกล้า)
   if (stageRatio < 0.5) {
     return (
       <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
@@ -81,7 +89,6 @@ const renderCropArt = (
     );
   }
 
-  // Stage 2: Flowering / budding stage (ออกดอก)
   if (!isReady) {
     const blossomColor = CROP_MAP[cropId]?.accentColor || '#fef08a';
     return (
@@ -89,7 +96,6 @@ const renderCropArt = (
         <ellipse cx="-9" cy="-4" rx="9" ry="7" fill="#16a34a" stroke="#14532d" strokeWidth="1.2" />
         <ellipse cx="9" cy="-5" rx="9" ry="7" fill="#22c55e" stroke="#14532d" strokeWidth="1.2" />
         <ellipse cx="0" cy="-10" rx="10" ry="8" fill="#4ade80" stroke="#14532d" strokeWidth="1.2" />
-        {/* Delicate blossoms */}
         <g transform="translate(-5, -13)">
           <circle cx="0" cy="0" r="3.2" fill="#ffffff" stroke="#cbd5e1" strokeWidth="0.6" />
           <circle cx="0" cy="0" r="1.4" fill={blossomColor} />
@@ -102,7 +108,6 @@ const renderCropArt = (
     );
   }
 
-  // Stage 3: Ready to harvest (พร้อมเก็บเกี่ยว)
   switch (cropId) {
     case 'corn':
       return (
@@ -222,30 +227,28 @@ const renderBuildingArt = (
           <polygon points="-18,-2 0,7 18,-2 18,-18 0,-9 -18,-18" fill="#fde68a" stroke="#78350f" strokeWidth="1.3" />
           <polygon points="0,7 18,-2 18,-18 0,-9" fill="#f59e0b" stroke="#78350f" strokeWidth="1.3" />
           <polygon points="-21,-17 0,-29 21,-17 0,-7" fill="#dc2626" stroke={roofTrim || '#7f1d1d'} strokeWidth={roofTrim ? 2 : 1.4} />
-          {/* Little animated hen */}
           <g className="farm-animal-bob">
-            <circle cx="13" cy="5" r="4" fill="#ffffff" stroke="#475569" strokeWidth="1" />
-            <circle cx="15.5" cy="2" r="2.2" fill="#ffffff" stroke="#475569" strokeWidth="1" />
-            <polygon points="17.5,2 20,2.7 17.5,3.5" fill="#f97316" />
+            <circle cx="13" cy="5" r="4.2" fill="#ffffff" stroke="#475569" strokeWidth="1" />
+            <circle cx="15.5" cy="1.8" r="2.3" fill="#ffffff" stroke="#475569" strokeWidth="1" />
+            <circle cx="15.5" cy="-0.4" r="1" fill="#ef4444" />
+            <polygon points="17.8,2 20.5,2.7 17.8,3.5" fill="#f97316" />
           </g>
-          {buildingLevel >= 2 && (
-            <circle cx="-13" cy="6" r="3" fill="#fef3c7" stroke="#92400e" strokeWidth="0.9" />
-          )}
+          <g className="farm-animal-bob" style={{ animationDelay: '0.7s' }}>
+            <circle cx="-12" cy="5" r="3.4" fill="#fef3c7" stroke="#92400e" strokeWidth="0.9" />
+            <circle cx="-14" cy="2.5" r="1.9" fill="#fef3c7" stroke="#92400e" strokeWidth="0.9" />
+            <polygon points="-15.8,2.5 -18,3.2 -15.8,3.8" fill="#f97316" />
+          </g>
         </g>
       );
     case 'farm_cottage':
       return (
         <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
-          {/* Chimney */}
           <rect x="7" y="-33" width="5" height="11" fill="#b45309" stroke="#78350f" strokeWidth="1" />
           <circle cx="10" cy="-37" r="2.2" fill="#e2e8f0" opacity="0.7" />
-          {/* Walls */}
           <polygon points="-20,-1 0,9 0,-14 -20,-24" fill="#fffbeb" stroke="#78350f" strokeWidth="1.3" />
           <polygon points="0,9 20,-1 20,-24 0,-14" fill="#fde68a" stroke="#78350f" strokeWidth="1.3" />
-          {/* Warm window & door */}
           <polygon points="-13,-4 -7,-1 -7,-11 -13,-14" fill="#92400e" stroke="#451a03" strokeWidth="0.9" />
           <polygon points="6,-4 14,-8 14,-15 6,-11" fill="#38bdf8" stroke="#0369a1" strokeWidth="1" />
-          {/* Roof */}
           <polygon points="-23,-22 0,-36 23,-22 0,-11" fill="#e11d48" stroke={roofTrim || '#881337'} strokeWidth={roofTrim ? 2 : 1.4} />
         </g>
       );
@@ -269,10 +272,54 @@ const renderBuildingArt = (
           <line x1="-14" y1="-16" x2="-5" y2="1" stroke="#b91c1c" strokeWidth="1" />
           <line x1="-5" y1="-12" x2="-14" y2="-3" stroke="#b91c1c" strokeWidth="1" />
           <g className="farm-animal-bob">
-            <ellipse cx="14" cy="6" rx="6" ry="4" fill="#ffffff" stroke="#334155" strokeWidth="1.1" />
-            <circle cx="12" cy="5" r="1.6" fill="#1e293b" />
-            <circle cx="18" cy="3" r="2.6" fill="#ffffff" stroke="#334155" strokeWidth="1.1" />
+            <ellipse cx="14" cy="6" rx="6.5" ry="4.2" fill="#ffffff" stroke="#334155" strokeWidth="1.1" />
+            <circle cx="12" cy="5" r="1.7" fill="#1e293b" />
+            <circle cx="18.5" cy="3" r="2.8" fill="#ffffff" stroke="#334155" strokeWidth="1.1" />
+            <ellipse cx="20" cy="4.2" rx="1.6" ry="1.1" fill="#fbcfe8" />
           </g>
+        </g>
+      );
+    case 'sheep_pen':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          {/* Pasture fence */}
+          <polygon points="-22,0 0,10 22,0 0,-10" fill="#86efac" fillOpacity="0.65" stroke="#92400e" strokeWidth="1.6" />
+          <line x1="-22" y1="-5" x2="0" y2="-15" stroke="#b45309" strokeWidth="2.2" />
+          <line x1="0" y1="-15" x2="22" y2="-5" stroke="#b45309" strokeWidth="2.2" />
+          <rect x="-22" y="-7" width="3" height="8" fill="#92400e" />
+          <rect x="-1.5" y="-17" width="3" height="8" fill="#92400e" />
+          <rect x="19" y="-7" width="3" height="8" fill="#92400e" />
+          {/* Cute fluffy sheep 1 */}
+          <g className="farm-animal-bob">
+            <circle cx="-6" cy="-2" r="5.5" fill="#ffffff" stroke="#64748b" strokeWidth="1.1" />
+            <circle cx="-9" cy="-4" r="3" fill="#ffffff" />
+            <circle cx="-3" cy="-4" r="3" fill="#ffffff" />
+            <circle cx="-1" cy="-1" r="2.8" fill="#334155" />
+            <circle cx="0" cy="-1.5" r="0.8" fill="#ffffff" />
+          </g>
+          {/* Cute fluffy sheep 2 */}
+          <g className="farm-animal-bob" style={{ animationDelay: '0.8s' }}>
+            <circle cx="8" cy="2" r="4.8" fill="#f8fafc" stroke="#64748b" strokeWidth="1" />
+            <circle cx="12" cy="2" r="2.4" fill="#334155" />
+            <circle cx="12.6" cy="1.4" r="0.7" fill="#ffffff" />
+          </g>
+        </g>
+      );
+    case 'juice_stand':
+      return (
+        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+          {/* Wooden counter */}
+          <polygon points="-19,0 0,9 19,0 19,-11 0,-2 -19,-11" fill="#f59e0b" stroke="#78350f" strokeWidth="1.3" />
+          <polygon points="0,9 19,0 19,-11 0,-2" fill="#d97706" stroke="#78350f" strokeWidth="1.3" />
+          {/* Poles */}
+          <line x1="-16" y1="-10" x2="-16" y2="-23" stroke="#78350f" strokeWidth="2.2" />
+          <line x1="16" y1="-10" x2="16" y2="-23" stroke="#78350f" strokeWidth="2.2" />
+          {/* Candy-striped canopy */}
+          <polygon points="-21,-20 0,-32 21,-20 0,-11" fill="#fb7185" stroke={roofTrim || '#be123c'} strokeWidth={roofTrim ? 2 : 1.4} />
+          <polygon points="-10,-26 0,-32 6,-28 -4,-15" fill="#fff1f2" opacity="0.85" />
+          {/* Smoothie blender jar */}
+          <rect x="-4" y="-17" width="8" height="10" rx="2" fill="#f43f5e" stroke="#ffffff" strokeWidth="1.1" />
+          <line x1="1" y1="-17" x2="4" y2="-22" stroke="#fef08a" strokeWidth="1.6" strokeLinecap="round" />
         </g>
       );
     case 'school_greenhouse':
@@ -284,7 +331,6 @@ const renderBuildingArt = (
           <circle cx="-6" cy="-7" r="4.5" fill="#22c55e" opacity="0.85" />
           <circle cx="6" cy="-6" r="4.5" fill="#16a34a" opacity="0.85" />
           <circle cx="0" cy="-12" r="5" fill="#4ade80" opacity="0.85" />
-          {/* Butterfly */}
           <g transform="translate(12, -26)" className="farm-animal-bob">
             <ellipse cx="-2" cy="0" rx="2.2" ry="1.5" fill="#f472b6" />
             <ellipse cx="2" cy="0" rx="2.2" ry="1.5" fill="#ec4899" />
@@ -338,7 +384,14 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   allowNeighborCropWater = false,
   feedbacks,
   lang,
+  ordersCount = 0,
+  roadsideCount = 0,
+  visitors = [],
+  truckAnimating = false,
   onTileActivate,
+  onOpenMarket,
+  onOpenShop,
+  onOpenVisitors,
 }) => {
   const geom = getBoardGeometry(getFarmGridSize(tiles));
   const { gridSize, tileH, halfW, halfH, blockDepth, originX, originY } = geom;
@@ -347,7 +400,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
   const unlockedCount = tiles.filter((t) => t.unlocked).length;
   const nextUnlockCost = getPlotUnlockStarCost(unlockedCount);
 
-  // Render back-to-front in isometric depth order (row + col ascending)
   const orderedTiles = [...tiles].sort((a, b) => a.row + a.col - (b.row + b.col) || a.row - b.row);
 
   return (
@@ -365,6 +417,9 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
           }
           .farm-float-up {
             animation: farmFloatUp 1.15s ease-out forwards;
+          }
+          .farm-truck-drive {
+            animation: farmTruckDrive 1.1s ease-in-out;
           }
         }
         @keyframes farmBounce {
@@ -384,6 +439,12 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
           20% { opacity: 1; transform: translateY(-4px) scale(1); }
           100% { opacity: 0; transform: translateY(-28px) scale(1); }
         }
+        @keyframes farmTruckDrive {
+          0% { transform: translate(0, 0); }
+          45% { transform: translate(38px, -14px); opacity: 0.7; }
+          55% { transform: translate(-18px, 6px); opacity: 0.9; }
+          100% { transform: translate(0, 0); opacity: 1; }
+        }
       `}</style>
 
       <svg
@@ -400,13 +461,43 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
         </defs>
 
         {/* Sun & gentle clouds */}
-        <circle cx="72" cy="50" r="24" fill="#fde047" opacity="0.72" />
-        <circle cx="72" cy="50" r="34" fill="#fef08a" opacity="0.28" />
-        <g opacity="0.65" fill="#ffffff">
+        <circle cx="72" cy="50" r="24" fill="#fde047" opacity="0.78" />
+        <circle cx="72" cy="50" r="34" fill="#fef08a" opacity="0.3" />
+        <g opacity="0.68" fill="#ffffff">
           <ellipse cx="185" cy="44" rx="28" ry="11" />
           <ellipse cx="205" cy="39" rx="18" ry="10" />
           <ellipse cx="515" cy="54" rx="32" ry="12" />
           <ellipse cx="536" cy="48" rx="20" ry="10" />
+        </g>
+
+        {/* Country dirt road skirting front & upper-right */}
+        <path
+          d="M 15 390 Q 170 435 340 422 T 665 345"
+          fill="none"
+          stroke="#d6b27e"
+          strokeWidth="22"
+          strokeLinecap="round"
+          opacity="0.7"
+        />
+        <path
+          d="M 480 125 Q 570 112 675 95"
+          fill="none"
+          stroke="#d6b27e"
+          strokeWidth="16"
+          strokeLinecap="round"
+          opacity="0.65"
+        />
+
+        {/* Ambient Meadow Trees on outer edges */}
+        <g transform="translate(52, 195)">
+          <rect x="-3" y="4" width="6" height="14" rx="2" fill="#92400e" />
+          <circle cx="0" cy="-6" r="14" fill="#22c55e" stroke="#15803d" strokeWidth="1.4" />
+          <circle cx="-7" cy="-2" r="9" fill="#4ade80" />
+        </g>
+        <g transform="translate(625, 220)">
+          <rect x="-3" y="4" width="6" height="14" rx="2" fill="#92400e" />
+          <circle cx="0" cy="-6" r="15" fill="#16a34a" stroke="#14532d" strokeWidth="1.4" />
+          <circle cx="6" cy="-3" r="9" fill="#4ade80" />
         </g>
 
         {/* Wooden Farm Nameplate Sign */}
@@ -416,6 +507,74 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             <text x="0" y="3" textAnchor="middle" fontSize="11.5" fontWeight="800" fill="#fef3c7">
               {farmName} · {gridSize}×{gridSize}
             </text>
+          </g>
+        )}
+
+        {/* Hay Day Farmer Character Sprite on top-left meadow */}
+        <g transform="translate(115, 138)" className="farm-animal-bob">
+          {/* Shadow */}
+          <ellipse cx="0" cy="18" rx="12" ry="4" fill="#3f6212" opacity="0.25" />
+          {/* Overalls */}
+          <rect x="-7" y="1" width="14" height="14" rx="4" fill="#2563eb" stroke="#1e3a8a" strokeWidth="1.2" />
+          <rect x="-7" y="-2" width="14" height="5" rx="2" fill="#fef3c7" stroke="#b45309" strokeWidth="0.9" />
+          {/* Head & smile */}
+          <circle cx="0" cy="-10" r="8" fill="#fed7aa" stroke="#9a3412" strokeWidth="1.1" />
+          <circle cx="-2.8" cy="-10.5" r="1.1" fill="#1e293b" />
+          <circle cx="2.8" cy="-10.5" r="1.1" fill="#1e293b" />
+          <path d="M-2.5 -7 Q0 -5 2.5 -7" stroke="#9a3412" strokeWidth="1.1" fill="none" strokeLinecap="round" />
+          {/* Straw farm hat */}
+          <ellipse cx="0" cy="-15" rx="13" ry="3.8" fill="#facc15" stroke="#a16207" strokeWidth="1.2" />
+          <path d="M-7 -16 Q0 -25 7 -16 Z" fill="#eab308" stroke="#a16207" strokeWidth="1.2" />
+          <rect x="-6.5" y="-17.5" width="13" height="2" fill="#dc2626" />
+          {/* Waving arm */}
+          <line x1="7" y1="-1" x2="14" y2="-8" stroke="#fed7aa" strokeWidth="3.2" strokeLinecap="round" />
+        </g>
+
+        {/* Hay Day Clickable Delivery Truck + Order Board (Top-Right) */}
+        {!readOnly && (
+          <g
+            transform="translate(572, 108)"
+            role={onOpenMarket ? 'button' : undefined}
+            tabIndex={onOpenMarket ? 0 : -1}
+            aria-label={lang === 'th' ? 'เปิดรถบรรทุกส่งออเดอร์ตลาด' : 'Open delivery truck orders'}
+            onClick={() => onOpenMarket?.()}
+            onKeyDown={(e) => {
+              if (onOpenMarket && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onOpenMarket();
+              }
+            }}
+            className={onOpenMarket ? 'cursor-pointer group' : ''}
+          >
+            {/* Order Board Signpost */}
+            <g transform="translate(-44, 2)">
+              <rect x="-1.5" y="-4" width="3" height="18" fill="#78350f" />
+              <rect x="-15" y="-22" width="30" height="20" rx="3" fill="#fde68a" stroke="#92400e" strokeWidth="1.4" />
+              <line x1="-10" y1="-16" x2="10" y2="-16" stroke="#b45309" strokeWidth="1.5" />
+              <line x1="-10" y1="-11" x2="6" y2="-11" stroke="#b45309" strokeWidth="1.5" />
+              <text x="0" y="-4.5" textAnchor="middle" fontSize="7.5" fontWeight="800" fill="#78350f">
+                {ordersCount} ออเดอร์
+              </text>
+            </g>
+
+            {/* Delivery Truck */}
+            <g className={truckAnimating ? 'farm-truck-drive' : 'group-hover:opacity-90 transition-opacity'}>
+              <ellipse cx="14" cy="12" rx="26" ry="7" fill="#4d7c0f" opacity="0.28" />
+              {/* Cargo Box */}
+              <rect x="-8" y="-16" width="28" height="20" rx="3" fill="#f59e0b" stroke="#78350f" strokeWidth="1.4" />
+              <rect x="-4" y="-12" width="20" height="12" rx="1.5" fill="#fef3c7" opacity="0.7" />
+              {/* Truck Cab */}
+              <path d="M20 -11 L32 -11 L37 -2 L37 4 L20 4 Z" fill="#dc2626" stroke="#7f1d1d" strokeWidth="1.4" />
+              <polygon points="22,-8 30,-8 34,-2 22,-2" fill="#bae6fd" stroke="#0369a1" strokeWidth="1" />
+              {/* Wheels */}
+              <circle cx="3" cy="6" r="5" fill="#1e293b" stroke="#cbd5e1" strokeWidth="1.5" />
+              <circle cx="29" cy="6" r="5" fill="#1e293b" stroke="#cbd5e1" strokeWidth="1.5" />
+              {/* Badge */}
+              <rect x="-10" y="-31" width="44" height="14" rx="7" fill="#d97706" stroke="#ffffff" strokeWidth="1.1" />
+              <text x="12" y="-21" textAnchor="middle" fontSize="8" fontWeight="800" fill="#ffffff">
+                รถส่งของ
+              </text>
+            </g>
           </g>
         )}
 
@@ -449,8 +608,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
           );
           const canInteract = !readOnly || isNeighborWaterable;
 
-          // Tile color palette based on state
-          let topFill = '#84cc16'; // locked soft grass
+          let topFill = '#84cc16';
           let leftEdge = '#65a30d';
           let rightEdge = '#4d7c0f';
           let strokeColor = '#3f6212';
@@ -461,7 +619,7 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
               leftEdge = '#94a3b8';
               rightEdge = '#64748b';
               strokeColor = '#475569';
-            } else if (isBuilding && tile.buildingId === 'wooden_fence') {
+            } else if (isBuilding && (tile.buildingId === 'wooden_fence' || tile.buildingId === 'sheep_pen')) {
               topFill = '#a3e635';
               leftEdge = '#65a30d';
               rightEdge = '#4d7c0f';
@@ -530,7 +688,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
               }}
               className={canInteract ? 'cursor-pointer group focus:outline-none' : 'cursor-default'}
             >
-              {/* Extruded 3D Isometric Tile */}
               <polygon points={leftPts} fill={leftEdge} />
               <polygon points={rightPts} fill={rightEdge} />
               <polygon
@@ -541,7 +698,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 className="transition-opacity group-hover:opacity-90"
               />
 
-              {/* Furrow lines on tilled soil */}
               {tile.unlocked && isTilled && !isBuilding && !isWeed && (
                 <g opacity="0.35" stroke="#451a03" strokeWidth="1.2">
                   <line x1={x - 14 * spriteScale} y1={centerY - 2} x2={x + 6 * spriteScale} y2={centerY + 8 * spriteScale} />
@@ -549,7 +705,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </g>
               )}
 
-              {/* Soft clover tufts on untilled grass */}
               {tile.unlocked && !isTilled && tile.kind === 'empty' && (
                 <g transform={`translate(${centerX}, ${centerY}) scale(${spriteScale})`} opacity="0.55" fill="#4d7c0f">
                   <circle cx="-8" cy="1" r="2" />
@@ -558,7 +713,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </g>
               )}
 
-              {/* Locked outer zone fence cue */}
               {!tile.unlocked && (
                 <g transform={`translate(${centerX}, ${centerY}) scale(${spriteScale})`} opacity="0.82">
                   <line x1="-14" y1="2" x2="14" y2="-8" stroke="#78350f" strokeWidth="2" strokeLinecap="round" />
@@ -575,7 +729,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </g>
               )}
 
-              {/* Fertilized golden sparkle */}
               {tile.fertilized && (
                 <g transform={`translate(${centerX}, ${centerY}) scale(${spriteScale})`}>
                   <circle cx="-18" cy="-3" r="2.2" fill="#fde047" />
@@ -583,7 +736,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </g>
               )}
 
-              {/* Weeds or Pests from behavior deductions */}
               {isWeed && (
                 <g transform={`translate(${centerX}, ${centerY}) scale(${spriteScale})`}>
                   {tile.weedVariant === 'pest' ? (
@@ -602,7 +754,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </g>
               )}
 
-              {/* Crop */}
               {isCrop && cropDef && tile.cropId && (
                 <>
                   {renderCropArt(
@@ -630,7 +781,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </>
               )}
 
-              {/* Building */}
               {isBuilding && (
                 <>
                   {renderBuildingArt(tile.buildingId, tile.buildingLevel || 1, centerX, centerY, spriteScale)}
@@ -653,7 +803,6 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
                 </>
               )}
 
-              {/* Highlight Ring when active */}
               {isSelected && (
                 <polygon
                   points={topPts}
@@ -666,6 +815,101 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
             </g>
           );
         })}
+
+        {/* Hay Day Roadside Shop Stand (Bottom-Left Road) */}
+        {!readOnly && (
+          <g
+            transform="translate(95, 392)"
+            role={onOpenShop ? 'button' : undefined}
+            tabIndex={onOpenShop ? 0 : -1}
+            aria-label={lang === 'th' ? 'เปิดแผงร้านค้าริมทาง' : 'Open roadside shop'}
+            onClick={() => onOpenShop?.()}
+            onKeyDown={(e) => {
+              if (onOpenShop && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onOpenShop();
+              }
+            }}
+            className={onOpenShop ? 'cursor-pointer group' : ''}
+          >
+            <ellipse cx="0" cy="14" rx="34" ry="8" fill="#4d7c0f" opacity="0.25" />
+            <rect x="-26" y="-4" width="52" height="16" rx="2" fill="#b45309" stroke="#78350f" strokeWidth="1.3" />
+            <line x1="-22" y1="-4" x2="-22" y2="-22" stroke="#78350f" strokeWidth="2.5" />
+            <line x1="22" y1="-4" x2="22" y2="-22" stroke="#78350f" strokeWidth="2.5" />
+            {/* Striped Canopy */}
+            <polygon points="-32,-20 32,-20 26,-34 -26,-34" fill="#ef4444" stroke="#991b1b" strokeWidth="1.3" />
+            <polygon points="-16,-20 -5,-20 -3,-34 -13,-34" fill="#ffffff" />
+            <polygon points="6,-20 17,-20 14,-34 4,-34" fill="#ffffff" />
+            {/* Produce crates */}
+            <circle cx="-11" cy="-7" r="4" fill="#facc15" stroke="#a16207" strokeWidth="1" />
+            <circle cx="0" cy="-7" r="4" fill="#ef4444" stroke="#991b1b" strokeWidth="1" />
+            <circle cx="11" cy="-7" r="4" fill="#fb923c" stroke="#9a3412" strokeWidth="1" />
+            <rect x="-32" y="15" width="64" height="16" rx="8" fill="#0f766e" stroke="#ffffff" strokeWidth="1.1" />
+            <text x="0" y="26" textAnchor="middle" fontSize="8.5" fontWeight="800" fill="#ffffff">
+              แผงริมทาง ({roadsideCount})
+            </text>
+          </g>
+        )}
+
+        {/* Hay Day NPC Visitors Waiting Along Front Path (Bottom-Right) */}
+        {!readOnly && visitors.length > 0 && (
+          <g
+            transform="translate(565, 385)"
+            role={onOpenVisitors ? 'button' : undefined}
+            tabIndex={onOpenVisitors ? 0 : -1}
+            aria-label={lang === 'th' ? 'คุยกับชาวบ้านผู้มาเยือนฟาร์ม' : 'Talk to farm visitors'}
+            onClick={() => onOpenVisitors?.()}
+            onKeyDown={(e) => {
+              if (onOpenVisitors && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                onOpenVisitors();
+              }
+            }}
+            className={onOpenVisitors ? 'cursor-pointer group' : ''}
+          >
+            {visitors.slice(0, 2).map((vis, idx) => {
+              const ox = idx === 0 ? -24 : 20;
+              const shirt =
+                vis.npcId === 'aunt_malee'
+                  ? '#ec4899'
+                  : vis.npcId === 'uncle_somchai'
+                    ? '#0284c7'
+                    : vis.npcId === 'teacher_dao'
+                      ? '#7c3aed'
+                      : '#10b981';
+              const itemLabel =
+                vis.itemKind === 'crop'
+                  ? CROP_MAP[vis.itemId as CropId]?.nameTh
+                  : PRODUCT_MAP[vis.itemId as ProductId]?.nameTh;
+              return (
+                <g key={vis.id} transform={`translate(${ox}, 0)`} className="farm-animal-bob" style={{ animationDelay: `${idx * 0.45}s` }}>
+                  <ellipse cx="0" cy="14" rx="10" ry="3.5" fill="#4d7c0f" opacity="0.25" />
+                  <rect x="-6.5" y="0" width="13" height="13" rx="4" fill={shirt} stroke="#1e293b" strokeWidth="1.1" />
+                  <circle cx="0" cy="-9" r="7" fill="#fed7aa" stroke="#9a3412" strokeWidth="1.1" />
+                  <circle cx="-2.3" cy="-9.5" r="1" fill="#1e293b" />
+                  <circle cx="2.3" cy="-9.5" r="1" fill="#1e293b" />
+                  <path d="M-2 -6.5 Q0 -5 2 -6.5" stroke="#9a3412" strokeWidth="1" fill="none" />
+                  {vis.npcId === 'aunt_malee' && <circle cx="0" cy="-16.5" r="3.5" fill="#334155" />}
+                  {vis.npcId === 'uncle_somchai' && (
+                    <ellipse cx="0" cy="-14.5" rx="9" ry="2.8" fill="#f59e0b" stroke="#92400e" strokeWidth="1" />
+                  )}
+                  {idx === 0 && (
+                    <g transform="translate(0, -34)">
+                      <rect x="-36" y="-11" width="72" height="18" rx="9" fill="#ffffff" stroke="#0f172a" strokeWidth="1.2" />
+                      <text x="0" y="1" textAnchor="middle" fontSize="8" fontWeight="800" fill="#0f172a">
+                        ขอซื้อ {itemLabel?.slice(0, 7)}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+            <rect x="-34" y="18" width="68" height="15" rx="7.5" fill="#e11d48" stroke="#ffffff" strokeWidth="1.1" />
+            <text x="0" y="28.5" textAnchor="middle" fontSize="8" fontWeight="800" fill="#ffffff">
+              ชาวบ้าน ({visitors.length})
+            </text>
+          </g>
+        )}
 
         {/* Floating action feedback labels */}
         {feedbacks.map((fb) => {
@@ -693,3 +937,4 @@ export const IsometricFarmBoard: React.FC<IsometricFarmBoardProps> = ({
     </div>
   );
 };
+

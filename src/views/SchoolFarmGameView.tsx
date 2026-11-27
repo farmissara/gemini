@@ -5,6 +5,7 @@ import {
   Award,
   BookOpen,
   Building2,
+  ChefHat,
   Coins,
   Droplets,
   Gift,
@@ -15,13 +16,16 @@ import {
   Leaf,
   Lock,
   LockOpen,
+  MessageCircleHeart,
   Pencil,
+  ShoppingBag,
   Shovel,
   Sparkles,
   Sprout,
   Star,
   Store,
   Trash2,
+  Truck,
   Users,
   Volume2,
   VolumeX,
@@ -57,6 +61,7 @@ import {
   applyQuizBoostReward,
   BUILDING_CATALOG,
   BUILDING_MAP,
+  buyFromNeighborRoadsideShop,
   buySeedPack,
   calculateTownProsperity,
   claimDisciplineSupplies,
@@ -64,11 +69,14 @@ import {
   collectBuildingYield,
   computeDisciplineChestSummary,
   constructBuildingOnTile,
+  craftProductOnFarm,
   CROP_CATALOG,
   CROP_MAP,
+  dismissVisitorRequest,
   expandFarmGridTo8x8,
   fertilizeTile,
   fulfillMarketOrder,
+  fulfillVisitorRequest,
   getBuildingUpgradeCost,
   getCropSellMultiplier,
   getFarmGridSize,
@@ -80,8 +88,11 @@ import {
   helpNeighborFarm,
   isBuildingUnlocked,
   isCropUnlocked,
+  listItemInRoadsideShop,
   normalizeFarmState,
   plantCropOnTile,
+  PRODUCT_CATALOG,
+  PRODUCT_MAP,
   removeBuildingOnTile,
   resetDailyWaterFlagsIfNeeded,
   resolveStudentForUser,
@@ -94,7 +105,9 @@ import {
   type BuildingId,
   type CropId,
   type FarmTool,
+  type ProductId,
   type SchoolFarmState,
+  type VisitorRequest,
 } from '../lib/schoolFarmEngine';
 import { IsometricFarmBoard, type FloatingFeedback } from '../components/games/IsometricFarmBoard';
 
@@ -115,7 +128,55 @@ interface SchoolFarmGameViewProps {
   onExit?: () => void;
 }
 
-type FarmModalKind = 'market' | 'quiz' | 'town' | 'guide' | null;
+type FarmModalKind = 'market' | 'visitors' | 'quiz' | 'town' | 'guide' | null;
+
+const PRODUCTION_BUILDINGS = new Set<BuildingId>([
+  'chicken_coop',
+  'dairy_barn',
+  'sheep_pen',
+  'juice_stand',
+  'windmill_bakery',
+]);
+
+const NpcPortrait: React.FC<{ npcId: VisitorRequest['npcId'] }> = ({ npcId }) => {
+  const shirt =
+    npcId === 'aunt_malee'
+      ? '#ec4899'
+      : npcId === 'uncle_somchai'
+        ? '#0284c7'
+        : npcId === 'teacher_dao'
+          ? '#7c3aed'
+          : '#10b981';
+  return (
+    <svg viewBox="0 0 48 48" className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-slate-800 border border-[var(--color-border)] shrink-0">
+      <circle cx="24" cy="46" r="16" fill={shirt} />
+      <circle cx="24" cy="21" r="10" fill="#fed7aa" stroke="#9a3412" strokeWidth="1.2" />
+      <circle cx="20.5" cy="20" r="1.4" fill="#1e293b" />
+      <circle cx="27.5" cy="20" r="1.4" fill="#1e293b" />
+      <path d="M20.5 24.5 Q24 27 27.5 24.5" stroke="#9a3412" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      {npcId === 'aunt_malee' && <circle cx="24" cy="10" r="5" fill="#334155" />}
+      {npcId === 'uncle_somchai' && (
+        <>
+          <ellipse cx="24" cy="13" rx="13" ry="3.6" fill="#f59e0b" stroke="#92400e" strokeWidth="1.2" />
+          <path d="M16 12 Q24 4 32 12 Z" fill="#eab308" stroke="#92400e" strokeWidth="1" />
+        </>
+      )}
+      {npcId === 'namsai' && (
+        <>
+          <path d="M14 19 Q24 9 34 19" stroke="#1e293b" strokeWidth="4" fill="none" />
+          <circle cx="33" cy="14" r="3" fill="#f43f5e" />
+        </>
+      )}
+      {npcId === 'teacher_dao' && (
+        <>
+          <rect x="17" y="18" width="6" height="4.5" rx="1.5" fill="none" stroke="#1e293b" strokeWidth="1.2" />
+          <rect x="25" y="18" width="6" height="4.5" rx="1.5" fill="none" stroke="#1e293b" strokeWidth="1.2" />
+          <line x1="23" y1="20" x2="25" y2="20" stroke="#1e293b" strokeWidth="1.2" />
+        </>
+      )}
+    </svg>
+  );
+};
 
 const FALLBACK_BOOST_QUESTIONS: QuizQuestion[] = [
   {
@@ -254,7 +315,12 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const [buildCategoryFilter, setBuildCategoryFilter] = useState<'all' | 'production' | 'landmark' | 'decor'>('all');
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(14);
   const [activeModal, setActiveModal] = useState<FarmModalKind>(null);
-  const [marketSubTab, setMarketSubTab] = useState<'orders' | 'shop' | 'barn'>('orders');
+  const [marketSubTab, setMarketSubTab] = useState<'orders' | 'craft' | 'roadside' | 'shop' | 'barn'>('orders');
+  const [focusBuildingId, setFocusBuildingId] = useState<BuildingId | null>(null);
+  const [truckAnimating, setTruckAnimating] = useState(false);
+  const [roadsideItemKey, setRoadsideItemKey] = useState<string>('crop:corn');
+  const [roadsideQty, setRoadsideQty] = useState<number>(1);
+  const [roadsidePrice, setRoadsidePrice] = useState<number>(35);
   const [feedbacks, setFeedbacks] = useState<FloatingFeedback[]>([]);
   const [neighborSyncTick, setNeighborSyncTick] = useState(0);
   const [quizIndex, setQuizIndex] = useState(0);
@@ -397,7 +463,13 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                 : `+${collected.coinsEarned}🪙`,
               'amber'
             );
+            return;
           }
+        }
+        if (tile.buildingId && PRODUCTION_BUILDINGS.has(tile.buildingId)) {
+          setFocusBuildingId(tile.buildingId);
+          setMarketSubTab('craft');
+          setActiveModal('market');
         }
         return;
       } else if (tile.kind === 'crop' && tile.cropId) {
@@ -570,13 +642,89 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       return;
     }
     persistFarm(res.state);
+    setTruckAnimating(true);
+    setTimeout(() => setTruckAnimating(false), 1150);
     playFarmChime('coin', farmState.soundMuted);
     if (onEarnRewards && currentUser?.id) {
       onEarnRewards(currentUser.id, res.order.rewardXp, res.order.rewardGems, true);
     }
     emitAppToast({
-      title: lang === 'th' ? 'ส่งออเดอร์โรงเรียนสำเร็จ!' : 'Order Delivered!',
+      title: lang === 'th' ? 'รถบรรทุกส่งออเดอร์สำเร็จ!' : 'Truck Delivery Complete!',
       message: `+${res.order.rewardCoins} 🪙 · +1 ⭐ · +${res.order.rewardGems} Gems`,
+      tone: 'success',
+    });
+  };
+
+  const handleCraftProduct = (productId: ProductId) => {
+    const res = craftProductOnFarm(farmState, productId);
+    if (!res.ok) {
+      emitAppToast({ title: lang === 'th' ? 'แปรรูปไม่สำเร็จ' : 'Cannot craft', message: res.errorTh || 'วัตถุดิบไม่พอ', tone: 'warning' });
+      return;
+    }
+    persistFarm(res.state);
+    playFarmChime('build', farmState.soundMuted);
+    const prod = PRODUCT_MAP[productId];
+    emitAppToast({
+      title: lang === 'th' ? `ผลิต ${prod.nameTh} สำเร็จ!` : `Crafted ${prod.nameEn}`,
+      message: `+1 ${prod.nameTh} · +${prod.xpReward} XP`,
+      tone: 'success',
+    });
+  };
+
+  const handleFulfillVisitor = (visitorId: string) => {
+    const res = fulfillVisitorRequest(farmState, visitorId);
+    if (!res.ok || !res.visitor) {
+      emitAppToast({ title: lang === 'th' ? 'ยังขายให้ชาวบ้านไม่ได้' : 'Cannot serve visitor', message: res.errorTh || 'สินค้าไม่พอ', tone: 'warning' });
+      return;
+    }
+    persistFarm(res.state);
+    playFarmChime('coin', farmState.soundMuted);
+    if (onEarnRewards && currentUser?.id) {
+      onEarnRewards(currentUser.id, res.visitor.rewardXp, 1, true);
+    }
+    emitAppToast({
+      title: lang === 'th' ? `ขายให้ ${res.visitor.nameTh.split(' ')[0]} แล้ว!` : 'Visitor Served!',
+      message: `+${res.visitor.rewardCoins} 🪙 · +${res.visitor.rewardXp} XP`,
+      tone: 'success',
+    });
+  };
+
+  const handleDismissVisitor = (visitorId: string) => {
+    persistFarm(dismissVisitorRequest(farmState, visitorId));
+    playFarmChime('till', farmState.soundMuted);
+  };
+
+  const handleListRoadsideItem = () => {
+    const [kindRaw, idRaw] = roadsideItemKey.split(':');
+    const itemKind = kindRaw === 'product' ? 'product' : 'crop';
+    const itemId = idRaw as CropId | ProductId;
+    const res = listItemInRoadsideShop(farmState, itemKind, itemId, roadsideQty, roadsidePrice);
+    if (!res.ok) {
+      emitAppToast({ title: lang === 'th' ? 'วางขายไม่สำเร็จ' : 'Cannot list item', message: res.errorTh || 'วางขายไม่สำเร็จ', tone: 'warning' });
+      return;
+    }
+    persistFarm(res.state);
+    playFarmChime('coin', farmState.soundMuted);
+    emitAppToast({
+      title: lang === 'th' ? 'วางขายบนแผงลอยริมทางแล้ว!' : 'Listed in Roadside Shop',
+      message: `${roadsideQty} ชิ้น · ราคา ${roadsidePrice} 🪙`,
+      tone: 'success',
+    });
+  };
+
+  const handleBuyFromNeighborShop = (neighbor: SchoolFarmState, listingId: string) => {
+    const res = buyFromNeighborRoadsideShop(farmState, neighbor, listingId);
+    if (!res.ok) {
+      emitAppToast({ title: lang === 'th' ? 'ซื้อสินค้าไม่สำเร็จ' : 'Purchase failed', message: res.errorTh || 'ซื้อสินค้าไม่สำเร็จ', tone: 'warning' });
+      return;
+    }
+    persistFarm(res.buyerState);
+    saveSchoolFarmState(schoolId, neighbor.userId, res.sellerState, neighbor.studentId);
+    setVisitingNeighbor(res.sellerState);
+    playFarmChime('coin', farmState.soundMuted);
+    emitAppToast({
+      title: lang === 'th' ? `ซื้อสินค้าจากร้านของ ${neighbor.ownerName} สำเร็จ!` : 'Purchased from Neighbor Shop!',
+      message: lang === 'th' ? 'เก็บเข้าโรงนา/คลังสินค้าของคุณแล้ว (+8 XP)' : 'Added to your inventory (+8 XP)',
       tone: 'success',
     });
   };
@@ -671,6 +819,8 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
   const selectedTile = selectedTileIndex !== null ? farmState.tiles[selectedTileIndex] : null;
   const totalBarnItems = (Object.values(farmState.barn) as number[]).reduce((a, b) => a + b, 0);
+  const totalGoodsItems = (Object.values(farmState.goods || {}) as number[]).reduce((a, b) => a + b, 0);
+  const activeRoadsideCount = (farmState.roadsideShop || []).filter((l) => !l.sold).length;
   const weedCount = farmState.tiles.filter((t) => t.kind === 'weed').length;
   const readyCropCount = farmState.tiles.filter(
     (t) => t.kind === 'crop' && t.cropId && (t.growthProgress || 0) >= CROP_MAP[t.cropId].watersNeeded
@@ -817,13 +967,34 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  setFocusBuildingId(null);
+                  setMarketSubTab('craft');
+                  setActiveModal('market');
+                }}
+                className="min-h-[40px] px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
+              >
+                <ChefHat className="w-4 h-4" />
+                <span>{lang === 'th' ? `แปรรูป & ปศุสัตว์ (${totalGoodsItems})` : `Workshop (${totalGoodsItems})`}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFocusBuildingId(null);
                   setMarketSubTab('orders');
                   setActiveModal('market');
                 }}
                 className="min-h-[40px] px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
               >
                 <Store className="w-4 h-4" />
-                <span>{lang === 'th' ? `ตลาด & ยุ้งฉาง (${totalBarnItems})` : `Market (${totalBarnItems})`}</span>
+                <span>{lang === 'th' ? `ตลาด & รถส่งของ (${totalBarnItems})` : `Market (${totalBarnItems})`}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal('visitors')}
+                className="min-h-[40px] px-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] text-[var(--color-text-title)] text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
+              >
+                <MessageCircleHeart className="w-4 h-4 text-rose-500" />
+                <span>{lang === 'th' ? `ชาวบ้าน (${farmState.visitorQueue.length})` : `Visitors (${farmState.visitorQueue.length})`}</span>
               </button>
               <button
                 type="button"
@@ -920,7 +1091,22 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             farmName={farmState.farmName}
             feedbacks={feedbacks}
             lang={lang}
+            ordersCount={farmState.marketOrders.length}
+            roadsideCount={activeRoadsideCount}
+            visitors={farmState.visitorQueue}
+            truckAnimating={truckAnimating}
             onTileActivate={(idx) => executeTileAction(idx)}
+            onOpenMarket={() => {
+              setFocusBuildingId(null);
+              setMarketSubTab('orders');
+              setActiveModal('market');
+            }}
+            onOpenShop={() => {
+              setFocusBuildingId(null);
+              setMarketSubTab('roadside');
+              setActiveModal('market');
+            }}
+            onOpenVisitors={() => setActiveModal('visitors')}
           />
 
           {/* Interactive Tool Dock (44px+ touch targets) */}
@@ -1270,7 +1456,21 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                         ? ` · ${selectedTile.lastCollectedDate === todayDate ? 'วันนี้เก็บรายได้แล้ว' : 'แตะบนแผนที่เพื่อเก็บรายได้วันนี้!'}`
                         : ''}
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {PRODUCTION_BUILDINGS.has(selectedTile.buildingId) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFocusBuildingId(selectedTile.buildingId || null);
+                            setMarketSubTab('craft');
+                            setActiveModal('market');
+                          }}
+                          className="flex-1 min-h-[40px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                        >
+                          <ChefHat className="w-4 h-4" />
+                          <span>เปิดโรงงานแปรรูป</span>
+                        </button>
+                      )}
                       {canUpgrade && upgCost && (
                         <button
                           type="button"
@@ -1350,22 +1550,63 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             </section>
           )}
 
-          {/* Quick Secondary Panels (Market, Study Quiz Boost, Class Town) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-2">
+          {/* Quick Secondary Panels (Workshop, Visitors, Market, Study Quiz, Class Town) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-2">
             <button
               type="button"
               onClick={() => {
+                setFocusBuildingId(null);
+                setMarketSubTab('craft');
+                setActiveModal('market');
+              }}
+              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <ChefHat className="w-4 h-4 text-emerald-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">ปศุสัตว์ & โรงงานแปรรูปสินค้า</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
+                    สินค้าในคลัง {totalGoodsItems} ชิ้น · ผลิตไข่ นม ขนมปัง สมูทตี้
+                  </p>
+                </div>
+              </div>
+              <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModal('visitors')}
+              className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <MessageCircleHeart className="w-4 h-4 text-rose-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">
+                    ชาวบ้านผู้มาเยือนฟาร์ม ({farmState.visitorQueue.length} คนรอซื้อ)
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                    {farmState.visitorQueue[0]?.nameTh || 'ต้อนรับชาวบ้านหน้าฟาร์มรับเหรียญเพิ่ม'}
+                  </p>
+                </div>
+              </div>
+              <Coins className="w-4 h-4 text-amber-500 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFocusBuildingId(null);
                 setMarketSubTab('orders');
                 setActiveModal('market');
               }}
               className="min-h-[48px] px-3.5 py-2.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-subtle)] flex items-center justify-between gap-2 text-left cursor-pointer transition"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <Store className="w-4 h-4 text-amber-500 shrink-0" />
+                <Truck className="w-4 h-4 text-amber-500 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">ตลาดเกษตร & ซื้อเมล็ด</p>
+                  <p className="text-xs font-black text-[var(--color-text-title)] truncate">รถส่งของ · แผงลอยริมทาง · ซื้อเมล็ด</p>
                   <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
-                    ในยุ้งฉาง {totalBarnItems} ชิ้น · ออเดอร์ {farmState.marketOrders.length}
+                    ออเดอร์ {farmState.marketOrders.length} · แผงริมทาง {activeRoadsideCount}/6 · ยุ้งฉาง {totalBarnItems}
                   </p>
                 </div>
               </div>
@@ -1404,7 +1645,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                 <Users className="w-4 h-4 text-emerald-500 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs font-black text-[var(--color-text-title)] truncate">
-                    {isStaff ? 'เมืองห้องเรียน & มอบรางวัลครู' : 'เยี่ยมฟาร์มเพื่อนร่วมโรงเรียน'}
+                    {isStaff ? 'เมืองห้องเรียน & มอบรางวัลครู' : 'เยี่ยมฟาร์ม & แวะซื้อร้านเพื่อน'}
                   </p>
                   <p className="text-[11px] text-[var(--color-text-muted)] truncate tabular-nums">
                     มีฟาร์มในโรงเรียน {Math.max(1, neighbors.length)} แห่ง
@@ -1417,12 +1658,12 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         </div>
       </div>
 
-      {/* MODAL 1: Farm Market, Seed Shop & Barn */}
+      {/* MODAL 1: Farm Market, Craft Workshop, Roadside Shop, Seed Shop & Barn */}
       <BaseModal
         isOpen={activeModal === 'market'}
         onClose={() => setActiveModal(null)}
-        maxWidthClass="max-w-2xl"
-        title={lang === 'th' ? 'ตลาดเกษตรโรงเรียน & ยุ้งฉาง' : 'School Farm Market & Barn'}
+        maxWidthClass="max-w-3xl"
+        title={lang === 'th' ? 'ตลาดเกษตร รถส่งของ & โรงงานแปรรูป' : 'Farm Market, Truck & Workshop'}
         subtitle={
           lang === 'th'
             ? `เหรียญฟาร์มของคุณ: ${farmState.coins} 🪙${sellMultiplier > 1 ? ` · โบนัสเบเกอรี่ +${Math.round((sellMultiplier - 1) * 100)}%` : ''}`
@@ -1430,19 +1671,24 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         }
       >
         <div className="space-y-4">
-          <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-[var(--color-border)] pb-2">
             {(
               [
-                { id: 'orders', label: 'ออเดอร์ตลาด' },
+                { id: 'orders', label: 'รถส่งออเดอร์' },
+                { id: 'craft', label: `แปรรูป & ปศุสัตว์ (${totalGoodsItems})` },
+                { id: 'roadside', label: `แผงริมทาง (${activeRoadsideCount}/6)` },
                 { id: 'shop', label: 'ร้านเมล็ดพันธุ์' },
-                { id: 'barn', label: `โรงนา/ยุ้งฉาง (${totalBarnItems})` },
+                { id: 'barn', label: `โรงนา & คลัง (${totalBarnItems + totalGoodsItems})` },
               ] as const
             ).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setMarketSubTab(tab.id)}
-                className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition ${
+                onClick={() => {
+                  setFocusBuildingId(null);
+                  setMarketSubTab(tab.id);
+                }}
+                className={`min-h-[40px] px-3.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer transition ${
                   marketSubTab === tab.id
                     ? 'bg-amber-500 text-white'
                     : 'bg-[var(--color-card-subtle)] text-[var(--color-text-body)]'
@@ -1457,8 +1703,12 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             <div className="space-y-2.5">
               {farmState.marketOrders.map((order) => {
                 const crop = CROP_MAP[order.cropId];
-                const owned = farmState.barn[order.cropId] || 0;
-                const ready = owned >= order.quantity;
+                const ownedCrop = farmState.barn[order.cropId] || 0;
+                const prod = order.productId ? PRODUCT_MAP[order.productId] : null;
+                const ownedProd = order.productId ? farmState.goods?.[order.productId] || 0 : 0;
+                const ready =
+                  ownedCrop >= order.quantity &&
+                  (!order.productId || !order.productQty || ownedProd >= order.productQty);
                 return (
                   <div
                     key={order.id}
@@ -1467,16 +1717,19 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                     <div>
                       <p className="text-sm font-bold text-[var(--color-text-title)]">{order.titleTh}</p>
                       <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
-                        ต้องการ {crop.nameTh} {order.quantity} ชิ้น (มีในโรงนา {owned}) · รางวัล +{order.rewardCoins}🪙 +1⭐ +{order.rewardGems} Gems
+                        ต้องการ {crop.nameTh} {order.quantity} (มี {ownedCrop})
+                        {prod && order.productQty ? ` + ${prod.nameTh} ${order.productQty} (มี ${ownedProd})` : ''}
+                        {' '}· รางวัล +{order.rewardCoins}🪙 +1⭐ +{order.rewardGems} Gems
                       </p>
                     </div>
                     <button
                       type="button"
                       disabled={!ready}
                       onClick={() => handleFulfillOrder(order.id)}
-                      className="min-h-[40px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer transition"
+                      className="min-h-[40px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer transition"
                     >
-                      {ready ? 'ส่งออเดอร์รับรางวัล' : 'ผลผลิตยังไม่พอ'}
+                      <Truck className="w-4 h-4" />
+                      <span>{ready ? 'ขับรถส่งออเดอร์' : 'สินค้ายังไม่พอ'}</span>
                     </button>
                   </div>
                 );
@@ -1484,8 +1737,199 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             </div>
           )}
 
+          {marketSubTab === 'craft' && (
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {focusBuildingId && (
+                <div className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-3 py-2 text-xs">
+                  <span className="font-bold text-emerald-800 dark:text-emerald-200">
+                    กำลังกรองสูตรของ: {BUILDING_MAP[focusBuildingId].nameTh}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFocusBuildingId(null)}
+                    className="text-emerald-700 dark:text-emerald-300 font-bold underline cursor-pointer"
+                  >
+                    ดูทั้งหมด
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {PRODUCT_CATALOG.filter((p) => !focusBuildingId || p.sourceBuildingId === focusBuildingId).map((prod) => {
+                  const hasBuilt = farmState.tiles.some(
+                    (t) => t.kind === 'building' && t.buildingId === prod.sourceBuildingId
+                  );
+                  const canCraft =
+                    hasBuilt &&
+                    prod.ingredients.every((ing) =>
+                      ing.kind === 'crop'
+                        ? (farmState.barn[ing.id as CropId] || 0) >= ing.qty
+                        : (farmState.goods?.[ing.id as ProductId] || 0) >= ing.qty
+                    );
+                  const ownedCount = farmState.goods?.[prod.id] || 0;
+                  return (
+                    <div
+                      key={prod.id}
+                      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 flex flex-col justify-between gap-2.5"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-[var(--color-text-title)]">
+                            {prod.nameTh} <span className="text-xs font-mono text-[var(--color-text-muted)]">({ownedCount})</span>
+                          </p>
+                          <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                            {prod.sellPrice}🪙
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-text-muted)]">
+                          อาคาร: {BUILDING_MAP[prod.sourceBuildingId].nameTh} {!hasBuilt ? '(ยังไม่ได้สร้าง)' : ''}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-0.5 text-[11px] tabular-nums">
+                          {prod.ingredients.map((ing) => {
+                            const have =
+                              ing.kind === 'crop'
+                                ? farmState.barn[ing.id as CropId] || 0
+                                : farmState.goods?.[ing.id as ProductId] || 0;
+                            const label =
+                              ing.kind === 'crop'
+                                ? CROP_MAP[ing.id as CropId].nameTh
+                                : PRODUCT_MAP[ing.id as ProductId].nameTh;
+                            const ok = have >= ing.qty;
+                            return (
+                              <span
+                                key={`${ing.kind}-${ing.id}`}
+                                className={ok ? 'text-emerald-700 dark:text-emerald-300 font-semibold' : 'text-rose-600 dark:text-rose-400'}
+                              >
+                                {label} {have}/{ing.qty}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {hasBuilt ? (
+                        <button
+                          type="button"
+                          disabled={!canCraft}
+                          onClick={() => handleCraftProduct(prod.id)}
+                          className="w-full min-h-[38px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold whitespace-nowrap cursor-pointer transition"
+                        >
+                          {canCraft ? `ผลิต (+${prod.xpReward} XP)` : 'วัตถุดิบยังไม่พอ'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedBuildingId(prod.sourceBuildingId);
+                            setActiveTool('build');
+                            setActiveModal(null);
+                          }}
+                          className="w-full min-h-[38px] px-3 rounded-xl border border-indigo-400 text-indigo-700 dark:text-indigo-300 text-xs font-bold whitespace-nowrap cursor-pointer"
+                        >
+                          ไปสร้าง {BUILDING_MAP[prod.sourceBuildingId].nameTh}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {marketSubTab === 'roadside' && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2.5">
+                <p className="text-xs font-black text-[var(--color-text-title)]">ตั้งวางขายสินค้าให้เพื่อนในโรงเรียนมาแวะซื้อ</p>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <select
+                    value={roadsideItemKey}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setRoadsideItemKey(val);
+                      const [kind, id] = val.split(':');
+                      const unitPrice =
+                        kind === 'product'
+                          ? PRODUCT_MAP[id as ProductId]?.sellPrice || 50
+                          : CROP_MAP[id as CropId]?.sellPrice || 25;
+                      setRoadsidePrice(Math.round(unitPrice * roadsideQty * 1.15));
+                    }}
+                    className="sm:col-span-2 min-h-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)]"
+                  >
+                    {CROP_CATALOG.map((c) => (
+                      <option key={`crop:${c.id}`} value={`crop:${c.id}`}>
+                        {c.nameTh} (มี {farmState.barn[c.id] || 0})
+                      </option>
+                    ))}
+                    {PRODUCT_CATALOG.map((p) => (
+                      <option key={`product:${p.id}`} value={`product:${p.id}`}>
+                        {p.nameTh} (มี {farmState.goods?.[p.id] || 0})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={roadsideQty}
+                    onChange={(e) => setRoadsideQty(Math.max(1, Number(e.target.value) || 1))}
+                    aria-label="Quantity"
+                    className="min-h-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)] tabular-nums"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={9999}
+                    value={roadsidePrice}
+                    onChange={(e) => setRoadsidePrice(Math.max(1, Number(e.target.value) || 1))}
+                    aria-label="Price coins"
+                    className="min-h-[40px] px-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs text-[var(--color-text-title)] tabular-nums"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleListRoadsideItem}
+                  className="w-full min-h-[40px] px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>วางขายบนแผงลอยริมทาง ({roadsidePrice} 🪙)</span>
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                {farmState.roadsideShop.length === 0 ? (
+                  <p className="text-xs text-[var(--color-text-muted)] text-center py-4">
+                    ยังไม่มีสินค้าวางขายบนแผงริมทาง เลือกผลผลิตหรือขนมด้านบนเพื่อเปิดร้านได้เลย!
+                  </p>
+                ) : (
+                  farmState.roadsideShop.map((item) => {
+                    const label =
+                      item.itemKind === 'crop'
+                        ? CROP_MAP[item.itemId as CropId]?.nameTh
+                        : PRODUCT_MAP[item.itemId as ProductId]?.nameTh;
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-[var(--color-text-title)]">
+                            {label} ×{item.quantity}
+                          </span>
+                          <span className="ml-2 text-[var(--color-text-muted)] tabular-nums">
+                            ราคา {item.priceCoins}🪙
+                          </span>
+                        </div>
+                        <span className={`font-bold ${item.sold ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {item.sold ? `ขายให้ ${item.buyerName || 'เพื่อน'} แล้ว` : 'กำลังวางขาย'}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
           {marketSubTab === 'shop' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[55vh] overflow-y-auto pr-1">
               {CROP_CATALOG.map((crop) => {
                 const unlocked = isCropUnlocked(crop.id, farmState, disciplineSummary.submittedHomeworkCount);
                 return (
@@ -1514,30 +1958,49 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           )}
 
           {marketSubTab === 'barn' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {CROP_CATALOG.map((crop) => {
-                const qty = farmState.barn[crop.id] || 0;
-                const price = Math.round(crop.sellPrice * sellMultiplier);
-                return (
+            <div className="space-y-3 max-h-[58vh] overflow-y-auto pr-1">
+              <p className="text-xs font-black text-[var(--color-text-title)]">พืชผลในยุ้งฉาง ({totalBarnItems})</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {CROP_CATALOG.map((crop) => {
+                  const qty = farmState.barn[crop.id] || 0;
+                  const price = Math.round(crop.sellPrice * sellMultiplier);
+                  return (
+                    <div
+                      key={crop.id}
+                      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <p className="text-sm font-bold text-[var(--color-text-title)]">{crop.nameTh}</p>
+                        <p className="text-xs text-[var(--color-text-muted)] tabular-nums">คงเหลือ {qty} ชิ้น · ขายได้ {price}🪙/ชิ้น</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={qty <= 0}
+                        onClick={() => handleSellBarn(crop.id)}
+                        className="min-h-[40px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer transition"
+                      >
+                        ขาย 1 ชิ้น
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs font-black text-[var(--color-text-title)] pt-1">สินค้าแปรรูป & ปศุสัตว์ ({totalGoodsItems})</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {PRODUCT_CATALOG.map((prod) => (
                   <div
-                    key={crop.id}
+                    key={prod.id}
                     className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 flex items-center justify-between gap-2"
                   >
                     <div>
-                      <p className="text-sm font-bold text-[var(--color-text-title)]">{crop.nameTh}</p>
-                      <p className="text-xs text-[var(--color-text-muted)] tabular-nums">คงเหลือ {qty} ชิ้น · ขายได้ {price}🪙/ชิ้น</p>
+                      <p className="text-sm font-bold text-[var(--color-text-title)]">{prod.nameTh}</p>
+                      <p className="text-xs text-[var(--color-text-muted)] tabular-nums">
+                        มีในคลัง {farmState.goods?.[prod.id] || 0} ชิ้น · มูลค่า {prod.sellPrice}🪙
+                      </p>
                     </div>
-                    <button
-                      type="button"
-                      disabled={qty <= 0}
-                      onClick={() => handleSellBarn(crop.id)}
-                      className="min-h-[40px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold whitespace-nowrap shrink-0 cursor-pointer transition"
-                    >
-                      ขาย 1 ชิ้น
-                    </button>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1670,6 +2133,49 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
                 )}
               </div>
             </div>
+
+            {visitingNeighbor.userId !== userId && (
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3 space-y-2">
+                <p className="text-xs font-black text-[var(--color-text-title)]">
+                  แผงร้านค้าริมทางของ {visitingNeighbor.ownerName}
+                </p>
+                {visitingNeighbor.roadsideShop.filter((l) => !l.sold).length === 0 ? (
+                  <p className="text-xs text-[var(--color-text-muted)]">ยังไม่มีสินค้าวางขายในร้านริมทางของเพื่อนตอนนี้</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {visitingNeighbor.roadsideShop
+                      .filter((l) => !l.sold)
+                      .map((listing) => {
+                        const label =
+                          listing.itemKind === 'crop'
+                            ? CROP_MAP[listing.itemId as CropId]?.nameTh
+                            : PRODUCT_MAP[listing.itemId as ProductId]?.nameTh;
+                        return (
+                          <div
+                            key={listing.id}
+                            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 flex items-center justify-between gap-2"
+                          >
+                            <div className="text-xs">
+                              <p className="font-bold text-[var(--color-text-title)]">
+                                {label} ×{listing.quantity}
+                              </p>
+                              <p className="text-[11px] text-amber-600 dark:text-amber-400 tabular-nums">{listing.priceCoins}🪙</p>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={farmState.coins < listing.priceCoins}
+                              onClick={() => handleBuyFromNeighborShop(visitingNeighbor, listing.id)}
+                              className="min-h-[36px] px-3 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-45 text-white text-xs font-bold whitespace-nowrap cursor-pointer"
+                            >
+                              ซื้อเลย
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
@@ -1730,10 +2236,70 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             <p>• คะแนนความประพฤติ: แต้มความดีให้ดาวเมือง ⭐ ไว้อัปเกรด/ขยายเมืองเป็น 8×8 ส่วนคะแนนหักจะเกิดวัชพืชหรือแมลงในแปลง</p>
           </div>
           <div className="rounded-xl bg-[var(--color-card-subtle)] p-3 space-y-1">
-            <p className="font-bold text-[var(--color-text-title)]">2. การดูแลฟาร์มและสร้างเมืองเกษตร</p>
-            <p>• ขุดแปลง → หว่านเมล็ด → รดน้ำผ่านระยะ (ต้นกล้า → ออกดอก → พร้อมเก็บเกี่ยว) → ส่งออเดอร์ตลาด</p>
-            <p>• สร้างเล้าไก่ คอกวัว เรือนกระจก โรงสีเบเกอรี่ บ้านพัก รั้ว ถนน และแวะเยี่ยมช่วยรดน้ำฟาร์มเพื่อนร่วมห้องได้</p>
+            <p className="font-bold text-[var(--color-text-title)]">2. ทำฟาร์ม แปรรูปสินค้า & ค้าขายสไตล์ Hay Day</p>
+            <p>• แตะที่เล้าไก่ คอกวัว คอกแกะ ซุ้มน้ำผลไม้ หรือเบเกอรี่ เพื่อผลิตไข่ไก่ นมสด ขนแกะ ขนมปัง และเค้ก</p>
+            <p>• ส่งสินค้าให้รถบรรทุกตลาด คุยขายให้ชาวบ้านหน้าฟาร์ม วางขายที่แผงริมทาง และแวะเยี่ยมช่วยรดน้ำฟาร์มเพื่อนร่วมห้องได้</p>
           </div>
+        </div>
+      </BaseModal>
+
+      {/* MODAL 5: Hay Day Farm NPC Visitors */}
+      <BaseModal
+        isOpen={activeModal === 'visitors'}
+        onClose={() => setActiveModal(null)}
+        maxWidthClass="max-w-xl"
+        title={lang === 'th' ? 'ชาวบ้านผู้มาเยือนฟาร์ม' : 'Farm Visitors'}
+        subtitle={lang === 'th' ? 'ขายผลผลิตหรือสินค้าแปรรูปให้เพื่อนบ้านและคุณครูเพื่อรับเหรียญและ XP พิเศษ' : 'Sell produce directly to town visitors'}
+      >
+        <div className="space-y-3">
+          {farmState.visitorQueue.map((vis) => {
+            const have =
+              vis.itemKind === 'crop'
+                ? farmState.barn[vis.itemId as CropId] || 0
+                : farmState.goods?.[vis.itemId as ProductId] || 0;
+            const itemName =
+              vis.itemKind === 'crop'
+                ? CROP_MAP[vis.itemId as CropId]?.nameTh
+                : PRODUCT_MAP[vis.itemId as ProductId]?.nameTh;
+            const ready = have >= vis.quantity;
+            return (
+              <div
+                key={vis.id}
+                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-subtle)] p-3.5 space-y-3"
+              >
+                <div className="flex items-start gap-3">
+                  <NpcPortrait npcId={vis.npcId} />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-black text-[var(--color-text-title)] truncate">{vis.nameTh}</p>
+                      <span className="text-[11px] font-semibold text-[var(--color-text-muted)] shrink-0">{vis.roleTh}</span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-body)]">“{vis.dialogueTh}”</p>
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 tabular-nums pt-0.5">
+                      ขอซื้อ: {itemName} {vis.quantity} ชิ้น (มีอยู่ {have}) · ให้ +{vis.rewardCoins}🪙 +{vis.rewardXp} XP
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDismissVisitor(vis.id)}
+                    className="min-h-[38px] px-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-xs font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-title)] cursor-pointer"
+                  >
+                    คนถัดไป
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!ready}
+                    onClick={() => handleFulfillVisitor(vis.id)}
+                    className="min-h-[38px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-45 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer transition"
+                  >
+                    {ready ? `ขายให้ (+${vis.rewardCoins}🪙)` : 'ของยังไม่พอ'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </BaseModal>
     </div>
