@@ -52,6 +52,8 @@ import {
 } from './GardenFarmIcons';
 import { FarmOwnerPortraitSvg } from './HayDayHudIcons';
 import { IsometricFarmBoard } from './IsometricFarmBoard';
+import { LifeSubjectsMatrixPanel } from './GardenLifeSubjectOverlay';
+import type { LifeSubjectId } from '../../lib/farmLifeSubjects';
 
 export type GardenBoardKind =
   | 'craft'
@@ -67,7 +69,7 @@ export type GardenBoardKind =
 
 export type CafeSubTab = 'visitors' | 'orders';
 export type TradeSubTab = 'seeds_barn' | 'roadside' | 'rewards';
-export type EventsSubTab = 'wheel' | 'achievements' | 'quiz';
+export type EventsSubTab = 'subjects' | 'wheel' | 'achievements' | 'quiz';
 
 export const GameFloatingBoard: React.FC<{
   isOpen: boolean;
@@ -241,6 +243,9 @@ interface GardenBoardSetProps {
   quizUsedToday: number;
   onAnswerQuiz: (idx: number) => void;
   onNextQuiz: () => void;
+  lifeAutoPromptEnabled: boolean;
+  onToggleLifeAutoPrompt: () => void;
+  onLaunchSubjectScenario: (subjectId: LifeSubjectId) => void;
   // Town / Neighbors
   neighbors: SchoolFarmState[];
   visitingNeighbor: SchoolFarmState | null;
@@ -321,6 +326,9 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
   quizUsedToday,
   onAnswerQuiz,
   onNextQuiz,
+  lifeAutoPromptEnabled,
+  onToggleLifeAutoPrompt,
+  onLaunchSubjectScenario,
   neighbors,
   visitingNeighbor,
   setVisitingNeighbor,
@@ -1008,29 +1016,29 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
         )}
       </GameFloatingBoard>
 
-      {/* 4. DAILY EVENTS (LUCKY WHEEL + ACHIEVEMENTS + QUIZ) */}
+      {/* 4. DAILY EVENTS & 8 LIFE SUBJECTS */}
       <GameFloatingBoard
         isOpen={activeBoard === 'events'}
         onClose={onClose}
-        title={lang === 'th' ? 'กิจกรรมสวนประจำวัน' : 'Daily Garden Events'}
-        subtitle="วงล้อนำโชค · ภารกิจสวน · ควิซรับน้ำฟรี"
+        title={lang === 'th' ? 'วิชาชีวิตจริง & กิจกรรมสวน' : 'Life Subjects & Events'}
+        subtitle="บูรณาการ 8 กลุ่มสาระ · วงล้อนำโชค · ภารกิจสวน"
         icon={<GardenEventsIcon className="w-6 h-6" />}
       >
         <div className="flex items-center gap-1.5">
           {[
+            { id: 'subjects' as const, label: 'วิชาชีวิต (8 แขนง)' },
             { id: 'wheel' as const, label: spinAvailable ? 'วงล้อ (ฟรี!)' : 'วงล้อนำโชค' },
             {
               id: 'achievements' as const,
               label: `ภารกิจ (${achievementsList.filter((a) => a.completed && !a.claimed).length})`,
             },
-            { id: 'quiz' as const, label: `ควิซรับน้ำ (${Math.max(0, 3 - quizUsedToday)}/3)` },
           ].map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setEventsTab(t.id)}
-              className={`flex-1 min-h-[36px] px-2 rounded-xl text-xs font-black whitespace-nowrap cursor-pointer transition ${
-                eventsTab === t.id
+              className={`flex-1 min-h-[38px] px-2 rounded-xl text-xs font-black whitespace-nowrap cursor-pointer transition ${
+                eventsTab === t.id || (t.id === 'subjects' && eventsTab === 'quiz')
                   ? 'bg-[#b45309] text-white shadow'
                   : 'bg-[#f1e4c9] dark:bg-stone-800 text-[#45270f] dark:text-amber-100'
               }`}
@@ -1154,50 +1162,65 @@ export const GardenBoardSet: React.FC<GardenBoardSetProps> = ({
           </div>
         )}
 
+        {eventsTab === 'subjects' && (
+          <LifeSubjectsMatrixPanel
+            farmState={farmState}
+            lifeAutoPromptEnabled={lifeAutoPromptEnabled}
+            onToggleLifeAutoPrompt={onToggleLifeAutoPrompt}
+            onLaunchSubjectScenario={onLaunchSubjectScenario}
+          />
+        )}
+
         {eventsTab === 'quiz' && activeQuestion && (
           <div className="space-y-3">
-            <div className="rounded-2xl border border-[#d6b37c] bg-white/90 dark:bg-stone-900/85 p-3 space-y-1">
+            <LifeSubjectsMatrixPanel
+              farmState={farmState}
+              lifeAutoPromptEnabled={lifeAutoPromptEnabled}
+              onToggleLifeAutoPrompt={onToggleLifeAutoPrompt}
+              onLaunchSubjectScenario={onLaunchSubjectScenario}
+            />
+            <div className="rounded-2xl border border-[#d6b37c] bg-white/90 dark:bg-stone-900/85 p-3 space-y-2">
               <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                {activeQuestion.subject} · โควตาวันนี้ {quizUsedToday}/3 (ตอบถูก +2💧 +1✨ +18🪙)
+                คลังควิซจากครู · {activeQuestion.subject} · โควตาวันนี้ {quizUsedToday}/3 (ตอบถูก +2💧 +1✨ +18🪙)
               </p>
               <p className="text-xs sm:text-sm font-black text-[#45270f] dark:text-amber-50">
                 {activeQuestion.questionTh}
               </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {activeQuestion.options.map((opt, idx) => {
-                const isSelected = quizPicked === idx;
-                const isCorrect = idx === activeQuestion.correctIndex;
-                let cls = 'border-[#d6b37c] bg-white/90 dark:bg-stone-900 text-[#45270f] dark:text-amber-50 hover:bg-amber-50';
-                if (quizPicked !== null) {
-                  if (isCorrect) cls = 'border-emerald-500 bg-emerald-50 text-emerald-900';
-                  else if (isSelected) cls = 'border-rose-500 bg-rose-50 text-rose-900';
-                }
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    disabled={quizPicked !== null}
-                    onClick={() => onAnswerQuiz(idx)}
-                    className={`min-h-[42px] px-3 py-2 rounded-xl border text-left text-xs font-bold cursor-pointer transition ${cls}`}
-                  >
-                    {idx + 1}. {opt}
-                  </button>
-                );
-              })}
-            </div>
-            {quizPicked !== null && (
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <p className="text-[11px] text-[#7c5c3e] dark:text-stone-300 flex-1">{activeQuestion.explanationTh}</p>
-                <button
-                  type="button"
-                  onClick={onNextQuiz}
-                  className="min-h-[36px] px-4 rounded-xl bg-sky-600 text-white text-xs font-black cursor-pointer shrink-0"
-                >
-                  ข้อถัดไป
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {activeQuestion.options.map((opt, idx) => {
+                  const isSelected = quizPicked === idx;
+                  const isCorrect = idx === activeQuestion.correctIndex;
+                  let cls = 'border-[#d6b37c] bg-white dark:bg-stone-900 text-[#45270f] dark:text-amber-50 hover:bg-amber-50';
+                  if (quizPicked !== null) {
+                    if (isCorrect) cls = 'border-emerald-500 bg-emerald-50 text-emerald-900';
+                    else if (isSelected) cls = 'border-rose-500 bg-rose-50 text-rose-900';
+                  }
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={quizPicked !== null}
+                      onClick={() => onAnswerQuiz(idx)}
+                      className={`min-h-[42px] px-3 py-2 rounded-xl border text-left text-xs font-bold cursor-pointer transition ${cls}`}
+                    >
+                      {idx + 1}. {opt}
+                    </button>
+                  );
+                })}
               </div>
-            )}
+              {quizPicked !== null && (
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <p className="text-[11px] text-[#7c5c3e] dark:text-stone-300 flex-1">{activeQuestion.explanationTh}</p>
+                  <button
+                    type="button"
+                    onClick={onNextQuiz}
+                    className="min-h-[36px] px-4 rounded-xl bg-sky-600 text-white text-xs font-black cursor-pointer shrink-0"
+                  >
+                    ข้อถัดไป
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </GameFloatingBoard>

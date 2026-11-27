@@ -131,6 +131,17 @@ import {
   type GardenBoardKind,
   type TradeSubTab,
 } from '../components/games/GardenGamePanels';
+import { LiveSubjectChallengeCard } from '../components/games/GardenLifeSubjectOverlay';
+import {
+  generateCraftLifeChallenge,
+  generateCropScienceChallenge,
+  generateScenarioForSubject,
+  generateSocialCommChallenge,
+  generateTradeMathChallenge,
+  resolveLifeSubjectChallenge,
+  type LifeChallengeScenario,
+  type LifeSubjectId,
+} from '../lib/farmLifeSubjects';
 
 interface SchoolFarmGameViewProps {
   lang: AppLanguage;
@@ -288,7 +299,12 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
   const [focusBuildingId, setFocusBuildingId] = useState<BuildingId | null>(null);
   const [cafeTab, setCafeTab] = useState<CafeSubTab>('visitors');
   const [tradeTab, setTradeTab] = useState<TradeSubTab>('seeds_barn');
-  const [eventsTab, setEventsTab] = useState<EventsSubTab>('wheel');
+  const [eventsTab, setEventsTab] = useState<EventsSubTab>('subjects');
+
+  const [lifeAutoPromptEnabled, setLifeAutoPromptEnabled] = useState(true);
+  const [activeChallenge, setActiveChallenge] = useState<LifeChallengeScenario | null>(null);
+  const [challengePicked, setChallengePicked] = useState<number | null>(null);
+  const [challengeFromMatrix, setChallengeFromMatrix] = useState(false);
 
   const [truckAnimating, setTruckAnimating] = useState(false);
   const [roadsideItemKey, setRoadsideItemKey] = useState<string>('crop:butterfly_pea');
@@ -309,6 +325,10 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
 
   const feedbackSeqRef = useRef(1);
   const rootContainerRef = useRef<HTMLDivElement | null>(null);
+  const fieldActionCountRef = useRef(0);
+  const tradeActionCountRef = useRef(0);
+  const craftActionCountRef = useRef(0);
+  const riceScienceShownRef = useRef(false);
 
   // Tick live timer every 1s only while crafting board is open or a building has an active timer
   const hasPendingQueue = useMemo(
@@ -599,6 +619,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
     }
 
     if (toolToRun === 'water') {
+      const wateredCropId = tile.cropId;
       const res = waterTile(farmState, tileIndex);
       if (!res.ok) {
         emitAppToast({ title: lang === 'th' ? 'รดน้ำไม่สำเร็จ' : 'Cannot water', message: res.errorTh || '', tone: 'warning' });
@@ -611,10 +632,21 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
         res.matured ? 'พร้อมเก็บแล้ว!' : hasGoldenStreakBuff ? 'รดน้ำ ×2 โตไว!' : 'รดน้ำ +1 💧',
         hasGoldenStreakBuff ? 'amber' : 'sky'
       );
+      if (lifeAutoPromptEnabled && !activeChallenge && wateredCropId) {
+        fieldActionCountRef.current += 1;
+        const hitRiceFirst = wateredCropId === 'jasmine_rice' && !riceScienceShownRef.current;
+        if (hitRiceFirst || fieldActionCountRef.current % 3 === 1) {
+          if (hitRiceFirst) riceScienceShownRef.current = true;
+          setChallengeFromMatrix(false);
+          setChallengePicked(null);
+          setActiveChallenge(generateCropScienceChallenge(wateredCropId, fieldActionCountRef.current));
+        }
+      }
       return;
     }
 
     if (toolToRun === 'daily_fertilize') {
+      const cropId = tile.cropId;
       const res = applyDailyFertilizerTile(farmState, tileIndex);
       if (!res.ok) {
         emitAppToast({ title: lang === 'th' ? 'ใส่ปุ๋ยไม่สำเร็จ' : 'Cannot fertilize', message: res.errorTh || '', tone: 'warning' });
@@ -623,6 +655,14 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       persistFarm(res.state);
       playFarmChime('plant', farmState.soundMuted);
       pushFeedback(tileIndex, res.matured ? 'พร้อมเก็บแล้ว!' : 'โตไว +1 ขั้น 🌱', 'emerald');
+      if (lifeAutoPromptEnabled && !activeChallenge && cropId) {
+        fieldActionCountRef.current += 1;
+        if (fieldActionCountRef.current % 3 === 1) {
+          setChallengeFromMatrix(false);
+          setChallengePicked(null);
+          setActiveChallenge(generateCropScienceChallenge(cropId, fieldActionCountRef.current));
+        }
+      }
       return;
     }
 
@@ -649,6 +689,14 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       pushFeedback(tileIndex, `+${res.harvestedQty} ${CROP_MAP[res.cropId].nameTh}`, 'emerald');
       if (onEarnRewards && currentUser?.id) {
         onEarnRewards(currentUser.id, res.xpEarned || 10, 0, false);
+      }
+      if (lifeAutoPromptEnabled && !activeChallenge) {
+        fieldActionCountRef.current += 1;
+        if (fieldActionCountRef.current % 4 === 0) {
+          setChallengeFromMatrix(false);
+          setChallengePicked(null);
+          setActiveChallenge(generateCropScienceChallenge(res.cropId, fieldActionCountRef.current));
+        }
       }
       return;
     }
@@ -688,6 +736,17 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       pushFeedback(tileIndex, `สร้าง${BUILDING_MAP[selectedBuildingId].nameTh}!`, 'amber');
       if (onEarnRewards && currentUser?.id) {
         onEarnRewards(currentUser.id, 30, 1, true);
+      }
+      if (lifeAutoPromptEnabled && !activeChallenge) {
+        setChallengeFromMatrix(false);
+        setChallengePicked(null);
+        setActiveChallenge(
+          generateScenarioForSubject(
+            selectedBuildingId === 'lotus_fish_pond' ? 'social' : 'arts',
+            res.state,
+            tileIndex
+          )
+        );
       }
     }
   };
@@ -748,6 +807,14 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       message: lang === 'th' ? `ใช้เวลา ${prod.craftTimeSec} วินาที` : `Ready in ${prod.craftTimeSec}s`,
       tone: 'info',
     });
+    if (lifeAutoPromptEnabled && !activeChallenge) {
+      craftActionCountRef.current += 1;
+      if (craftActionCountRef.current % 2 === 1) {
+        setChallengeFromMatrix(false);
+        setChallengePicked(null);
+        setActiveChallenge(generateCraftLifeChallenge(productId, craftActionCountRef.current));
+      }
+    }
   };
 
   const handleCollectProductionJob = (jobId: string) => {
@@ -846,6 +913,16 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       message: `+${res.order.rewardCoins} 🪙 · +1 ★ · +${res.order.rewardGems} 💎`,
       tone: 'success',
     });
+    if (lifeAutoPromptEnabled && !activeChallenge) {
+      tradeActionCountRef.current += 1;
+      const cropName = CROP_MAP[res.order.cropId].nameTh;
+      const unitPrice = Math.max(15, Math.round(res.order.rewardCoins / Math.max(1, res.order.quantity)));
+      setChallengeFromMatrix(false);
+      setChallengePicked(null);
+      setActiveChallenge(
+        generateTradeMathChallenge(cropName, res.order.quantity, unitPrice, tradeActionCountRef.current)
+      );
+    }
   };
 
   const handleFulfillVisitor = (visitorId: string) => {
@@ -865,6 +942,23 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       message: `+${res.visitor.rewardCoins} 🪙 · +${res.visitor.rewardXp} XP · +${gemReward} 💎`,
       tone: 'success',
     });
+    if (lifeAutoPromptEnabled && !activeChallenge) {
+      tradeActionCountRef.current += 1;
+      const c = tradeActionCountRef.current;
+      const itemName =
+        res.visitor.itemKind === 'crop'
+          ? CROP_MAP[res.visitor.itemId as CropId]?.nameTh || 'ผลผลิตสวน'
+          : PRODUCT_MAP[res.visitor.itemId as ProductId]?.nameTh || 'เมนูคาเฟ่';
+      const unitPrice = Math.max(15, Math.round(res.visitor.rewardCoins / Math.max(1, res.visitor.quantity)));
+      setChallengeFromMatrix(false);
+      setChallengePicked(null);
+      if (c % 2 === 1) {
+        setActiveChallenge(generateTradeMathChallenge(itemName, res.visitor.quantity, unitPrice, c));
+      } else {
+        const commBranches: Array<'foreign_lang' | 'thai' | 'social'> = ['foreign_lang', 'thai', 'social'];
+        setActiveChallenge(generateSocialCommChallenge(commBranches[c % commBranches.length], c));
+      }
+    }
   };
 
   const handleDismissVisitor = (visitorId: string) => {
@@ -989,6 +1083,41 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
       message: `+${res.coinsEarned} 🪙 · +6 XP`,
       tone: 'success',
     });
+    if (lifeAutoPromptEnabled && !activeChallenge) {
+      tradeActionCountRef.current += 1;
+      if (tradeActionCountRef.current % 2 === 1) {
+        setChallengeFromMatrix(false);
+        setChallengePicked(null);
+        setActiveChallenge(
+          generateTradeMathChallenge(
+            CROP_MAP[cropId].nameTh,
+            2,
+            res.coinsEarned,
+            tradeActionCountRef.current
+          )
+        );
+      }
+    }
+  };
+
+  const handleLaunchSubjectScenario = (subjectId: LifeSubjectId) => {
+    const nextIdx = fieldActionCountRef.current + tradeActionCountRef.current + craftActionCountRef.current + 1;
+    fieldActionCountRef.current += 1;
+    setChallengeFromMatrix(true);
+    setChallengePicked(null);
+    setActiveChallenge(generateScenarioForSubject(subjectId, farmState, nextIdx));
+  };
+
+  const handleAnswerLifeChallenge = (choiceIdx: number) => {
+    if (!activeChallenge || challengePicked !== null) return;
+    setChallengePicked(choiceIdx);
+    const isCorrect = choiceIdx === activeChallenge.correctIndex;
+    const outcome = resolveLifeSubjectChallenge(farmState, activeChallenge, isCorrect, todayDate);
+    persistFarm(outcome.state);
+    playFarmChime(isCorrect ? 'harvest' : 'weed', farmState.soundMuted);
+    if (onEarnRewards && currentUser?.id) {
+      onEarnRewards(currentUser.id, outcome.xpEarned, isCorrect ? 1 : 0, isCorrect);
+    }
   };
 
   const quizPool = questions.length > 0 ? questions : FALLBACK_BOOST_QUESTIONS;
@@ -1224,7 +1353,7 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           openBoardWithSfx('trade');
         }}
         onOpenMail={() => {
-          setEventsTab('quiz');
+          setEventsTab('subjects');
           openBoardWithSfx('events');
         }}
         onAnimalTap={(kind) => {
@@ -2001,6 +2130,9 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
           setQuizPicked(null);
           setQuizIndex((prev) => prev + 1);
         }}
+        lifeAutoPromptEnabled={lifeAutoPromptEnabled}
+        onToggleLifeAutoPrompt={() => setLifeAutoPromptEnabled((prev) => !prev)}
+        onLaunchSubjectScenario={handleLaunchSubjectScenario}
         neighbors={neighbors}
         visitingNeighbor={visitingNeighbor}
         setVisitingNeighbor={setVisitingNeighbor}
@@ -2023,6 +2155,23 @@ export const SchoolFarmGameView: React.FC<SchoolFarmGameViewProps> = ({
             message: lang === 'th' ? 'ตัวละครใหม่เดินดูแลสวนคาเฟ่ของคุณแล้ว' : 'Your farmer look is live on the board.',
             tone: 'success',
           });
+        }}
+      />
+
+      {/* REAL-LIFE 8-SUBJECT CONTEXTUAL CHALLENGE POP-UP */}
+      <LiveSubjectChallengeCard
+        challenge={activeChallenge}
+        pickedIndex={challengePicked}
+        canNext={challengeFromMatrix}
+        onSelectOption={handleAnswerLifeChallenge}
+        onNextSameSubject={
+          activeChallenge
+            ? () => handleLaunchSubjectScenario(activeChallenge.subjectId)
+            : undefined
+        }
+        onClose={() => {
+          setActiveChallenge(null);
+          setChallengePicked(null);
         }}
       />
     </div>

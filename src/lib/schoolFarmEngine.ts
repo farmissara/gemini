@@ -310,6 +310,7 @@ export interface SchoolFarmState {
   musicMuted: boolean;
   lastSpinWheelDate?: string;
   claimedAchievements?: string[];
+  lifeSubjectMastery?: Partial<Record<string, { solved: number; streak: number; lastDate: string }>>;
   updatedAt: string;
 }
 
@@ -444,10 +445,10 @@ export const CROP_CATALOG: CropDefinition[] = [
     seedCost: 32,
     sellPrice: 92,
     xpReward: 30,
-    unlockTownLevel: 2,
+    unlockTownLevel: 1,
     accentColor: '#84cc16',
     descTh: 'ข้าวไทยหอมนุ่ม ทำข้าวเหนียวมะม่วงและขนมอบ',
-    descEn: 'Golden grain unlocked at Town Lv.2',
+    descEn: 'Golden grain for mango sticky rice & bread',
   },
   {
     id: 'coconut',
@@ -1306,7 +1307,7 @@ export const createInitialFarmState = (params: {
       pandan: 3,
       strawberry: 0,
       sunflower: 0,
-      jasmine_rice: 0,
+      jasmine_rice: 2,
       coconut: 0,
       mango: 0,
       pumpkin: 0,
@@ -1440,6 +1441,10 @@ export const normalizeFarmState = (
     musicMuted: Boolean(raw.musicMuted),
     lastSpinWheelDate: typeof raw.lastSpinWheelDate === 'string' ? raw.lastSpinWheelDate : '',
     claimedAchievements: Array.isArray(raw.claimedAchievements) ? raw.claimedAchievements : [],
+    lifeSubjectMastery:
+      raw.lifeSubjectMastery && typeof raw.lifeSubjectMastery === 'object'
+        ? { ...raw.lifeSubjectMastery }
+        : {},
   };
 };
 
